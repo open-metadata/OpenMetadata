@@ -766,15 +766,6 @@ const DashboardDetails = ({
     isEntityThreadLoading,
   ]);
 
-  const taskTagCount = useMemo(() => {
-    const task = getEntityFieldThreadCounts(
-      EntityField.TAGS,
-      entityFieldTaskCount
-    );
-
-    return task?.[0]?.count ?? 0;
-  }, [entityFieldTaskCount]);
-
   return (
     <PageLayoutV1
       className="bg-white"
@@ -785,9 +776,8 @@ const DashboardDetails = ({
           <DataAssetsHeader
             dataAsset={dashboardDetails}
             entityType={EntityType.DASHBOARD}
-            handleTabChange={handleTabChange}
             permissions={dashboardPermissions}
-            taskCount={taskTagCount}
+            taskCount={entityFieldTaskCount.length}
             onDisplayNameUpdate={onUpdateDisplayName}
             onFollowClick={followDashboard}
             onOwnerUpdate={onOwnerUpdate}

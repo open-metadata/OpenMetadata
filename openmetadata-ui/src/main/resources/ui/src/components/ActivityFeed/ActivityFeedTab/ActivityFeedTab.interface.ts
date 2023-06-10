@@ -10,12 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityType } from 'enums/entity.enum';
 
-.activity-feed-card-container.has-replies > .activity-feed-card,
-.activity-feed-card-container:last-child > .activity-feed-card {
-  border-bottom: none;
+export type FeedKeys = 'all' | 'mentions' | 'tasks';
+
+export enum ActivityFeedTabs {
+  ALL = 'all',
+  MENTIONS = 'mentions',
+  TASKS = 'tasks',
 }
 
-.feed-posts {
-  margin-left: 24px;
+export interface ActivityFeedTabProps {
+  entityType: EntityType;
+  fqn: string;
+  entityName: string;
+  onFeedUpdate: () => void;
+  count: number;
+  taskCount: number;
 }

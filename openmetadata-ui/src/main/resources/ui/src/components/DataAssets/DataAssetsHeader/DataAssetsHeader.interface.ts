@@ -41,7 +41,6 @@ export type DataAssetsHeaderProps = {
   onFollowClick: () => Promise<void>;
   onRestoreDataAsset: () => Promise<void>;
   onDisplayNameUpdate: (data: EntityName) => Promise<void>;
-  handleTabChange: (tab: string) => void;
 } & (
   | DataAssetTable
   | DataAssetTopic

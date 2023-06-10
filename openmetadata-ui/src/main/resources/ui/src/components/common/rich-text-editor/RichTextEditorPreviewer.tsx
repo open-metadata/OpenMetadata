@@ -108,17 +108,11 @@ const RichTextEditorPreviewer = ({
       </div>
       {hasReadMore && showReadMoreBtn && (
         <Button
-          className="leading-0"
+          className="text-xs text-right"
           data-testid={`read-${readMore ? 'less' : 'more'}-button`}
           type="link"
           onClick={handleReadMoreToggle}>
-          {readMore
-            ? t('label.read-type-lowercase', {
-                type: t('label.less-lowercase'),
-              })
-            : t('label.read-type-lowercase', {
-                type: t('label.more-lowercase'),
-              })}
+          {readMore ? t('label.less-lowercase') : t('label.more-lowercase')}
         </Button>
       )}
     </div>

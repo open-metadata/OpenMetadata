@@ -81,7 +81,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   createThread,
   entityFieldTaskCount,
   entityFieldThreadCount,
-
   versionHandler,
 }) => {
   const { t } = useTranslation();
@@ -543,6 +542,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             dataAsset={mlModelDetail}
             entityType={EntityType.MLMODEL}
             permissions={mlModelPermissions}
+            taskCount={entityFieldTaskCount.length}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followMlModel}
             onOwnerUpdate={onOwnerUpdate}

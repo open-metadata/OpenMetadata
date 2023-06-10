@@ -536,6 +536,8 @@ const ContainerPage = () => {
             dataAsset={containerData}
             entityType={EntityType.CONTAINER}
             permissions={containerPermissions}
+            // TODO: update count once we have activity feed tab
+            taskCount={0}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={handleFollowContainer}
             onOwnerUpdate={handleUpdateOwner}

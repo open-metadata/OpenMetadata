@@ -12,7 +12,9 @@
  */
 import { Col, Divider, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import ActivityFeedProvider, {
+  useActivityFeedProvider,
+} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
@@ -72,7 +74,8 @@ import './table-details-page-v1.less';
 
 const TableDetailsPageV1 = () => {
   const [tableDetails, setTableDetails] = useState<Table>();
-  const { datasetFQN, tab } = useParams<{ datasetFQN: string; tab: string }>();
+  const { datasetFQN, tab: activeTab = EntityTabs.SCHEMA } =
+    useParams<{ datasetFQN: string; tab: string }>();
   const { t } = useTranslation();
   const history = useHistory();
   const USERId = getCurrentUserId();
@@ -114,8 +117,6 @@ const TableDetailsPageV1 = () => {
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-  // For tour we have to maintain state
-  const [activeTab, setActiveTab] = useState(tab ?? EntityTabs.SCHEMA);
 
   const isTourPage = location.pathname.includes(ROUTES.TOUR);
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
@@ -232,7 +233,6 @@ const TableDetailsPageV1 = () => {
       if (!isTourPage) {
         history.push(getTableTabPath(datasetFQN, activeKey));
       }
-      setActiveTab(activeKey as EntityTabs);
     }
   };
 
@@ -471,14 +471,16 @@ const TableDetailsPageV1 = () => {
         ),
         key: EntityTabs.ACTIVITY_FEED,
         children: (
-          <ActivityFeedTab
-            count={feedCount}
-            entityName={entityName}
-            entityType={EntityType.TABLE}
-            fqn={tableDetails?.fullyQualifiedName ?? ''}
-            taskCount={entityFieldTaskCount.length}
-            onFeedUpdate={getEntityFeedCount}
-          />
+          <ActivityFeedProvider>
+            <ActivityFeedTab
+              count={feedCount - entityFieldTaskCount.length}
+              entityName={entityName}
+              entityType={EntityType.TABLE}
+              fqn={tableDetails?.fullyQualifiedName ?? ''}
+              taskCount={entityFieldTaskCount.length}
+              onFeedUpdate={getEntityFeedCount}
+            />
+          </ActivityFeedProvider>
         ),
       },
       {
@@ -689,15 +691,6 @@ const TableDetailsPageV1 = () => {
     }
   };
 
-  const taskTagCount = useMemo(() => {
-    const task = getEntityFieldThreadCounts(
-      EntityField.TAGS,
-      entityFieldTaskCount
-    );
-
-    return task?.[0]?.count ?? 0;
-  }, [entityFieldTaskCount]);
-
   if (loading || !tableDetails) {
     return <Loader />;
   }
@@ -713,9 +706,8 @@ const TableDetailsPageV1 = () => {
           <DataAssetsHeader
             dataAsset={tableDetails}
             entityType={EntityType.TABLE}
-            handleTabChange={handleTabChange}
             permissions={tablePermissions}
-            taskCount={taskTagCount}
+            taskCount={entityFieldTaskCount.length}
             onDisplayNameUpdate={handleDisplayNameUpdate}
             onFollowClick={handleFollowTable}
             onOwnerUpdate={handleUpdateOwner}

@@ -23,12 +23,16 @@ interface ActivityFeedListV1Props {
   feedList: Thread[];
   isLoading: boolean;
   showThread?: boolean;
+  onFeedClick?: (feed: Thread) => void;
+  activeFeedId?: string;
 }
 
 const ActivityFeedListV1 = ({
   feedList,
   isLoading,
   showThread = true,
+  onFeedClick,
+  activeFeedId,
 }: ActivityFeedListV1Props) => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
 
@@ -36,6 +40,12 @@ const ActivityFeedListV1 = ({
     const { updatedFeedList } = getFeedListWithRelativeDays(feedList);
     setEntityThread(updatedFeedList);
   }, [feedList]);
+
+  useEffect(() => {
+    if (onFeedClick && entityThread[0]) {
+      onFeedClick(entityThread[0]);
+    }
+  }, [entityThread, onFeedClick]);
 
   if (isLoading) {
     return <Loader />;
@@ -53,7 +63,13 @@ const ActivityFeedListV1 = ({
         </div>
       )}
       {entityThread.map((feed) => (
-        <FeedPanelBodyV1 feed={feed} key={feed.id} showThread={showThread} />
+        <FeedPanelBodyV1
+          feed={feed}
+          isActive={activeFeedId === feed.id}
+          key={feed.id}
+          showThread={showThread}
+          onFeedClick={onFeedClick}
+        />
       ))}
     </div>
   );

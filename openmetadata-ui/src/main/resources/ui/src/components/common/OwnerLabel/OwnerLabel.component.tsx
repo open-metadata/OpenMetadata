@@ -36,7 +36,7 @@ export const OwnerLabel = ({
   const profilePicture = useMemo(() => {
     if (isUndefined(owner)) {
       return (
-        <Typography.Text className="font-medium">
+        <Typography.Text className="font-medium text-xs">
           {t('label.no-entity', { entity: t('label.owner') })}
         </Typography.Text>
       );
@@ -61,7 +61,11 @@ export const OwnerLabel = ({
       {profilePicture}
 
       {displayName ? (
-        <Typography.Link className="font-normal">{displayName}</Typography.Link>
+        <Typography.Link
+          className="font-normal text-xs"
+          style={{ fontSize: '12px' }}>
+          {displayName}
+        </Typography.Link>
       ) : null}
       <UserTeamSelectableList
         hasPermission={Boolean(hasPermission)}

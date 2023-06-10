@@ -33,6 +33,7 @@ interface ActivityFeedCardV1Props {
   className?: string;
   showThread?: boolean;
   isPost: boolean;
+  isActive?: boolean;
 }
 
 const ActivityFeedCardV1 = ({
@@ -41,6 +42,7 @@ const ActivityFeedCardV1 = ({
   className = '',
   showThread = true,
   isPost = false,
+  isActive,
 }: ActivityFeedCardV1Props) => {
   const postLength = feed?.postsCount ?? 0;
   const [isEditPost, setIsEditPost] = useState(false);
@@ -76,7 +78,8 @@ const ActivityFeedCardV1 = ({
       <div
         className={classNames(
           className,
-          'activity-feed-card activity-feed-card-v1'
+          'activity-feed-card activity-feed-card-v1',
+          { active: isActive }
         )}>
         <Row>
           <Col span={24}>

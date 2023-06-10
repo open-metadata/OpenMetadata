@@ -18,12 +18,13 @@ import Tooltip from 'antd/es/tooltip';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconExternalLink } from 'assets/svg/external-link.svg';
+import { ReactComponent as TaskOpenIcon } from 'assets/svg/ic-open-task.svg';
 import { ReactComponent as ShareIcon } from 'assets/svg/ic-share.svg';
 import { ReactComponent as StarFilledIcon } from 'assets/svg/ic-star-filled.svg';
 import { ReactComponent as StarIcon } from 'assets/svg/ic-star.svg';
-import { ReactComponent as TaskIcon } from 'assets/svg/ic-task.svg';
 import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
 import { AxiosError } from 'axios';
+import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import AnnouncementCard from 'components/common/entityPageInfo/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from 'components/common/entityPageInfo/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
@@ -32,7 +33,13 @@ import TierCard from 'components/common/TierCard/TierCard';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { getDashboardDetailsPath } from 'constants/constants';
+import {
+  getDashboardDetailsPath,
+  getMlModelDetailsPath,
+  getPipelineDetailsPath,
+  getTableTabPath,
+  getTopicDetailsPath,
+} from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
@@ -46,8 +53,10 @@ import { useClipboard } from 'hooks/useClipBoard';
 import { t } from 'i18next';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { getActiveAnnouncement } from 'rest/feedsAPI';
 import { getCurrentUserId } from 'utils/CommonUtils';
+import { getContainerDetailPath } from 'utils/ContainerDetailUtils';
 import {
   getBreadcrumbForEntitiesWithServiceOnly,
   getBreadcrumbForTable,
@@ -73,7 +82,8 @@ export const ExtraInfoLabel = ({
   <>
     <Divider className="self-center m-x-sm" type="vertical" />
     <Typography.Text className="self-center text-xs whitespace-nowrap">
-      <span>{label}</span> <span className="font-medium">{value}</span>
+      <span className="text-grey-muted">{`${label}: `}</span>
+      <span className="font-medium">{value}</span>
     </Typography.Text>
   </>
 );
@@ -90,7 +100,7 @@ export const ExtraInfoLink = ({
   <>
     <Divider className="self-center m-x-sm" type="vertical" />
     <div className="d-flex items-center text-xs">
-      <span className=" m-r-xss">{label}</span>
+      <span className="text-grey-muted m-r-xss">{`${label}: `}</span>
       <Typography.Link href={href} style={{ fontSize: '12px' }}>
         {value}{' '}
       </Typography.Link>
@@ -110,11 +120,10 @@ export const DataAssetsHeader = ({
   onRestoreDataAsset,
   onDisplayNameUpdate,
   taskCount,
-  handleTabChange,
 }: DataAssetsHeaderProps) => {
   const USERId = getCurrentUserId();
   const { onCopyToClipBoard } = useClipboard(window.location.href);
-
+  const history = useHistory();
   const icon = useMemo(
     () =>
       dataAsset?.serviceType ? (
@@ -220,24 +229,6 @@ export const DataAssetsHeader = ({
                 value={topicDetails.replicationFactor}
               />
             )}
-            {topicDetails?.retentionSize && (
-              <ExtraInfoLabel
-                label={t('label.retention-size')}
-                value={bytesToSize(topicDetails.retentionSize ?? 0)}
-              />
-            )}
-            {topicDetails?.cleanupPolicies && (
-              <ExtraInfoLabel
-                label={t('label.clean-up-policy-plural-lowercase')}
-                value={topicDetails.cleanupPolicies?.join(', ')}
-              />
-            )}
-            {topicDetails?.maximumMessageSize && (
-              <ExtraInfoLabel
-                label={t('label.maximum-size-lowercase')}
-                value={bytesToSize(topicDetails.maximumMessageSize ?? 0)}
-              />
-            )}
           </>
         );
 
@@ -249,15 +240,11 @@ export const DataAssetsHeader = ({
         returnData.extraInfo = (
           <>
             {dashboardDetails.dashboardUrl && (
-              <>
-                <Divider className="self-center m-x-sm" type="vertical" />
-                <Typography.Link
-                  className="d-flex items-center text-xs"
-                  href={dashboardDetails.dashboardUrl}>
-                  {entityName}{' '}
-                  <IconExternalLink className="m-l-xss " width={14} />
-                </Typography.Link>
-              </>
+              <ExtraInfoLink
+                href={dashboardDetails.dashboardUrl}
+                label={entityName}
+                value={dashboardDetails.dashboardUrl}
+              />
             )}
           </>
         );
@@ -272,15 +259,11 @@ export const DataAssetsHeader = ({
         returnData.extraInfo = (
           <>
             {pipelineDetails.pipelineUrl && (
-              <>
-                <Divider className="self-center m-x-sm" type="vertical" />
-                <Typography.Link
-                  className="d-flex items-center text-xs"
-                  href={pipelineDetails.pipelineUrl}>
-                  {entityName}{' '}
-                  <IconExternalLink className="m-l-xss " width={14} />
-                </Typography.Link>
-              </>
+              <ExtraInfoLink
+                href={pipelineDetails.pipelineUrl}
+                label=""
+                value={pipelineDetails.pipelineUrl}
+              />
             )}
           </>
         );
@@ -365,6 +348,65 @@ export const DataAssetsHeader = ({
     return returnData;
   }, [dataAsset, entityType]);
 
+  const handleOpenTaskClick = () => {
+    if (!dataAsset.fullyQualifiedName) {
+      return;
+    }
+    let path = '';
+    switch (entityType) {
+      default:
+      case EntityType.TABLE:
+        path = getTableTabPath(
+          dataAsset.fullyQualifiedName,
+          EntityTabs.ACTIVITY_FEED,
+          ActivityFeedTabs.TASKS
+        );
+
+        break;
+
+      case EntityType.TOPIC:
+        path = getTopicDetailsPath(
+          dataAsset.fullyQualifiedName,
+          EntityTabs.ACTIVITY_FEED
+        );
+
+        break;
+
+      case EntityType.DASHBOARD:
+        path = getDashboardDetailsPath(
+          dataAsset.fullyQualifiedName,
+          EntityTabs.ACTIVITY_FEED
+        );
+
+        break;
+      case EntityType.PIPELINE:
+        path = getPipelineDetailsPath(
+          dataAsset.fullyQualifiedName,
+          EntityTabs.ACTIVITY_FEED
+        );
+
+        break;
+
+      case EntityType.MLMODEL:
+        path = getMlModelDetailsPath(
+          dataAsset.fullyQualifiedName,
+          EntityTabs.ACTIVITY_FEED
+        );
+
+        break;
+
+      case EntityType.CONTAINER:
+        path = getContainerDetailPath(
+          dataAsset.fullyQualifiedName,
+          EntityTabs.ACTIVITY_FEED
+        );
+
+        break;
+    }
+
+    history.push(path);
+  };
+
   return (
     <>
       <Row gutter={[8, 12]}>
@@ -390,13 +432,15 @@ export const DataAssetsHeader = ({
                   owner={dataAsset?.owner}
                   onUpdate={onOwnerUpdate}
                 />
-                <Divider className="self-center m-x-md" type="vertical" />
+                <Divider className="self-center m-x-sm" type="vertical" />
                 <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
                   <Space>
                     {tier ? (
-                      tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
+                      <span className="font-medium text-xs">
+                        {tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1]}
+                      </span>
                     ) : (
-                      <span className="font-medium">
+                      <span className="font-medium text-xs">
                         {t('label.no-entity', {
                           entity: t('label.tier'),
                         })}
@@ -431,12 +475,14 @@ export const DataAssetsHeader = ({
         <Col span={6}>
           <Space className="items-end w-full" direction="vertical" size={16}>
             <Space>
-              <Button
-                className="w-16 p-0"
-                icon={<Icon component={TaskIcon} />}
-                onClick={() => handleTabChange(EntityTabs.ACTIVITY_FEED)}>
-                <Typography.Text>{taskCount}</Typography.Text>
-              </Button>
+              {taskCount ? (
+                <Button
+                  className="w-16 p-0"
+                  icon={<Icon component={TaskOpenIcon} />}
+                  onClick={handleOpenTaskClick}>
+                  <Typography.Text>{taskCount}</Typography.Text>
+                </Button>
+              ) : null}
 
               <ButtonGroup size="small">
                 <Button

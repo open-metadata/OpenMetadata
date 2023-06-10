@@ -356,6 +356,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={TableDetailsPageV1}
         path={ROUTES.TABLE_DETAILS_WITH_TAB}
       />
+      <Route
+        exact
+        component={TableDetailsPageV1}
+        path={ROUTES.TABLE_DETAILS_WITH_SUB_TAB}
+      />
       <Route exact component={TopicDetailsPage} path={ROUTES.TOPIC_DETAILS} />
       <Route
         exact

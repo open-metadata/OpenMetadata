@@ -12,6 +12,7 @@
  */
 
 import { COOKIE_VERSION } from 'components/Modals/WhatsNewModal/whatsNewData';
+import { EntityTabs } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
@@ -104,6 +105,7 @@ export const PLACEHOLDER_ROUTE_INGESTION_TYPE = ':ingestionType';
 export const PLACEHOLDER_ROUTE_INGESTION_FQN = ':ingestionFQN';
 export const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
 export const PLACEHOLDER_ROUTE_TAB = ':tab';
+export const PLACEHOLDER_ROUTE_SUB_TAB = ':subTab';
 export const PLACEHOLDER_ROUTE_FQN = ':fqn';
 export const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
 export const PLACEHOLDER_ROUTE_VERSION = ':version';
@@ -216,6 +218,7 @@ export const ROUTES = {
   ACCOUNT_ACTIVATION: '/users/registrationConfirmation',
   TABLE_DETAILS: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}`,
   TABLE_DETAILS_WITH_TAB: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  TABLE_DETAILS_WITH_SUB_TAB: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
   ENTITY_VERSION: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   TOPIC_DETAILS: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}`,
   TOPIC_DETAILS_WITH_TAB: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
@@ -339,8 +342,17 @@ export const getVersionPath = (
   return path;
 };
 
-export const getTableTabPath = (tableFQN: string, tab = 'schema') => {
+export const getTableTabPath = (
+  tableFQN: string,
+  tab = 'schema',
+  subTab = 'all'
+) => {
   let path = ROUTES.TABLE_DETAILS_WITH_TAB;
+  if (tab === EntityTabs.ACTIVITY_FEED) {
+    path = ROUTES.TABLE_DETAILS_WITH_SUB_TAB;
+
+    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
+  }
   path = path
     .replace(PLACEHOLDER_ROUTE_TABLE_FQN, getEncodedFqn(tableFQN))
     .replace(PLACEHOLDER_ROUTE_TAB, tab);

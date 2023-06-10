@@ -14,7 +14,7 @@
 import { Card, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
+import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -23,36 +23,25 @@ import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { getTopicDetailsPath } from 'constants/constants';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { EntityTags } from 'Models';
-import React, {
-  RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { restoreTopic } from 'rest/topicsAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { EntityField } from '../../constants/Feeds.constants';
-import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import { useElementInView } from '../../hooks/useElementInView';
 import { getCurrentUserId, refreshPage } from '../../utils/CommonUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
-import Loader from '../Loader/Loader';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -75,8 +64,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   entityFieldThreadCount,
   createThread,
   deletePostHandler,
-  paging,
-  fetchFeedHandler,
   updateThreadHandler,
   entityFieldTaskCount,
   onTopicUpdate,
@@ -87,11 +74,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
-  const [elementRef, isInView] = useElementInView(observerOptions);
+
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
-  const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
 
   const [topicPermissions, setTopicPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
@@ -301,30 +287,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     setThreadLink('');
   };
 
-  const loader = useMemo(
-    () => (isEntityThreadLoading ? <Loader /> : null),
-    [isEntityThreadLoading]
-  );
-
-  const fetchMoreThread = (
-    isElementInView: boolean,
-    pagingObj: Paging,
-    isLoading: boolean
-  ) => {
-    if (
-      isElementInView &&
-      pagingObj?.after &&
-      !isLoading &&
-      activeTab === EntityTabs.ACTIVITY_FEED
-    ) {
-      fetchFeedHandler(
-        pagingObj.after,
-        activityFilter?.feedFilter,
-        activityFilter?.threadType
-      );
-    }
-  };
-
   const handleSchemaFieldsUpdate = async (
     updatedMessageSchema: Topic['messageSchema']
   ) => {
@@ -340,18 +302,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       showErrorToast(error as AxiosError);
     }
   };
-
-  useEffect(() => {
-    fetchMoreThread(isInView, paging, isEntityThreadLoading);
-  }, [paging, isEntityThreadLoading, isInView]);
-
-  const handleFeedFilterChange = useCallback((feedFilter, threadType) => {
-    setActivityFilter({
-      feedFilter,
-      threadType,
-    });
-    fetchFeedHandler(undefined, feedFilter, threadType);
-  }, []);
 
   const tabDetails = useMemo(() => {
     switch (activeTab) {
@@ -396,24 +346,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         return <SampleDataTopic topicFQN={topicFQN} />;
       case EntityTabs.ACTIVITY_FEED:
         return (
-          <Card className={ENTITY_CARD_CLASS}>
-            <Row>
-              <Col data-testid="activityfeed" offset={3} span={18}>
-                <ActivityFeedList
-                  isEntityFeed
-                  withSidePanel
-                  deletePostHandler={deletePostHandler}
-                  entityName={entityName}
-                  feedList={entityThread}
-                  isFeedLoading={isEntityThreadLoading}
-                  postFeedHandler={postFeedHandler}
-                  updateThreadHandler={updateThreadHandler}
-                  onFeedFiltersUpdate={handleFeedFilterChange}
-                />
-              </Col>
-            </Row>
-            {loader}
-          </Card>
+          <ActivityFeedTab
+            count={feedCount}
+            entityName={entityName}
+            entityType={EntityType.TOPIC}
+            fqn={topicDetails?.fullyQualifiedName ?? ''}
+            taskCount={entityFieldTaskCount.length}
+            onFeedUpdate={() => Promise.resolve()}
+          />
         );
       case EntityTabs.SCHEMA:
       default:
@@ -421,10 +361,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           <div className="p-x-lg">
             <DescriptionV1
               description={topicDetails.description}
-              // entityFieldTasks={getEntityFieldThreadCounts(
-              //   EntityField.DESCRIPTION,
-              //   entityFieldTaskCount
-              // )}
               entityFieldThreads={getEntityFieldThreadCounts(
                 EntityField.DESCRIPTION,
                 entityFieldThreadCount
@@ -470,15 +406,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     isEntityThreadLoading,
   ]);
 
-  const taskTagCount = useMemo(() => {
-    const task = getEntityFieldThreadCounts(
-      EntityField.TAGS,
-      entityFieldTaskCount
-    );
-
-    return task?.[0]?.count ?? 0;
-  }, [entityFieldTaskCount]);
-
   return (
     <PageLayoutV1
       className="bg-white"
@@ -489,9 +416,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           <DataAssetsHeader
             dataAsset={topicDetails}
             entityType={EntityType.TOPIC}
-            handleTabChange={handleTabChange}
             permissions={topicPermissions}
-            taskCount={taskTagCount}
+            taskCount={entityFieldTaskCount.length}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followTopic}
             onOwnerUpdate={onOwnerUpdate}
@@ -512,11 +438,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         </Col>
       </Row>
 
-      <div
-        data-testid="observer-element"
-        id="observer-element"
-        ref={elementRef as RefObject<HTMLDivElement>}
-      />
       {threadLink ? (
         <ActivityThreadPanel
           createThread={createThread}

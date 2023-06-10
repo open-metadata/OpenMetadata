@@ -105,6 +105,8 @@ const ActivityFeedProvider = ({ children }: Props) => {
         );
         setEntityThread([...data]);
 
+        setLoading(false);
+
         return data;
       } catch (err) {
         showErrorToast(
@@ -341,6 +343,7 @@ const ActivityFeedProvider = ({ children }: Props) => {
       showDrawer,
       hideDrawer,
       updateEditorFocus,
+      setActiveThread,
     };
   }, [
     entityThread,
@@ -358,6 +361,7 @@ const ActivityFeedProvider = ({ children }: Props) => {
     showDrawer,
     hideDrawer,
     updateEditorFocus,
+    setActiveThread,
   ]);
 
   return (

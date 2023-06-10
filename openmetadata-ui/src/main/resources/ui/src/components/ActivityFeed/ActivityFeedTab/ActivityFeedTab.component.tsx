@@ -11,93 +11,85 @@
  *  limitations under the License.
  */
 import { Menu } from 'antd';
-import AppState from 'AppState';
-import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
-import { pagingObject } from 'constants/constants';
+import { getTableTabPath, pagingObject } from 'constants/constants';
 import { observerOptions } from 'constants/Mydata.constants';
-import { EntityType } from 'enums/entity.enum';
+import { EntityTabs } from 'enums/entity.enum';
 import { FeedFilter } from 'enums/mydata.enum';
 import { Thread, ThreadType } from 'generated/entity/feed/thread';
 import { Paging } from 'generated/type/paging';
 import { useElementInView } from 'hooks/useElementInView';
+import { noop } from 'lodash';
 import {
   default as React,
   RefObject,
+  useCallback,
   useEffect,
   useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getAllFeeds } from 'rest/feedsAPI';
+import { useHistory, useParams } from 'react-router-dom';
 import { getCountBadge } from 'utils/CommonUtils';
-import { getEntityFeedLink } from 'utils/EntityUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import { getEntityField } from 'utils/FeedUtils';
+import '../../Widgets/FeedsWidget/feeds-widget.less';
+import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component';
-import ActivityFeedProvider from '../ActivityFeedProvider/ActivityFeedProvider';
-
-type FeedKeys = 'all' | 'mentions' | 'tasks';
+import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
+import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
+import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
+import './activity-feed-tab.less';
+import { ActivityFeedTabProps } from './ActivityFeedTab.interface';
 
 export const ActivityFeedTab = ({
-  entityType,
-  fqn,
   count,
   taskCount,
-}: {
-  entityType: EntityType;
-  fqn: string;
-  entityName: string;
-  onFeedUpdate: () => void;
-  count: number;
-  taskCount: number;
-}) => {
-  const { id: userId } = AppState.getCurrentUserDetails() ?? {};
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [threads, setThreads] = useState<Thread[]>([]);
-  const [paging, setPaging] = useState<Paging>(pagingObject);
-
+  fqn,
+}: ActivityFeedTabProps) => {
+  const [paging] = useState<Paging>(pagingObject);
+  const history = useHistory();
   const { t } = useTranslation();
   const [elementRef, isInView] = useElementInView(observerOptions);
-  const [activeTab, setActiveTab] = useState<FeedKeys>('all');
+  const { subTab: activeTab = 'all' } = useParams<{ subTab: string }>();
 
-  const getFeedData = async (after?: string) => {
-    setIsLoading(true);
-    try {
-      const { data, paging: pagingObj } = await getAllFeeds(
-        getEntityFeedLink(entityType, fqn),
-        after,
-        activeTab === 'tasks'
-          ? ThreadType.Task
-          : activeTab === 'mentions'
-          ? undefined
-          : ThreadType.Conversation,
-        activeTab === 'mentions' ? FeedFilter.MENTIONS : undefined,
-        undefined,
-        userId
-      );
-      setPaging(pagingObj);
-      setThreads((prevData) => [...(after ? prevData : []), ...data]);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.entity-feed-plural'),
-        })
-      );
-    } finally {
-      setIsLoading(false);
-    }
+  const handleTabChange = (tab: string) => {
+    history.push(getTableTabPath(fqn, EntityTabs.ACTIVITY_FEED, tab));
   };
 
-  const handleFeedFetchFromFeedList = (after?: string) => {
-    !after && setThreads([]);
-    getFeedData(after);
-  };
+  const {
+    postFeed,
+    selectedThread,
+    setActiveThread,
+    entityThread,
+    getFeedData,
+    loading,
+  } = useActivityFeedProvider();
+
+  const { feedFilter, threadType } = useMemo(() => {
+    return {
+      threadType:
+        activeTab === 'tasks' ? ThreadType.Task : ThreadType.Conversation,
+      feedFilter: activeTab === 'mentions' ? FeedFilter.MENTIONS : undefined,
+    };
+  }, [activeTab]);
+
+  const handleFeedFetchFromFeedList = useCallback(
+    (after?: string) => {
+      getFeedData(feedFilter, after, threadType);
+    },
+    [threadType, feedFilter]
+  );
 
   useEffect(() => {
-    getFeedData();
-  }, [activeTab]);
+    getFeedData(feedFilter, undefined, threadType);
+  }, [feedFilter, threadType]);
+
+  const handleFeedClick = useCallback(
+    (feed: Thread) => {
+      setActiveThread(feed);
+    },
+    [setActiveThread]
+  );
 
   const fetchMoreThread = (
     isElementInView: boolean,
@@ -110,69 +102,104 @@ export const ActivityFeedTab = ({
   };
 
   useEffect(() => {
-    fetchMoreThread(isInView, paging, isLoading);
-  }, [paging, isLoading, isInView]);
+    fetchMoreThread(isInView, paging, loading);
+  }, [paging, loading, isInView]);
 
-  const loader = useMemo(() => (isLoading ? <Loader /> : null), [isLoading]);
+  const loader = useMemo(() => (loading ? <Loader /> : null), [loading]);
+
+  const onSave = (message: string) => {
+    postFeed(message, selectedThread?.id ?? '').catch(() => {
+      // ignore since error is displayed in toast in the parent promise.
+      // Added block for sonar code smell
+    });
+  };
+
+  const entityField = selectedThread
+    ? getEntityField(selectedThread.about)
+    : '';
 
   return (
-    <ActivityFeedProvider>
-      <div className="d-flex ">
-        <Menu
-          className="custom-menu w-72 p-t-sm"
-          data-testid="global-setting-left-panel"
-          items={[
-            {
-              label: (
-                <div className="d-flex justify-between">
-                  <span className="font-normal">{t('label.all')}</span>
-                  <span>{getCountBadge(count)}</span>
-                </div>
-              ),
-              key: 'all',
-            },
-            {
-              label: (
-                <div className="d-flex justify-between">
-                  <span className="font-normal">
-                    {t('label.mention-plural')}
-                  </span>
-                </div>
-              ),
-              key: 'mentions',
-            },
-            {
-              label: (
-                <div className="d-flex justify-between">
-                  <span className="font-normal">{t('label.task-plural')}</span>
-                  <span>{getCountBadge(taskCount)}</span>
-                </div>
-              ),
-              key: 'tasks',
-            },
-          ]}
-          mode="inline"
-          selectedKeys={[activeTab]}
-          style={{
-            flex: '0 0 250px',
-            borderRight: '1px solid rgba(0, 0, 0, 0.1)',
-          }}
-          onClick={(info) => setActiveTab(info.key as FeedKeys)}
+    <div className="d-flex h-full overflow-hidden">
+      <Menu
+        className="custom-menu w-72 p-t-sm"
+        data-testid="global-setting-left-panel"
+        items={[
+          {
+            label: (
+              <div className="d-flex justify-between">
+                <span className="font-normal">{t('label.all')}</span>
+                <span>{getCountBadge(count)}</span>
+              </div>
+            ),
+            key: 'all',
+          },
+          {
+            label: (
+              <div className="d-flex justify-between">
+                <span className="font-normal">{t('label.mention-plural')}</span>
+              </div>
+            ),
+            key: 'mentions',
+          },
+          {
+            label: (
+              <div className="d-flex justify-between">
+                <span className="font-normal">{t('label.task-plural')}</span>
+                <span>{getCountBadge(taskCount)}</span>
+              </div>
+            ),
+            key: 'tasks',
+          },
+        ]}
+        mode="inline"
+        selectedKeys={[activeTab]}
+        style={{
+          flex: '0 0 250px',
+          borderRight: '1px solid rgba(0, 0, 0, 0.1)',
+        }}
+        onClick={(info) => handleTabChange(info.key)}
+      />
+
+      <div style={{ flex: '0 0 calc(50% - 125px)' }}>
+        <div
+          className="w-full"
+          data-testid="observer-element"
+          id="observer-element"
+          ref={elementRef as RefObject<HTMLDivElement>}
+        />
+        <ActivityFeedListV1
+          activeFeedId={selectedThread?.id}
+          feedList={entityThread}
+          isLoading={loading}
+          showThread={false}
+          onFeedClick={handleFeedClick}
         />
 
-        <div style={{ flex: '0 0 calc(50% - 125px)' }}>
-          <div
-            className="w-full"
-            data-testid="observer-element"
-            id="observer-element"
-            ref={elementRef as RefObject<HTMLDivElement>}
-          />
-          <ActivityFeedListV1 feedList={threads} isLoading={isLoading} />
-
-          {loader}
-        </div>
-        <div style={{ flex: '0 0 calc(50% - 125px)' }}> </div>
+        {loader}
       </div>
-    </ActivityFeedProvider>
+      <div
+        style={{
+          flex: '0 0 calc(50% - 125px)',
+          borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
+        }}>
+        {loading && loader}
+        {selectedThread && !loading && (
+          <div id="feed-panel">
+            <div className="feed-explore-heading">
+              <FeedPanelHeader
+                hideCloseIcon
+                className="p-x-md"
+                entityFQN={fqn}
+                entityField={entityField as string}
+                threadType={selectedThread?.type ?? ThreadType.Conversation}
+                onCancel={noop}
+              />
+            </div>
+            <FeedPanelBodyV1 showThread feed={selectedThread} />
+            <ActivityFeedEditor onSave={onSave} />
+          </div>
+        )}
+      </div>
+    </div>
   );
 };

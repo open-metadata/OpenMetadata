@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
+import { RightOutlined } from '@ant-design/icons';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import i18next from 'i18next';
 import { isEqual } from 'lodash';
+import React from 'react';
 import {
   deletePostById,
   deleteThread,
@@ -28,9 +30,6 @@ import {
   getUserSuggestions,
   searchData,
 } from 'rest/miscAPI';
-
-import { RightOutlined } from '@ant-design/icons';
-import React from 'react';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -412,7 +411,7 @@ export const getEntityFieldDisplay = (entityField: string) => {
 
     return entityFields.map((field, i) => {
       return (
-        <span className="tw-font-bold" key={`field-${i}`}>
+        <span key={`field-${i}`}>
           {field}
           {i < entityFields.length - 1 ? separator : null}
         </span>
