@@ -187,7 +187,7 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
       id="kpi-charts"
       loading={isLoading}
       title={
-        <div className="p-y-sm">
+        <div className="p-y-xss">
           <Typography.Text className="font-medium">
             {t('label.kpi-title')}
           </Typography.Text>

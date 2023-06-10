@@ -26,7 +26,7 @@ import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemaDetailsByFQN,
 } from 'rest/databaseAPI';
-import { getGlossaryTermByFQN } from 'rest/glossaryAPI';
+import { getGlossariesByName, getGlossaryTermByFQN } from 'rest/glossaryAPI';
 import { getMlModelByFQN } from 'rest/mlModelAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
@@ -89,6 +89,10 @@ const PopoverContent: React.FC<{
         promise = getGlossaryTermByFQN(entityFQN, 'owner');
 
         break;
+      case EntityType.GLOSSARY:
+        promise = getGlossariesByName(entityFQN, 'owner');
+
+        break;
 
       default:
         break;
@@ -119,15 +123,15 @@ const PopoverContent: React.FC<{
     onMouseOver();
   }, [entityFQN]);
 
-  const name = entityData.name;
-  const displayName = getEntityName(entityData);
-
   return (
     <ExploreSearchCard
       id="tabledatacard"
+      showNameHeader={false}
+      showTags={false}
       source={{
-        name,
-        displayName,
+        ...entityData,
+        name: entityData.name,
+        displayName: getEntityName(entityData),
         id: entityData.id ?? '',
         description: entityData.description ?? '',
         fullyQualifiedName: entityFQN,
@@ -142,7 +146,6 @@ const PopoverContent: React.FC<{
 const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
   return (
     <Popover
-      destroyTooltipOnHide
       align={{ targetOffset: [0, -10] }}
       content={<PopoverContent entityFQN={entityFQN} entityType={entityType} />}
       overlayClassName="entity-popover-card"

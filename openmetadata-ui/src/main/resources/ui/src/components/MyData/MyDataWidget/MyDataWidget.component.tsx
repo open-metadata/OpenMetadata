@@ -64,7 +64,7 @@ const MyDataWidgetInternal = () => {
       className="card-widget"
       loading={isLoading}
       title={
-        <div className="d-flex justify-between p-y-sm">
+        <div className="d-flex justify-between p-y-xss">
           <Typography.Text className="font-medium">
             {t('label.my-data')}
           </Typography.Text>
