@@ -200,6 +200,12 @@ const TagsContainerV1 = ({
     form.resetFields();
   }, [form]);
 
+  const handleAddClick = () => {
+    fetchTags();
+    fetchGlossaryList();
+    setIsEditTags(true);
+  };
+
   const getTagsElement = (tag: EntityTags) => (
     <TagsV1 key={tag.tagFQN} tag={tag} />
   );
@@ -207,11 +213,7 @@ const TagsContainerV1 = ({
   const addTagButton = useMemo(
     () =>
       showAddTagButton ? (
-        <span
-          onClick={() => {
-            fetchTags();
-            fetchGlossaryList();
-          }}>
+        <span onClick={handleAddClick}>
           <Tags
             className="tw-font-semibold tw-text-primary"
             startWith={TAG_START_WITH.PLUS}
@@ -412,11 +414,7 @@ const TagsContainerV1 = ({
               icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
               size="small"
               type="text"
-              onClick={() => {
-                fetchTags();
-                fetchGlossaryList();
-                setIsEditTags(true);
-              }}
+              onClick={handleAddClick}
             />
           )}
         </div>
