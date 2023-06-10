@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 import { Space, Typography } from 'antd';
+import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
+import { OwnerType } from 'enums/user.enum';
 import { EntityReference } from 'generated/entity/data/table';
-import React from 'react';
+import { isUndefined } from 'lodash';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
@@ -30,22 +33,32 @@ export const OwnerLabel = ({
   const displayName = getEntityName(owner);
   const { t } = useTranslation();
 
-  return (
-    <Space size={8}>
-      {owner ? (
-        <ProfilePicture
-          displayName={displayName}
-          id={owner.id}
-          key="profile-picture"
-          name={owner.name ?? ''}
-          type="circle"
-          width="24"
-        />
-      ) : (
+  const profilePicture = useMemo(() => {
+    if (isUndefined(owner)) {
+      return (
         <Typography.Text className="font-medium">
           {t('label.no-entity', { entity: t('label.owner') })}
         </Typography.Text>
-      )}
+      );
+    }
+
+    return owner.type === OwnerType.TEAM ? (
+      <IconTeamsGrey height={18} width={18} />
+    ) : (
+      <ProfilePicture
+        displayName={displayName}
+        id={owner.id}
+        key="profile-picture"
+        name={owner.name ?? ''}
+        type="circle"
+        width="24"
+      />
+    );
+  }, [owner]);
+
+  return (
+    <Space size={8}>
+      {profilePicture}
 
       {displayName ? (
         <Typography.Link className="font-normal">{displayName}</Typography.Link>

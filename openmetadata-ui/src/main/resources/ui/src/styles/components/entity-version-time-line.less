@@ -10,6 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import url('../variables.less');
+
 .timeline-drawer {
   height: 100%;
   background: white;
@@ -20,7 +23,7 @@
   width: 330px;
   overflow-y: auto;
   padding: 16px;
-  border-left: 1px solid #d9ceee;
+  border-left: @global-border;
   transition: display 0.3s ease-out;
 }
 .timeline-drawer.open {

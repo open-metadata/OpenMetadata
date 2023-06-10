@@ -14,7 +14,6 @@
 import { Card, Space, Table, Tabs } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { EntityTabs } from 'enums/entity.enum';
 import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -265,10 +264,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   );
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(currentVersionData),
-      })}>
+    <>
       <div data-testid="dashboard-version-container">
         {isVersionLoading ? (
           <Loader />
@@ -329,7 +325,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
           onBack={backHandler}
         />
       </div>
-    </PageLayoutV1>
+    </>
   );
 };
 

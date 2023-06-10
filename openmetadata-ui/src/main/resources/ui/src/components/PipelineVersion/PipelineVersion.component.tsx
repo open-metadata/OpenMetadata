@@ -14,7 +14,6 @@
 import { Card, Space, Table, Tabs } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { EntityTabs } from 'enums/entity.enum';
 import { t } from 'i18next';
@@ -450,10 +449,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   );
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(currentVersionData),
-      })}>
+    <>
       {isVersionLoading ? (
         <Loader />
       ) : (
@@ -509,7 +505,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         versionList={versionList}
         onBack={backHandler}
       />
-    </PageLayoutV1>
+    </>
   );
 };
 
