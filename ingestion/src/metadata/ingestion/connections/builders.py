@@ -117,6 +117,15 @@ def init_empty_connection_options() -> ConnectionOptions:
     return ConnectionOptions(__root__={})
 
 
+def _add_password(url,connection, attr) -> str:
+    # A helper function that adds the password to the url if it exists
+    password = getattr(connection, attr, None)
+    if password:
+        password = password or SecretStr("")
+        url += f":{quote_plus(password.get_secret_value())}"
+    return url
+
+
 def get_connection_url_common(connection) -> str:
     """
     Common method for building the source connection urls
@@ -126,9 +135,11 @@ def get_connection_url_common(connection) -> str:
 
     if connection.username:
         url += f"{quote_plus(connection.username)}"
-        if not connection.password:
-            connection.password = SecretStr("")
-        url += f":{quote_plus(connection.password.get_secret_value())}"
+
+        if hasattr(connection, 'password'):
+            url += _add_password(url, connection, 'password')
+        if hasattr(connection, 'authType'):
+            url+= _add_password(url, connection.authType, 'password')
         url += "@"
 
     url += connection.hostPort

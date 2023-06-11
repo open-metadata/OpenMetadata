@@ -755,7 +755,9 @@ class SourceConnectionTest(TestCase):
         expected_args = {}
         mysql_conn_obj = MysqlConnection(
             username="user",
+            authType=BasicAuth(
             password=None,
+            ),
             hostPort="localhost:443",
             connectionArguments=None,
             scheme=MySQLScheme.mysql_pymysql,
@@ -766,7 +768,9 @@ class SourceConnectionTest(TestCase):
         expected_args = {"user": "user-to-be-impersonated"}
         mysql_conn_obj = MysqlConnection(
             username="user",
+             authType=BasicAuth(
             password=None,
+            ),
             hostPort="localhost:443",
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=MySQLScheme.mysql_pymysql,
@@ -826,7 +830,7 @@ class SourceConnectionTest(TestCase):
         expected_args = {}
         postgres_conn_obj = PostgresConnection(
             username="user",
-            connectionType=BasicAuth(
+            authType=BasicAuth(
                 password=None,
             ),
             database="postgres",
