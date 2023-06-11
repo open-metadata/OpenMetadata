@@ -39,3 +39,15 @@ SET json = JSON_INSERT(
     JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcsConfig')
 )
 WHERE json -> '$.sourceConfig.config.type' = 'DBT';
+
+
+-- Modify migrations for service connection of postgres and mysql to move password under authType
+
+UPDATE dbservice_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.connection.config.password'),
+    '$.connection.config.authType', 
+    JSON_OBJECT(), 
+    '$.connection.config.authType.password', 
+    JSON_EXTRACT(json, '$.connection.config.password'))
+where serviceType in ('Postgres', 'Mysql');

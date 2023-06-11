@@ -27,3 +27,14 @@ where serviceType in ('Datalake')
 UPDATE ingestion_pipeline_entity
 SET json = jsonb_set(json::jsonb #- '{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcsConfig}', '{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig}', (json#>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcsConfig}')::jsonb)
 WHERE json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig}' is not null and json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcsConfig}' is not null;
+
+
+-- Modify migrations for service connection of postgres and mysql to move password under authType
+UPDATE dbservice_entity
+SET json =  jsonb_set(
+json #-'{connection,config,password}',
+'{connection,config,authType}',
+jsonb_build_object('password',json#>'{connection,config,password}')
+) 
+WHERE serviceType IN ('Postgres', 'Mysql')
+  and json#>'{connection,config,password}' is not null;
