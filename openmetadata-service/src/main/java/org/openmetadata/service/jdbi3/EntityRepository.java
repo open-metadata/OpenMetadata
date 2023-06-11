@@ -891,9 +891,36 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  protected void storeTimeSeriesWithOperation(
+      String fullyQualifiedName,
+      String extension,
+      String jsonSchema,
+      String entityJson,
+      Long timestamp,
+      String operation,
+      boolean update)
+      throws JsonProcessingException {
+    String fqnHash = FullyQualifiedName.buildHash(fullyQualifiedName);
+    if (update) {
+      daoCollection
+          .entityExtensionTimeSeriesDao()
+          .updateExtensionByOperation(fqnHash, extension, entityJson, timestamp, operation);
+    } else {
+      daoCollection.entityExtensionTimeSeriesDao().insert(fqnHash, extension, jsonSchema, entityJson);
+    }
+  }
+
   public String getExtensionAtTimestamp(String fullyQualifiedName, String extension, Long timestamp) {
     String fqnHash = FullyQualifiedName.buildHash(fullyQualifiedName);
     return daoCollection.entityExtensionTimeSeriesDao().getExtensionAtTimestamp(fqnHash, extension, timestamp);
+  }
+
+  public String getExtensionAtTimestampWithOperation(
+      String fullyQualifiedName, String extension, Long timestamp, String operation) {
+    String fqnHash = FullyQualifiedName.buildHash(fullyQualifiedName);
+    return daoCollection
+        .entityExtensionTimeSeriesDao()
+        .getExtensionAtTimestampWithOperation(fqnHash, extension, timestamp, operation);
   }
 
   public String getLatestExtensionFromTimeseries(String fullyQualifiedName, String extension) {
@@ -1132,9 +1159,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Finally set entity deleted flag to false
     LOG.info("Restoring the {} {}", entityType, id);
-    T entity = dao.findEntityById(id, DELETED);
-    entity.setDeleted(false);
-    dao.update(entity.getId(), getFullyQualifiedNameHash(entity), JsonUtils.pojoToJson(entity));
+    T original = dao.findEntityById(id, DELETED);
+    setFieldsInternal(original, putFields);
+    T updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), entityClass);
     updated.setUpdatedBy(updatedBy);
     updated.setUpdatedAt(System.currentTimeMillis());
     EntityUpdater updater = getUpdater(original, updated, Operation.PUT);

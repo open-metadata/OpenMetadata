@@ -373,14 +373,18 @@ public class TableRepository extends EntityRepository<Table> {
     if (systemProfiles != null && !systemProfiles.isEmpty()) {
       for (SystemProfile systemProfile : createTableProfile.getSystemProfile()) {
         String storedSystemProfile =
-            getExtensionAtTimestamp(
-                table.getFullyQualifiedName(), SYSTEM_PROFILE_EXTENSION, systemProfile.getTimestamp());
-        storeTimeSeries(
+            getExtensionAtTimestampWithOperation(
+                table.getFullyQualifiedName(),
+                SYSTEM_PROFILE_EXTENSION,
+                systemProfile.getTimestamp(),
+                systemProfile.getOperation().value());
+        storeTimeSeriesWithOperation(
             table.getFullyQualifiedName(),
             SYSTEM_PROFILE_EXTENSION,
             "systemProfile",
             JsonUtils.pojoToJson(systemProfile),
             systemProfile.getTimestamp(),
+            systemProfile.getOperation().value(),
             storedSystemProfile != null);
       }
     }
@@ -564,11 +568,6 @@ public class TableRepository extends EntityRepository<Table> {
     setFieldsInternal(table, new Fields(List.of(FIELD_OWNER), FIELD_OWNER));
     setFieldsInternal(table, new Fields(List.of(FIELD_TAGS), FIELD_TAGS));
     return table;
-  }
-
-  @Transaction
-  public void deleteLocation(UUID tableId) {
-    deleteFrom(tableId, TABLE, Relationship.HAS, LOCATION);
   }
 
   private void addDerivedColumnTags(List<Column> columns) {

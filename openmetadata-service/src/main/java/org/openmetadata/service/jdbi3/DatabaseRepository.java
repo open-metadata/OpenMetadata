@@ -52,11 +52,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
     return FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
   }
 
-  @Transaction
-  public void deleteLocation(UUID databaseId) {
-    deleteFrom(databaseId, Entity.DATABASE, Relationship.HAS, Entity.LOCATION);
-  }
-
   @Override
   public void prepare(Database database) throws IOException {
     populateService(database);
