@@ -30,6 +30,7 @@ const getTeam = (teamName) => {
     teamType: 'BusinessUnit',
     description: `Team ${teamName} Description`,
     ownername: 'admin',
+    email: 'team@gmail.com',
   };
 };
 
@@ -38,8 +39,9 @@ describe('Add nested teams and test TeamsSelectable', () => {
     cy.login();
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
-    interceptURL('GET', '/api/v1/teams/name/Organization?*', 'getOrganization');
+    interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
     interceptURL('GET', '/api/v1/users*', 'getTeams');
+    interceptURL('GET', '/api/v1/permissions/team/*', 'getPermissions');
     // Clicking on teams
     cy.get('[data-menu-id*="teams"]')
       .should('exist')
@@ -51,25 +53,21 @@ describe('Add nested teams and test TeamsSelectable', () => {
   });
 
   it('Add teams', () => {
-    interceptURL('GET', '/api/v1/permissions/team/*', 'getPermissions');
-    teamNames.forEach((teamName) => {
-      addTeam(getTeam(teamName));
-
-      cy.reload();
+    verifyResponseStatusCode('@getPermissions', 200);
+    teamNames.forEach((teamName, index) => {
       interceptURL(
         'GET',
         '/api/v1/search/query?q=*&from=*&size=*&index=*',
         'getCreatedTeam'
       );
+      addTeam(getTeam(teamName), index);
       verifyResponseStatusCode('@getOrganization', 200);
+      verifyResponseStatusCode('@getCreatedTeam', 200);
       // asserting the added values
       cy.get('table').find('.ant-table-row').contains(teamName).click();
-
-      verifyResponseStatusCode('@getCreatedTeam', 200);
+      verifyResponseStatusCode('@getOrganization', 200);
+      verifyResponseStatusCode('@getPermissions', 200);
     });
-
-    verifyResponseStatusCode('@getPermissions', 200);
-    cy.wait(1000);
   });
 
   it('Check hierarchy in Add User page', () => {

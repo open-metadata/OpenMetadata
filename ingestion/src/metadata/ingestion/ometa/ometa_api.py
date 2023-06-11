@@ -44,7 +44,6 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
-from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.metrics import Metrics
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -67,9 +66,6 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
-from metadata.generated.schema.entity.services.objectstoreService import (
-    ObjectStoreService,
-)
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.role import Role
@@ -198,7 +194,7 @@ class OpenMetadata(
         # Load the secrets' manager client
         self.secrets_manager_client = SecretsManagerFactory(
             config.secretsManagerProvider,
-            config.secretsManagerCredentials,
+            config.secretsManagerLoader,
         ).get_secrets_manager()
 
         # Load the auth provider init from the registry
@@ -282,11 +278,6 @@ class OpenMetadata(
             entity, get_args(Union[Pipeline, self.get_create_entity_type(Pipeline)])
         ):
             return "/pipelines"
-
-        if issubclass(
-            entity, get_args(Union[Location, self.get_create_entity_type(Location)])
-        ):
-            return "/locations"
 
         if issubclass(
             entity, get_args(Union[Policy, self.get_create_entity_type(Policy)])
@@ -432,12 +423,10 @@ class OpenMetadata(
         if issubclass(
             entity,
             get_args(
-                Union[
-                    ObjectStoreService, self.get_create_entity_type(ObjectStoreService)
-                ]
+                Union[StorageService, self.get_create_entity_type(StorageService)]
             ),
         ):
-            return "/services/objectStoreServices"
+            return "/services/storageServices"
 
         if issubclass(
             entity,
@@ -457,19 +446,19 @@ class OpenMetadata(
                 Union[TestDefinition, self.get_create_entity_type(TestDefinition)]
             ),
         ):
-            return "/testDefinitions"
+            return "/dataQuality/testDefinitions"
 
         if issubclass(
             entity,
             get_args(Union[TestSuite, self.get_create_entity_type(TestSuite)]),
         ):
-            return "/testSuites"
+            return "/dataQuality/testSuites"
 
         if issubclass(
             entity,
             get_args(Union[TestCase, self.get_create_entity_type(TestCase)]),
         ):
-            return "/testCases"
+            return "/dataQuality/testCases"
 
         if issubclass(entity, WebAnalyticEventData):
             return "/analytics/web/events/collect"
@@ -577,7 +566,7 @@ class OpenMetadata(
             entity_class = self.get_entity_from_create(entity)
         else:
             raise InvalidEntityException(
-                f"PUT operations need a CrateEntity, not {entity}"
+                f"PUT operations need a CreateEntity, not {entity}"
             )
         resp = self.client.put(
             self.get_suffix(entity), data=data.json(encoder=show_secrets_encoder)

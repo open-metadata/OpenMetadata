@@ -35,8 +35,10 @@
         "EditSampleData",
         "EditStatus",
         "EditTags",
+        "EditTeams",
         "EditTier",
         "EditTests",
+        "EditUsage",
         "EditUsers"
       ]
     }

@@ -26,21 +26,7 @@ SET json = JSONB_SET(
 WHERE de2.serviceType = 'Postgres' 
 AND json->>'{connection,config,database}' IS NULL;
 
--- new object store service and container entities
-CREATE TABLE IF NOT EXISTS objectstore_service_entity (
-    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
-    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
-    serviceType VARCHAR(256) GENERATED ALWAYS AS (json ->> 'serviceType') STORED NOT NULL,
-    json JSONB NOT NULL,
-    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
-    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
-    PRIMARY KEY (id),
-    UNIQUE (name)
-);
-
-
-CREATE TABLE IF NOT EXISTS objectstore_container_entity (
+CREATE TABLE IF NOT EXISTS storage_container_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
     fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> 'fullyQualifiedName') STORED NOT NULL,
     json JSONB NOT NULL,
@@ -86,28 +72,36 @@ CREATE TABLE IF NOT EXISTS query_entity (
     updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
     deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
-    UNIQUE (nameHash)
+    PRIMARY KEY (id),
+    UNIQUE (name)  
 );
 
 CREATE TABLE IF NOT EXISTS temp_query_migration (
     tableId VARCHAR(36) NOT NULL,
     queryId VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    queryName VARCHAR(255) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
     json JSONB NOT NULL
 );
 
-CREATE EXTENSION pgcrypto;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 INSERT INTO temp_query_migration(tableId,json)
-SELECT id,json_build_object('id',gen_random_uuid(),'vote',vote,'query',query,'users',users,'checksum',checksum,'duration',duration,'name','table','name',checksum,'updatedAt',
-floor(EXTRACT(EPOCH FROM NOW())),'updatedBy','admin','deleted',false) AS json FROM entity_extension AS ee , jsonb_to_recordset(ee.json) AS x (vote decimal,query varchar,users json,
-checksum varchar,duration decimal,queryDate varchar)
+SELECT id,json_build_object('id',gen_random_uuid(),'query',query,'users',users,'checksum',checksum,'duration',duration,'name',checksum,'updatedAt',
+floor(EXTRACT(EPOCH FROM NOW())),'updatedBy','admin','deleted',false) AS json FROM entity_extension AS ee , jsonb_to_recordset(ee.json) AS x (query varchar,users json,
+checksum varchar,name varchar, duration decimal,queryDate varchar)
 WHERE ee.extension = 'table.tableQueries';
 
-INSERT INTO query_entity(json)
-SELECT json FROM temp_query_migration;
+INSERT INTO query_entity (json)
+SELECT value
+FROM (
+  SELECT jsonb_object_agg(queryName, json) AS json_data FROM ( SELECT DISTINCT queryName, json FROM temp_query_migration) subquery
+) cte, jsonb_each(cte.json_data)
+ON CONFLICT (name) DO UPDATE SET json = EXCLUDED.json;
 
-INSERT INTO entity_relationship(fromId,toId,fromEntity,toEntity,relation)
-SELECT tableId,queryId,'table','query',10 FROM temp_query_migration;
+INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation)
+SELECT tmq.tableId, qe.id, 'table', 'query', 5
+FROM temp_query_migration tmq
+JOIN query_entity qe ON qe.name = tmq.queryName;
 
 DELETE FROM entity_extension WHERE id in
 (SELECT DISTINCT tableId FROM temp_query_migration) AND extension = 'table.tableQueries';
@@ -123,10 +117,18 @@ WHERE name = 'OpenMetadata'
 
 ALTER TABLE user_tokens ALTER COLUMN expiryDate DROP NOT NULL;
 
-DELETE FROM alert_entity;
-drop table alert_action_def;
+CREATE TABLE IF NOT EXISTS event_subscription_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    json JSONB NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE (name)
+);
 
-ALTER TABLE alert_entity RENAME TO event_subscription_entity;
+drop table if exists alert_action_def;
+drop table if exists alert_entity;
+DELETE from entity_relationship where  fromEntity = 'alert' and toEntity = 'alertAction';
 
 -- create data model table
 CREATE TABLE IF NOT EXISTS dashboard_data_model_entity (
@@ -154,47 +156,84 @@ WHERE jsonSchema = 'pipelineStatus' AND extension <> 'pipeline.PipelineStatus';
 DROP INDEX field_relationship_from_index, field_relationship_to_index;
 ALTER TABLE field_relationship DROP CONSTRAINT field_relationship_pkey, ADD COLUMN fromFQNHash VARCHAR(256), ADD COLUMN toFQNHash VARCHAR(256),
     ADD CONSTRAINT  field_relationship_pkey PRIMARY KEY(fromFQNHash, toFQNHash, relation),
-ALTER fromFQN TYPE VARCHAR(2096), ALTER toFQN TYPE VARCHAR(2096);
-CREATE INDEX IF NOT EXISTS field_relationship_from_index ON field_relationship(fromFQNHash, relation);
-CREATE INDEX IF NOT EXISTS field_relationship_to_index ON field_relationship(toFQNHash, relation);
+DROP TABLE location_entity;
+DELETE FROM entity_relationship WHERE fromEntity='location' OR toEntity='location';
+TRUNCATE TABLE storage_service_entity;
 
-ALTER TABLE entity_extension_time_series DROP COLUMN entityFQN, ADD COLUMN entityFQNHash VARCHAR (256) NOT NULL;
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,storageServiceName}'
+WHERE servicetype = 'Glue';
 
-ALTER TABLE type_entity DROP CONSTRAINT type_entity_name_key, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
+UPDATE chart_entity
+SET json = json::jsonb #- '{tables}';
 
-ALTER TABLE event_subscription_entity DROP CONSTRAINT alert_entity_name_key,  ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
+-- Updating the tableau authentication fields
+UPDATE dashboard_service_entity
+SET json = JSONB_SET(json::jsonb,
+'{connection,config}',json::jsonb #>'{connection,config}' #- '{password}' #- '{username}'|| 
+jsonb_build_object('authType',jsonb_build_object(
+'username',json #>'{connection,config,username}',
+'password',json #>'{connection,config,password}'
+)), true)
+where servicetype = 'Tableau'
+and json#>'{connection,config,password}' is not null
+and json#>'{connection,config,username}' is not null;
 
-ALTER TABLE test_definition DROP CONSTRAINT test_definition_name_key, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE test_suite DROP CONSTRAINT test_suite_name_key, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE test_case DROP COLUMN fullyQualifiedName,  ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+UPDATE dashboard_service_entity
+SET json = JSONB_SET(json::jsonb,
+'{connection,config}',json::jsonb #>'{connection,config}' #- '{personalAccessTokenName}' #- '{personalAccessTokenSecret}'|| 
+jsonb_build_object('authType',jsonb_build_object(
+'personalAccessTokenName',json #>'{connection,config,personalAccessTokenName}',
+'personalAccessTokenSecret',json #>'{connection,config,personalAccessTokenSecret}'
+)), true)
+where servicetype = 'Tableau'
+and json#>'{connection,config,personalAccessTokenName}' is not null
+and json#>'{connection,config,personalAccessTokenSecret}' is not null;
     ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
 
-ALTER TABLE web_analytic_event DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
-ALTER TABLE data_insight_chart DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
+-- Removed property from metadataService.json
+UPDATE metadata_service_entity
+SET json = json::jsonb #- '{allowServiceCreation}'
+WHERE serviceType in ('Amundsen', 'Atlas', 'MetadataES', 'OpenMetadata');
 ALTER TABLE kpi_entity  DROP CONSTRAINT kpi_entity_name_key, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
 
-ALTER TABLE classification  DROP CONSTRAINT tag_category_name_key, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);;
+UPDATE metadata_service_entity
+SET json = JSONB_SET(json::jsonb, '{provider}', '"system"')
+WHERE name = 'OpenMetadata';
 
-ALTER TABLE glossary_term_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
-ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL;
+-- Fix Glue sample data endpoint URL to be a correct URI
+UPDATE dbservice_entity
+SET json = JSONB_SET(json::jsonb, '{connection,config,awsConfig,endPointURL}', '"https://glue.region_name.amazonaws.com/"')
+WHERE serviceType = 'Glue'
+  AND json#>'{connection,config,awsConfig,endPointURL}' = '"https://glue.<region_name>.amazonaws.com/"';
 
-ALTER TABLE tag DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
-ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL;
+-- Delete connectionOptions from superset
+UPDATE dashboard_service_entity
+SET json = json::jsonb #- '{connection,config,connectionOptions}'
+WHERE serviceType = 'Superset';
 
-ALTER TABLE tag_usage DROP CONSTRAINT tag_usage_source_tagfqn_targetfqn_key, DROP COLUMN targetFQN, ADD COLUMN tagFQNHash VARCHAR(256), ADD COLUMN targetFQNHash VARCHAR(256),
-    ADD UNIQUE (source, tagFQNHash, targetFQNHash);
+-- Delete partitionQueryDuration, partitionQuery, partitionField from bigquery
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,partitionQueryDuration}' #- '{connection,config,partitionQuery}' #- '{connection,config,partitionField}'
+WHERE serviceType = 'BigQuery';
 
-ALTER TABLE policy_entity DROP COLUMN fullyQualifiedName,  ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
-ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL;
+-- Delete supportsQueryComment, scheme, hostPort, supportsProfiler from salesforce
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,supportsQueryComment}' #- '{connection,config,scheme}' #- '{connection,config,hostPort}' #- '{connection,config,supportsProfiler}'
+WHERE serviceType = 'Salesforce';
 
-ALTER TABLE role_entity DROP CONSTRAINT role_entity_name_key,  ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE automations_workflow DROP CONSTRAINT automations_workflow_name_key,  ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE test_connection_definition DROP CONSTRAINT test_connection_definition_name_key,  ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
+-- Delete supportsProfiler from DynamoDB
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,supportsProfiler}'
+WHERE serviceType = 'DynamoDB';
 
+-- Update TagLabels source from 'Tag' to 'Classification' after #10486
+UPDATE table_entity SET json = REGEXP_REPLACE(json::text, '"source"\s*:\s*"Tag\"', '"source": "Classification"', 'g')::jsonb;
+UPDATE ml_model_entity SET json = REGEXP_REPLACE(json::text, '"source"\s*:\s*"Tag\"', '"source": "Classification"', 'g')::jsonb;
 
--- update services
+-- Delete uriString from Mssql
 ALTER TABLE dbservice_entity DROP CONSTRAINT dbservice_entity_name_key, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE messaging_service_entity DROP CONSTRAINT messaging_service_entity_name_key, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
+UPDATE dbservice_entity
 ALTER TABLE dashboard_service_entity DROP CONSTRAINT dashboard_service_entity_name_key, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
 ALTER TABLE pipeline_service_entity DROP CONSTRAINT pipeline_service_entity_name_key, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
 ALTER TABLE storage_service_entity DROP CONSTRAINT storage_service_entity_name_key, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
@@ -206,15 +245,14 @@ ALTER TABLE objectstore_service_entity DROP CONSTRAINT objectstore_service_entit
 
 -- all entity tables
 ALTER TABLE database_entity  DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
-ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL;
+SET json = json::jsonb #- '{connection,config,uriString}'
 ALTER TABLE database_schema_entity  DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
 ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL;
 ALTER TABLE table_entity DROP COLUMN fullyQualifiedName,  ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
 ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL;
 ALTER TABLE metric_entity  DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
 ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL;
-ALTER TABLE report_entity  DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
-ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL;
+WHERE serviceType = 'Mssql';ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL;
 ALTER TABLE dashboard_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
 ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL;
 ALTER TABLE chart_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),

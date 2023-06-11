@@ -1,13 +1,12 @@
 {
   "name": "Redshift",
-  "fullyQualifiedName": "Redshift",
   "displayName": "Redshift Test Connection",
   "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas and tables.",
   "steps": [
     {
       "name": "CheckAccess",
       "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
-      "errorMessage": "Failed to connect to presto, please validate the credentials",
+      "errorMessage": "Failed to connect to redshift, please validate the credentials",
       "shortCircuit": true,
       "mandatory": true
     },

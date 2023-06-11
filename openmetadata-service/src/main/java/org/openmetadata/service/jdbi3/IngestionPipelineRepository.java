@@ -39,6 +39,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -52,7 +53,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   private static final String PIPELINE_STATUS_JSON_SCHEMA = "ingestionPipelineStatus";
   private static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
   private static final String RUN_ID_EXTENSION_KEY = "runId";
-  private static PipelineServiceClient pipelineServiceClient;
+  private PipelineServiceClient pipelineServiceClient;
 
   public IngestionPipelineRepository(CollectionDAO dao) {
     super(
@@ -108,10 +109,9 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
 
     if (secretsManager != null) {
-      secretsManager.encryptOrDecryptIngestionPipeline(ingestionPipeline, true);
+      secretsManager.encryptIngestionPipeline(ingestionPipeline);
       // We store the OM sensitive values in SM separately
-      openmetadataConnection =
-          secretsManager.encryptOrDecryptOpenMetadataConnection(openmetadataConnection, true, true);
+      openmetadataConnection = secretsManager.encryptOpenMetadataConnection(openmetadataConnection, true);
     }
 
     ingestionPipeline.withService(null).withOpenMetadataServerConnection(null);
@@ -291,7 +291,16 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   private static IngestionPipeline buildIngestionPipelineDecrypted(IngestionPipeline original) {
     IngestionPipeline decrypted = JsonUtils.convertValue(JsonUtils.getMap(original), IngestionPipeline.class);
-    SecretsManagerFactory.getSecretsManager().encryptOrDecryptIngestionPipeline(decrypted, false);
+    SecretsManagerFactory.getSecretsManager().decryptIngestionPipeline(decrypted);
     return decrypted;
+  }
+
+  public static void validateProfileSample(IngestionPipeline ingestionPipeline) throws JsonProcessingException {
+
+    JSONObject sourceConfigJson = new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
+    String profileSampleType = sourceConfigJson.optString("profileSampleType");
+    double profileSample = sourceConfigJson.optDouble("profileSample");
+
+    EntityUtil.validateProfileSample(profileSampleType, profileSample);
   }
 }

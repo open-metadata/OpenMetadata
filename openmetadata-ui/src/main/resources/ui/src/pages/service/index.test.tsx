@@ -15,7 +15,7 @@ import {
   act,
   findByTestId,
   findByText,
-  queryByTestId,
+  getByTestId,
   render,
   screen,
 } from '@testing-library/react';
@@ -37,6 +37,7 @@ let mockParams = {
   serviceCategory: 'databaseServices',
   tab: 'databases',
 };
+let serviceTabType = 'databases';
 
 jest.mock('../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
@@ -50,6 +51,10 @@ jest.mock('../../utils/PermissionsUtils', () => ({
     EditCustomFields: true,
   },
 }));
+
+jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+  jest.fn().mockReturnValue(<p>Sidebar</p>)
+);
 
 jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
@@ -119,7 +124,7 @@ jest.mock('rest/dashboardAPI', () => ({
   ),
 }));
 
-jest.mock('rest/objectStoreAPI', () => ({
+jest.mock('rest/storageAPI', () => ({
   getContainers: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: CONTAINERS_DATA,
@@ -148,6 +153,14 @@ jest.mock('rest/databaseAPI', () => ({
 jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<div>RichTextEditorPreviewer</div>);
 });
+jest.mock('components/TabsLabel/TabsLabel.component', () => {
+  return jest.fn().mockImplementation(({ name, id, count }) => (
+    <div data-testid={id}>
+      {name}
+      <span data-testid="count">{count}</span>
+    </div>
+  ));
+});
 
 jest.mock('react-router-dom', () => ({
   Link: jest
@@ -159,32 +172,9 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('components/containers/PageContainer', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <div data-testid="PageContainer">{children}</div>
-    ));
-});
-
 jest.mock('../../utils/ServiceUtils', () => ({
   getCurrentServiceTab: jest.fn().mockImplementation(() => 1),
   getIsIngestionEnable: jest.fn().mockReturnValue(true),
-  servicePageTabs: jest.fn().mockReturnValue([
-    {
-      name: 'Databases',
-      path: 'databases',
-      field: 'databases',
-    },
-    {
-      name: 'Ingestions',
-      path: 'ingestions',
-    },
-    {
-      name: 'Connection',
-      path: 'connection',
-    },
-  ]),
   getServiceRouteFromServiceType: jest.fn().mockReturnValue('/database'),
   getServiceCategoryFromType: jest.fn().mockReturnValue('databaseServices'),
   getResourceEntityFromServiceCategory: jest
@@ -194,23 +184,12 @@ jest.mock('../../utils/ServiceUtils', () => ({
   isRequiredDetailsAvailableForIngestion: jest.fn().mockReturnValue(true),
   getDeleteEntityMessage: jest.fn().mockReturnValue('Delete message'),
   shouldTestConnection: jest.fn().mockReturnValue(true),
-  getCountLabel: jest.fn().mockReturnValue('Dashboards'),
+  getCountLabel: jest.fn().mockImplementation(() => serviceTabType),
   getServicePageTabs: jest.fn().mockImplementation(() => mockTabs),
 }));
 
-jest.mock(
-  'components/common/title-breadcrumb/title-breadcrumb.component',
-  () => {
-    return jest.fn().mockReturnValue(<div>TitleBreadcrumb</div>);
-  }
-);
-
 jest.mock('components/common/description/Description', () => {
   return jest.fn().mockReturnValue(<div>Description_component</div>);
-});
-
-jest.mock('components/common/TabsPane/TabsPane', () => {
-  return jest.fn().mockReturnValue(<div>TabsPane_component</div>);
 });
 
 jest.mock(
@@ -255,6 +234,11 @@ jest.mock('components/Tag/TagsViewer/tags-viewer', () => {
     .fn()
     .mockReturnValue(<div data-testid="tag-viewer">Tag Viewer</div>);
 });
+jest.mock('components/Entity/EntityHeader/EntityHeader.component', () => ({
+  EntityHeader: jest
+    .fn()
+    .mockReturnValue(<div data-testid="entity-header">EntityHeader</div>),
+}));
 
 jest.mock('components/common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockImplementation(({ name }) => {
@@ -271,6 +255,10 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+jest.mock('components/containers/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => children);
+});
+
 describe('Test ServicePage Component', () => {
   it('Component should render', async () => {
     const { container } = render(<ServicePage />, {
@@ -279,21 +267,42 @@ describe('Test ServicePage Component', () => {
 
     await act(async () => {
       const servicePage = await findByTestId(container, 'service-page');
-      const titleBreadcrumb = await findByText(container, /TitleBreadcrumb/i);
+      const entityHeader = await findByText(container, /EntityHeader/i);
       const descriptionContainer = await findByTestId(
         container,
         'description-container'
       );
       const description = await findByText(container, /Description_component/i);
-      const tabPane = await findByText(container, /TabsPane_component/i);
+      const tabPane = await findByTestId(container, 'tabs');
       const tableContainer = await findByTestId(container, 'table-container');
 
       expect(servicePage).toBeInTheDocument();
-      expect(titleBreadcrumb).toBeInTheDocument();
+      expect(entityHeader).toBeInTheDocument();
       expect(descriptionContainer).toBeInTheDocument();
       expect(description).toBeInTheDocument();
       expect(tabPane).toBeInTheDocument();
       expect(tableContainer).toBeInTheDocument();
+    });
+  });
+
+  it('Tab should render with counts', async () => {
+    const { container } = render(<ServicePage />, {
+      wrapper: MemoryRouter,
+    });
+
+    await act(async () => {
+      const servicePage = await findByTestId(container, 'service-page');
+      const databaseTab = getByTestId(container, 'databases');
+      const ingestionTab = getByTestId(container, 'ingestions');
+
+      const databaseTabCount = getByTestId(databaseTab, 'count');
+      const ingestionTabCount = getByTestId(ingestionTab, 'count');
+
+      expect(servicePage).toBeInTheDocument();
+      expect(databaseTab).toBeInTheDocument();
+      expect(ingestionTab).toBeInTheDocument();
+      expect(databaseTabCount).toContainHTML('1');
+      expect(ingestionTabCount).toContainHTML('0');
     });
   });
 
@@ -387,6 +396,7 @@ describe('Test ServicePage Component', () => {
       serviceCategory: 'dashboardServices',
       tab: 'dashboards',
     };
+    serviceTabType = 'dashboards';
 
     await act(async () => {
       render(<ServicePage />, {
@@ -436,19 +446,16 @@ describe('Test ServicePage Component', () => {
     const secondRowTagContainer = await findByTestId(secondRow, 'record-tags');
 
     expect(secondRowTagContainer).toBeInTheDocument();
-
-    // should not render tag viewer as it does not have tags
-    expect(queryByTestId(secondRowTagContainer, 'tag-viewer')).toBeNull();
   });
 
   it('Should render the containers and child components', async () => {
     mockParams = {
       serviceFQN: 's3_object_store_sample',
       serviceType: 'S3',
-      serviceCategory: 'objectStoreServices',
+      serviceCategory: 'storageServices',
       tab: 'containers',
     };
-
+    serviceTabType = 'containers';
     await act(async () => {
       render(<ServicePage />, {
         wrapper: MemoryRouter,
@@ -497,8 +504,5 @@ describe('Test ServicePage Component', () => {
     const secondRowTagContainer = await findByTestId(secondRow, 'record-tags');
 
     expect(secondRowTagContainer).toBeInTheDocument();
-
-    // should not render tag viewer as it does not have tags
-    expect(queryByTestId(secondRowTagContainer, 'tag-viewer')).toBeNull();
   });
 });

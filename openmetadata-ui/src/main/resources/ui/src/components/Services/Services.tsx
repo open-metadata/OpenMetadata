@@ -93,15 +93,15 @@ const Services = ({
         return PAGE_HEADERS.ML_MODELS_SERVICES;
       case ServiceCategory.PIPELINE_SERVICES:
         return PAGE_HEADERS.PIPELINES_SERVICES;
-      case ServiceCategory.OBJECT_STORE_SERVICES:
-        return PAGE_HEADERS.OBJECT_STORE_SERVICES;
+      case ServiceCategory.STORAGE_SERVICES:
+        return PAGE_HEADERS.STORAGE_SERVICES;
       default:
         return PAGE_HEADERS.DATABASES_SERVICES;
     }
   }, [serviceName]);
 
   return (
-    <Row className="tw-justify-center" data-testid="services-container">
+    <Row className="justify-center" data-testid="services-container">
       {serviceData.length ? (
         <Fragment>
           <Col span={24}>
@@ -138,9 +138,9 @@ const Services = ({
                 <Col key={index} lg={8} xl={6}>
                   <Card className="w-full" size="small">
                     <div
-                      className="tw-flex tw-justify-between tw-text-grey-muted"
+                      className="d-flex tw-justify-between text-grey-muted"
                       data-testid="service-card">
-                      <div className="tw-flex tw-flex-col tw-justify-between tw-truncate">
+                      <div className="d-flex flex-col tw-justify-between tw-truncate">
                         <div>
                           <Link
                             to={getServiceDetailsPath(
@@ -167,7 +167,7 @@ const Services = ({
                                 markdown={service.description}
                               />
                             ) : (
-                              <span className="tw-no-description">
+                              <span className="text-grey-muted">
                                 {t('label.no-description')}
                               </span>
                             )}
@@ -183,9 +183,9 @@ const Services = ({
                           </span>
                         </div>
                       </div>
-                      <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
+                      <div className="d-flex flex-col tw-justify-between flex-none">
                         <div
-                          className="tw-flex tw-justify-end"
+                          className="d-flex tw-justify-end"
                           data-testid="service-icon">
                           {getServiceLogo(service.serviceType || '', 'h-7')}
                         </div>
@@ -210,33 +210,12 @@ const Services = ({
       ) : (
         <Col span={24}>
           <ErrorPlaceHolder
-            buttons={
-              <Tooltip
-                placement="left"
-                title={
-                  addServicePermission
-                    ? t('label.add-entity', {
-                        entity: t('label.service'),
-                      })
-                    : NO_PERMISSION_FOR_ACTION
-                }>
-                <Button
-                  ghost
-                  data-testid="add-service-button"
-                  disabled={!addServicePermission}
-                  size="small"
-                  type="primary"
-                  onClick={handleAddServiceClick}>
-                  {t('label.add-new-entity', {
-                    entity: servicesDisplayName[serviceName],
-                  })}
-                </Button>
-              </Tooltip>
-            }
-            classes="mt-24"
+            className="mt-24"
             doc={CONNECTORS_DOCS}
             heading={servicesDisplayName[serviceName]}
-            type={ERROR_PLACEHOLDER_TYPE.ADD}
+            permission={addServicePermission}
+            type={ERROR_PLACEHOLDER_TYPE.CREATE}
+            onClick={handleAddServiceClick}
           />
         </Col>
       )}

@@ -60,6 +60,7 @@ export interface AddIngestionProps {
   isIngestionCreated?: boolean;
   ingestionProgress?: number;
   handleViewServiceClick?: () => void;
+  onFocus: (fieldName: string) => void;
 }
 
 export interface ConfigureIngestionProps {
@@ -73,6 +74,7 @@ export interface ConfigureIngestionProps {
   onNext: () => void;
   pipelineType: PipelineType;
   serviceCategory: ServiceCategory;
+  onFocus: (fieldName: string) => void;
 }
 
 export type ScheduleIntervalProps = {
@@ -81,6 +83,7 @@ export type ScheduleIntervalProps = {
   repeatFrequency: string;
   includePeriodOptions?: string[];
   submitButtonLabel: string;
+  disabledCronChange?: boolean;
   onBack: () => void;
   onDeploy: () => void;
 };
@@ -93,6 +96,7 @@ export type ModifiedDbtConfig = DbtConfig &
   >;
 
 export interface AddIngestionState {
+  dataModelFilterPattern: FilterPattern;
   chartFilterPattern: FilterPattern;
   database?: string;
   dashboardFilterPattern: FilterPattern;
@@ -110,6 +114,7 @@ export interface AddIngestionState {
   includeLineage: boolean;
   includeTags: boolean;
   includeView: boolean;
+  includeDataModels: boolean;
   ingestionName: string;
   ingestSampleData: boolean;
   markAllDeletedTables: boolean | undefined;
@@ -128,6 +133,7 @@ export interface AddIngestionState {
   resultLimit: number;
   saveState: LoadingState;
   schemaFilterPattern: FilterPattern;
+  showDataModelFilter: boolean;
   showChartFilter: boolean;
   showDashboardFilter: boolean;
   showDatabaseFilter: boolean;
@@ -144,7 +150,7 @@ export interface AddIngestionState {
   topicFilterPattern: FilterPattern;
   useFqnFilter: boolean;
   processPii: boolean;
-  overrideOwner: boolean;
+  includeOwners: boolean;
   confidence?: number;
   showContainerFilter: boolean;
 }
@@ -159,4 +165,5 @@ export enum ShowFilter {
   showTableFilter = 'showTableFilter',
   showTopicFilter = 'showTopicFilter',
   showContainerFilter = 'showContainerFilter',
+  showDataModelFilter = 'showDataModelFilter',
 }

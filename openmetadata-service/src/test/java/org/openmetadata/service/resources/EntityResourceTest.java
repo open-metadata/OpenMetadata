@@ -108,6 +108,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
+import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.type.KpiTarget;
 import org.openmetadata.schema.entity.Type;
@@ -163,7 +164,6 @@ import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.service.resources.services.MetadataServiceResourceTest;
 import org.openmetadata.service.resources.services.MlModelServiceResourceTest;
-import org.openmetadata.service.resources.services.ObjectStoreServiceResourceTest;
 import org.openmetadata.service.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
@@ -197,7 +197,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected boolean supportsEmptyDescription = true;
 
   // Special characters supported in the entity name
-  protected String supportedNameCharacters = "_'-.&" + RANDOM_STRING_GENERATOR.generate(1);
+  protected String supportedNameCharacters = "_'-.&()" + RANDOM_STRING_GENERATOR.generate(1);
 
   protected final boolean supportsCustomExtension;
 
@@ -246,16 +246,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference BIGQUERY_REFERENCE;
 
   public static EntityReference KAFKA_REFERENCE;
-  public static EntityReference PULSAR_REFERENCE;
+  public static EntityReference REDPANDA_REFERENCE;
   public static EntityReference AIRFLOW_REFERENCE;
   public static EntityReference GLUE_REFERENCE;
 
   public static EntityReference MLFLOW_REFERENCE;
 
   public static EntityReference S3_OBJECT_STORE_SERVICE_REFERENCE;
-
-  public static EntityReference AWS_STORAGE_SERVICE_REFERENCE;
-  public static EntityReference GCP_STORAGE_SERVICE_REFERENCE;
 
   public static EntityReference AMUNDSEN_SERVICE_REFERENCE;
   public static EntityReference ATLAS_SERVICE_REFERENCE;
@@ -288,7 +285,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static Table TEST_TABLE2;
 
   public static TestSuite TEST_SUITE1;
+  public static Table TEST_SUITE_TABLE1;
+  public static CreateTestSuite CREATE_TEST_SUITE1;
+
   public static TestSuite TEST_SUITE2;
+  public static Table TEST_SUITE_TABLE2;
+  public static CreateTestSuite CREATE_TEST_SUITE2;
   public static TestDefinition TEST_DEFINITION1;
   public static TestDefinition TEST_DEFINITION2;
   public static TestDefinition TEST_DEFINITION3;
@@ -300,6 +302,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static final String C1 = "c'_+# 1";
   public static final String C2 = "c2()$";
   public static final String C3 = "\"c.3\"";
+  public static final String C4 = "\"c.4\"";
   public static List<Column> COLUMNS;
 
   public static final TestConnectionResult TEST_CONNECTION_RESULT =
@@ -365,10 +368,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new DatabaseServiceResourceTest().setupDatabaseServices(test);
     new MessagingServiceResourceTest().setupMessagingServices();
     new PipelineServiceResourceTest().setupPipelineServices(test);
-    new StorageServiceResourceTest().setupStorageServices();
     new DashboardServiceResourceTest().setupDashboardServices(test);
     new MlModelServiceResourceTest().setupMlModelServices(test);
-    new ObjectStoreServiceResourceTest().setupObjectStoreService(test);
+    new StorageServiceResourceTest().setupStorageService(test);
     new MetadataServiceResourceTest().setupMetadataServices();
     new TableResourceTest().setupDatabaseSchemas(test);
     new TestSuiteResourceTest().setupTestSuites(test);
@@ -407,10 +409,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return createRequest(getEntityName(test)).withDescription("").withDisplayName(null).withOwner(null);
   }
 
-  public final K createPutRequest(TestInfo test) {
-    return createPutRequest(getEntityName(test)).withDescription("").withDisplayName(null).withOwner(null);
-  }
-
   public final K createRequest(TestInfo test, int index) {
     return createRequest(getEntityName(test, index)).withDescription("").withDisplayName(null).withOwner(null);
   }
@@ -425,26 +423,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         .withOwner(reduceEntityReference(owner));
   }
 
-  public final K createPutRequest(String name, String description, String displayName, EntityReference owner) {
-    if (!supportsEmptyDescription && description == null) {
-      throw new IllegalArgumentException("Entity " + entityType + " does not support empty description");
-    }
-    return createPutRequest(name)
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withOwner(reduceEntityReference(owner));
-  }
-
   public abstract K createRequest(String name);
-
-  public K createPutRequest(String name) {
-    return createRequest(name);
-  }
-
-  // Add all possible relationships to check if the entity is missing any of them after deletion
-  public T beforeDeletion(TestInfo test, T entity) throws HttpResponseException {
-    return entity;
-  }
 
   // Get container entity used in createRequest that has CONTAINS relationship to the entity created with this
   // request has . For table, it is database. For database, it is databaseService. See Relationship.CONTAINS for
@@ -788,7 +767,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
     // Create an entity using POST
     K create = createRequest(test);
-    T entity = beforeDeletion(test, createEntity(create, ADMIN_AUTH_HEADERS));
+    T entity = createEntity(create, ADMIN_AUTH_HEADERS);
     T entityBeforeDeletion = getEntity(entity.getId(), allFields, ADMIN_AUTH_HEADERS);
 
     // Soft delete the entity
@@ -1051,7 +1030,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Remove ownership (from USER_OWNER1) using PUT request. Owner is expected to remain the same
     // and not removed.
-    request = createPutRequest(entity.getName(), "description", "displayName", null);
+    request = createRequest(entity.getName(), "description", "displayName", null);
     updateEntity(request, OK, ADMIN_AUTH_HEADERS);
     checkOwnerOwns(USER1_REF, entity.getId(), true);
   }
@@ -1156,7 +1135,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update null description with a new description
-    request = createPutRequest(entity.getName(), "updatedDescription", "displayName", null);
+    request = createRequest(entity.getName(), "updatedDescription", "displayName", null);
     ChangeDescription change = getChangeDescription(entity.getVersion());
     fieldAdded(change, "description", "updatedDescription");
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -1472,7 +1451,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertResponse(
         () -> typeResourceTest.patchEntity(id, json1, finalEntity, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(Entity.TYPE, invalidType.getId()));
+        CatalogExceptionMessage.entityNotFound(Entity.TYPE, invalidType.getName()));
 
     // Now POST an entity with extension that includes custom field intA
     ObjectMapper mapper = new ObjectMapper();
@@ -2405,7 +2384,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public String getAllowedFields() {
-    return String.join(",", Entity.getAllowedFields(entityClass));
+    return String.join(",", Entity.getEntityFields(entityClass));
   }
 
   public CsvImportResult importCsv(String entityName, String csv, boolean dryRun) throws HttpResponseException {

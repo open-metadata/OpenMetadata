@@ -13,12 +13,8 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.Entity.LOCATION;
-
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.EntityReference;
@@ -32,7 +28,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class DatabaseRepository extends EntityRepository<Database> {
-  private static final String DATABASE_UPDATE_FIELDS = "owner,tags";
+  private static final String DATABASE_UPDATE_FIELDS = "owner,tags,extension";
   private static final String DATABASE_PATCH_FIELDS = DATABASE_UPDATE_FIELDS;
 
   public DatabaseRepository(CollectionDAO dao) {
@@ -98,7 +94,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     database.setDatabaseSchemas(fields.contains("databaseSchemas") ? getSchemas(database) : null);
     database.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId()) : null);
-    return database.withLocation(fields.contains("location") ? getLocation(database) : null);
+    return database;
   }
 
   @Override
@@ -111,13 +107,25 @@ public class DatabaseRepository extends EntityRepository<Database> {
         .withId(original.getId());
   }
 
-  private EntityReference getLocation(Database database) throws IOException {
-    return database == null ? null : getToEntityRef(database.getId(), Relationship.HAS, LOCATION, false);
+  @Override
+  public EntityRepository<Database>.EntityUpdater getUpdater(Database original, Database updated, Operation operation) {
+    return new DatabaseUpdater(original, updated, operation);
   }
 
   private void populateService(Database database) throws IOException {
     DatabaseService service = Entity.getEntity(database.getService(), "", Include.NON_DELETED);
     database.setService(service.getEntityReference());
     database.setServiceType(service.getServiceType());
+  }
+
+  public class DatabaseUpdater extends EntityUpdater {
+    public DatabaseUpdater(Database original, Database updated, Operation operation) {
+      super(original, updated, operation);
+    }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
+    }
   }
 }

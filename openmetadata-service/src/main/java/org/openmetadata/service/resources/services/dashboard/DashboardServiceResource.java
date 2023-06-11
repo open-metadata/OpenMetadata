@@ -93,8 +93,7 @@ public class DashboardServiceResource
   }
 
   public static class DashboardServiceList extends ResultList<DashboardService> {
-    @SuppressWarnings("unused") /* Required for tests */
-    public DashboardServiceList() {}
+    /* Required for serde */
   }
 
   @GET
@@ -232,7 +231,7 @@ public class DashboardServiceResource
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    DashboardService service = dao.addTestConnectionResult(id, testConnectionResult);
+    DashboardService service = repository.addTestConnectionResult(id, testConnectionResult);
     return decryptOrNullify(securityContext, service);
   }
 

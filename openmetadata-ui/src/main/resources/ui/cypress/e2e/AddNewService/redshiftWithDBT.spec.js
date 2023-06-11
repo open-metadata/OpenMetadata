@@ -12,6 +12,7 @@
  */
 
 import {
+  checkServiceFieldSectionHighlighting,
   deleteCreatedService,
   editOwnerforCreatedService,
   goToAddNewServicePage,
@@ -40,15 +41,19 @@ describe('RedShift Ingestion', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
       cy.get('#root\\/username').type(Cypress.env('redshiftUsername'));
+      checkServiceFieldSectionHighlighting('username');
       cy.get('#root\\/password')
         .scrollIntoView()
         .type(Cypress.env('redshiftPassword'));
+      checkServiceFieldSectionHighlighting('password');
       cy.get('#root\\/hostPort')
         .scrollIntoView()
         .type(Cypress.env('redshiftHost'));
+      checkServiceFieldSectionHighlighting('hostPort');
       cy.get('#root\\/database')
         .scrollIntoView()
         .type(Cypress.env('redshiftDatabase'));
+      checkServiceFieldSectionHighlighting('database');
     };
 
     const addIngestionInput = () => {
@@ -58,21 +63,23 @@ describe('RedShift Ingestion', () => {
         .trigger('mouseover')
         .check();
       cy.get('[data-testid="filter-pattern-includes-schema"]')
+        .scrollIntoView()
         .should('be.visible')
-        .type('dbt_jaffle');
+        .type('dbt_jaffle{enter}');
       cy.get('[data-testid="toggle-button-include-views"]')
         .should('be.visible')
         .click();
     };
 
-    testServiceCreationAndIngestion(
-      REDSHIFT.serviceType,
+    testServiceCreationAndIngestion({
+      serviceType: REDSHIFT.serviceType,
       connectionInput,
       addIngestionInput,
-      REDSHIFT.serviceName,
-      'database',
-      true
-    );
+      serviceName: REDSHIFT.serviceName,
+      type: 'database',
+      testIngestionButton: true,
+      serviceCategory: SERVICE_TYPE.Database,
+    });
   });
 
   it('Update table description and verify description after re-run', () => {
@@ -85,7 +92,9 @@ describe('RedShift Ingestion', () => {
     );
   });
 
-  it('Add DBT ingestion', () => {
+  // skipping as backend flow is changed https://github.com/open-metadata/OpenMetadata/pull/11836,
+  // Todo: unskip once it is fixed from ingestion side https://github.com/open-metadata/OpenMetadata/issues/11592
+  it.skip('Add DBT ingestion', () => {
     interceptURL(
       'GET',
       'api/v1/teams/name/Organization?fields=*',
@@ -95,6 +104,11 @@ describe('RedShift Ingestion', () => {
       'POST',
       '/api/v1/services/ingestionPipelines/deploy/*',
       'deployIngestion'
+    );
+    interceptURL(
+      'GET',
+      '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs=*',
+      'pipelineStatus'
     );
     cy.get('[data-testid="appbar-item-settings"]')
       .should('be.visible')
@@ -109,29 +123,57 @@ describe('RedShift Ingestion', () => {
       .click();
 
     verifyResponseStatusCode('@getServices', 200);
-    cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
+    interceptURL(
+      'GET',
+      '/api/v1/services/ingestionPipelines?*',
+      'ingestionData'
+    );
     interceptURL(
       'GET',
       '/api/v1/system/config/pipeline-service-client',
       'airflow'
     );
+    interceptURL(
+      'GET',
+      '/api/v1/permissions/ingestionPipeline/name/*',
+      'ingestionPermissions'
+    );
+    interceptURL(
+      'GET',
+      '/api/v1/services/ingestionPipelines/status',
+      'getIngestionPipelineStatus'
+    );
+    interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
+    interceptURL('GET', '/api/v1/databases?*', 'databases');
     cy.get(`[data-testid="service-name-${REDSHIFT.serviceName}"]`)
       .should('exist')
       .click();
-    cy.get('[data-testid="tabs"]').should('exist');
-    cy.wait('@ingestionData');
+
+    verifyResponseStatusCode('@ingestionData', 200, {
+      responseTimeout: 50000,
+    });
+    verifyResponseStatusCode('@serviceDetails', 200);
     verifyResponseStatusCode('@airflow', 200);
-    cy.get('[data-testid="Ingestions"]')
+    verifyResponseStatusCode('@databases', 200);
+    cy.get('[data-testid="tabs"]').should('exist');
+    cy.get('[data-testid="ingestions"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
+
+    verifyResponseStatusCode('@pipelineStatus', 200);
+    verifyResponseStatusCode('@ingestionPermissions', 200);
+
     cy.get('[data-testid="ingestion-details-container"]').should('exist');
     cy.get('[data-testid="add-new-ingestion-button"]')
       .should('be.visible')
       .click();
     cy.get('[data-testid="list-item"]').contains('Add dbt Ingestion').click();
+
+    verifyResponseStatusCode('@getServices', 200);
+    verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
+
     // Add DBT ingestion
-    cy.contains('Add dbt Ingestion').should('be.visible');
     cy.get('[data-testid="dbt-source"]').should('be.visible').click();
     cy.get('.ant-select-item-option-content')
       .contains('HTTP Config Source')
@@ -154,16 +196,31 @@ describe('RedShift Ingestion', () => {
     scheduleIngestion();
 
     cy.wait('@deployIngestion').then(() => {
+      interceptURL(
+        'GET',
+        '/api/v1/services/ingestionPipelines?*',
+        'ingestionPipelines'
+      );
+      interceptURL(
+        'GET',
+        '/api/v1/permissions/*/name/*',
+        'serviceDetailsPermission'
+      );
+      interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
       cy.get('[data-testid="view-service-button"]')
         .scrollIntoView()
         .should('be.visible')
         .click();
-
+      verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
+      verifyResponseStatusCode('@serviceDetails', 200);
+      verifyResponseStatusCode('@ingestionPipelines', 200);
       handleIngestionRetry('database', true, 0, 'dbt');
     });
   });
 
-  it('Validate DBT is ingested properly', () => {
+  // skipping as backend flow is changed https://github.com/open-metadata/OpenMetadata/pull/11836,
+  // Todo: unskip once it is fixed from ingestion side https://github.com/open-metadata/OpenMetadata/issues/11592
+  it.skip('Validate DBT is ingested properly', () => {
     // Verify DBT tags
     interceptURL(
       'GET',
@@ -173,11 +230,13 @@ describe('RedShift Ingestion', () => {
     cy.get('[data-testid="governance"]')
       .should('exist')
       .should('be.visible')
-      .click({ force: true });
+      .click();
+
     cy.get('[data-testid="appbar-item-tags"]')
       .should('exist')
       .should('be.visible')
-      .click();
+      .click({ waitForAnimations: true });
+
     verifyResponseStatusCode('@getTagList', 200);
     // Verify DBT tag category is added
     cy.get('[data-testid="tag-name"]')
@@ -202,7 +261,7 @@ describe('RedShift Ingestion', () => {
     // Verify query is present in the DBT tab
     cy.get('.CodeMirror').should('be.visible').should('contain', DBT.dbtQuery);
 
-    cy.get('[data-testid="Lineage"]').should('be.visible').click();
+    cy.get('[data-testid="lineage"]').should('be.visible').click();
 
     cy.get('[data-testid="lineage-entity"]').should(
       'contain',
@@ -210,9 +269,7 @@ describe('RedShift Ingestion', () => {
     );
 
     // Verify Data Quality
-    cy.get('[data-testid="Profiler & Data Quality"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="profiler"]').should('be.visible').click();
 
     cy.get('[data-testid="profiler-tab-left-panel"]')
       .should('be.visible')

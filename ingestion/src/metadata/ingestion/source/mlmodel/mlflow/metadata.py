@@ -193,7 +193,6 @@ class MlflowSource(MlModelServiceSource):
                 if latest_props.get("signature") and latest_props["signature"].get(
                     "inputs"
                 ):
-
                     features = ast.literal_eval(latest_props["signature"]["inputs"])
 
                     return [

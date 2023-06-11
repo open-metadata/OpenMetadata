@@ -28,7 +28,7 @@ export interface EntityTableProps {
   entityFqn?: string;
   entityFieldThreads?: EntityFieldThreads[];
   entityFieldTasks?: EntityFieldThreads[];
-  onUpdate?: (columns: Column[]) => Promise<void>;
+  onUpdate: (columns: Column[]) => Promise<void>;
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   onEntityFieldSelect?: (value: string) => void;
 }
@@ -41,4 +41,9 @@ export type TableCellRendered<T, K extends keyof T> = (
 
 export interface DataTypeDisplayCellProps {
   dataTypeDisplay: Column['dataTypeDisplay'];
+}
+
+export interface EditColumnTag {
+  column: Column;
+  index: number;
 }

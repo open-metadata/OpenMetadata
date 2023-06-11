@@ -33,6 +33,12 @@ export const getBatchJobReIndexStatus = async () => {
   return res.data;
 };
 
+export const stopBatchJobReIndex = async (id: string) => {
+  const response = await axiosClient.put(`search/reindex/stop/${id}`);
+
+  return response.data;
+};
+
 export const reIndexByPublisher = async (data: CreateEventPublisherJob) => {
   const payload = {
     ...data,

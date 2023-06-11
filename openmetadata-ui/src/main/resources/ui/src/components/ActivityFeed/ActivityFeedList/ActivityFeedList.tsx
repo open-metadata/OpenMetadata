@@ -13,6 +13,7 @@
 
 import { Button, Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
 import { isUndefined } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -151,7 +152,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
     () =>
       isEntityFeed
         ? filterList.filter((f) => f.value === 'ALL' || f.value === 'MENTIONS')
-        : filterList.slice(),
+        : filterList.slice(1), // Do not show ALL option on my-data
     [isEntityFeed]
   );
 
@@ -309,9 +310,11 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
             {entityName && feedFilter === FeedFilter.ALL && !threadType ? (
               <NoFeedPlaceholder entityName={entityName} />
             ) : !refreshFeedCount ? (
-              <ErrorPlaceHolder>
-                {t('message.no-feed-available-for-selected-filter')}
-              </ErrorPlaceHolder>
+              <ErrorPlaceHolder
+                className="mt-0-important pt-8"
+                size={SIZE.MEDIUM}
+                type={ERROR_PLACEHOLDER_TYPE.FILTER}
+              />
             ) : null}
           </div>
         )

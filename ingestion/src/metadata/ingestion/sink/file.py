@@ -57,7 +57,6 @@ class FileSink(Sink[Entity]):
         return cls(config, metadata_config)
 
     def write_record(self, record: Entity) -> None:
-
         if self.wrote_something:
             self.file.write(",\n")
 

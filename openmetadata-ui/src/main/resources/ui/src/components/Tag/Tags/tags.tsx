@@ -11,20 +11,21 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
-import { Space, Tooltip } from 'antd';
+import { Tag, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { ROUTES } from 'constants/constants';
-import { isEmpty, isString } from 'lodash';
-import React, { FunctionComponent } from 'react';
-import { useTranslation } from 'react-i18next';
+import { TagSource } from 'generated/type/tagLabel';
+import React, { FunctionComponent, useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getTagDisplay } from 'utils/TagsUtils';
+import { getTagDisplay, getTagTooltip } from 'utils/TagsUtils';
+import { ReactComponent as IconPage } from '../../../assets/svg/ic-flat-doc.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import { ReactComponent as IconTag } from '../../../assets/svg/tag-grey.svg';
+
+import { TAG_START_WITH } from 'constants/Tag.constants';
 import { TagProps } from './tags.interface';
-import { tagStyles } from './tags.styles';
+import './Tags.less';
 
 const Tags: FunctionComponent<TagProps> = ({
   className,
@@ -32,103 +33,101 @@ const Tags: FunctionComponent<TagProps> = ({
   tag,
   startWith,
   type = 'contained',
-  removeTag,
-  isRemovable = true,
   showOnlyName = false,
+
+  style,
 }: TagProps) => {
   const history = useHistory();
-  const baseStyle = tagStyles.base;
-  const layoutStyles = tagStyles[type];
-  const textBaseStyle = tagStyles.text.base;
-  const textLayoutStyles = tagStyles.text[type] || tagStyles.text.default;
-  const textEditStyles = editable ? tagStyles.text.editable : '';
 
-  const { t } = useTranslation();
-  const getTagString = (tag: string) => {
-    return tag.startsWith('#') ? tag.slice(1) : tag;
-  };
+  const isGlossaryTag = useMemo(
+    () => tag.source === TagSource.Glossary,
+    [tag.source]
+  );
 
-  const getTag = (tag: string, startWith = '', source?: string) => {
-    const startIcon =
-      startWith === '+ ' ? (
-        <PlusIcon height={16} name="plus" width={16} />
-      ) : (
-        startWith
-      );
+  const startIcon = useMemo(() => {
+    switch (startWith) {
+      case TAG_START_WITH.PLUS:
+        return (
+          <PlusIcon
+            className="flex-shrink"
+            height={16}
+            name="plus"
+            width={16}
+          />
+        );
+      case TAG_START_WITH.SOURCE_ICON:
+        return isGlossaryTag ? (
+          <IconPage
+            className="flex-shrink"
+            data-testid="glossary-icon"
+            height={12}
+            name="glossary-icon"
+            width={12}
+          />
+        ) : (
+          <IconTag
+            className="flex-shrink"
+            data-testid="tags-icon"
+            height={12}
+            name="tag-icon"
+            width={12}
+          />
+        );
+      default:
+        return startWith;
+    }
+  }, [startWith, isGlossaryTag]);
+
+  const tagChip = useMemo(() => {
     const tagName = showOnlyName
-      ? tag.split(FQN_SEPARATOR_CHAR).slice(-2).join(FQN_SEPARATOR_CHAR)
-      : tag;
+      ? tag.tagFQN.split(FQN_SEPARATOR_CHAR).slice(-2).join(FQN_SEPARATOR_CHAR)
+      : tag.tagFQN;
 
     return (
-      <div
-        className={classNames(baseStyle, layoutStyles, className)}
+      <Tag
+        className={classNames('tag-container-style', type, className)}
         data-testid="tags"
+        icon={startIcon}
+        style={style}
         onClick={() => {
-          if (source) {
-            source === 'Glossary'
-              ? history.push(`${ROUTES.GLOSSARY}/${tag}`)
-              : history.push(`${ROUTES.TAGS}/${tag.split('.')[0]}`);
+          if (tag.source && startWith !== TAG_START_WITH.PLUS) {
+            tag.source === TagSource.Glossary
+              ? history.push(`${ROUTES.GLOSSARY}/${tag.tagFQN}`)
+              : history.push(`${ROUTES.TAGS}/${tag.tagFQN.split('.')[0]}`);
           }
         }}>
-        <Space
-          align="center"
-          className={classNames(
-            textBaseStyle,
-            textLayoutStyles,
-            textEditStyles,
-            'd-flex items-center cursor-pointer'
-          )}
-          data-testid={editable && isRemovable ? `tag-${tag}` : `add-tag`}
-          size={2}>
-          {startIcon}
-          <span className="text-xs font-medium">{getTagDisplay(tagName)}</span>
-        </Space>
-        {editable && isRemovable && (
-          <span
-            className="tw-py-0.5 tw-px-2 tw-rounded tw-cursor-pointer"
-            data-testid={`remove-${tag}-tag`}
-            onClick={(e: React.MouseEvent<HTMLElement, MouseEvent>) => {
-              e.preventDefault();
-              e.stopPropagation();
-              removeTag && removeTag(e, getTagString(tag));
-            }}>
-            <CloseOutlined className="tw-text-primary" />
-          </span>
-        )}
-      </div>
+        <Typography.Paragraph
+          className="m-0"
+          data-testid={
+            startWith === TAG_START_WITH.PLUS ? 'add-tag' : `tag-${tag.tagFQN}`
+          }
+          style={{
+            display: 'inline-block',
+            whiteSpace: 'normal',
+            wordBreak: 'break-all',
+            color: 'inherit',
+          }}>
+          {getTagDisplay(tagName)}
+        </Typography.Paragraph>
+      </Tag>
     );
-  };
+  }, [startIcon, tag, editable]);
 
   return (
-    <>
-      {isString(tag) ? (
-        getTag(tag, startWith)
+    <div className="tags-component-container">
+      {startWith === TAG_START_WITH.PLUS ? (
+        tagChip
       ) : (
         <Tooltip
           className="cursor-pointer"
+          mouseEnterDelay={1.5}
           placement="bottomLeft"
-          title={
-            <div className="text-left p-xss">
-              <div className="m-b-xs">
-                <RichTextEditorPreviewer
-                  enableSeeMoreVariant={false}
-                  markdown={
-                    !isEmpty(tag.description)
-                      ? `**${tag.tagFQN}**\n${tag.description}`
-                      : t('label.no-entity', {
-                          entity: t('label.description'),
-                        })
-                  }
-                  textVariant="white"
-                />
-              </div>
-            </div>
-          }
+          title={getTagTooltip(tag.tagFQN, tag.description)}
           trigger="hover">
-          {getTag(tag.tagFQN, startWith, tag.source)}
+          {tagChip}
         </Tooltip>
       )}
-    </>
+    </div>
   );
 };
 

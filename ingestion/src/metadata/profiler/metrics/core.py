@@ -69,7 +69,6 @@ def add_props(**kwargs):
     """
 
     def inner(cls):
-
         # Create a new cls instance to avoid updating the original ref
         # In these scenarios, deepcopy(cls) just returns a pointer
         # to the same reference

@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ColumnLineage;
@@ -89,12 +90,13 @@ public class LineageRepository {
     }
 
     List<ColumnLineage> columnsLineage = details.getColumnsLineage();
-    if (!from.getType().equals(Entity.TABLE) || !to.getType().equals(Entity.TABLE)) {
-      throw new IllegalArgumentException("Column level lineage is only allowed between two tables.");
+    if (areValidEntities(from, to)) {
+      throw new IllegalArgumentException(
+          "Column level lineage is only allowed between two tables or from table to dashboard.");
     }
 
     Table fromTable = dao.tableDAO().findEntityById(from.getId());
-    Table toTable = dao.tableDAO().findEntityById(to.getId());
+    ColumnsEntityInterface toTable = getToEntity(to);
     if (columnsLineage != null) {
       for (ColumnLineage columnLineage : columnsLineage) {
         for (String fromColumn : columnLineage.getFromColumns()) {
@@ -110,6 +112,17 @@ public class LineageRepository {
       }
     }
     return JsonUtils.pojoToJson(details);
+  }
+
+  private ColumnsEntityInterface getToEntity(EntityReference from) throws IOException {
+    return from.getType().equals(Entity.TABLE)
+        ? dao.tableDAO().findEntityById(from.getId())
+        : dao.dashboardDataModelDAO().findEntityById(from.getId());
+  }
+
+  private boolean areValidEntities(EntityReference from, EntityReference to) {
+    return !from.getType().equals(Entity.TABLE)
+        || !(to.getType().equals(Entity.TABLE) || to.getType().equals(Entity.DASHBOARD_DATA_MODEL));
   }
 
   @Transaction
@@ -152,9 +165,9 @@ public class LineageRepository {
     if (upstreamDepth == 0) {
       return;
     }
-    List<EntityRelationshipRecord> records = new ArrayList<>();
+    List<EntityRelationshipRecord> records;
     // pipeline information is not maintained
-    if (entityType == Entity.PIPELINE) {
+    if (entityType.equals(Entity.PIPELINE)) {
       records = dao.relationshipDAO().findFromPipleine(id.toString(), Relationship.UPSTREAM.ordinal());
     } else {
       records = dao.relationshipDAO().findFrom(id.toString(), entityType, Relationship.UPSTREAM.ordinal());
@@ -185,8 +198,8 @@ public class LineageRepository {
     if (downstreamDepth == 0) {
       return;
     }
-    List<EntityRelationshipRecord> records = new ArrayList<>();
-    if (entityType == Entity.PIPELINE) {
+    List<EntityRelationshipRecord> records;
+    if (entityType.equals(Entity.PIPELINE)) {
       records = dao.relationshipDAO().findToPipeline(id.toString(), Relationship.UPSTREAM.ordinal());
     } else {
       records = dao.relationshipDAO().findTo(id.toString(), entityType, Relationship.UPSTREAM.ordinal());

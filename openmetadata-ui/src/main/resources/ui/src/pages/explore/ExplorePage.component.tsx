@@ -12,7 +12,6 @@
  */
 
 import { AxiosError } from 'axios';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import { useAdvanceSearch } from 'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import Explore from 'components/Explore/Explore.component';
 import {
@@ -21,6 +20,7 @@ import {
   SearchHitCounts,
   UrlParams,
 } from 'components/Explore/explore.interface';
+import { findActiveSearchIndex } from 'components/Explore/Explore.utils';
 import { withAdvanceSearch } from 'components/router/withAdvanceSearch';
 import { SORT_ORDER } from 'enums/common.enum';
 import { get, isEmpty, isNil, isString, isUndefined } from 'lodash';
@@ -118,8 +118,10 @@ const ExplorePage: FunctionComponent = () => {
     [facetFilters]
   );
 
-  const handlePageChange: ExploreProps['onChangePage'] = (page) => {
-    history.push({ search: Qs.stringify({ ...parsedSearch, page }) });
+  const handlePageChange: ExploreProps['onChangePage'] = (page, size) => {
+    history.push({
+      search: Qs.stringify({ ...parsedSearch, page, size: size ?? PAGE_SIZE }),
+    });
   };
 
   // Filters that can be common for all the Entities Ex. Tables, Topics, etc.
@@ -208,15 +210,21 @@ const ExplorePage: FunctionComponent = () => {
   };
 
   const searchIndex = useMemo(() => {
-    const tabInfo = Object.entries(tabsInfo).find(
-      ([, tabInfo]) => tabInfo.path === tab
-    );
-    if (isNil(tabInfo)) {
-      return SearchIndex.TABLE;
+    if (searchHitCounts) {
+      const tabInfo = Object.entries(tabsInfo).find(
+        ([, tabInfo]) => tabInfo.path === tab
+      );
+      if (isNil(tabInfo)) {
+        const activeKey = findActiveSearchIndex(searchHitCounts);
+
+        return activeKey ? activeKey : SearchIndex.TABLE;
+      }
+
+      return tabInfo[0] as ExploreSearchIndex;
     }
 
-    return tabInfo[0] as ExploreSearchIndex;
-  }, [tab]);
+    return SearchIndex.TABLE;
+  }, [tab, searchHitCounts]);
 
   const page = useMemo(() => {
     const pageParam = parsedSearch.page;
@@ -227,9 +235,18 @@ const ExplorePage: FunctionComponent = () => {
     return Number.parseInt(pageParam);
   }, [parsedSearch.page]);
 
+  const size = useMemo(() => {
+    const sizeParam = parsedSearch.size;
+    if (!isString(sizeParam) || isNaN(Number.parseInt(sizeParam))) {
+      return PAGE_SIZE;
+    }
+
+    return Number.parseInt(sizeParam);
+  }, [parsedSearch.size]);
+
   useEffect(() => {
-    handlePageChange(page);
-  }, [page]);
+    handlePageChange(page, size);
+  }, [page, size]);
 
   const showDeleted = useMemo(() => {
     const showDeletedParam = parsedSearch.showDeleted;
@@ -298,7 +315,7 @@ const ExplorePage: FunctionComponent = () => {
         sortField: sortValue,
         sortOrder,
         pageNumber: page,
-        pageSize: PAGE_SIZE,
+        pageSize: size,
         includeDeleted: showDeleted,
       })
         .then((res) => res)
@@ -366,6 +383,7 @@ const ExplorePage: FunctionComponent = () => {
     elasticsearchQueryFilter,
     searchIndex,
     page,
+    size,
   ]);
 
   const handleAdvanceSearchQuickFiltersChange = useCallback(
@@ -410,36 +428,31 @@ const ExplorePage: FunctionComponent = () => {
   }, [withoutFilterAggregations, withFilterAggregations]);
 
   return (
-    <PageContainerV1>
-      <Explore
-        aggregations={updatedAggregations}
-        facetFilters={facetFilters}
-        loading={isLoading}
-        page={page}
-        quickFilters={advancesSearchQuickFilters}
-        searchIndex={searchIndex}
-        searchResults={searchResults}
-        showDeleted={showDeleted}
-        sortOrder={sortOrder}
-        sortValue={sortValue}
-        tabCounts={searchHitCounts}
-        onChangeAdvancedSearchQuickFilters={
-          handleAdvanceSearchQuickFiltersChange
-        }
-        onChangeFacetFilters={handleFacetFilterChange}
-        onChangePage={handlePageChange}
-        onChangeSearchIndex={handleSearchIndexChange}
-        onChangeShowDeleted={handleShowDeletedChange}
-        onChangeSortOder={(sort) => {
-          handlePageChange(1);
-          setSortOrder(sort);
-        }}
-        onChangeSortValue={(sort) => {
-          handlePageChange(1);
-          setSortValue(sort);
-        }}
-      />
-    </PageContainerV1>
+    <Explore
+      aggregations={updatedAggregations}
+      facetFilters={facetFilters}
+      loading={isLoading}
+      quickFilters={advancesSearchQuickFilters}
+      searchIndex={searchIndex}
+      searchResults={searchResults}
+      showDeleted={showDeleted}
+      sortOrder={sortOrder}
+      sortValue={sortValue}
+      tabCounts={searchHitCounts}
+      onChangeAdvancedSearchQuickFilters={handleAdvanceSearchQuickFiltersChange}
+      onChangeFacetFilters={handleFacetFilterChange}
+      onChangePage={handlePageChange}
+      onChangeSearchIndex={handleSearchIndexChange}
+      onChangeShowDeleted={handleShowDeletedChange}
+      onChangeSortOder={(sort) => {
+        handlePageChange(1);
+        setSortOrder(sort);
+      }}
+      onChangeSortValue={(sort) => {
+        handlePageChange(1);
+        setSortValue(sort);
+      }}
+    />
   );
 };
 

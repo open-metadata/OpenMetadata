@@ -34,7 +34,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   }
 
   @Override
-  public void prepare(Workflow entity) throws IOException {
+  public void prepare(Workflow entity) {
     // validate request and status
     if (entity.getRequest() == null) {
       throw new IllegalArgumentException("Request must not be empty");
@@ -48,7 +48,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
 
     if (secretsManager != null) {
-      entity = secretsManager.encryptOrDecryptWorkflow(entity, true);
+      entity = secretsManager.encryptWorkflow(entity);
     }
 
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
@@ -60,7 +60,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   }
 
   @Override
-  public void storeRelationships(Workflow entity) throws IOException {
+  public void storeRelationships(Workflow entity) {
     storeOwner(entity, entity.getOwner());
   }
 

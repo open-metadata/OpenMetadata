@@ -13,9 +13,9 @@
 
 import { FormSubmitType } from '../../../enums/form.enum';
 import {
+  Credentials,
   DbtConfig,
-  GCSCredentialsValues,
-  SCredentials,
+  GCPCredentialsValues,
 } from '../../../generated/metadataIngestion/dbtPipeline';
 import {
   AddIngestionState,
@@ -35,6 +35,7 @@ export interface DBTConfigFormProps extends DBTFormCommonProps {
   data: AddIngestionState;
 
   onChange: (newState: Partial<AddIngestionState>) => void;
+  onFocus: (fieldName: string) => void;
 }
 
 export type DbtConfigCloud = Pick<
@@ -79,7 +80,7 @@ export type DbtConfigS3GCS = Pick<
 >;
 
 export type DbtS3Creds = Pick<
-  SCredentials,
+  Credentials,
   | 'awsAccessKeyId'
   | 'awsRegion'
   | 'awsSecretAccessKey'
@@ -99,7 +100,7 @@ export interface DbtSourceTypes {
   gcsType?: GCS_CONFIG;
 }
 
-export type DbtGCSCreds = GCSCredentialsValues;
+export type DbtGCSCreds = GCPCredentialsValues;
 
 export type ErrorDbtCloud = Record<keyof DbtConfigCloud, string>;
 

@@ -10,10 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
- * This is OMMicrometerHttpFilter is similar to MicrometerHttpFilter with support to handle OM Servlets, and provide
- * metric information for them.
- */
 package org.openmetadata.service.security.saml;
 
 import static org.openmetadata.service.util.MicrometerBundleSingleton.prometheusMeterRegistry;
@@ -30,17 +26,27 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 
+/**
+ * This is OMMicrometerHttpFilter is similar to MicrometerHttpFilter with support to handle OM Servlets, and provide
+ * metric information for them.
+ */
+@Slf4j
 public class OMMicrometerHttpFilter implements Filter {
   protected FilterConfig filterConfig;
 
-  public OMMicrometerHttpFilter() {}
+  public OMMicrometerHttpFilter() {
+    /* default */
+  }
 
-  public void init(FilterConfig filterConfig) throws ServletException {
+  @Override
+  public void init(FilterConfig filterConfig) {
     this.filterConfig = filterConfig;
   }
 
+  @Override
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException, ServletException {
     Timer.Sample timer = Timer.start(prometheusMeterRegistry);
@@ -57,5 +63,8 @@ public class OMMicrometerHttpFilter implements Filter {
     timer.stop(webAnalyticEvents);
   }
 
-  public void destroy() {}
+  @Override
+  public void destroy() {
+    LOG.info("OMMicrometerHttpFilter destroyed.");
+  }
 }

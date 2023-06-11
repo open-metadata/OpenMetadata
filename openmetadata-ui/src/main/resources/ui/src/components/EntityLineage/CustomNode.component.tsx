@@ -21,6 +21,7 @@ import {
   Position,
   useUpdateNodeInternals,
 } from 'reactflow';
+import { getEntityName } from 'utils/EntityUtils';
 import { EntityLineageNodeType } from '../../enums/entity.enum';
 import { getNodeRemoveButton } from '../../utils/EntityLineageUtils';
 import { getConstraintIcon } from '../../utils/TableUtils';
@@ -175,7 +176,7 @@ const CustomNode = (props: NodeProps) => {
                         column.fullyQualifiedName
                       )}
                       {getConstraintIcon(column.constraint, 'tw-')}
-                      <p className="m-0">{column.name}</p>
+                      <p className="m-0">{getEntityName(column)}</p>
                     </div>
                   );
                 }

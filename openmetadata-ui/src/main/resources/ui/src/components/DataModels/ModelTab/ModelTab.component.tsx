@@ -12,13 +12,14 @@
  */
 import { Button, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { CellRendered } from 'components/ContainerDetail/ContainerDataModel/ContainerDataModel.interface';
 import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import TagsContainer from 'components/Tag/TagsContainer/tags-container';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import TableTags from 'components/TableTags/TableTags.component';
 import { Column } from 'generated/entity/data/dashboardDataModel';
-import { cloneDeep, isEmpty, isUndefined } from 'lodash';
+import { TagLabel, TagSource } from 'generated/type/tagLabel';
+import { cloneDeep, isUndefined, map } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,8 +27,10 @@ import {
   updateDataModelColumnDescription,
   updateDataModelColumnTags,
 } from 'utils/DataModelsUtils';
-import { fetchTagsAndGlossaryTerms } from 'utils/TagsUtils';
-import { ReactComponent as EditIcon } from '../../../assets/svg/ic-edit.svg';
+import { getEntityName } from 'utils/EntityUtils';
+import { fetchGlossaryTerms, getGlossaryTermlist } from 'utils/GlossaryUtils';
+import { getFilterTags } from 'utils/TableTags/TableTags.utils';
+import { getClassifications, getTaglist } from 'utils/TagsUtils';
 import { ModelTabProps } from './ModelTab.interface';
 
 const ModelTab = ({
@@ -39,44 +42,68 @@ const ModelTab = ({
 }: ModelTabProps) => {
   const { t } = useTranslation();
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
-  const [editContainerColumnTags, setEditContainerColumnTags] =
-    useState<Column>();
-
-  const [tagList, setTagList] = useState<TagOption[]>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+  const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
 
-  const fetchTags = useCallback(async () => {
+  const [glossaryTags, setGlossaryTags] = useState<TagOption[]>([]);
+  const [classificationTags, setClassificationTags] = useState<TagOption[]>([]);
+
+  const fetchGlossaryTags = async () => {
+    setIsGlossaryLoading(true);
+    try {
+      const res = await fetchGlossaryTerms();
+
+      const glossaryTerms: TagOption[] = getGlossaryTermlist(res).map(
+        (tag) => ({ fqn: tag, source: TagSource.Glossary })
+      );
+      setGlossaryTags(glossaryTerms);
+    } catch {
+      setTagFetchFailed(true);
+    } finally {
+      setIsGlossaryLoading(false);
+    }
+  };
+
+  const fetchClassificationTags = async () => {
     setIsTagLoading(true);
     try {
-      const tagsAndTerms = await fetchTagsAndGlossaryTerms();
-      setTagList(tagsAndTerms);
-    } catch (error) {
-      setTagList([]);
+      const res = await getClassifications();
+      const tagList = await getTaglist(res.data);
+
+      const classificationTag: TagOption[] = map(tagList, (tag) => ({
+        fqn: tag,
+        source: TagSource.Classification,
+      }));
+
+      setClassificationTags(classificationTag);
+    } catch {
       setTagFetchFailed(true);
     } finally {
       setIsTagLoading(false);
     }
-  }, [fetchTagsAndGlossaryTerms]);
+  };
 
   const handleFieldTagsChange = useCallback(
-    async (selectedTags: EntityTags[] = [], selectedColumn: Column) => {
-      const newSelectedTags: TagOption[] = selectedTags.map((tag) => ({
-        fqn: tag.tagFQN,
-        source: tag.source,
-      }));
+    async (
+      selectedTags: EntityTags[],
+      editColumnTag: Column,
+      otherTags: TagLabel[]
+    ) => {
+      const newSelectedTags: TagOption[] = map(
+        [...selectedTags, ...otherTags],
+        (tag) => ({ fqn: tag.tagFQN, source: tag.source })
+      );
 
       const dataModelData = cloneDeep(data);
 
       updateDataModelColumnTags(
         dataModelData,
-        editContainerColumnTags?.name ?? selectedColumn.name,
+        editColumnTag.fullyQualifiedName ?? '',
         newSelectedTags
       );
 
       await onUpdate(dataModelData);
-
-      setEditContainerColumnTags(undefined);
     },
     [data, updateDataModelColumnTags]
   );
@@ -87,7 +114,7 @@ const ModelTab = ({
         const dataModelColumns = cloneDeep(data);
         updateDataModelColumnDescription(
           dataModelColumns,
-          editColumnDescription?.name,
+          editColumnDescription?.fullyQualifiedName ?? '',
           updatedDescription
         );
         await onUpdate(dataModelColumns);
@@ -95,19 +122,6 @@ const ModelTab = ({
       setEditColumnDescription(undefined);
     },
     [editColumnDescription, data]
-  );
-
-  const handleAddTagClick = useCallback(
-    (record: Column) => {
-      if (isUndefined(editContainerColumnTags)) {
-        setEditContainerColumnTags(record);
-        // Fetch tags and terms only once
-        if (tagList.length === 0 || tagFetchFailed) {
-          fetchTags();
-        }
-      }
-    },
-    [editContainerColumnTags, tagList, tagFetchFailed]
   );
 
   const renderColumnDescription: CellRendered<Column, 'description'> =
@@ -123,7 +137,7 @@ const ModelTab = ({
               {description ? (
                 <RichTextEditorPreviewer markdown={description} />
               ) : (
-                <Typography.Text className="tw-no-description">
+                <Typography.Text className="text-grey-muted">
                   {t('label.no-entity', {
                     entity: t('label.description'),
                   })}
@@ -145,49 +159,6 @@ const ModelTab = ({
       [isReadOnly, hasEditDescriptionPermission]
     );
 
-  const renderColumnTags: CellRendered<Column, 'tags'> = useCallback(
-    (tags, record: Column) => {
-      const isSelectedField = editContainerColumnTags?.name === record.name;
-      const isUpdatingTags = isSelectedField || !isEmpty(tags);
-
-      return (
-        <>
-          {isReadOnly ? (
-            <TagsViewer sizeCap={-1} tags={tags || []} />
-          ) : (
-            <Space
-              align={isUpdatingTags ? 'start' : 'center'}
-              className="justify-between"
-              data-testid="tags-wrapper"
-              direction={isUpdatingTags ? 'vertical' : 'horizontal'}
-              onClick={() => handleAddTagClick(record)}>
-              <TagsContainer
-                editable={isSelectedField}
-                isLoading={isTagLoading && isSelectedField}
-                selectedTags={tags || []}
-                showAddTagButton={hasEditTagsPermission}
-                size="small"
-                tagList={tagList}
-                type="label"
-                onCancel={() => setEditContainerColumnTags(undefined)}
-                onSelectionChange={(tags) =>
-                  handleFieldTagsChange(tags, record)
-                }
-              />
-            </Space>
-          )}
-        </>
-      );
-    },
-    [
-      editContainerColumnTags,
-      isReadOnly,
-      isTagLoading,
-      tagList,
-      hasEditTagsPermission,
-    ]
-  );
-
   const tableColumn: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -195,12 +166,20 @@ const ModelTab = ({
         dataIndex: 'name',
         key: 'name',
         width: 250,
+        render: (_, record) => (
+          <Typography.Text>{getEntityName(record)}</Typography.Text>
+        ),
       },
       {
         title: t('label.type'),
-        dataIndex: 'dataTypeDisplay',
-        key: 'dataTypeDisplay',
+        dataIndex: 'dataType',
+        key: 'dataType',
         width: 100,
+        render: (dataType, record) => (
+          <Typography.Text>
+            {record.dataTypeDisplay || dataType}
+          </Typography.Text>
+        ),
       },
       {
         title: t('label.description'),
@@ -214,17 +193,61 @@ const ModelTab = ({
         dataIndex: 'tags',
         key: 'tags',
         accessor: 'tags',
-        width: 350,
-        render: renderColumnTags,
+        width: 300,
+        render: (tags: TagLabel[], record: Column, index: number) => (
+          <TableTags<Column>
+            dataTestId="classification-tags"
+            fetchTags={fetchClassificationTags}
+            handleTagSelection={handleFieldTagsChange}
+            hasTagEditAccess={hasEditTagsPermission}
+            index={index}
+            isReadOnly={isReadOnly}
+            isTagLoading={isTagLoading}
+            record={record}
+            tagFetchFailed={tagFetchFailed}
+            tagList={classificationTags}
+            tags={getFilterTags(tags)}
+            type={TagSource.Classification}
+          />
+        ),
+      },
+      {
+        title: t('label.glossary-term-plural'),
+        dataIndex: 'tags',
+        key: 'tags',
+        accessor: 'tags',
+        width: 300,
+        render: (tags: TagLabel[], record: Column, index: number) => (
+          <TableTags<Column>
+            dataTestId="glossary-tags"
+            fetchTags={fetchGlossaryTags}
+            handleTagSelection={handleFieldTagsChange}
+            hasTagEditAccess={hasEditTagsPermission}
+            index={index}
+            isReadOnly={isReadOnly}
+            isTagLoading={isGlossaryLoading}
+            record={record}
+            tagFetchFailed={tagFetchFailed}
+            tagList={glossaryTags}
+            tags={getFilterTags(tags)}
+            type={TagSource.Glossary}
+          />
+        ),
       },
     ],
     [
+      fetchClassificationTags,
+      fetchGlossaryTags,
+      handleFieldTagsChange,
+      glossaryTags,
+      classificationTags,
+      tagFetchFailed,
+      hasEditTagsPermission,
       editColumnDescription,
       hasEditDescriptionPermission,
-      hasEditTagsPermission,
-      editContainerColumnTags,
       isReadOnly,
       isTagLoading,
+      isGlossaryLoading,
     ]
   );
 
@@ -234,7 +257,7 @@ const ModelTab = ({
         bordered
         className="p-t-xs"
         columns={tableColumn}
-        data-testid="charts-table"
+        data-testid="data-model-column-table"
         dataSource={data}
         pagination={false}
         rowKey="name"

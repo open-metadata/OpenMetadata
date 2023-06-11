@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Row, Tag, Typography } from 'antd';
+import { Col, Divider, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import TagButton from 'components/TagButton/TagButton.component';
 import { SummaryEntityType } from 'enums/EntitySummary.enum';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -76,7 +77,7 @@ function GlossaryTermSummary({
         <Row className="m-md" gutter={[0, 16]}>
           <Col span={24}>
             <Typography.Text
-              className="text-base text-grey-muted"
+              className="text-grey-muted"
               data-testid="reviewer-header">
               {t('label.reviewer-plural')}
             </Typography.Text>
@@ -113,10 +114,10 @@ function GlossaryTermSummary({
 
         <Divider className="m-y-xs" />
 
-        <Row className="m-md" gutter={[0, 16]}>
+        <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-base text-grey-muted"
+              className="text-grey-muted"
               data-testid="synonyms-header">
               {t('label.synonym-plural')}
             </Typography.Text>
@@ -125,9 +126,11 @@ function GlossaryTermSummary({
             {synonyms.length > 0 ? (
               <div className="d-flex flex-wrap">
                 {synonyms.map((synonym) => (
-                  <>
-                    <Tag className="text-grey-body">{synonym}</Tag>
-                  </>
+                  <TagButton
+                    className="glossary-synonym-tag"
+                    key={synonym}
+                    label={synonym}
+                  />
                 ))}
               </div>
             ) : (
@@ -142,10 +145,10 @@ function GlossaryTermSummary({
 
         <Divider className="m-y-xs" />
 
-        <Row className="m-md" gutter={[0, 16]}>
+        <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-base text-grey-muted"
+              className="text-grey-muted"
               data-testid="children-header">
               {t('label.children')}
             </Typography.Text>

@@ -105,13 +105,9 @@
       "description": "Owner of this dashboard.",
       "$ref": "../../type/entityReference.json"
     },
-    "tables": {
-      "description": "Link to table used in this chart.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
-    },
     "followers": {
       "description": "Followers of this chart.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     },
     "tags": {
       "description": "Tags for this chart.",
@@ -130,7 +126,7 @@
       "$ref": "../services/dashboardService.json#/definitions/dashboardServiceType"
     },
     "usageSummary": {
-      "description": "Latest usage information for this database.",
+      "description": "Latest usage information for this chart.",
       "$ref": "../../type/usageDetails.json",
       "default": null
     },

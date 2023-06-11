@@ -49,34 +49,32 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 test_suite_config = {
     "source": {
-        "type": "TestSuite",
-        "serviceName": "TestSuiteWorkflow",
-        "sourceConfig": {"config": {"type": "TestSuite"}},
+        "type": "custom-database",
+        "serviceName": "test_suite_service_test",
+        "sourceConfig": {
+            "config": {
+                "type": "TestSuite",
+                "entityFullyQualifiedName": "test_suite_service_test.test_suite_database.test_suite_database_schema.users",
+            }
+        },
     },
     "processor": {
         "type": "orm-test-runner",
         "config": {
-            "testSuites": [
+            "testCases": [
                 {
-                    "name": "my_test_suite",
-                    "testCases": [
-                        {
-                            "name": "my_test_case",
-                            "testDefinitionName": "TableColumnCountToBeBetween",
-                            "entityLink": "<#E::table::test_suite_service_test.test_suite_database.test_suite_database_schema.users>",
-                            "parameterValues": [
-                                {"name": "minColValue", "value": 1},
-                                {"name": "maxColValue", "value": 5},
-                            ],
-                        },
-                        {
-                            "name": "table_column_name_to_exists",
-                            "testDefinitionName": "TableColumnNameToExist",
-                            "entityLink": "<#E::table::test_suite_service_test.test_suite_database.test_suite_database_schema.users>",
-                            "parameterValues": [{"name": "columnName", "value": "id"}],
-                        },
+                    "name": "my_test_case",
+                    "testDefinitionName": "TableColumnCountToBeBetween",
+                    "parameterValues": [
+                        {"name": "minColValue", "value": 1},
+                        {"name": "maxColValue", "value": 5},
                     ],
-                }
+                },
+                {
+                    "name": "table_column_name_to_exists",
+                    "testDefinitionName": "TableColumnNameToExist",
+                    "parameterValues": [{"name": "columnName", "value": "id"}],
+                },
             ],
         },
     },
@@ -232,14 +230,14 @@ class TestE2EWorkflow(unittest.TestCase):
         assert test_case_2
 
         test_case_result_1 = self.metadata.client.get(
-            "/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.users.my_test_case/testCaseResult",
+            "/dataQuality/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.users.my_test_case/testCaseResult",
             data={
                 "startTs": int((datetime.now() - timedelta(days=3)).timestamp()),
                 "endTs": int((datetime.now() + timedelta(days=3)).timestamp()),
             },
         )
         test_case_result_2 = self.metadata.client.get(
-            "/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.users.table_column_name_to_exists/testCaseResult",
+            "/dataQuality/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.users.table_column_name_to_exists/testCaseResult",
             data={
                 "startTs": int((datetime.now() - timedelta(days=3)).timestamp()),
                 "endTs": int((datetime.now() + timedelta(days=3)).timestamp()),

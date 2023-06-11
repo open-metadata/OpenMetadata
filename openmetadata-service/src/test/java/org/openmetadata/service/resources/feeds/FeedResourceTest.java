@@ -34,7 +34,6 @@ import static org.openmetadata.service.resources.EntityResourceTest.C1;
 import static org.openmetadata.service.resources.EntityResourceTest.USER_ADDRESS_TAG_LABEL;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
-import static org.openmetadata.service.util.ChangeEventParser.getPlaintextDiff;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
@@ -101,13 +100,14 @@ import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
+import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResource.PostList;
 import org.openmetadata.service.resources.feeds.FeedResource.ThreadList;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
-import org.openmetadata.service.util.ChangeEventParser;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
@@ -136,6 +136,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
           o1.getReactionType().equals(o2.getReactionType()) && o1.getUser().getId().equals(o2.getUser().getId())
               ? 0
               : 1;
+
+  private static MessageDecorator feedMessageFormatter = new FeedMessageDecorator();
 
   @BeforeAll
   public void setup(TestInfo test) throws IOException, URISyntaxException {
@@ -599,7 +601,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertEquals(TaskStatus.Closed, task.getStatus());
     assertEquals(1, taskThread.getPostsCount());
     assertEquals(1, taskThread.getPosts().size());
-    String diff = getPlaintextDiff(ChangeEventParser.PUBLISH_TO.FEED, "old description", "accepted description");
+    String diff = feedMessageFormatter.getPlaintextDiff("old description", "accepted description");
     String expectedMessage = String.format("Resolved the Task with Description - %s", diff);
     assertEquals(expectedMessage, taskThread.getPosts().get(0).getMessage());
   }
@@ -687,7 +689,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertEquals(TaskStatus.Closed, task.getStatus());
     assertEquals(1, taskThread.getPostsCount());
     assertEquals(1, taskThread.getPosts().size());
-    String diff = getPlaintextDiff(ChangeEventParser.PUBLISH_TO.FEED, "", USER_ADDRESS_TAG_LABEL.getTagFQN());
+    String diff = feedMessageFormatter.getPlaintextDiff("", USER_ADDRESS_TAG_LABEL.getTagFQN());
     String expectedMessage = String.format("Resolved the Task with Tag(s) - %s", diff);
     assertEquals(expectedMessage, taskThread.getPosts().get(0).getMessage());
   }
@@ -759,8 +761,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
               limit,
               null,
               afterCursor);
-      assertNotNull(threads.getPaging().getAfter());
-      assertNotNull(threads.getPaging().getBefore());
+      assertListNotNull(threads.getPaging().getAfter(), threads.getPaging().getBefore());
       pageCount++;
       afterCursor = threads.getPaging().getAfter();
       if (pageCount == 2) {
@@ -1061,6 +1062,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // THREAD is created with TABLE entity in BeforeAll
     int totalThreadCount = listThreads(null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
     String ownerId = TABLE.getOwner().getId().toString();
+    assertNotNull(ownerId);
     int user1ThreadCount =
         listThreadsWithFilter(ownerId, FilterType.OWNER.toString(), AUTH_HEADERS).getPaging().getTotal();
     int user2ThreadCount =
@@ -1070,22 +1072,21 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     // create another thread on an entity with a different owner
     String ownerId2 = TABLE2.getOwner().getId().toString();
+    assertNotNull(ownerId2);
     createAndCheck(
         create().withAbout(String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName())).withFrom(ADMIN_USER_NAME),
         ADMIN_AUTH_HEADERS);
-
-    assertNotNull(ownerId);
-    assertNotNull(ownerId2);
     assertNotEquals(ownerId, ownerId2);
 
     ThreadList threads = listThreadsWithFilter(ownerId, FilterType.OWNER.toString(), AUTH_HEADERS);
     assertEquals(user1ThreadCount, threads.getPaging().getTotal());
 
-    // This should return 0 since the table is owned by a team
+    // This should return error since the table is owned by a team
     // and for the filter we are passing team id instead of user id
-    threads = listThreadsWithFilter(ownerId2, FilterType.OWNER.toString(), AUTH_HEADERS);
-    assertEquals(0, threads.getPaging().getTotal());
-    assertEquals(0, threads.getData().size());
+    assertResponse(
+        () -> listThreadsWithFilter(ownerId2, FilterType.OWNER.toString(), AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.USER, ownerId2));
 
     // Now, test the filter with user who is part of the team
     threads = listThreadsWithFilter(USER2.getId().toString(), FilterType.OWNER.toString(), AUTH_HEADERS);

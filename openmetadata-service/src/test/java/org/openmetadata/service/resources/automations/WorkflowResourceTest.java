@@ -18,16 +18,12 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.automations.WorkflowResource.WorkflowList;
 
 public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWorkflow> {
 
   public WorkflowResourceTest() {
-    super(
-        Entity.WORKFLOW,
-        Workflow.class,
-        WorkflowResource.WorkflowList.class,
-        "automations/workflows",
-        WorkflowResource.FIELDS);
+    super(Entity.WORKFLOW, Workflow.class, WorkflowList.class, "automations/workflows", WorkflowResource.FIELDS);
     supportsEmptyDescription = true;
   }
 
@@ -51,8 +47,7 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
   }
 
   @Override
-  public void validateCreatedEntity(Workflow createdEntity, CreateWorkflow request, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void validateCreatedEntity(Workflow createdEntity, CreateWorkflow request, Map<String, String> authHeaders) {
     assertEquals(request.getName(), createdEntity.getName());
     assertEquals(request.getWorkflowType(), createdEntity.getWorkflowType());
     assertNotNull(createdEntity.getRequest());
@@ -60,8 +55,7 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
   }
 
   @Override
-  public void compareEntities(Workflow expected, Workflow updated, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void compareEntities(Workflow expected, Workflow updated, Map<String, String> authHeaders) {
     assertEquals(expected.getName(), updated.getName());
     assertEquals(expected.getWorkflowType(), updated.getWorkflowType());
     assertEquals(expected.getStatus(), updated.getStatus());

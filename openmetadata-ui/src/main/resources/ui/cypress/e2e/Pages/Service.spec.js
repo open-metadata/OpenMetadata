@@ -20,6 +20,21 @@ import { service } from '../../constants/constants';
 
 describe('Services page should work properly', () => {
   beforeEach(() => {
+    interceptURL(
+      'GET',
+      '/api/v1/system/config/pipeline-service-client',
+      'pipelineServiceClient'
+    );
+    interceptURL(
+      'GET',
+      `/api/v1/*?service=${service.name}&fields=*`,
+      'serviceDetails'
+    );
+    interceptURL(
+      'GET',
+      `/api/v1/services/ingestionPipelines?fields=*&service=${service.name}`,
+      'ingestionPipelines'
+    );
     cy.login();
     // redirecting to services page
 
@@ -32,15 +47,12 @@ describe('Services page should work properly', () => {
   });
 
   it('Update service description', () => {
-    interceptURL(
-      'GET',
-      '/api/v1/system/config/pipeline-service-client',
-      'getService'
-    );
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')
       .click();
-    verifyResponseStatusCode('@getService', 200);
+    verifyResponseStatusCode('@serviceDetails', 200);
+    verifyResponseStatusCode('@ingestionPipelines', 200);
+    verifyResponseStatusCode('@pipelineServiceClient', 200);
     // need wait here
     cy.get('[data-testid="edit-description"]')
       .should('exist')
@@ -56,16 +68,12 @@ describe('Services page should work properly', () => {
   });
 
   it('Update owner and check description', () => {
-    interceptURL(
-      'GET',
-      '/api/v1/system/config/pipeline-service-client',
-      'getService'
-    );
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')
       .click();
-
-    verifyResponseStatusCode('@getService', 200);
+    verifyResponseStatusCode('@serviceDetails', 200);
+    verifyResponseStatusCode('@ingestionPipelines', 200);
+    verifyResponseStatusCode('@pipelineServiceClient', 200);
     interceptURL(
       'GET',
       '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
@@ -83,7 +91,11 @@ describe('Services page should work properly', () => {
       .should('be.visible')
       .click();
 
-    interceptURL('PUT', '/api/v1/services/databaseServices', 'updateService');
+    interceptURL(
+      'PATCH',
+      '/api/v1/services/databaseServices/*',
+      'updateService'
+    );
 
     cy.get('[data-testid="selectable-list"]')
       .contains(service.Owner)
@@ -113,8 +125,9 @@ describe('Services page should work properly', () => {
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')
       .click();
-
-    verifyResponseStatusCode('@getService', 200);
+    verifyResponseStatusCode('@serviceDetails', 200);
+    verifyResponseStatusCode('@ingestionPipelines', 200);
+    verifyResponseStatusCode('@pipelineServiceClient', 200);
 
     cy.get('[data-testid="edit-owner"]')
       .should('exist')

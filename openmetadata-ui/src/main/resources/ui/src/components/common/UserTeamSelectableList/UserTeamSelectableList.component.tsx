@@ -11,18 +11,14 @@
  *  limitations under the License.
  */
 import { Button, Popover, Space, Tabs, Tooltip, Typography } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { WILD_CARD_CHAR } from 'constants/char.constants';
-import {
-  DE_ACTIVE_COLOR,
-  PAGE_SIZE_MEDIUM,
-  pagingObject,
-} from 'constants/constants';
+import { PAGE_SIZE_MEDIUM } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { EntityReference } from 'generated/entity/data/table';
-import { Paging } from 'generated/type/paging';
-import { isEmpty, isEqual, isNumber, noop, toString } from 'lodash';
+import { isEmpty, noop, toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { searchData } from 'rest/miscAPI';
@@ -38,6 +34,15 @@ import { SelectableList } from '../SelectableList/SelectableList.component';
 import './user-team-selectable-list.less';
 import { UserSelectDropdownProps } from './UserTeamSelectableList.interface';
 
+export const TeamListItemRenderer = (props: EntityReference) => {
+  return (
+    <Space>
+      <SVGIcons icon={Icons.TEAMS_GREY} />
+      <Typography.Text>{getEntityName(props)}</Typography.Text>
+    </Space>
+  );
+};
+
 export const UserTeamSelectableList = ({
   hasPermission,
   owner,
@@ -46,10 +51,8 @@ export const UserTeamSelectableList = ({
 }: UserSelectDropdownProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
-  const [userPaging, setUserPaging] = useState<Paging>(pagingObject);
-  const [teamPaging, setTeamPaging] = useState<Paging>(pagingObject);
   const [activeTab, setActiveTab] = useState<'teams' | 'users'>('teams');
-  const [currentTeamPage, setCurrentTeamPage] = useState('1');
+  const [count, setCount] = useState({ team: 0, user: 0 });
 
   const fetchUserOptions = async (searchText: string, after?: string) => {
     if (searchText) {
@@ -68,7 +71,7 @@ export const UserTeamSelectableList = ({
           formatUsersResponse(res.data.hits.hits),
           EntityType.USER
         );
-        setUserPaging({ total: res.data.hits.total.value });
+        setCount((pre) => ({ ...pre, user: res.data.hits.total.value }));
 
         return { data, paging: { total: res.data.hits.total.value } };
       } catch (error) {
@@ -91,23 +94,24 @@ export const UserTeamSelectableList = ({
           data,
           EntityType.USER
         );
-        setUserPaging(paging);
+
+        setCount((pre) => ({ ...pre, user: paging.total }));
 
         return { data: filterData, paging };
       } catch (error) {
-        console.error(error);
-
         return { data: [], paging: { total: 0 } };
       }
     }
   };
 
   const fetchTeamOptions = async (searchText: string, after?: string) => {
+    const afterPage = isNaN(Number(after)) ? 1 : Number(after);
+
     if (searchText) {
       try {
         const res = await searchData(
           searchText,
-          1,
+          afterPage,
           PAGE_SIZE_MEDIUM,
           'teamType:Group',
           '',
@@ -120,9 +124,15 @@ export const UserTeamSelectableList = ({
           EntityType.TEAM
         );
 
-        setTeamPaging({ total: res.data.hits.total.value });
+        setCount((pre) => ({ ...pre, team: res.data.hits.total.value }));
 
-        return { data, paging: { total: res.data.hits.total.value } };
+        return {
+          data,
+          paging: {
+            total: res.data.hits.total.value,
+            after: toString(afterPage + 1),
+          },
+        };
       } catch (error) {
         return { data: [], paging: { total: 0 } };
       }
@@ -130,7 +140,7 @@ export const UserTeamSelectableList = ({
       try {
         const { data } = await searchData(
           WILD_CARD_CHAR,
-          isNumber(after) ? after : 1,
+          afterPage,
           PAGE_SIZE_MEDIUM,
           'teamType:Group',
           '',
@@ -143,19 +153,16 @@ export const UserTeamSelectableList = ({
           EntityType.TEAM
         );
 
-        setTeamPaging({ total: data.hits.total.value });
-        setCurrentTeamPage((prevCount) => prevCount + 1);
+        setCount((pre) => ({ ...pre, team: data.hits.total.value }));
 
         return {
           data: filterData,
           paging: {
             total: data.hits.total.value,
-            after: toString(Number(currentTeamPage) + 1),
+            after: toString(afterPage + 1),
           },
         };
       } catch (error) {
-        console.error(error);
-
         return { data: [], paging: { total: 0 } };
       }
     }
@@ -168,6 +175,8 @@ export const UserTeamSelectableList = ({
         : {
             id: updateItems[0].id,
             type: activeTab === 'teams' ? EntityType.TEAM : EntityType.USER,
+            name: updateItems[0].name,
+            displayName: updateItems[0].displayName,
           }
     );
     setPopupVisible(false);
@@ -175,16 +184,44 @@ export const UserTeamSelectableList = ({
 
   // Fetch and store count for Users tab
   const getUserCount = async () => {
-    const res = await searchData('', 1, 0, '', '', '', SearchIndex.USER);
+    const res = await searchData(
+      '',
+      1,
+      0,
+      'isBot:false',
+      '',
+      '',
+      SearchIndex.USER
+    );
 
-    setUserPaging({ total: res.data.hits.total.value });
+    setCount((pre) => ({ ...pre, user: res.data.hits.total.value }));
+  };
+  const getTeamCount = async () => {
+    const res = await searchData(
+      '',
+      1,
+      0,
+      'teamType:Group',
+      '',
+      '',
+      SearchIndex.TEAM
+    );
+
+    setCount((pre) => ({ ...pre, team: res.data.hits.total.value }));
   };
 
-  // To pre-cache user total count
-  useEffect(() => {
-    if (popupVisible && isEqual(userPaging, pagingObject)) {
-      getUserCount();
+  const fetchCount = async () => {
+    if (popupVisible) {
+      if (owner?.type === EntityType.USER) {
+        await getTeamCount();
+      } else {
+        await getUserCount();
+      }
     }
+  };
+
+  useEffect(() => {
+    fetchCount();
   }, [popupVisible]);
 
   useEffect(() => {
@@ -209,7 +246,7 @@ export const UserTeamSelectableList = ({
               label: (
                 <>
                   {t('label.team-plural')}{' '}
-                  {getCountBadge(teamPaging.total, '', activeTab === 'teams')}
+                  {getCountBadge(count.team, '', activeTab === 'teams')}
                 </>
               ),
               key: 'teams',
@@ -230,7 +267,7 @@ export const UserTeamSelectableList = ({
               label: (
                 <>
                   {t('label.user-plural')}
-                  {getCountBadge(userPaging.total, '', activeTab === 'users')}
+                  {getCountBadge(count.user, '', activeTab === 'users')}
                 </>
               ),
               key: 'users',
@@ -267,15 +304,7 @@ export const UserTeamSelectableList = ({
             className="flex-center p-0"
             data-testid="edit-owner"
             disabled={!hasPermission}
-            icon={
-              <SVGIcons
-                alt="edit"
-                color={DE_ACTIVE_COLOR}
-                height="14px"
-                icon={Icons.EDIT}
-                title="Edit"
-              />
-            }
+            icon={<EditIcon width="14px" />}
             size="small"
             type="text"
             onClick={() => setPopupVisible(true)}
@@ -283,14 +312,5 @@ export const UserTeamSelectableList = ({
         </Tooltip>
       )}
     </Popover>
-  );
-};
-
-export const TeamListItemRenderer = (props: EntityReference) => {
-  return (
-    <Space>
-      <SVGIcons icon={Icons.TEAMS_GREY} />
-      <Typography.Text>{getEntityName(props)}</Typography.Text>
-    </Space>
   );
 };

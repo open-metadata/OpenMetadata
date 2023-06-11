@@ -11,6 +11,7 @@
 """
 Entrypoint to run an automation workflow
 """
+import logging
 import os
 
 import yaml
@@ -19,6 +20,7 @@ from metadata.automations.runner import execute
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
+from metadata.utils.logger import set_loggers_level
 
 
 def main():
@@ -58,6 +60,9 @@ def main():
         raise RuntimeError(
             "Missing environment variable `config` with the Automations Workflow dict."
         )
+
+    # Default test connection to INFO logs
+    set_loggers_level(logging.INFO)
 
     automation_workflow_dict = yaml.safe_load(config)
     automation_workflow = AutomationWorkflow.parse_obj(automation_workflow_dict)

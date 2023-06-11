@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { Operation } from 'fast-json-patch';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -22,21 +23,20 @@ import {
   EntityFieldThreadCount,
   ThreadUpdatedFunc,
 } from '../../interface/feed.interface';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface ChartType extends Chart {
   displayName: string;
 }
 
+export interface ChartsPermissions {
+  id: string;
+  permissions: OperationPermission;
+}
 export interface DashboardDetailsProps {
-  dashboardFQN: string;
   charts: Array<ChartType>;
-  dashboardUrl: string;
   dashboardDetails: Dashboard;
-  activeTab: number;
-  slashedDashboardName: TitleBreadcrumbProps['titleLinks'];
   entityThread: Thread[];
-  isentityThreadLoading: boolean;
+  isEntityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
   entityFieldTaskCount: EntityFieldThreadCount[];
@@ -47,22 +47,17 @@ export interface DashboardDetailsProps {
     threadType?: ThreadType
   ) => void;
   createThread: (data: CreateThread) => void;
-  setActiveTabHandler: (value: number) => void;
   followDashboardHandler: () => void;
   unfollowDashboardHandler: () => void;
-  settingsUpdateHandler: (updatedDashboard: Dashboard) => Promise<void>;
-  descriptionUpdateHandler: (updatedDashboard: Dashboard) => Promise<void>;
   chartDescriptionUpdateHandler: (
     index: number,
     chartId: string,
     patch: Array<Operation>
   ) => Promise<void>;
   chartTagUpdateHandler: (
-    index: number,
     chartId: string,
     patch: Array<Operation>
-  ) => void;
-  tagUpdateHandler: (updatedDashboard: Dashboard) => void;
+  ) => Promise<void>;
   versionHandler: () => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler: (
@@ -71,5 +66,8 @@ export interface DashboardDetailsProps {
     isThread: boolean
   ) => void;
   updateThreadHandler: ThreadUpdatedFunc;
-  onExtensionUpdate: (updatedDashboard: Dashboard) => Promise<void>;
+  onDashboardUpdate: (
+    updatedDashboard: Dashboard,
+    key: keyof Dashboard
+  ) => Promise<void>;
 }

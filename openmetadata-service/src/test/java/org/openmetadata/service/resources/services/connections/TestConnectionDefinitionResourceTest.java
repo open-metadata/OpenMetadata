@@ -17,7 +17,7 @@ import org.openmetadata.service.util.TestUtils;
 */
 public class TestConnectionDefinitionResourceTest extends OpenMetadataApplicationTest {
 
-  private static final String TEST_CONNECTION_NAME = "Mysql";
+  private static final String TEST_CONNECTION_NAME = "Mysql.testConnectionDefinition";
   private static final String COLLECTION = "services/testConnectionDefinitions";
 
   @Test

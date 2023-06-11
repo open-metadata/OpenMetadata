@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { ReactComponent as EditIconComponent } from 'assets/svg/edit-new.svg';
 import { t } from 'i18next';
 import { isUndefined, toNumber } from 'lodash';
 import React, { FC, Fragment, useState } from 'react';
-import { ReactComponent as EditIconComponent } from '../../../assets/svg/ic-edit.svg';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -57,8 +57,7 @@ export const PropertyValue: FC<Props> = ({
     setShowInput(false);
   };
 
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  const onInputSave = async (updatedValue: any) => {
+  const onInputSave = async (updatedValue: string | number) => {
     const updatedExtension = {
       ...(extension || {}),
       [propertyName]:
@@ -77,7 +76,7 @@ export const PropertyValue: FC<Props> = ({
         return (
           <PropertyInput
             propertyName={propertyName}
-            type={propertyType.name as string}
+            type={propertyType.name === 'integer' ? 'number' : 'text'}
             value={value}
             onCancel={onHideInput}
             onSave={onInputSave}
@@ -122,7 +121,7 @@ export const PropertyValue: FC<Props> = ({
       return !isUndefined(value) ? (
         propertyValue
       ) : (
-        <span className="tw-text-grey-muted" data-testid="no-data">
+        <span className="text-grey-muted" data-testid="no-data">
           {t('message.no-data')}
         </span>
       );
@@ -130,7 +129,7 @@ export const PropertyValue: FC<Props> = ({
       return value ? (
         propertyValue
       ) : (
-        <span className="tw-text-grey-muted" data-testid="no-data">
+        <span className="text-grey-muted" data-testid="no-data">
           {t('message.no-data')}
         </span>
       );

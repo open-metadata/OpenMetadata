@@ -12,22 +12,19 @@
  */
 
 import { SearchIndex } from '../../enums/search.enum';
-import { EntityUnion, ExploreQuickFilterField } from './explore.interface';
+import { ExploreQuickFilterField } from './explore.interface';
 
 export interface ExploreQuickFiltersProps {
   index: SearchIndex;
   fields: Array<ExploreQuickFilterField>;
   onFieldValueSelect: (field: ExploreQuickFilterField) => void;
   onAdvanceSearch: () => void;
+  showDeleted?: boolean;
+  onChangeShowDeleted?: (showDeleted: boolean) => void;
 }
 
 export interface FilterFieldsMenuItem {
   key: string;
   label: string;
   defaultField: boolean;
-}
-
-export interface FormattedSuggestResponseObject {
-  text: string;
-  source: EntityUnion;
 }

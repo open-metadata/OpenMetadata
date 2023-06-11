@@ -34,11 +34,14 @@ export const SUCCESS_COLOR = '#008376';
 export const DE_ACTIVE_COLOR = '#6B7280';
 export const GRAPH_BACKGROUND_COLOR = '#f5f5f5';
 export const GRAYED_OUT_COLOR = '#CCCCCC';
+export const GREEN_COLOR = '#28A745';
+export const GREEN_COLOR_OPACITY_30 = '#28A74530';
 
 export const DEFAULT_CHART_OPACITY = 1;
 export const HOVER_CHART_OPACITY = 0.3;
 
 export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
+export const LOGGED_IN_USER_STORAGE_KEY = 'loggedInUsers';
 
 export const TAG_VIEW_CAP = 33;
 export const FOLLOWERS_VIEW_CAP = 20;
@@ -79,9 +82,10 @@ export const imageTypes = {
   image512: 's512-c',
   image72: 's72-c',
 };
-export const NO_DATA_PLACEHOLDER = '---';
+export const NO_DATA_PLACEHOLDER = '--';
 export const ELLIPSES = '...';
 export const SINGLE_DOT = '•';
+export const PIPE_SYMBOL = '|';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR404 = t('label.no-data-found');
@@ -94,6 +98,7 @@ const PLACEHOLDER_ROUTE_DASHBOARD_FQN = ':dashboardFQN';
 const PLACEHOLDER_ROUTE_DATABASE_FQN = ':databaseFQN';
 const PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN = ':databaseSchemaFQN';
 
+export const PLACEHOLDER_ROUTE_TEST_CASE_FQN = ':testCaseFQN';
 export const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
 export const PLACEHOLDER_ROUTE_INGESTION_TYPE = ':ingestionType';
 export const PLACEHOLDER_ROUTE_INGESTION_FQN = ':ingestionFQN';
@@ -101,7 +106,7 @@ export const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
 export const PLACEHOLDER_ROUTE_TAB = ':tab';
 export const PLACEHOLDER_ROUTE_FQN = ':fqn';
 export const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
-export const PLAEHOLDER_ROUTE_VERSION = ':version';
+export const PLACEHOLDER_ROUTE_VERSION = ':version';
 export const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
 export const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
 export const PLACEHOLDER_ROUTE_QUERY_ID = ':queryId';
@@ -131,9 +136,6 @@ export const pagingObject = { after: '', before: '', total: 0 };
 
 export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
 
-export const CUSTOM_AIRFLOW_DOCS =
-  'https://docs.open-metadata.org/integrations/airflow/custom-airflow-installation';
-
 export const tiers = [
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier1`, doc_count: 0 },
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier2`, doc_count: 0 },
@@ -143,12 +145,13 @@ export const tiers = [
 ];
 
 export const globalSearchOptions = [
-  { value: undefined, label: t('label.all') },
+  { value: '', label: t('label.all') },
   { value: SearchIndex.TABLE, label: t('label.table') },
   { value: SearchIndex.TOPIC, label: t('label.topic') },
   { value: SearchIndex.DASHBOARD, label: t('label.dashboard') },
   { value: SearchIndex.PIPELINE, label: t('label.pipeline') },
   { value: SearchIndex.MLMODEL, label: t('label.ml-model') },
+  { value: SearchIndex.CONTAINER, label: t('label.container') },
   { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
   { value: SearchIndex.TAG, label: t('label.tag') },
 ];
@@ -170,6 +173,8 @@ export const visibleFilters = [
   'servicename',
 ];
 
+export const CHART_WIDGET_DAYS_DURATION = 14;
+
 export const ROUTES = {
   HOME: '/',
   CALLBACK: '/callback',
@@ -186,6 +191,8 @@ export const ROUTES = {
   SETTINGS: `/settings`,
   SETTINGS_WITH_TAB: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}`,
   SETTINGS_WITH_TAB_FQN: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_FQN}`,
+  SETTINGS_WITH_TAB_FQN_ACTION: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ACTION}`,
+  SETTINGS_EDIT_EMAIL_CONFIG: `/settings/OpenMetadata/email/edit-email-configuration`,
   STORE: '/store',
   FEEDS: '/feeds',
   DUMMY: '/dummy',
@@ -209,7 +216,7 @@ export const ROUTES = {
   ACCOUNT_ACTIVATION: '/users/registrationConfirmation',
   TABLE_DETAILS: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}`,
   TABLE_DETAILS_WITH_TAB: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  ENTITY_VERSION: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}/versions/${PLAEHOLDER_ROUTE_VERSION}`,
+  ENTITY_VERSION: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   TOPIC_DETAILS: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}`,
   TOPIC_DETAILS_WITH_TAB: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   DASHBOARD_DETAILS: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}`,
@@ -237,7 +244,10 @@ export const ROUTES = {
   GLOSSARY_DETAILS_WITH_ACTION: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/action/${PLACEHOLDER_ACTION}`,
   ADD_GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/add-term`,
   GLOSSARY_DETAILS_WITH_TAB: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/${PLACEHOLDER_ROUTE_TAB}`,
-  GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}`,
+  GLOSSARY_VERSION: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+  GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  GLOSSARY_TERMS_VERSION: `/glossary-term/${PLACEHOLDER_GLOSSARY_NAME}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+  GLOSSARY_TERMS_VERSION_TAB: `/glossary-term/${PLACEHOLDER_GLOSSARY_NAME}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
   ADD_GLOSSARY_TERMS_CHILD: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}/add-term`,
   BOTS_PROFILE: `/bots/${PLACEHOLDER_BOTS_NAME}`,
   MLMODEL_DETAILS: `/mlmodel/${PLACEHOLDER_ROUTE_MLMODEL_FQN}`,
@@ -248,7 +258,11 @@ export const ROUTES = {
   PROFILER_DASHBOARD_WITH_TAB: `/profiler-dashboard/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ADD_DATA_QUALITY_TEST_CASE: `/data-quality-test/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
   LINEAGE_FULL_SCREEN_VIEW: `/lineage-view/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
+
+  // Query Routes
   QUERY_FULL_SCREEN_VIEW: `/query-view/${PLACEHOLDER_ROUTE_TABLE_FQN}/${PLACEHOLDER_ROUTE_QUERY_ID}`,
+  TEST_CASE_DETAILS: `/test-case/${PLACEHOLDER_ROUTE_TEST_CASE_FQN}`,
+  ADD_QUERY: `/query/${PLACEHOLDER_ROUTE_TABLE_FQN}/add-query`,
 
   // Tasks Routes
   REQUEST_DESCRIPTION: `/request-description/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
@@ -281,6 +295,8 @@ export const ROUTES = {
 
   CONTAINER_DETAILS: `/container/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
   CONTAINER_DETAILS_WITH_TAB: `/container/${PLACEHOLDER_ROUTE_ENTITY_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+
+  SETTINGS_EDIT_CUSTOM_LOGO_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-logo-configuration`,
 };
 
 export const SOCKET_EVENTS = {
@@ -318,7 +334,7 @@ export const getVersionPath = (
   path = path
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
     .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, fqn)
-    .replace(PLAEHOLDER_ROUTE_VERSION, version);
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   return path;
 };
@@ -594,14 +610,8 @@ export const ENTITY_PATH: Record<string, string> = {
   pipelines: 'pipeline',
   mlmodels: 'mlmodel',
   containers: 'container',
-  tag: 'tag',
-  glossary: 'glossary',
-};
-
-export const VALIDATE_MESSAGES = {
-  required: t('message.field-text-is-required', {
-    fieldText: '${label}',
-  }),
+  tags: 'tag',
+  glossaries: 'glossary',
 };
 
 export const VALIDATION_MESSAGES = {

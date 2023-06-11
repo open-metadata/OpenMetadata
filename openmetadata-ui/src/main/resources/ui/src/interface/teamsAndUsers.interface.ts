@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { Operation } from 'fast-json-patch';
 import { AssetsDataType, FormErrorData } from 'Models';
 import { EntityType } from '../enums/entity.enum';
@@ -110,7 +111,7 @@ export interface TeamDetailsProp {
     cursorValue: string | number,
     activePage?: number
   ) => void;
-  handleAddUser: (data: boolean) => void;
+  handleAddUser: (data: Array<EntityReference>) => void;
   afterDeleteAction: () => void;
   removeUserFromTeam: (id: string) => Promise<void>;
   handleJoinTeamClick: (id: string, data: Operation[]) => void;
@@ -118,7 +119,7 @@ export interface TeamDetailsProp {
   childTeams: Team[];
   showDeletedTeam: boolean;
   onAssetsPaginate: (page: string | number) => void;
-  onShowDeletedTeamChange: (checked: boolean) => void;
+  onShowDeletedTeamChange: () => void;
   parentTeams: Team[];
   onTeamExpand: (
     loading?: boolean,
@@ -133,13 +134,11 @@ export interface AddAttribute {
 }
 
 export interface PlaceholderProps {
-  title?: string;
-  disabled?: boolean;
-  label?: string;
+  permission?: boolean;
   onClick?: () => void;
   heading?: string;
-  description?: React.ReactNode;
   button?: React.ReactNode;
-  datatestid?: string;
   doc?: string;
+  type?: ERROR_PLACEHOLDER_TYPE;
+  children?: React.ReactNode;
 }

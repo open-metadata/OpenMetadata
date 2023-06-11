@@ -14,7 +14,6 @@
 import { AxiosError } from 'axios';
 import AddGlossary from 'components/AddGlossary/AddGlossary.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { ERROR_MESSAGE } from 'constants/constants';
@@ -31,7 +30,6 @@ import { addGlossaries } from 'rest/glossaryAPI';
 import { getIsErrorMatch } from 'utils/CommonUtils';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { Operation } from '../../generated/entity/policies/policy';
-import jsonData from '../../jsons/en';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
 import { getClassifications, getTaglist } from '../../utils/TagsUtils';
@@ -79,10 +77,13 @@ const AddGlossaryPage: FunctionComponent = () => {
         getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
           ? t('server.entity-already-exist', {
               entity: t('label.glossary'),
+              entityPlural: t('label.glossary-lowercase-plural'),
               name: data.name,
             })
           : (error as AxiosError),
-        jsonData['api-error-messages']['add-glossary-error']
+        t('server.add-entity-error', {
+          entity: t('label.glossary-lowercase'),
+        })
       );
     } finally {
       setIsLoading(false);
@@ -97,11 +98,20 @@ const AddGlossaryPage: FunctionComponent = () => {
           const tagList = await getTaglist(res.data);
           setTagList(tagList);
         } else {
-          showErrorToast(jsonData['api-error-messages']['fetch-tags-error']);
+          showErrorToast(
+            t('server.entity-fetch-error', {
+              entity: t('label.tag-plural'),
+            })
+          );
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['fetch-tags-error']);
+        showErrorToast(
+          err,
+          t('server.entity-fetch-error', {
+            entity: t('label.tag-plural'),
+          })
+        );
       })
       .finally(() => {
         setIsTagLoading(false);
@@ -125,23 +135,21 @@ const AddGlossaryPage: FunctionComponent = () => {
   }, []);
 
   return (
-    <PageContainerV1>
-      <div className="self-center">
-        <AddGlossary
-          allowAccess={createPermission}
-          fetchTags={fetchTags}
-          header={t('label.add-entity', {
-            entity: t('label.glossary'),
-          })}
-          isLoading={isLoading}
-          isTagLoading={isTagLoading}
-          slashedBreadcrumb={slashedBreadcrumb}
-          tagList={tagList}
-          onCancel={handleCancel}
-          onSave={onSave}
-        />
-      </div>
-    </PageContainerV1>
+    <div className="self-center">
+      <AddGlossary
+        allowAccess={createPermission}
+        fetchTags={fetchTags}
+        header={t('label.add-entity', {
+          entity: t('label.glossary'),
+        })}
+        isLoading={isLoading}
+        isTagLoading={isTagLoading}
+        slashedBreadcrumb={slashedBreadcrumb}
+        tagList={tagList}
+        onCancel={handleCancel}
+        onSave={onSave}
+      />
+    </div>
   );
 };
 

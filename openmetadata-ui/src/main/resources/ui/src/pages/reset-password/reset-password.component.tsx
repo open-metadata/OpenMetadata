@@ -14,14 +14,13 @@
 import { Alert, Button, Card, Col, Form, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
+import BrandImage from 'components/common/BrandImage/BrandImage';
 import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
-import { VALIDATION_MESSAGES } from '../../constants/auth.constants';
-import { ROUTES } from '../../constants/constants';
+import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
 import { PasswordResetRequest } from '../../generated/auth/passwordResetRequest';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './reset-password.style.less';
 import { getUserNameAndToken } from './reset-password.utils';
@@ -98,7 +97,7 @@ const ResetPassword = () => {
           style={{ maxWidth: '450px' }}>
           <Row gutter={[16, 24]}>
             <Col className="text-center" span={24}>
-              <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
+              <BrandImage className="m-auto" height="auto" width={152} />
             </Col>
 
             <Col className="mt-12 text-center" span={24}>
@@ -130,6 +129,7 @@ const ResetPassword = () => {
                     },
                   ]}>
                   <Input.Password
+                    autoComplete="off"
                     className="w-full"
                     placeholder={t('label.enter-entity', {
                       entity: t('label.new-password'),
@@ -157,6 +157,7 @@ const ResetPassword = () => {
                     },
                   ]}>
                   <Input.Password
+                    autoComplete="off"
                     className="w-full"
                     placeholder={t('label.re-enter-new-password')}
                   />

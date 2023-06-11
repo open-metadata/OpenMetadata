@@ -136,7 +136,7 @@ export const getGroupLabel = (index: string, wrapInSelectOption = false) => {
         }`}
         icon={icon}
       />
-      <p className="tw-px-2 tw-text-grey-muted tw-text-xs tw-h-4 tw-mb-0">
+      <p className="tw-px-2 text-grey-muted tw-text-xs tw-h-4 tw-mb-0">
         {label}
       </p>
     </div>
@@ -205,8 +205,10 @@ export const getSuggestionElement = (
 
 export const filterOptionsByIndex = (
   options: Array<Option>,
-  searchIndex: SearchIndex
+  searchIndex: SearchIndex,
+  maxItemsPerType = 3
 ) =>
   options
     .filter((option) => option._index === searchIndex)
-    .map((option) => option._source);
+    .map((option) => option._source)
+    .slice(0, maxItemsPerType);

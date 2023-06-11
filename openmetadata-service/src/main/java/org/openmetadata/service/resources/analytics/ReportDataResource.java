@@ -1,6 +1,5 @@
 package org.openmetadata.service.resources.analytics;
 
-import com.google.inject.Inject;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -49,17 +48,13 @@ public class ReportDataResource {
   @Getter protected final ReportDataRepository dao;
   protected final Authorizer authorizer;
 
-  @Inject
   public ReportDataResource(CollectionDAO dao, Authorizer authorizer) {
     this.authorizer = authorizer;
     this.dao = new ReportDataRepository(dao);
   }
 
   public static class ReportDataResultList extends ResultList<ReportData> {
-    @SuppressWarnings("unused")
-    public ReportDataResultList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
 
   @GET
@@ -75,9 +70,7 @@ public class ReportDataResource {
             responseCode = "200",
             description = "List of report data",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = ReportDataResource.ReportDataResultList.class)))
+                @Content(mediaType = "application/json", schema = @Schema(implementation = ReportDataResultList.class)))
       })
   public ResultList<ReportData> list(
       @Context SecurityContext securityContext,

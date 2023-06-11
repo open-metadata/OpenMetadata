@@ -25,6 +25,7 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataModel,
@@ -229,7 +230,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 required_catalog_key in catalog_column
                 for required_catalog_key in REQUIRED_CATALOG_KEYS
             ):
-                logger.info(f"Successfully Validated DBT Column: {catalog_key}")
+                logger.debug(f"Successfully Validated DBT Column: {catalog_key}")
             else:
                 logger.warning(
                     f"Error validating DBT Column: {catalog_key}\n"
@@ -241,7 +242,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         Method to validate DBT files
         """
         # Validate the Manifest File
-        logger.info("Validating Manifest File")
+        logger.debug("Validating Manifest File")
 
         if self.source_config.dbtConfigSource and dbt_files.dbt_manifest:
             manifest_entities = {
@@ -264,7 +265,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     required_key in manifest_node
                     for required_key in REQUIRED_MANIFEST_KEYS
                 ):
-                    logger.info(f"Successfully Validated DBT Node: {key}")
+                    logger.debug(f"Successfully Validated DBT Node: {key}")
                 else:
                     logger.warning(
                         f"Error validating DBT Node: {key}\n"
@@ -296,7 +297,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 **dbt_objects.dbt_manifest.nodes,
                 **dbt_objects.dbt_manifest.sources,
             }
-            logger.info("Processing DBT Tags")
+            logger.debug("Processing DBT Tags")
             dbt_tags_list = []
             for key, manifest_node in manifest_entities.items():
                 try:
@@ -322,12 +323,15 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     )
             try:
                 # Create all the tags added
-                dbt_tag_labels = tag_utils.get_tag_labels(
-                    metadata=self.metadata,
-                    tags=dbt_tags_list,
-                    classification_name=self.tag_classification_name,
-                    include_tags=self.source_config.includeTags,
-                )
+                dbt_tag_labels = [
+                    fqn.build(
+                        self.metadata,
+                        Tag,
+                        classification_name=self.tag_classification_name,
+                        tag_name=tag_name,
+                    )
+                    for tag_name in dbt_tags_list
+                ]
                 for tag_label in dbt_tag_labels or []:
                     yield OMetaTagAndClassification(
                         classification_request=CreateClassificationRequest(
@@ -336,7 +340,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         ),
                         tag_request=CreateTagRequest(
                             classification=self.tag_classification_name,
-                            name=tag_label.tagFQN.__root__.split(fqn.FQN_SEPARATOR)[1],
+                            name=tag_label.split(fqn.FQN_SEPARATOR)[1],
                             description="dbt Tags",
                         ),
                     )
@@ -368,7 +372,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         Yield the data models
         """
         if self.source_config.dbtConfigSource and dbt_objects.dbt_manifest:
-            logger.info("Parsing DBT Data Models")
+            logger.debug("Parsing DBT Data Models")
             manifest_entities = {
                 **dbt_objects.dbt_manifest.nodes,
                 **dbt_objects.dbt_manifest.sources,
@@ -382,7 +386,6 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
             self.context.dbt_tests = {}
             for key, manifest_node in manifest_entities.items():
                 try:
-
                     # If the run_results file is passed then only DBT tests will be processed
                     if (
                         dbt_objects.dbt_run_results
@@ -402,7 +405,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     if manifest_node.resource_type.value in [
                         item.value for item in SkipResourceTypeEnum
                     ]:
-                        logger.info(f"Skipping DBT node: {key}.")
+                        logger.debug(f"Skipping DBT node: {key}.")
                         continue
 
                     model_name = (
@@ -410,7 +413,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         if hasattr(manifest_node, "alias") and manifest_node.alias
                         else manifest_node.name
                     )
-                    logger.info(f"Processing DBT node: {model_name}")
+                    logger.debug(f"Processing DBT node: {model_name}")
 
                     catalog_node = None
                     if dbt_objects.dbt_catalog:
@@ -478,8 +481,8 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     else:
                         logger.warning(
                             f"Unable to find the table '{table_fqn}' in OpenMetadata"
-                            f"Please check if the table exists is ingested in OpenMetadata"
-                            f"And name, database, schema of the manifest node matches with the table present in OpenMetadata"  # pylint: disable=line-too-long
+                            f"Please check if the table exists and is ingested in OpenMetadata"
+                            f"Also name, database, schema of the manifest node matches with the table present in OpenMetadata"  # pylint: disable=line-too-long
                         )
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
@@ -511,6 +514,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         upstream_nodes = []
         if (
             hasattr(dbt_node, "depends_on")
+            and hasattr(dbt_node.depends_on, "nodes")
             and dbt_node.depends_on
             and dbt_node.depends_on.nodes
         ):
@@ -530,7 +534,18 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         schema_name=self.get_corrected_name(parent_node.schema_),
                         table_name=table_name,
                     )
-                    if parent_fqn:
+
+                    # check if the parent table exists in OM before adding it to the upstream list
+                    # TODO: Change to get_by_name once the postgres case sensitive calls is fixed
+                    parent_table_entity: Optional[
+                        Union[Table, List[Table]]
+                    ] = get_entity_from_es_result(
+                        entity_list=self.metadata.es_search_from_fqn(
+                            entity_type=Table, fqn_search_string=parent_fqn
+                        ),
+                        fetch_multiple_entities=False,
+                    )
+                    if parent_table_entity:
                         upstream_nodes.append(parent_fqn)
                 except Exception as exc:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
@@ -550,7 +565,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         manifest_columns = manifest_node.columns
         for key, manifest_column in manifest_columns.items():
             try:
-                logger.info(f"Processing DBT column: {key}")
+                logger.debug(f"Processing DBT column: {key}")
                 # If catalog file is passed pass the column information from catalog file
                 catalog_column = None
                 if catalog_node and catalog_node.columns:
@@ -585,7 +600,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         ),
                     )
                 )
-                logger.info(f"Successfully processed DBT column: {key}")
+                logger.debug(f"Successfully processed DBT column: {key}")
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Failed to parse DBT column {column_name}: {exc}")
@@ -599,7 +614,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         Method to process DBT lineage from upstream nodes
         """
         to_entity: Table = data_model_link.table_entity
-        logger.info(
+        logger.debug(
             f"Processing DBT lineage for: {to_entity.fullyQualifiedName.__root__}"
         )
 
@@ -641,7 +656,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         Method to process DBT lineage from queries
         """
         to_entity: Table = data_model_link.table_entity
-        logger.info(
+        logger.debug(
             f"Processing DBT Query lineage for: {to_entity.fullyQualifiedName.__root__}"
         )
 
@@ -680,17 +695,22 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         Method to process DBT descriptions using patch APIs
         """
         table_entity: Table = data_model_link.table_entity
-        logger.info(
+        logger.debug(
             f"Processing DBT Descriptions for: {table_entity.fullyQualifiedName.__root__}"
         )
         if table_entity:
             try:
+
+                service_name, database_name, schema_name, table_name = fqn.split(
+                    table_entity.fullyQualifiedName.__root__
+                )
+
                 data_model = data_model_link.datamodel
                 # Patch table descriptions from DBT
                 if data_model.description:
                     self.metadata.patch_description(
                         entity=Table,
-                        entity_id=table_entity.id,
+                        source=table_entity,
                         description=data_model.description.__root__,
                         force=self.source_config.dbtUpdateDescriptions,
                     )
@@ -699,15 +719,24 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 for column in data_model.columns:
                     if column.description:
                         self.metadata.patch_column_description(
-                            entity_id=table_entity.id,
-                            column_name=column.name.__root__,
+                            table=table_entity,
+                            column_fqn=fqn.build(
+                                self.metadata,
+                                entity_type=Column,
+                                service_name=service_name,
+                                database_name=database_name,
+                                schema_name=schema_name,
+                                table_name=table_name,
+                                column_name=column.name.__root__,
+                            ),
                             description=column.description.__root__,
                             force=self.source_config.dbtUpdateDescriptions,
                         )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Failed to parse the node {table_entity.fullyQualifiedName.__root__}to update dbt desctiption: {exc}"  # pylint: disable=line-too-long
+                    f"Failed to parse the node {table_entity.fullyQualifiedName.__root__} "
+                    f"to update dbt description: {exc}"
                 )
 
     def create_dbt_tests_suite(
@@ -720,7 +749,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
                 test_name = manifest_node.name
-                logger.info(f"Processing DBT Tests Suite for node: {test_name}")
+                logger.debug(f"Processing DBT Tests Suite for node: {test_name}")
                 test_suite_name = manifest_node.meta.get(
                     DbtCommonEnum.TEST_SUITE_NAME.value,
                     DbtCommonEnum.DBT_TEST_SUITE.value,
@@ -749,7 +778,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         try:
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
-                logger.info(
+                logger.debug(
                     f"Processing DBT Tests Suite Definition for node: {manifest_node.name}"
                 )
                 check_test_definition_exists = self.metadata.get_by_name(
@@ -782,7 +811,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         try:
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
-                logger.info(
+                logger.debug(
                     f"Processing DBT Test Case Definition for node: {manifest_node.name}"
                 )
                 entity_link_list = self.generate_entity_link(dbt_test)
@@ -817,7 +846,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
             # Process the Test Status
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
-                logger.info(
+                logger.debug(
                     f"Processing DBT Test Case Results for node: {manifest_node.name}"
                 )
                 dbt_test_result = dbt_test.get(DbtCommonEnum.RESULTS.value)

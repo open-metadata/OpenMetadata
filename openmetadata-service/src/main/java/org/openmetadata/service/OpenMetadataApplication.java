@@ -42,6 +42,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Optional;
 import javax.naming.ConfigurationException;
 import javax.servlet.DispatcherType;
@@ -58,6 +59,7 @@ import org.eclipse.jetty.http.pathmap.ServletPathSpec;
 import org.eclipse.jetty.servlet.ErrorPageErrorHandler;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.websocket.server.NativeWebSocketServletContainerInitializer;
 import org.eclipse.jetty.websocket.server.WebSocketUpgradeFilter;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
@@ -65,15 +67,19 @@ import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.SqlObjects;
+import org.openmetadata.schema.api.configuration.extension.Extension;
+import org.openmetadata.schema.api.configuration.extension.ExtensionConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.service.elasticsearch.ElasticSearchEventPublisher;
 import org.openmetadata.service.events.EventFilter;
 import org.openmetadata.service.events.EventPubSub;
+import org.openmetadata.service.events.scheduled.ReportsHandler;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
+import org.openmetadata.service.extension.OpenMetadataExtension;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
@@ -108,6 +114,7 @@ import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.openmetadata.service.workflows.searchIndex.SearchIndexEvent;
+import org.quartz.SchedulerException;
 
 /** Main catalog application */
 @Slf4j
@@ -125,6 +132,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
 
+    // Configure the Fernet instance
+    Fernet.getInstance().setFernetKey(catalogConfig);
+
     // Init Settings Cache
     SettingsCache.initialize(jdbi.onDemand(CollectionDAO.class), catalogConfig);
 
@@ -134,9 +144,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             catalogConfig.getSecretsManagerConfiguration(), catalogConfig.getClusterName());
 
     // init Entity Masker
-    EntityMaskerFactory.createEntityMasker(catalogConfig.getSecurityConfiguration());
-    // Configure the Fernet instance
-    Fernet.getInstance().setFernetKey(catalogConfig);
+    EntityMaskerFactory.createEntityMasker();
 
     // Instantiate JWT Token Generator
     JWTTokenGenerator.getInstance().init(catalogConfig.getJwtTokenConfiguration());
@@ -205,6 +213,27 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     OpenMetadataAssetServlet assetServlet = new OpenMetadataAssetServlet("/assets", "/", "index.html");
     String pathPattern = "/" + '*';
     environment.servlets().addServlet("static", assetServlet).addMapping(pathPattern);
+
+    registerExtensions(catalogConfig, environment, jdbi);
+  }
+
+  private void registerExtensions(OpenMetadataApplicationConfig catalogConfig, Environment environment, Jdbi jdbi) {
+    ExtensionConfiguration extensionConfiguration = catalogConfig.getExtensionConfiguration();
+    if (extensionConfiguration != null) {
+      for (Extension extension : extensionConfiguration.getExtensions()) {
+        try {
+          OpenMetadataExtension omExtension =
+              Class.forName(extension.getClassName())
+                  .asSubclass(OpenMetadataExtension.class)
+                  .getConstructor()
+                  .newInstance();
+          omExtension.init(extension, catalogConfig, environment, jdbi);
+          LOG.info("[OmExtension] Registering Extension: {}", extension.getClassName());
+        } catch (Exception ex) {
+          LOG.error("[OmExtension] Failed in registering Extension {}", extension.getClassName());
+        }
+      }
+    }
   }
 
   private void registerSamlHandlers(OpenMetadataApplicationConfig catalogConfig, Environment environment)
@@ -389,6 +418,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private void registerResources(OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi) {
+    List<String> extensionResources =
+        config.getExtensionConfiguration() != null ? config.getExtensionConfiguration().getResourcePackage() : null;
+    CollectionRegistry.initialize(extensionResources);
     CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer, authenticatorHandler);
     environment.jersey().register(new JsonPatchProvider());
     ErrorPageErrorHandler eph = new ErrorPageErrorHandler();
@@ -417,12 +449,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.getApplicationContext().addServlet(new ServletHolder(new FeedServlet()), pathSpec);
     // Upgrade connection to websocket from Http
     try {
-      WebSocketUpgradeFilter webSocketUpgradeFilter =
-          WebSocketUpgradeFilter.configureContext(environment.getApplicationContext());
-      webSocketUpgradeFilter.addMapping(
-          new ServletPathSpec(pathSpec),
-          (servletUpgradeRequest, servletUpgradeResponse) ->
-              new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
+      WebSocketUpgradeFilter.configure(environment.getApplicationContext());
+      NativeWebSocketServletContainerInitializer.configure(
+          environment.getApplicationContext(),
+          (context, container) -> {
+            container.addMapping(
+                new ServletPathSpec(pathSpec),
+                (servletUpgradeRequest, servletUpgradeResponse) ->
+                    new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
+          });
     } catch (ServletException ex) {
       LOG.error("Websocket Upgrade Filter error : " + ex.getMessage());
     }
@@ -441,8 +476,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
 
     @Override
-    public void stop() throws InterruptedException {
+    public void stop() throws InterruptedException, SchedulerException {
       EventPubSub.shutdown();
+      ReportsHandler.shutDown();
       LOG.info("Stopping the application");
     }
   }

@@ -19,6 +19,7 @@ from sqlalchemy.dialects.postgresql import BYTEA
 from sqlalchemy.sql import sqltypes as types
 from sqlalchemy.types import TypeEngine
 
+from metadata.generated.schema.entity.data.table import DataType
 from metadata.ingestion.source import sqa_types
 
 
@@ -234,6 +235,44 @@ class ColumnTypeParser:
         "LONGTEXT": "TEXT",
         "TINYTEXT": "TEXT",
         "YEAR": "YEAR",
+        # Tableau
+        "EMPTY": "NULL",
+        "I2": "INT",
+        "I4": "INT",
+        "R4": "FLOAT",
+        "R8": "DOUBLE",
+        "CY": "NUMERIC",
+        "BSTR": "BINARY",
+        "IDISPATCH": "BINARY",
+        "ERROR": "VARCHAR",
+        "IUNKNOWN": "UNKNOWN",
+        "UI1": "INT",
+        "BYREF": "BINARY",
+        "I1": "INT",
+        "UI2": "SMALLINT",
+        "UI4": "INT",
+        "I8": "BIGINT",
+        "UI8": "BIGINT",
+        "GUID": "BINARY",
+        "VECTOR": "BINARY",
+        "FILETIME": "BINARY",
+        "RESERVED": "BINARY",
+        "STR": "STRING",
+        "WSTR": "STRING",
+        "UDT": "JSON",
+        "DBDATE": "DATE",
+        "DBTIME": "TIME",
+        "DBTIMESTAMP": "TIMESTAMP",
+        "HCHAPTER": "VARCHAR",
+        "PROPVARIANT": "BINARY",
+        "VARNUMERIC": "NUMERIC",
+        "WDC_INT": "INT",
+        "WDC_FLOAT": "FLOAT",
+        "WDC_STRING": "STRING",
+        "WDC_DATETIME": "DATETIME",
+        "WDC_BOOL": "BOOLEAN",
+        "WDC_DATE": "DATE",
+        "WDC_GEOMETRY": "GEOMETRY",
     }
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")
@@ -291,11 +330,18 @@ class ColumnTypeParser:
             arr_data_type = ColumnTypeParser._parse_primitive_datatype_string(
                 data_type[6:-1]
             )["dataType"]
-            return {
+
+            data_type_string = {
                 "dataType": "ARRAY",
                 "arrayDataType": arr_data_type,
                 "dataTypeDisplay": data_type,
             }
+            if arr_data_type == DataType.STRUCT.value:
+                children = ColumnTypeParser._parse_struct_fields_string(
+                    data_type[6:-1][7:-1]
+                )["children"]
+                data_type_string["children"] = children
+            return data_type_string
         if data_type.startswith("map<"):
             if data_type[-1] != ">":
                 raise ValueError(f"expected '>' found: {data_type}")

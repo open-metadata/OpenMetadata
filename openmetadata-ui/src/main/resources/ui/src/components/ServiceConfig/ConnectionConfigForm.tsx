@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-import { ISubmitEvent } from '@rjsf/core';
-import { ObjectStoreServiceType } from 'generated/entity/data/container';
+import { IChangeEvent } from '@rjsf/core';
+import validator from '@rjsf/validator-ajv8';
+import { StorageServiceType } from 'generated/entity/data/container';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { Fragment, FunctionComponent } from 'react';
-import { getObjectStoreConfig } from 'utils/ObjectStoreServiceUtils';
+import { getStorageServiceConfig } from 'utils/StorageServiceUtils';
 import { ServiceCategory } from '../../enums/service.enum';
 import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
 import { MlModelServiceType } from '../../generated/api/services/createMlModelService';
@@ -41,8 +42,8 @@ interface Props {
   serviceType: string;
   serviceCategory: ServiceCategory;
   status: LoadingState;
-  onFocus: (fieldName: string) => void;
-  onSave: (data: ISubmitEvent<ConfigData>) => void;
+  onFocus: (id: string) => void;
+  onSave: (data: IChangeEvent<ConfigData>) => Promise<void>;
   disableTestConnection?: boolean;
   onCancel?: () => void;
 }
@@ -63,9 +64,10 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
     ? ((data as ServicesType).connection?.config as ConfigData)
     : ({} as ConfigData);
 
-  const handleSave = (data: ISubmitEvent<ConfigData>) => {
+  const handleSave = async (data: IChangeEvent<ConfigData>) => {
     const updatedFormData = formatFormDataForSubmit(data.formData);
-    onSave({ ...data, formData: updatedFormData });
+
+    await onSave({ ...data, formData: updatedFormData });
   };
 
   const getConfigFields = () => {
@@ -113,8 +115,8 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
 
         break;
       }
-      case ServiceCategory.OBJECT_STORE_SERVICES: {
-        connSch = getObjectStoreConfig(serviceType as ObjectStoreServiceType);
+      case ServiceCategory.STORAGE_SERVICES: {
+        connSch = getStorageServiceConfig(serviceType as StorageServiceType);
 
         break;
       }
@@ -132,6 +134,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         serviceType={serviceType}
         status={status}
         uiSchema={connSch.uiSchema}
+        validator={validator}
         onCancel={onCancel}
         onFocus={onFocus}
         onSubmit={handleSave}

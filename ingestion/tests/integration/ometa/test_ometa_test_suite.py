@@ -80,10 +80,11 @@ class OMetaTestSuiteTest(TestCase):
     def setUpClass(cls) -> None:
         """set up tests"""
 
-        cls.test_suite: TestSuite = cls.metadata.create_or_update(
+        cls.test_suite: TestSuite = cls.metadata.create_or_update_executable_test_suite(
             CreateTestSuiteRequest(
-                name="testSuiteForIntegrationTest",
+                name="sample_data.ecommerce_db.shopify.dim_address.TestSuite",
                 description="This is a test suite for the integration tests",
+                executableEntityReference="sample_data.ecommerce_db.shopify.dim_address",
             )
         )
 
@@ -111,9 +112,12 @@ class OMetaTestSuiteTest(TestCase):
     def test_get_or_create_test_suite(self):
         """test we get a test suite object"""
         test_suite = self.metadata.get_or_create_test_suite(
-            "testSuiteForIntegrationTest"
+            "sample_data.ecommerce_db.shopify.dim_address.TestSuite"
         )
-        assert test_suite.name.__root__ == "testSuiteForIntegrationTest"
+        assert (
+            test_suite.name.__root__
+            == "sample_data.ecommerce_db.shopify.dim_address.TestSuite"
+        )
         assert isinstance(test_suite, TestSuite)
 
     def test_get_or_create_test_definition(self):
@@ -130,6 +134,26 @@ class OMetaTestSuiteTest(TestCase):
             "sample_data.ecommerce_db.shopify.dim_address.testCaseForIntegration"
         )
         assert test_case.name.__root__ == "testCaseForIntegration"
+        assert isinstance(test_case, OMetaTestCase)
+
+    def test_create_test_case(self):
+        """test we get a create the test case object if it does not exists"""
+        test_case_fqn = (
+            "sample_data.ecommerce_db.shopify.dim_address.aNonExistingTestCase"
+        )
+        test_case = self.metadata.get_by_name(
+            entity=OMetaTestCase, fqn=test_case_fqn, fields=["*"]
+        )
+
+        assert test_case is None
+
+        test_case = self.metadata.get_or_create_test_case(
+            test_case_fqn,
+            test_suite_fqn=self.test_suite.fullyQualifiedName.__root__,
+            test_definition_fqn="columnValuesToMatchRegex",
+            entity_link="<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::last_name>",
+        )
+        assert test_case.name.__root__ == "aNonExistingTestCase"
         assert isinstance(test_case, OMetaTestCase)
 
     def test_get_test_case_results(self):

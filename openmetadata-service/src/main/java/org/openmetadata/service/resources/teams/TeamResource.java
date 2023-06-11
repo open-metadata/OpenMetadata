@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.teams;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_GROUP;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_ORGANIZATION;
 
@@ -27,6 +28,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -55,6 +57,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
@@ -100,18 +103,23 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   }
 
   @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation(
+        "profile,owns,defaultRoles,parents,children,policies,userCount,childrenCount", MetadataOperation.VIEW_BASIC);
+    return listOf(MetadataOperation.EDIT_POLICY, MetadataOperation.EDIT_USERS);
+  }
+
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    dao.initOrganization();
+    repository.initOrganization();
   }
 
   public static class TeamList extends ResultList<Team> {
-    @SuppressWarnings("unused") /* Required for tests */
-    TeamList() {}
+    /* Required for serde */
   }
 
   public static class TeamHierarchyList extends ResultList<TeamHierarchy> {
-    @SuppressWarnings("unused") /* Required for tests */
-    TeamHierarchyList() {}
+    /* Required for serde */
   }
 
   static final String FIELDS =
@@ -146,7 +154,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           Boolean isJoinable)
       throws IOException {
     ListFilter filter = new ListFilter(Include.NON_DELETED);
-    return new ResultList<>(dao.listHierarchy(filter, limitParam, isJoinable));
+    return new ResultList<>(repository.listHierarchy(filter, limitParam, isJoinable));
   }
 
   @GET
@@ -517,7 +525,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         .withTeamType(ct.getTeamType())
         .withParents(EntityUtil.toEntityReferences(ct.getParents(), Entity.TEAM))
         .withChildren(EntityUtil.toEntityReferences(ct.getChildren(), Entity.TEAM))
-        .withPolicies(EntityUtil.toEntityReferences(ct.getPolicies(), Entity.POLICY));
+        .withPolicies(EntityUtil.toEntityReferences(ct.getPolicies(), Entity.POLICY))
+        .withEmail(ct.getEmail());
   }
 
   @Override

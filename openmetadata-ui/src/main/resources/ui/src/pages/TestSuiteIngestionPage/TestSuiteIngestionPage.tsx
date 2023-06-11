@@ -17,7 +17,6 @@ import TestSuiteIngestion from 'components/AddDataQualityTest/TestSuiteIngestion
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayout from 'components/containers/PageLayout';
 import Loader from 'components/Loader/Loader';
 import { isUndefined, startCase } from 'lodash';
@@ -117,30 +116,24 @@ const TestSuiteIngestionPage = () => {
   }
 
   if (isUndefined(testSuite)) {
-    return (
-      <ErrorPlaceHolder>
-        <p>{t('label.no-data-found')}</p>
-      </ErrorPlaceHolder>
-    );
+    return <ErrorPlaceHolder />;
   }
 
   return (
-    <PageContainerV1>
-      <div className="tw-self-center">
-        <PageLayout
-          classes="tw-max-w-full-hd tw-h-full tw-pt-4"
-          header={<TitleBreadcrumb titleLinks={slashedBreadCrumb} />}
-          layout={PageLayoutType['2ColRTL']}
-          pageTitle={t('label.test-suite-ingestion')}
-          rightPanel={<RightPanel data={INGESTION_DATA} />}>
-          <TestSuiteIngestion
-            ingestionPipeline={ingestionPipeline}
-            testSuite={testSuite}
-            onCancel={handleCancelBtn}
-          />
-        </PageLayout>
-      </div>
-    </PageContainerV1>
+    <div className="tw-self-center">
+      <PageLayout
+        classes="tw-max-w-full-hd tw-h-full tw-pt-4"
+        header={<TitleBreadcrumb titleLinks={slashedBreadCrumb} />}
+        layout={PageLayoutType['2ColRTL']}
+        pageTitle={t('label.test-suite-ingestion')}
+        rightPanel={<RightPanel data={INGESTION_DATA} />}>
+        <TestSuiteIngestion
+          ingestionPipeline={ingestionPipeline}
+          testSuite={testSuite}
+          onCancel={handleCancelBtn}
+        />
+      </PageLayout>
+    </div>
   );
 };
 

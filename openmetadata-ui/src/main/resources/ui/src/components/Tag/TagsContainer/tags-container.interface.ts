@@ -12,11 +12,9 @@
  */
 
 import { EntityTags, TagOption } from 'Models';
-import { ReactNode } from 'react';
 import { TagProps } from '../Tags/tags.interface';
 
 export type TagsContainerProps = {
-  children?: ReactNode;
   editable?: boolean;
   dropDownHorzPosRight?: boolean;
   selectedTags: Array<EntityTags>;
@@ -24,8 +22,13 @@ export type TagsContainerProps = {
   type?: TagProps['type'];
   showTags?: boolean;
   showAddTagButton?: boolean;
+  showEditTagButton?: boolean;
   className?: string;
   containerClass?: string;
-  onSelectionChange?: (selectedTags: Array<EntityTags>) => void;
-  onCancel?: (event: React.MouseEvent<HTMLElement, MouseEvent>) => void;
+  onSelectionChange: (selectedTags: Array<EntityTags>) => void;
+  onCancel?: () => void;
+  onAddButtonClick?: () => void;
+  onEditButtonClick?: () => void;
+  placeholder?: string;
+  showLimited?: boolean;
 };

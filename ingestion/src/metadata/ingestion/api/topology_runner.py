@@ -73,13 +73,11 @@ class TopologyRunnerMixin(Generic[C]):
             )
 
             for element in node_producer() or []:
-
                 for stage in node.stages:
                     logger.debug(f"Processing stage: {stage}")
 
                     stage_fn = getattr(self, stage.processor)
                     for entity_request in stage_fn(element) or []:
-
                         try:
                             # yield and make sure the data is updated
                             yield from self.sink_request(

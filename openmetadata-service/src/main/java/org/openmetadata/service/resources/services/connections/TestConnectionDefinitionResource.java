@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.services.connections;
 
-import com.google.inject.Inject;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,6 +37,7 @@ import org.openmetadata.service.jdbi3.TestConnectionDefinitionRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -59,7 +61,6 @@ public class TestConnectionDefinitionResource
     return testConnectionDefinition;
   }
 
-  @Inject
   public TestConnectionDefinitionResource(CollectionDAO dao, Authorizer authorizer) {
     super(TestConnectionDefinition.class, new TestConnectionDefinitionRepository(dao), authorizer);
   }
@@ -67,17 +68,20 @@ public class TestConnectionDefinitionResource
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     List<TestConnectionDefinition> testConnectionDefinitions =
-        dao.getEntitiesFromSeedData(".*json/data/testConnections/.*\\.json$");
+        repository.getEntitiesFromSeedData(".*json/data/testConnections/.*\\.json$");
+
+    for (TestConnectionDefinition testConnectionDefinition :
+        repository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter(Include.ALL))) {
+      repository.delete(ADMIN_USER_NAME, testConnectionDefinition.getId(), true, true);
+    }
+
     for (TestConnectionDefinition testConnectionDefinition : testConnectionDefinitions) {
-      dao.initializeEntity(testConnectionDefinition);
+      repository.initializeEntity(testConnectionDefinition);
     }
   }
 
   public static class TestConnectionDefinitionList extends ResultList<TestConnectionDefinition> {
-    @SuppressWarnings("unused")
-    public TestConnectionDefinitionList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   // TODO remove the list method?

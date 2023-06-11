@@ -301,20 +301,3 @@ class PowerBiApiClient:
             poll += 1
 
         return False
-
-    def get_dashboard_url(self, workspace_id: str, dashboard_id: str) -> str:
-        """
-        Method to build the dashboard url
-        """
-        return f"/groups/{workspace_id}/dashboards/{dashboard_id}"
-
-    def get_chart_url(
-        self, report_id: Optional[str], workspace_id: str, dashboard_id: str
-    ) -> str:
-        """
-        Method to build the chart url
-        """
-        chart_url_postfix = (
-            f"reports/{report_id}" if report_id else f"dashboards/{dashboard_id}"
-        )
-        return f"/groups/{workspace_id}/{chart_url_postfix}"

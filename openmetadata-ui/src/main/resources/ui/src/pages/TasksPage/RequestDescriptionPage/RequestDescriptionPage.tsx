@@ -57,6 +57,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
 import TaskPageLayout from '../shared/TaskPageLayout';
+import '../TaskPage.style.less';
 import { cardStyles } from '../TaskPage.styles';
 import { EntityData, Option } from '../TasksPage.interface';
 
@@ -119,7 +120,7 @@ const RequestDescription = () => {
             {t('label.column-entity', { entity: t('label.detail-plural') })}
           </p>
           <p>
-            <span className="tw-text-grey-muted">{`${t('label.type')}:`}</span>{' '}
+            <span className="text-grey-muted">{`${t('label.type')}:`}</span>{' '}
             <span>{columnObject.dataTypeDisplay}</span>
           </p>
           <p>{columnObject?.tags?.map((tag) => `#${tag.tagFQN}`)?.join(' ')}</p>
@@ -219,7 +220,7 @@ const RequestDescription = () => {
         />
 
         <Card
-          className="m-t-0"
+          className="m-t-0 request-description"
           key="request-description"
           style={{ ...cardStyles }}
           title={t('label.create-entity', {
@@ -236,16 +237,23 @@ const RequestDescription = () => {
                 placeholder={t('label.task-entity', {
                   entity: t('label.title'),
                 })}
-                style={{ margin: '4px 0px' }}
               />
             </Form.Item>
             <Form.Item
               data-testid="assignees"
               label={`${t('label.assignee-plural')}:`}
-              name="assignees">
+              name="assignees"
+              rules={[
+                {
+                  required: true,
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.assignee-plural'),
+                  }),
+                },
+              ]}>
               <Assignees
-                assignees={assignees}
                 options={options}
+                value={assignees}
                 onChange={setAssignees}
                 onSearch={onSearch}
               />
@@ -292,11 +300,11 @@ const RequestDescription = () => {
         <h6 className="tw-text-base">
           {capitalize(entityType)} {t('label.detail-plural')}
         </h6>
-        <div className="tw-flex tw-mb-4">
-          <span className="tw-text-grey-muted">{`${t('label.owner')}:`}</span>{' '}
+        <div className="d-flex tw-mb-4">
+          <span className="text-grey-muted">{`${t('label.owner')}:`}</span>{' '}
           <span>
             {entityData.owner ? (
-              <span className="tw-flex tw-ml-1">
+              <span className="d-flex tw-ml-1">
                 <ProfilePicture
                   displayName={getEntityName(entityData.owner)}
                   id=""
@@ -308,7 +316,7 @@ const RequestDescription = () => {
                 </span>
               </span>
             ) : (
-              <span className="tw-text-grey-muted tw-ml-1">
+              <span className="text-grey-muted tw-ml-1">
                 {t('label.no-entity', { entity: t('label.owner') })}
               </span>
             )}
@@ -319,7 +327,7 @@ const RequestDescription = () => {
           {entityTier ? (
             entityTier
           ) : (
-            <span className="tw-text-grey-muted">
+            <span className="text-grey-muted">
               {t('label.no-entity', { entity: t('label.tier') })}
             </span>
           )}

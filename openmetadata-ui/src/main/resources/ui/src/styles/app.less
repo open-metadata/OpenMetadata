@@ -13,11 +13,8 @@
 
 // common css utils file
 @import url('./variables.less');
-@primary: #7147e8;
 @primary-light: rgb(244, 240, 253);
 @primary-hover-light: rgba(219, 209, 249);
-@white: #fff;
-@gray: #dde3ea;
 @trigger-btn-hover-bg: #efefef;
 
 // Global css
@@ -33,6 +30,10 @@
   box-shadow: none;
 }
 
+.overflow-hidden {
+  overflow: hidden;
+}
+
 .deleted-badge-button {
   margin-left: 4px;
   padding: 2px 8px;
@@ -42,25 +43,59 @@
   background-color: @error-light-color;
 }
 
+.show-more,
+a[href]:not(.button-comp):not(.no-underline):not(.link-text-info),
+.link-text {
+  color: @link-color;
+
+  &:hover {
+    color: @link-color;
+    text-decoration: underline;
+  }
+
+  &:focus {
+    color: @link-color;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+}
+
+a[href].link-text-grey,
+.link-text-grey {
+  color: @text-color;
+
+  &:hover {
+    color: @text-color;
+    text-decoration: underline;
+  }
+  &:focus {
+    color: @text-color;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+}
+
+// used in glossary + query right panel, to keep both consistent
+.right-panel-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: @text-grey-muted;
+}
+
 // Left and Right Panel shadow color
 .panel-shadow-color {
   box-shadow: @panels-shadow-color;
 }
 
-//font weight
-.font-300 {
-  font-weight: 300;
-}
-.font-medium {
-  font-weight: 500;
-}
-.text-600 {
-  font-weight: 600;
-}
-
 // text color
 .text-primary {
-  color: @primary;
+  color: @primary-color;
+  &:hover {
+    color: @primary-color;
+  }
+}
+.text-color-inherit {
+  color: inherit;
 }
 .error-text {
   color: #ff4c3b;
@@ -69,10 +104,13 @@
   color: @white;
 }
 .text-grey-muted {
-  color: #6b7280;
+  color: @text-grey-muted;
 }
 .text-grey-body {
   color: @text-color-secondary;
+}
+.text-gray-400 {
+  color: #9ca3af;
 }
 .text-body {
   color: @text-color-secondary;
@@ -130,10 +168,13 @@
   border-color: @border-color;
 }
 .border-primary {
-  border-color: @primary;
+  border-color: @primary-color;
 }
 .border-gray {
-  border-color: @gray;
+  border-color: @border-color;
+}
+.border-light-gray {
+  border-color: @light-border-color;
 }
 
 .line-height-16 {
@@ -171,20 +212,20 @@
   background: @primary-light;
 }
 .bg-primary {
-  background: @primary;
+  background: @primary-color;
 }
 .bg-primary-hover-lite {
   background-color: @primary-hover-light;
 }
 .bg-grey {
-  background-color: @gray;
+  background-color: @border-color;
 }
 .bg-white {
   background-color: @white;
 }
 
 .activeCategory {
-  border-left: 2px solid @primary;
+  border-left: 2px solid @primary-color;
   background: @primary-light;
   padding-left: 10px;
   font-weight: 600;
@@ -241,27 +282,12 @@
   }
 }
 
-// Font Weight
-.font-normal {
-  font-weight: 500;
-}
-.font-semibold {
-  font-weight: 600;
-}
-.font-bold {
-  font-weight: 700;
-}
-
 .transform-180 {
   transform: rotate(180deg);
 }
 
 .no-underline {
   text-decoration: none;
-}
-
-.bg-white {
-  background: @white;
 }
 
 .z-5 {
@@ -279,7 +305,8 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  padding: 24px 16px 0px 16px;
+  padding: 16px;
+  padding-bottom: 0;
 }
 
 .description-text {
@@ -293,6 +320,8 @@
   font-weight: 700;
   font-size: 18px;
   line-height: 22px;
+  color: @text-color !important;
+  text-decoration: none !important;
 }
 
 /* Opacity CSS start */
@@ -350,14 +379,22 @@
   white-space: nowrap;
 }
 
+.service-form-container {
+  margin: 16px auto 0;
+  padding-bottom: 16px;
+}
+
 // breadcrumb
 
-.link-title {
-  font-size: 14px !important;
-  color: @text-grey-muted !important;
+.breadcrumb-item {
+  font-size: 12px;
+  .link-title {
+    font-size: inherit !important;
+    color: @text-grey-muted !important;
+  }
 }
+
 .link-title:hover {
-  color: @primary-color !important;
   text-decoration: none !important;
 }
 
@@ -376,4 +413,30 @@
 
 .switch-field .ant-form-item {
   margin: 0;
+}
+
+.common-left-panel-card-heading {
+  color: @group-title-color;
+  font-size: 12px;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  ::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+// beta tag for service page
+.service-beta-tag {
+  sup {
+    padding: 0 4px;
+    margin-left: 2px;
+    font-size: 10px;
+  }
+}
+
+/* Tabs */
+.ant-tabs-top > .ant-tabs-nav::before {
+  border-color: @border-color;
 }

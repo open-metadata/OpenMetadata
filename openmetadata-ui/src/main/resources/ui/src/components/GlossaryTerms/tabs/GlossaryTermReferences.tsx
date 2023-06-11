@@ -16,7 +16,11 @@ import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as ExternalLinkIcon } from 'assets/svg/external-links.svg';
 import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
 import TagButton from 'components/TagButton/TagButton.component';
-import { DE_ACTIVE_COLOR, TEXT_BODY_COLOR } from 'constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
+  TEXT_BODY_COLOR,
+} from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { t } from 'i18next';
 import { cloneDeep, isEqual } from 'lodash';
@@ -78,12 +82,12 @@ const GlossaryTermReferences = ({
 
   return (
     <div data-testid="references-container">
-      <Space className="w-full" direction="vertical">
+      <div className="w-full">
         <Space
           className="w-full"
           data-testid={`section-${t('label.reference-plural')}`}>
           <div className="flex-center">
-            <Typography.Text className="glossary-subheading">
+            <Typography.Text className="right-panel-label">
               {t('label.reference-plural')}
             </Typography.Text>
             {references.length > 0 && permissions.EditAll && (
@@ -94,7 +98,7 @@ const GlossaryTermReferences = ({
                     : NO_PERMISSION_FOR_ACTION
                 }>
                 <Button
-                  className="cursor-pointer m--t-xss m-l-xss"
+                  className="cursor-pointer flex-center m-l-xss"
                   data-testid="edit-button"
                   disabled={!permissions.EditAll}
                   icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
@@ -109,33 +113,45 @@ const GlossaryTermReferences = ({
         <>
           <div className="d-flex flex-wrap">
             {references.map((ref) => (
-              <Tag className="term-reference-tag tw-bg-white" key={ref.name}>
-                <a
-                  className=""
-                  data-testid="owner-link"
-                  href={ref?.endpoint}
-                  rel="noopener noreferrer"
-                  target="_blank">
-                  <Space align="center" size={4}>
-                    <ExternalLinkIcon color={TEXT_BODY_COLOR} width="12px" />
-                    <Typography.Text>{ref?.name}</Typography.Text>
-                  </Space>
-                </a>
+              <Tag
+                className="m-r-xs m-t-xs d-flex items-center term-reference-tag bg-white"
+                key={ref.name}>
+                <Tooltip placement="bottomLeft" title={ref.name}>
+                  <a
+                    data-testid="owner-link"
+                    href={ref?.endpoint}
+                    rel="noopener noreferrer"
+                    target="_blank">
+                    <div className="d-flex items-center">
+                      <ExternalLinkIcon
+                        className="m-r-xss"
+                        color={TEXT_BODY_COLOR}
+                        width="12px"
+                      />
+                      <span className="text-body">{ref?.name}</span>
+                    </div>
+                  </a>
+                </Tooltip>
               </Tag>
             ))}
             {permissions.EditAll && references.length === 0 && (
               <TagButton
-                className="tw-text-primary"
+                className="tw-text-primary cursor-pointer"
+                dataTestId="term-references-add-button"
                 icon={<PlusIcon height={16} name="plus" width={16} />}
                 label={t('label.add')}
+                tooltip=""
                 onClick={() => {
                   setIsViewMode(false);
                 }}
               />
             )}
+            {!permissions.EditAll && references.length === 0 && (
+              <div>{NO_DATA_PLACEHOLDER}</div>
+            )}
           </div>
         </>
-      </Space>
+      </div>
 
       <GlossaryTermReferencesModal
         isVisible={!isViewMode}

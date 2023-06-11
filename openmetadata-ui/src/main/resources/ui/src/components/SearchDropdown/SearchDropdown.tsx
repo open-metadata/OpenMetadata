@@ -14,6 +14,7 @@
 import {
   Button,
   Card,
+  Col,
   Divider,
   Dropdown,
   Input,
@@ -26,7 +27,14 @@ import {
 } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined } from 'lodash';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import React, {
+  FC,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDown } from '../../assets/svg/DropDown.svg';
 import {
@@ -141,78 +149,104 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     setSelectedOptions(selectedKeys);
   }, [isDropDownOpen, selectedKeys]);
 
+  const getDropdownBody = useCallback(
+    (menuNode: ReactNode) => {
+      if (isSuggestionsLoading) {
+        return (
+          <Row align="middle" className="p-y-sm" justify="center">
+            <Col>
+              <Loader size="small" />
+            </Col>
+          </Row>
+        );
+      }
+
+      return options.length > 0 || selectedOptions.length > 0 ? (
+        menuNode
+      ) : (
+        <Row align="middle" className="m-y-sm" justify="center">
+          <Col>
+            <Typography.Text>{t('message.no-data-available')}</Typography.Text>
+          </Col>
+        </Row>
+      );
+    },
+    [isSuggestionsLoading, options, selectedOptions]
+  );
+
+  const dropdownCardComponent = useCallback(
+    (menuNode: ReactNode) => (
+      <Card
+        bodyStyle={{ padding: 0 }}
+        className="custom-dropdown-render"
+        data-testid="drop-down-menu">
+        <Space direction="vertical" size={0}>
+          <div className="p-t-sm p-x-sm">
+            <Input
+              autoFocus
+              data-testid="search-input"
+              placeholder={`${t('label.search-entity', {
+                entity: label,
+              })}...`}
+              onChange={(e) => {
+                const { value } = e.target;
+                debouncedOnSearch(value);
+              }}
+            />
+          </div>
+          {showClearAllBtn && (
+            <>
+              <Divider className="m-t-xs m-b-0" />
+              <Button
+                className="p-0 m-l-sm"
+                data-testid="clear-button"
+                type="link"
+                onClick={handleClear}>
+                {t('label.clear-entity', {
+                  entity: t('label.all'),
+                })}
+              </Button>
+            </>
+          )}
+          <Divider
+            className={classNames(showClearAllBtn ? 'm-y-0' : 'm-t-xs m-b-0')}
+          />
+          {getDropdownBody(menuNode)}
+          <Space className="p-sm p-t-xss">
+            <Button
+              className="update-btn"
+              data-testid="update-btn"
+              size="small"
+              onClick={handleUpdate}>
+              {t('label.update')}
+            </Button>
+            <Button
+              data-testid="close-btn"
+              size="small"
+              type="link"
+              onClick={handleDropdownClose}>
+              {t('label.close')}
+            </Button>
+          </Space>
+        </Space>
+      </Card>
+    ),
+    [
+      label,
+      debouncedOnSearch,
+      showClearAllBtn,
+      handleClear,
+      getDropdownBody,
+      handleUpdate,
+      handleDropdownClose,
+    ]
+  );
+
   return (
     <Dropdown
       destroyPopupOnHide
       data-testid={searchKey}
-      dropdownRender={(menuNode) => (
-        <Card
-          bodyStyle={{ padding: 0 }}
-          className="custom-dropdown-render"
-          data-testid="drop-down-menu">
-          <Space direction="vertical" size={0}>
-            <div className="p-t-sm p-x-sm">
-              <Input
-                autoFocus
-                data-testid="search-input"
-                placeholder={`${t('label.search-entity', {
-                  entity: label,
-                })}...`}
-                onChange={(e) => {
-                  const { value } = e.target;
-                  debouncedOnSearch(value);
-                }}
-              />
-            </div>
-            {showClearAllBtn && (
-              <>
-                <Divider className="m-t-xs m-b-0" />
-                <Button
-                  className="p-0 m-l-sm"
-                  data-testid="clear-button"
-                  type="link"
-                  onClick={handleClear}>
-                  {t('label.clear-entity', {
-                    entity: t('label.all'),
-                  })}
-                </Button>
-              </>
-            )}
-            <Divider
-              className={classNames(showClearAllBtn ? 'm-y-0' : 'm-t-xs m-b-0')}
-            />
-            {isSuggestionsLoading ? (
-              <Row align="middle" className="p-y-sm" justify="center">
-                <Loader size="small" />
-              </Row>
-            ) : options.length > 0 || selectedOptions.length > 0 ? (
-              menuNode
-            ) : (
-              <Row className="m-y-sm" justify="center">
-                <Typography.Text>
-                  {t('message.no-data-available')}
-                </Typography.Text>
-              </Row>
-            )}
-            <Space className="p-sm p-t-xss">
-              <Button
-                className="update-btn"
-                data-testid="update-btn"
-                size="small"
-                onClick={handleUpdate}>
-                {t('label.update')}
-              </Button>
-              <Button
-                data-testid="close-btn"
-                size="small"
-                type="link"
-                onClick={handleDropdownClose}>
-                {t('label.close')}
-              </Button>
-            </Space>
-          </Space>
-        </Card>
-      )}
+      dropdownRender={dropdownCardComponent}
       key={searchKey}
       menu={{ items: menuOptions, onClick: handleMenuItemClick }}
       open={isDropDownOpen}

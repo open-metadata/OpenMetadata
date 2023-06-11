@@ -16,6 +16,7 @@ import { Auth0Provider } from '@auth0/auth0-react';
 import { Configuration } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
 import { LoginCallback } from '@okta/okta-react';
+import appState from 'AppState';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfiguration';
@@ -36,7 +37,6 @@ import { useHistory, useLocation } from 'react-router-dom';
 import axiosClient from 'rest/index';
 import { fetchAuthenticationConfig, fetchAuthorizerConfig } from 'rest/miscAPI';
 import { getLoggedInUser, updateUser } from 'rest/userAPI';
-import appState from '../../../AppState';
 import { NO_AUTH } from '../../../constants/auth.constants';
 import { REDIRECT_PATHNAME, ROUTES } from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/axios.enum';
@@ -120,7 +120,6 @@ export const AuthProvider = ({
   >([]);
 
   let silentSignInRetries = 0;
-
   const handleUserCreated = (isUser: boolean) => setIsUserCreated(isUser);
 
   const onLoginHandler = () => {
@@ -134,10 +133,13 @@ export const AuthProvider = ({
     clearTimeout(timeoutId);
     authenticatorRef.current?.invokeLogout();
 
+    // reset the user details on logout
+    appState.updateUserDetails({} as User);
+
     // remove analytics session on logout
     removeSession();
     setLoading(false);
-  }, [timeoutId]);
+  }, [timeoutId, appState]);
 
   const onRenewIdTokenHandler = () => {
     return authenticatorRef.current?.renewIdToken();
@@ -254,14 +256,20 @@ export const AuthProvider = ({
    * This method will be called when the id token is about to expire.
    */
   const renewIdToken = async () => {
-    const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
-    if (onRenewIdTokenHandlerPromise) {
-      await onRenewIdTokenHandlerPromise;
+    try {
+      const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
+      onRenewIdTokenHandlerPromise && (await onRenewIdTokenHandlerPromise);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(
+        `Error while refreshing token: `,
+        (error as AxiosError).message
+      );
 
-      return localState.getOidcToken();
-    } else {
-      throw new Error('No handler attached for Renew Token.');
+      throw error;
     }
+
+    return localState.getOidcToken();
   };
 
   /**
@@ -281,7 +289,7 @@ export const AuthProvider = ({
               startTokenExpiryTimer();
             })
             .catch((err) => {
-              if (err.message.includes('Frame window timeouted out')) {
+              if (err.message.includes('Frame window timed out')) {
                 silentSignInRetries = 0;
                 // eslint-disable-next-line @typescript-eslint/no-use-before-define
                 startTokenExpiryTimer();
@@ -306,8 +314,9 @@ export const AuthProvider = ({
   const startTokenExpiryTimer = () => {
     // Extract expiry
     const { isExpired, timeoutExpiry } = extractDetailsFromToken();
+    const refreshToken = localState.getRefreshToken();
 
-    if (!isExpired && isNumber(timeoutExpiry)) {
+    if (!isExpired && isNumber(timeoutExpiry) && refreshToken) {
       // Have 5m buffer before start trying for silent signIn
       // If token is about to expire then start silentSignIn
       // else just set timer to try for silentSignIn before token expires

@@ -13,8 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { ModifiedGlossaryTerm } from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
-import { GlossaryCSVRecord } from 'components/Glossary/ImportGlossary/ImportGlossary.interface';
-import { isEmpty, isUndefined, omit } from 'lodash';
+import { isUndefined, omit } from 'lodash';
 import { ListGlossaryTermsParams } from 'rest/glossaryAPI';
 import { searchData } from 'rest/miscAPI';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
@@ -74,24 +73,19 @@ export const getEntityReferenceFromGlossary = (
   };
 };
 
-export const parseCSV = (csvData: string[][]) => {
-  const recordList: GlossaryCSVRecord[] = [];
-
-  if (!isEmpty(csvData)) {
-    const headers = csvData[0];
-
-    csvData.slice(1).forEach((line) => {
-      const record: GlossaryCSVRecord = {} as GlossaryCSVRecord;
-
-      headers.forEach((header, index) => {
-        record[header as keyof GlossaryCSVRecord] = line[index];
-      });
-
-      recordList.push(record);
-    });
-  }
-
-  return recordList;
+export const getEntityReferenceFromGlossaryTerm = (
+  glossaryTerm: GlossaryTerm
+): EntityReference => {
+  return {
+    deleted: glossaryTerm.deleted,
+    href: glossaryTerm.href,
+    fullyQualifiedName: glossaryTerm.fullyQualifiedName ?? '',
+    id: glossaryTerm.id,
+    type: 'glossaryTerm',
+    description: glossaryTerm.description,
+    displayName: glossaryTerm.displayName,
+    name: glossaryTerm.name,
+  };
 };
 
 // calculate root level glossary term
@@ -122,7 +116,7 @@ export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
     if (obj.fullyQualifiedName) {
       nodes[obj.fullyQualifiedName] = {
         ...obj,
-        children: [],
+        children: obj.children?.length ? [] : undefined,
       };
       const parentNode =
         obj.parent &&
@@ -210,3 +204,16 @@ export const getQueryFilterToExcludeTerm = (fqn: string) => ({
     },
   },
 });
+
+export const formatRelatedTermOptions = (
+  data: EntityReference[] | undefined
+) => {
+  return data
+    ? data.map((value) => ({
+        ...value,
+        value: value.id,
+        label: value.displayName || value.name,
+        key: value.id,
+      }))
+    : [];
+};

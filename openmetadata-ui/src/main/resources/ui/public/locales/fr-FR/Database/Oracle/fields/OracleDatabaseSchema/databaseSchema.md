@@ -1,1 +1,0 @@
-Le nom de la base de données. Ce champs est optionel, si vous souhaitez restraindre l'ingestion des métadonnées a une base de données seulement. Si ce champs est omit, OpenMetadata réalisera l'ingestion des metadadonnées de toutes les base de données (en fonction des filtres configurer dans le flux de travail dans la section suivante).

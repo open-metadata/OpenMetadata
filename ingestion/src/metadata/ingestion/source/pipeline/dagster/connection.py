@@ -26,13 +26,14 @@ from metadata.generated.schema.entity.services.connections.pipeline.dagsterConne
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.dagster.queries import TEST_QUERY_GRAPHQL
+from metadata.utils.helpers import clean_uri
 
 
 def get_connection(connection: DagsterConnection) -> DagsterGraphQLClient:
     """
     Create connection
     """
-    url = connection.host
+    url = clean_uri(connection.host)
     dagster_connection = DagsterGraphQLClient(
         url,
         transport=RequestsHTTPTransport(
@@ -66,6 +67,6 @@ def test_connection(
     test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
-        service_fqn=service_connection.type.value,
+        service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
     )

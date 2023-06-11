@@ -12,6 +12,7 @@
  */
 
 import {
+  checkServiceFieldSectionHighlighting,
   deleteCreatedService,
   editOwnerforCreatedService,
   goToAddNewServicePage,
@@ -44,9 +45,11 @@ describe('Kafka Ingestion', () => {
       cy.get('#root\\/bootstrapServers').type(
         Cypress.env('kafkaBootstrapServers')
       );
+      checkServiceFieldSectionHighlighting('bootstrapServers');
       cy.get('#root\\/schemaRegistryURL').type(
         Cypress.env('kafkaSchemaRegistryUrl')
       );
+      checkServiceFieldSectionHighlighting('schemaRegistryURL');
     };
 
     const addIngestionInput = () => {
@@ -56,16 +59,17 @@ describe('Kafka Ingestion', () => {
         .check();
       cy.get('[data-testid="filter-pattern-includes-topic"]')
         .should('be.visible')
-        .type(topicName);
+        .type(`${topicName}{enter}`);
     };
 
-    testServiceCreationAndIngestion(
-      'Kafka',
+    testServiceCreationAndIngestion({
+      serviceType: 'Kafka',
       connectionInput,
       addIngestionInput,
       serviceName,
-      'messaging'
-    );
+      type: 'messaging',
+      serviceCategory: SERVICE_TYPE.Messaging,
+    });
   });
 
   it('Update table description and verify description after re-run', () => {

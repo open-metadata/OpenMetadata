@@ -102,8 +102,25 @@ class DashboardServiceTopology(ServiceTopology):
                 nullable=True,
             ),
         ],
-        children=["dashboard"],
+        children=["bulk_data_model", "dashboard"],
         post_process=["mark_dashboards_as_deleted"],
+    )
+    # Dashboard Services have very different approaches when
+    # when dealing with data models. Tableau has the models
+    # tightly coupled with dashboards, while Looker
+    # handles them as independent entities.
+    # When configuring a new source, we will either implement
+    # the yield_bulk_datamodel or yield_datamodel functions.
+    bulk_data_model = TopologyNode(
+        producer="list_datamodels",
+        stages=[
+            NodeStage(
+                type_=DashboardDataModel,
+                context="dataModel",
+                processor="yield_bulk_datamodel",
+                consumer=["dashboard_service"],
+            )
+        ],
     )
     dashboard = TopologyNode(
         producer="get_dashboard",
@@ -238,9 +255,27 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         Get Dashboard Details
         """
 
+    def list_datamodels(self) -> Iterable[Any]:
+        """
+        Optional Node producer for processing datamodels in bulk
+        before the dashboards
+        """
+        return []
+
     def yield_datamodel(self, _) -> Optional[Iterable[CreateDashboardDataModelRequest]]:
         """
         Method to fetch DataModel linked to Dashboard
+        """
+
+        logger.debug(
+            f"DataModel is not supported for {self.service_connection.type.name}"
+        )
+
+    def yield_bulk_datamodel(
+        self, _
+    ) -> Optional[Iterable[CreateDashboardDataModelRequest]]:
+        """
+        Method to fetch DataModels in bulk
         """
 
         logger.debug(
@@ -255,6 +290,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
         We will look for the data in all the services
         we have informed.
+
+        TODO: This we'll need to not make it dependant
+          on the dbServiceNames since our lineage will now be
+          model -> dashboard
         """
         for db_service_name in self.source_config.dbServiceNames or []:
             yield from self.yield_dashboard_lineage_details(
@@ -309,12 +348,12 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             owner = self.get_owner_details(  # pylint: disable=assignment-from-none
                 dashboard_details=dashboard_details
             )
-            if owner and self.source_config.overrideOwner:
+            if owner and self.source_config.includeOwners:
                 self.metadata.patch_owner(
                     entity=Dashboard,
-                    entity_id=self.context.dashboard.id,
+                    source=self.context.dashboard,
                     owner=owner,
-                    force=True,
+                    force=False,
                 )
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -378,7 +417,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         Method to iterate through dashboard lists filter dashboards & yield dashboard details
         """
         for dashboard in self.get_dashboards_list():
-
             dashboard_name = self.get_dashboard_name(dashboard)
             if filter_by_dashboard(
                 self.source_config.dashboardFilterPattern,
@@ -429,3 +467,20 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         return fqn._build(  # pylint: disable=protected-access
             *context_names, entity_request.name.__root__
         )
+
+    def check_database_schema_name(self, database_schema_name: str):
+
+        """
+        Check if the input database schema name is equal to "<default>" and return the input name if it is not.
+
+        Args:
+        - database_schema_name (str): A string representing the name of the database schema to be checked.
+
+        Returns:
+        - None: If the input database schema name is equal to "<default>".
+        - database_schema_name (str): If the input database schema name is not equal to "<default>".
+        """
+        if database_schema_name == "<default>":
+            return None
+
+        return database_schema_name

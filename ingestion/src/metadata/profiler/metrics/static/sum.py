@@ -17,8 +17,9 @@ SUM Metric definition
 from sqlalchemy import column
 
 from metadata.profiler.metrics.core import StaticMetric, _label
+from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.functions.sum import SumFn
-from metadata.profiler.orm.registry import is_quantifiable
+from metadata.profiler.orm.registry import is_concatenable, is_quantifiable
 
 
 class Sum(StaticMetric):
@@ -40,14 +41,13 @@ class Sum(StaticMetric):
         if is_quantifiable(self.col.type):
             return SumFn(column(self.col.name))
 
+        if is_concatenable(self.col.type):
+            return SumFn(LenFn(column(self.col.name)))
+
         return None
 
-    def df_fn(self, df):
+    def df_fn(self, dfs=None):
         """pandas function"""
         if is_quantifiable(self.col.type):
-            return (
-                df[self.col.name].sum()
-                if not isinstance(df[self.col.name].sum(), list)
-                else df[self.col.name].apply(sum).sum()
-            )
+            return sum(df[self.col.name].sum() for df in dfs)
         return None

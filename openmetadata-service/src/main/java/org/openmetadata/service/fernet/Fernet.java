@@ -103,13 +103,13 @@ public class Fernet {
     throw new IllegalArgumentException(FIELD_NOT_TOKENIZED);
   }
 
-  /**
-   * Decrypts value without throwing an Exception in case it is not a Fernet encrypted value
-   *
-   * @param value value to decrypt if applies
-   * @return decrypted value
-   */
+  /** Decrypts value without throwing an Exception in case it is not a Fernet encrypted value */
   public String decryptIfApplies(String value) {
     return Fernet.isTokenized(value) ? decrypt(value) : value;
+  }
+
+  /** Encrypt value without throwing an Exception in case it is not encrypted */
+  public String encryptIfApplies(@NonNull String secret) {
+    return isTokenized(secret) ? secret : encrypt(secret);
   }
 }

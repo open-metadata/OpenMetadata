@@ -238,6 +238,7 @@ const AuthMechanismForm: FC<Props> = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder={t('label.secret-key')}
@@ -273,6 +274,7 @@ const AuthMechanismForm: FC<Props> = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder={t('label.secret-key')}
@@ -330,10 +332,13 @@ const AuthMechanismForm: FC<Props> = ({
               rules={[
                 {
                   required: true,
-                  message: t('message.clientSecret-required'),
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.client-secret'),
+                  }),
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="clientSecret"
                 name="clientSecret"
                 placeholder={t('label.client-secret')}
@@ -366,8 +371,8 @@ const AuthMechanismForm: FC<Props> = ({
               rules={[
                 {
                   required: true,
-                  message: t('message.field-is-require', {
-                    field: t('label.authority'),
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.authority'),
                   }),
                 },
               ]}>
@@ -416,6 +421,7 @@ const AuthMechanismForm: FC<Props> = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="privateKey"
                 name="privateKey"
                 placeholder={t('label.privateKey')}
@@ -508,6 +514,7 @@ const AuthMechanismForm: FC<Props> = ({
                 },
               ]}>
               <Input.Password
+                autoComplete="off"
                 data-testid="secretKey"
                 name="secretKey"
                 placeholder={t('label.secret-key')}

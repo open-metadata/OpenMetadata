@@ -1,6 +1,5 @@
 package org.openmetadata.service.resources.dqtests;
 
-import com.google.inject.Inject;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -11,6 +10,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -35,9 +35,12 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -49,14 +52,13 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/testSuites")
+@Path("/v1/dataQuality/testSuites")
 @Tag(name = "Test Suites", description = "`TestSuite` is a set of test cases grouped together to capture data quality.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestSuites")
 public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteRepository> {
-  public static final String COLLECTION_PATH = "/v1/testSuites";
-
+  public static final String COLLECTION_PATH = "/v1/dataQuality/testSuites";
   static final String FIELDS = "owner,tests";
 
   @Override
@@ -66,16 +68,18 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     return testSuite;
   }
 
-  @Inject
   public TestSuiteResource(CollectionDAO dao, Authorizer authorizer) {
     super(TestSuite.class, new TestSuiteRepository(dao), authorizer);
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("tests", MetadataOperation.VIEW_BASIC);
+    return null;
+  }
+
   public static class TestSuiteList extends ResultList<TestSuite> {
-    @SuppressWarnings("unused")
-    public TestSuiteList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   @GET
@@ -240,9 +244,9 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
 
   @POST
   @Operation(
-      operationId = "createTestSuite",
-      summary = "Create a test suite",
-      description = "Create a test suite.",
+      operationId = "createLogicalTestSuite",
+      summary = "Create a logical test suite",
+      description = "Create a logical test suite.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -253,7 +257,31 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
       throws IOException {
+    create = create.withExecutableEntityReference(null); // entity reference is not applicable for logical test suites
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
+    testSuite.setExecutable(false);
+    return create(uriInfo, securityContext, testSuite);
+  }
+
+  @POST
+  @Path("/executable")
+  @Operation(
+      operationId = "createExecutableTestSuite",
+      summary = "Create an executable test suite",
+      description = "Create an executable test suite.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Executable test suite",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSuite.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createExecutable(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
+      throws IOException {
+    Entity.getEntityByName(Entity.TABLE, create.getExecutableEntityReference(), null, null); // check if entity exists
+    TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
+    testSuite.setExecutable(true);
     return create(uriInfo, securityContext, testSuite);
   }
 
@@ -284,9 +312,9 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
 
   @PUT
   @Operation(
-      operationId = "createOrUpdateTestSuite",
-      summary = "Update test suite",
-      description = "Create a TestSuite, it it does not exist or update an existing test suite.",
+      operationId = "createOrUpdateLogicalTestSuite",
+      summary = "Update logical test suite",
+      description = "Create a logical TestSuite, if it does not exist or update an existing test suite.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -296,7 +324,30 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
       throws IOException {
+    create = create.withExecutableEntityReference(null); // entity reference is not applicable for logical test suites
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
+    testSuite.setExecutable(false);
+    return createOrUpdate(uriInfo, securityContext, testSuite);
+  }
+
+  @PUT
+  @Path("/executable")
+  @Operation(
+      operationId = "createOrUpdateExecutableTestSuite",
+      summary = "Create or Update Executable test suite",
+      description = "Create an Executable TestSuite if it does not exist or update an existing one.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The updated test definition ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSuite.class)))
+      })
+  public Response createOrUpdateExecutable(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTestSuite create)
+      throws IOException {
+    Entity.getEntityByName(Entity.TABLE, create.getExecutableEntityReference(), null, null); // Check if table exists
+    TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
+    testSuite.setExecutable(true);
     return createOrUpdate(uriInfo, securityContext, testSuite);
   }
 
@@ -368,9 +419,21 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   }
 
   private TestSuite getTestSuite(CreateTestSuite create, String user) throws IOException {
-    return copy(new TestSuite(), create, user)
-        .withDescription(create.getDescription())
-        .withDisplayName(create.getDisplayName())
-        .withName(create.getName());
+    TestSuite testSuite =
+        copy(new TestSuite(), create, user)
+            .withDescription(create.getDescription())
+            .withDisplayName(create.getDisplayName())
+            .withName(create.getName());
+    if (create.getExecutableEntityReference() != null) {
+      Table table = Entity.getEntityByName(Entity.TABLE, create.getExecutableEntityReference(), null, null);
+      EntityReference entityReference =
+          new EntityReference()
+              .withId(table.getId())
+              .withFullyQualifiedName(table.getFullyQualifiedName())
+              .withName(table.getName())
+              .withType(Entity.TABLE);
+      testSuite.setExecutableEntityReference(entityReference);
+    }
+    return testSuite;
   }
 }

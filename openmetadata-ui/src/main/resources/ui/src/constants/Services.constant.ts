@@ -16,7 +16,7 @@ import gcs from 'assets/img/service-icon-gcs.png';
 import msAzure from 'assets/img/service-icon-ms-azure.png';
 import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { WorkflowStatus } from 'generated/entity/automations/workflow';
-import { ObjectStoreServiceType } from 'generated/entity/data/container';
+import { StorageServiceType } from 'generated/entity/data/container';
 import { ServiceType } from 'generated/entity/services/serviceType';
 import { map, startCase } from 'lodash';
 import { ServiceTypes, StepperStepType } from 'Models';
@@ -39,10 +39,10 @@ import domo from '../assets/img/service-icon-domo.png';
 import druid from '../assets/img/service-icon-druid.png';
 import dynamodb from '../assets/img/service-icon-dynamodb.png';
 import fivetran from '../assets/img/service-icon-fivetran.png';
-import databaseDefault from '../assets/img/service-icon-generic.png';
 import glue from '../assets/img/service-icon-glue.png';
 import hive from '../assets/img/service-icon-hive.png';
 import ibmdb2 from '../assets/img/service-icon-ibmdb2.png';
+import impala from '../assets/img/service-icon-impala.png';
 import kafka from '../assets/img/service-icon-kafka.png';
 import kinesis from '../assets/img/service-icon-kinesis.png';
 import looker from '../assets/img/service-icon-looker.png';
@@ -65,9 +65,11 @@ import redpanda from '../assets/img/service-icon-redpanda.png';
 import redshift from '../assets/img/service-icon-redshift.png';
 import sagemaker from '../assets/img/service-icon-sagemaker.png';
 import salesforce from '../assets/img/service-icon-salesforce.png';
+import sapHana from '../assets/img/service-icon-sap-hana.png';
 import scikit from '../assets/img/service-icon-scikit.png';
 import singlestore from '../assets/img/service-icon-singlestore.png';
 import snowflakes from '../assets/img/service-icon-snowflakes.png';
+import spline from '../assets/img/service-icon-spline.png';
 import mysql from '../assets/img/service-icon-sql.png';
 import sqlite from '../assets/img/service-icon-sqlite.png';
 import superset from '../assets/img/service-icon-superset.png';
@@ -76,6 +78,9 @@ import trino from '../assets/img/service-icon-trino.png';
 import vertica from '../assets/img/service-icon-vertica.png';
 import dashboardDefault from '../assets/svg/dashboard.svg';
 import iconDefaultService from '../assets/svg/default-service-icon.svg';
+import databaseDefault from '../assets/svg/ic-custom-database.svg';
+import mlModelDefault from '../assets/svg/ic-custom-model.svg';
+import storageDefault from '../assets/svg/ic-custom-storage.svg';
 import logo from '../assets/svg/logo-monogram.svg';
 import pipelineDefault from '../assets/svg/pipeline.svg';
 import plus from '../assets/svg/plus.svg';
@@ -105,6 +110,7 @@ export const MSSQL = mssql;
 export const REDSHIFT = redshift;
 export const BIGQUERY = query;
 export const HIVE = hive;
+export const IMPALA = impala;
 export const POSTGRES = postgres;
 export const ORACLE = oracle;
 export const SNOWFLAKE = snowflakes;
@@ -131,6 +137,7 @@ export const DYNAMODB = dynamodb;
 export const SINGLESTORE = singlestore;
 export const SALESFORCE = salesforce;
 export const MLFLOW = mlflow;
+export const SAP_HANA = sapHana;
 export const SCIKIT = scikit;
 export const DELTALAKE = deltalake;
 export const DEFAULT_SERVICE = iconDefaultService;
@@ -151,6 +158,8 @@ export const DATABASE_DEFAULT = databaseDefault;
 export const TOPIC_DEFAULT = topicDefault;
 export const DASHBOARD_DEFAULT = dashboardDefault;
 export const PIPELINE_DEFAULT = pipelineDefault;
+export const ML_MODEL_DEFAULT = mlModelDefault;
+export const CUSTOM_STORAGE_DEFAULT = storageDefault;
 export const NIFI = nifi;
 export const KINESIS = kinesis;
 export const QUICKSIGHT = quicksight;
@@ -159,6 +168,7 @@ export const SAGEMAKER = sagemaker;
 export const AMAZON_S3 = amazonS3;
 export const GCS = gcs;
 export const MS_AZURE = msAzure;
+export const SPLINE = spline;
 
 export const PLUS = plus;
 export const NOSERVICE = noService;
@@ -189,7 +199,7 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
   metadataServices: (Object.values(MetadataServiceType) as string[]).sort(
     customServiceComparator
   ),
-  objectStoreServices: (Object.values(ObjectStoreServiceType) as string[]).sort(
+  storageServices: (Object.values(StorageServiceType) as string[]).sort(
     customServiceComparator
   ),
 };
@@ -200,7 +210,7 @@ export const arrServiceTypes: Array<ServiceTypes> = [
   'dashboardServices',
   'pipelineServices',
   'mlmodelServices',
-  'objectStoreServices',
+  'storageServices',
 ];
 
 export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
@@ -210,7 +220,7 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   pipelines: ServiceCategory.PIPELINE_SERVICES,
   mlModels: ServiceCategory.ML_MODEL_SERVICES,
   metadata: ServiceCategory.METADATA_SERVICES,
-  objectStores: ServiceCategory.OBJECT_STORE_SERVICES,
+  storages: ServiceCategory.STORAGE_SERVICES,
 };
 
 export const SERVICE_CATEGORY_TYPE = {
@@ -220,7 +230,7 @@ export const SERVICE_CATEGORY_TYPE = {
   pipelineServices: 'pipelines',
   mlmodelServices: 'mlModels',
   metadataServices: 'metadata',
-  objectStoreServices: 'objectStores',
+  storageServices: 'storages',
 };
 
 export const servicesDisplayName: { [key: string]: string } = {
@@ -242,8 +252,8 @@ export const servicesDisplayName: { [key: string]: string } = {
   metadataServices: i18n.t('label.entity-service', {
     entity: i18n.t('label.metadata'),
   }),
-  objectStoreServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.object-store'),
+  storageServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.storage'),
   }),
   dashboardDataModel: i18n.t('label.entity-service', {
     entity: i18n.t('label.data-model'),
@@ -284,33 +294,21 @@ export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
     step: 1,
   },
   {
-    name: i18n.t('label.requirement-plural'),
-    step: 2,
-  },
-  {
     name: i18n.t('label.configure-entity', {
       entity: i18n.t('label.service'),
     }),
-    step: 3,
+    step: 2,
   },
   {
     name: i18n.t('label.connection-entity', {
       entity: i18n.t('label.detail-plural'),
     }),
-    step: 4,
+    step: 3,
   },
 ];
 
 export const SERVICE_DEFAULT_ERROR_MAP = {
   serviceType: false,
-  name: false,
-  duplicateName: false,
-  nameWithSpace: false,
-  delimit: false,
-  specialChar: false,
-  nameLength: false,
-  allowChar: false,
-  isError: false,
 };
 // 2 minutes
 export const FETCHING_EXPIRY_TIME = 2 * 60 * 1000;
@@ -319,6 +317,14 @@ export const WORKFLOW_COMPLETE_STATUS = [
   WorkflowStatus.Failed,
   WorkflowStatus.Successful,
 ];
+export const TEST_CONNECTION_PROGRESS_PERCENTAGE = {
+  ZERO: 0,
+  ONE: 1,
+  TEN: 10,
+  TWENTY: 20,
+  FORTY: 40,
+  HUNDRED: 100,
+};
 
 export const INGESTION_GUIDE_MAP = {
   [PipelineType.Usage]: addUsageIngestionGuide,
@@ -334,6 +340,35 @@ export const SERVICE_TYPE_MAP = {
   [ServiceCategory.MESSAGING_SERVICES]: ServiceType.Messaging,
   [ServiceCategory.ML_MODEL_SERVICES]: ServiceType.MlModel,
   [ServiceCategory.METADATA_SERVICES]: ServiceType.Metadata,
-  [ServiceCategory.OBJECT_STORE_SERVICES]: ServiceType.ObjectStore,
+  [ServiceCategory.STORAGE_SERVICES]: ServiceType.Storage,
   [ServiceCategory.PIPELINE_SERVICES]: ServiceType.Pipeline,
 };
+
+export const BETA_SERVICES = [
+  DatabaseServiceType.Impala,
+  PipelineServiceType.Spline,
+];
+
+export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
+  'message.test-your-connection-before-creating-service'
+);
+
+export const TEST_CONNECTION_SUCCESS_MESSAGE = i18n.t(
+  'message.connection-test-successful'
+);
+
+export const TEST_CONNECTION_FAILURE_MESSAGE = i18n.t(
+  'message.connection-test-failed'
+);
+
+export const TEST_CONNECTION_TESTING_MESSAGE = i18n.t(
+  'message.testing-your-connection-may-take-two-minutes'
+);
+
+export const TEST_CONNECTION_INFO_MESSAGE = i18n.t(
+  'message.test-connection-taking-too-long'
+);
+
+export const TEST_CONNECTION_WARNING_MESSAGE = i18n.t(
+  'message.connection-test-warning'
+);

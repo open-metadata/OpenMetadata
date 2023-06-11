@@ -12,6 +12,7 @@
  */
 
 import {
+  checkServiceFieldSectionHighlighting,
   deleteCreatedService,
   editOwnerforCreatedService,
   goToAddNewServicePage,
@@ -36,35 +37,46 @@ describe('BigQuery Ingestion', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
       const clientEmail = Cypress.env('bigqueryClientEmail');
-      cy.get('.form-group > #root\\/type')
+      cy.get('.form-group > #root\\/credentials\\/gcpConfig\\/type')
         .scrollIntoView()
         .type('service_account');
-      cy.get(':nth-child(3) > .form-group > #root\\/projectId')
+      checkServiceFieldSectionHighlighting('type');
+      cy.get('#root\\/credentials\\/gcpConfig\\/projectId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryProjectId'));
-      cy.get('#root\\/privateKeyId')
+      checkServiceFieldSectionHighlighting('projectId');
+      cy.get('#root\\/credentials\\/gcpConfig\\/privateKeyId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryPrivateKeyId'));
-      cy.get('#root\\/privateKey')
+      checkServiceFieldSectionHighlighting('privateKeyId');
+      cy.get('#root\\/credentials\\/gcpConfig\\/privateKey')
         .scrollIntoView()
         .type(Cypress.env('bigqueryPrivateKey'));
-      cy.get('#root\\/clientEmail').scrollIntoView().type(clientEmail);
-      cy.get('#root\\/clientId')
+      checkServiceFieldSectionHighlighting('privateKey');
+      cy.get('#root\\/credentials\\/gcpConfig\\/clientEmail')
+        .scrollIntoView()
+        .type(clientEmail);
+      checkServiceFieldSectionHighlighting('clientEmail');
+      cy.get('#root\\/credentials\\/gcpConfig\\/clientId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryClientId'));
-      cy.get('#root\\/clientX509CertUrl')
+      checkServiceFieldSectionHighlighting('clientId');
+      cy.get('#root\\/credentials\\/gcpConfig\\/clientX509CertUrl')
         .scrollIntoView()
         .type(
           `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(
             clientEmail
           )}`
         );
+      checkServiceFieldSectionHighlighting('clientX509CertUrl');
       cy.get('[data-testid="add-item-Taxonomy Project IDs"]')
         .scrollIntoView()
         .click();
-      cy.get('#root\\/taxonomyProjectID_0')
+      checkServiceFieldSectionHighlighting('taxonomyProjectID');
+      cy.get('#root\\/taxonomyProjectID\\/0')
         .scrollIntoView()
         .type(Cypress.env('bigqueryProjectIdTaxonomy'));
+      checkServiceFieldSectionHighlighting('taxonomyProjectID');
     };
 
     const addIngestionInput = () => {
@@ -75,15 +87,16 @@ describe('BigQuery Ingestion', () => {
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .scrollIntoView()
         .should('be.visible')
-        .type(filterPattern);
+        .type(`${filterPattern}{enter}`);
     };
 
-    testServiceCreationAndIngestion(
+    testServiceCreationAndIngestion({
       serviceType,
       connectionInput,
       addIngestionInput,
-      serviceName
-    );
+      serviceName,
+      serviceCategory: SERVICE_TYPE.Database,
+    });
   });
 
   it('Update table description and verify description after re-run', () => {

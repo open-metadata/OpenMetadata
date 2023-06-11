@@ -85,6 +85,7 @@ const AuthMechanism: FC<Props> = ({
             <Space className="w-full tw-justify-between ant-space-authMechanism">
               <Input.Password
                 readOnly
+                autoComplete="off"
                 data-testid="token"
                 placeholder="Generate new token..."
                 value={JWTToken}
@@ -92,7 +93,7 @@ const AuthMechanism: FC<Props> = ({
               <CopyToClipboardButton copyText={JWTToken} />
             </Space>
             <p
-              className="tw-text-grey-muted tw-mt-2 tw-italic"
+              className="text-grey-muted tw-mt-2 tw-italic"
               data-testid="token-expiry">
               {JWTTokenExpiresAt ? (
                 isTokenExpired ? (
@@ -112,7 +113,7 @@ const AuthMechanism: FC<Props> = ({
           </>
         ) : (
           <div
-            className="tw-no-description tw-text-sm tw-mt-4"
+            className="text-grey-muted tw-text-sm tw-mt-4"
             data-testid="no-token">
             {t('message.no-token-available')}
           </div>
@@ -158,6 +159,7 @@ const AuthMechanism: FC<Props> = ({
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input.Password
                   readOnly
+                  autoComplete="off"
                   data-testid="secretKey"
                   value={authConfig?.secretKey}
                 />
@@ -171,6 +173,7 @@ const AuthMechanism: FC<Props> = ({
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input.Password
                   readOnly
+                  autoComplete="off"
                   data-testid="privateKey"
                   value={authConfig?.privateKey}
                 />
@@ -184,6 +187,7 @@ const AuthMechanism: FC<Props> = ({
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input.Password
                   readOnly
+                  autoComplete="off"
                   data-testid="clientSecret"
                   value={authConfig?.clientSecret}
                 />

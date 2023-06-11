@@ -11,43 +11,48 @@
  *  limitations under the License.
  */
 
-import { Popover, Space } from 'antd';
+import { Popover, Space, Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
-import { sortBy, uniqBy } from 'lodash';
+import { TAG_START_WITH } from 'constants/Tag.constants';
+import { isEmpty, sortBy, uniqBy } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { FunctionComponent, useCallback, useMemo } from 'react';
-import { ELLIPSES, LIST_SIZE } from '../../../constants/constants';
+import { useTranslation } from 'react-i18next';
+import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { TagsViewerProps } from './tags-viewer.interface';
+import './tags-viewer.less';
 
 const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   tags,
   sizeCap = LIST_SIZE,
   type = 'label',
-  showStartWith = true,
+  isTextPlaceholder,
+  showNoDataPlaceholder = true,
 }: TagsViewerProps) => {
-  const getTagsElement = useCallback(
-    (tag: EntityTags, index: number) => {
-      // only show hasTag is tagSource is type of "Tag" and showStartWith is true
-      const showHasTag =
-        tag.source === TagSource.Classification && showStartWith;
+  const { t } = useTranslation();
+  const tagChipStye = {
+    margin: '0 0 8px 0',
+    justifyContent: 'start',
+  };
 
-      return (
-        <Tags
-          className={classNames(
-            { 'diff-added tw-mx-1': tag?.added },
-            { 'diff-removed': tag?.removed }
-          )}
-          key={index}
-          showOnlyName={tag.source === TagSource.Glossary}
-          startWith={showHasTag ? '#' : undefined}
-          tag={tag}
-          type={type}
-        />
-      );
-    },
-    [showStartWith, type]
+  const getTagsElement = useCallback(
+    (tag: EntityTags, index: number, style?: React.CSSProperties) => (
+      <Tags
+        className={classNames(
+          { 'diff-added tw-mx-1': tag?.added },
+          { 'diff-removed': tag?.removed }
+        )}
+        key={index}
+        showOnlyName={tag.source === TagSource.Glossary}
+        startWith={TAG_START_WITH.SOURCE_ICON}
+        style={style}
+        tag={tag}
+        type={type}
+      />
+    ),
+    [type]
   );
 
   // sort tags by source so that "Glossary" tags always comes first
@@ -58,7 +63,15 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
 
   return (
     <Space wrap size={4}>
-      {sizeCap > -1 ? (
+      {isEmpty(sortedTagsBySource) && showNoDataPlaceholder ? (
+        <Typography.Text className="text-grey-muted m-r-xss">
+          {isTextPlaceholder
+            ? t('label.no-entity', {
+                entity: t('label.tag-plural'),
+              })
+            : NO_DATA_PLACEHOLDER}
+        </Typography.Text>
+      ) : sizeCap > -1 ? (
         <>
           {sortedTagsBySource
             .slice(0, sizeCap)
@@ -70,16 +83,19 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
                 <>
                   {sortedTagsBySource.slice(sizeCap).map((tag, index) => (
                     <p className="text-left" key={index}>
-                      {getTagsElement(tag, index)}
+                      {getTagsElement(tag, index, tagChipStye)}
                     </p>
                   ))}
                 </>
               }
+              overlayClassName="tag-popover-container"
               placement="bottom"
               trigger="click">
-              <span className="cursor-pointer text-xs link-text v-align-sub">
-                {ELLIPSES}
-              </span>
+              <Tag
+                className="cursor-pointer plus-more-tag"
+                data-testid="plus-more-count">{`+${
+                sortedTagsBySource.length - sizeCap
+              } more`}</Tag>
             </Popover>
           )}
         </>

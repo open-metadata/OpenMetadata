@@ -54,6 +54,7 @@ const mockProps = {
   entityFQN: 'string',
   entityName: 'string',
   onClose: jest.fn(),
+  createPermission: true,
 };
 
 describe('Test Announcement drawer component', () => {

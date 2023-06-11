@@ -31,15 +31,19 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.CreateEventPublisherJob;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.Failure;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
+import org.openmetadata.service.exception.CustomExceptionMessage;
+import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import org.openmetadata.service.workflows.searchIndex.SearchIndexWorkflow;
@@ -89,10 +93,10 @@ public class ReIndexingHandler {
 
     // Create new Task
     if (taskQueue.size() >= 5) {
-      throw new RuntimeException("Cannot create new Reindexing Jobs. There are pending jobs.");
+      throw new UnhandledServerException("Cannot create new Reindexing Jobs. There are pending jobs.");
     }
     if (((ThreadPoolExecutor) threadScheduler).getActiveCount() > 5) {
-      throw new RuntimeException("Thread unavailable to run the jobs. There are pending jobs.");
+      throw new UnhandledServerException("Thread unavailable to run the jobs. There are pending jobs.");
     } else {
       EventPublisherJob jobData = getReindexJob(startedBy, createReindexingJob);
       List<SearchIndexWorkflow> activeJobs = new ArrayList<>(REINDEXING_JOB_MAP.values());
@@ -104,7 +108,14 @@ public class ReIndexingHandler {
 
       LOG.info("Reindexing triggered for the following Entities: {}", entityList);
 
-      if (entityList.size() > 0) {
+      if (!entityList.isEmpty()) {
+        // Check if the after cursor is provided
+        if (!CommonUtil.nullOrEmpty(jobData.getAfterCursor()) && entityList.size() > 1) {
+          throw new IllegalArgumentException("After Cursor can only be associated with one entity");
+        }
+
+        // Remove previous run,
+        dao.entityExtensionTimeSeriesDao().deleteLastRecords(REINDEXING_JOB_EXTENSION, 5);
         // Create Entry in the DB
         dao.entityExtensionTimeSeriesDao()
             .insert(
@@ -118,7 +129,8 @@ public class ReIndexingHandler {
         REINDEXING_JOB_MAP.put(jobData.getId(), job);
         return jobData;
       } else {
-        throw new RuntimeException("There are already executing Jobs working on the same Entities. Please try later.");
+        throw new UnhandledServerException(
+            "There are already executing Jobs working on the same Entities. Please try later.");
       }
     }
   }
@@ -127,18 +139,28 @@ public class ReIndexingHandler {
     REINDEXING_JOB_MAP
         .entrySet()
         .removeIf(
-            (entry) ->
+            entry ->
                 entry.getValue().getJobData().getStatus() != EventPublisherJob.Status.STARTED
                     && entry.getValue().getJobData().getStatus() != EventPublisherJob.Status.RUNNING);
   }
 
+  public EventPublisherJob stopRunningJob(UUID jobId) {
+    SearchIndexWorkflow job = REINDEXING_JOB_MAP.get(jobId);
+    if (job != null) {
+      job.stopJob();
+      return job.getJobData();
+    }
+    throw new CustomExceptionMessage(Response.Status.BAD_REQUEST, "Job is not in Running state.");
+  }
+
   private void validateJob(CreateEventPublisherJob job) {
+    // Check valid Entities are provided
     Objects.requireNonNull(job);
     Set<String> storedEntityList = new HashSet<>(Entity.getEntityList());
-    if (job.getEntities().size() > 0) {
+    if (!job.getEntities().isEmpty()) {
       job.getEntities()
           .forEach(
-              (entityType) -> {
+              entityType -> {
                 if (!storedEntityList.contains(entityType) && !ReindexingUtil.isDataInsightIndex(entityType)) {
                   throw new IllegalArgumentException(
                       String.format("Entity Type : %s is not a valid Entity", entityType));
@@ -166,7 +188,7 @@ public class ReIndexingHandler {
 
   public EventPublisherJob getLatestJob() throws IOException {
     List<SearchIndexWorkflow> activeJobs = new ArrayList<>(REINDEXING_JOB_MAP.values());
-    if (activeJobs.size() > 0) {
+    if (!activeJobs.isEmpty()) {
       return activeJobs.get(activeJobs.size() - 1).getJobData();
     } else {
       String recordString = dao.entityExtensionTimeSeriesDao().getLatestByExtension(REINDEXING_JOB_EXTENSION);
@@ -183,7 +205,7 @@ public class ReIndexingHandler {
         JsonUtils.readObjects(
             dao.entityExtensionTimeSeriesDao().getAllByExtension(REINDEXING_JOB_EXTENSION), EventPublisherJob.class);
     jobsFromDatabase.removeIf(
-        (job) -> {
+        job -> {
           for (EventPublisherJob active : activeEventPubJob) {
             if (active.getId().equals(job.getId())) {
               return true;
@@ -212,6 +234,7 @@ public class ReIndexingHandler {
         .withBatchSize(job.getBatchSize())
         .withFailure(new Failure())
         .withRecreateIndex(job.getRecreateIndex())
-        .withSearchIndexMappingLanguage(job.getSearchIndexMappingLanguage());
+        .withSearchIndexMappingLanguage(job.getSearchIndexMappingLanguage())
+        .withAfterCursor(job.getAfterCursor());
   }
 }

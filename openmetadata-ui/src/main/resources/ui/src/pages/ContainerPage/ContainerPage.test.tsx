@@ -13,7 +13,7 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getContainerByName } from 'rest/objectStoreAPI';
+import { getContainerByName } from 'rest/storageAPI';
 import ContainerPage from './ContainerPage';
 import { CONTAINER_DATA } from './ContainerPage.mock';
 
@@ -96,14 +96,6 @@ jest.mock(
   }
 );
 
-jest.mock('components/containers/PageContainerV1', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <div data-testid="container-children">{children}</div>
-    ));
-});
-
 jest.mock('components/EntityLineage/EntityLineage.component', () => {
   return jest
     .fn()
@@ -123,7 +115,7 @@ jest.mock('rest/miscAPI', () => ({
   addLineage: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('rest/objectStoreAPI', () => ({
+jest.mock('rest/storageAPI', () => ({
   addContainerFollower: jest.fn().mockImplementation(() => Promise.resolve()),
   getContainerByName: jest
     .fn()
@@ -222,7 +214,7 @@ describe('Container Page Component', () => {
       });
     });
 
-    const customPropertyTable = screen.getByTestId('custom-properties-table');
+    const customPropertyTable = screen.getByTestId('custom_properties');
 
     expect(customPropertyTable).toBeInTheDocument();
   });

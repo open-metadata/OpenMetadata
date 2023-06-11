@@ -51,6 +51,8 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+SALESFORCE_DEFAULT_SCHEMA = "salesforce"
+
 
 class SalesforceSource(DatabaseServiceSource):
     """
@@ -109,8 +111,7 @@ class SalesforceSource(DatabaseServiceSource):
         """
         return schema names
         """
-        schema_name = self.service_connection.scheme.name
-        yield schema_name
+        yield SALESFORCE_DEFAULT_SCHEMA
 
     def yield_database_schema(
         self, schema_name: str
@@ -180,7 +181,6 @@ class SalesforceSource(DatabaseServiceSource):
         """
         table_name, table_type = table_name_and_type
         try:
-
             table_constraints = None
             salesforce_objects = self.client.restful(
                 f"sobjects/{table_name}/describe/",

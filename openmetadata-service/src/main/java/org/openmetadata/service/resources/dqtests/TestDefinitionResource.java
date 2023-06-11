@@ -1,6 +1,5 @@
 package org.openmetadata.service.resources.dqtests;
 
-import com.google.inject.Inject;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -54,7 +53,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/testDefinitions")
+@Path("/v1/dataQuality/testDefinitions")
 @Tag(
     name = "Test Definitions",
     description =
@@ -64,7 +63,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestDefinitions")
 public class TestDefinitionResource extends EntityResource<TestDefinition, TestDefinitionRepository> {
-  public static final String COLLECTION_PATH = "/v1/testDefinitions";
+  public static final String COLLECTION_PATH = "/v1/dataQuality/testDefinitions";
   static final String FIELDS = "owner";
 
   @Override
@@ -74,7 +73,6 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
     return testDefinition;
   }
 
-  @Inject
   public TestDefinitionResource(CollectionDAO dao, Authorizer authorizer) {
     super(TestDefinition.class, new TestDefinitionRepository(dao), authorizer);
   }
@@ -82,17 +80,14 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Find tag definitions and load classification from the json file, if necessary
-    List<TestDefinition> testDefinitions = dao.getEntitiesFromSeedData(".*json/data/tests/.*\\.json$");
+    List<TestDefinition> testDefinitions = repository.getEntitiesFromSeedData(".*json/data/tests/.*\\.json$");
     for (TestDefinition testDefinition : testDefinitions) {
-      dao.initializeEntity(testDefinition);
+      repository.initializeEntity(testDefinition);
     }
   }
 
   public static class TestDefinitionList extends ResultList<TestDefinition> {
-    @SuppressWarnings("unused")
-    public TestDefinitionList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   @GET

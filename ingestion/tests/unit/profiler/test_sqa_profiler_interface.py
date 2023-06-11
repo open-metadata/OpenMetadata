@@ -100,7 +100,6 @@ class SQAInterfaceTest(TestCase):
 
 
 class SQAInterfaceTestMultiThread(TestCase):
-
     table_entity = Table(
         id=uuid4(),
         name="user",

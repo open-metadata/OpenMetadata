@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { UserPageTabs } from 'components/Users/Users.interface';
 import i18n from 'utils/i18next/LocalUtil';
 
 export const getUserCurrentTab = (tab: string) => {
@@ -57,22 +58,18 @@ export const profileInfo = [
 export const USER_PROFILE_TABS = [
   {
     name: i18n.t('label.activity'),
-    isProtected: false,
-    position: 1,
+    key: UserPageTabs.ACTIVITY,
   },
   {
     name: i18n.t('label.task-plural'),
-    isProtected: false,
-    position: 2,
+    key: UserPageTabs.TASKS,
   },
   {
     name: i18n.t('label.my-data'),
-    isProtected: false,
-    position: 3,
+    key: UserPageTabs.MY_DATA,
   },
   {
     name: i18n.t('label.following'),
-    isProtected: false,
-    position: 4,
+    key: UserPageTabs.FOLLOWING,
   },
 ];

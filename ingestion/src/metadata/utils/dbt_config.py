@@ -193,7 +193,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
                     f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_CATALOG_FILE_NAME}"
                 )
             except Exception as exc:
-                logger.info(
+                logger.debug(
                     f"dbt catalog file not found, skipping the catalog file: {exc}"
                 )
                 logger.debug(traceback.format_exc())
@@ -207,7 +207,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
                     f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_RUN_RESULTS_FILE_NAME}"
                 )
             except Exception as exc:
-                logger.info(
+                logger.debug(
                     f"dbt run_results file not found, skipping dbt tests: {exc}"
                 )
                 logger.debug(traceback.format_exc())
@@ -281,7 +281,7 @@ def _(config: DbtGcsConfig):
         bucket_name, prefix = get_dbt_prefix_config(config)
         from google.cloud import storage  # pylint: disable=import-outside-toplevel
 
-        set_google_credentials(gcs_credentials=config.dbtSecurityConfig)
+        set_google_credentials(gcp_credentials=config.dbtSecurityConfig)
         client = storage.Client()
         if not bucket_name:
             buckets = client.list_buckets()

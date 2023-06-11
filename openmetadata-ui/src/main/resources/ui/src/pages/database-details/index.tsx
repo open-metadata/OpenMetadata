@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Skeleton, Space, Table } from 'antd';
+import { Card, Col, Row, Skeleton, Space, Table, Tabs } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import ActivityFeedList from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList';
@@ -22,22 +22,26 @@ import EntitySummaryDetails from 'components/common/EntitySummaryDetails/EntityS
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import TabsPane from 'components/common/TabsPane/TabsPane';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from 'components/containers/PageContainerV1';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import Loader from 'components/Loader/Loader';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import TabsLabel from 'components/TabsLabel/TabsLabel.component';
+import TagsContainer from 'components/Tag/TagsContainer/tags-container';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
-import { isNil, startCase } from 'lodash';
+import { LabelType } from 'generated/entity/data/table';
+import { State } from 'generated/type/tagLabel';
+import { isEmpty, isNil, isUndefined, startCase } from 'lodash';
 import { observer } from 'mobx-react';
-import { ExtraInfo } from 'Models';
+import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, {
-  Fragment,
   FunctionComponent,
   RefObject,
   useCallback,
@@ -59,6 +63,7 @@ import {
   postFeedById,
   postThread,
 } from 'rest/feedsAPI';
+import { fetchTagsAndGlossaryTerms } from 'utils/TagsUtils';
 import { default as AppState, default as appState } from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
@@ -73,7 +78,7 @@ import {
 import { EntityField } from '../../constants/Feeds.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { EntityInfo, EntityTabs, EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -83,13 +88,8 @@ import { Post, Thread } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/entity/teams/user';
 import { UsageDetails } from '../../generated/type/entityUsage';
 import { Paging } from '../../generated/type/paging';
-import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import { useElementInView } from '../../hooks/useElementInView';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
-import jsonData from '../../jsons/en';
-import {
-  databaseDetailsTabs,
-  getCurrentDatabaseDetailsTab,
-} from '../../utils/DatabaseDetailsUtils';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import {
   deletePost,
@@ -103,7 +103,11 @@ import {
   serviceTypeLogo,
 } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
-import { getUsagePercentile } from '../../utils/TableUtils';
+import {
+  getTagsWithoutTier,
+  getTierTags,
+  getUsagePercentile,
+} from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
@@ -113,7 +117,8 @@ const DatabaseDetails: FunctionComponent = () => {
   >([]);
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { databaseFQN, tab } = useParams() as Record<string, string>;
+  const { databaseFQN, tab: activeTab = EntityTabs.SCHEMA } =
+    useParams<{ databaseFQN: string; tab: EntityTabs }>();
   const [isLoading, setIsLoading] = useState(true);
   const [database, setDatabase] = useState<Database>();
   const [serviceType, setServiceType] = useState<string>();
@@ -133,9 +138,6 @@ const DatabaseDetails: FunctionComponent = () => {
   const [databaseSchemaInstanceCount, setSchemaInstanceCount] =
     useState<number>(0);
 
-  const [activeTab, setActiveTab] = useState<number>(
-    getCurrentDatabaseDetailsTab(tab)
-  );
   const [error, setError] = useState('');
 
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
@@ -148,11 +150,19 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const [threadLink, setThreadLink] = useState<string>('');
   const [paging, setPaging] = useState<Paging>({} as Paging);
-  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [elementRef, isInView] = useElementInView(observerOptions);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isEditable, setIsEditable] = useState<boolean>(false);
+  const [tagList, setTagList] = useState<Array<TagOption>>([]);
+  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
 
   const history = useHistory();
   const isMounting = useRef(true);
+
+  const tier = getTierTags(database?.tags ?? []);
+  const tags = getTagsWithoutTier(database?.tags ?? []);
+
+  const deleted = database?.deleted;
 
   const [databasePermission, setDatabasePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -172,36 +182,36 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  const tabs = [
-    {
-      name: t('label.schema-plural'),
-      icon: {
-        alt: 'schemas',
-        name: 'schema-grey',
-        title: 'Schemas',
-        selectedName: 'schemas',
+  const tabs = useMemo(() => {
+    return [
+      {
+        label: (
+          <TabsLabel
+            count={databaseSchemaInstanceCount}
+            id={EntityTabs.SCHEMA}
+            isActive={activeTab === EntityTabs.SCHEMA}
+            name={t('label.schema-plural')}
+          />
+        ),
+        key: EntityTabs.SCHEMA,
       },
-      count: databaseSchemaInstanceCount,
-      isProtected: false,
-      position: 1,
-    },
-    {
-      name: t('label.activity-feed-plural'),
-      icon: {
-        alt: 'activity_feed',
-        name: 'activity_feed',
-        title: 'Activity Feed',
-        selectedName: 'activity-feed-color',
+      {
+        label: (
+          <TabsLabel
+            count={feedCount}
+            id={EntityTabs.ACTIVITY_FEED}
+            isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+            name={t('label.activity-feed-plural')}
+          />
+        ),
+        key: EntityTabs.ACTIVITY_FEED,
       },
-      isProtected: false,
-      position: 2,
-      count: feedCount,
-    },
-  ];
+    ];
+  }, [activeTab, databaseSchemaInstanceCount, feedCount]);
 
   const extraInfo: Array<ExtraInfo> = [
     {
-      key: 'Owner',
+      key: EntityInfo.OWNER,
       value:
         database?.owner?.type === 'team'
           ? getTeamAndUserDetailsPath(
@@ -216,6 +226,10 @@ const DatabaseDetails: FunctionComponent = () => {
         database?.owner?.type === OwnerType.USER
           ? database?.owner?.name
           : undefined,
+    },
+    {
+      key: EntityInfo.TIER,
+      value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
     },
   ];
 
@@ -232,14 +246,16 @@ const DatabaseDetails: FunctionComponent = () => {
             setSchemaData([]);
             setSchemaPaging(pagingObject);
 
-            throw jsonData['api-error-messages']['unexpected-server-response'];
+            throw t('server.unexpected-response');
           }
           resolve();
         })
         .catch((err: AxiosError) => {
           showErrorToast(
             err,
-            jsonData['api-error-messages']['fetch-database-schemas-error']
+            t('server.entity-fetch-error', {
+              entity: t('label.database schema'),
+            })
           );
 
           reject();
@@ -272,20 +288,17 @@ const DatabaseDetails: FunctionComponent = () => {
           setFeedCount(res.totalCount);
           setEntityFieldThreadCount(res.counts);
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-entity-feed-count-error']
-        );
+        showErrorToast(err, t('server.entity-feed-fetch-error'));
       });
   };
 
   const getDetailsByFQN = () => {
     setIsDatabaseDetailsLoading(true);
-    getDatabaseDetailsByFQN(databaseFQN, ['owner'])
+    getDatabaseDetailsByFQN(databaseFQN, ['owner', 'tags'])
       .then((res) => {
         if (res) {
           const { description, id, name, service, serviceType } = res;
@@ -307,30 +320,26 @@ const DatabaseDetails: FunctionComponent = () => {
               ),
             },
             {
-              name: service.name ?? '',
+              name: getEntityName(service),
               url: service.name
                 ? getServiceDetailsPath(
                     service.name,
                     ServiceCategory.DATABASE_SERVICES
                   )
                 : '',
-              imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-            },
-            {
-              name: getEntityName(res),
-              url: '',
-              activeTitle: true,
             },
           ]);
           fetchDatabaseSchemasAndDBTModels();
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
         const errMsg = getErrorText(
           err,
-          jsonData['api-error-messages']['fetch-database-details-error']
+          t('server.entity-fetch-error', {
+            entity: t('label.database'),
+          })
         );
         setError(errMsg);
         showErrorToast(errMsg);
@@ -367,7 +376,7 @@ const DatabaseDetails: FunctionComponent = () => {
           setDescription(updatedHTML);
           getEntityFeedCount();
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -383,15 +392,10 @@ const DatabaseDetails: FunctionComponent = () => {
     setIsEdit(true);
   };
 
-  const activeTabHandler = (tabValue: number) => {
-    const currentTabIndex = tabValue - 1;
-    if (databaseDetailsTabs[currentTabIndex].path !== tab) {
-      setActiveTab(tabValue);
+  const activeTabHandler = (key: string) => {
+    if (key !== activeTab) {
       history.push({
-        pathname: getDatabaseDetailsPath(
-          databaseFQN,
-          databaseDetailsTabs[currentTabIndex].path
-        ),
+        pathname: getDatabaseDetailsPath(databaseFQN, key),
       });
     }
   };
@@ -410,6 +414,21 @@ const DatabaseDetails: FunctionComponent = () => {
     setCurrentPage(activePage ?? 1);
   };
 
+  const settingsUpdateHandler = async (data: Database) => {
+    try {
+      const res = await saveUpdatedDatabaseData(data);
+
+      setDatabase(res);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: t('label.database'),
+        })
+      );
+    }
+  };
+
   const handleUpdateOwner = useCallback(
     (owner: Database['owner']) => {
       const updatedData = {
@@ -417,30 +436,9 @@ const DatabaseDetails: FunctionComponent = () => {
         owner: owner ? { ...database?.owner, ...owner } : undefined,
       };
 
-      return new Promise<void>((_, reject) => {
-        saveUpdatedDatabaseData(updatedData as Database)
-          .then((res) => {
-            if (res) {
-              setDatabase(res);
-              reject();
-            } else {
-              reject();
-
-              throw jsonData['api-error-messages'][
-                'unexpected-server-response'
-              ];
-            }
-          })
-          .catch((err: AxiosError) => {
-            showErrorToast(
-              err,
-              jsonData['api-error-messages']['update-database-error']
-            );
-            reject();
-          });
-      });
+      settingsUpdateHandler(updatedData as Database);
     },
-    [database, database?.owner]
+    [database, database?.owner, settingsUpdateHandler]
   );
 
   const fetchActivityFeed = (after?: string) => {
@@ -452,13 +450,15 @@ const DatabaseDetails: FunctionComponent = () => {
           setPaging(pagingObj);
           setEntityThread((prevData) => [...prevData, ...data]);
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['fetch-entity-feed-error']
+          t('server.entity-fetch-error', {
+            entity: t('label.feed-plural'),
+          })
         );
       })
       .finally(() => setIsentityThreadLoading(false));
@@ -486,11 +486,16 @@ const DatabaseDetails: FunctionComponent = () => {
           });
           getEntityFeedCount();
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['add-feed-error']);
+        showErrorToast(
+          err,
+          t('server.add-entity-error', {
+            entity: t('label.feed'),
+          })
+        );
       });
   };
 
@@ -501,15 +506,15 @@ const DatabaseDetails: FunctionComponent = () => {
           setEntityThread((pre) => [...pre, res]);
           getEntityFeedCount();
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
+          showErrorToast(t('server.unexpected-response'));
         }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['create-conversation-error']
+          t('server.create-entity-error', {
+            entity: t('label.conversation-lowercase'),
+          })
         );
       });
   };
@@ -567,33 +572,27 @@ const DatabaseDetails: FunctionComponent = () => {
 
   useEffect(() => {
     if (databasePermission.ViewAll || databasePermission.ViewBasic) {
-      const currentTab = getCurrentDatabaseDetailsTab(tab);
-      const currentTabIndex = currentTab - 1;
-
-      if (tabs[currentTabIndex].isProtected) {
-        activeTabHandler(1);
-      }
       getDetailsByFQN();
     }
   }, [databasePermission, databaseFQN]);
 
   useEffect(() => {
-    if (TabSpecificField.ACTIVITY_FEED === tab) {
+    if (EntityTabs.ACTIVITY_FEED === activeTab) {
       fetchActivityFeed();
     } else {
       setEntityThread([]);
     }
-  }, [tab]);
+  }, [activeTab]);
 
   useEffect(() => {
-    fetchMoreFeed(isInView as boolean, paging, isentityThreadLoading);
+    fetchMoreFeed(isInView, paging, isentityThreadLoading);
   }, [isInView, paging, isentityThreadLoading]);
 
   useEffect(() => {
     fetchDatabasePermission();
   }, [databaseFQN]);
 
-  // alwyas Keep this useEffect at the end...
+  // always Keep this useEffect at the end...
   useEffect(() => {
     isMounting.current = false;
     appState.inPageSearchText = '';
@@ -646,177 +645,392 @@ const DatabaseDetails: FunctionComponent = () => {
     []
   );
 
+  const handleUpdateTier = useCallback(
+    (newTier?: string) => {
+      if (newTier) {
+        const tierTag = newTier
+          ? [
+              ...getTagsWithoutTier(database?.tags ?? []),
+              {
+                tagFQN: newTier,
+                labelType: LabelType.Manual,
+                state: State.Confirmed,
+              },
+            ]
+          : database?.tags;
+        const updatedTableDetails = {
+          ...database,
+          tags: tierTag,
+        };
+
+        return settingsUpdateHandler(updatedTableDetails as Database);
+      }
+
+      return;
+    },
+    [settingsUpdateHandler, database, tier]
+  );
+
+  const handleRemoveTier = useCallback(() => {
+    const updatedTableDetails = {
+      ...database,
+      tags: getTagsWithoutTier(database?.tags ?? []),
+    };
+
+    return settingsUpdateHandler(updatedTableDetails as Database);
+  }, [settingsUpdateHandler, database, tier]);
+
+  const handleUpdateDisplayName = async (data: EntityName) => {
+    if (isUndefined(database)) {
+      return;
+    }
+
+    const updatedTableDetails = {
+      ...database,
+      displayName: data.displayName,
+    };
+
+    return settingsUpdateHandler(updatedTableDetails);
+  };
+
+  const fetchTags = async () => {
+    setIsTagLoading(true);
+    try {
+      const tags = await fetchTagsAndGlossaryTerms();
+      setTagList(tags);
+    } catch (error) {
+      setTagList([]);
+    } finally {
+      setIsTagLoading(false);
+    }
+  };
+
+  const isTagEditable =
+    databasePermission.EditTags || databasePermission.EditAll;
+
+  const selectedTags = useMemo(() => {
+    return tier?.tagFQN
+      ? [
+          ...tags.map((tag) => ({
+            ...tag,
+            isRemovable: true,
+          })),
+          { tagFQN: tier.tagFQN, isRemovable: false },
+        ]
+      : [
+          ...tags.map((tag) => ({
+            ...tag,
+            isRemovable: true,
+          })),
+        ] ?? [];
+  }, [tier, tags]);
+
+  /**
+   * Formulates updated tags and updates table entity data for API call
+   * @param selectedTags
+   */
+  const onTagUpdate = (selectedTags?: Array<EntityTags>) => {
+    if (selectedTags) {
+      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
+      const updatedTable = { ...database, tags: updatedTags };
+      settingsUpdateHandler(updatedTable as Database);
+    }
+  };
+
+  const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
+    if (selectedTags) {
+      const prevTags =
+        tags?.filter((tag) =>
+          selectedTags
+            .map((selTag) => selTag.tagFQN)
+            .includes(tag?.tagFQN as string)
+        ) || [];
+      const newTags = selectedTags
+        .filter((tag) => {
+          return !prevTags
+            ?.map((prevTag) => prevTag.tagFQN)
+            .includes(tag.tagFQN);
+        })
+        .map((tag) => ({
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          source: tag.source,
+          tagFQN: tag.tagFQN,
+        }));
+      onTagUpdate([...prevTags, ...newTags]);
+    }
+    setIsEditable(false);
+  };
+
+  const databaseTable = useMemo(() => {
+    if (schemaDataLoading) {
+      return <Loader />;
+    } else if (!isEmpty(schemaData)) {
+      return (
+        <Col span={24}>
+          <Table
+            bordered
+            className="table-shadow"
+            columns={tableColumn}
+            data-testid="database-databaseSchemas"
+            dataSource={schemaData}
+            loading={{
+              spinning: schemaDataLoading,
+              indicator: <Loader size="small" />,
+            }}
+            pagination={false}
+            rowKey="id"
+            size="small"
+          />
+          {Boolean(
+            !isNil(databaseSchemaPaging.after) ||
+              !isNil(databaseSchemaPaging.before)
+          ) && (
+            <NextPrevious
+              currentPage={currentPage}
+              pageSize={PAGE_SIZE}
+              paging={databaseSchemaPaging}
+              pagingHandler={databaseSchemaPagingHandler}
+              totalCount={databaseSchemaPaging.total}
+            />
+          )}
+        </Col>
+      );
+    } else {
+      return <ErrorPlaceHolder />;
+    }
+  }, [
+    schemaDataLoading,
+    schemaData,
+    tableColumn,
+    databaseSchemaPaging,
+    currentPage,
+    databaseSchemaPagingHandler,
+  ]);
+
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (error) {
+    return (
+      <ErrorPlaceHolder>
+        <p data-testid="error-message">{error}</p>
+      </ErrorPlaceHolder>
+    );
+  }
+
   return (
     <>
-      {isLoading ? (
-        <Loader />
-      ) : error ? (
-        <ErrorPlaceHolder>
-          <p data-testid="error-message">{error}</p>
-        </ErrorPlaceHolder>
-      ) : (
-        <>
-          {databasePermission.ViewAll || databasePermission.ViewBasic ? (
-            <PageContainerV1>
-              <Row
-                className=" p-x-md p-t-lg"
-                data-testid="page-container"
-                gutter={[0, 12]}>
-                {isDatabaseDetailsLoading ? (
-                  <Skeleton
-                    active
-                    paragraph={{
-                      rows: 3,
-                      width: ['20%', '80%', '60%'],
-                    }}
-                  />
-                ) : (
-                  <>
-                    <Col span={24}>
-                      <Space align="center" className="justify-between w-full">
-                        <TitleBreadcrumb titleLinks={slashedDatabaseName} />
-                        <ManageButton
-                          isRecursiveDelete
-                          allowSoftDelete={false}
-                          canDelete={databasePermission.Delete}
-                          entityFQN={databaseFQN}
-                          entityId={databaseId}
+      {databasePermission.ViewAll || databasePermission.ViewBasic ? (
+        <PageLayoutV1
+          pageTitle={t('label.entity-detail-plural', {
+            entity: getEntityName(database),
+          })}>
+          {isDatabaseDetailsLoading ? (
+            <Skeleton
+              active
+              paragraph={{
+                rows: 3,
+                width: ['20%', '80%', '60%'],
+              }}
+            />
+          ) : (
+            <>
+              {database && (
+                <Row className="p-x-xs" wrap={false}>
+                  <Col flex="auto">
+                    <EntityHeader
+                      breadcrumb={slashedDatabaseName}
+                      entityData={database}
+                      entityType={EntityType.DATABASE}
+                      icon={
+                        <img
+                          className="h-8"
+                          src={serviceTypeLogo(serviceType ?? '')}
+                        />
+                      }
+                      serviceName={database.service.name ?? ''}
+                    />
+                  </Col>
+                  <Col flex="30px">
+                    <ManageButton
+                      isRecursiveDelete
+                      allowSoftDelete={false}
+                      canDelete={databasePermission.Delete}
+                      displayName={database.displayName}
+                      editDisplayNamePermission={
+                        databasePermission.EditAll ||
+                        databasePermission.EditDisplayName
+                      }
+                      entityFQN={databaseFQN}
+                      entityId={databaseId}
+                      entityName={databaseName}
+                      entityType={EntityType.DATABASE}
+                      onEditDisplayName={handleUpdateDisplayName}
+                    />
+                  </Col>
+                </Row>
+              )}
+              <Col className="m-t-xs" span={24}>
+                <Space wrap align="center" data-testid="extrainfo" size={4}>
+                  {extraInfo.map((info, index) => (
+                    <span
+                      className="d-flex tw-items-center"
+                      data-testid={info.key || `info${index}`}
+                      key={index}>
+                      <EntitySummaryDetails
+                        currentOwner={database?.owner}
+                        data={info}
+                        removeTier={handleRemoveTier}
+                        tier={getTierTags(database?.tags ?? [])}
+                        updateOwner={
+                          databasePermission.EditOwner ||
+                          databasePermission.EditAll
+                            ? handleUpdateOwner
+                            : undefined
+                        }
+                        updateTier={
+                          databasePermission.EditTags ||
+                          databasePermission.EditAll
+                            ? handleUpdateTier
+                            : undefined
+                        }
+                      />
+                      {extraInfo.length !== 1 &&
+                      index < extraInfo.length - 1 ? (
+                        <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
+                          {t('label.pipe-symbol')}
+                        </span>
+                      ) : null}
+                    </span>
+                  ))}
+                </Space>
+              </Col>
+              <Col className="m-t-xs" span={24}>
+                <Space
+                  wrap
+                  align="center"
+                  data-testid="entity-tags"
+                  size={6}
+                  onClick={() => {
+                    if (isTagEditable) {
+                      // Fetch tags and terms only once
+                      if (tagList.length === 0) {
+                        fetchTags();
+                      }
+                      setIsEditable(true);
+                    }
+                  }}>
+                  {!deleted && (
+                    <TagsContainer
+                      className="w-min-20"
+                      dropDownHorzPosRight={false}
+                      editable={isEditable}
+                      isLoading={isTagLoading}
+                      selectedTags={selectedTags}
+                      showAddTagButton={isTagEditable && isEmpty(selectedTags)}
+                      showEditTagButton={isTagEditable}
+                      size="small"
+                      tagList={tagList}
+                      onCancel={() => {
+                        handleTagSelection();
+                      }}
+                      onSelectionChange={(tags) => {
+                        handleTagSelection(tags);
+                      }}
+                    />
+                  )}
+                </Space>
+              </Col>
+            </>
+          )}
+
+          <Col span={24}>
+            <Row className="m-t-md">
+              <Col span={24}>
+                <Tabs
+                  activeKey={activeTab ?? EntityTabs.SCHEMA}
+                  items={tabs}
+                  onChange={activeTabHandler}
+                />
+              </Col>
+              <Col className="p-y-md" span={24}>
+                {activeTab === EntityTabs.SCHEMA && (
+                  <Card className="h-full">
+                    <Row gutter={[16, 16]}>
+                      <Col data-testid="description-container" span={24}>
+                        <Description
+                          description={description}
+                          entityFieldThreads={getEntityFieldThreadCounts(
+                            EntityField.DESCRIPTION,
+                            entityFieldThreadCount
+                          )}
+                          entityFqn={databaseFQN}
                           entityName={databaseName}
                           entityType={EntityType.DATABASE}
+                          hasEditAccess={
+                            databasePermission.EditDescription ||
+                            databasePermission.EditAll
+                          }
+                          isEdit={isEdit}
+                          onCancel={onCancel}
+                          onDescriptionEdit={onDescriptionEdit}
+                          onDescriptionUpdate={onDescriptionUpdate}
+                          onThreadLinkSelect={onThreadLinkSelect}
                         />
-                      </Space>
-                    </Col>
-                    <Col span={24}>
-                      {extraInfo.map((info, index) => (
-                        <Space key={index}>
-                          <EntitySummaryDetails
-                            currentOwner={database?.owner}
-                            data={info}
-                            updateOwner={
-                              databasePermission.EditOwner ||
-                              databasePermission.EditAll
-                                ? handleUpdateOwner
-                                : undefined
-                            }
-                          />
-                        </Space>
-                      ))}
-                    </Col>
-                    <Col data-testid="description-container" span={24}>
-                      <Description
-                        description={description}
-                        entityFieldThreads={getEntityFieldThreadCounts(
-                          EntityField.DESCRIPTION,
-                          entityFieldThreadCount
-                        )}
-                        entityFqn={databaseFQN}
-                        entityName={databaseName}
-                        entityType={EntityType.DATABASE}
-                        hasEditAccess={
-                          databasePermission.EditDescription ||
-                          databasePermission.EditAll
-                        }
-                        isEdit={isEdit}
-                        onCancel={onCancel}
-                        onDescriptionEdit={onDescriptionEdit}
-                        onDescriptionUpdate={onDescriptionUpdate}
-                        onThreadLinkSelect={onThreadLinkSelect}
-                      />
-                    </Col>
-                  </>
-                )}
-                <Col span={24}>
-                  <Row className="m-t-md">
-                    <Col span={24}>
-                      <TabsPane
-                        activeTab={activeTab}
-                        className="flex-initial"
-                        setActiveTab={activeTabHandler}
-                        tabs={tabs}
-                      />
-                    </Col>
-                    <Col className="p-y-md" span={24}>
-                      {activeTab === 1 && (
-                        <Fragment>
-                          <Table
-                            bordered
-                            className="table-shadow"
-                            columns={tableColumn}
-                            data-testid="database-databaseSchemas"
-                            dataSource={schemaData}
-                            loading={{
-                              spinning: schemaDataLoading,
-                              indicator: <Loader size="small" />,
-                            }}
-                            pagination={false}
-                            rowKey="id"
-                            size="small"
-                          />
-                          {Boolean(
-                            !isNil(databaseSchemaPaging.after) ||
-                              !isNil(databaseSchemaPaging.before)
-                          ) && (
-                            <NextPrevious
-                              currentPage={currentPage}
-                              pageSize={PAGE_SIZE}
-                              paging={databaseSchemaPaging}
-                              pagingHandler={databaseSchemaPagingHandler}
-                              totalCount={databaseSchemaPaging.total}
-                            />
-                          )}
-                        </Fragment>
-                      )}
-                      {activeTab === 2 && (
-                        <Card className="p-t-xss p-b-md">
-                          <Row className="entity-feed-list" id="activityfeed">
-                            <Col offset={4} span={16}>
-                              <ActivityFeedList
-                                hideFeedFilter
-                                hideThreadFilter
-                                isEntityFeed
-                                withSidePanel
-                                className=""
-                                deletePostHandler={deletePostHandler}
-                                entityName={databaseName}
-                                feedList={entityThread}
-                                postFeedHandler={postFeedHandler}
-                                updateThreadHandler={updateThreadHandler}
-                              />
-                            </Col>
-                          </Row>
-                        </Card>
-                      )}
-                      <Col
-                        data-testid="observer-element"
-                        id="observer-element"
-                        ref={elementRef as RefObject<HTMLDivElement>}
-                        span={24}>
-                        {getLoader()}
                       </Col>
-                    </Col>
-                  </Row>
+
+                      {databaseTable}
+                    </Row>
+                  </Card>
+                )}
+                {activeTab === EntityTabs.ACTIVITY_FEED && (
+                  <Card className="p-t-xss p-b-md">
+                    <Row className="entity-feed-list" id="activityfeed">
+                      <Col offset={4} span={16}>
+                        <ActivityFeedList
+                          hideFeedFilter
+                          hideThreadFilter
+                          isEntityFeed
+                          withSidePanel
+                          className=""
+                          deletePostHandler={deletePostHandler}
+                          entityName={databaseName}
+                          feedList={entityThread}
+                          postFeedHandler={postFeedHandler}
+                          updateThreadHandler={updateThreadHandler}
+                        />
+                      </Col>
+                    </Row>
+                  </Card>
+                )}
+                <Col
+                  data-testid="observer-element"
+                  id="observer-element"
+                  ref={elementRef as RefObject<HTMLDivElement>}
+                  span={24}>
+                  {getLoader()}
                 </Col>
-                <Col span={24}>
-                  {threadLink ? (
-                    <ActivityThreadPanel
-                      createThread={createThread}
-                      deletePostHandler={deletePostHandler}
-                      open={Boolean(threadLink)}
-                      postFeedHandler={postFeedHandler}
-                      threadLink={threadLink}
-                      updateThreadHandler={updateThreadHandler}
-                      onCancel={onThreadPanelClose}
-                    />
-                  ) : null}
-                </Col>
-              </Row>
-            </PageContainerV1>
-          ) : (
-            <ErrorPlaceHolder>
-              {t('message.no-permission-to-view')}
-            </ErrorPlaceHolder>
-          )}
-        </>
+              </Col>
+            </Row>
+          </Col>
+          <Col span={24}>
+            {threadLink ? (
+              <ActivityThreadPanel
+                createThread={createThread}
+                deletePostHandler={deletePostHandler}
+                open={Boolean(threadLink)}
+                postFeedHandler={postFeedHandler}
+                threadLink={threadLink}
+                updateThreadHandler={updateThreadHandler}
+                onCancel={onThreadPanelClose}
+              />
+            ) : null}
+          </Col>
+        </PageLayoutV1>
+      ) : (
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
       )}
     </>
   );

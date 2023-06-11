@@ -15,8 +15,11 @@ import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { Col, Input, Modal, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getPolicies, getRoles } from 'rest/rolesAPIV1';
@@ -160,26 +163,35 @@ const AddAttributeModal: FC<Props> = ({
               />
             </Col>
           </Row>
-          {searchedData.map((option) => (
-            <Row
-              className={classNames({
-                selected: selectedValues.includes(option.id),
-              })}
-              data-testid="policy-row"
-              gutter={[16, 16]}
-              key={option.id}
-              onClick={() => handleValuSelect(option.id)}>
-              <Col span={6}>{getEntityName(option)}</Col>
-              <Col span={16}>
-                <RichTextEditorPreviewer markdown={option.description || ''} />
-              </Col>
-              <Col span={2}>
-                {selectedValues.includes(option.id) && (
-                  <CheckOutlined className="text-primary" />
-                )}
-              </Col>
-            </Row>
-          ))}
+          {isEmpty(searchedData) ? (
+            <ErrorPlaceHolder
+              className="mt-0-important p-y-lg"
+              type={ERROR_PLACEHOLDER_TYPE.FILTER}
+            />
+          ) : (
+            searchedData.map((option) => (
+              <Row
+                className={classNames({
+                  selected: selectedValues.includes(option.id),
+                })}
+                data-testid="policy-row"
+                gutter={[16, 16]}
+                key={option.id}
+                onClick={() => handleValuSelect(option.id)}>
+                <Col span={6}>{getEntityName(option)}</Col>
+                <Col span={16}>
+                  <RichTextEditorPreviewer
+                    markdown={option.description || ''}
+                  />
+                </Col>
+                <Col span={2}>
+                  {selectedValues.includes(option.id) && (
+                    <CheckOutlined className="text-primary" />
+                  )}
+                </Col>
+              </Row>
+            ))
+          )}
         </>
       )}
     </Modal>

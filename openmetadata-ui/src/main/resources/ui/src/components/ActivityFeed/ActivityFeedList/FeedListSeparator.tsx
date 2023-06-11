@@ -20,7 +20,7 @@ const FeedListSeparator: FC<FeedListSeparatorProp> = ({
 }) => {
   return (
     <div className={className}>
-      <div className="tw-flex tw-justify-center">
+      <div className="d-flex tw-justify-center">
         <hr
           className="tw-absolute tw-top-3 tw-border-b tw-border-main tw-w-full tw-z-0"
           data-testid="separator"
@@ -29,7 +29,7 @@ const FeedListSeparator: FC<FeedListSeparatorProp> = ({
 
         {relativeDay ? (
           <span
-            className="tw-bg-separator tw-px-4 tw-py-px tw-rounded tw-z-10 tw-text-grey-muted tw-font-medium"
+            className="tw-bg-separator tw-px-4 tw-py-px tw-rounded tw-z-10 text-grey-muted tw-font-medium"
             data-testid="relativeday">
             {relativeDay}
           </span>

@@ -28,10 +28,8 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
-from metadata.generated.schema.entity.services.objectstoreService import (
-    ObjectStoreService,
-)
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -45,9 +43,6 @@ from openmetadata_managed_apis.utils.logger import set_operator_logger, workflow
 from openmetadata_managed_apis.utils.parser import (
     parse_service_connection,
     parse_validation_err,
-)
-from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
-    build_secrets_manager_credentials,
 )
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
@@ -70,8 +65,6 @@ from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.utils import model_str
 
 logger = workflow_logger()
-
-# logging.getLogger("airflow.task.operators").setLevel(logging.WARNING)
 
 
 class InvalidServiceException(Exception):
@@ -108,12 +101,6 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
     :param ingestion_pipeline: With the service ref
     :return: WorkflowSource
     """
-    secrets_manager = (
-        ingestion_pipeline.openMetadataServerConnection.secretsManagerProvider
-    )
-    ingestion_pipeline.openMetadataServerConnection.secretsManagerCredentials = (
-        build_secrets_manager_credentials(secrets_manager)
-    )
 
     try:
         metadata = OpenMetadata(config=ingestion_pipeline.openMetadataServerConnection)
@@ -172,9 +159,9 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
             service: MetadataService = metadata.get_by_name(
                 entity=entity_class, fqn=ingestion_pipeline.service.name
             )
-        elif service_type == "objectStoreService":
-            entity_class = ObjectStoreService
-            service: ObjectStoreService = metadata.get_by_name(
+        elif service_type == "storageService":
+            entity_class = StorageService
+            service: StorageService = metadata.get_by_name(
                 entity=entity_class, fqn=ingestion_pipeline.service.name
             )
         else:
@@ -257,7 +244,9 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     """
     return {
         "dag_id": clean_dag_id(ingestion_pipeline.name.__root__),
-        "description": ingestion_pipeline.description,
+        "description": ingestion_pipeline.description.__root__
+        if ingestion_pipeline.description is not None
+        else None,
         "start_date": ingestion_pipeline.airflowConfig.startDate.__root__
         if ingestion_pipeline.airflowConfig.startDate
         else airflow.utils.dates.days_ago(1),
@@ -338,7 +327,6 @@ def build_dag(
     """
 
     with DAG(**build_dag_configs(ingestion_pipeline)) as dag:
-
         # Initialize with random UUID4. Will be used by the callback instead of
         # generating it inside the Workflow itself.
         workflow_config.pipelineRunId = str(uuid.uuid4())

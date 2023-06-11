@@ -42,6 +42,10 @@ from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
     PipelineServiceType,
 )
+from metadata.generated.schema.entity.services.storageService import (
+    StorageConnection,
+    StorageServiceType,
+)
 from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
     DashboardMetadataConfigType,
     DashboardServiceMetadataPipeline,
@@ -70,6 +74,10 @@ from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline
     PipelineMetadataConfigType,
     PipelineServiceMetadataPipeline,
 )
+from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline import (
+    StorageMetadataConfigType,
+    StorageServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     WorkflowConfig,
@@ -93,6 +101,7 @@ SERVICE_TYPE_MAP = {
     **{service: MetadataConnection for service in MetadataServiceType.__members__},
     **{service: PipelineConnection for service in PipelineServiceType.__members__},
     **{service: MlModelConnection for service in MlModelServiceType.__members__},
+    **{service: StorageConnection for service in StorageServiceType.__members__},
 }
 
 SOURCE_CONFIG_CLASS_MAP = {
@@ -103,6 +112,7 @@ SOURCE_CONFIG_CLASS_MAP = {
     PipelineMetadataConfigType.PipelineMetadata.value: PipelineServiceMetadataPipeline,
     MlModelMetadataConfigType.MlModelMetadata.value: MlModelServiceMetadataPipeline,
     DatabaseMetadataConfigType.DatabaseMetadata.value: DatabaseServiceMetadataPipeline,
+    StorageMetadataConfigType.StorageMetadata.value: StorageServiceMetadataPipeline,
 }
 
 
@@ -402,7 +412,9 @@ def parse_workflow_config_gracefully(
                     f"{_parse_validation_err(scoped_error)}"
                 )
             raise scoped_error
-        except Exception:  # Let's just raise the original error if any internal logic fails
+        except (
+            Exception
+        ):  # Let's just raise the original error if any internal logic fails
             raise ParsingConfigurationError(
                 f"We encountered an error parsing the configuration of your workflow.\n"
                 "You might need to review your config based on the original cause of this failure:\n"

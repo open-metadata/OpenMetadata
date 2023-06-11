@@ -15,14 +15,15 @@ Population Standard deviation Metric definition
 
 # Keep SQA docs style defining custom constructs
 # pylint: disable=consider-using-f-string,duplicate-code
-from typing import cast
+
 
 from sqlalchemy import column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 
 from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
-from metadata.profiler.orm.registry import Dialects, is_quantifiable
+from metadata.profiler.orm.functions.length import LenFn
+from metadata.profiler.orm.registry import Dialects, is_concatenable, is_quantifiable
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -84,23 +85,29 @@ class StdDev(StaticMetric):
         if is_quantifiable(self.col.type):
             return StdDevFn(column(self.col.name))
 
+        if is_concatenable(self.col.type):
+            return StdDevFn(LenFn(column(self.col.name)))
+
         logger.debug(
             f"{self.col} has type {self.col.type}, which is not listed as quantifiable."
             + " We won't compute STDDEV for it."
         )
         return None
 
-    def df_fn(self, df=None):
+    def df_fn(self, dfs=None):
         """pandas function"""
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
-        df = cast(pd.DataFrame, df)
-
         if is_quantifiable(self.col.type):
-            stddev = df[self.col.name].std()
-            if pd.isnull(stddev):
+            try:
+                return pd.concat(df[self.col.name] for df in dfs).std()
+            except MemoryError:
+                logger.error(
+                    f"Unable to compute distinctCount for {self.col.name} due to memory constraints."
+                    f"We recommend using a smaller sample size or partitionning."
+                )
                 return None
-            return stddev
+
         logger.debug(
             f"{self.col.name} has type {self.col.type}, which is not listed as quantifiable."
             + " We won't compute STDDEV for it."

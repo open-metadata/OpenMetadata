@@ -37,15 +37,16 @@ import {
   DBT_SOURCES,
   GCS_CONFIG,
 } from 'components/common/DBTConfigFormBuilder/DBTFormEnum';
+import i18next from 'i18next';
 import { isEmpty, isNil, isString } from 'lodash';
 import { FormValidationRulesType } from '../enums/form.enum';
 import {
+  Credentials,
   DbtConfig,
-  GCSCredentialsValues,
-  SCredentials,
+  GCPCredentialsValues,
 } from '../generated/metadataIngestion/dbtPipeline';
-import { FormValidationRules } from '../interface/genericForm.interface';
-import jsonData from '../jsons/en';
+
+import { FormValidationRules } from '../interface/FormUtils.interface';
 import { isValidEmail, isValidUrl } from './CommonUtils';
 
 export const validateDbtCloudConfig = (
@@ -59,9 +60,9 @@ export const validateDbtCloudConfig = (
   >) {
     if (isEmpty(data[field])) {
       isValid = false;
-      errors[
-        field
-      ] = `${requiredFields[field]} ${jsonData['form-error-messages']['is-required']}`;
+      errors[field] = i18next.t('message.field-text-is-required', {
+        fieldText: requiredFields[field],
+      });
     }
   }
 
@@ -79,9 +80,9 @@ export const validateDbtLocalConfig = (
   >) {
     if (isEmpty(data[field])) {
       isValid = false;
-      errors[
-        field
-      ] = `${requiredFields[field]} ${jsonData['form-error-messages']['is-required']}`;
+      errors[field] = i18next.t('message.field-text-is-required', {
+        fieldText: requiredFields[field],
+      });
     }
   }
 
@@ -99,9 +100,9 @@ export const validateDbtHttpConfig = (
   >) {
     if (isEmpty(data[field])) {
       isValid = false;
-      errors[
-        field
-      ] = `${requiredFields[field]} ${jsonData['form-error-messages']['is-required']}`;
+      errors[field] = i18next.t('message.field-text-is-required', {
+        fieldText: requiredFields[field],
+      });
     }
   }
 
@@ -109,7 +110,7 @@ export const validateDbtHttpConfig = (
 };
 
 export const validateDbtS3Config = (
-  data: SCredentials,
+  data: Credentials,
   requiredFields = reqDBTS3Fields
 ) => {
   let isValid = true;
@@ -119,9 +120,9 @@ export const validateDbtS3Config = (
   >) {
     if (isEmpty(data[field])) {
       isValid = false;
-      errors[
-        field
-      ] = `${requiredFields[field]} ${jsonData['form-error-messages']['is-required']}`;
+      errors[field] = i18next.t('message.field-text-is-required', {
+        fieldText: requiredFields[field],
+      });
     }
   }
 
@@ -145,9 +146,9 @@ function getInvalidEmailErrors<
   for (const field of ruleFields[rule]) {
     if (data[field] && !isValidEmail(data[field] as unknown as string)) {
       isValid = false;
-      errors[field] = jsonData['form-error-messages'][
-        'invalid-email'
-      ] as Errors[keyof Type];
+      errors[field] = i18next.t('label.field-invalid', {
+        field: i18next.t('label.email'),
+      });
     }
   }
 
@@ -171,9 +172,9 @@ function getInvalidUrlErrors<
   for (const field of ruleFields[rule]) {
     if (data[field] && !isValidUrl(data[field] as unknown as string)) {
       isValid = false;
-      errors[field] = jsonData['form-error-messages'][
-        'invalid-url'
-      ] as Errors[keyof Type];
+      errors[field] = i18next.t('label.field-invalid', {
+        field: i18next.t('label.url-uppercase'),
+      });
     }
   }
 
@@ -181,7 +182,7 @@ function getInvalidUrlErrors<
 }
 
 export const checkDbtS3CredsConfigRules = (
-  data: SCredentials,
+  data: Credentials,
   ruleFields = rulesDBTS3CredsFields
 ) => {
   let isValid = true;
@@ -198,7 +199,7 @@ export const checkDbtS3CredsConfigRules = (
 };
 
 export const checkDbtGCSCredsConfigRules = (
-  data: GCSCredentialsValues,
+  data: GCPCredentialsValues,
   ruleFields = rulesDBTGCSCredsFields
 ) => {
   let isValid = true;
@@ -237,9 +238,9 @@ export const getSourceTypeFromConfig = (
   let gcsType = undefined;
   if (data) {
     if (!isNil(data.dbtSecurityConfig)) {
-      if (!isNil(data.dbtSecurityConfig.gcsConfig)) {
+      if (!isNil(data.dbtSecurityConfig.gcpConfig)) {
         sourceType = DBT_SOURCES.gcs;
-        gcsType = isString(data.dbtSecurityConfig.gcsConfig)
+        gcsType = isString(data.dbtSecurityConfig.gcpConfig)
           ? GCS_CONFIG.GCSCredentialsPath
           : GCS_CONFIG.GCSValues;
       } else {

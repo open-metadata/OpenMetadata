@@ -12,7 +12,6 @@
  */
 
 import { AxiosError } from 'axios';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import CreateUserComponent from 'components/CreateUser/CreateUser.component';
 import _ from 'lodash';
 import { observer } from 'mobx-react';
@@ -92,7 +91,7 @@ const CreateUserPage = () => {
       if (isBotExists) {
         showErrorToast(
           t('server.email-already-exist', {
-            entity: t('label.bot'),
+            entity: t('label.bot-lowercase'),
             name: userData.name,
           })
         );
@@ -129,8 +128,8 @@ const CreateUserPage = () => {
       } catch (error) {
         handleSaveFailure(
           getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-            ? t('server.entity-already-exist', {
-                entity: t('label.user'),
+            ? t('server.email-already-exist', {
+                entity: t('label.user-lowercase'),
                 name: userData.name,
               })
             : (error as AxiosError),
@@ -165,17 +164,15 @@ const CreateUserPage = () => {
   }, []);
 
   return (
-    <PageContainerV1>
-      <div className="self-center">
-        <CreateUserComponent
-          forceBot={Boolean(bot)}
-          isLoading={isLoading}
-          roles={roles}
-          onCancel={handleCancel}
-          onSave={handleAddUserSave}
-        />
-      </div>
-    </PageContainerV1>
+    <div className="self-center">
+      <CreateUserComponent
+        forceBot={Boolean(bot)}
+        isLoading={isLoading}
+        roles={roles}
+        onCancel={handleCancel}
+        onSave={handleAddUserSave}
+      />
+    </div>
   );
 };
 

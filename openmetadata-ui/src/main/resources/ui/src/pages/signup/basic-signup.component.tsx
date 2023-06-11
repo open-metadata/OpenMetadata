@@ -14,16 +14,15 @@
 import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
+import BrandImage from 'components/common/BrandImage/BrandImage';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
-import { ROUTES } from '../../constants/constants';
-import { passwordErrorMessage } from '../../constants/ErrorMessages.constant';
+import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
 import { AuthTypes } from '../../enums/signin.enum';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import LoginCarousel from '../login/LoginCarousel';
 import './../login/login.style.less';
 
@@ -66,26 +65,12 @@ const BasicSignUp = () => {
 
   const handleLogin = () => history.push(ROUTES.SIGNIN);
 
-  const validationMessages = {
-    required: t('message.field-text-is-required', {
-      fieldText: '${label}',
-    }),
-    types: {
-      email: t('message.entity-is-not-valid', {
-        entity: '${label}',
-      }),
-    },
-    whitespace: t('message.entity-not-contain-whitespace', {
-      entity: '${label}',
-    }),
-  };
-
   return (
     <div className="d-flex flex-col h-full">
       <div className="d-flex bg-body-main flex-grow" data-testid="signin-page">
         <div className="w-5/12">
           <div className="mt-4 text-center flex-center flex-col">
-            <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
+            <BrandImage height="auto" width={152} />
             <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
               {t('message.om-description')}
             </Typography.Text>
@@ -100,7 +85,7 @@ const BasicSignUp = () => {
                         className="mt-20"
                         form={form}
                         layout="vertical"
-                        validateMessages={validationMessages}
+                        validateMessages={VALIDATION_MESSAGES}
                         onFinish={handleSubmit}>
                         <Form.Item
                           label={t('label.entity-name', {
@@ -145,10 +130,11 @@ const BasicSignUp = () => {
                             },
                             {
                               pattern: passwordRegex,
-                              message: passwordErrorMessage,
+                              message: t('message.password-error-message'),
                             },
                           ]}>
                           <Input.Password
+                            autoComplete="off"
                             placeholder={t('label.enter-entity', {
                               entity: t('label.password-lowercase'),
                             })}
@@ -178,6 +164,7 @@ const BasicSignUp = () => {
                             },
                           ]}>
                           <Input.Password
+                            autoComplete="off"
                             placeholder={t('label.confirm-password')}
                           />
                         </Form.Item>

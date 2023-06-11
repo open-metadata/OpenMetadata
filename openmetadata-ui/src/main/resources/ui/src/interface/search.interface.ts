@@ -72,7 +72,7 @@ export interface TeamSearchSource extends SearchSourceBase, Team {} // extends E
 
 export interface ContainerSearchSource extends SearchSourceBase, Container {} // extends EntityInterface
 
-export interface dashboardDataModelSearchSource
+export interface DashboardDataModelSearchSource
   extends SearchSourceBase,
     DashboardDataModel {} // extends EntityInterface
 
@@ -92,7 +92,10 @@ export type ExploreSearchSource =
   | ContainerSearchSource
   | GlossarySearchSource
   | QuerySearchSource
-  | TagClassSearchSource;
+  | UserSearchSource
+  | TeamSearchSource
+  | TagClassSearchSource
+  | DashboardDataModelSearchSource;
 
 export type SearchIndexSearchSourceMapping = {
   [SearchIndex.TABLE]: TableSearchSource;
@@ -106,7 +109,6 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.TAG]: TagClassSearchSource;
   [SearchIndex.CONTAINER]: ContainerSearchSource;
   [SearchIndex.QUERY]: QuerySearchSource;
-  [SearchIndex.DASHBOARD_DATA_MODEL]: dashboardDataModelSearchSource;
 };
 
 export type SearchRequest<

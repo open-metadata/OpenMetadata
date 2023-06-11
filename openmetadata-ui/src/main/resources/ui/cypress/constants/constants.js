@@ -47,7 +47,7 @@ export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
   serviceName: 'sample_data',
   testCaseName: 'column_value_max_to_be_between',
   testSuiteName: 'critical_metrics_suite',
-  sqlTestCase: 'tableCustomSQLQuery',
+  sqlTestCase: 'Custom SQL Query',
   sqlQuery: 'Select * from dim_address',
 };
 
@@ -137,7 +137,7 @@ export const SEARCH_ENTITY_MLMODEL = {
 
 export const DELETE_ENTITY = {
   table: {
-    term: 'fact_sale',
+    term: 'dim.shop',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
   },
@@ -170,6 +170,7 @@ export const NEW_TEST_SUITE = {
 };
 
 export const NEW_TABLE_TEST_CASE = {
+  label: 'Table Column Name To Exist',
   type: 'tableColumnNameToExist',
   field: 'id',
   description: 'New table test case for TableColumnNameToExist',
@@ -178,6 +179,7 @@ export const NEW_TABLE_TEST_CASE = {
 export const NEW_COLUMN_TEST_CASE = {
   column: 'id',
   type: 'columnValueLengthsToBeBetween',
+  label: 'Column Value Lengths To Be Between',
   min: 3,
   max: 6,
   description: 'New table test case for columnValueLengthsToBeBetween',
@@ -186,6 +188,7 @@ export const NEW_COLUMN_TEST_CASE = {
 export const NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE = {
   column: 'id',
   type: 'columnValuesToBeNotNull',
+  label: 'Column Values To Be Not Null',
   description: 'New table test case for columnValuesToBeNotNull',
 };
 
@@ -214,7 +217,7 @@ export const NEW_ADMIN = {
   description: 'Hello, I am test admin',
 };
 
-export const NEW_TAG_CATEGORY = {
+export const NEW_CLASSIFICATION = {
   name: 'CypressClassification',
   displayName: 'CypressClassification',
   description: 'This is the CypressClassification',
@@ -244,11 +247,13 @@ export const NEW_GLOSSARY_TERMS = {
     name: 'Purchase',
     description: 'This is the Purchase',
     synonyms: 'buy,collect,acquire',
+    fullyQualifiedName: 'Business Glossary.Purchase',
   },
   term_2: {
     name: 'Sales',
     description: 'This is the Sales',
     synonyms: 'give,disposal,deal',
+    fullyQualifiedName: 'Business Glossary.Sales',
   },
 };
 export const GLOSSARY_TERM_WITH_DETAILS = {
@@ -259,6 +264,7 @@ export const GLOSSARY_TERM_WITH_DETAILS = {
   relatedTerms: 'Sales',
   reviewer: 'Colin Ho',
   inheritedReviewer: 'Aaron Johnson',
+  fullyQualifiedName: 'Business Glossary.Accounts',
 };
 
 export const NEW_GLOSSARY_1_TERMS = {
@@ -266,11 +272,13 @@ export const NEW_GLOSSARY_1_TERMS = {
     name: 'Features',
     description: 'This is the Features',
     synonyms: 'data,collect,time',
+    fullyQualifiedName: 'Product Glossary.Features',
   },
   term_2: {
     name: 'Uses',
     description: 'This is the Uses',
     synonyms: 'home,business,adventure',
+    fullyQualifiedName: 'Product Glossary.Uses',
   },
 };
 
@@ -285,8 +293,9 @@ export const SERVICE_TYPE = {
   Database: 'Database',
   Messaging: 'Messaging',
   Dashboard: 'Dashboard',
-  Pipelines: 'Pipelines',
+  Pipeline: 'Pipeline',
   MLModels: 'ML Models',
+  Storage: 'Storage',
 };
 
 export const ENTITIES = {
@@ -350,8 +359,8 @@ export const DBT = {
   classification: 'dbtTags',
   tagName: 'model_tag_one',
   dbtQuery: 'select * from "dev"."dbt_jaffle"."stg_orders"',
-  dbtLineageNodeLabel: 'raw_customers',
-  dbtLineageNode: 'dev.dbt_jaffle.raw_customers',
+  dbtLineageNodeLabel: 'stg_customers',
+  dbtLineageNode: 'dev.dbt_jaffle.stg_customers',
   dataQualityTest1: 'dbt_utils_equal_rowcount_customers_ref_orders_',
   dataQualityTest2: 'not_null_customers_customer_id',
 };
@@ -361,6 +370,8 @@ export const API_SERVICE = {
   messagingServices: 'messagingServices',
   pipelineServices: 'pipelineServices',
   dashboardServices: 'dashboardServices',
+  mlmodelServices: 'mlmodelServices',
+  storageServices: 'storageServices',
 };
 
 export const TEST_CASE = {
@@ -390,3 +401,34 @@ export const DESTINATION = {
     url: 'http://localhost:8585',
   },
 };
+
+export const CUSTOM_PROPERTY_INVALID_NAMES = {
+  CAPITAL_CASE: 'CapitalCase',
+  WITH_UNDERSCORE: 'with_underscore',
+  WITH_DOTS: 'with.',
+  WITH_SPACE: 'with ',
+};
+
+export const CUSTOM_PROPERTY_NAME_VALIDATION_ERROR =
+  'Name must start with lower case with no space, underscore, or dots.';
+
+export const TAG_INVALID_NAMES = {
+  MIN_LENGTH: 'c',
+  MAX_LENGTH: 'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890ab',
+  WITH_SPECIAL_CHARS: '!@#$%^&*()',
+};
+
+export const GLOSSARY_INVALID_NAMES = {
+  MAX_LENGTH:
+    'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890aba87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890abName can be a maximum of 128 characters',
+  WITH_SPECIAL_CHARS: '!@#$%^&*()',
+};
+
+export const NAME_VALIDATION_ERROR =
+  'Name must contain only letters, numbers, underscores, hyphens, periods, parenthesis, and ampersands.';
+
+export const NAME_MIN_MAX_LENGTH_VALIDATION_ERROR =
+  'Name size must be between 2 and 64';
+
+export const GLOSSARY_NAME_MAX_LENGTH_VALIDATION_ERROR =
+  'Name can be a maximum of 128 characters';

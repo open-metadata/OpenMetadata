@@ -17,15 +17,13 @@ Workflow definition for the ORM Profiler.
 - How to define metrics & tests
 """
 import traceback
-from copy import deepcopy
-from typing import Iterable, List, Optional, Tuple, Union, cast
+from typing import Iterable, Optional, cast
 
 from pydantic import ValidationError
-from sqlalchemy import MetaData
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import ColumnProfilerConfig, Table
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
@@ -47,28 +45,18 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
-from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.models.custom_types import ServiceWithConnectionType
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.profiler.api.models import (
-    ProfilerProcessorConfig,
-    ProfilerResponse,
-    TableConfig,
-)
-from metadata.profiler.interface.pandas.pandas_profiler_interface import (
-    PandasProfilerInterface,
-)
-from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
-from metadata.profiler.interface.sqlalchemy.sqa_profiler_interface import (
-    SQAProfilerInterface,
-)
-from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.profiler.processor.core import Profiler
-from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
+from metadata.profiler.source.base_profiler_source import BaseProfilerSource
+from metadata.profiler.source.profiler_source_factory import profiler_source_factory
+from metadata.timer.repeated_timer import RepeatedTimer
+from metadata.timer.workflow_reporter import get_ingestion_status_timer
 from metadata.utils import fqn
 from metadata.utils.class_helper import (
     get_service_class_from_service_type,
@@ -83,6 +71,8 @@ from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 logger = profiler_logger()
 
 NON_SQA_DATABASE_CONNECTIONS = (DatalakeConnection,)
+SUCCESS_THRESHOLD_VALUE = 90
+REPORTS_INTERVAL_SECONDS = 60
 
 
 class ProfilerInterfaceInstantiationError(Exception):
@@ -101,13 +91,15 @@ class ProfilerWorkflow(WorkflowStatusMixin):
     def __init__(self, config: OpenMetadataWorkflowConfig):
         self.profiler = None  # defined in `create_profiler()``
         self.config = config
+        self._timer: Optional[RepeatedTimer] = None
+
         self.metadata_config: OpenMetadataConnection = (
             self.config.workflowConfig.openMetadataServerConfig
         )
         self.profiler_config = ProfilerProcessorConfig.parse_obj(
             self.config.processor.dict().get("config")
         )
-        self.metadata = OpenMetadata(self.metadata_config)
+        self.metadata = create_ometa_client(self.metadata_config)
         self._retrieve_service_connection_if_needed()
         self.test_connection()
         self.set_ingestion_pipeline_status(state=PipelineState.running)
@@ -116,7 +108,6 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
         )  # Used to satisfy type checked
         self.source_status = SourceStatus()
-        self.status = ProcessorStatus()
         self._profiler_interface_args = None
         if self.config.sink:
             self.sink = get_sink(
@@ -134,6 +125,11 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 "and that your ingestion token (settings > bots) is still valid."
             )
 
+        logger.info(
+            f"Starting profiler for service {self.config.source.serviceName}"
+            f":{self.config.source.type.lower()}"
+        )
+
     @classmethod
     def create(cls, config_dict: dict) -> "ProfilerWorkflow":
         """
@@ -149,70 +145,15 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             )
             raise err
 
-    def get_config_for_entity(self, entity: Table) -> Optional[TableConfig]:
-        """Get config for a specific entity
-
-        Args:
-            entity: table entity
-        """
-
-        if not self.profiler_config.tableConfig:
-            return None
-        return next(
-            (
-                table_config
-                for table_config in self.profiler_config.tableConfig
-                if table_config.fullyQualifiedName.__root__
-                == entity.fullyQualifiedName.__root__  # type: ignore
-            ),
-            None,
-        )
-
-    def get_include_columns(self, entity) -> Optional[List[ColumnProfilerConfig]]:
-        """get included columns"""
-        entity_config: Optional[TableConfig] = self.get_config_for_entity(entity)
-        if entity_config and entity_config.columnConfig:
-            return entity_config.columnConfig.includeColumns
-
-        if entity.tableProfilerConfig:
-            return entity.tableProfilerConfig.includeColumns
-
-        return None
-
-    def get_exclude_columns(self, entity) -> Optional[List[str]]:
-        """get included columns"""
-        entity_config: Optional[TableConfig] = self.get_config_for_entity(entity)
-        if entity_config and entity_config.columnConfig:
-            return entity_config.columnConfig.excludeColumns
-
-        if entity.tableProfilerConfig:
-            return entity.tableProfilerConfig.excludeColumns
-
-        return None
-
-    def create_profiler(
-        self, table_entity: Table, profiler_interface: ProfilerProtocol
-    ):
-        """Profile a single entity"""
-        if not self.profiler_config.profiler:
-            self.profiler = DefaultProfiler(
-                profiler_interface=profiler_interface,
-                include_columns=self.get_include_columns(table_entity),
-                exclude_columns=self.get_exclude_columns(table_entity),
-            )
-        else:
-            metrics = (
-                [Metrics.get(name) for name in self.profiler_config.profiler.metrics]
-                if self.profiler_config.profiler.metrics
-                else get_default_metrics(profiler_interface.table)
+    @property
+    def timer(self) -> RepeatedTimer:
+        """Status timer"""
+        if not self._timer:
+            self._timer = get_ingestion_status_timer(
+                interval=REPORTS_INTERVAL_SECONDS, logger=logger, workflow=self
             )
 
-            self.profiler = Profiler(
-                *metrics,  # type: ignore
-                profiler_interface=profiler_interface,
-                include_columns=self.get_include_columns(table_entity),
-                exclude_columns=self.get_exclude_columns(table_entity),
-            )
+        return self._timer
 
     def filter_databases(self, database: Database) -> Optional[Database]:
         """Returns filtered database entities"""
@@ -319,51 +260,17 @@ class ProfilerWorkflow(WorkflowStatusMixin):
 
         yield from self.filter_entities(tables)
 
-    def copy_service_config(self, database) -> DatabaseService.__config__:
-        copy_service_connection_config = deepcopy(
-            self.config.source.serviceConnection.__root__.config  # type: ignore
-        )
-        if hasattr(
-            self.config.source.serviceConnection.__root__.config,  # type: ignore
-            "supportsDatabase",
-        ):
-            if hasattr(copy_service_connection_config, "database"):
-                copy_service_connection_config.database = database.name.__root__  # type: ignore
-            if hasattr(copy_service_connection_config, "catalog"):
-                copy_service_connection_config.catalog = database.name.__root__  # type: ignore
-
-        # we know we'll only be working with databaseServices, we cast the type to satisfy type checker
-        copy_service_connection_config = cast(
-            DatabaseService.__config__, copy_service_connection_config
-        )
-
-        return copy_service_connection_config
-
     def run_profiler(
-        self, entity: Table, copied_service_config, sqa_metadata=None
-    ) -> Tuple[Optional[ProfilerResponse], Optional[List]]:
+        self, entity: Table, profiler_source: BaseProfilerSource
+    ) -> Optional[ProfilerResponse]:
         """
         Main logic for the profiler workflow
         """
         try:
-            profiler_interface: Union[
-                SQAProfilerInterface, PandasProfilerInterface
-            ] = ProfilerProtocol.create(
-                (
-                    copied_service_config.__class__.__name__
-                    if isinstance(copied_service_config, NON_SQA_DATABASE_CONNECTIONS)
-                    else self.config.source.serviceConnection.__root__.__class__.__name__
-                ),
-                entity,
-                self.get_config_for_entity(entity),
-                self.source_config,
-                copied_service_config,
-                create_ometa_client(self.metadata_config),
-                sqa_metadata=sqa_metadata,
-            )  # type: ignore
-            self.create_profiler(entity, profiler_interface)
-            self.profiler = cast(Profiler, self.profiler)  # satisfy type checker
-            profile: ProfilerResponse = self.profiler.process(
+            profiler_runner: Profiler = profiler_source.get_profiler_runner(
+                entity, self.profiler_config
+            )
+            profile: ProfilerResponse = profiler_runner.process(
                 self.source_config.generateSampleData,
                 self.source_config.processPiiSensitive,
             )
@@ -372,46 +279,48 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             error = f"Unexpected exception processing entity [{name}]: {exc}"
             logger.debug(traceback.format_exc())
             logger.error(error)
-            self.status.failed(name, error, traceback.format_exc())
+            self.source_status.failed(name, error, traceback.format_exc())
             try:
                 # if we fail to instantiate a profiler_interface, we won't have a profiler_interface variable
-                self.status.fail_all(profiler_interface.processor_status.failures)
-            except UnboundLocalError:
+                # we'll also catch scenarios where we don't have an interface set
+                self.source_status.fail_all(
+                    profiler_source.interface.processor_status.failures
+                )
+                self.source_status.records.extend(
+                    profiler_source.interface.processor_status.records
+                )
+            except (UnboundLocalError, AttributeError):
                 pass
         else:
-            return profile, profiler_interface.processor_status.failures
+            # at this point we know we have an interface variable since we the `try` block above didn't raise
+            self.source_status.fail_all(profiler_source.interface.processor_status.failures)  # type: ignore
+            self.source_status.records.extend(
+                profiler_source.interface.processor_status.records  # type: ignore
+            )
+            return profile
 
-        return None, None
+        return None
 
     def execute(self):
         """
         Run the profiling and tests
         """
+        self.timer.trigger()
 
         try:
             for database in self.get_database_entities():
-                copied_service_config = self.copy_service_config(database)
-                sqa_metadata = (
-                    MetaData()
-                    if not isinstance(
-                        copied_service_config, NON_SQA_DATABASE_CONNECTIONS
-                    )
-                    else None
-                )  # we only need this for sqlalchemy based services
+                profiler_source = profiler_source_factory.create(
+                    self.config.source.type.lower(),
+                    self.config,
+                    database,
+                    self.metadata,
+                )
                 for entity in self.get_table_entities(database=database):
-                    profile, failures = self.run_profiler(
-                        entity, copied_service_config, sqa_metadata
-                    )
+                    profile = self.run_profiler(entity, profiler_source)
                     if hasattr(self, "sink") and profile:
                         self.sink.write_record(profile)
-                    if failures:
-                        self.status.fail_all(
-                            failures
-                        )  # we can have column level failures we need to report on
-                    self.status.processed(entity.fullyQualifiedName.__root__)  # type: ignore
-                    self.source_status.scanned(entity.fullyQualifiedName.__root__)  # type: ignore
             # At the end of the `execute`, update the associated Ingestion Pipeline status as success
-            self.set_ingestion_pipeline_status(PipelineState.success)
+            self.update_ingestion_status_at_end()
 
         # Any unhandled exception breaking the workflow should update the status
         except Exception as err:
@@ -428,13 +337,25 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         """
         Returns 1 if status is failed, 0 otherwise.
         """
-        if (
-            self.source_status.failures
-            or self.status.failures
-            or (hasattr(self, "sink") and self.sink.get_status().failures)
+        if self.source_status.failures or (
+            hasattr(self, "sink") and self.sink.get_status().failures
         ):
             return 1
         return 0
+
+    def _get_source_success(self):
+        """Compue the success rate of the source"""
+        return self.source_status.calculate_success()
+
+    def update_ingestion_status_at_end(self):
+        """
+        Once the execute method is done, update the status
+        as OK or KO depending on the success rate.
+        """
+        pipeline_state = PipelineState.success
+        if SUCCESS_THRESHOLD_VALUE <= self._get_source_success() < 100:
+            pipeline_state = PipelineState.partialSuccess
+        self.set_ingestion_pipeline_status(pipeline_state)
 
     def _raise_from_status_internal(self, raise_warnings=False):
         """
@@ -444,8 +365,10 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         as we are just picking up data from OM.
         """
 
-        if self.status.failures:
-            raise WorkflowExecutionError("Processor reported errors", self.status)
+        if self._get_source_success() < SUCCESS_THRESHOLD_VALUE:
+            raise WorkflowExecutionError(
+                "Processor reported errors", self.source_status
+            )
         if hasattr(self, "sink") and self.sink.get_status().failures:
             raise WorkflowExecutionError("Sink reported errors", self.sink.get_status())
 
@@ -454,8 +377,6 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 raise WorkflowExecutionError(
                     "Source reported warnings", self.source_status
                 )
-            if self.status.warnings:
-                raise WorkflowExecutionError("Processor reported warnings", self.status)
             if hasattr(self, "sink") and self.sink.get_status().warnings:
                 raise WorkflowExecutionError(
                     "Sink reported warnings", self.sink.get_status()
@@ -472,6 +393,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         Close all connections
         """
         self.metadata.close()
+        self.timer.stop()
 
     def _retrieve_service_connection_if_needed(self) -> None:
         """

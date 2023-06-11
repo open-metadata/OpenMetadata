@@ -30,6 +30,15 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
         UPDATE_FIELDS);
   }
 
+  /**
+   * TestConnectionDefinitions are created from JSON data. The FQN will be generated out of the informed name and
+   * `.testConnectionDefinition`
+   */
+  @Override
+  public void setFullyQualifiedName(TestConnectionDefinition entity) {
+    entity.setFullyQualifiedName(entity.getName() + ".testConnectionDefinition");
+  }
+
   @Override
   public TestConnectionDefinition setFields(TestConnectionDefinition entity, EntityUtil.Fields fields)
       throws IOException {
@@ -37,7 +46,7 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
   }
 
   @Override
-  public void prepare(TestConnectionDefinition entity) throws IOException {
+  public void prepare(TestConnectionDefinition entity) {
     // validate steps
     if (CommonUtil.nullOrEmpty(entity.getSteps())) {
       throw new IllegalArgumentException("Steps must not be empty");
@@ -56,7 +65,7 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
   }
 
   @Override
-  public void storeRelationships(TestConnectionDefinition entity) throws IOException {
+  public void storeRelationships(TestConnectionDefinition entity) {
     storeOwner(entity, entity.getOwner());
   }
 

@@ -12,19 +12,24 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Select, Space, Spin, Tooltip, Typography } from 'antd';
+import { Button, Select, Spin, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconFlatDoc } from 'assets/svg/ic-flat-doc.svg';
 import TagButton from 'components/TagButton/TagButton.component';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { t } from 'i18next';
-import { cloneDeep, debounce, includes, toString } from 'lodash';
+import { cloneDeep, debounce, includes } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { getGlossaryPath } from 'utils/RouterUtils';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
-import { DE_ACTIVE_COLOR, PAGE_SIZE } from '../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
+  PAGE_SIZE,
+} from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -131,97 +136,103 @@ const RelatedTerms = ({
   }, [glossaryTerm]);
 
   return (
-    <div className="flex" data-testid="related-term-container">
-      <Space
-        className="w-full"
-        data-testid={`section-${t('label.related-term-plural')}`}
-        direction="vertical">
-        <div className="d-flex items-center">
-          <Typography.Text className="glossary-subheading">
-            {t('label.related-term-plural')}
-          </Typography.Text>
-          {permissions.EditAll && selectedOption.length > 0 && (
-            <Tooltip
-              title={
-                permissions.EditAll ? t('label.edit') : NO_PERMISSION_FOR_ACTION
-              }>
-              <Button
-                className="cursor-pointer m--t-xss m-l-xss"
-                data-testid="edit-button"
-                disabled={!permissions.EditAll}
-                icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                size="small"
-                type="text"
-                onClick={() => setIsIconVisible(false)}
-              />
-            </Tooltip>
+    <div className="flex flex-col gap-3" data-testid="related-term-container">
+      <div className="d-flex items-center">
+        <Typography.Text className="right-panel-label">
+          {t('label.related-term-plural')}
+        </Typography.Text>
+        {permissions.EditAll && selectedOption.length > 0 && (
+          <Tooltip
+            title={
+              permissions.EditAll ? t('label.edit') : NO_PERMISSION_FOR_ACTION
+            }>
+            <Button
+              className="cursor-pointer flex-center m-l-xss"
+              data-testid="edit-button"
+              disabled={!permissions.EditAll}
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+              size="small"
+              type="text"
+              onClick={() => setIsIconVisible(false)}
+            />
+          </Tooltip>
+        )}
+      </div>
+
+      {isIconVisible ? (
+        <div className="d-flex flex-wrap">
+          {permissions.EditAll && selectedOption.length === 0 && (
+            <TagButton
+              className="tw-text-primary cursor-pointer"
+              dataTestId="related-term-add-button"
+              icon={<PlusIcon height={16} name="plus" width={16} />}
+              label={t('label.add')}
+              tooltip=""
+              onClick={() => {
+                setIsIconVisible(false);
+              }}
+            />
+          )}
+
+          {selectedOption.map((entity: EntityReference) => (
+            <TagButton
+              className="cursor-pointer"
+              icon={<IconFlatDoc height={12} name="folder" />}
+              key={entity.fullyQualifiedName}
+              label={getEntityName(entity)}
+              tooltip={
+                <div className="p-xss">
+                  <strong>{entity.fullyQualifiedName}</strong>
+                  <div>{entity.description}</div>
+                </div>
+              }
+              onClick={() => {
+                handleRelatedTermClick(entity.fullyQualifiedName || '');
+              }}
+            />
+          ))}
+
+          {!permissions.EditAll && selectedOption.length === 0 && (
+            <div>{NO_DATA_PLACEHOLDER}</div>
           )}
         </div>
-        <Space>
-          {isIconVisible ? (
-            <div className="d-flex flex-wrap">
-              {permissions.EditAll && selectedOption.length === 0 && (
-                <TagButton
-                  className="tw-text-primary"
-                  icon={<PlusIcon height={16} name="plus" width={16} />}
-                  label={t('label.add')}
-                  onClick={() => {
-                    setIsIconVisible(false);
-                  }}
-                />
-              )}
-
-              {selectedOption.map((entity: EntityReference) => (
-                <TagButton
-                  icon={<IconFlatDoc height={14} name="folder" width={14} />}
-                  key={entity.fullyQualifiedName}
-                  label={toString(entity.displayName)}
-                  onClick={() => {
-                    handleRelatedTermClick(entity.fullyQualifiedName || '');
-                  }}
-                />
-              ))}
-            </div>
-          ) : (
-            <Space align="center" className="w-full" size={8}>
-              <Select
-                className="w-min-15"
-                filterOption={false}
-                mode="multiple"
-                notFoundContent={isLoading ? <Spin size="small" /> : null}
-                options={formatOptions(options)}
-                placeholder={t('label.add-entity', {
-                  entity: t('label.related-term-plural'),
-                })}
-                style={{ width: '100%' }}
-                value={selectedOption}
-                onChange={(_, data) => {
-                  setSelectedOption(data as EntityReference[]);
-                }}
-                onFocus={() => suggestionSearch()}
-                onSearch={debounceOnSearch}
-              />
-              <>
-                <Button
-                  className="w-6 p-x-05"
-                  data-testid="cancelAssociatedTag"
-                  icon={<CloseOutlined size={12} />}
-                  size="small"
-                  onClick={() => handleCancel()}
-                />
-                <Button
-                  className="w-6 p-x-05"
-                  data-testid="saveAssociatedTag"
-                  icon={<CheckOutlined size={12} />}
-                  size="small"
-                  type="primary"
-                  onClick={() => handleRelatedTermsSave(selectedOption)}
-                />
-              </>
-            </Space>
-          )}
-        </Space>
-      </Space>
+      ) : (
+        <div className="d-flex items-center gap-2">
+          <Select
+            className="glossary-select"
+            filterOption={false}
+            mode="multiple"
+            notFoundContent={isLoading ? <Spin size="small" /> : null}
+            options={formatOptions(options)}
+            placeholder={t('label.add-entity', {
+              entity: t('label.related-term-plural'),
+            })}
+            value={selectedOption}
+            onChange={(_, data) => {
+              setSelectedOption(data as EntityReference[]);
+            }}
+            onFocus={() => suggestionSearch()}
+            onSearch={debounceOnSearch}
+          />
+          <>
+            <Button
+              className="w-6 p-x-05"
+              data-testid="cancel-related-term-btn"
+              icon={<CloseOutlined size={12} />}
+              size="small"
+              onClick={() => handleCancel()}
+            />
+            <Button
+              className="w-6 p-x-05"
+              data-testid="save-related-term-btn"
+              icon={<CheckOutlined size={12} />}
+              size="small"
+              type="primary"
+              onClick={() => handleRelatedTermsSave(selectedOption)}
+            />
+          </>
+        </div>
+      )}
     </div>
   );
 };

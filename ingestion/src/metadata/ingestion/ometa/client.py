@@ -216,9 +216,19 @@ class REST:
         Returns the body json in the 200 status.
         """
         retry_codes = self._retry_codes
-        resp = self._session.request(method, url, **opts)
         try:
+            resp = self._session.request(method, url, **opts)
             resp.raise_for_status()
+
+            if resp.text != "":
+                try:
+                    return resp.json()
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Unexpected error while returning response {resp} in json format - {exc}"
+                    )
+
         except HTTPError as http_error:
             # retry if we hit Rate Limit
             if resp.status_code in retry_codes and retry > 0:
@@ -229,19 +239,22 @@ class REST:
                     raise APIError(error, http_error) from http_error
             else:
                 raise
+        except requests.ConnectionError as conn:
+            # Trying to solve https://github.com/psf/requests/issues/4664
+            try:
+                return self._session.request(method, url, **opts).json()
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unexpected error while retrying after a connection error - {exc}"
+                )
+                raise conn
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Unexpected error calling [{url}] with method [{method}]: {exc}"
             )
-        if resp.text != "":
-            try:
-                return resp.json()
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Unexpected error while returing response {resp} in json format - {exc}"
-                )
+
         return None
 
     def get(self, path, data=None):
@@ -327,7 +340,7 @@ class REST:
         self.close()
 
     def _mask_authorization_headers(self, opts: Dict[str, Any]) -> Dict[str, Any]:
-        if opts and opts["headers"]:
+        if opts and opts.get("headers"):
             if self.config.auth_header and opts["headers"][self.config.auth_header]:
                 masked_opts = deepcopy(opts)
                 if self.config.auth_header and opts["headers"][self.config.auth_header]:

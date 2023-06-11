@@ -13,7 +13,7 @@
 export const CONTAINER_DATA = {
   id: '5d11e32a-8673-4a84-a9be-ccd9651ba9fc',
   name: 'transactions',
-  fullyQualifiedName: 's3_object_store_sample.transactions',
+  fullyQualifiedName: 's3_storage_sample.transactions',
   displayName: 'Company Transactions',
   description: "Bucket containing all the company's transactions",
   version: 0.7,
@@ -30,11 +30,11 @@ export const CONTAINER_DATA = {
   },
   service: {
     id: 'cbc2a5e8-b7d3-4140-9a44-a4b331e5372f',
-    type: 'objectStoreService',
-    name: 's3_object_store_sample',
-    fullyQualifiedName: 's3_object_store_sample',
+    type: 'storageService',
+    name: 's3_storage_sample',
+    fullyQualifiedName: 's3_storage_sample',
     deleted: false,
-    href: 'http://localhost:8585/api/v1/services/objectstoreServices/cbc2a5e8-b7d3-4140-9a44-a4b331e5372f',
+    href: 'http://localhost:8585/api/v1/services/storageServices/cbc2a5e8-b7d3-4140-9a44-a4b331e5372f',
   },
   dataModel: {
     isPartitioned: true,
@@ -45,8 +45,7 @@ export const CONTAINER_DATA = {
         dataTypeDisplay: 'numeric',
         description:
           'The ID of the executed transaction. This column is the primary key for this table.',
-        fullyQualifiedName:
-          's3_object_store_sample.transactions.transaction_id',
+        fullyQualifiedName: 's3_storage_sample.transactions.transaction_id',
         tags: [],
         constraint: 'PRIMARY_KEY',
         ordinalPosition: 1,
@@ -57,7 +56,7 @@ export const CONTAINER_DATA = {
         dataLength: 100,
         dataTypeDisplay: 'varchar',
         description: 'The merchant for this transaction.',
-        fullyQualifiedName: 's3_object_store_sample.transactions.merchant',
+        fullyQualifiedName: 's3_storage_sample.transactions.merchant',
         tags: [],
         ordinalPosition: 2,
       },
@@ -66,8 +65,7 @@ export const CONTAINER_DATA = {
         dataType: 'TIMESTAMP',
         dataTypeDisplay: 'timestamp',
         description: 'The time the transaction took place.',
-        fullyQualifiedName:
-          's3_object_store_sample.transactions.transaction_time',
+        fullyQualifiedName: 's3_storage_sample.transactions.transaction_time',
         tags: [],
         ordinalPosition: 3,
       },

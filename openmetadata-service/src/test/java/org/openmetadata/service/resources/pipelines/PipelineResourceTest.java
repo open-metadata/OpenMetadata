@@ -114,7 +114,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     TestUtils.validateTags(createRequest.getTags(), pipeline.getTags());
   }
 
-  private void validateTasks(List<Task> expected, List<Task> actual) {
+  private void validateTasks(List<Task> expected, List<Task> actual) throws HttpResponseException {
     if (expected == null || actual == null) {
       assertEquals(expected, actual);
       return;
@@ -127,7 +127,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
           expectedTask.getName().equals(actualTask.getName())
               || expectedTask.getName().equals(actualTask.getDisplayName()));
       if (expectedTask.getTags() != null && !expectedTask.getTags().isEmpty() && actualTask.getTags() != null) {
-        assertEquals(expectedTask.getTags(), actualTask.getTags());
+        TestUtils.validateTags(expectedTask.getTags(), actualTask.getTags());
       }
       i++;
     }
@@ -433,8 +433,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     // Add a task without description
     ChangeDescription change = getChangeDescription(pipeline.getVersion());
     List<Task> tasks = new ArrayList<>();
-    Task taskEmptyDesc =
-        new Task().withName("taskEmpty").withTaskUrl("http://localhost:0").withTags(List.of(USER_ADDRESS_TAG_LABEL));
+    Task taskEmptyDesc = new Task().withName("taskEmpty").withTaskUrl("http://localhost:0");
     tasks.add(taskEmptyDesc);
     fieldAdded(change, "tasks", tasks);
     fieldUpdated(change, "description", "", "newDescription");
@@ -451,15 +450,18 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     origJson = JsonUtils.pojoToJson(pipeline);
     change = getChangeDescription(pipeline.getVersion());
     List<Task> newTasks = new ArrayList<>();
-    Task taskWithDesc = taskEmptyDesc.withDescription("taskDescription");
+    Task taskWithDesc =
+        taskEmptyDesc
+            .withDescription("taskDescription")
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL, PII_SENSITIVE_TAG_LABEL));
     newTasks.add(taskWithDesc);
     fieldAdded(change, "tasks.taskEmpty.description", "taskDescription");
-
+    fieldAdded(change, "tasks.taskEmpty.tags", List.of(USER_ADDRESS_TAG_LABEL, PII_SENSITIVE_TAG_LABEL));
     List<Task> updatedNewTasks = Stream.concat(TASKS.stream(), newTasks.stream()).collect(Collectors.toList());
     pipeline.setTasks(updatedNewTasks);
     pipeline = patchEntityAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // update the descriptions of pipeline and task
+    // update the descriptions of pipeline and task and add tags to tasks
     origJson = JsonUtils.pojoToJson(pipeline);
     change = getChangeDescription(pipeline.getVersion());
     newTasks = new ArrayList<>();

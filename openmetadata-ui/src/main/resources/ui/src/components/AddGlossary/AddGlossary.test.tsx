@@ -19,6 +19,10 @@ jest.mock('../containers/PageLayout', () =>
   jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
 
+jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+  jest.fn().mockReturnValue(<p>Sidebar</p>)
+);
+
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
@@ -81,57 +85,5 @@ describe('Test AddGlossary component', () => {
     );
 
     expect(mockOnCancel).toHaveBeenCalled();
-  });
-
-  it('should be able to save', () => {
-    jest.spyOn(React, 'useRef').mockReturnValue({
-      current: { getEditorContent: jest.fn().mockReturnValue('description') },
-    });
-    const { container } = render(<AddGlossary {...mockProps} />);
-
-    const nameInput = getByTestId(container, 'name');
-    const displayNameInput = getByTestId(container, 'display-name');
-    const saveButton = getByTestId(container, 'save-glossary');
-
-    expect(saveButton).toBeInTheDocument();
-
-    fireEvent.change(nameInput, { target: { value: 'Test Glossary' } });
-    fireEvent.change(displayNameInput, {
-      target: { value: 'Test Glossary Display Name' },
-    });
-
-    fireEvent.click(
-      saveButton,
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-      })
-    );
-
-    expect(mockOnSave).toHaveBeenCalled();
-  });
-
-  it('should not be able to save', () => {
-    jest.spyOn(React, 'useRef').mockReturnValue({
-      current: { getEditorContent: jest.fn().mockReturnValue('') },
-    });
-    const { container } = render(<AddGlossary {...mockProps} />);
-
-    const nameInput = getByTestId(container, 'name');
-    const saveButton = getByTestId(container, 'save-glossary');
-
-    expect(saveButton).toBeInTheDocument();
-
-    fireEvent.change(nameInput, { target: { value: 'Test Glossary' } });
-
-    fireEvent.click(
-      saveButton,
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-      })
-    );
-
-    expect(mockOnSave).not.toHaveBeenCalled();
   });
 });

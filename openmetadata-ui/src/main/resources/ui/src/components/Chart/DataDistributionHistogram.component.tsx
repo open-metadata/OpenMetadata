@@ -48,9 +48,7 @@ const DataDistributionHistogram = ({
     return (
       <Row align="middle" className="h-full w-full" justify="center">
         <Col>
-          <ErrorPlaceHolder>
-            <p>{t('message.no-data-available')}</p>
-          </ErrorPlaceHolder>
+          <ErrorPlaceHolder />
         </Col>
       </Row>
     );
@@ -114,7 +112,9 @@ const DataDistributionHistogram = ({
                     />
                     <Legend />
                     <Tooltip
-                      formatter={(value: number) => tooltipFormatter(value)}
+                      formatter={(value: number | string) =>
+                        tooltipFormatter(value)
+                      }
                     />
                     <Bar dataKey="frequency" fill="#1890FF" />
                   </BarChart>

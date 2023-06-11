@@ -16,7 +16,7 @@ supporting sqlalchemy abstraction layer
 from datetime import datetime, timezone
 from typing import Optional
 
-from metadata.data_quality.interface.test_suite_protocol import TestSuiteProtocol
+from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.data_quality.validations.validator import Validator
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
@@ -25,6 +25,7 @@ from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import get_connection
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.utils.importer import import_test_case_class
 from metadata.utils.logger import test_suite_logger
@@ -32,7 +33,7 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
-class PandasTestSuiteInterface(TestSuiteProtocol, PandasInterfaceMixin):
+class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
     """
     Sequential interface protocol for testSuite and Profiler. This class
     implements specific operations needed to run profiler and test suite workflow
@@ -41,15 +42,30 @@ class PandasTestSuiteInterface(TestSuiteProtocol, PandasInterfaceMixin):
 
     def __init__(
         self,
-        ometa_client: OpenMetadata = None,
-        service_connection_config: DatalakeConnection = None,
-        table_entity=None,
-        df=None,
+        ometa_client: OpenMetadata,
+        service_connection_config: DatalakeConnection,
+        table_entity,
     ):
         self.table_entity = table_entity
-        self.df = df
+
         self.ometa_client = ometa_client
         self.service_connection_config = service_connection_config
+
+        (
+            self.table_sample_query,
+            self.table_sample_config,
+            self.table_partition_config,
+        ) = self._get_table_config()
+
+        # add partition logic to test suite
+        self.dfs = self.return_ometa_dataframes_sampled(
+            service_connection_config=self.service_connection_config,
+            client=get_connection(self.service_connection_config).client,
+            table=self.table_entity,
+            profile_sample_config=self.table_sample_config,
+        )
+        if self.dfs and self.table_partition_config:
+            self.dfs = self.get_partitioned_df(self.dfs)
 
     def run_test_case(
         self,
@@ -74,7 +90,7 @@ class PandasTestSuiteInterface(TestSuiteProtocol, PandasInterfaceMixin):
             )
 
             test_handler = TestHandler(
-                self.df,
+                self.dfs,
                 test_case=test_case,
                 execution_date=datetime.now(tz=timezone.utc).timestamp(),
             )

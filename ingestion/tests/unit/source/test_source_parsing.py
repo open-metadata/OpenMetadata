@@ -56,6 +56,9 @@ from metadata.generated.schema.entity.services.connections.database.glueConnecti
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.impalaConnection import (
+    ImpalaConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
     MariaDBConnection,
 )
@@ -173,7 +176,7 @@ def test_bigquery():
             "config": {
                 "type": "BigQuery",
                 "credentials": {
-                    "gcsConfig": {
+                    "gcpConfig": {
                         "type": "service_account",
                         "projectId": "projectID",
                         "privateKeyId": "privateKeyId",
@@ -346,7 +349,7 @@ def test_dynamo_db():
     assert isinstance(config.serviceConnection.__root__.config, DynamoDBConnection)
 
 
-def test_gcs():
+def test_gcp():
     """TODO"""
 
 
@@ -363,8 +366,6 @@ def test_glue():
                     "awsRegion": "aws region",
                     "endPointURL": "https://glue.<region_name>.amazonaws.com/",
                 },
-                "storageServiceName": "storage_name",
-                "pipelineServiceName": "pipeline_name",
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
@@ -386,6 +387,20 @@ def test_hive():
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
     assert isinstance(config.serviceConnection.__root__.config, HiveConnection)
+
+
+def test_impala():
+    source = {
+        "type": "impala",
+        "serviceName": "local_impala",
+        "serviceConnection": {
+            "config": {"type": "Impala", "hostPort": "localhost:21050"}
+        },
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+    }
+
+    config: WorkflowSource = WorkflowSource.parse_obj(source)
+    assert isinstance(config.serviceConnection.__root__.config, ImpalaConnection)
 
 
 def test_kafka():
@@ -789,14 +804,11 @@ def test_tableau():
         "serviceConnection": {
             "config": {
                 "type": "Tableau",
-                "username": "username",
-                "password": "password",
+                "authType": {"username": "username", "password": "password"},
                 "env": "tableau_prod",
                 "hostPort": "http://localhost",
                 "siteName": "site_name",
                 "apiVersion": "api_version",
-                "personalAccessTokenName": "personal_access_token_name",
-                "personalAccessTokenSecret": "personal_access_token_secret",
             }
         },
         "sourceConfig": {

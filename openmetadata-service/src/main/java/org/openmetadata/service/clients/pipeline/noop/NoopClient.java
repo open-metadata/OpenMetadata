@@ -26,7 +26,7 @@ import org.openmetadata.sdk.exception.PipelineServiceClientException;
 
 public class NoopClient extends PipelineServiceClient {
 
-  String EXCEPTION_MSG = "The NoopClient does not implement the %s method";
+  static final String EXCEPTION_MSG = "The NoopClient does not implement the %s method";
 
   public NoopClient(PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
     super(pipelineServiceClientConfiguration);

@@ -67,6 +67,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "lineage")
 public class LineageResource {
+  static final String LINEAGE_FIELD = "lineage";
   private final LineageRepository dao;
   private final Authorizer authorizer;
 
@@ -172,7 +173,9 @@ public class LineageResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid AddLineage addLineage)
       throws IOException {
     authorizer.authorize(
-        securityContext, new OperationContext("lineage", MetadataOperation.EDIT_LINEAGE), new LineageResourceContext());
+        securityContext,
+        new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
+        new LineageResourceContext());
     dao.addLineage(addLineage);
     return Response.status(Status.OK).build();
   }
@@ -208,7 +211,9 @@ public class LineageResource {
           String toId)
       throws IOException {
     authorizer.authorize(
-        securityContext, new OperationContext("lineage", MetadataOperation.EDIT_LINEAGE), new LineageResourceContext());
+        securityContext,
+        new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
+        new LineageResourceContext());
 
     boolean deleted = dao.deleteLineage(fromEntity, fromId, toEntity, toId);
     if (!deleted) {
@@ -229,7 +234,7 @@ public class LineageResource {
 
     @Override
     public String getResource() {
-      return "lineage";
+      return LINEAGE_FIELD;
     }
 
     @Override

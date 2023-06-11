@@ -37,24 +37,36 @@ const GlossaryTermReferencesModal = ({
     try {
       await form.validateFields();
       onSave(obj.references);
-    } catch (error) {
-      console.log(error);
+    } catch (_) {
+      // Nothing here
     }
   };
 
   useEffect(() => {
-    isVisible ? form.setFieldValue('references', references) : null;
+    if (isVisible) {
+      const newRefs =
+        references.length > 0
+          ? references
+          : [
+              {
+                name: '',
+                endpoint: '',
+              },
+            ];
+      form.setFieldValue('references', newRefs);
+    }
   }, [isVisible]);
 
   return (
     <Modal
       destroyOnClose
+      data-testid="glossary-term-references-modal"
       footer={[
         <Button key="cancel-btn" type="link" onClick={onClose}>
           {t('label.cancel')}
         </Button>,
         <Button
-          data-testid="save-button"
+          data-testid="save-btn"
           key="save-btn"
           type="primary"
           onClick={() => form.submit()}>
@@ -126,12 +138,11 @@ const GlossaryTermReferencesModal = ({
               <Form.Item>
                 <Button
                   className="text-primary d-flex items-center"
+                  data-testid="add-references-button"
                   icon={<PlusIcon className="anticon" />}
                   size="small"
                   onClick={() => add()}>
-                  {t('label.add-entity', {
-                    entity: t('label.reference-plural'),
-                  })}
+                  {t('label.add')}
                 </Button>
               </Form.Item>
             </>

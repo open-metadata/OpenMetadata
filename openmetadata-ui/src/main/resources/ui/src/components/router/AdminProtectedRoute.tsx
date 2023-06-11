@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import React from 'react';
 import { Redirect, Route, RouteProps } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { useAuth } from '../../hooks/authHooks';
-import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 
 interface AdminProtectedRouteProps extends RouteProps {
   hasPermission: boolean;
@@ -23,12 +24,11 @@ interface AdminProtectedRouteProps extends RouteProps {
 
 const AdminProtectedRoute = (routeProps: AdminProtectedRouteProps) => {
   const { isAdminUser } = useAuth();
-  const { isAuthDisabled, isAuthenticated } = useAuthContext();
 
-  if (isAuthDisabled || isAdminUser || routeProps.hasPermission) {
+  if (isAdminUser || routeProps.hasPermission) {
     return <Route {...routeProps} />;
-  } else if (isAuthenticated) {
-    return <Redirect to={ROUTES.NOT_FOUND} />;
+  } else if (!routeProps.hasPermission) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   } else {
     return <Redirect to={ROUTES.SIGNIN} />;
   }

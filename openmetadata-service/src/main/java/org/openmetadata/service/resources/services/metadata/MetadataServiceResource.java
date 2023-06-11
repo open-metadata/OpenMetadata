@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.services.metadata;
 
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -74,12 +76,14 @@ import org.openmetadata.service.util.ResultList;
             + "OpenMetadata integrates with such as `Apache Atlas`, `Amundsen`, etc.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "metadataServices")
+@Collection(name = "metadataServices", order = 8) // init before IngestionPipelineService
 public class MetadataServiceResource
     extends ServiceEntityResource<MetadataService, MetadataServiceRepository, MetadataConnection> {
+  public static final String OPENMETADATA_SERVICE = "OpenMetadata";
   public static final String COLLECTION_PATH = "v1/services/metadataServices/";
   public static final String FIELDS = "pipelines,owner,tags";
 
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     registerMetadataServices(config);
   }
@@ -92,24 +96,24 @@ public class MetadataServiceResource
                 .build()
                 .withElasticsSearch(getElasticSearchConnectionSink(config.getElasticSearchConfiguration()));
         MetadataConnection metadataConnection = new MetadataConnection().withConfig(openMetadataServerConnection);
-        List<MetadataService> servicesList = dao.getEntitiesFromSeedData(".*json/data/metadataService/.*\\.json$");
-        servicesList.forEach(
-            (service) -> {
-              try {
-                // populate values for the Metadata Service
-                service.setConnection(metadataConnection);
-                service.setAllowServiceCreation(false);
-                dao.initializeEntity(service);
-              } catch (IOException e) {
-                LOG.error(
-                    "[MetadataService] Failed to initialize a Metadata Service {}", service.getFullyQualifiedName(), e);
-              }
-            });
+        List<MetadataService> servicesList =
+            repository.getEntitiesFromSeedData(".*json/data/metadataService/.*\\.json$");
+        if (servicesList.size() == 1) {
+          MetadataService service = servicesList.get(0);
+          service.setId(UUID.randomUUID());
+          service.setConnection(metadataConnection);
+          service.setUpdatedBy(ADMIN_USER_NAME);
+          service.setUpdatedAt(System.currentTimeMillis());
+          repository.setFullyQualifiedName(service);
+          repository.createOrUpdate(null, service);
+        } else {
+          throw new IOException("Only one Openmetadata Service can be initialized from the Data.");
+        }
       } else {
-        LOG.error("[MetadataService] Missing Elastic Search Config");
+        LOG.error("[MetadataService] Missing Elastic Search Config.");
       }
     } catch (Exception ex) {
-      LOG.error("[MetadataService] Error in creating Metadata Services");
+      LOG.error("[MetadataService] Error in creating Metadata Services.", ex);
     }
   }
 
@@ -125,9 +129,14 @@ public class MetadataServiceResource
     super(MetadataService.class, new MetadataServiceRepository(dao), authorizer, ServiceType.METADATA);
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
+    return null;
+  }
+
   public static class MetadataServiceList extends ResultList<MetadataService> {
-    @SuppressWarnings("unused") /* Required for tests */
-    public MetadataServiceList() {}
+    /* Required for serde */
   }
 
   @GET
@@ -174,9 +183,9 @@ public class MetadataServiceResource
 
     ListFilter filter = new ListFilter(include);
     if (before != null) {
-      metadataServices = dao.listBefore(uriInfo, fields, filter, limitParam, before);
+      metadataServices = repository.listBefore(uriInfo, fields, filter, limitParam, before);
     } else {
-      metadataServices = dao.listAfter(uriInfo, fields, filter, limitParam, after);
+      metadataServices = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
     return addHref(uriInfo, decryptOrNullify(securityContext, metadataServices));
   }
@@ -271,7 +280,7 @@ public class MetadataServiceResource
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    MetadataService service = dao.addTestConnectionResult(id, testConnectionResult);
+    MetadataService service = repository.addTestConnectionResult(id, testConnectionResult);
     return decryptOrNullify(securityContext, service);
   }
 
@@ -299,8 +308,8 @@ public class MetadataServiceResource
             .map(
                 json -> {
                   try {
-                    MetadataService MetadataService = JsonUtils.readValue((String) json, MetadataService.class);
-                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, MetadataService));
+                    MetadataService metadataService = JsonUtils.readValue((String) json, MetadataService.class);
+                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, metadataService));
                   } catch (IOException e) {
                     return json;
                   }
@@ -495,7 +504,7 @@ public class MetadataServiceResource
     return service.getServiceType().value();
   }
 
-  private ElasticsSearch getElasticSearchConnectionSink(ElasticSearchConfiguration esConfig) {
+  private ElasticsSearch getElasticSearchConnectionSink(ElasticSearchConfiguration esConfig) throws IOException {
     if (Objects.nonNull(esConfig)) {
       ElasticsSearch sink = new ElasticsSearch();
       ComponentConfig componentConfig = new ComponentConfig();
@@ -509,7 +518,7 @@ public class MetadataServiceResource
                   .withAdditionalProperty("scheme", esConfig.getScheme()));
       return sink;
     } else {
-      throw new RuntimeException("Elastic Search Configuration Missing");
+      throw new IOException("Elastic Search Configuration Missing");
     }
   }
 }

@@ -29,11 +29,7 @@ def get_connection(connection: MetabaseConnection) -> MetabaseClient:
     """
     Create connection
     """
-    return MetabaseClient(
-        username=connection.username,
-        password=connection.password,
-        host_port=connection.hostPort,
-    )
+    return MetabaseClient(connection)
 
 
 def test_connection(
@@ -55,6 +51,6 @@ def test_connection(
     test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
-        service_fqn=service_connection.type.value,
+        service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
     )

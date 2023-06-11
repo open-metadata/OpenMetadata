@@ -1,0 +1,26 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/storageServiceMetadataPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StorageServiceMetadataPipeline",
+  "description": "StorageService Metadata Pipeline Configuration.",
+  "definitions": {
+    "storageMetadataConfigType": {
+      "description": "Object Store Source Config Metadata Pipeline type",
+      "type": "string",
+      "enum": ["StorageMetadata"],
+      "default": "StorageMetadata"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/storageMetadataConfigType",
+      "default": "StorageMetadata"
+    },
+    "containerFilterPattern": {
+      "description": "Regex to only fetch containers that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    }
+  },
+  "additionalProperties": false
+}

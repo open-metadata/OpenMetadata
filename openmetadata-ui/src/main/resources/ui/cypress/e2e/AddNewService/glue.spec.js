@@ -12,6 +12,7 @@
  */
 
 import {
+  checkServiceFieldSectionHighlighting,
   deleteCreatedService,
   editOwnerforCreatedService,
   goToAddNewServicePage,
@@ -38,18 +39,19 @@ describe('Glue Ingestion', () => {
       cy.get('#root\\/awsConfig\\/awsAccessKeyId')
         .scrollIntoView()
         .type(Cypress.env('glueAwsAccessKeyId'));
+      checkServiceFieldSectionHighlighting('awsAccessKeyId');
       cy.get('#root\\/awsConfig\\/awsSecretAccessKey')
         .scrollIntoView()
         .type(Cypress.env('glueAwsSecretAccessKey'));
+      checkServiceFieldSectionHighlighting('awsSecretAccessKey');
       cy.get('#root\\/awsConfig\\/awsRegion')
         .scrollIntoView()
         .type(Cypress.env('glueAwsRegion'));
+      checkServiceFieldSectionHighlighting('awsRegion');
       cy.get('#root\\/awsConfig\\/endPointURL')
         .scrollIntoView()
         .type(Cypress.env('glueEndPointURL'));
-      cy.get('#root\\/storageServiceName')
-        .scrollIntoView()
-        .type(Cypress.env('glueStorageServiceName'));
+      checkServiceFieldSectionHighlighting('endPointURL');
     };
 
     const addIngestionInput = () => {
@@ -60,17 +62,17 @@ describe('Glue Ingestion', () => {
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .scrollIntoView()
         .should('be.visible')
-        .type(filterPattern);
+        .type(`${filterPattern}{enter}`);
     };
 
-    testServiceCreationAndIngestion(
+    testServiceCreationAndIngestion({
       serviceType,
       connectionInput,
       addIngestionInput,
       serviceName,
-      'database',
-      false
-    );
+      testIngestionButton: false,
+      serviceCategory: SERVICE_TYPE.Database,
+    });
   });
 
   it('Update table description and verify description after re-run', () => {

@@ -20,6 +20,8 @@ from sqlalchemy.sql.sqltypes import Concatenable, Enum
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.ingestion.source import sqa_types
 from metadata.profiler.orm.types.bytea_to_string import ByteaToHex
+from metadata.profiler.orm.types.custom_array import CustomArray
+from metadata.profiler.orm.types.custom_timestamp import CustomTimestamp
 from metadata.profiler.orm.types.hex_byte_string import HexByteString
 from metadata.profiler.orm.types.uuid import UUIDString
 from metadata.profiler.registry import TypeRegistry
@@ -30,6 +32,8 @@ class CustomTypes(TypeRegistry):
     BYTES = HexByteString
     UUID = UUIDString
     BYTEA = ByteaToHex
+    ARRAY = CustomArray
+    TIMESTAMP = CustomTimestamp
 
 
 class Dialects(Enum):
@@ -50,9 +54,10 @@ class Dialects(Enum):
     Druid = "druid"
     DynamoDB = "dynamoDB"
     Glue = "glue"
+    Hana = "hana"
     Hive = b"hive"  # Hive requires bytes
-    IbmDbSa = "ibm_db_sa"
     Impala = "impala"
+    IbmDbSa = "ibm_db_sa"
     MariaDB = "mariadb"
     MSSQL = "mssql"
     MySQL = "mysql"
@@ -100,6 +105,7 @@ QUANTIFIABLE_SET = {
 CONCATENABLE_SET = {DataType.STRING.value, DataType.TEXT.value}
 
 DATATIME_SET = {DataType.DATETIME.value}
+
 
 # Now, let's define some helper methods to identify
 # the nature of an SQLAlchemy type

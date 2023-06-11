@@ -38,7 +38,6 @@ def test_connection(
     service_connection: SageMakerConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
 ) -> None:
-
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
@@ -49,6 +48,6 @@ def test_connection(
     test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
-        service_fqn=service_connection.type.value,
+        service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
     )

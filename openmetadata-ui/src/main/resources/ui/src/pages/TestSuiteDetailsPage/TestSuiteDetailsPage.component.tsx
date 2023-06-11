@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import TabsPane from 'components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from 'components/containers/PageContainerV1';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -26,6 +25,7 @@ import {
 import TestCasesTab from 'components/TestCasesTab/TestCasesTab.component';
 import TestSuiteDetails from 'components/TestSuiteDetails/TestSuiteDetails.component';
 import TestSuitePipelineTab from 'components/TestSuitePipelineTab/TestSuitePipelineTab.component';
+import { EntityInfo, EntityTabs } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { camelCase, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -47,14 +47,12 @@ import {
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
-import { ACTION_TYPE } from '../../enums/common.enum';
+import { ACTION_TYPE, ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
-import jsonData from '../../jsons/en';
 import { getEntityPlaceHolder } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -78,20 +76,7 @@ const TestSuiteDetailsPage = () => {
     TitleBreadcrumbProps['titleLinks']
   >([]);
 
-  const [activeTab, setActiveTab] = useState<number>(1);
-
-  const tabs = [
-    {
-      name: t('label.test-case-plural'),
-      isProtected: false,
-      position: 1,
-    },
-    {
-      name: t('label.pipeline'),
-      isProtected: false,
-      position: 2,
-    },
-  ];
+  const [activeTab, setActiveTab] = useState<EntityTabs>(EntityTabs.TEST_CASES);
 
   const { testSuiteDescription, testSuiteId, testOwner } = useMemo(() => {
     return {
@@ -142,7 +127,11 @@ const TestSuiteDetailsPage = () => {
       setTestCasesPaging(response.paging);
     } catch {
       setTestCaseResult([]);
-      showErrorToast(jsonData['api-error-messages']['fetch-test-cases-error']);
+      showErrorToast(
+        t('server.entity-fetch-error', {
+          entity: t('label.test-case-plural'),
+        })
+      );
     } finally {
       setIsTestCaseLoading(false);
     }
@@ -178,7 +167,9 @@ const TestSuiteDetailsPage = () => {
       setTestSuite(undefined);
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-test-suite-error']
+        t('server.entity-fetch-error', {
+          entity: t('label.test-suite'),
+        })
       );
     }
   };
@@ -189,19 +180,20 @@ const TestSuiteDetailsPage = () => {
         if (res) {
           setTestSuite(res);
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
+          showErrorToast(t('server.unexpected-response'));
         }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages'][
-            type === ACTION_TYPE.UPDATE
-              ? 'update-owner-error'
-              : 'remove-owner-error'
-          ]
+          t(
+            `server.entity-${
+              type === ACTION_TYPE.UPDATE ? 'updating' : 'removing'
+            }-error`,
+            {
+              entity: t('label.owner'),
+            }
+          )
         );
       });
   };
@@ -233,7 +225,7 @@ const TestSuiteDetailsPage = () => {
         if (response) {
           setTestSuite(response);
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -265,8 +257,8 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const onSetActiveValue = (tabValue: number) => {
-    setActiveTab(tabValue);
+  const onSetActiveValue = (key: string) => {
+    setActiveTab(key as EntityTabs);
   };
 
   const handleTestCasePaging = (
@@ -282,7 +274,7 @@ const TestSuiteDetailsPage = () => {
   const extraInfo: Array<ExtraInfo> = useMemo(
     () => [
       {
-        key: t('label.owner'),
+        key: EntityInfo.OWNER,
         value:
           testOwner?.type === 'team'
             ? getTeamAndUserDetailsPath(testOwner?.name || '')
@@ -311,55 +303,65 @@ const TestSuiteDetailsPage = () => {
     fetchTestSuitePermission();
   }, [testSuiteFQN]);
 
+  const tabs = [
+    {
+      label: t('label.test-case-plural'),
+      key: EntityTabs.TEST_CASES,
+      children: (
+        <TestCasesTab
+          currentPage={currentPage}
+          isDataLoading={isTestCaseLoading}
+          testCasePageHandler={handleTestCasePaging}
+          testCases={testCaseResult}
+          testCasesPaging={testCasesPaging}
+          onTestUpdate={afterSubmitAction}
+        />
+      ),
+    },
+    {
+      label: t('label.pipeline'),
+      key: EntityTabs.PIPELINE,
+      children: <TestSuitePipelineTab />,
+    },
+  ];
+
   if (isLoading) {
     return <Loader />;
   }
 
+  if (!testSuitePermissions.ViewAll && !testSuitePermissions.ViewBasic) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
   return (
-    <>
-      {testSuitePermissions.ViewAll || testSuitePermissions.ViewBasic ? (
-        <PageContainerV1>
-          <Row className="tw-pt-4 tw-px-6 tw-w-full">
-            <Col span={24}>
-              <TestSuiteDetails
-                descriptionHandler={descriptionHandler}
-                extraInfo={extraInfo}
-                handleDescriptionUpdate={onDescriptionUpdate}
-                handleRestoreTestSuite={onRestoreTestSuite}
-                handleUpdateOwner={onUpdateOwner}
-                isDescriptionEditable={isDescriptionEditable}
-                permissions={testSuitePermissions}
-                slashedBreadCrumb={slashedBreadCrumb}
-                testSuite={testSuite}
-                testSuiteDescription={testSuiteDescription}
-              />
-            </Col>
-            <Col className="tw-mt-8" span={24}>
-              <TabsPane
-                activeTab={activeTab}
-                setActiveTab={onSetActiveValue}
-                tabs={tabs}
-              />
-              <div className="tw-mb-4">
-                {activeTab === 1 && (
-                  <TestCasesTab
-                    currentPage={currentPage}
-                    isDataLoading={isTestCaseLoading}
-                    testCasePageHandler={handleTestCasePaging}
-                    testCases={testCaseResult}
-                    testCasesPaging={testCasesPaging}
-                    onTestUpdate={afterSubmitAction}
-                  />
-                )}
-                {activeTab === 2 && <TestSuitePipelineTab />}
-              </div>
-            </Col>
-          </Row>
-        </PageContainerV1>
-      ) : (
-        <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
-      )}
-    </>
+    <PageLayoutV1
+      pageTitle={t('label.entity-detail-plural', {
+        entity: getEntityName(testSuite),
+      })}>
+      <Row gutter={16}>
+        <Col span={24}>
+          <TestSuiteDetails
+            descriptionHandler={descriptionHandler}
+            extraInfo={extraInfo}
+            handleDescriptionUpdate={onDescriptionUpdate}
+            handleRestoreTestSuite={onRestoreTestSuite}
+            handleUpdateOwner={onUpdateOwner}
+            isDescriptionEditable={isDescriptionEditable}
+            permissions={testSuitePermissions}
+            slashedBreadCrumb={slashedBreadCrumb}
+            testSuite={testSuite}
+            testSuiteDescription={testSuiteDescription}
+          />
+        </Col>
+        <Col className="mt-8" span={24}>
+          <Tabs
+            activeKey={activeTab}
+            items={tabs}
+            onChange={onSetActiveValue}
+          />
+        </Col>
+      </Row>
+    </PageLayoutV1>
   );
 };
 

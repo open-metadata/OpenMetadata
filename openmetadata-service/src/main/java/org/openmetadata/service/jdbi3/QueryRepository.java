@@ -25,6 +25,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 
 public class QueryRepository extends EntityRepository<Query> {
+  private static final String QUERY_USED_IN_FIELD = "queryUsedIn";
   private static final String QUERY_PATCH_FIELDS = "owner,tags,users,followers,query";
   private static final String QUERY_UPDATE_FIELDS = "owner,tags,users,votes,followers";
 
@@ -43,7 +44,7 @@ public class QueryRepository extends EntityRepository<Query> {
   public Query setFields(Query entity, EntityUtil.Fields fields) throws IOException {
     entity.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(entity) : null);
     entity.setVotes(fields.contains("votes") ? this.getVotes(entity) : null);
-    entity.setQueryUsedIn(fields.contains("queryUsedIn") ? this.getQueryUsage(entity) : null);
+    entity.setQueryUsedIn(fields.contains(QUERY_USED_IN_FIELD) ? this.getQueryUsage(entity) : null);
     entity.setUsers(fields.contains("users") ? this.getQueryUsers(entity) : null);
     return entity;
   }
@@ -70,7 +71,7 @@ public class QueryRepository extends EntityRepository<Query> {
 
   @Override
   @SneakyThrows
-  public void prepare(Query entity) throws IOException {
+  public void prepare(Query entity) {
     if (CommonUtil.nullOrEmpty(entity.getName())) {
       String checkSum = EntityUtil.hash(entity.getQuery());
       entity.setChecksum(checkSum);
@@ -92,7 +93,7 @@ public class QueryRepository extends EntityRepository<Query> {
   }
 
   @Override
-  public void storeRelationships(Query queryEntity) throws IOException {
+  public void storeRelationships(Query queryEntity) {
     // Store Query Users Relation
     if (queryEntity.getUsers() != null) {
       for (EntityReference entityRef : queryEntity.getUsers()) {
@@ -122,24 +123,24 @@ public class QueryRepository extends EntityRepository<Query> {
 
   public RestUtil.PutResponse<?> addQueryUsage(
       UriInfo uriInfo, String updatedBy, UUID queryId, List<EntityReference> entityIds) throws IOException {
-    Query query = Entity.getEntity(Entity.QUERY, queryId, "queryUsedIn", Include.NON_DELETED);
+    Query query = Entity.getEntity(Entity.QUERY, queryId, QUERY_USED_IN_FIELD, Include.NON_DELETED);
     List<EntityReference> oldValue = query.getQueryUsedIn();
     // Create Relationships
     entityIds.forEach(
-        (entityRef) ->
+        entityRef ->
             addRelationship(entityRef.getId(), queryId, entityRef.getType(), Entity.QUERY, Relationship.MENTIONED_IN));
 
     // Populate Fields
-    setFieldsInternal(query, new EntityUtil.Fields(allowedFields, "queryUsedIn"));
+    setFieldsInternal(query, new EntityUtil.Fields(allowedFields, QUERY_USED_IN_FIELD));
     Entity.withHref(uriInfo, query.getQueryUsedIn());
     ChangeEvent changeEvent =
-        getQueryChangeEvent(updatedBy, "queryUsedIn", oldValue, query.getQueryUsedIn(), withHref(uriInfo, query));
+        getQueryChangeEvent(updatedBy, QUERY_USED_IN_FIELD, oldValue, query.getQueryUsedIn(), withHref(uriInfo, query));
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
   public RestUtil.PutResponse<?> removeQueryUsedIn(
       UriInfo uriInfo, String updatedBy, UUID queryId, List<EntityReference> entityIds) throws IOException {
-    Query query = Entity.getEntity(Entity.QUERY, queryId, "queryUsedIn", Include.NON_DELETED);
+    Query query = Entity.getEntity(Entity.QUERY, queryId, QUERY_USED_IN_FIELD, Include.NON_DELETED);
     List<EntityReference> oldValue = query.getQueryUsedIn();
 
     for (EntityReference ref : entityIds) {
@@ -147,10 +148,10 @@ public class QueryRepository extends EntityRepository<Query> {
     }
 
     // Populate Fields
-    setFieldsInternal(query, new EntityUtil.Fields(allowedFields, "queryUsedIn"));
+    setFieldsInternal(query, new EntityUtil.Fields(allowedFields, QUERY_USED_IN_FIELD));
     Entity.withHref(uriInfo, query.getQueryUsedIn());
     ChangeEvent changeEvent =
-        getQueryChangeEvent(updatedBy, "queryUsedIn", oldValue, query.getQueryUsedIn(), withHref(uriInfo, query));
+        getQueryChangeEvent(updatedBy, QUERY_USED_IN_FIELD, oldValue, query.getQueryUsedIn(), withHref(uriInfo, query));
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 

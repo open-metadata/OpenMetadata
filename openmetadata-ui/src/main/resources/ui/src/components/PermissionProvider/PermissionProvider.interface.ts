@@ -34,7 +34,6 @@ export enum ResourceEntity {
   DATABASE = 'database',
   DATABASE_SCHEMA = 'databaseSchema',
   DATABASE_SERVICE = 'databaseService',
-  EVENTS = 'events',
   FEED = 'feed',
   GLOSSARY = 'glossary',
   GLOSSARY_TERM = 'glossaryTerm',
@@ -50,7 +49,6 @@ export enum ResourceEntity {
   POLICY = 'policy',
   REPORT = 'report',
   ROLE = 'role',
-  STORAGE_SERVICE = 'storageService',
   TABLE = 'table',
   TAG = 'tag',
   CLASSIFICATION = 'classification',
@@ -62,10 +60,11 @@ export enum ResourceEntity {
   TYPE = 'type',
   USER = 'user',
   WEBHOOK = 'webhook',
-  OBJECT_STORE_SERVICE = 'objectStoreService',
+  STORAGE_SERVICE = 'storageService',
   CONTAINER = 'container',
   QUERY = 'query',
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
+  EVENT_SUBSCRIPTION = 'eventsubscription',
 }
 
 export interface PermissionContextType {

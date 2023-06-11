@@ -3,6 +3,7 @@ package org.openmetadata.service.security.policyevaluator;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
@@ -23,10 +24,6 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO.RoleDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.TableDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.TeamDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.UserDAO;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
@@ -44,24 +41,20 @@ class RuleEvaluatorTest {
 
   @BeforeAll
   public static void setup() {
-    Entity.registerEntity(User.class, Entity.USER, Mockito.mock(UserDAO.class), Mockito.mock(UserRepository.class));
-    Entity.registerEntity(Team.class, Entity.TEAM, Mockito.mock(TeamDAO.class), Mockito.mock(TeamRepository.class));
-    Entity.registerEntity(Role.class, Entity.ROLE, Mockito.mock(RoleDAO.class), Mockito.mock(RoleRepository.class));
+    Entity.registerEntity(User.class, Entity.USER, mock(UserRepository.class), null);
+    Entity.registerEntity(Team.class, Entity.TEAM, mock(TeamRepository.class), null);
+    Entity.registerEntity(Role.class, Entity.ROLE, mock(RoleRepository.class), null);
     SubjectCache.initialize();
     RoleCache.initialize();
 
-    TableRepository tableRepository = Mockito.mock(TableRepository.class);
+    TableRepository tableRepository = mock(TableRepository.class);
     Mockito.when(tableRepository.getAllTags(any()))
         .thenAnswer((Answer<List<TagLabel>>) invocationOnMock -> table.getTags());
-    Entity.registerEntity(Table.class, Entity.TABLE, Mockito.mock(TableDAO.class), tableRepository);
+    Entity.registerEntity(Table.class, Entity.TABLE, tableRepository, null);
 
     user = new User().withId(UUID.randomUUID()).withName("user");
     resourceContext =
-        ResourceContext.builder()
-            .resource("table")
-            .entity(table)
-            .entityRepository(Mockito.mock(TableRepository.class))
-            .build();
+        ResourceContext.builder().resource("table").entity(table).entityRepository(mock(TableRepository.class)).build();
 
     subjectContext = new SubjectContext(user);
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
@@ -265,7 +258,7 @@ class RuleEvaluatorTest {
       Team parentTeam = SubjectCache.getInstance().getTeam(parentId);
       team.setParents(listOf(parentTeam.getEntityReference()));
     }
-    SubjectCache.TEAM_CACHE.put(team.getId(), team);
+    SubjectCache.TEAM_CACHE_WITH_ID.put(team.getId(), team);
     return team;
   }
 
@@ -285,7 +278,7 @@ class RuleEvaluatorTest {
   private Role createRole(String roleName) {
     UUID roleId = UUID.nameUUIDFromBytes(roleName.getBytes(StandardCharsets.UTF_8));
     Role role = new Role().withName(roleName).withId(roleId);
-    RoleCache.ROLE_CACHE.put(role.getId(), role);
+    RoleCache.ROLE_CACHE_WITH_ID.put(role.getId(), role);
     return role;
   }
 

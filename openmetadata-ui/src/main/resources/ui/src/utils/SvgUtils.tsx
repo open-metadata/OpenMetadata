@@ -30,7 +30,6 @@ import IconAllActivity from '../assets/svg/all-activity.svg';
 import IconAnnouncementsBasicPrimary from '../assets/svg/announcements-basic-primary.svg';
 import IconAnnouncementsBlack from '../assets/svg/announcements-black.svg';
 import IconAnnouncementsPrimary from '../assets/svg/announcements-primary.svg';
-import IconAnnouncementsPurple from '../assets/svg/announcements-purple.svg';
 import IconAnnouncementsYellow from '../assets/svg/announcements-yellow.svg';
 import IconAnnouncements from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
@@ -114,7 +113,6 @@ import IconMentionsPrimary from '../assets/svg/ic-mentions-primary.svg';
 import IconMentions from '../assets/svg/ic-mentions.svg';
 import IconMenu from '../assets/svg/ic-menu.svg';
 import IconMyData from '../assets/svg/ic-mydata.svg';
-import IconContainer from '../assets/svg/ic-object-store.svg';
 import IconQuality from '../assets/svg/ic-quality.svg';
 import IconRemoveColored from '../assets/svg/ic-remove-colored.svg';
 import IconRemove from '../assets/svg/ic-remove.svg';
@@ -129,6 +127,7 @@ import IconSettings from '../assets/svg/ic-settings.svg';
 import IconSQLBuilder from '../assets/svg/ic-sql-builder.svg';
 import IconStarPrimary from '../assets/svg/ic-star-primary.svg';
 import IconStar from '../assets/svg/ic-star.svg';
+import IconContainer from '../assets/svg/ic-storage.svg';
 import IconStore from '../assets/svg/ic-store.svg';
 import IconSync from '../assets/svg/ic-sync.svg';
 import IconTaskPrimary from '../assets/svg/ic-task-primary.svg';
@@ -344,7 +343,6 @@ export const Icons = {
   ARROW_RIGHT: 'icon-arrow-right',
   ANNOUNCEMENT: 'icon-announcement',
   ANNOUNCEMENT_BLACK: 'icon-announcement-black',
-  ANNOUNCEMENT_PURPLE: 'icon-announcement-purple',
   ANNOUNCEMENT_PRIMARY: 'icon-announcement-primary',
   ANNOUNCEMENT_YELLOW: 'icon-announcement-yellow',
   ANNOUNCEMENT_BASIC_PRIMARY: 'icon-announcement-basic-primary',
@@ -934,10 +932,6 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       break;
     case Icons.ANNOUNCEMENT:
       IconComponent = IconAnnouncements;
-
-      break;
-    case Icons.ANNOUNCEMENT_PURPLE:
-      IconComponent = IconAnnouncementsPurple;
 
       break;
     case Icons.ANNOUNCEMENT_YELLOW:

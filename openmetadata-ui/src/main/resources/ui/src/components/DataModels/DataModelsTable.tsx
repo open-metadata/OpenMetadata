@@ -14,11 +14,10 @@
 import { Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
-import { getDataModelDetailsPath } from 'constants/constants';
-import { CONNECTORS_DOCS } from 'constants/docs.constants';
-import { servicesDisplayName } from 'constants/Services.constant';
+import { getDataModelDetailsPath, PAGE_SIZE } from 'constants/constants';
 import { isEmpty, isUndefined } from 'lodash';
 import { DataModelTableProps } from 'pages/DataModelPage/DataModelsInterface';
 import { ServicePageData } from 'pages/service';
@@ -27,7 +26,13 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 
-const DataModelTable = ({ data, isLoading }: DataModelTableProps) => {
+const DataModelTable = ({
+  data,
+  isLoading,
+  paging,
+  pagingHandler,
+  currentPage,
+}: DataModelTableProps) => {
   const { t } = useTranslation();
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(
@@ -36,6 +41,7 @@ const DataModelTable = ({ data, isLoading }: DataModelTableProps) => {
         title: t('label.name'),
         dataIndex: 'displayName',
         key: 'displayName',
+        width: 350,
         render: (_, record: ServicePageData) => {
           return (
             <Link to={getDataModelDetailsPath(record.fullyQualifiedName || '')}>
@@ -63,12 +69,11 @@ const DataModelTable = ({ data, isLoading }: DataModelTableProps) => {
     []
   );
 
-  return isEmpty(data) ? (
-    <ErrorPlaceHolder
-      doc={CONNECTORS_DOCS}
-      heading={servicesDisplayName.dashboardDataModel}
-    />
-  ) : (
+  if (isEmpty(data)) {
+    return <ErrorPlaceHolder />;
+  }
+
+  return (
     <div data-testid="table-container">
       <Table
         bordered
@@ -84,6 +89,15 @@ const DataModelTable = ({ data, isLoading }: DataModelTableProps) => {
         rowKey="id"
         size="small"
       />
+      {paging && paging.total > PAGE_SIZE && (
+        <NextPrevious
+          currentPage={currentPage}
+          pageSize={PAGE_SIZE}
+          paging={paging}
+          pagingHandler={pagingHandler}
+          totalCount={paging.total}
+        />
+      )}
     </div>
   );
 };

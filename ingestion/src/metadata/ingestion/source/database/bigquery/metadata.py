@@ -48,11 +48,11 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.security.credentials.gcsCredentials import (
-    GCSCredentialsPath,
+from metadata.generated.schema.security.credentials.gcpCredentials import (
+    GcpCredentialsPath,
 )
-from metadata.generated.schema.security.credentials.gcsValues import (
-    GcsCredentialsValues,
+from metadata.generated.schema.security.credentials.gcpValues import (
+    GcpCredentialsValues,
     MultipleProjectId,
     SingleProjectId,
 )
@@ -65,6 +65,9 @@ from metadata.generated.schema.type.tagLabel import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.bigquery.queries import (
+    BIGQUERY_SCHEMA_DESCRIPTION,
+)
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
@@ -91,6 +94,22 @@ _types._type_map.update(
 )
 
 
+def _array_sys_data_type_repr(col_type):
+    """clean up the repr of the array data type
+
+    Args:
+        col_type (_type_): column type
+    """
+    return (
+        repr(col_type)
+        .replace("(", "<")
+        .replace(")", ">")
+        .replace("=", ":")
+        .replace("<>", "")
+        .lower()
+    )
+
+
 def get_columns(bq_schema):
     """
     get_columns method overwritten to include tag details
@@ -107,7 +126,9 @@ def get_columns(bq_schema):
             "precision": field.precision,
             "scale": field.scale,
             "max_length": field.max_length,
-            "system_data_type": str(col_type),
+            "system_data_type": _array_sys_data_type_repr(col_type)
+            if str(col_type) == "ARRAY"
+            else str(col_type),
             "is_complex": is_complex_type(str(col_type)),
             "policy_tags": None,
         }
@@ -233,6 +254,25 @@ class BigquerySource(CommonDbSourceService):
             logger.debug(traceback.format_exc())
             logger.warning(f"Skipping Policy Tag: {exc}")
 
+    def get_schema_description(self, schema_name: str) -> Optional[str]:
+        try:
+            query_resp = self.client.query(
+                BIGQUERY_SCHEMA_DESCRIPTION.format(
+                    project_id=self.client.project,
+                    region=self.service_connection.usageLocation,
+                    schema_name=schema_name,
+                )
+            )
+
+            query_result = [result.schema_description for result in query_resp.result()]
+            return query_result[0]
+        except IndexError:
+            logger.warning(f"No dataset description found for {schema_name}")
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Failed to fetch {err}")
+        return ""
+
     def yield_database_schema(
         self, schema_name: str
     ) -> Iterable[CreateDatabaseSchemaRequest]:
@@ -249,8 +289,9 @@ class BigquerySource(CommonDbSourceService):
 
         dataset_obj = self.client.get_dataset(schema_name)
         if dataset_obj.labels:
+            database_schema_request_obj.tags = []
             for label_classification, label_tag_name in dataset_obj.labels.items():
-                database_schema_request_obj.tags = [
+                database_schema_request_obj.tags.append(
                     TagLabel(
                         tagFQN=fqn.build(
                             self.metadata,
@@ -262,7 +303,7 @@ class BigquerySource(CommonDbSourceService):
                         state=State.Suggested.value,
                         source=TagSource.Classification.value,
                     )
-                ]
+                )
         yield database_schema_request_obj
 
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
@@ -298,9 +339,9 @@ class BigquerySource(CommonDbSourceService):
     def set_inspector(self, database_name: str):
         self.client = Client(project=database_name)
         if isinstance(
-            self.service_connection.credentials.gcsConfig, GcsCredentialsValues
+            self.service_connection.credentials.gcpConfig, GcpCredentialsValues
         ):
-            self.service_connection.credentials.gcsConfig.projectId = SingleProjectId(
+            self.service_connection.credentials.gcpConfig.projectId = SingleProjectId(
                 __root__=database_name
             )
         self.engine = get_connection(self.service_connection)
@@ -308,19 +349,19 @@ class BigquerySource(CommonDbSourceService):
 
     def get_database_names(self) -> Iterable[str]:
         if isinstance(
-            self.service_connection.credentials.gcsConfig, GCSCredentialsPath
+            self.service_connection.credentials.gcpConfig, GcpCredentialsPath
         ):
             self.set_inspector(database_name=self.project_ids)
             yield self.project_ids
         elif isinstance(
-            self.service_connection.credentials.gcsConfig.projectId, SingleProjectId
+            self.service_connection.credentials.gcpConfig.projectId, SingleProjectId
         ):
             self.set_inspector(database_name=self.project_ids)
             yield self.project_ids
         elif hasattr(
-            self.service_connection.credentials.gcsConfig, "projectId"
+            self.service_connection.credentials.gcpConfig, "projectId"
         ) and isinstance(
-            self.service_connection.credentials.gcsConfig.projectId, MultipleProjectId
+            self.service_connection.credentials.gcpConfig.projectId, MultipleProjectId
         ):
             for project_id in self.project_ids:
                 database_name = project_id
@@ -380,7 +421,6 @@ class BigquerySource(CommonDbSourceService):
         database = self.context.database.name.__root__
         table = self.client.get_table(f"{database}.{schema_name}.{table_name}")
         if table.time_partitioning is not None:
-
             if table.time_partitioning.field:
                 table_partition = TablePartition(
                     interval=str(table.time_partitioning.type_),

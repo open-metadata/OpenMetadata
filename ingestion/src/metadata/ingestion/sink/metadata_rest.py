@@ -25,7 +25,9 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
-from metadata.generated.schema.entity.data.location import Location
+from metadata.generated.schema.api.tests.createLogicalTestCases import (
+    CreateLogicalTestCases,
+)
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -41,6 +43,7 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.table_metadata import OMetaTableConstraints
 from metadata.ingestion.models.tests_data import (
+    OMetaLogicalTestSuiteSample,
     OMetaTestCaseResultsSample,
     OMetaTestCaseSample,
     OMetaTestSuiteSample,
@@ -49,10 +52,7 @@ from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
-from metadata.ingestion.source.database.database_service import (
-    DataModelLink,
-    TableLocationLink,
-)
+from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.utils.helpers import calculate_execution_time
 from metadata.utils.logger import get_add_lineage_log_str, ingestion_logger
 
@@ -97,7 +97,6 @@ class MetadataRestSink(Sink[Entity]):
         self.write_record.register(DeleteEntity, self.delete_entity)
         self.write_record.register(OMetaPipelineStatus, self.write_pipeline_status)
         self.write_record.register(DataModelLink, self.write_datamodel)
-        self.write_record.register(TableLocationLink, self.write_table_location_link)
         self.write_record.register(DashboardUsage, self.write_dashboard_usage)
         self.write_record.register(OMetaTableConstraints, self.write_table_constraints)
         self.write_record.register(
@@ -105,6 +104,9 @@ class MetadataRestSink(Sink[Entity]):
         )
         self.write_record.register(OMetaTestSuiteSample, self.write_test_suite_sample)
         self.write_record.register(OMetaTestCaseSample, self.write_test_case_sample)
+        self.write_record.register(
+            OMetaLogicalTestSuiteSample, self.write_logical_test_suite_sample
+        )
         self.write_record.register(
             OMetaTestCaseResultsSample, self.write_test_case_results_sample
         )
@@ -167,30 +169,11 @@ class MetadataRestSink(Sink[Entity]):
             logger.debug(
                 f"Successfully ingested DataModel for {table.fullyQualifiedName.__root__}"
             )
+            self.status.records_written(
+                f"DataModel: {table.fullyQualifiedName.__root__}"
+            )
         else:
             logger.warning("Unable to ingest datamodel")
-
-    def write_table_location_link(self, table_location_link: TableLocationLink) -> None:
-        """
-        Send to OM the Table and Location Link based on FQNs
-        :param table_location_link: Table FQN + Location FQN
-        """
-        try:
-            table = self.metadata.get_by_name(
-                entity=Table, fqn=table_location_link.table_fqn
-            )
-            location = self.metadata.get_by_name(
-                entity=Location, fqn=table_location_link.location_fqn
-            )
-            self.metadata.add_location(table=table, location=location)
-        except Exception as exc:
-            name = f"{table_location_link.table_fqn} <-> {table_location_link.location_fqn}"
-            error = (
-                f"Failed to write table location link [{table_location_link}]: {exc}"
-            )
-            logger.debug(traceback.format_exc())
-            logger.warning(error)
-            self.status.failed(name, error, traceback.format_exc())
 
     def write_dashboard_usage(self, dashboard_usage: DashboardUsage) -> None:
         """
@@ -198,7 +181,6 @@ class MetadataRestSink(Sink[Entity]):
         :param dashboard_usage: dashboard entity and usage request
         """
         try:
-
             self.metadata.publish_dashboard_usage(
                 dashboard=dashboard_usage.dashboard,
                 dashboard_usage_request=dashboard_usage.usage,
@@ -222,6 +204,9 @@ class MetadataRestSink(Sink[Entity]):
         """
         try:
             self.metadata.create_or_update(record.classification_request)
+            self.status.records_written(
+                f"Classification: {record.classification_request.name.__root__}"
+            )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -229,6 +214,7 @@ class MetadataRestSink(Sink[Entity]):
             )
         try:
             self.metadata.create_or_update(record.tag_request)
+            self.status.records_written(f"Tag: {record.tag_request.name.__root__}")
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -342,7 +328,6 @@ class MetadataRestSink(Sink[Entity]):
 
     def delete_entity(self, record: DeleteEntity):
         try:
-
             self.metadata.delete(
                 entity=type(record.entity),
                 entity_id=record.entity.id,
@@ -396,7 +381,7 @@ class MetadataRestSink(Sink[Entity]):
         Use the /testSuites endpoint to ingest sample test suite
         """
         try:
-            self.metadata.create_or_update(record.test_suite)
+            self.metadata.create_or_update_executable_test_suite(record.test_suite)
             logger.debug(
                 f"Successfully created test Suite {record.test_suite.name.__root__}"
             )
@@ -407,9 +392,29 @@ class MetadataRestSink(Sink[Entity]):
                 f"Unexpected error writing test suite sample [{record}]: {exc}"
             )
 
+    def write_logical_test_suite_sample(self, record: OMetaLogicalTestSuiteSample):
+        """Create logical test suite and add tests cases to it"""
+        try:
+            test_suite = self.metadata.create_or_update(record.test_suite)
+            logger.debug(
+                f"Successfully created logical test Suite {record.test_suite.name.__root__}"
+            )
+            self.status.records_written(f"testSuite: {record.test_suite.name.__root__}")
+            self.metadata.add_logical_test_cases(
+                CreateLogicalTestCases(
+                    testSuiteId=test_suite.id,
+                    testCaseIds=[test_case.id for test_case in record.test_cases],  # type: ignore
+                )
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Unexpected error writing test suite sample [{record}]: {exc}"
+            )
+
     def write_test_case_sample(self, record: OMetaTestCaseSample):
         """
-        Use the /testCases endpoint to ingest sample test suite
+        Use the /dataQuality/testCases endpoint to ingest sample test suite
         """
         try:
             self.metadata.create_or_update(record.test_case)
@@ -423,7 +428,7 @@ class MetadataRestSink(Sink[Entity]):
 
     def write_test_case_results_sample(self, record: OMetaTestCaseResultsSample):
         """
-        Use the /testCases endpoint to ingest sample test suite
+        Use the /dataQuality/testCases endpoint to ingest sample test suite
         """
         try:
             self.metadata.add_test_case_results(
@@ -444,7 +449,7 @@ class MetadataRestSink(Sink[Entity]):
 
     def write_topic_sample_data(self, record: OMetaTopicSampleData):
         """
-        Use the /testCases endpoint to ingest sample test suite
+        Use the /dataQuality/testCases endpoint to ingest sample test suite
         """
         try:
             if record.sample_data.messages:
@@ -470,16 +475,16 @@ class MetadataRestSink(Sink[Entity]):
         """
         try:
             self.metadata.patch_table_constraints(
-                record.table_id,
-                record.constraints,
+                table=record.table,
+                constraints=record.constraints,
             )
             logger.debug(
-                f"Successfully ingested table constraints for table id {record.table_id}"
+                f"Successfully ingested table constraints for table id {record.table.id}"
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Unexpected error while ingesting table constraints for table id [{record.table_id}]: {exc}"
+                f"Unexpected error while ingesting table constraints for table id [{record.table.id}]: {exc}"
             )
 
     def close(self):

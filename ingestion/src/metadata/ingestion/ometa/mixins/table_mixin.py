@@ -13,7 +13,6 @@ Mixin class containing Table specific methods
 
 To be used by OpenMetadata class
 """
-import json
 import traceback
 from typing import List, Optional, Type, TypeVar
 
@@ -23,10 +22,10 @@ from requests.utils import quote
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
-from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     DataModel,
+    SystemProfile,
     Table,
     TableData,
     TableJoins,
@@ -39,7 +38,6 @@ from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.models import EntityList
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import ometa_logger
-from metadata.utils.uuid_encoder import UUIDEncoder
 
 logger = ometa_logger()
 
@@ -55,18 +53,6 @@ class OMetaTableMixin:
     """
 
     client: REST
-
-    def add_location(self, table: Table, location: Location) -> None:
-        """
-        PUT location for a table
-
-        :param table: Table Entity to update
-        :param location: Location Entity to add
-        """
-        self.client.put(
-            f"{self.get_suffix(Table)}/{table.id.__root__}/location",
-            data=json.dumps(location.id.__root__, cls=UUIDEncoder),
-        )
 
     def ingest_table_sample_data(
         self, table: Table, sample_data: TableData
@@ -267,13 +253,19 @@ class OMetaTableMixin:
 
         url_after = f"&after={after}" if after else ""
         profile_type_url = profile_type.__name__[0].lower() + profile_type.__name__[1:]
+
+        # system profile uses milliseconds
+        if profile_type is not SystemProfile:
+            start_ts = start_ts // 1000
+            end_ts = end_ts // 1000
+
         resp = self.client.get(
             f"{self.get_suffix(Table)}/{fqn}/{profile_type_url}?limit={limit}{url_after}",
-            data={"startTs": start_ts // 1000, "endTs": end_ts // 1000},
+            data={"startTs": start_ts, "endTs": end_ts},
         )
 
-        if profile_type is TableProfile:
-            data: List[T] = [TableProfile(**datum) for datum in resp["data"]]  # type: ignore
+        if profile_type in (TableProfile, SystemProfile):
+            data: List[T] = [profile_type(**datum) for datum in resp["data"]]  # type: ignore
         elif profile_type is ColumnProfile:
             split_fqn = fqn.split(".")
             if len(split_fqn) < 5:

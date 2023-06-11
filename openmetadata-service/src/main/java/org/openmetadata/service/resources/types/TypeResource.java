@@ -16,7 +16,6 @@ package org.openmetadata.service.resources.types;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
-import com.google.inject.Inject;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -90,7 +89,6 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     return type;
   }
 
-  @Inject
   public TypeResource(CollectionDAO dao, Authorizer authorizer) {
     super(Type.class, new TypeRepository(dao), authorizer);
   }
@@ -105,9 +103,9 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
           type.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
           LOG.info("Loading type {}", type.getName());
           try {
-            Fields fields = getFields("customProperties");
+            Fields fields = getFields(PROPERTIES_FIELD);
             try {
-              Type storedType = dao.getByName(null, type.getName(), fields);
+              Type storedType = repository.getByName(null, type.getName(), fields);
               type.setId(storedType.getId());
               // If entity type already exists, then carry forward custom properties
               if (storedType.getCategory().equals(Category.Entity)) {
@@ -116,8 +114,8 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
             } catch (Exception e) {
               LOG.debug("Creating entity that does not exist ", e);
             }
-            this.dao.createOrUpdate(null, type);
-            this.dao.addToRegistry(type);
+            this.repository.createOrUpdate(null, type);
+            this.repository.addToRegistry(type);
           } catch (Exception e) {
             LOG.error("Error loading type {}", type.getName(), e);
           }
@@ -125,13 +123,11 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   }
 
   public static class TypeList extends ResultList<Type> {
-    @SuppressWarnings("unused")
-    TypeList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   public static final String PROPERTIES = "customProperties";
+  public static final String PROPERTIES_FIELD = "customProperties";
 
   @GET
   @Valid
@@ -403,7 +399,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PutResponse<Type> response =
-        dao.addCustomProperty(uriInfo, securityContext.getUserPrincipal().getName(), id, property);
+        repository.addCustomProperty(uriInfo, securityContext.getUserPrincipal().getName(), id, property);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }

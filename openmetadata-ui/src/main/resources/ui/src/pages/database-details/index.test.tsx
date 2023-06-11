@@ -241,14 +241,6 @@ jest.mock('rest/feedsAPI', () => ({
   postThread: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('components/containers/PageContainer', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <div data-testid="PageContainer">{children}</div>
-    ));
-});
-
 jest.mock('rest/serviceAPI', () => ({
   getServiceById: jest
     .fn()
@@ -262,6 +254,8 @@ jest.mock('../../utils/TableUtils', () => ({
     type: 'user',
   }),
   getUsagePercentile: jest.fn().mockReturnValue('Medium - 45th pctile'),
+  getTierTags: jest.fn().mockImplementation(() => ({})),
+  getTagsWithoutTier: jest.fn().mockImplementation(() => []),
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
@@ -287,10 +281,6 @@ jest.mock(
   }
 );
 
-jest.mock('components/common/TabsPane/TabsPane', () => {
-  return jest.fn().mockReturnValue(<div>TabsPane</div>);
-});
-
 jest.mock('components/FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
@@ -304,6 +294,11 @@ jest.mock('../../utils/TagsUtils', () => ({
     },
   ]),
 }));
+jest.mock('components/TabsLabel/TabsLabel.component', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ name, id }) => <div data-testid={id}>{name}</div>);
+});
 
 jest.mock(
   'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
@@ -333,12 +328,17 @@ jest.mock('components/common/DeleteWidget/DeleteWidgetModal', () => {
       <p data-testid="delete-entity">DeleteWidgetModal component</p>
     );
 });
-const mockObserve = jest.fn();
-const mockunObserve = jest.fn();
 
-window.IntersectionObserver = jest.fn().mockImplementation(() => ({
-  observe: mockObserve,
-  unobserve: mockunObserve,
+jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+  jest.fn().mockReturnValue(<p>Sidebar</p>)
+);
+
+jest.mock('components/containers/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => children);
+});
+
+jest.mock('components/Entity/EntityHeader/EntityHeader.component', () => ({
+  EntityHeader: jest.fn().mockImplementation(() => <p>EntityHeader</p>),
 }));
 
 describe('Test DatabaseDetails page', () => {
@@ -347,8 +347,7 @@ describe('Test DatabaseDetails page', () => {
       wrapper: MemoryRouter,
     });
 
-    const pageContainer = await findByTestId(container, 'page-container');
-    const titleBreadcrumb = await findByText(container, /TitleBreadcrumb/i);
+    const entityHeader = await findByText(container, 'EntityHeader');
     const descriptionContainer = await findByTestId(
       container,
       'description-container'
@@ -358,8 +357,7 @@ describe('Test DatabaseDetails page', () => {
       'database-databaseSchemas'
     );
 
-    expect(pageContainer).toBeInTheDocument();
-    expect(titleBreadcrumb).toBeInTheDocument();
+    expect(entityHeader).toBeInTheDocument();
     expect(descriptionContainer).toBeInTheDocument();
     expect(databaseTable).toBeInTheDocument();
   });
@@ -401,7 +399,10 @@ describe('Test DatabaseDetails page', () => {
       wrapper: MemoryRouter,
     });
 
-    const errorPlaceholder = await findByTestId(container, 'error');
+    const errorPlaceholder = await findByTestId(
+      container,
+      'no-data-placeholder'
+    );
 
     expect(errorPlaceholder).toBeInTheDocument();
   });
@@ -420,8 +421,7 @@ describe('Test DatabaseDetails page', () => {
       wrapper: MemoryRouter,
     });
 
-    const pageContainer = await findByTestId(container, 'page-container');
-    const titleBreadcrumb = await findByText(container, /TitleBreadcrumb/i);
+    const entityHeader = await findByText(container, 'EntityHeader');
     const descriptionContainer = await findByTestId(
       container,
       'description-container'
@@ -431,8 +431,7 @@ describe('Test DatabaseDetails page', () => {
       'database-databaseSchemas'
     );
 
-    expect(pageContainer).toBeInTheDocument();
-    expect(titleBreadcrumb).toBeInTheDocument();
+    expect(entityHeader).toBeInTheDocument();
     expect(descriptionContainer).toBeInTheDocument();
     expect(databaseTable).toBeInTheDocument();
   });

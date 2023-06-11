@@ -14,30 +14,33 @@
 import Icon from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
-import { ReactComponent as ContainerIcon } from 'assets/svg/ic-object-store.svg';
+import { ReactComponent as IconFlatFolder } from 'assets/svg/folder.svg';
+import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
+import { ReactComponent as IconTag } from 'assets/svg/tag-grey.svg';
 import classNames from 'classnames';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
 import { t } from 'i18next';
-import { upperCase } from 'lodash';
+import { uniqueId, upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
-import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
 import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconForeignKey } from '../assets/svg/foriegnKey.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
+import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
+import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
+import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
+import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
+import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
 import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-notnull.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
-import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as IconPendingBadge } from '../assets/svg/pending-badge.svg';
-import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
-import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
-import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  DE_ACTIVE_COLOR,
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
@@ -272,14 +275,16 @@ export const getEntityLink = (
 
 export const getServiceIcon = (source: SourceType) => {
   if (source.entityType === EntityType.GLOSSARY_TERM) {
-    return <SVGIcons alt="icon" className="m-r-xs" icon={Icons.FLAT_FOLDER} />;
+    return (
+      <IconFlatFolder className="h-9" style={{ color: DE_ACTIVE_COLOR }} />
+    );
   } else if (source.entityType === EntityType.TAG) {
-    return <SVGIcons alt="icon" className="m-r-xs" icon={Icons.TAG} />;
+    return <IconTag className="h-9" style={{ color: DE_ACTIVE_COLOR }} />;
   } else {
     return (
       <img
         alt="service-icon"
-        className="inline h-5 p-r-xs"
+        className="inline h-9"
         src={serviceTypeLogo(source.serviceType || '')}
       />
     );
@@ -289,7 +294,7 @@ export const getServiceIcon = (source: SourceType) => {
 export const getEntityHeaderLabel = (source: SourceType) => {
   let headingText = '';
   if ('databaseSchema' in source && 'database' in source) {
-    headingText = `${source.database?.name}${FQN_SEPARATOR_CHAR}${source.databaseSchema?.name}`;
+    headingText = `${source.database?.name} / ${source.databaseSchema?.name}`;
   } else if (
     source.entityType === EntityType.GLOSSARY_TERM ||
     source.entityType === EntityType.TAG
@@ -301,7 +306,7 @@ export const getEntityHeaderLabel = (source: SourceType) => {
 
   return headingText ? (
     <span
-      className="tw-text-grey-muted tw-text-xs tw-mb-0.5"
+      className="text-grey-muted text-xs m-b-sm d-inline-block"
       data-testid="database-schema">
       {headingText}
     </span>
@@ -330,7 +335,6 @@ export const getEntityIcon = (indexType: string) => {
     case EntityType.CONTAINER:
       return <ContainerIcon />;
 
-    case SearchIndex.DASHBOARD_DATA_MODEL:
     case EntityType.DASHBOARD_DATA_MODEL:
       return <IconDataModel />;
 
@@ -355,10 +359,11 @@ export const makeRow = (column: Column) => {
 
 export const makeData = (
   columns: Column[] = []
-): Array<Column & { subRows: Column[] | undefined }> => {
+): Array<Column & { id: string }> => {
   return columns.map((column) => ({
     ...makeRow(column),
-    subRows: column.children ? makeData(column.children) : undefined,
+    id: uniqueId(column.name),
+    children: column.children ? makeData(column.children) : undefined,
   }));
 };
 
@@ -469,7 +474,7 @@ export function getTableExpandableConfig<T>(
           <>
             <SVGIcons
               alt="icon"
-              className="m-r-xs"
+              className="m-r-xs drag-icon"
               height={8}
               icon={Icons.DRAG}
               width={8}
@@ -497,14 +502,14 @@ export const prepareConstraintIcon = (
 
   // prepare column constraint element
   const columnConstraintEl = columnConstraint
-    ? getConstraintIcon(columnConstraint, iconClassName || 'tw-mr-2', iconWidth)
+    ? getConstraintIcon(columnConstraint, iconClassName || 'm-r-xs', iconWidth)
     : null;
 
   // prepare table constraint element
   const tableConstraintEl = tableConstraint
     ? getConstraintIcon(
         tableConstraint.constraintType,
-        iconClassName || 'tw-mr-2',
+        iconClassName || 'm-r-xs',
         iconWidth
       )
     : null;

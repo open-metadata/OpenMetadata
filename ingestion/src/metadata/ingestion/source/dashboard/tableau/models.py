@@ -13,10 +13,11 @@
 Tableau Source Model module
 """
 
-from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Extra, Field, validator
+
+from metadata.generated.schema.entity.data.chart import ChartType
 
 
 class TableauBaseModel(BaseModel):
@@ -76,6 +77,68 @@ def transform_tags(raw: Union[Dict[str, Any], List[TableauTag]]) -> List[Tableau
     return tags
 
 
+class CustomSQLTable(TableauBaseModel):
+    """
+    GraphQL API CustomSQLTable schema
+    https://help.tableau.com/current/api/metadata_api/en-us/reference/customsqltable.doc.html
+    """
+
+    query: Optional[str]
+
+
+class UpstreamColumn(BaseModel):
+    id: str
+    name: str
+    remoteType: Optional[str]
+
+
+class DatasourceField(BaseModel):
+    id: str
+    name: str
+    upstreamColumns: Optional[List[Union[UpstreamColumn, None]]]
+    fullyQualifiedName: Optional[str]
+    description: Optional[str]
+
+
+class DownstreamWorkbook(BaseModel):
+    id: str
+    luid: str
+    name: str
+
+
+class UpstreamTableColumn(BaseModel):
+    id: str
+    name: str
+
+
+class TableauDatabase(BaseModel):
+    id: str
+    name: str
+
+
+class UpstreamTable(BaseModel):
+    id: str
+    luid: str
+    name: str
+    fullName: Optional[str]
+    schema_: Optional[str] = Field(..., alias="schema")
+    columns: Optional[List[UpstreamTableColumn]]
+    database: Optional[TableauDatabase]
+    referencedByQueries: Optional[List[CustomSQLTable]]
+
+
+class DataSource(BaseModel):
+    id: str
+    name: str
+    fields: Optional[List[DatasourceField]]
+    downstreamWorkbooks: Optional[List[DownstreamWorkbook]]
+    upstreamTables: Optional[List[UpstreamTable]]
+
+
+class TableauDatasources(BaseModel):
+    embeddedDatasources: Optional[List[DataSource]]
+
+
 class TableauChart(TableauBaseModel):
     """
     Aux class for Chart object of the tableau_api_lib response
@@ -83,11 +146,10 @@ class TableauChart(TableauBaseModel):
 
     workbook: TableauBaseModel
     owner: Optional[TableauOwner]
-    tags: List[TableauTag]
+    tags: Optional[List[TableauTag]] = []
     _extract_tags = validator("tags", pre=True, allow_reuse=True)(transform_tags)
-    contentUrl: str
-    sheetType: str
-    viewUrlName: str
+    contentUrl: Optional[str] = ""
+    sheetType: Optional[str] = ChartType.Other.value
 
 
 class TableauDashboard(TableauBaseModel):
@@ -99,103 +161,9 @@ class TableauDashboard(TableauBaseModel):
         extra = Extra.allow
 
     description: Optional[str]
-    owner: TableauOwner
-    tags: List[TableauTag]
+    owner: Optional[TableauOwner]
+    tags: Optional[List[TableauTag]] = []
     _extract_tags = validator("tags", pre=True, allow_reuse=True)(transform_tags)
-    webpageUrl: str
+    webpageUrl: Optional[str]
     charts: Optional[List[TableauChart]]
-
-
-class CustomSQLTable(TableauBaseModel):
-    """
-    GraphQL API CustomSQLTable schema
-    https://help.tableau.com/current/api/metadata_api/en-us/reference/customsqltable.doc.html
-    """
-
-    query: Optional[str]
-
-
-class DatabaseTable(TableauBaseModel):
-    """
-    GraphQL API FieldDataType schema
-    https://help.tableau.com/current/api/metadata_api/en-us/reference/databasetable.doc.html
-    """
-
-    schema_: str = Field(..., alias="schema")
-    upstreamDatabases: Optional[List[TableauBaseModel]]
-    referencedByQueries: Optional[List[CustomSQLTable]]
-
-
-class Workbook(TableauBaseModel):
-    """
-    GraphQL API FieldDataType schema
-    https://help.tableau.com/current/api/metadata_api/en-us/reference/workbook.doc.html
-    """
-
-    luid: str
-    upstreamTables: List[DatabaseTable]
-
-
-class FieldDataType(Enum):
-    """
-    GraphQL API FieldDataType schema
-    https://help.tableau.com/current/api/metadata_api/en-us/reference/fielddatatype.doc.html
-    """
-
-    INTEGER = "INTEGER"
-    REAL = "REAL"
-    STRING = "STRING"
-    DATETIME = "DATETIME"
-    DATE = "DATE"
-    TUPLE = "TUPLE"
-    SPATIAL = "SPATIAL"
-    BOOLEAN = "BOOLEAN"
-    TABLE = "TABLE"
-    UNKNOWN = "UNKNOWN"
-
-
-class CalculatedField(TableauBaseModel):
-    """
-    GraphQL API CalculatedField schema
-    https://help.tableau.com/current/api/metadata_api/en-us/reference/calculatedfield.doc.html
-    """
-
-    dataType: FieldDataType
-
-
-class ColumnField(TableauBaseModel):
-    """
-    GraphQL API ColumnField schema
-    https://help.tableau.com/current/api/metadata_api/en-us/reference/columnfield.doc.html
-    """
-
-    dataType: FieldDataType
-
-
-class DatasourceField(TableauBaseModel):
-    """
-    GraphQL API DatasourceField schema
-    https://help.tableau.com/current/api/metadata_api/en-us/reference/datasourcefield.doc.html
-    """
-
-    remoteField: Optional[ColumnField]
-    upstreamTables: List[DatabaseTable] = []
-
-
-class Sheet(TableauBaseModel):
-    """
-    GraphQL API Sheet schema
-    https://help.tableau.com/current/api/metadata_api/en-us/reference/sheet.doc.html
-    """
-
-    description: Optional[str]
-    worksheetFields: List[CalculatedField]
-    datasourceFields: List[DatasourceField]
-
-
-class TableauSheets(BaseModel):
-    """
-    Aux class to handle response from GraphQL API
-    """
-
-    sheets: List[Sheet] = []
+    dataModels: List[DataSource] = []

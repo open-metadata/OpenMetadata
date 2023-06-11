@@ -26,31 +26,28 @@ import { RadioChangeEvent } from 'antd/lib/radio';
 import { SwitchChangeEventHandler } from 'antd/lib/switch';
 import { AxiosError } from 'axios';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
+import { isEqual } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { addFollower, removeFollower } from 'rest/tableAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
-  getServiceDetailsPath,
   getTableTabPath,
   getTeamAndUserDetailsPath,
 } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
-import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
+import { DEFAULT_RANGE_DATA } from '../../constants/profiler.constant';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
-import { ServiceCategory } from '../../enums/service.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Column, Table } from '../../generated/entity/data/table';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import jsonData from '../../jsons/en';
 import {
   getCurrentUserId,
   getEntityPlaceHolder,
@@ -62,7 +59,6 @@ import {
   getAddDataQualityTableTestPath,
   getProfilerDashboardWithFqnPath,
 } from '../../utils/RouterUtils';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import {
   generateEntityLink,
@@ -80,6 +76,7 @@ import {
 } from '../PermissionProvider/PermissionProvider.interface';
 import DataQualityTab from './component/DataQualityTab';
 import ProfilerTab from './component/ProfilerTab';
+import { DateRangeObject } from './component/TestSummary';
 import {
   ProfilerDashboardProps,
   ProfilerDashboardTab,
@@ -114,8 +111,8 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   );
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<string>('');
-  const [selectedTimeRange, setSelectedTimeRange] =
-    useState<keyof typeof PROFILER_FILTER_RANGE>('last3days');
+  const [dateRangeObject, setDateRangeObject] =
+    useState<DateRangeObject>(DEFAULT_RANGE_DATA);
   const [activeColumnDetails, setActiveColumnDetails] = useState<Column>(
     {} as Column
   );
@@ -147,13 +144,6 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     });
   }, [dashboardType]);
 
-  const timeRangeOption = useMemo(() => {
-    return Object.entries(PROFILER_FILTER_RANGE).map(([key, value]) => ({
-      label: value.title,
-      value: key,
-    }));
-  }, []);
-
   const testCaseStatusOption = useMemo(() => {
     const testCaseStatus: Record<string, string>[] = Object.values(
       TestCaseStatus
@@ -171,35 +161,12 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
 
   const tier = useMemo(() => getTierTags(table.tags ?? []), [table]);
   const breadcrumb = useMemo(() => {
-    const serviceName = getEntityName(table.service);
-    const fqn = table.fullyQualifiedName || '';
     const columnName = getPartialNameFromTableFQN(decodedEntityFQN, [
       FqnPart.NestedColumn,
     ]);
 
     const data: TitleBreadcrumbProps['titleLinks'] = [
-      {
-        name: getEntityName(table.service),
-        url: serviceName
-          ? getServiceDetailsPath(
-              serviceName,
-              ServiceCategory.DATABASE_SERVICES
-            )
-          : '',
-        imgSrc: table.serviceType
-          ? serviceTypeLogo(table.serviceType)
-          : undefined,
-      },
-      {
-        name: getPartialNameFromTableFQN(fqn, [FqnPart.Database]),
-        url: getDatabaseDetailsPath(table.database?.fullyQualifiedName || ''),
-      },
-      {
-        name: getPartialNameFromTableFQN(fqn, [FqnPart.Schema]),
-        url: getDatabaseSchemaDetailsPath(
-          table.databaseSchema?.fullyQualifiedName || ''
-        ),
-      },
+      ...getEntityBreadcrumbs(table, EntityType.TABLE),
       {
         name: getEntityName(table),
         url: isColumnView
@@ -328,7 +295,9 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['update-entity-unfollow-error']
+        t('server.entity-unfollow-error', {
+          entity: table.name,
+        })
       );
     }
   };
@@ -341,7 +310,9 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['update-entity-follow-error']
+        t('server.entity-follow-error', {
+          entity: table.name,
+        })
       );
     }
   };
@@ -396,11 +367,11 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     );
   };
 
-  const handleTimeRangeChange = (value: keyof typeof PROFILER_FILTER_RANGE) => {
-    if (value !== selectedTimeRange) {
-      setSelectedTimeRange(value);
+  const handleDateRangeChange = (value: DateRangeObject) => {
+    if (!isEqual(value, dateRangeObject)) {
+      setDateRangeObject(value);
       if (activeTab === ProfilerDashboardTab.PROFILER) {
-        fetchProfilerData(entityTypeFQN, PROFILER_FILTER_RANGE[value].days);
+        fetchProfilerData(entityTypeFQN, dateRangeObject);
       }
     }
   };
@@ -453,9 +424,9 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       <Row gutter={[16, 16]}>
         <Col span={24}>
           <EntityPageInfo
-            isTagEditable
             currentOwner={table.owner}
             deleted={table.deleted}
+            displayName={table.displayName}
             entityFqn={table.fullyQualifiedName}
             entityId={table.id}
             entityName={table.name}
@@ -465,11 +436,13 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             followers={follower.length}
             followersList={follower}
             isFollowing={isFollowing}
+            permission={tablePermissions}
             removeTier={
               tablePermissions.EditAll || tablePermissions.EditTier
                 ? handleTierRemove
                 : undefined
             }
+            serviceType={table.serviceType ?? ''}
             tags={getTagsWithoutTier(table.tags || [])}
             tagsHandler={handleTagUpdate}
             tier={tier}
@@ -523,11 +496,9 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
                 </>
               )}
               {activeTab === ProfilerDashboardTab.PROFILER && (
-                <Select
-                  className="tw-w-32"
-                  options={timeRangeOption}
-                  value={selectedTimeRange}
-                  onChange={handleTimeRangeChange}
+                <DatePickerMenu
+                  showSelectedCustomRange
+                  handleDateRangeChange={handleDateRangeChange}
                 />
               )}
               <Tooltip

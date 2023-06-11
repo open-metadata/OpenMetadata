@@ -20,9 +20,11 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import { TagOption } from 'Models';
+import { MOCK_PERMISSIONS } from 'mocks/Glossary.mock';
+import { EntityTags, TagOption } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { fetchTagsAndGlossaryTerms } from '../../../utils/TagsUtils';
 import EntityPageInfo from './EntityPageInfo';
@@ -74,7 +76,8 @@ const mockEntityInfoProp = {
   ],
   hasEditAccess: false,
   isFollowing: false,
-  isTagEditable: false,
+  permission: DEFAULT_ENTITY_PERMISSION,
+  displayName: 'raw_product_catalog',
   isVersionSelected: undefined,
   deleted: false,
   followHandler,
@@ -114,10 +117,16 @@ const mockEntityInfoProp = {
   versionHandler,
   entityFieldThreads: [],
   onThreadLinkSelect,
+  serviceType: '',
 };
 
 jest.mock('../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityUtils'),
   getEntityFeedLink: jest.fn(),
+}));
+
+jest.mock('utils/CommonUtils', () => ({
+  sortTagsCaseInsensitive: jest.fn().mockImplementation(() => [mockTier]),
 }));
 
 jest.mock('../../../utils/TagsUtils', () => ({
@@ -128,19 +137,26 @@ jest.mock('../../../utils/TagsUtils', () => ({
 }));
 
 jest.mock('components/Tag/TagsContainer/tags-container', () => {
-  return jest.fn().mockImplementation(({ tagList }) => {
-    return (
-      <>
-        {tagList.map((tag: TagOption, idx: number) => (
-          <p key={idx}>{tag.fqn}</p>
-        ))}
-      </>
-    );
-  });
-});
+  return jest
+    .fn()
+    .mockImplementation(({ tagList, selectedTags, onAddButtonClick }) => {
+      return (
+        <>
+          <button data-testid="add-tags" onClick={onAddButtonClick}>
+            add tags
+          </button>
 
-jest.mock('components/Tag/TagsViewer/tags-viewer', () => {
-  return jest.fn().mockReturnValue(<p data-testid="info-tags">TagViewer</p>);
+          {tagList.map((tag: TagOption, idx: number) => (
+            <p key={idx}>{tag.fqn}</p>
+          ))}
+          {selectedTags.map((tag: EntityTags, idx: number) => (
+            <p data-testid={`tag-${tag.tagFQN}`} key={`tag-${idx}`}>
+              {tag.tagFQN}
+            </p>
+          ))}
+        </>
+      );
+    });
 });
 
 jest.mock('../EntitySummaryDetails/EntitySummaryDetails', () => {
@@ -149,10 +165,6 @@ jest.mock('../EntitySummaryDetails/EntitySummaryDetails', () => {
     .mockReturnValue(
       <p data-testid="entity-summary-details">EntitySummaryDetails component</p>
     );
-});
-
-jest.mock('components/Tag/Tags/tags', () => {
-  return jest.fn().mockReturnValue(<p data-testid="tier-tag">Tag</p>);
 });
 
 jest.mock('../ProfilePicture/ProfilePicture', () => {
@@ -298,12 +310,11 @@ describe('Test EntityPageInfo component', () => {
 
     expect(followButton).toBeInTheDocument();
 
-    fireEvent.click(
-      followButton,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
+    await act(async () => {
+      fireEvent.click(followButton);
+    });
 
-    expect(followHandler).toHaveBeenCalled();
+    expect(mockEntityInfoProp.followHandler).toHaveBeenCalled();
   });
 
   it('Should render all the extra info', async () => {
@@ -355,18 +366,14 @@ describe('Test EntityPageInfo component', () => {
 
     expect(entityTags).toBeInTheDocument();
 
-    const tierTag = await findByTestId(entityTags, 'tier-tag');
+    const tierTag = await findByTestId(entityTags, 'tag-Tier:Tier1');
 
     expect(tierTag).toBeInTheDocument();
-
-    const infoTags = await findByTestId(entityTags, 'info-tags');
-
-    expect(infoTags).toBeInTheDocument();
   });
 
-  it('Check if it has isTagEditable as true and deleted as false value', async () => {
+  it('Check if it has edit tag permission as true and deleted as false value', async () => {
     const { container } = render(
-      <EntityPageInfo {...mockEntityInfoProp} isTagEditable />,
+      <EntityPageInfo {...mockEntityInfoProp} permission={MOCK_PERMISSIONS} />,
       {
         wrapper: MemoryRouter,
       }
@@ -390,7 +397,7 @@ describe('Test EntityPageInfo component', () => {
 
   it('Should render start thread button', async () => {
     const { container } = render(
-      <EntityPageInfo {...mockEntityInfoProp} isTagEditable />,
+      <EntityPageInfo {...mockEntityInfoProp} permission={MOCK_PERMISSIONS} />,
       {
         wrapper: MemoryRouter,
       }
@@ -422,8 +429,8 @@ describe('Test EntityPageInfo component', () => {
     const { container } = render(
       <EntityPageInfo
         {...mockEntityInfoProp}
-        isTagEditable
         entityFieldThreads={mockEntityFieldThreads}
+        permission={MOCK_PERMISSIONS}
       />,
       {
         wrapper: MemoryRouter,
@@ -463,15 +470,15 @@ describe('Test EntityPageInfo component', () => {
 
   it('Check if tags and glossary-terms are present', async () => {
     const { getByTestId, findByText } = render(
-      <EntityPageInfo {...mockEntityInfoProp} isTagEditable />,
+      <EntityPageInfo {...mockEntityInfoProp} permission={MOCK_PERMISSIONS} />,
       {
         wrapper: MemoryRouter,
       }
     );
 
-    const tagWrapper = getByTestId('tags-wrapper');
+    const addTags = getByTestId('add-tags');
     await act(async () => {
-      fireEvent.click(tagWrapper);
+      fireEvent.click(addTags);
     });
 
     const tag1 = await findByText('PersonalData.Personal');
@@ -487,9 +494,15 @@ describe('Test EntityPageInfo component', () => {
         Promise.reject()
       );
 
-      render(<EntityPageInfo {...mockEntityInfoProp} isTagEditable />, {
-        wrapper: MemoryRouter,
-      });
+      render(
+        <EntityPageInfo
+          {...mockEntityInfoProp}
+          permission={MOCK_PERMISSIONS}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
       const tagWrapper = screen.getByTestId('tags-wrapper');
 
       await act(async () => {

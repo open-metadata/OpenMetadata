@@ -22,8 +22,8 @@ import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
-import static org.openmetadata.service.Entity.LOCATION;
 import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.Entity.getEntity;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
 import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
@@ -51,6 +51,7 @@ import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.CustomMetric;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnJoin;
 import org.openmetadata.schema.type.ColumnProfile;
@@ -58,6 +59,7 @@ import org.openmetadata.schema.type.ColumnProfilerConfig;
 import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SystemProfile;
@@ -119,9 +121,22 @@ public class TableRepository extends EntityRepository<Table> {
     table.setJoins(fields.contains("joins") ? getJoins(table) : null);
     table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
     table.setTableProfilerConfig(fields.contains("tableProfilerConfig") ? getTableProfilerConfig(table) : null);
-    table.setLocation(fields.contains("location") ? getLocation(table) : null);
+    table.setTestSuite(fields.contains("testSuite") ? getTestSuite(table) : null);
     getCustomMetrics(fields.contains("customMetrics"), table);
     return table;
+  }
+
+  @Override
+  public void setInheritedFields(Table table) throws IOException {
+    setInheritedProperties(table, table.getDatabaseSchema().getId());
+  }
+
+  public void setInheritedProperties(Table table, UUID schemaId) throws IOException {
+    // If table does not have retention period, then inherit it from parent databaseSchema
+    if (table.getRetentionPeriod() == null) {
+      DatabaseSchema schema = Entity.getEntity(DATABASE_SCHEMA, schemaId, "", ALL);
+      table.withRetentionPeriod(schema.getRetentionPeriod());
+    }
   }
 
   private void setDefaultFields(Table table) throws IOException {
@@ -242,6 +257,20 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
+  public TestSuite getTestSuite(Table table) throws IOException {
+    List<CollectionDAO.EntityRelationshipRecord> entityRelationshipRecords =
+        daoCollection.relationshipDAO().findTo(table.getId().toString(), TABLE, Relationship.CONTAINS.ordinal());
+    Optional<CollectionDAO.EntityRelationshipRecord> testSuiteRelationshipRecord =
+        entityRelationshipRecords.stream()
+            .filter(entityRelationshipRecord -> entityRelationshipRecord.getType().equals(Entity.TEST_SUITE))
+            .findFirst();
+    if (!testSuiteRelationshipRecord.isEmpty()) {
+      return getEntity(Entity.TEST_SUITE, testSuiteRelationshipRecord.get().getId(), "*", Include.ALL);
+    }
+    return null;
+  }
+
+  @Transaction
   public Table addTableProfilerConfig(UUID tableId, TableProfilerConfig tableProfilerConfig) throws IOException {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -257,6 +286,10 @@ public class TableRepository extends EntityRepository<Table> {
       for (ColumnProfilerConfig columnProfilerConfig : tableProfilerConfig.getIncludeColumns()) {
         validateColumn(table, columnProfilerConfig.getColumnName());
       }
+    }
+    if (tableProfilerConfig.getProfileSampleType() != null && tableProfilerConfig.getProfileSample() != null) {
+      EntityUtil.validateProfileSample(
+          tableProfilerConfig.getProfileSampleType().toString(), tableProfilerConfig.getProfileSample());
     }
 
     daoCollection
@@ -429,17 +462,6 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table addLocation(UUID tableId, UUID locationId) throws IOException {
-    Table table = dao.findEntityById(tableId);
-    EntityReference location = daoCollection.locationDAO().findEntityReferenceById(locationId);
-    // A table has only one location.
-    deleteFrom(tableId, TABLE, Relationship.HAS, LOCATION);
-    addRelationship(tableId, locationId, TABLE, LOCATION, Relationship.HAS);
-    setFieldsInternal(table, Fields.EMPTY_FIELDS);
-    return table.withLocation(location);
-  }
-
-  @Transaction
   public Table addCustomMetric(UUID tableId, CustomMetric customMetric) throws IOException {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -578,11 +600,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // Validate column tags
     addDerivedColumnTags(table.getColumns());
-    table.getColumns().forEach(column -> checkMutuallyExclusive(column.getTags()));
-  }
-
-  private EntityReference getLocation(Table table) throws IOException {
-    return getToEntityRef(table.getId(), Relationship.HAS, LOCATION, false);
+    validateColumnTags(table.getColumns());
   }
 
   @Override
@@ -617,6 +635,16 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public EntityUpdater getUpdater(Table original, Table updated, Operation operation) {
     return new TableUpdater(original, updated, operation);
+  }
+
+  private void validateColumnTags(List<Column> columns) {
+    // Add column level tags by adding tag to column relationship
+    for (Column column : columns) {
+      checkMutuallyExclusive(column.getTags());
+      if (column.getChildren() != null) {
+        validateColumnTags(column.getChildren());
+      }
+    }
   }
 
   private void applyTags(List<Column> columns) {

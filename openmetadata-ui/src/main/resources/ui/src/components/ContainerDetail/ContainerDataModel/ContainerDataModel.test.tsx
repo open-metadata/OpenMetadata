@@ -12,6 +12,7 @@
  */
 import {
   act,
+  findAllByTestId,
   findByTestId,
   findByText,
   queryByTestId,
@@ -33,7 +34,7 @@ const props = {
         dataTypeDisplay: 'numeric',
         description:
           'The ID of the department. This column is the primary key for this table.',
-        fullyQualifiedName: 's3_object_store_sample.finance.department_id',
+        fullyQualifiedName: 's3_storage_sample.finance.department_id',
         tags: [],
         constraint: 'PRIMARY_KEY',
         ordinalPosition: 1,
@@ -43,7 +44,7 @@ const props = {
         dataType: 'NUMERIC',
         dataTypeDisplay: 'numeric',
         description: "The department's budget for the current year.",
-        fullyQualifiedName: 's3_object_store_sample.finance.budget_total_value',
+        fullyQualifiedName: 's3_storage_sample.finance.budget_total_value',
         tags: [],
         ordinalPosition: 2,
       },
@@ -53,7 +54,7 @@ const props = {
         dataLength: 100,
         dataTypeDisplay: 'varchar',
         description: 'Notes concerning sustainability for the budget.',
-        fullyQualifiedName: 's3_object_store_sample.finance.notes',
+        fullyQualifiedName: 's3_storage_sample.finance.notes',
         tags: [],
         ordinalPosition: 3,
       },
@@ -62,7 +63,7 @@ const props = {
         dataType: 'VARCHAR',
         dataTypeDisplay: 'varchar',
         description: 'The responsible finance lead for the budget execution',
-        fullyQualifiedName: 's3_object_store_sample.finance.budget_executor',
+        fullyQualifiedName: 's3_storage_sample.finance.budget_executor',
         tags: [],
         ordinalPosition: 4,
       },
@@ -74,8 +75,21 @@ const props = {
   onUpdate: jest.fn(),
 };
 
-jest.mock('utils/TagsUtils', () => ({
-  fetchTagsAndGlossaryTerms: jest.fn().mockReturnValue([]),
+jest.mock('../../../utils/TagsUtils', () => ({
+  getClassifications: jest.fn().mockReturnValue([]),
+  getTaglist: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('utils/GlossaryUtils', () => ({
+  fetchGlossaryTerms: jest.fn().mockReturnValue([]),
+  getGlossaryTermlist: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('utils/TableTags/TableTags.utils', () => ({
+  getFilterTags: jest.fn().mockReturnValue({
+    Classification: [],
+    Glossary: [],
+  }),
 }));
 
 jest.mock('utils/ContainerDetailUtils', () => ({
@@ -100,14 +114,12 @@ jest.mock(
   })
 );
 
-jest.mock('components/Tag/TagsContainer/tags-container', () =>
+jest.mock('components/TableTags/TableTags.component', () =>
   jest
     .fn()
-    .mockReturnValue(<div data-testid="tag-container">Tag Container</div>)
-);
-
-jest.mock('components/Tag/TagsViewer/tags-viewer', () =>
-  jest.fn().mockReturnValue(<div data-testid="tag-viewer">Tag Viewer</div>)
+    .mockImplementation(() => (
+      <div data-testid="table-tag-container">Table Tag Container</div>
+    ))
 );
 
 describe('ContainerDataModel', () => {
@@ -129,12 +141,12 @@ describe('ContainerDataModel', () => {
     const name = await findByText(row1, 'department_id');
     const dataType = await findByText(row1, 'numeric');
     const description = await findByText(row1, 'Description Preview');
-    const tags = await findByTestId(row1, 'tag-container');
+    const tagsContainer = await findAllByTestId(row1, 'table-tag-container');
 
     expect(name).toBeInTheDocument();
     expect(dataType).toBeInTheDocument();
     expect(description).toBeInTheDocument();
-    expect(tags).toBeInTheDocument();
+    expect(tagsContainer).toHaveLength(2);
   });
 
   it('On edit description button click modal editor should render', async () => {

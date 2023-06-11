@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Qs from 'qs';
 import { ReactNode } from 'react';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -23,8 +24,10 @@ import {
   SearchHitBody,
   TableSearchSource,
   TagClassSearchSource,
+  TeamSearchSource,
+  UserSearchSource,
 } from '../../interface/search.interface';
-import { EntityUnion, ExploreSearchIndex } from '../Explore/explore.interface';
+import { ExploreSearchIndex } from '../Explore/explore.interface';
 
 type Fields =
   | 'name'
@@ -32,7 +35,8 @@ type Fields =
   | 'description'
   | 'serviceType'
   | 'displayName'
-  | 'deleted';
+  | 'deleted'
+  | 'service';
 
 export type SourceType = (
   | Pick<
@@ -49,6 +53,8 @@ export type SourceType = (
         | GlossarySearchSource
         | TagClassSearchSource
         | QuerySearchSource
+        | UserSearchSource
+        | TeamSearchSource
       >,
       Fields
     >
@@ -69,19 +75,18 @@ export interface SearchedDataProps {
   children?: ReactNode;
   selectedEntityId: string;
   data: SearchHitBody<ExploreSearchIndex, SourceType>[];
-  currentPage: number;
   isLoading?: boolean;
-  paginate: (value: string | number) => void;
+  onPaginationChange: (value: number, pageSize?: number) => void;
   totalValue: number;
   fetchLeftPanel?: () => ReactNode;
   isSummaryPanelVisible: boolean;
   showResultCount?: boolean;
-  searchText?: string;
   showOnboardingTemplate?: boolean;
   showOnlyChildren?: boolean;
   isFilterSelected: boolean;
   handleSummaryPanelDisplay?: (
-    details: EntityUnion,
+    details: SearchedDataProps['data'][number]['_source'],
     entityType: string
   ) => void;
+  filter?: Qs.ParsedQs;
 }

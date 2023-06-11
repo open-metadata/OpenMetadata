@@ -13,6 +13,7 @@
 
 import { Badge, Button, List, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { UserProfileTab } from 'enums/user.enum';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,7 +27,6 @@ import { FeedFilter } from '../../enums/mydata.enum';
 import { NotificationTabsKey } from '../../enums/notification.enum';
 import { ThreadType } from '../../generated/api/feed/createThread';
 import { Post, Thread } from '../../generated/entity/feed/thread';
-import jsonData from '../../jsons/en';
 import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -95,7 +95,9 @@ const NotificationBox = ({
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['fetch-notifications-error']
+          t('server.entity-fetch-error', {
+            entity: t('label.notification'),
+          })
         );
       })
       .finally(() => {
@@ -111,9 +113,11 @@ const NotificationBox = ({
       getNotificationData(threadType, feedFilter);
 
       setViewAllPath(
-        `${getUserPath(
-          currentUser?.name as string
-        )}/${threadType.toLowerCase()}?feedFilter=${feedFilter}`
+        `${getUserPath(currentUser?.name as string)}/${(threadType ===
+        ThreadType.Conversation
+          ? UserProfileTab.ACTIVITY
+          : threadType
+        ).toLowerCase()}?feedFilter=${feedFilter}`
       );
 
       if (hasTaskNotification || hasMentionNotification) {
@@ -183,7 +187,7 @@ const NotificationBox = ({
   );
 
   return (
-    <div className="tw-bg-white tw-border tw-border-gray-100 tw-rounded tw-flex tw-flex-col tw-justify-between tw-shadow-lg notification-box">
+    <div className="tw-bg-white tw-border tw-border-gray-100 tw-rounded d-flex flex-col tw-justify-between tw-shadow-lg notification-box">
       <Typography.Title
         className="tw-px-4 tw-pt-3 tw-pb-1"
         data-testid="notification-heading"
@@ -204,7 +208,7 @@ const NotificationBox = ({
         {tabsInfo.map(({ name, key }) => (
           <Tabs.TabPane key={key} tab={getTabTitle(name, key)}>
             {isLoading ? (
-              <div className="tw-h-64 tw-flex tw-items-center tw-justify-center">
+              <div className="tw-h-64 d-flex tw-items-center tw-justify-center">
                 <Loader size="small" />
               </div>
             ) : (

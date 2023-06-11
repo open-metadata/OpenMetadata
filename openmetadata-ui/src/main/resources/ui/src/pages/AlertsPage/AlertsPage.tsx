@@ -10,21 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Table, Tooltip } from 'antd';
+import { Button, Col, Row, Table, Tooltip, Typography } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
+import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import PageHeader from 'components/header/PageHeader.component';
 import Loader from 'components/Loader/Loader';
-import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
+import { ALERTS_DOCS } from 'constants/docs.constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { EntityType } from 'enums/entity.enum';
 import {
   EventSubscription,
   ProviderType,
 } from 'generated/events/eventSubscription';
-import { isNil } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { deleteAlert, getAllAlerts } from 'rest/alertsAPI';
+import { Link, useHistory } from 'react-router-dom';
+import { getAllAlerts } from 'rest/alertsAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -33,11 +39,12 @@ import {
 import { Paging } from '../../generated/type/paging';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const AlertsPage = () => {
-  const [loading, setLoading] = useState(true);
   const { t } = useTranslation();
+  const history = useHistory();
+  const [loading, setLoading] = useState(true);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [alertsPaging, setAlertsPaging] = useState<Paging>({
     total: 0,
@@ -67,16 +74,12 @@ const AlertsPage = () => {
 
   const handleAlertDelete = useCallback(async () => {
     try {
-      await deleteAlert(selectedAlert?.id || '');
       setSelectedAlert(undefined);
-      showSuccessToast(
-        t('server.entity-deleted-successfully', { entity: t('label.alert') })
-      );
       fetchAlerts();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-  }, [selectedAlert]);
+  }, [fetchAlerts]);
 
   const onPageChange = useCallback((after: string | number, page?: number) => {
     if (after) {
@@ -110,6 +113,16 @@ const AlertsPage = () => {
         dataIndex: 'description',
         flex: true,
         key: 'description',
+        render: (description: string) =>
+          isEmpty(description) ? (
+            <Typography.Text className="text-grey-muted">
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
+            </Typography.Text>
+          ) : (
+            description
+          ),
       },
       {
         title: t('label.action-plural'),
@@ -118,12 +131,13 @@ const AlertsPage = () => {
         key: 'id',
         render: (id: string, record: EventSubscription) => {
           return (
-            <>
+            <div className="d-flex items-center">
               <Tooltip placement="bottom" title={t('label.edit')}>
                 <Link to={`edit-alert/${id}`}>
                   <Button
+                    className="d-inline-flex items-center justify-center"
                     data-testid={`alert-edit-${record.name}`}
-                    icon={<SVGIcons className="w-4" icon={Icons.EDIT} />}
+                    icon={<EditIcon width={16} />}
                     type="text"
                   />
                 </Link>
@@ -137,7 +151,7 @@ const AlertsPage = () => {
                   onClick={() => setSelectedAlert(record)}
                 />
               </Tooltip>
-            </>
+            </div>
           );
         },
       },
@@ -152,6 +166,29 @@ const AlertsPage = () => {
     }),
     []
   );
+
+  if (loading) {
+    return <Loader />;
+  }
+
+  if (isEmpty(alerts)) {
+    return (
+      <ErrorPlaceHolder
+        permission
+        doc={ALERTS_DOCS}
+        heading={t('label.alert')}
+        type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        onClick={() =>
+          history.push(
+            getSettingPath(
+              GlobalSettingsMenuCategory.NOTIFICATIONS,
+              GlobalSettingOptions.ADD_ALERTS
+            )
+          )
+        }
+      />
+    );
+  }
 
   return (
     <>
@@ -175,7 +212,6 @@ const AlertsPage = () => {
             bordered
             columns={columns}
             dataSource={alerts}
-            loading={{ spinning: loading, indicator: <Loader /> }}
             pagination={false}
             rowKey="id"
             size="middle"
@@ -194,20 +230,16 @@ const AlertsPage = () => {
             />
           )}
 
-          <ConfirmationModal
-            bodyText={t('message.delete-entity-permanently', {
-              entityType: selectedAlert?.name || '',
-            })}
-            cancelText={t('label.cancel')}
-            confirmText={t('label.delete')}
-            header={t('label.delete-entity', {
-              entity: selectedAlert?.name || '',
-            })}
+          <DeleteWidgetModal
+            afterDeleteAction={handleAlertDelete}
+            allowSoftDelete={false}
+            entityId={selectedAlert?.id ?? ''}
+            entityName={getEntityName(selectedAlert)}
+            entityType={EntityType.SUBSCRIPTION}
             visible={Boolean(selectedAlert)}
             onCancel={() => {
               setSelectedAlert(undefined);
             }}
-            onConfirm={handleAlertDelete}
           />
         </Col>
       </Row>

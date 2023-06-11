@@ -12,7 +12,8 @@
       "type": "string",
       "enum": [
         "EN",
-        "JP"
+        "JP",
+        "ZH"
       ],
       "default": "EN"
     }
@@ -55,6 +56,10 @@
       "description": "Socket Timeout in Seconds",
       "type": "integer",
       "default": 60
+    },
+    "keepAliveTimeoutSecs": {
+      "description": "Keep Alive Timeout in Seconds",
+      "type": "integer"
     },
     "batchSize": {
       "description": "Batch Size for Requests",

@@ -20,6 +20,7 @@ import CronEditor from '../../common/CronEditor/CronEditor';
 import { ScheduleIntervalProps } from '../addIngestion.interface';
 
 const ScheduleInterval = ({
+  disabledCronChange,
   includePeriodOptions,
   onBack,
   onChange,
@@ -39,6 +40,7 @@ const ScheduleInterval = ({
       <Col span={24}>
         <div>
           <CronEditor
+            disabledCronChange={disabledCronChange}
             includePeriodOptions={includePeriodOptions}
             value={repeatFrequency}
             onChange={handleRepeatFrequencyChange}

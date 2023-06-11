@@ -10,6 +10,13 @@
     "org.openmetadata.schema.EntityInterface"
   ],
   "definitions": {
+    "entityName": {
+      "description": "Name of a container. Expected to be unique in the same level containers.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^((?!::).)*$"
+    },
     "containerDataModel": {
       "description": "This captures information about how the container's data is modeled, if it has a schema. ",
       "type": "object",
@@ -58,7 +65,7 @@
     },
     "name": {
       "description": "Name that identifies the container.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref": "#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "Name that uniquely identifies a container in the format 'ServiceName.ContainerName'.",
@@ -93,7 +100,7 @@
       "$ref": "../../type/entityReference.json"
     },
     "service": {
-      "description": "Link to the object store service where this container is hosted in.",
+      "description": "Link to the storage service where this container is hosted in.",
       "$ref": "../../type/entityReference.json"
     },
     "parent": {
@@ -102,7 +109,7 @@
     },
     "children": {
       "description": "References to child containers residing under this entity.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     },
     "dataModel": {
       "description": "References to the container's data model, if data is structured, or null otherwise",
@@ -134,11 +141,11 @@
     },
     "serviceType": {
       "description": "Service type this table is hosted in.",
-      "$ref": "../services/objectstoreService.json#/definitions/objectStoreServiceType"
+      "$ref": "../services/storageService.json#/definitions/storageServiceType"
     },
     "followers": {
       "description": "Followers of this container.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     },
     "tags": {
       "description": "Tags for this container.",

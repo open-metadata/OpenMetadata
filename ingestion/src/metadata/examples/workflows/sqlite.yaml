@@ -1,0 +1,20 @@
+source:
+  type: sqlite
+  serviceName: local_sqlite
+  serviceConnection:
+    config:
+      hostPort: localhost:1433
+      username: <username>
+      password: <password>
+      database: <database>
+      type: SQLite
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

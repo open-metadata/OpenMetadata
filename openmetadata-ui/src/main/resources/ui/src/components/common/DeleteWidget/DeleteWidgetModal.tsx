@@ -11,24 +11,27 @@
  *  limitations under the License.
  */
 
-import { Modal, Radio, RadioChangeEvent } from 'antd';
+import { Button, Modal, Radio, RadioChangeEvent, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
-import React, { ChangeEvent, useCallback, useEffect, useState } from 'react';
+import React, {
+  ChangeEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { deleteEntity } from 'rest/miscAPI';
 import { ENTITY_DELETE_STATE } from '../../../constants/entity.constants';
 import { EntityType } from '../../../enums/entity.enum';
-import jsonData from '../../../jsons/en';
 import {
   getEntityDeleteMessage,
   Transi18next,
 } from '../../../utils/CommonUtils';
 import { getTitleCase } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { Button } from '../../buttons/Button/Button';
-import Loader from '../../Loader/Loader';
 import { DeleteType, DeleteWidgetModalProps } from './DeleteWidget.interface';
 
 const DeleteWidgetModal = ({
@@ -103,8 +106,11 @@ const DeleteWidgetModal = ({
       EntityType.MESSAGING_SERVICE,
       EntityType.PIPELINE_SERVICE,
       EntityType.METADATA_SERVICE,
-      EntityType.OBJECT_STORE_SERVICE,
+      EntityType.STORAGE_SERVICE,
+      EntityType.MLMODEL_SERVICE,
     ];
+
+    const dataQuality = [EntityType.TEST_SUITE, EntityType.TEST_CASE];
 
     if (services.includes((entityType || '') as EntityType)) {
       return `services/${entityType}s`;
@@ -116,13 +122,13 @@ const DeleteWidgetModal = ({
       return entityType;
     } else if (entityType === EntityType.DASHBOARD_DATA_MODEL) {
       return `dashboard/datamodels`;
+    } else if (dataQuality.includes(entityType as EntityType)) {
+      return `dataQuality/${entityType}s`;
+    } else if (entityType === EntityType.SUBSCRIPTION) {
+      return `events/${entityType}s`;
     } else {
       return `${entityType}s`;
     }
-  };
-
-  const getMessage = (message: string) => {
-    return message.replace('Entity', startCase(entityType));
   };
 
   const handleOnEntityDeleteConfirm = () => {
@@ -139,9 +145,9 @@ const DeleteWidgetModal = ({
           setTimeout(() => {
             handleOnEntityDeleteCancel();
             showSuccessToast(
-              getMessage(
-                jsonData['api-success-messages']['delete-entity-success']
-              )
+              t('server.entity-deleted-successfully', {
+                entity: startCase(entityType),
+              })
             );
 
             if (afterDeleteAction) {
@@ -153,15 +159,15 @@ const DeleteWidgetModal = ({
             }
           }, 1000);
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
+          showErrorToast(t('server.unexpected-response'));
         }
       })
       .catch((error: AxiosError) => {
         showErrorToast(
           error,
-          jsonData['api-error-messages']['delete-entity-error']
+          t('server.delete-entity-error', {
+            entity: entityName,
+          })
         );
       })
       .finally(() => {
@@ -191,51 +197,34 @@ const DeleteWidgetModal = ({
     });
   }, [allowSoftDelete]);
 
-  const Footer = () => {
+  const footer = useMemo(() => {
     return (
-      <div className="tw-justify-end" data-testid="footer">
+      <Space data-testid="footer" size={8}>
         <Button
-          className="tw-mr-2"
           data-testid="discard-button"
           disabled={entityDeleteState.loading === 'waiting'}
-          size="regular"
-          theme="primary"
-          variant="text"
+          type="link"
           onClick={handleOnEntityDeleteCancel}>
           {t('label.cancel')}
         </Button>
-        {entityDeleteState.loading === 'waiting' ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-8 tw-rounded-md disabled:tw-opacity-100"
-            data-testid="loading-button"
-            size="custom"
-            theme="primary"
-            variant="contained">
-            <Loader size="small" type="white" />
-          </Button>
-        ) : (
-          <Button
-            className="tw-h-8 tw-px-3 tw-py-2 tw-rounded-md"
-            data-testid="confirm-button"
-            disabled={!isNameMatching()}
-            size="custom"
-            theme="primary"
-            variant="contained"
-            onClick={handleOnEntityDeleteConfirm}>
-            {t('label.confirm')}
-          </Button>
-        )}
-      </div>
+        <Button
+          data-testid="confirm-button"
+          disabled={!isNameMatching()}
+          loading={entityDeleteState.loading === 'waiting'}
+          type="primary"
+          onClick={handleOnEntityDeleteConfirm}>
+          {t('label.confirm')}
+        </Button>
+      </Space>
     );
-  };
+  }, [entityDeleteState, isNameMatching]);
 
   return (
     <Modal
       closable={false}
       confirmLoading={isLoading}
       data-testid="delete-modal"
-      footer={Footer()}
+      footer={footer}
       maskClosable={false}
       okText={t('label.delete')}
       open={visible}
@@ -254,7 +243,7 @@ const DeleteWidgetModal = ({
                   data-testid={`${option.type}-option`}>
                   {option.title}
                 </p>
-                <p className="tw-text-grey-muted tw-text-xs tw-mb-2">
+                <p className="text-grey-muted tw-text-xs tw-mb-2">
                   {option.description}
                 </p>
               </Radio>

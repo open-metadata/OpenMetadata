@@ -14,7 +14,6 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import {
-  mockedAssetData,
   mockedGlossaryTerms,
   MOCK_ASSETS_DATA,
 } from '../../mocks/Glossary.mock';
@@ -108,8 +107,7 @@ jest.mock('components/Glossary/GlossaryHeader/GlossaryHeader.component', () =>
 );
 
 const mockProps = {
-  assetData: mockedAssetData,
-  currentPage: 1,
+  isSummaryPanelOpen: false,
   permissions: {
     Create: true,
     Delete: true,
@@ -120,11 +118,13 @@ const mockProps = {
     EditCustomFields: true,
   } as OperationPermission,
   glossaryTerm: mockedGlossaryTerms[0],
+  termsLoading: false,
   handleGlossaryTermUpdate: jest.fn(),
-  onAssetPaginate: jest.fn(),
   onRelatedTermClick: jest.fn(),
   handleGlossaryTermDelete: jest.fn(),
   refreshGlossaryTerms: jest.fn(),
+  onAddGlossaryTerm: jest.fn(),
+  onEditGlossaryTerm: jest.fn(),
 };
 
 describe('Test Glossary-term component', () => {

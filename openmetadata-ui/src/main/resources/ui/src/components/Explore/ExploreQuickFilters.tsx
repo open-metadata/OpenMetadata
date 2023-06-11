@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Divider, Space } from 'antd';
+import { Space, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { SearchIndex } from 'enums/search.enum';
 import { isEqual, isUndefined, uniqWith } from 'lodash';
@@ -29,12 +29,11 @@ import {
 } from '../../constants/AdvancedSearch.constants';
 import {
   getAdvancedField,
-  getOptionsObject,
+  getOptionTextFromKey,
 } from '../../utils/AdvancedSearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
-import { EntityUnion } from './explore.interface';
 import { ExploreQuickFiltersProps } from './ExploreQuickFilters.interface';
 
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
@@ -42,6 +41,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   onAdvanceSearch,
   index,
   onFieldValueSelect,
+  showDeleted,
+  onChangeShowDeleted,
 }) => {
   const { t } = useTranslation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
@@ -98,14 +99,16 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           const suggestOptions =
             res.data.suggest['metadata-suggest'][0].options ?? [];
 
-          const formattedSuggestions = suggestOptions.map((op) => ({
-            text: op.text,
-            source: op._source as EntityUnion,
-          }));
+          const formattedSuggestions = suggestOptions.map((option) => {
+            const optionsText = getOptionTextFromKey(index, option, key);
 
-          const optionsArray = getOptionsObject(key, formattedSuggestions);
+            return {
+              key: optionsText,
+              label: optionsText,
+            };
+          });
 
-          setOptions(uniqWith(optionsArray, isEqual));
+          setOptions(uniqWith(formattedSuggestions, isEqual));
         } else {
           if (key === 'tags.tagFQN') {
             const res = await getTagSuggestions(value);
@@ -148,7 +151,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   };
 
   return (
-    <Space wrap className="explore-quick-filters-container" size={[16, 16]}>
+    <Space wrap className="explore-quick-filters-container" size={[4, 16]}>
       {fields.map((field) => (
         <SearchDropdown
           highlight
@@ -165,9 +168,19 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           onSearch={getFilterOptions}
         />
       ))}
-      <Divider className="m-0" type="vertical" />
+
+      <span>
+        <Switch
+          checked={showDeleted}
+          data-testid="show-deleted"
+          onChange={onChangeShowDeleted}
+        />
+        <Typography.Text className="p-l-xs">
+          {t('label.show-deleted')}
+        </Typography.Text>
+      </span>
       <span
-        className="tw-text-primary tw-self-center tw-cursor-pointer"
+        className="text-primary self-center cursor-pointer p-l-xs"
         data-testid="advance-search-button"
         onClick={onAdvanceSearch}>
         {t('label.advanced-entity', {

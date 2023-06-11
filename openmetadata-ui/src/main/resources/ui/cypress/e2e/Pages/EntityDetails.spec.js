@@ -75,17 +75,11 @@ describe('Entity Details Page', () => {
     cy.get('@confirmBtn').click();
 
     // success modal should be visible
-    cy.contains('deleted successfully!').should('be.visible');
+    cy.contains('Table deleted successfully!').should('be.visible');
     cy.get('.Toastify__close-button > svg')
       .first()
       .should('be.visible')
       .click();
-
-    cy.get('[data-testid="message-container"]')
-      .first()
-      .scrollIntoView()
-      .contains(`Deleted ${singular}`)
-      .should('be.visible');
 
     // data not found should be visible while redirecting to the deleted entity details page
     cy.get(`[title="${value.term}"]`).should('be.visible').click();
@@ -93,7 +87,10 @@ describe('Entity Details Page', () => {
       const fqn = loc.split('/').pop();
       cy.get('.Toastify__toast-body > :nth-child(2)')
         .should('be.visible')
-        .should('contain', `${singular} instance for ${fqn} not found`);
+        .should(
+          'contain',
+          `${singular} instance for ${decodeURI(fqn)} not found`
+        );
 
       cy.get('.Toastify__close-button > svg')
         .first()
@@ -101,7 +98,9 @@ describe('Entity Details Page', () => {
         .click();
       cy.get('[data-testid="no-data-image"]').should('be.visible');
       cy.contains(
-        `${Cypress._.startCase(singular)} instance for ${fqn} not found`
+        `${Cypress._.startCase(singular)} instance for ${decodeURI(
+          fqn
+        )} not found`
       ).should('be.visible');
     });
     cy.clickOnLogo();
@@ -163,8 +162,6 @@ describe('Entity Details Page', () => {
         expect(text).equal('Tier1');
       });
 
-    cy.get('[data-testid="entity-tags"]').should('contain', 'Tier1');
-
     // add tag to the entity
     interceptURL('GET', '/api/v1/tags?limit=1000', 'tagsRequest');
     interceptURL(
@@ -173,7 +170,11 @@ describe('Entity Details Page', () => {
       'glossaryRequest'
     );
 
-    cy.get('[data-testid="edit-button"]').should('be.visible').click();
+    cy.get('[data-testid="entity-tags"]')
+      .find('[data-testid="add-tag"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
 
     cy.get('[data-testid="tag-selector"]')
       .scrollIntoView()
@@ -191,15 +192,13 @@ describe('Entity Details Page', () => {
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
 
     // Test out the activity feed and task tab
-    cy.get('[data-testid="Activity Feeds & Tasks"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="activity_feed"]').should('be.visible').click();
     // Check for tab count
-    cy.get('[data-testid=filter-count').should('be.visible').contains('3');
+    cy.get('[data-testid=filter-count').should('be.visible');
 
     // Check for activity feeds - count should be 3
-    // 1 for tier change , 1 for owner change, 1 for entity tag
-    cy.get('[data-testid="message-container"]').its('length').should('eq', 3);
+    // 1 for tier change , 1 for owner change, 1 for entity tag and 1 for Entity created.
+    cy.get('[data-testid="message-container"]').its('length').should('eq', 4);
 
     cy.clickOnLogo();
 

@@ -21,14 +21,12 @@ import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
 
-public class AuthenticationMechanismBuilder {
+public final class AuthenticationMechanismBuilder {
+  private AuthenticationMechanismBuilder() {
+    // Final Class
+  }
 
-  /**
-   * Build `AuthenticationMechanism` object with concrete class for the config which by definition it is a `Object`.
-   *
-   * @param authMechanism the auth mechanism object
-   * @return auth mechanism object with concrete classes
-   */
+  /** Build `AuthenticationMechanism` object with concrete class for the config which by definition it is a `Object`. */
   public static AuthenticationMechanism addDefinedConfig(AuthenticationMechanism authMechanism) {
     if (authMechanism != null) {
       if (JWT.equals(authMechanism.getAuthType())) {

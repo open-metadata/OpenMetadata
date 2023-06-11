@@ -14,6 +14,7 @@
 import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Card, Col, Divider, Row, Space, Tag, Typography } from 'antd';
+import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageHeader from 'components/header/PageHeader.component';
@@ -28,7 +29,6 @@ import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
 import {
   EDIT_LINK_PATH,
   getAlertActionTypeDisplayName,
@@ -89,7 +89,7 @@ export const AlertDetailsComponent = ({
               {t('label.trigger')}
             </Typography.Title>
             <Typography.Text data-testid="display-name-entities">
-              {alerts?.filteringRules.resources
+              {alerts?.filteringRules?.resources
                 ?.map(getDisplayNameForEntities)
                 ?.join(', ')}
             </Typography.Text>
@@ -161,7 +161,7 @@ export const AlertDetailsComponent = ({
                         <Typography.Text>
                           <Space size={16}>
                             <span>
-                              {alerts.subscriptionConfig.sendToAdmins ? (
+                              {alerts?.subscriptionConfig?.sendToAdmins ? (
                                 <CheckCircleOutlined />
                               ) : (
                                 <CloseCircleOutlined />
@@ -169,7 +169,7 @@ export const AlertDetailsComponent = ({
                               {t('label.admin-plural')}
                             </span>
                             <span>
-                              {alerts.subscriptionConfig.sendToOwners ? (
+                              {alerts?.subscriptionConfig?.sendToOwners ? (
                                 <CheckCircleOutlined />
                               ) : (
                                 <CloseCircleOutlined />
@@ -177,7 +177,7 @@ export const AlertDetailsComponent = ({
                               {t('label.owner-plural')}
                             </span>
                             <span>
-                              {alerts.subscriptionConfig.sendToFollowers ? (
+                              {alerts?.subscriptionConfig?.sendToFollowers ? (
                                 <CheckCircleOutlined />
                               ) : (
                                 <CloseCircleOutlined />

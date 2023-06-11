@@ -11,21 +11,11 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Col,
-  Divider,
-  Form,
-  Image,
-  Input,
-  Row,
-  Typography,
-} from 'antd';
-import Logo from 'assets/svg/logo.svg';
+import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import classNames from 'classnames';
-import { useApplicationConfigProvider } from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
+import BrandImage from 'components/common/BrandImage/BrandImage';
 import Loader from 'components/Loader/Loader';
 import LoginButton from 'components/LoginButton/LoginButton';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
@@ -34,8 +24,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
-import { VALIDATION_MESSAGES } from '../../constants/auth.constants';
-import { ROUTES } from '../../constants/constants';
+import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { AuthTypes } from '../../enums/signin.enum';
 import localState from '../../utils/LocalStorageUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -43,7 +32,6 @@ import './login.style.less';
 import LoginCarousel from './LoginCarousel';
 
 const SigninPage = () => {
-  const { logoConfig } = useApplicationConfigProvider();
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
 
@@ -77,10 +65,6 @@ const SigninPage = () => {
   const isAlreadyLoggedIn = useMemo(() => {
     return isAuthDisabled || isAuthenticated;
   }, [isAuthDisabled, isAuthenticated]);
-
-  const brandLogoUrl = useMemo(() => {
-    return logoConfig?.customLogoUrlPath ?? Logo;
-  }, [logoConfig]);
 
   const isTokenExpired = () => {
     const token = localState.getOidcToken();
@@ -217,14 +201,7 @@ const SigninPage = () => {
             className={classNames('mt-24 text-center flex-center flex-col', {
               'sso-container': !isAuthProviderBasic,
             })}>
-            <Image
-              alt="OpenMetadata Logo"
-              data-testid="brand-logo-image"
-              fallback={Logo}
-              preview={false}
-              src={brandLogoUrl}
-              width={152}
-            />
+            <BrandImage height="auto" width={152} />
             <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
               {t('message.om-description')}{' '}
             </Typography.Text>
@@ -261,7 +238,10 @@ const SigninPage = () => {
                     name="password"
                     requiredMark={false}
                     rules={[{ required: true }]}>
-                    <Input.Password placeholder={t('label.password')} />
+                    <Input.Password
+                      autoComplete="off"
+                      placeholder={t('label.password')}
+                    />
                   </Form.Item>
 
                   <Button

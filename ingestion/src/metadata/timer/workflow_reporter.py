@@ -25,7 +25,12 @@ def report_ingestion_status(logger: Logger, workflow: "Workflow") -> None:
     Given a logger, use it to INFO the workflow status
     """
     try:
-        source_status: SourceStatus = workflow.source.get_status()
+        if hasattr(
+            workflow, "source_status"
+        ):  # profiler workflow need to report from source_status
+            source_status: SourceStatus = workflow.source_status
+        else:
+            source_status: SourceStatus = workflow.source.get_status()
         logger.info(
             f"Source: Processed {len(source_status.records)} records,"
             f" filtered {len(source_status.filtered)} records,"

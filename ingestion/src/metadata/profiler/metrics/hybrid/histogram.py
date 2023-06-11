@@ -23,9 +23,11 @@ from metadata.profiler.metrics.core import HybridMetric
 from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.max import Max
 from metadata.profiler.metrics.static.min import Min
-from metadata.profiler.orm.registry import is_quantifiable
+from metadata.profiler.orm.functions.length import LenFn
+from metadata.profiler.orm.registry import is_concatenable, is_quantifiable
 from metadata.utils.helpers import format_large_string_numbers
 from metadata.utils.logger import profiler_logger
+from metadata.utils.sqa_utils import handle_array
 
 logger = profiler_logger()
 
@@ -65,11 +67,11 @@ class Histogram(HybridMetric):
         res_min = res.get(Min.name())
         res_max = res.get(Max.name())
 
-        if any(var is None for var in [res_iqr, res_row_count, res_min, res_max]):
+        if any(var is None for var in [res_row_count, res_min, res_max]):
             return None
 
         return (
-            float(res_iqr),
+            float(res_iqr) if res_iqr is not None else res_iqr,
             float(res_row_count),
             float(res_min),
             float(res_max),
@@ -96,6 +98,39 @@ class Histogram(HybridMetric):
             return f"{formatted_lower_bin} and up"
         return f"{formatted_lower_bin} to {format_large_string_numbers(upper_bin)}"
 
+    def _get_bins(
+        self, res_iqr: float, res_row_count: float, res_min: float, res_max: float
+    ):
+        """Get the number of bins and the width of each bin.
+        We'll first use the Freedman-Diaconis rule to compute the number of bins. If the number of bins is greater than 100,
+        we'll fall back to Sturge's rule. If the number of bins is still greater than 100, we'll default to 100 bins.
+
+        Args:
+            res_iqr (float): IQR (first quartile - third quartile)
+            res_row_count (float): number of rows
+            res_min (float): minimum value
+            res_max (float): maximum value
+        """
+        # preinint num_bins over 100.  On the normal path freedman-diaconis will readjust according to the algorithm
+        # when we must fallback to sturges rule due to res_iqr being None, then num_bins will be readjusted.
+        max_bin_count = 100
+        if res_iqr is not None:
+            # freedman-diaconis rule
+            bin_width = self._get_bin_width(float(res_iqr), res_row_count)  # type: ignore
+            num_bins = math.ceil((res_max - res_min) / bin_width)  # type: ignore
+
+        # sturge's rule
+        if res_iqr is None or num_bins > max_bin_count:
+            num_bins = int(math.ceil(math.log2(res_row_count) + 1))
+            bin_width = (res_max - res_min) / num_bins
+
+        # fallback to max_bin_count bins
+        if num_bins > max_bin_count:
+            num_bins = max_bin_count
+            bin_width = (res_max - res_min) / num_bins
+
+        return num_bins, bin_width
+
     def fn(
         self,
         sample: Optional[DeclarativeMeta],
@@ -111,7 +146,7 @@ class Histogram(HybridMetric):
                 "We are missing the session attribute to compute the Histogram."
             )
 
-        if not is_quantifiable(self.col.type):
+        if not (is_quantifiable(self.col.type) or is_concatenable(self.col.type)):
             return None
 
         # get the metric need for the freedman-diaconis rule
@@ -120,9 +155,7 @@ class Histogram(HybridMetric):
             return None
         res_iqr, res_row_count, res_min, res_max = results
 
-        # compute the bin width and the number of bins
-        bind_width = self._get_bin_width(float(res_iqr), res_row_count)  # type: ignore
-        num_bins = math.ceil((res_max - res_min) / bind_width)  # type: ignore
+        num_bins, bin_width = self._get_bins(res_iqr, res_row_count, res_min, res_max)
 
         if num_bins == 0:
             return None
@@ -130,8 +163,12 @@ class Histogram(HybridMetric):
         # set starting and ending bin bounds for the first bin
         starting_bin_bound = res_min
         res_min = cast(Union[float, int], res_min)  # satisfy mypy
-        ending_bin_bound = res_min + bind_width
-        col = column(self.col.name)  # type: ignore
+        ending_bin_bound = res_min + bin_width
+
+        if is_concatenable(self.col.type):
+            col = LenFn(column(self.col.name))
+        else:
+            col = column(self.col.name)  # type: ignore
 
         case_stmts = []
         for bin_num in range(num_bins):
@@ -156,9 +193,11 @@ class Histogram(HybridMetric):
                 )
             )
             starting_bin_bound = ending_bin_bound
-            ending_bin_bound += bind_width
+            ending_bin_bound += bin_width
 
-        rows = session.query(*case_stmts).select_from(sample).first()
+        query = handle_array(session.query(*case_stmts), self.col, sample)
+        rows = query.first()
+
         if rows:
             return {"boundaries": list(rows.keys()), "frequencies": list(rows)}
         return None
@@ -192,14 +231,12 @@ class Histogram(HybridMetric):
             return None
         res_iqr, res_row_count, res_min, res_max = results
 
-        # compute the bin width and the number of bins
-        bind_width = self._get_bin_width(float(res_iqr), res_row_count)  # type: ignore
-        num_bins = math.ceil((res_max - res_min) / bind_width)  # type: ignore
+        num_bins, bin_width = self._get_bins(res_iqr, res_row_count, res_min, res_max)
 
         if num_bins == 0:
             return None
 
-        bins = list(np.arange(num_bins) * bind_width + res_min)
+        bins = list(np.arange(num_bins) * bin_width + res_min)
         bins_label = [
             self._format_bin_labels(bins[i], bins[i + 1])
             if i < len(bins) - 1
@@ -209,10 +246,10 @@ class Histogram(HybridMetric):
 
         bins.append(np.inf)  # add the last bin
 
-        frequencies = None
+        frequencies = np.zeros(num_bins)
 
         for df in dfs:
-            if not frequencies:
+            if not frequencies.any():
                 frequencies = (
                     pd.cut(df[self.col.name], bins, right=False).value_counts().values
                 )  # right boundary is exclusive
