@@ -3,8 +3,8 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "Basic Auth",
     "description": "Common Database Connection Config",
-    "type": "object",
     "javaType": "org.openmetadata.schema.services.connections.database.common.basicAuth",
+    "type": "object",
     "properties": {
         "password": {
             "title": "Password",

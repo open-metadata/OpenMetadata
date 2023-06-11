@@ -42,12 +42,11 @@
       "type": "string"
     },
     "authType": {
-      "mask": true,
       "title": "Auth Configuration Type",
       "description": "Choose Auth Config Type.",
       "oneOf": [
         {
-          "$ref": "common/basicAuth.json"
+          "$ref": "./common/basicAuth.json"
         },
         {
           "$ref": "../../../../security/credentials/awsCredentials.json"
