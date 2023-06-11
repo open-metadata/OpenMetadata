@@ -52,7 +52,8 @@ abstract class TestEntityMasker {
             EntityMaskerFactory.createEntityMasker()
                 .maskServiceConnectionConfig(airflowConnection, "Airflow", ServiceType.PIPELINE);
     assertNotNull(masked);
-    assertEquals(((MysqlConnection) masked.getConnection()).withAuthType(new basicAuth().getPassword()), getMaskedPassword());
+    assertEquals(
+        ((MysqlConnection) masked.getConnection()).withAuthType(new basicAuth().getPassword()), getMaskedPassword());
     AirflowConnection unmasked =
         (AirflowConnection)
             EntityMaskerFactory.createEntityMasker()
@@ -159,7 +160,8 @@ abstract class TestEntityMasker {
             EntityMaskerFactory.createEntityMasker()
                 .maskServiceConnectionConfig(supersetConnection, "Superset", ServiceType.DASHBOARD);
     assertNotNull(masked);
-    assertEquals(((MysqlConnection) masked.getConnection()).withAuthType(new basicAuth().getPassword()), getMaskedPassword());
+    assertEquals(
+        ((MysqlConnection) masked.getConnection()).withAuthType(new basicAuth().getPassword()), getMaskedPassword());
     SupersetConnection unmasked =
         (SupersetConnection)
             EntityMaskerFactory.createEntityMasker()
@@ -182,7 +184,7 @@ abstract class TestEntityMasker {
     assertEquals(
         ((MysqlConnection)
                 ((DatabaseConnection) ((TestServiceConnectionRequest) masked.getRequest()).getConnection()).getConfig())
-                .withAuthType(new basicAuth().getPassword()),
+            .withAuthType(new basicAuth().getPassword()),
         getMaskedPassword());
     assertEquals(
         ((GoogleSSOClientConfig) masked.getOpenMetadataServerConnection().getSecurityConfig()).getSecretKey(),
@@ -192,7 +194,7 @@ abstract class TestEntityMasker {
         ((MysqlConnection)
                 ((DatabaseConnection) ((TestServiceConnectionRequest) unmasked.getRequest()).getConnection())
                     .getConfig())
-                .withAuthType(new basicAuth().getPassword()),
+            .withAuthType(new basicAuth().getPassword()),
         PASSWORD);
     assertEquals(
         ((GoogleSSOClientConfig) unmasked.getOpenMetadataServerConnection().getSecurityConfig()).getSecretKey(),

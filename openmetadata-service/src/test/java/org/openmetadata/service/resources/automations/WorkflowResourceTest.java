@@ -44,7 +44,7 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
                             new MysqlConnection()
                                 .withHostPort("mysql:3306")
                                 .withUsername("openmetadata_user")
-                                    .withAuthType(new basicAuth().withPassword("openmetadata_password")))));
+                                .withAuthType(new basicAuth().withPassword("openmetadata_password")))));
   }
 
   @Override

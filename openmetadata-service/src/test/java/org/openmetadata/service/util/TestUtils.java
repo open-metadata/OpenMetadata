@@ -44,8 +44,6 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-
-import com.github.dockerjava.zerodep.shaded.org.apache.hc.client5.http.impl.auth.BasicAuthCache;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.eclipse.jetty.http.HttpStatus;
@@ -145,7 +143,11 @@ public final class TestUtils {
   static {
     MYSQL_DATABASE_CONNECTION =
         new DatabaseConnection()
-            .withConfig(new MysqlConnection().withHostPort("localhost:3306").withUsername("test").withAuthType(new basicAuth().withPassword("test")));
+            .withConfig(
+                new MysqlConnection()
+                    .withHostPort("localhost:3306")
+                    .withUsername("test")
+                    .withAuthType(new basicAuth().withPassword("test")));
     REDSHIFT_DATABASE_CONNECTION =
         new DatabaseConnection()
             .withConfig(

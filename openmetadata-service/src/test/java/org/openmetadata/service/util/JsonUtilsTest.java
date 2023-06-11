@@ -134,7 +134,9 @@ class JsonUtilsTest {
     DatabaseService databaseService =
         new DatabaseService()
             .withName("test")
-            .withConnection(new DatabaseConnection().withConfig(new MysqlConnection().withAuthType(new basicAuth().withPassword("password"))));
+            .withConnection(
+                new DatabaseConnection()
+                    .withConfig(new MysqlConnection().withAuthType(new basicAuth().withPassword("password"))));
     String actualJson = JsonUtils.pojoToMaskedJson(databaseService);
     assertEquals(expectedJson, actualJson);
   }

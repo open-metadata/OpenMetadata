@@ -32,6 +32,7 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.mlmodel.SklearnConnection;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.util.JsonUtils;
 
 @ExtendWith(MockitoExtension.class)
 public class NoopSecretsManagerTest {
@@ -89,7 +90,9 @@ public class NoopSecretsManagerTest {
     MysqlConnection connection = new MysqlConnection().withAuthType(new basicAuth().withPassword(ENCRYPTED_VALUE));
     Object actualConfig =
         secretsManager.encryptServiceConnectionConfig(connection, Mysql.value(), "test", ServiceType.DATABASE);
-    assertEquals(ENCRYPTED_VALUE, ((MysqlConnection) actualConfig).withAuthType(new basicAuth().getPassword()));
+    assertEquals(
+        ENCRYPTED_VALUE,
+        JsonUtils.convertValue(((MysqlConnection) actualConfig).getAuthType(), basicAuth.class).getPassword());
     assertNotSame(connection, actualConfig);
   }
 
@@ -97,7 +100,9 @@ public class NoopSecretsManagerTest {
     MysqlConnection mysqlConnection = new MysqlConnection().withAuthType(new basicAuth().withPassword(DECRYPTED_VALUE));
     Object actualConfig =
         secretsManager.decryptServiceConnectionConfig(mysqlConnection, Mysql.value(), ServiceType.DATABASE);
-    assertEquals(DECRYPTED_VALUE, ((MysqlConnection) actualConfig).withAuthType(new basicAuth().getPassword()));
+    assertEquals(
+        DECRYPTED_VALUE,
+        JsonUtils.convertValue(((MysqlConnection) actualConfig).getAuthType(), basicAuth.class).getPassword());
     assertNotSame(mysqlConnection, actualConfig);
   }
 }
