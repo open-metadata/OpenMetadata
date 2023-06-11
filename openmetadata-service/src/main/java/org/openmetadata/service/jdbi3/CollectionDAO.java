@@ -1787,11 +1787,11 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM tag_usage where tagFQNHash = :tagFQNHash AND source = :source")
     void deleteTagLabels(@Bind("source") int source, @Bind("tagFQNHash") String tagFQNHash);
 
-    @SqlUpdate("DELETE FROM tag_usage where tagFQN LIKE CONCAT(:tagFQNHash, '.%') AND source = :source")
+    @SqlUpdate("DELETE FROM tag_usage where tagFQNHash LIKE CONCAT(:tagFQNHash, '.%') AND source = :source")
     void deleteTagLabelsByPrefix(@Bind("source") int source, @Bind("tagFQNHash") String tagFQNHash);
 
-    @SqlUpdate("DELETE FROM tag_usage where targetFQN = :targetFQN OR targetFQN LIKE CONCAT(:targetFQN, '.%')")
-    void deleteTagLabelsByTargetPrefix(@Bind("targetFQN") String targetFQN);
+    @SqlUpdate("DELETE FROM tag_usage where targetFQNHash = :targetFQNHash OR targetFQNHash LIKE CONCAT(:targetFQNHash, '.%')")
+    void deleteTagLabelsByTargetPrefix(@Bind("targetFQNHash") String targetFQNHash);
 
     /** Update all the tagFQN starting with oldPrefix to start with newPrefix due to tag or glossary name change */
     default void updateTagPrefix(int source, String oldPrefix, String newPrefix) {

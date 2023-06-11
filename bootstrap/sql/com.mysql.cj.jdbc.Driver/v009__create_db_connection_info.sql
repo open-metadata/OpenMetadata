@@ -1,6 +1,5 @@
--- Unique constraint for user email address
 ALTER TABLE user_entity
-ADD UNIQUE (email);
+    ADD UNIQUE (email);
 
 
 -- Remove classificationName in BigQuery
@@ -8,57 +7,57 @@ UPDATE dbservice_entity
 SET json = JSON_REMOVE(json, '$.connection.config.classificationName') where serviceType in ('BigQuery');
 
 -- migrate ingestAllDatabases in postgres 
-UPDATE dbservice_entity de2 
+UPDATE dbservice_entity de2
 SET json = JSON_REPLACE(
-    JSON_INSERT(json, 
-      '$.connection.config.database', 
-      (select JSON_EXTRACT(json, '$.name') 
-        from database_entity de 
-        where id = (select er.toId 
-            from entity_relationship er 
-            where er.fromId = de2.id 
-              and er.toEntity = 'database' 
-            LIMIT 1
-          ))
-    ), '$.connection.config.ingestAllDatabases', 
-    true
-  ) 
-where de2.serviceType = 'Postgres' 
+        JSON_INSERT(json,
+                    '$.connection.config.database',
+                    (select JSON_EXTRACT(json, '$.name')
+                     from database_entity de
+                     where id = (select er.toId
+                                 from entity_relationship er
+                                 where er.fromId = de2.id
+                                   and er.toEntity = 'database'
+                                 LIMIT 1
+                     ))
+            ), '$.connection.config.ingestAllDatabases',
+        true
+    )
+where de2.serviceType = 'Postgres'
   and JSON_EXTRACT(json, '$.connection.config.database') is NULL;
 
 CREATE TABLE IF NOT EXISTS storage_container_entity (
-    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
-    fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
-    json JSON NOT NULL,
-    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
-    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
-    PRIMARY KEY (id),
-    UNIQUE (fullyQualifiedName)
+                                                        id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+                                                        fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
+                                                        json JSON NOT NULL,
+                                                        updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+                                                        updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+                                                        deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
+                                                        PRIMARY KEY (id),
+                                                        UNIQUE (fullyQualifiedName)
 );
 
 CREATE TABLE IF NOT EXISTS test_connection_definition (
-    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
-    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
-    json JSON NOT NULL,
-    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
-    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
-    PRIMARY KEY (id),
-    UNIQUE (name)
+                                                          id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+                                                          name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+                                                          json JSON NOT NULL,
+                                                          updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+                                                          updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+                                                          deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
+                                                          PRIMARY KEY (id),
+                                                          UNIQUE (name)
 );
 
 CREATE TABLE IF NOT EXISTS automations_workflow (
-    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
-    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
-    workflowType VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.workflowType') STORED NOT NULL,
-    status VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.status') STORED,
-    json JSON NOT NULL,
-    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
-    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
-    PRIMARY KEY (id),
-    UNIQUE (name)
+                                                    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+                                                    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+                                                    workflowType VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.workflowType') STORED NOT NULL,
+                                                    status VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.status') STORED,
+                                                    json JSON NOT NULL,
+                                                    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+                                                    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+                                                    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
+                                                    PRIMARY KEY (id),
+                                                    UNIQUE (name)
 );
 
 -- Do not store OM server connection, we'll set it dynamically on the resource
@@ -66,23 +65,22 @@ UPDATE ingestion_pipeline_entity
 SET json = JSON_REMOVE(json, '$.openMetadataServerConnection');
 
 CREATE TABLE IF NOT EXISTS query_entity (
-    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
-    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
-    nameHash VARCHAR(256)  NOT NULL,
-    json JSON NOT NULL,
-    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
-    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
-    PRIMARY KEY (id),
-    UNIQUE(nameHash),
-    INDEX name_index (name)
+                                            id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+                                            name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+                                            json JSON NOT NULL,
+                                            updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+                                            updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+                                            deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
+                                            PRIMARY KEY (id),
+                                            UNIQUE(name),
+                                            INDEX name_index (name)
 );
 
 CREATE TABLE IF NOT EXISTS temp_query_migration (
-    tableId VARCHAR(36)NOT NULL,
-    queryId VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') NOT NULL,
-    queryName VARCHAR(255) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
-    json JSON NOT NULL
+                                                    tableId VARCHAR(36)NOT NULL,
+                                                    queryId VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') NOT NULL,
+                                                    queryName VARCHAR(255) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+                                                    json JSON NOT NULL
 );
 
 
@@ -97,7 +95,7 @@ INSERT INTO entity_relationship(fromId,toId,fromEntity,toEntity,relation)
 SELECT tmq.tableId, (select qe.id from query_entity qe where qe.name = tmq.queryName) ,"table","query",5 FROM temp_query_migration tmq;
 
 DELETE FROM entity_extension WHERE id IN
- (SELECT DISTINCT tableId FROM temp_query_migration) AND extension = "table.tableQueries";
+                                   (SELECT DISTINCT tableId FROM temp_query_migration) AND extension = "table.tableQueries";
 
 DROP Table temp_query_migration;
 
@@ -109,12 +107,12 @@ WHERE name = 'OpenMetadata' AND JSON_EXTRACT(json, '$.connection.config.authProv
 ALTER TABLE user_tokens MODIFY COLUMN expiryDate BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.expiryDate');
 
 CREATE TABLE IF NOT EXISTS event_subscription_entity (
-    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
-    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
-    json JSON NOT NULL,
-    PRIMARY KEY (id),
-    UNIQUE (name)
+                                                         id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+                                                         name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+                                                         deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
+                                                         json JSON NOT NULL,
+                                                         PRIMARY KEY (id),
+                                                         UNIQUE (name)
     -- No versioning, updatedAt, updatedBy, or changeDescription fields for webhook
 );
 
@@ -124,15 +122,14 @@ DELETE from entity_relationship where  fromEntity = 'alert' and toEntity = 'aler
 
 -- create data model table
 CREATE TABLE IF NOT EXISTS dashboard_data_model_entity (
-    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
-    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
-    fqnHash VARCHAR(256)  NOT NULL,
-    json JSON NOT NULL,
-    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
-    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
-    PRIMARY KEY (id),
-    UNIQUE (fqnHash)
+                                                           id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+                                                           fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
+                                                           json JSON NOT NULL,
+                                                           updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+                                                           updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+                                                           deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
+                                                           PRIMARY KEY (id),
+                                                           UNIQUE (fullyQualifiedName)
 );
 
 UPDATE dbservice_entity
@@ -162,31 +159,31 @@ UPDATE chart_entity
 SET json = JSON_REMOVE(json, '$.tables');
 
 -- Updating the tableau authentication fields
-UPDATE dashboard_service_entity  
+UPDATE dashboard_service_entity
 SET json = JSON_INSERT(
-JSON_REMOVE(json,'$.connection.config.username','$.connection.config.password'),
-'$.connection.config.authType',
-JSON_OBJECT(
-	'username',JSON_EXTRACT(json,'$.connection.config.username'),
-	'password',JSON_EXTRACT(json,'$.connection.config.password')
-	)
-)
+        JSON_REMOVE(json,'$.connection.config.username','$.connection.config.password'),
+        '$.connection.config.authType',
+        JSON_OBJECT(
+                'username',JSON_EXTRACT(json,'$.connection.config.username'),
+                'password',JSON_EXTRACT(json,'$.connection.config.password')
+            )
+    )
 WHERE serviceType = 'Tableau'
-AND JSON_EXTRACT(json, '$.connection.config.username') is not null
-AND JSON_EXTRACT(json, '$.connection.config.password') is not null;
+  AND JSON_EXTRACT(json, '$.connection.config.username') is not null
+  AND JSON_EXTRACT(json, '$.connection.config.password') is not null;
 
-UPDATE dashboard_service_entity  
+UPDATE dashboard_service_entity
 SET json = JSON_INSERT(
-JSON_REMOVE(json,'$.connection.config.personalAccessTokenName','$.connection.config.personalAccessTokenSecret'),
-'$.connection.config.authType',
-JSON_OBJECT(
-	'personalAccessTokenName',JSON_EXTRACT(json,'$.connection.config.personalAccessTokenName'),
-	'personalAccessTokenSecret',JSON_EXTRACT(json,'$.connection.config.personalAccessTokenSecret')
-	)
-)
+        JSON_REMOVE(json,'$.connection.config.personalAccessTokenName','$.connection.config.personalAccessTokenSecret'),
+        '$.connection.config.authType',
+        JSON_OBJECT(
+                'personalAccessTokenName',JSON_EXTRACT(json,'$.connection.config.personalAccessTokenName'),
+                'personalAccessTokenSecret',JSON_EXTRACT(json,'$.connection.config.personalAccessTokenSecret')
+            )
+    )
 WHERE serviceType = 'Tableau'
-AND JSON_EXTRACT(json, '$.connection.config.personalAccessTokenName') is not null
-AND JSON_EXTRACT(json, '$.connection.config.personalAccessTokenSecret') is not null;
+  AND JSON_EXTRACT(json, '$.connection.config.personalAccessTokenName') is not null
+  AND JSON_EXTRACT(json, '$.connection.config.personalAccessTokenSecret') is not null;
 
 -- Removed property from metadataService.json
 UPDATE metadata_service_entity
@@ -202,20 +199,19 @@ UPDATE dbservice_entity
 SET json = JSON_REPLACE(json, '$.connection.config.awsConfig.endPointURL', 'https://glue.region_name.amazonaws.com/')
 WHERE serviceType = 'Glue'
   AND JSON_EXTRACT(json, '$.connection.config.awsConfig.endPointURL') = 'https://glue.<region_name>.amazonaws.com/';
-    ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
 
 -- Delete connectionOptions from superset
-UPDATE dashboard_service_entity 
+UPDATE dashboard_service_entity
 SET json = JSON_REMOVE(json, '$.connection.config.connectionOptions')
 WHERE serviceType = 'Superset';
 
 -- Delete partitionQueryDuration, partitionQuery, partitionField from bigquery
-UPDATE dbservice_entity 
+UPDATE dbservice_entity
 SET json = JSON_REMOVE(json, '$.connection.config.partitionQueryDuration', '$.connection.config.partitionQuery', '$.connection.config.partitionField')
-WHERE serviceType = 'BigQuery'; 
+WHERE serviceType = 'BigQuery';
 
 -- Delete supportsQueryComment, scheme, hostPort, supportsProfiler from salesforce
-UPDATE dbservice_entity 
+UPDATE dbservice_entity
 SET json = JSON_REMOVE(json, '$.connection.config.scheme', '$.connection.config.hostPort', '$.connection.config.supportsProfiler', '$.connection.config.supportsQueryComment')
 WHERE serviceType = 'Salesforce';
 
@@ -228,60 +224,8 @@ WHERE serviceType = 'DynamoDB';
 UPDATE table_entity SET json = REGEXP_REPLACE(json, "\"source\"\\s*:\\s*\"Tag\"", "\"source\": \"Classification\"");
 UPDATE ml_model_entity SET json = REGEXP_REPLACE(json, "\"source\"\\s*:\\s*\"Tag\"", "\"source\": \"Classification\"");
 
-ALTER TABLE policy_entity DROP COLUMN fullyQualifiedName,  ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
-ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-
-ALTER TABLE role_entity DROP KEY `name`,  ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE automations_workflow DROP KEY `name`,  ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE test_connection_definition DROP KEY `name`,  ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-
 
 -- Delete supportsProfiler from Mssql
-ALTER TABLE dbservice_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
 UPDATE dbservice_entity
-ALTER TABLE dashboard_service_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE pipeline_service_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE storage_service_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE metadata_service_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE mlmodel_service_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE objectstore_service_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-
-
-
--- all entity tables
-ALTER TABLE database_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
 SET json = JSON_REMOVE(json, '$.connection.config.uriString')
-ALTER TABLE database_schema_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
-ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE table_entity DROP COLUMN fullyQualifiedName,  ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
-ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-WHERE serviceType = 'Mssql';ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE report_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
-ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE dashboard_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
-ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE chart_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
-ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE ml_model_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
-ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE pipeline_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
-ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE topic_entity DROP COLUMN fullyQualifiedName,  ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
-ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE location_entity DROP COLUMN fullyQualifiedName,  ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
-ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE ingestion_pipeline_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
-ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE objectstore_container_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
-ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE team_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE user_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE bot_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE glossary_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-
-
-
-
-
-
-
+WHERE serviceType = 'Mssql';
