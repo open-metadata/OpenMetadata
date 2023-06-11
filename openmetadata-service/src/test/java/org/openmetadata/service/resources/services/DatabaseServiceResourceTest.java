@@ -389,11 +389,12 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     assertEquals(expectedMysqlConnection.getConnectionArguments(), actualMysqlConnection.getConnectionArguments());
     if (maskedPasswords) {
       assertEquals(
-          actualMysqlConnection.withAuthType(new basicAuth().getPassword()), PasswordEntityMasker.PASSWORD_MASK);
+          JsonUtils.convertValue(actualMysqlConnection.getAuthType(), basicAuth.class).getPassword(),
+          PasswordEntityMasker.PASSWORD_MASK);
     } else {
       assertEquals(
-          expectedMysqlConnection.withAuthType(new basicAuth().getPassword()),
-          actualMysqlConnection.withAuthType(new basicAuth().getPassword()));
+          JsonUtils.convertValue(expectedMysqlConnection.getAuthType(), basicAuth.class).getPassword(),
+          JsonUtils.convertValue(actualMysqlConnection.getAuthType(), basicAuth.class).getPassword());
     }
   }
 

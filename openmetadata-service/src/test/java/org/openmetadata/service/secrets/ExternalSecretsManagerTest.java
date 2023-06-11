@@ -172,7 +172,7 @@ public abstract class ExternalSecretsManagerTest {
   @Test
   void testExceptionConnection() {
     Map<String, Object> mysqlConnection =
-        Map.of("username1", "openmetadata-test", "authType", Map.of("password", "test"));
+        Map.of("username1", "openmetadata-test", "authType", Map.of("password", "openmetadata-test"));
     InvalidServiceConnectionException thrown =
         Assertions.assertThrows(
             InvalidServiceConnectionException.class,
