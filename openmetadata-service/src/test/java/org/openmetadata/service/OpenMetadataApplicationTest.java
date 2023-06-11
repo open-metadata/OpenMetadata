@@ -88,6 +88,9 @@ public abstract class OpenMetadataApplicationTest {
     ELASTIC_SEARCH_CONTAINER = new ElasticsearchContainer(elasticSearchContainerImage);
     ELASTIC_SEARCH_CONTAINER.start();
     ELASTIC_SEARCH_CONTAINER.withReuse(true);
+    String[] parts = ELASTIC_SEARCH_CONTAINER.getHttpHostAddress().split(":");
+    String host = parts[0];
+    String port = parts[1];
 
     APP =
         new DropwizardAppExtension<>(
@@ -98,6 +101,20 @@ public abstract class OpenMetadataApplicationTest {
             ConfigOverride.config("database.url", sqlContainer.getJdbcUrl()),
             ConfigOverride.config("database.user", sqlContainer.getUsername()),
             ConfigOverride.config("database.password", sqlContainer.getPassword()),
+            // Elastic search override
+            ConfigOverride.config("elasticsearch.host", host),
+            ConfigOverride.config("elasticsearch.port", port),
+            ConfigOverride.config("elasticsearch.scheme", "http"),
+            ConfigOverride.config("elasticsearch.username", ""),
+            ConfigOverride.config("elasticsearch.password", ""),
+            ConfigOverride.config("elasticsearch.truststorePath", ""),
+            ConfigOverride.config("elasticsearch.truststorePassword", ""),
+            ConfigOverride.config("elasticsearch.connectionTimeoutSecs", "5"),
+            ConfigOverride.config("elasticsearch.socketTimeoutSecs", "60"),
+            ConfigOverride.config("elasticsearch.keepAliveTimeoutSecs", "600"),
+            ConfigOverride.config("elasticsearch.batchSize", "10"),
+            ConfigOverride.config("elasticsearch.searchIndexMappingLanguage", "EN"),
+            ConfigOverride.config("elasticsearch.searchType", "ElasticSearch"),
             // Migration overrides
             ConfigOverride.config("migrationConfiguration.path", migrationScripsLocation));
 
@@ -129,6 +146,11 @@ public abstract class OpenMetadataApplicationTest {
 
   public static RestClient getSearchClient() {
     return RestClient.builder(HttpHost.create(ELASTIC_SEARCH_CONTAINER.getHttpHostAddress())).build();
+  }
+
+  public static org.opensearch.client.RestClient getOpenSearchClient() {
+    return org.opensearch.client.RestClient.builder(HttpHost.create(ELASTIC_SEARCH_CONTAINER.getHttpHostAddress()))
+        .build();
   }
 
   public static WebTarget getResource(String collection) {
