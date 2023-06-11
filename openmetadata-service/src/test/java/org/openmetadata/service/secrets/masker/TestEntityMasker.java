@@ -26,6 +26,7 @@ import org.openmetadata.schema.services.connections.dashboard.SupersetConnection
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
@@ -51,12 +52,12 @@ abstract class TestEntityMasker {
             EntityMaskerFactory.createEntityMasker()
                 .maskServiceConnectionConfig(airflowConnection, "Airflow", ServiceType.PIPELINE);
     assertNotNull(masked);
-    assertEquals(((MysqlConnection) masked.getConnection()).getPassword(), getMaskedPassword());
+    assertEquals(((MysqlConnection) masked.getConnection()).withAuthType(new basicAuth().getPassword()), getMaskedPassword());
     AirflowConnection unmasked =
         (AirflowConnection)
             EntityMaskerFactory.createEntityMasker()
                 .unmaskServiceConnectionConfig(masked, airflowConnection, "Airflow", ServiceType.PIPELINE);
-    assertEquals(((MysqlConnection) unmasked.getConnection()).getPassword(), PASSWORD);
+    assertEquals(((MysqlConnection) unmasked.getConnection()).withAuthType(new basicAuth().getPassword()), PASSWORD);
   }
 
   @Test
@@ -158,12 +159,12 @@ abstract class TestEntityMasker {
             EntityMaskerFactory.createEntityMasker()
                 .maskServiceConnectionConfig(supersetConnection, "Superset", ServiceType.DASHBOARD);
     assertNotNull(masked);
-    assertEquals(((MysqlConnection) masked.getConnection()).getPassword(), getMaskedPassword());
+    assertEquals(((MysqlConnection) masked.getConnection()).withAuthType(new basicAuth().getPassword()), getMaskedPassword());
     SupersetConnection unmasked =
         (SupersetConnection)
             EntityMaskerFactory.createEntityMasker()
                 .unmaskServiceConnectionConfig(masked, supersetConnection, "Superset", ServiceType.DASHBOARD);
-    assertEquals(((MysqlConnection) unmasked.getConnection()).getPassword(), PASSWORD);
+    assertEquals(((MysqlConnection) unmasked.getConnection()).withAuthType(new basicAuth().getPassword()), PASSWORD);
   }
 
   @Test
@@ -181,7 +182,7 @@ abstract class TestEntityMasker {
     assertEquals(
         ((MysqlConnection)
                 ((DatabaseConnection) ((TestServiceConnectionRequest) masked.getRequest()).getConnection()).getConfig())
-            .getPassword(),
+                .withAuthType(new basicAuth().getPassword()),
         getMaskedPassword());
     assertEquals(
         ((GoogleSSOClientConfig) masked.getOpenMetadataServerConnection().getSecurityConfig()).getSecretKey(),
@@ -191,7 +192,7 @@ abstract class TestEntityMasker {
         ((MysqlConnection)
                 ((DatabaseConnection) ((TestServiceConnectionRequest) unmasked.getRequest()).getConnection())
                     .getConfig())
-            .getPassword(),
+                .withAuthType(new basicAuth().getPassword()),
         PASSWORD);
     assertEquals(
         ((GoogleSSOClientConfig) unmasked.getOpenMetadataServerConnection().getSecurityConfig()).getSecretKey(),
@@ -206,12 +207,12 @@ abstract class TestEntityMasker {
             EntityMaskerFactory.createEntityMasker()
                 .maskServiceConnectionConfig(mysqlConnection, "Mysql", ServiceType.DATABASE);
     assertNotNull(masked);
-    assertEquals(masked.getPassword(), getMaskedPassword());
+    assertEquals(masked.withAuthType(new basicAuth().getPassword()), getMaskedPassword());
     MysqlConnection unmasked =
         (MysqlConnection)
             EntityMaskerFactory.createEntityMasker()
                 .unmaskServiceConnectionConfig(masked, mysqlConnection, "Mysql", ServiceType.DATABASE);
-    assertEquals(unmasked.getPassword(), PASSWORD);
+    assertEquals(unmasked.withAuthType(new basicAuth().getPassword()), PASSWORD);
   }
 
   protected String getMaskedPassword() {
@@ -223,7 +224,7 @@ abstract class TestEntityMasker {
   }
 
   private MysqlConnection buildMysqlConnection() {
-    return new MysqlConnection().withPassword(PASSWORD);
+    return new MysqlConnection().withAuthType(new basicAuth().withPassword(PASSWORD));
   }
 
   private GCSConfig buildGcsConfig() {

@@ -16,6 +16,7 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.automations.WorkflowType;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.automations.WorkflowResource.WorkflowList;
@@ -43,7 +44,7 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
                             new MysqlConnection()
                                 .withHostPort("mysql:3306")
                                 .withUsername("openmetadata_user")
-                                .withPassword("openmetadata_password"))));
+                                    .withAuthType(new basicAuth().withPassword("openmetadata_password")))));
   }
 
   @Override

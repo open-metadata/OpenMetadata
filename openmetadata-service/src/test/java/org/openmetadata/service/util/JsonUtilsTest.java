@@ -37,6 +37,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
 
 /** This test provides examples of how to use applyPatch */
 @Slf4j
@@ -133,7 +134,7 @@ class JsonUtilsTest {
     DatabaseService databaseService =
         new DatabaseService()
             .withName("test")
-            .withConnection(new DatabaseConnection().withConfig(new MysqlConnection().withPassword("password")));
+            .withConnection(new DatabaseConnection().withConfig(new MysqlConnection().withAuthType(new basicAuth().withPassword("password"))));
     String actualJson = JsonUtils.pojoToMaskedJson(databaseService);
     assertEquals(expectedJson, actualJson);
   }

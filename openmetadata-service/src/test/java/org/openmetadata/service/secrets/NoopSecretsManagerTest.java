@@ -29,6 +29,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.mlmodel.SklearnConnection;
 import org.openmetadata.service.fernet.Fernet;
 
@@ -85,18 +86,18 @@ public class NoopSecretsManagerTest {
   }
 
   private void testEncryptServiceConnection() {
-    MysqlConnection connection = new MysqlConnection().withPassword(ENCRYPTED_VALUE);
+    MysqlConnection connection = new MysqlConnection().withAuthType(new basicAuth().withPassword(ENCRYPTED_VALUE));
     Object actualConfig =
         secretsManager.encryptServiceConnectionConfig(connection, Mysql.value(), "test", ServiceType.DATABASE);
-    assertEquals(ENCRYPTED_VALUE, ((MysqlConnection) actualConfig).getPassword());
+    assertEquals(ENCRYPTED_VALUE, ((MysqlConnection) actualConfig).withAuthType(new basicAuth().getPassword()));
     assertNotSame(connection, actualConfig);
   }
 
   private void testDecryptServiceConnection() {
-    MysqlConnection mysqlConnection = new MysqlConnection().withPassword(DECRYPTED_VALUE);
+    MysqlConnection mysqlConnection = new MysqlConnection().withAuthType(new basicAuth().withPassword(DECRYPTED_VALUE));
     Object actualConfig =
         secretsManager.decryptServiceConnectionConfig(mysqlConnection, Mysql.value(), ServiceType.DATABASE);
-    assertEquals(DECRYPTED_VALUE, ((MysqlConnection) actualConfig).getPassword());
+    assertEquals(DECRYPTED_VALUE, ((MysqlConnection) actualConfig).withAuthType(new basicAuth().getPassword()));
     assertNotSame(mysqlConnection, actualConfig);
   }
 }
