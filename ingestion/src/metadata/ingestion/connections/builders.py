@@ -22,10 +22,12 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.event import listen
 from sqlalchemy.pool import QueuePool
 
+from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
     ConnectionOptions,
 )
+from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.ingestion.connections.headers import inject_query_header_by_conn
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
 
@@ -121,7 +123,20 @@ def _add_password(url, connection, attr) -> str:
     # A helper function that adds the password to the url if it exists
     password = getattr(connection, attr, None)
     if not password:
-        password = password or SecretStr("")
+        password = SecretStr("")
+        if hasattr(connection, "authType"):
+            password = getattr(connection.authType, attr, None)
+            if isinstance(connection.authType, AWSCredentials):
+                aws_client = AWSClient(config=connection.authType).get_rds_client()
+                host, port = connection.hostPort.split(":")
+                password = SecretStr(
+                    aws_client.generate_db_auth_token(
+                        DBHostname=host,
+                        Port=port,
+                        DBUsername=connection.username,
+                        Region=connection.authType.awsRegion,
+                    )
+                )
     url += f":{quote_plus(password.get_secret_value())}"
     return url
 
@@ -135,11 +150,7 @@ def get_connection_url_common(connection) -> str:
 
     if connection.username:
         url += f"{quote_plus(connection.username)}"
-
-        if hasattr(connection, "password"):
-            url = _add_password(url, connection, "password")
-        if hasattr(connection, "authType"):
-            url = _add_password(url, connection.authType, "password")
+        url = _add_password(url, connection, "password")
         url += "@"
 
     url += connection.hostPort
