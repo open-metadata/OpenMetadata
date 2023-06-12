@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.bots;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static org.openmetadata.service.util.UserUtil.getRoleForBot;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -60,6 +62,7 @@ import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -388,7 +391,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
 
   private Bot getBot(CreateBot create, String user) throws IOException {
     return copy(new Bot(), create, user)
-        .withBotUser(getEntityReference(Entity.USER, create.getBotUser()))
+        .withBotUser(getEntityReference(Entity.USER, EntityInterfaceUtil.quoteName(create.getBotUser())))
         .withProvider(create.getProvider())
         .withFullyQualifiedName(create.getName());
   }
@@ -409,7 +412,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
 
   private Bot getBot(SecurityContext securityContext, CreateBot create) throws IOException {
     Bot bot = getBot(create, securityContext.getUserPrincipal().getName());
-    Bot originalBot = retrieveBot(bot.getName());
+    Bot originalBot = retrieveBot(EntityInterfaceUtil.quoteName(bot.getName()));
     User botUser = retrieveUser(bot);
     if (botUser != null && !Boolean.TRUE.equals(botUser.getIsBot())) {
       throw new IllegalArgumentException(String.format("User [%s] is not a bot user", botUser.getName()));
@@ -431,7 +434,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   private User retrieveUser(Bot bot) {
     // TODO fix this code - don't depend on exception
     try {
-      return Entity.getEntity(bot.getBotUser(), "", Include.NON_DELETED);
+      return Entity.getEntityByName(Entity.USER, EntityInterfaceUtil.quoteName(bot.getBotUser().getFullyQualifiedName()), "", Include.NON_DELETED);
     } catch (Exception exception) {
       return null;
     }
