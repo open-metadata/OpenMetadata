@@ -80,10 +80,10 @@ const DropDown: React.FC<DropDownProp> = ({
             aria-expanded="true"
             aria-haspopup="true"
             className={classNames(
-              'tw-inline-flex tw-px-2 tw-py-1 focus:tw-outline-none',
+              'tw-inline-flex focus:tw-outline-none',
               type === DropDownType.CHECKBOX
                 ? 'tw-rounded tw-text-body tw-text-gray-400 tw-border tw-border-main focus:tw-border-gray-500 w-full'
-                : 'tw-justify-center tw-nav',
+                : 'tw-justify-center',
               { 'cursor-not-allowed': isDisabled },
               className
             )}
