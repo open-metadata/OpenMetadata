@@ -35,7 +35,9 @@ mock_postgres_config = {
             "config": {
                 "type": "Postgres",
                 "username": "username",
-                "password": "password",
+                "authType": {
+                    "password": "password",
+                },
                 "hostPort": "localhost:5432",
                 "database": "postgres",
             }
@@ -69,7 +71,9 @@ mock_postgres_usage_config = {
             "config": {
                 "type": "Postgres",
                 "username": "username",
-                "password": "password",
+                "authType": {
+                    "password": "password",
+                },
                 "hostPort": "localhost:5432",
                 "database": "postgres",
             }
