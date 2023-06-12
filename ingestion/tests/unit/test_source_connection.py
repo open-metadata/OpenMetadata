@@ -756,7 +756,7 @@ class SourceConnectionTest(TestCase):
         mysql_conn_obj = MysqlConnection(
             username="user",
             authType=BasicAuth(
-            password=None,
+                password=None,
             ),
             hostPort="localhost:443",
             connectionArguments=None,
@@ -768,8 +768,8 @@ class SourceConnectionTest(TestCase):
         expected_args = {"user": "user-to-be-impersonated"}
         mysql_conn_obj = MysqlConnection(
             username="user",
-             authType=BasicAuth(
-            password=None,
+            authType=BasicAuth(
+                password=None,
             ),
             hostPort="localhost:443",
             connectionArguments={"user": "user-to-be-impersonated"},
