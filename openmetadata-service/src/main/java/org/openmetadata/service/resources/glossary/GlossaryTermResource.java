@@ -450,7 +450,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         .withParent(getEntityReference(Entity.GLOSSARY_TERM, create.getParent()))
         .withRelatedTerms(getEntityReferences(Entity.GLOSSARY_TERM, create.getRelatedTerms()))
         .withReferences(create.getReferences())
-        .withReviewers(getEntityReferences(Entity.USER, create.getReviewers().stream().map(EntityInterfaceUtil::quoteName).collect(Collectors.toList())))
+        .withReviewers(
+            getEntityReferences(
+                Entity.USER,
+                create.getReviewers().stream().map(EntityInterfaceUtil::quoteName).collect(Collectors.toList())))
         .withTags(create.getTags())
         .withProvider(create.getProvider())
         .withMutuallyExclusive(create.getMutuallyExclusive());

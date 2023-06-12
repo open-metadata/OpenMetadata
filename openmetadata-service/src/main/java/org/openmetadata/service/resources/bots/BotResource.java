@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.resources.bots;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static org.openmetadata.service.util.UserUtil.getRoleForBot;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -62,7 +60,6 @@ import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -434,7 +431,11 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   private User retrieveUser(Bot bot) {
     // TODO fix this code - don't depend on exception
     try {
-      return Entity.getEntityByName(Entity.USER, EntityInterfaceUtil.quoteName(bot.getBotUser().getFullyQualifiedName()), "", Include.NON_DELETED);
+      return Entity.getEntityByName(
+          Entity.USER,
+          EntityInterfaceUtil.quoteName(bot.getBotUser().getFullyQualifiedName()),
+          "",
+          Include.NON_DELETED);
     } catch (Exception exception) {
       return null;
     }
