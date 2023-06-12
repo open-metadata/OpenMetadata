@@ -37,7 +37,6 @@ import org.openmetadata.service.jdbi3.TestConnectionDefinitionRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -70,13 +69,12 @@ public class TestConnectionDefinitionResource
     List<TestConnectionDefinition> testConnectionDefinitions =
         repository.getEntitiesFromSeedData(".*json/data/testConnections/.*\\.json$");
 
-    for (TestConnectionDefinition testConnectionDefinition :
-        repository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter(Include.ALL))) {
-      repository.delete(ADMIN_USER_NAME, testConnectionDefinition.getId(), true, true);
-    }
-
     for (TestConnectionDefinition testConnectionDefinition : testConnectionDefinitions) {
-      repository.initializeEntity(testConnectionDefinition);
+      repository.prepareInternal(testConnectionDefinition);
+      testConnectionDefinition.setId(UUID.randomUUID());
+      testConnectionDefinition.setUpdatedBy(ADMIN_USER_NAME);
+      testConnectionDefinition.setUpdatedAt(System.currentTimeMillis());
+      repository.createOrUpdate(null, testConnectionDefinition);
     }
   }
 
@@ -84,7 +82,6 @@ public class TestConnectionDefinitionResource
     /* Required for serde */
   }
 
-  // TODO remove the list method?
   @GET
   @Operation(
       operationId = "listTestConnectionDefinitions",

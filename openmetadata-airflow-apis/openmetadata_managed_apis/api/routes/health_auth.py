@@ -34,15 +34,20 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
+    from airflow.api_connexion import security
+    from airflow.security import permissions
     from airflow.www.app import csrf
 
-    @blueprint.route("/health", methods=["GET"])
+    @blueprint.route("/health-auth", methods=["GET"])
     @csrf.exempt
-    def health():
+    @security.requires_access(
+        [(permissions.ACTION_CAN_CREATE, permissions.RESOURCE_DAG)]
+    )
+    def health_auth():
         """
-        /health endpoint to check Airflow REST status without auth
+        /auth-health endpoint to check Airflow REST status without auth
         """
 
         return health_response()
 
-    return health
+    return health_auth

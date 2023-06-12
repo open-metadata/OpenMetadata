@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,12 +11,16 @@
  *  limitations under the License.
  */
 
-import DraggableBodyRow from 'components/Team/TeamDetails/DraggableBodyRow';
+@import url('../../../styles/variables.less');
 
-export const DRAGGABLE_BODY_ROW = 'DraggableBodyRow';
+@warning-bg-color: #f0af2c0d;
 
-export const TABLE_CONSTANTS = {
-  body: {
-    row: DraggableBodyRow,
-  },
-};
+.airflow-message-banner {
+  border: 1px solid @warning-color;
+  border-radius: 4px;
+  padding: 8px;
+  background: @warning-bg-color;
+  + .rjsf .form-group.field {
+    margin-top: 0px;
+  }
+}
