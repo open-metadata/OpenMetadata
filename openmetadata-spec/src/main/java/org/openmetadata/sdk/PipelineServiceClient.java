@@ -132,6 +132,27 @@ public abstract class PipelineServiceClient {
     return getVersionFromString(clientVersion).equals(getVersionFromString(SERVER_VERSION));
   }
 
+  public String buildVersionMismatchErrorMessage(String ingestionVersion, String serverVersion) {
+    if (getVersionFromString(ingestionVersion).compareTo(getVersionFromString(serverVersion)) < 0) {
+      return String.format(
+          "Ingestion version [%s] is older than Server Version [%s]. Please upgrade your ingestion client.",
+          ingestionVersion, serverVersion);
+    }
+    return String.format(
+        "Server version [%s] is older than Ingestion Version [%s]. Please upgrade your server or downgrade the ingestion client.",
+        serverVersion, ingestionVersion);
+  }
+
+  /** To build the response of getServiceStatus */
+  public Map<String, String> buildHealthyStatus(String ingestionVersion) {
+    return Map.of("status", "healthy", "version", ingestionVersion);
+  }
+
+  /** To build the response of getServiceStatus */
+  public Map<String, String> buildUnhealthyStatus(String reason) {
+    return Map.of("status", "unhealthy", "reason", reason);
+  }
+
   public final Response getHostIp() {
 
     if (this.ingestionIpInfoEnabled) {
