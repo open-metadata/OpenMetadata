@@ -212,14 +212,13 @@ public abstract class ExternalSecretsManagerTest {
   }
 
   private String getPassword(Workflow workflow) {
-    return String.valueOf(
-        JsonUtils.convertValue(
-                ((MysqlConnection)
-                        ((DatabaseConnection) ((TestServiceConnectionRequest) workflow.getRequest()).getConnection())
-                            .getConfig())
-                    .getAuthType(),
-                basicAuth.class)
-            .getPassword());
+    return JsonUtils.convertValue(
+            ((MysqlConnection)
+                    ((DatabaseConnection) ((TestServiceConnectionRequest) workflow.getRequest()).getConnection())
+                        .getConfig())
+                .getAuthType(),
+            basicAuth.class)
+        .getPassword();
   }
 
   private String getSecretKey(Workflow expectedWorkflow) {
