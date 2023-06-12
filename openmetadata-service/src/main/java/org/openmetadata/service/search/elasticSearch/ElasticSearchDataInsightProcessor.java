@@ -1,4 +1,4 @@
-package org.openmetadata.service.search.open;
+package org.openmetadata.service.search.elasticSearch;
 
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
@@ -7,6 +7,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.update.UpdateRequest;
+import org.elasticsearch.xcontent.XContentType;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.system.StepStats;
@@ -16,13 +19,9 @@ import org.openmetadata.service.exception.ProcessorException;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
-import org.opensearch.action.bulk.BulkRequest;
-import org.opensearch.action.bulk.BulkResponse;
-import org.opensearch.action.update.UpdateRequest;
-import org.opensearch.common.xcontent.XContentType;
 
 @Slf4j
-public class OpenSearchDataInsightProcessor implements Processor<BulkRequest, ResultList<ReportData>, BulkResponse> {
+public class ElasticSearchDataInsightProcessor implements Processor<BulkRequest, ResultList<ReportData>, BulkRequest> {
   private final StepStats stats = new StepStats();
 
   @Override

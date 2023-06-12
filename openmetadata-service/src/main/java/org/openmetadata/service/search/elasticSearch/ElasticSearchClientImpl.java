@@ -1,4 +1,4 @@
-package org.openmetadata.service.search.elastic;
+package org.openmetadata.service.search.elasticSearch;
 
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;

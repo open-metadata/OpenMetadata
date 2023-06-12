@@ -1,19 +1,18 @@
-package org.openmetadata.service.search.open;
+package org.openmetadata.service.search.openSearch;
 
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
-import org.openmetadata.schema.dataInsight.type.TotalEntitiesByType;
+import org.openmetadata.schema.dataInsight.type.PageViewsByEntities;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.opensearch.search.aggregations.Aggregations;
 import org.opensearch.search.aggregations.bucket.MultiBucketsAggregation;
 import org.opensearch.search.aggregations.bucket.histogram.Histogram;
 import org.opensearch.search.aggregations.metrics.Sum;
 
-public class OsTotalEntitiesAggregator extends DataInsightAggregatorInterface {
-
-  public OsTotalEntitiesAggregator(
+public class OsPageViewsByEntitiesAggregator extends DataInsightAggregatorInterface {
+  public OsPageViewsByEntitiesAggregator(
       Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
     super(aggregations, dataInsightChartType);
   }
@@ -28,31 +27,21 @@ public class OsTotalEntitiesAggregator extends DataInsightAggregatorInterface {
   public List<Object> aggregate() throws ParseException {
     Histogram timestampBuckets = this.aggregationsOs.get(TIMESTAMP);
     List<Object> data = new ArrayList<>();
-    List<Double> entityCount = new ArrayList<>();
-
     for (Histogram.Bucket timestampBucket : timestampBuckets.getBuckets()) {
       String dateTimeString = timestampBucket.getKeyAsString();
       Long timestamp = this.convertDatTimeStringToTimestamp(dateTimeString);
       MultiBucketsAggregation entityTypeBuckets = timestampBucket.getAggregations().get(ENTITY_TYPE);
       for (MultiBucketsAggregation.Bucket entityTypeBucket : entityTypeBuckets.getBuckets()) {
         String entityType = entityTypeBucket.getKeyAsString();
-        Sum sumEntityCount = entityTypeBucket.getAggregations().get(ENTITY_COUNT);
+        Sum sumPageViews = entityTypeBucket.getAggregations().get("pageViews");
+
         data.add(
-            new TotalEntitiesByType()
-                .withTimestamp(timestamp)
+            new PageViewsByEntities()
                 .withEntityType(entityType)
-                .withEntityCount(sumEntityCount.getValue()));
-        entityCount.add(sumEntityCount.getValue());
+                .withTimestamp(timestamp)
+                .withPageViews(sumPageViews.getValue()));
       }
     }
-
-    double totalEntities = entityCount.stream().mapToDouble(v -> v).sum();
-
-    for (Object o : data) {
-      TotalEntitiesByType el = (TotalEntitiesByType) o;
-      el.withEntityCountFraction(el.getEntityCount() / totalEntities);
-    }
-
     return data;
   }
 }

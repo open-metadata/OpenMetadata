@@ -23,8 +23,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.search.elastic.ElasticSearchClientImpl;
-import org.openmetadata.service.search.open.OpenSearchClientImpl;
+import org.openmetadata.service.search.elasticSearch.ElasticSearchClientImpl;
+import org.openmetadata.service.search.openSearch.OpenSearchClientImpl;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j

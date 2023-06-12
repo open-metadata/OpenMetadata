@@ -1,17 +1,17 @@
-package org.openmetadata.service.search.open;
+package org.openmetadata.service.search.elasticSearch;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.elasticsearch.search.aggregations.Aggregations;
+import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
+import org.elasticsearch.search.aggregations.metrics.Sum;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.MostViewedEntities;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
-import org.opensearch.search.aggregations.Aggregations;
-import org.opensearch.search.aggregations.bucket.MultiBucketsAggregation;
-import org.opensearch.search.aggregations.metrics.Sum;
 
-public class OsMostViewedEntitiesAggregator extends DataInsightAggregatorInterface {
+public class EsMostViewedEntitiesAggregator extends DataInsightAggregatorInterface {
 
-  public OsMostViewedEntitiesAggregator(
+  public EsMostViewedEntitiesAggregator(
       Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
     super(aggregations, dataInsightChartType);
   }
@@ -24,7 +24,7 @@ public class OsMostViewedEntitiesAggregator extends DataInsightAggregatorInterfa
 
   @Override
   public List<Object> aggregate() {
-    MultiBucketsAggregation entityFqnBuckets = this.aggregationsOs.get("entityFqn");
+    MultiBucketsAggregation entityFqnBuckets = this.aggregationsEs.get("entityFqn");
     List<Object> data = new ArrayList<>();
     for (MultiBucketsAggregation.Bucket entityFqnBucket : entityFqnBuckets.getBuckets()) {
       String tableFqn = entityFqnBucket.getKeyAsString();

@@ -1,17 +1,17 @@
-package org.openmetadata.service.search.open;
+package org.openmetadata.service.search.elasticSearch;
 
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import org.elasticsearch.search.aggregations.Aggregations;
+import org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.DailyActiveUsers;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
-import org.opensearch.search.aggregations.Aggregations;
-import org.opensearch.search.aggregations.bucket.histogram.Histogram;
 
-public class OsDailyActiveUsersAggregator extends DataInsightAggregatorInterface {
+public class EsDailyActiveUsersAggregator extends DataInsightAggregatorInterface {
 
-  public OsDailyActiveUsersAggregator(
+  public EsDailyActiveUsersAggregator(
       Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
     super(aggregations, dataInsightChartType);
   }
@@ -24,7 +24,7 @@ public class OsDailyActiveUsersAggregator extends DataInsightAggregatorInterface
 
   @Override
   public List<Object> aggregate() throws ParseException {
-    Histogram timestampBuckets = this.aggregationsOs.get(TIMESTAMP);
+    Histogram timestampBuckets = this.aggregationsEs.get(TIMESTAMP);
     List<Object> data = new ArrayList<>();
     for (Histogram.Bucket timestampBucket : timestampBuckets.getBuckets()) {
       String dateTimeString = timestampBucket.getKeyAsString();

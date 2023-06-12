@@ -1,4 +1,4 @@
-package org.openmetadata.service.search.open;
+package org.openmetadata.service.search.openSearch;
 
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
