@@ -677,11 +677,13 @@ public class FeedRepository {
           List<String> teamNameHash = getTeamNames(user);
           String userNameHash = getUserNameHash(user);
           List<String> jsons =
-                dao.feedDAO()
-                    .listThreadsByEntityLink(filter, entityLink, limit + 1, IS_ABOUT.ordinal(), userNameHash, teamNameHash);
+              dao.feedDAO()
+                  .listThreadsByEntityLink(
+                      filter, entityLink, limit + 1, IS_ABOUT.ordinal(), userNameHash, teamNameHash);
           threads = JsonUtils.readObjects(jsons, Thread.class);
           total =
-              dao.feedDAO().listCountThreadsByEntityLink(filter, entityLink, IS_ABOUT.ordinal(), userNameHash, teamNameHash);
+              dao.feedDAO()
+                  .listCountThreadsByEntityLink(filter, entityLink, IS_ABOUT.ordinal(), userNameHash, teamNameHash);
         }
       } else {
         // userId filter present
@@ -1095,7 +1097,6 @@ public class FeedRepository {
     return nullOrEmpty(teamIds) ? List.of(StringUtils.EMPTY) : teamIds;
   }
 
-
   /** Returns the threads that are associated with the entities followed by the user. */
   private FilteredThreads getThreadsByFollows(FeedFilter filter, String userId, int limit) throws IOException {
     List<String> teamIds = getTeamIds(userId);
@@ -1112,10 +1113,13 @@ public class FeedRepository {
   private List<String> getTeamNames(User user) {
     List<String> teamNames = null;
     if (user != null) {
-      teamNames = listOrEmpty(user.getTeams()).stream().map ( x -> {
-            return FullyQualifiedName.buildHash(x.getFullyQualifiedName());
-          }
-      ).collect(Collectors.toList());
+      teamNames =
+          listOrEmpty(user.getTeams()).stream()
+              .map(
+                  x -> {
+                    return FullyQualifiedName.buildHash(x.getFullyQualifiedName());
+                  })
+              .collect(Collectors.toList());
     }
     return nullOrEmpty(teamNames) ? List.of(StringUtils.EMPTY) : teamNames;
   }

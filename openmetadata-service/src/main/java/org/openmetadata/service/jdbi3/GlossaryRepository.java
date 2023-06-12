@@ -189,7 +189,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       }
 
       // Field 9 - reviewers
-      glossaryTerm.withReviewers(getEntityReferences(printer, csvRecord, 8, Entity.USER));
+      glossaryTerm.withReviewers(getUserOrTeamEntityReferences(printer, csvRecord, 8, Entity.USER));
       if (!processRecord) {
         return null;
       }

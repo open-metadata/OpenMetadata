@@ -1419,7 +1419,7 @@ public interface CollectionDAO {
 
     @Override
     default String getNameHashColumn() {
-      return "fullyQualifiedName";
+      return "fqnHash";
     }
 
     @Override
@@ -1790,7 +1790,8 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM tag_usage where tagFQNHash LIKE CONCAT(:tagFQNHash, '.%') AND source = :source")
     void deleteTagLabelsByPrefix(@Bind("source") int source, @Bind("tagFQNHash") String tagFQNHash);
 
-    @SqlUpdate("DELETE FROM tag_usage where targetFQNHash = :targetFQNHash OR targetFQNHash LIKE CONCAT(:targetFQNHash, '.%')")
+    @SqlUpdate(
+        "DELETE FROM tag_usage where targetFQNHash = :targetFQNHash OR targetFQNHash LIKE CONCAT(:targetFQNHash, '.%')")
     void deleteTagLabelsByTargetPrefix(@Bind("targetFQNHash") String targetFQNHash);
 
     /** Update all the tagFQN starting with oldPrefix to start with newPrefix due to tag or glossary name change */
