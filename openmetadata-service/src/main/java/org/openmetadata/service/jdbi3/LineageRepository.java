@@ -90,14 +90,13 @@ public class LineageRepository {
     }
 
     List<ColumnLineage> columnsLineage = details.getColumnsLineage();
-    if (areValidEntities(from, to)) {
-      throw new IllegalArgumentException(
-          "Column level lineage is only allowed between two tables or from table to dashboard.");
-    }
-
-    Table fromTable = dao.tableDAO().findEntityById(from.getId());
-    ColumnsEntityInterface toTable = getToEntity(to);
-    if (columnsLineage != null) {
+    if (columnsLineage != null && !columnsLineage.isEmpty()) {
+      if (areValidEntities(from, to)) {
+        throw new IllegalArgumentException(
+            "Column level lineage is only allowed between two tables or from table to dashboard.");
+      }
+      Table fromTable = dao.tableDAO().findEntityById(from.getId());
+      ColumnsEntityInterface toTable = getToEntity(to);
       for (ColumnLineage columnLineage : columnsLineage) {
         for (String fromColumn : columnLineage.getFromColumns()) {
           // From column belongs to the fromNode
