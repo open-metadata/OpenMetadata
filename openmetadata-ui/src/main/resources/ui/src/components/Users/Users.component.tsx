@@ -587,7 +587,7 @@ const Users = ({
 
   const fetchLeftPanel = () => {
     return (
-      <div className="user-profile-antd-card" data-testid="left-panel">
+      <div className="p-xs user-profile-antd-card" data-testid="left-panel">
         <Card className="ant-card-feed relative " key="left-panel-card">
           {isImgUrlValid ? (
             <Image
