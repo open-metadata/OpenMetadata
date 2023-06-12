@@ -110,7 +110,9 @@ const AddRolePage = () => {
     <ResizablePanels
       firstPanel={{
         children: (
-          <div className="max-width-md w-9/10 service-form-container">
+          <div
+            className="max-width-md w-9/10 service-form-container"
+            data-testid="add-role-container">
             <TitleBreadcrumb titleLinks={breadcrumb} />
             <Card className="p-sm m-t-md">
               <Typography.Paragraph
