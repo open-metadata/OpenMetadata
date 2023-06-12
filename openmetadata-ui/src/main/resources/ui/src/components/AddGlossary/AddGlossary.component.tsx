@@ -79,7 +79,7 @@ const AddGlossary = ({
   };
 
   const rightPanel = (
-    <div className="p-lg">
+    <>
       <Typography.Title level={5}>
         {t('label.configure-entity', {
           entity: t('label.glossary'),
@@ -88,7 +88,7 @@ const AddGlossary = ({
       <Typography.Text className="mb-5">
         {t('message.create-new-glossary-guide')}
       </Typography.Text>
-    </div>
+    </>
   );
 
   const formFields: FieldProp[] = [
@@ -220,8 +220,7 @@ const AddGlossary = ({
         children: (
           <div className="max-width-md w-9/10 service-form-container">
             <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-            {/* <div className="m-t-md tw-form-container glossary-form"> */}
-            <Card className="p-lg m-t-md glossary-form">
+            <Card className="p-sm m-t-md glossary-form">
               <Typography.Title data-testid="form-heading" level={5}>
                 {header}
               </Typography.Title>
@@ -283,18 +282,17 @@ const AddGlossary = ({
                 </Form>
               </div>
             </Card>
-            {/* </div> */}
           </div>
         ),
         minWidth: 700,
         flex: 0.7,
       }}
       pageTitle={t('label.add-entity', {
-        entity: t('label.custom-property'),
+        entity: t('label.glossary'),
       })}
       secondPanel={{
         children: rightPanel,
-        className: 'service-doc-panel',
+        className: 'p-md service-doc-panel',
         minWidth: 60,
         overlay: {
           displayThreshold: 200,

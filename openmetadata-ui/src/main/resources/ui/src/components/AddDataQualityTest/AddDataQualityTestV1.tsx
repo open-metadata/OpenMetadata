@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
+import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { t } from 'i18next';
@@ -25,7 +26,6 @@ import { getTableTabPath } from '../../constants/constants';
 import { STEPS_FOR_ADD_TEST_CASE } from '../../constants/profiler.constant';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
-import { PageLayoutType } from '../../enums/layout.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { TestCase } from '../../generated/tests/testCase';
@@ -40,7 +40,6 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
-import PageLayout from '../containers/PageLayout';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import {
   AddDataQualityTestProps,
@@ -233,59 +232,80 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   }, [activeServiceStep, testCaseRes]);
 
   return (
-    <PageLayout
-      classes="tw-max-w-full-hd tw-h-full tw-pt-4"
-      header={<TitleBreadcrumb titleLinks={breadcrumb} />}
-      layout={PageLayoutType['2ColRTL']}
+    <ResizablePanels
+      firstPanel={{
+        children: (
+          <div className="max-width-md w-9/10 service-form-container">
+            <TitleBreadcrumb titleLinks={breadcrumb} />
+            <div className="m-t-md">
+              {addIngestion ? (
+                <TestSuiteIngestion
+                  testSuite={
+                    selectedTestSuite?.isNewTestSuite
+                      ? (testSuiteData as TestSuite)
+                      : (selectedTestSuite?.data as TestSuite)
+                  }
+                  onCancel={() => setAddIngestion(false)}
+                />
+              ) : (
+                <Card className="p-xs">
+                  <Row gutter={[16, 16]}>
+                    <Col span={24}>
+                      <Typography.Paragraph
+                        className="tw-heading tw-text-base"
+                        data-testid="header">
+                        {t('label.add-entity-test', {
+                          entity: isColumnFqn
+                            ? t('label.column')
+                            : t('label.table'),
+                        })}
+                      </Typography.Paragraph>
+                    </Col>
+                    <Col span={24}>
+                      <IngestionStepper
+                        activeStep={activeServiceStep}
+                        steps={STEPS_FOR_ADD_TEST_CASE}
+                      />
+                    </Col>
+                    <Col span={24}>{RenderSelectedTab()}</Col>
+                  </Row>
+                </Card>
+              )}
+            </div>
+          </div>
+        ),
+        minWidth: 700,
+        flex: 0.7,
+      }}
       pageTitle={t('label.add-entity', {
         entity: t('label.data-quality-test'),
       })}
-      rightPanel={
-        <RightPanel
-          data={
-            addIngestion
-              ? INGESTION_DATA
-              : addTestSuiteRightPanel(
-                  activeServiceStep,
-                  selectedTestSuite?.isNewTestSuite,
-                  {
-                    testCase: testCaseData?.name || '',
-                    testSuite: testSuiteData?.name || '',
-                  }
-                )
-          }
-        />
-      }>
-      {addIngestion ? (
-        <TestSuiteIngestion
-          testSuite={
-            selectedTestSuite?.isNewTestSuite
-              ? (testSuiteData as TestSuite)
-              : (selectedTestSuite?.data as TestSuite)
-          }
-          onCancel={() => setAddIngestion(false)}
-        />
-      ) : (
-        <Row className="tw-form-container" gutter={[16, 16]}>
-          <Col span={24}>
-            <Typography.Paragraph
-              className="tw-heading tw-text-base"
-              data-testid="header">
-              {t('label.add-entity-test', {
-                entity: isColumnFqn ? t('label.column') : t('label.table'),
-              })}
-            </Typography.Paragraph>
-          </Col>
-          <Col span={24}>
-            <IngestionStepper
-              activeStep={activeServiceStep}
-              steps={STEPS_FOR_ADD_TEST_CASE}
-            />
-          </Col>
-          <Col span={24}>{RenderSelectedTab()}</Col>
-        </Row>
-      )}
-    </PageLayout>
+      secondPanel={{
+        children: (
+          <RightPanel
+            data={
+              addIngestion
+                ? INGESTION_DATA
+                : addTestSuiteRightPanel(
+                    activeServiceStep,
+                    selectedTestSuite?.isNewTestSuite,
+                    {
+                      testCase: testCaseData?.name || '',
+                      testSuite: testSuiteData?.name || '',
+                    }
+                  )
+            }
+          />
+        ),
+        className: 'p-md service-doc-panel',
+        minWidth: 60,
+        overlay: {
+          displayThreshold: 200,
+          header: t('label.setup-guide'),
+          rotation: 'counter-clockwise',
+        },
+      }}
+    />
   );
 };
 

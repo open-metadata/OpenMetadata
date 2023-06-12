@@ -187,16 +187,19 @@ const CreateUserPage = () => {
 
   return (
     <PageLayoutV1
-      center
-      header={<TitleBreadcrumb titleLinks={slashedBreadcrumbList} />}
       pageTitle={t('label.create-entity', { entity: t('label.user') })}>
-      <CreateUserComponent
-        forceBot={Boolean(bot)}
-        isLoading={isLoading}
-        roles={roles}
-        onCancel={handleCancel}
-        onSave={handleAddUserSave}
-      />
+      <div className="max-width-md w-9/10 service-form-container">
+        <TitleBreadcrumb titleLinks={slashedBreadcrumbList} />
+        <div className="m-t-md">
+          <CreateUserComponent
+            forceBot={Boolean(bot)}
+            isLoading={isLoading}
+            roles={roles}
+            onCancel={handleCancel}
+            onSave={handleAddUserSave}
+          />
+        </div>
+      </div>
     </PageLayoutV1>
   );
 };

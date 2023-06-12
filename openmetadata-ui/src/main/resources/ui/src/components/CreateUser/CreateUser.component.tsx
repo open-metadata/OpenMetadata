@@ -13,6 +13,7 @@
 
 import {
   Button,
+  Card,
   Form,
   Input,
   Radio,
@@ -678,7 +679,7 @@ const CreateUser = ({
   }, []);
 
   return (
-    <div className="tw-form-container">
+    <Card className="p-xs">
       <h6 className="tw-heading tw-text-base">
         {t('label.create-entity', {
           entity: forceBot ? t('label.bot') : t('label.user'),
@@ -976,7 +977,7 @@ const CreateUser = ({
           </Button>
         </Space>
       </Form>
-    </div>
+    </Card>
   );
 };
 
