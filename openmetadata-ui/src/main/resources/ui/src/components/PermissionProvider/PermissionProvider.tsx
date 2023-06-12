@@ -12,7 +12,7 @@
  */
 
 import { CookieStorage } from 'cookie-storage';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
   createContext,
@@ -177,14 +177,10 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     /**
      * Only fetch permissions if current user is present
      */
-    if (
-      isProtectedRoute(location.pathname) &&
-      !isUndefined(currentUser) &&
-      !isEmpty(currentUser)
-    ) {
+    if (isProtectedRoute(location.pathname) && !isEmpty(currentUser)) {
       fetchLoggedInUserPermissions();
     }
-    if (isUndefined(currentUser) || isEmpty(currentUser)) {
+    if (isEmpty(currentUser)) {
       resetPermissions();
     }
   }, [currentUser]);
