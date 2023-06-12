@@ -91,6 +91,7 @@ import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
+import org.openmetadata.service.formatter.util.FeedMessage;
 import org.openmetadata.service.resources.feeds.FeedResource;
 import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -110,7 +111,7 @@ public class FeedRepository {
   private static final String UNSUPPORTED_FIELD_NAME_FOR_TASK = "The field name %s is not supported for %s task.";
   private final CollectionDAO dao;
 
-  private static MessageDecorator feedMessageFormatter = new FeedMessageDecorator();
+  private static final MessageDecorator<FeedMessage> feedMessageFormatter = new FeedMessageDecorator();
 
   public FeedRepository(CollectionDAO dao) {
     this.dao = dao;
@@ -510,8 +511,7 @@ public class FeedRepository {
             mention ->
                 dao.fieldRelationshipDAO()
                     .insert(
-                        FullyQualifiedName.buildHash(
-                            EntityInterfaceUtil.quoteName(mention.getFullyQualifiedFieldValue())),
+                        FullyQualifiedName.buildHash(mention.getFullyQualifiedFieldValue()),
                         FullyQualifiedName.buildHash(thread.getId().toString()),
                         mention.getFullyQualifiedFieldValue(),
                         thread.getId().toString(),
@@ -673,15 +673,15 @@ public class FeedRepository {
           total = filteredThreads.getTotalCount();
         } else {
           // Only data assets are added as about
-          String userName = userId != null ? SubjectCache.getInstance().getUserById(userId).getName() : null;
-          List<String> teamNames = getTeamNames(userId);
-          List<String> jsons;
-          jsons =
-              dao.feedDAO()
-                  .listThreadsByEntityLink(filter, entityLink, limit + 1, IS_ABOUT.ordinal(), userName, teamNames);
+          User user = userId != null ? SubjectCache.getInstance().getUserById(userId) : null;
+          List<String> teamNameHash = getTeamNames(user);
+          String userNameHash = getUserNameHash(user);
+          List<String> jsons =
+                dao.feedDAO()
+                    .listThreadsByEntityLink(filter, entityLink, limit + 1, IS_ABOUT.ordinal(), userNameHash, teamNameHash);
           threads = JsonUtils.readObjects(jsons, Thread.class);
           total =
-              dao.feedDAO().listCountThreadsByEntityLink(filter, entityLink, IS_ABOUT.ordinal(), userName, teamNames);
+              dao.feedDAO().listCountThreadsByEntityLink(filter, entityLink, IS_ABOUT.ordinal(), userNameHash, teamNameHash);
         }
       } else {
         // userId filter present
@@ -1064,43 +1064,14 @@ public class FeedRepository {
     return new FilteredThreads(threads, totalCount);
   }
 
-  /** Get a list of team ids that the given user is a part of. */
-  private List<String> getTeamIds(String userId) {
-    List<String> teamIds = null;
-    if (userId != null) {
-      User user = SubjectCache.getInstance().getUserById(userId);
-      teamIds = listOrEmpty(user.getTeams()).stream().map(ref -> ref.getId().toString()).collect(Collectors.toList());
-    }
-    return nullOrEmpty(teamIds) ? List.of(StringUtils.EMPTY) : teamIds;
-  }
-
-  /** Get a list of team names that the given user is a part of. */
-  private List<String> getTeamNames(String userId) {
-    List<String> teamNames = null;
-    if (userId != null) {
-      User user = SubjectCache.getInstance().getUserById(userId);
-      teamNames = listOrEmpty(user.getTeams()).stream().map(EntityReference::getName).collect(Collectors.toList());
-    }
-    return nullOrEmpty(teamNames) ? List.of(StringUtils.EMPTY) : teamNames;
-  }
-
   /** Returns the threads where the user or the team they belong to were mentioned by other users with @mention. */
   private FilteredThreads getThreadsByMentions(FeedFilter filter, String userId, int limit) throws IOException {
-    List<EntityReference> teams =
-        populateEntityReferences(
-            dao.relationshipDAO().findFrom(userId, Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM), Entity.TEAM);
-    List<String> teamNames = teams.stream().map(EntityReference::getName).collect(Collectors.toList());
-    if (teamNames.isEmpty()) {
-      teamNames = List.of(StringUtils.EMPTY);
-    }
-    User user = dao.userDAO().findEntityById(UUID.fromString(userId));
 
+    User user = SubjectCache.getInstance().getUserById(userId);
+    String userNameHash = getUserNameHash(user);
     // Return the threads where the user or team was mentioned
-    List<String> teamNamesHash =
-        teamNames.stream()
-            .map(t -> FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(t)))
-            .collect(Collectors.toList());
-    String userNameHash = FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(user.getName()));
+    List<String> teamNamesHash = getTeamNames(user);
+
     // Return the threads where the user or team was mentioned
     List<String> jsons =
         dao.feedDAO()
@@ -1114,6 +1085,17 @@ public class FeedRepository {
     return new FilteredThreads(threads, totalCount);
   }
 
+  /** Get a list of team ids that the given user is a part of. */
+  private List<String> getTeamIds(String userId) {
+    List<String> teamIds = null;
+    if (userId != null) {
+      User user = SubjectCache.getInstance().getUserById(userId);
+      teamIds = listOrEmpty(user.getTeams()).stream().map(ref -> ref.getId().toString()).collect(Collectors.toList());
+    }
+    return nullOrEmpty(teamIds) ? List.of(StringUtils.EMPTY) : teamIds;
+  }
+
+
   /** Returns the threads that are associated with the entities followed by the user. */
   private FilteredThreads getThreadsByFollows(FeedFilter filter, String userId, int limit) throws IOException {
     List<String> teamIds = getTeamIds(userId);
@@ -1124,6 +1106,25 @@ public class FeedRepository {
     int totalCount =
         dao.feedDAO().listCountThreadsByFollows(userId, teamIds, Relationship.FOLLOWS.ordinal(), filter.getCondition());
     return new FilteredThreads(threads, totalCount);
+  }
+
+  /** Get a list of team names that the given user is a part of. */
+  private List<String> getTeamNames(User user) {
+    List<String> teamNames = null;
+    if (user != null) {
+      teamNames = listOrEmpty(user.getTeams()).stream().map ( x -> {
+            return FullyQualifiedName.buildHash(x.getFullyQualifiedName());
+          }
+      ).collect(Collectors.toList());
+    }
+    return nullOrEmpty(teamNames) ? List.of(StringUtils.EMPTY) : teamNames;
+  }
+
+  private String getUserNameHash(User user) {
+    if (user != null) {
+      return FullyQualifiedName.buildHash(user.getFullyQualifiedName());
+    }
+    return null;
   }
 
   public static class FilteredThreads {

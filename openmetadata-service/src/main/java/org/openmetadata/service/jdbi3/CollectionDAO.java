@@ -981,7 +981,7 @@ public interface CollectionDAO {
         filterRelation = MENTIONED_IN.ordinal();
       }
       return listThreadsByEntityLink(
-          entityLink.getFullyQualifiedFieldValue(),
+          FullyQualifiedName.buildHash(entityLink.getFullyQualifiedFieldValue()),
           entityLink.getFullyQualifiedFieldType(),
           limit,
           relation,
@@ -1002,7 +1002,7 @@ public interface CollectionDAO {
             + "ORDER BY createdAt DESC "
             + "LIMIT :limit")
     List<String> listThreadsByEntityLink(
-        @Bind("fqnPrefix") String fqnPrefix,
+        @Bind("fqnPrefixHash") String fqnPrefixHash,
         @Bind("toType") String toType,
         @Bind("limit") int limit,
         @Bind("relation") int relation,
@@ -1018,7 +1018,7 @@ public interface CollectionDAO {
         filterRelation = MENTIONED_IN.ordinal();
       }
       return listCountThreadsByEntityLink(
-          entityLink.getFullyQualifiedFieldValue(),
+          FullyQualifiedName.buildHash(entityLink.getFullyQualifiedFieldValue()),
           entityLink.getFullyQualifiedFieldType(),
           relation,
           userName,
@@ -1109,10 +1109,10 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT json FROM thread_entity <condition> AND "
-            + "id in ("
+            + "MD5(id) in ("
             + "SELECT toFQNHash FROM field_relationship WHERE "
             + "((fromType='user' AND fromFQNHash= :userName) OR "
-            + "(fromType='team' AND fromFQN IN (<teamNames>)))  AND toType='THREAD' AND relation= :relation) "
+            + "(fromType='team' AND fromFQNHash IN (<teamNames>)))  AND toType='THREAD' AND relation= :relation) "
             + "ORDER BY createdAt DESC "
             + "LIMIT :limit")
     List<String> listThreadsByMentions(
@@ -1124,8 +1124,8 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT count(id) FROM thread_entity <condition> AND "
-            + "id in ("
-            + "SELECT toFQNHashHash FROM field_relationship WHERE "
+            + "MD5(id) in ("
+            + "SELECT toFQNHash FROM field_relationship WHERE "
             + "((fromType='user' AND fromFQNHash= :userName) OR "
             + "(fromType='team' AND fromFQNHash IN (<teamNames>)))  AND toType='THREAD' AND relation= :relation) ")
     int listCountThreadsByMentions(
