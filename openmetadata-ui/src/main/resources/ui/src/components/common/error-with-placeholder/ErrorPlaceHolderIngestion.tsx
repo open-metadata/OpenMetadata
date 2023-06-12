@@ -15,12 +15,14 @@ import { Card } from 'antd';
 import { AIRFLOW_DOCS } from 'constants/docs.constants';
 import { t } from 'i18next';
 import React from 'react';
+import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
 
 const ErrorPlaceHolderIngestion = () => {
   const airflowSetupGuide = () => {
     return (
       <div className="tw-mb-5" data-testid="error-steps">
         <Card className="d-flex flex-col tw-justify-between tw-p-5 tw-w-4/5 tw-mx-auto">
+          <AirflowMessageBanner className="m-b-xs" />
           <div>
             <h6 className="tw-text-base tw-text-grey-body tw-font-medium">
               {t('message.manage-airflow-api-failed')}
