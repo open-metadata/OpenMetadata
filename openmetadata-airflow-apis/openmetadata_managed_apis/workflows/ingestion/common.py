@@ -114,19 +114,6 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
 
     service_type = ingestion_pipeline.service.type
 
-    if service_type == "testSuite":
-        service = metadata.get_by_name(
-            entity=TestSuite, fqn=ingestion_pipeline.service.name
-        )  # check we are able to access OM server
-        if not service:
-            raise GetServiceException(service_type, ingestion_pipeline.service.name)
-
-        return WorkflowSource(
-            type=service_type,
-            serviceName=ingestion_pipeline.service.name,
-            sourceConfig=ingestion_pipeline.sourceConfig,
-        )
-
     entity_class = None
     try:
         if service_type == "databaseService":

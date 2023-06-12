@@ -161,13 +161,6 @@ class OMetaServiceTest(TestCase):
             config=cls.usage_workflow_source,
         )
 
-        cls.test_suite: TestSuite = cls.metadata.create_or_update(
-            CreateTestSuiteRequest(
-                name="airflow_workflow_test_suite",
-                description="This is a test suite airflow worflow",
-            )
-        )
-
     @classmethod
     def tearDownClass(cls) -> None:
         """
@@ -176,13 +169,6 @@ class OMetaServiceTest(TestCase):
         cls.metadata.delete(
             entity=DatabaseService,
             entity_id=cls.service.id,
-            recursive=True,
-            hard_delete=True,
-        )
-
-        cls.metadata.delete(
-            entity=TestSuite,
-            entity_id=cls.test_suite.id,
             recursive=True,
             hard_delete=True,
         )
@@ -333,15 +319,20 @@ class OMetaServiceTest(TestCase):
             name="test_test_suite_workflow",
             pipelineType=PipelineType.TestSuite,
             fullyQualifiedName="local_mysql.test_test_suite_workflow",
-            sourceConfig=SourceConfig(config=TestSuitePipeline(type="TestSuite")),
+            sourceConfig=SourceConfig(
+                config=TestSuitePipeline(
+                    type="TestSuite",
+                    entityFullyQualifiedName="service.database.schema.table",
+                )
+            ),
             openMetadataServerConnection=self.server_config,
             airflowConfig=AirflowConfig(
                 startDate="2022-06-10T15:06:47+00:00",
             ),
             service=EntityReference(
-                id=self.test_suite.id,
-                type="testSuite",
-                name=self.test_suite.name.__root__,
+                id=self.service.id,
+                type="databaseService",
+                name=self.service.name.__root__,
             ),
         )
 
