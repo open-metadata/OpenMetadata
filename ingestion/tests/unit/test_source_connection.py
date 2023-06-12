@@ -843,7 +843,7 @@ class SourceConnectionTest(TestCase):
         # connection arguments with connectionArguments
         expected_args = {"user": "user-to-be-impersonated"}
         postgres_conn_obj = PostgresConnection(
-            connectionType=BasicAuth(
+            authType=BasicAuth(
                 password=None,
             ),
             username="user",
