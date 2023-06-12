@@ -18,26 +18,26 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import SourceList from 'components/MlModelDetail/SourceList.component';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
-import { EntityTabs } from 'enums/entity.enum';
+import { getDashboardDetailsPath } from 'constants/constants';
+import { EntityInfo, EntityTabs } from 'enums/entity.enum';
 import { MlFeature, Mlmodel } from 'generated/entity/data/mlmodel';
 import { cloneDeep, isEqual, isUndefined } from 'lodash';
-import { ExtraInfo } from 'Models';
 import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
-import { OwnerType } from '../../enums/user.enum';
 import { ChangeDescription } from '../../generated/entity/data/dashboard';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
-  getColumnDiffNewValue,
-  getColumnDiffOldValue,
-  getColumnDiffValue,
+  getChangedEntityName,
+  getChangedEntityNewValue,
+  getChangedEntityOldValue,
+  getCommonExtraInfoForVersionDetails,
   getDescriptionDiff,
   getDiffByFieldName,
-  getDiffValue,
+  getEntityVersionDescription,
+  getEntityVersionTags,
   getTagsDiff,
   removeDuplicateTags,
 } from '../../utils/EntityVersionUtils';
@@ -72,180 +72,43 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
     },
   ];
 
-  const getDashboardDescription = () => {
-    const descriptionDiff = getDiffByFieldName(
-      EntityField.DESCRIPTION,
-      changeDescription
-    );
-    const oldDescription =
-      descriptionDiff?.added?.oldValue ??
-      descriptionDiff?.deleted?.oldValue ??
-      descriptionDiff?.updated?.oldValue;
-    const newDescription =
-      descriptionDiff?.added?.newValue ??
-      descriptionDiff?.deleted?.newValue ??
-      descriptionDiff?.updated?.newValue;
-
-    return getDescriptionDiff(
-      oldDescription,
-      newDescription,
-      currentVersionData.description
-    );
-  };
-
-  const getConfigDetails = () => {
-    const algorithm = (currentVersionData as Mlmodel).algorithm;
-    const server = (currentVersionData as Mlmodel).server;
-    const target = (currentVersionData as Mlmodel).target;
-    const dashboard = (currentVersionData as Mlmodel).dashboard?.displayName;
+  const extraInfo = useMemo(() => {
+    const { algorithm, server, target, dashboard } =
+      currentVersionData as Mlmodel;
 
     return [
+      ...getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
       {
-        key: 'Algorithm',
-        value: algorithm ? `Algorithm - ${algorithm}` : '--',
+        key: EntityInfo.ALGORITHM,
+        value: algorithm,
+        showLabel: true,
       },
       {
-        key: 'Target',
-        value: target
-          ? t('label.entity-hyphen-value', {
-              entity: t('label.target'),
-              value: target,
-            })
-          : t('label.no-entity', {
-              entity: t('label.target'),
-            }),
+        key: EntityInfo.TARGET,
+        value: target,
+        showLabel: true,
       },
       {
-        key: 'Server',
-        value: server
-          ? t('label.entity-hyphen-value', {
-              entity: t('label.server'),
-              value: server,
-            })
-          : t('label.no-entity', {
-              entity: t('label.server'),
-            }),
+        key: EntityInfo.SERVER,
+        value: server,
+        showLabel: true,
+        isLink: true,
       },
-      {
-        key: 'Dashboard',
-        value: dashboard
-          ? t('label.entity-hyphen-value', {
-              entity: t('label.dashboard'),
-              value: dashboard,
-            })
-          : t('label.no-entity', {
-              entity: t('label.dashboard'),
-            }),
-      },
+      ...(!isUndefined(dashboard)
+        ? [
+            {
+              key: EntityInfo.DASHBOARD,
+              value: getDashboardDetailsPath(
+                dashboard?.fullyQualifiedName as string
+              ),
+              placeholderText: getEntityName(dashboard),
+              showLabel: true,
+              isLink: true,
+            },
+          ]
+        : []),
     ];
-  };
-
-  const getExtraInfo = () => {
-    const ownerDiff = getDiffByFieldName('owner', changeDescription);
-
-    const oldOwner = JSON.parse(
-      ownerDiff?.added?.oldValue ??
-        ownerDiff?.deleted?.oldValue ??
-        ownerDiff?.updated?.oldValue ??
-        '{}'
-    );
-    const newOwner = JSON.parse(
-      ownerDiff?.added?.newValue ??
-        ownerDiff?.deleted?.newValue ??
-        ownerDiff?.updated?.newValue ??
-        '{}'
-    );
-    const ownerPlaceHolder = owner?.name ?? owner?.displayName ?? '';
-
-    const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
-    const newTier = [
-      ...JSON.parse(
-        tagsDiff?.added?.newValue ??
-          tagsDiff?.deleted?.newValue ??
-          tagsDiff?.updated?.newValue ??
-          '[]'
-      ),
-    ].find((t) => (t?.tagFQN as string).startsWith('Tier'));
-
-    const oldTier = [
-      ...JSON.parse(
-        tagsDiff?.added?.oldValue ??
-          tagsDiff?.deleted?.oldValue ??
-          tagsDiff?.updated?.oldValue ??
-          '[]'
-      ),
-    ].find((t) => (t?.tagFQN as string).startsWith('Tier'));
-
-    const extraInfo: Array<ExtraInfo> = [
-      {
-        key: 'Owner',
-        value:
-          !isUndefined(ownerDiff?.added) ||
-          !isUndefined(ownerDiff?.deleted) ||
-          !isUndefined(ownerDiff?.updated)
-            ? getDiffValue(
-                oldOwner?.displayName || oldOwner?.name || '',
-                newOwner?.displayName || newOwner?.name || ''
-              )
-            : ownerPlaceHolder
-            ? getDiffValue(ownerPlaceHolder, ownerPlaceHolder)
-            : '',
-        profileName:
-          newOwner?.type === OwnerType.USER ? newOwner?.name : undefined,
-      },
-      {
-        key: 'Tier',
-        value:
-          !isUndefined(newTier) || !isUndefined(oldTier)
-            ? getDiffValue(
-                oldTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] || '',
-                newTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] || ''
-              )
-            : tier?.tagFQN
-            ? tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
-            : '',
-      },
-      ...getConfigDetails(),
-    ];
-
-    return extraInfo;
-  };
-
-  const getTags = () => {
-    const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
-    const oldTags: Array<TagLabel> = JSON.parse(
-      tagsDiff?.added?.oldValue ??
-        tagsDiff?.deleted?.oldValue ??
-        tagsDiff?.updated?.oldValue ??
-        '[]'
-    );
-    const newTags: Array<TagLabel> = JSON.parse(
-      tagsDiff?.added?.newValue ??
-        tagsDiff?.deleted?.newValue ??
-        tagsDiff?.updated?.newValue ??
-        '[]'
-    );
-    const flag: { [x: string]: boolean } = {};
-    const uniqueTags: Array<TagLabelWithStatus> = [];
-
-    [
-      ...(getTagsDiff(oldTags, newTags) ?? []),
-      ...(currentVersionData.tags ?? []),
-    ].forEach((elem) => {
-      if (!flag[elem.tagFQN as string]) {
-        flag[elem.tagFQN as string] = true;
-        uniqueTags.push(elem as TagLabelWithStatus);
-      }
-    });
-
-    return [
-      ...uniqueTags.map((t) =>
-        t.tagFQN.startsWith('Tier')
-          ? { ...t, tagFQN: t.tagFQN.split(FQN_SEPARATOR_CHAR)[1] }
-          : t
-      ),
-    ];
-  };
+  }, [currentVersionData, changeDescription, owner, tier]);
 
   const handleFeatureDescriptionChangeDiff = (
     colList: Mlmodel['mlFeatures'],
@@ -255,9 +118,8 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
     colList?.forEach((i) => {
       if (isEqual(i.name, newDiff[0]?.name)) {
         i.description = getDescriptionDiff(
-          oldDiff[0]?.description,
-          newDiff[0]?.description,
-          i.description
+          oldDiff[0]?.description ?? '',
+          newDiff[0]?.description ?? ''
         );
       }
     });
@@ -302,9 +164,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
       changeDescription
     );
 
-    if (getColumnDiffValue(columnsDiff) === EntityField.ML_FEATURES) {
-      const oldDiff = JSON.parse(getColumnDiffOldValue(columnsDiff) ?? '[]');
-      const newDiff = JSON.parse(getColumnDiffNewValue(columnsDiff) ?? '[]');
+    if (getChangedEntityName(columnsDiff) === EntityField.ML_FEATURES) {
+      const oldDiff = JSON.parse(getChangedEntityOldValue(columnsDiff) ?? '[]');
+      const newDiff = JSON.parse(getChangedEntityNewValue(columnsDiff) ?? '[]');
 
       handleFeatureDescriptionChangeDiff(colList, oldDiff, newDiff);
 
@@ -317,12 +179,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   }, [
     currentVersionData,
     changeDescription,
-    getColumnDiffValue,
     getDiffByFieldName,
     handleFeatureDescriptionChangeDiff,
     handleFeatureTagChangeDiff,
-    getColumnDiffOldValue,
-    getColumnDiffNewValue,
   ]);
 
   useEffect(() => {
@@ -347,10 +206,10 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
             entityName={
               currentVersionData.displayName ?? currentVersionData.name ?? ''
             }
-            extraInfo={getExtraInfo()}
+            extraInfo={extraInfo}
             followersList={[]}
             serviceType={currentVersionData.serviceType ?? ''}
-            tags={getTags()}
+            tags={getEntityVersionTags(currentVersionData, changeDescription)}
             tier={{} as TagLabel}
             titleLinks={slashedMlModelName}
             version={Number(version)}
@@ -359,7 +218,13 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
           <div className="m-t-xss">
             <Tabs activeKey={EntityTabs.FEATURES} items={tabs} />
             <Card className="m-y-md">
-              <Description isReadOnly description={getDashboardDescription()} />
+              <Description
+                isReadOnly
+                description={getEntityVersionDescription(
+                  currentVersionData,
+                  changeDescription
+                )}
+              />
               <div>
                 {(currentVersionData as Mlmodel).mlFeatures &&
                 (currentVersionData as Mlmodel).mlFeatures?.length ? (

@@ -127,6 +127,7 @@
     "collapse-all": "Collapse All",
     "column": "Column",
     "column-entity": "Column {{entity}}",
+    "column-lowercase-plural": "columns",
     "column-plural": "Columns",
     "column-profile": "Column Profile",
     "comment-lowercase": "comment",

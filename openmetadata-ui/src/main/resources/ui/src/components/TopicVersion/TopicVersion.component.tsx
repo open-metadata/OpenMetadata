@@ -16,25 +16,18 @@ import classNames from 'classnames';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import TopicSchemaFields from 'components/TopicDetails/TopicSchema/TopicSchema';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
-import { EntityTabs } from 'enums/entity.enum';
-import { isUndefined } from 'lodash';
-import { ExtraInfo } from 'Models';
+import { EntityInfo, EntityTabs } from 'enums/entity.enum';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { EntityField } from '../../constants/Feeds.constants';
-import { OwnerType } from '../../enums/user.enum';
 import { ChangeDescription, Topic } from '../../generated/entity/data/topic';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
-  getDescriptionDiff,
-  getDiffByFieldName,
-  getDiffValue,
-  getTagsDiff,
+  getCommonExtraInfoForVersionDetails,
+  getEntityVersionDescription,
+  getEntityVersionTags,
   getUpdatedMessageSchema,
 } from '../../utils/EntityVersionUtils';
-import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import { bytesToSize } from '../../utils/StringsUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
@@ -66,168 +59,61 @@ const TopicVersion: FC<TopicVersionProp> = ({
     },
   ];
 
-  const getConfigDetails = () => {
-    return [
-      {
-        key: 'Partitions',
-        value: `${(currentVersionData as Topic).partitions ?? '--'} ${t(
-          'label.partition-lowercase-plural'
-        )}`,
-      },
-      {
-        key: 'Replication Factor',
-        value: `${(currentVersionData as Topic).replicationFactor ?? '--'} ${t(
-          'label.replication-factor'
-        )}`,
-      },
-      {
-        key: 'Retention Size',
-        value: `${bytesToSize(
-          (currentVersionData as Topic).retentionSize ?? 0
-        )} ${t('label.retention-size-lowercase')}`,
-      },
-      {
-        key: 'Clean-up Policies',
-        value: `${(currentVersionData as Topic)?.cleanupPolicies?.join(
-          ', '
-        )} ${t('label.clean-up-policy-plural-lowercase')}`,
-      },
-      {
-        key: 'Max Message Size',
-        value: `${bytesToSize(
-          (currentVersionData as Topic).maximumMessageSize ?? 0
-        )} ${t('label.maximum-size-lowercase')}`,
-      },
-    ];
-  };
-
-  const getTableDescription = () => {
-    const descriptionDiff = getDiffByFieldName(
-      EntityField.DESCRIPTION,
-      changeDescription
-    );
-    const oldDescription =
-      descriptionDiff?.added?.oldValue ??
-      descriptionDiff?.deleted?.oldValue ??
-      descriptionDiff?.updated?.oldValue;
-    const newDescription =
-      descriptionDiff?.added?.newValue ??
-      descriptionDiff?.deleted?.newValue ??
-      descriptionDiff?.updated?.newValue;
-
-    return getDescriptionDiff(
-      oldDescription ?? '',
-      newDescription,
-      currentVersionData.description
-    );
-  };
-
-  const getExtraInfo = () => {
-    const ownerDiff = getDiffByFieldName('owner', changeDescription);
-
-    const oldOwner = JSON.parse(
-      ownerDiff?.added?.oldValue ??
-        ownerDiff?.deleted?.oldValue ??
-        ownerDiff?.updated?.oldValue ??
-        '{}'
-    );
-    const newOwner = JSON.parse(
-      ownerDiff?.added?.newValue ??
-        ownerDiff?.deleted?.newValue ??
-        ownerDiff?.updated?.newValue ??
-        '{}'
-    );
-    const ownerPlaceHolder = owner?.name ?? owner?.displayName ?? '';
-
-    const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
-    const newTier = [
-      ...JSON.parse(
-        tagsDiff?.added?.newValue ??
-          tagsDiff?.deleted?.newValue ??
-          tagsDiff?.updated?.newValue ??
-          '[]'
-      ),
-    ].find((t) => (t?.tagFQN as string).startsWith('Tier'));
-
-    const oldTier = [
-      ...JSON.parse(
-        tagsDiff?.added?.oldValue ??
-          tagsDiff?.deleted?.oldValue ??
-          tagsDiff?.updated?.oldValue ??
-          '[]'
-      ),
-    ].find((t) => (t?.tagFQN as string).startsWith('Tier'));
-
-    const extraInfo: Array<ExtraInfo> = [
-      {
-        key: 'Owner',
-        value:
-          !isUndefined(ownerDiff.added) ||
-          !isUndefined(ownerDiff.deleted) ||
-          !isUndefined(ownerDiff.updated)
-            ? getDiffValue(
-                oldOwner?.displayName || oldOwner?.name || '',
-                newOwner?.displayName || newOwner?.name || ''
-              )
-            : ownerPlaceHolder
-            ? getDiffValue(ownerPlaceHolder, ownerPlaceHolder)
-            : '',
-        profileName:
-          newOwner?.type === OwnerType.USER ? newOwner?.name : undefined,
-      },
-      {
-        key: 'Tier',
-        value:
-          !isUndefined(newTier) || !isUndefined(oldTier)
-            ? getDiffValue(
-                oldTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] || '',
-                newTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] || ''
-              )
-            : tier?.tagFQN
-            ? tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
-            : '',
-      },
-      ...getConfigDetails(),
-    ];
-
-    return extraInfo;
-  };
-
-  const getTags = () => {
-    const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
-    const oldTags: Array<TagLabel> = JSON.parse(
-      tagsDiff?.added?.oldValue ??
-        tagsDiff?.deleted?.oldValue ??
-        tagsDiff?.updated?.oldValue ??
-        '[]'
-    );
-    const newTags: Array<TagLabel> = JSON.parse(
-      tagsDiff?.added?.newValue ??
-        tagsDiff?.deleted?.newValue ??
-        tagsDiff?.updated?.newValue ??
-        '[]'
-    );
-    const flag: { [x: string]: boolean } = {};
-    const uniqueTags: Array<TagLabelWithStatus> = [];
-
-    [
-      ...(getTagsDiff(oldTags, newTags) ?? []),
-      ...(currentVersionData.tags ?? []),
-    ].forEach((elem) => {
-      if (!flag[elem.tagFQN as string]) {
-        flag[elem.tagFQN as string] = true;
-        uniqueTags.push(elem as TagLabelWithStatus);
-      }
-    });
+  const extraInfo = useMemo(() => {
+    const {
+      partitions,
+      replicationFactor,
+      retentionSize,
+      cleanupPolicies,
+      maximumMessageSize,
+    } = currentVersionData as Topic;
 
     return [
-      ...uniqueTags.map((t) =>
-        t.tagFQN.startsWith('Tier')
-          ? { ...t, tagFQN: t.tagFQN.split(FQN_SEPARATOR_CHAR)[1] }
-          : t
-      ),
+      ...getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
+      {
+        key: EntityInfo.PARTITIONS,
+        value: `${partitions} ${t('label.partition-plural')}`,
+      },
+      ...(replicationFactor
+        ? [
+            {
+              key: EntityInfo.REPLICATION_FACTOR,
+              value: `${replicationFactor} ${t('label.replication-factor')}`,
+            },
+          ]
+        : []),
+      ...(retentionSize
+        ? [
+            {
+              key: EntityInfo.RETENTION_SIZE,
+              value: `${bytesToSize(retentionSize)}  ${t(
+                'label.retention-size'
+              )}`,
+            },
+          ]
+        : []),
+      ...(cleanupPolicies
+        ? [
+            {
+              key: EntityInfo.CLEAN_UP_POLICIES,
+              value: `${cleanupPolicies.join(', ')} ${t(
+                'label.clean-up-policy-plural-lowercase'
+              )}`,
+            },
+          ]
+        : []),
+      ...(maximumMessageSize
+        ? [
+            {
+              key: EntityInfo.MAX_MESSAGE_SIZE,
+              value: `${bytesToSize(maximumMessageSize)} ${t(
+                'label.maximum-size-lowercase'
+              )} `,
+            },
+          ]
+        : []),
     ];
-  };
+  }, [currentVersionData, changeDescription, owner, tier]);
 
   const messageSchemaDiff = useMemo(
     () => getUpdatedMessageSchema(currentVersionData, changeDescription),
@@ -254,10 +140,10 @@ const TopicVersion: FC<TopicVersionProp> = ({
             deleted={deleted}
             displayName={currentVersionData.displayName}
             entityName={currentVersionData.name ?? ''}
-            extraInfo={getExtraInfo()}
+            extraInfo={extraInfo}
             followersList={[]}
             serviceType={currentVersionData.serviceType ?? ''}
-            tags={getTags()}
+            tags={getEntityVersionTags(currentVersionData, changeDescription)}
             tier={{} as TagLabel}
             titleLinks={slashedTopicName}
             version={Number(version)}
@@ -268,7 +154,13 @@ const TopicVersion: FC<TopicVersionProp> = ({
             <Card className={ENTITY_CARD_CLASS}>
               <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
                 <div className="tw-col-span-full">
-                  <Description isReadOnly description={getTableDescription()} />
+                  <Description
+                    isReadOnly
+                    description={getEntityVersionDescription(
+                      currentVersionData,
+                      changeDescription
+                    )}
+                  />
                 </div>
               </div>
               <TopicSchemaFields

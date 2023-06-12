@@ -15,16 +15,11 @@ import { Card, Space, Table, Tabs } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import { EntityTabs } from 'enums/entity.enum';
-import { isUndefined } from 'lodash';
-import { ExtraInfo } from 'Models';
+import { EntityInfo, EntityTabs } from 'enums/entity.enum';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { EntityField } from '../../constants/Feeds.constants';
-import { OwnerType } from '../../enums/user.enum';
 import {
   ChangeDescription,
   Dashboard,
@@ -32,12 +27,10 @@ import {
 } from '../../generated/entity/data/dashboard';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
-  getDescriptionDiff,
-  getDiffByFieldName,
-  getDiffValue,
-  getTagsDiff,
+  getCommonExtraInfoForVersionDetails,
+  getEntityVersionDescription,
+  getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
-import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import SVGIcons from '../../utils/SvgUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
@@ -69,140 +62,25 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
     },
   ];
 
-  const getDashboardDescription = () => {
-    const descriptionDiff = getDiffByFieldName(
-      EntityField.DESCRIPTION,
-      changeDescription
-    );
-    const oldDescription =
-      descriptionDiff?.added?.oldValue ??
-      descriptionDiff?.deleted?.oldValue ??
-      descriptionDiff?.updated?.oldValue;
-    const newDescription =
-      descriptionDiff?.added?.newValue ??
-      descriptionDiff?.deleted?.newValue ??
-      descriptionDiff?.updated?.newValue;
-
-    return getDescriptionDiff(
-      oldDescription,
-      newDescription,
-      currentVersionData.description
-    );
-  };
-
-  const getExtraInfo = () => {
-    const ownerDiff = getDiffByFieldName('owner', changeDescription);
-
-    const oldOwner = JSON.parse(
-      ownerDiff?.added?.oldValue ??
-        ownerDiff?.deleted?.oldValue ??
-        ownerDiff?.updated?.oldValue ??
-        '{}'
-    );
-    const newOwner = JSON.parse(
-      ownerDiff?.added?.newValue ??
-        ownerDiff?.deleted?.newValue ??
-        ownerDiff?.updated?.newValue ??
-        '{}'
-    );
-    const ownerPlaceHolder = owner?.name ?? owner?.displayName ?? '';
-
-    const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
-    const newTier = [
-      ...JSON.parse(
-        tagsDiff?.added?.newValue ??
-          tagsDiff?.deleted?.newValue ??
-          tagsDiff?.updated?.newValue ??
-          '[]'
-      ),
-    ].find((t) => (t?.tagFQN as string).startsWith('Tier'));
-
-    const oldTier = [
-      ...JSON.parse(
-        tagsDiff?.added?.oldValue ??
-          tagsDiff?.deleted?.oldValue ??
-          tagsDiff?.updated?.oldValue ??
-          '[]'
-      ),
-    ].find((t) => (t?.tagFQN as string).startsWith('Tier'));
-
-    const extraInfo: Array<ExtraInfo> = [
-      {
-        key: 'Owner',
-        value:
-          !isUndefined(ownerDiff?.added) ||
-          !isUndefined(ownerDiff?.deleted) ||
-          !isUndefined(ownerDiff?.updated)
-            ? getDiffValue(
-                oldOwner?.displayName || oldOwner?.name || '',
-                newOwner?.displayName || newOwner?.name || ''
-              )
-            : ownerPlaceHolder
-            ? getDiffValue(ownerPlaceHolder, ownerPlaceHolder)
-            : '',
-        profileName:
-          newOwner?.type === OwnerType.USER ? newOwner?.name : undefined,
-      },
-      {
-        key: 'Tier',
-        value:
-          !isUndefined(newTier) || !isUndefined(oldTier)
-            ? getDiffValue(
-                oldTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] || '',
-                newTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] || ''
-              )
-            : tier?.tagFQN
-            ? tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
-            : '',
-      },
-      {
-        key: `${currentVersionData.serviceType} Url`,
-        value: (currentVersionData as Dashboard).dashboardUrl,
-        placeholderText:
-          currentVersionData.displayName ?? currentVersionData.name,
-        isLink: true,
-        openInNewTab: true,
-      },
-    ];
-
-    return extraInfo;
-  };
-
-  const getTags = () => {
-    const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
-    const oldTags: Array<TagLabel> = JSON.parse(
-      tagsDiff?.added?.oldValue ??
-        tagsDiff?.deleted?.oldValue ??
-        tagsDiff?.updated?.oldValue ??
-        '[]'
-    );
-    const newTags: Array<TagLabel> = JSON.parse(
-      tagsDiff?.added?.newValue ??
-        tagsDiff?.deleted?.newValue ??
-        tagsDiff?.updated?.newValue ??
-        '[]'
-    );
-    const flag: { [x: string]: boolean } = {};
-    const uniqueTags: Array<TagLabelWithStatus> = [];
-
-    [
-      ...(getTagsDiff(oldTags, newTags) ?? []),
-      ...(currentVersionData.tags ?? []),
-    ].forEach((elem) => {
-      if (!flag[elem.tagFQN as string]) {
-        flag[elem.tagFQN as string] = true;
-        uniqueTags.push(elem as TagLabelWithStatus);
-      }
-    });
+  const extraInfo = useMemo(() => {
+    const { dashboardUrl, serviceType, displayName, name } =
+      currentVersionData as Dashboard;
 
     return [
-      ...uniqueTags.map((t) =>
-        t.tagFQN.startsWith('Tier')
-          ? { ...t, tagFQN: t.tagFQN.split(FQN_SEPARATOR_CHAR)[1] }
-          : t
-      ),
+      ...getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
+      ...(dashboardUrl
+        ? [
+            {
+              key: `${serviceType} ${EntityInfo.URL}`,
+              value: dashboardUrl,
+              placeholderText: displayName ?? name,
+              isLink: true,
+              openInNewTab: true,
+            },
+          ]
+        : []),
     ];
-  };
+  }, [currentVersionData, changeDescription, owner, tier]);
 
   useEffect(() => {
     setChangeDescription(
@@ -281,10 +159,10 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               deleted={deleted}
               displayName={currentVersionData.displayName}
               entityName={currentVersionData.name ?? ''}
-              extraInfo={getExtraInfo()}
+              extraInfo={extraInfo}
               followersList={[]}
               serviceType={currentVersionData.serviceType ?? ''}
-              tags={getTags()}
+              tags={getEntityVersionTags(currentVersionData, changeDescription)}
               tier={{} as TagLabel}
               titleLinks={slashedDashboardName}
               version={Number(version)}
@@ -301,7 +179,10 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                   <div className="tw-col-span-full">
                     <Description
                       isReadOnly
-                      description={getDashboardDescription()}
+                      description={getEntityVersionDescription(
+                        currentVersionData,
+                        changeDescription
+                      )}
                     />
                   </div>
                   <div className="m-y-md tw-col-span-full">

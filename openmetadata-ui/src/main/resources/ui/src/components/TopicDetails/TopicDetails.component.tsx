@@ -166,28 +166,44 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         key: EntityInfo.PARTITIONS,
         value: `${partitions} ${t('label.partition-plural')}`,
       },
-      {
-        key: EntityInfo.REPLICATION_FACTOR,
-        value: `${replicationFactor} ${t('label.replication-factor')}`,
-      },
-      {
-        key: EntityInfo.RETENTION_SIZE,
-        value: `${bytesToSize(retentionSize ?? 0)}  ${t(
-          'label.retention-size'
-        )}`,
-      },
-      {
-        key: EntityInfo.CLEAN_UP_POLICIES,
-        value: `${(cleanupPolicies ?? []).join(', ')} ${t(
-          'label.clean-up-policy-plural-lowercase'
-        )}`,
-      },
-      {
-        key: EntityInfo.MAX_MESSAGE_SIZE,
-        value: `${bytesToSize(maximumMessageSize ?? 0)} ${t(
-          'label.maximum-size-lowercase'
-        )} `,
-      },
+      ...(replicationFactor
+        ? [
+            {
+              key: EntityInfo.REPLICATION_FACTOR,
+              value: `${replicationFactor} ${t('label.replication-factor')}`,
+            },
+          ]
+        : []),
+      ...(retentionSize
+        ? [
+            {
+              key: EntityInfo.RETENTION_SIZE,
+              value: `${bytesToSize(retentionSize)}  ${t(
+                'label.retention-size'
+              )}`,
+            },
+          ]
+        : []),
+      ...(cleanupPolicies
+        ? [
+            {
+              key: EntityInfo.CLEAN_UP_POLICIES,
+              value: `${cleanupPolicies.join(', ')} ${t(
+                'label.clean-up-policy-plural-lowercase'
+              )}`,
+            },
+          ]
+        : []),
+      ...(maximumMessageSize
+        ? [
+            {
+              key: EntityInfo.MAX_MESSAGE_SIZE,
+              value: `${bytesToSize(maximumMessageSize)} ${t(
+                'label.maximum-size-lowercase'
+              )} `,
+            },
+          ]
+        : []),
     ];
   };
 
