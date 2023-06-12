@@ -13,6 +13,7 @@ Base class for ingesting dashboard services
 """
 import traceback
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import Any, Iterable, List, Optional, Set, Union
 
 from pydantic import BaseModel
@@ -64,6 +65,12 @@ from metadata.utils.filters import filter_by_dashboard
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+
+class LineageEnum(Enum):
+    TABLE = "table"
+    DASHBOARD = "dashboard"
+    DASHBOARDDATAMODEL = "dashboardDataModel"
 
 
 class DashboardUsage(BaseModel):
@@ -391,22 +398,18 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     @staticmethod
     def _get_add_lineage_request(
         to_entity: Union[Dashboard, DashboardDataModel],
-        from_entity: Union[Table, DashboardDataModel],
+        from_entity: Union[Table, DashboardDataModel, Dashboard],
     ) -> Optional[AddLineageRequest]:
         if from_entity and to_entity:
             return AddLineageRequest(
                 edge=EntitiesEdge(
                     fromEntity=EntityReference(
                         id=from_entity.id.__root__,
-                        type="table"
-                        if isinstance(from_entity, Table)
-                        else "dashboardDataModel",
+                        type=LineageEnum[from_entity.__class__.__name__.upper()].value,
                     ),
                     toEntity=EntityReference(
                         id=to_entity.id.__root__,
-                        type="dashboard"
-                        if isinstance(to_entity, Dashboard)
-                        else "dashboardDataModel",
+                        type=LineageEnum[to_entity.__class__.__name__.upper()].value,
                     ),
                 )
             )

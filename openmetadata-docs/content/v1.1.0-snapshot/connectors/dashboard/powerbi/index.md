@@ -359,6 +359,22 @@ caption="View the Ingestion Pipeline from the Service Page" /%}
 
 {% /stepsContainer %}
 
+## PowerBI Lineage
+
+We are creating the lineage between `Tables - DataSources - Reports - Dashboards`.
+
+Below images show the lineage as shown in PowerBI and the lineage displayed in OpenMetadata
+
+{% image
+  src="/images/v1.1.0/connectors/powerbi/lineage-powerbi.png"
+  alt="PowerBI Lineage"
+  caption="Lineage in PowerBI" /%}
+
+{% image
+  src="/images/v1.1.0/connectors/powerbi/lineage-powerbi-om.png"
+  alt="PowerBI Lineage OpenMetadata"
+  caption="PowerBI Lineage in OpenMetadata" /%}
+
 ## Troubleshooting
 
  ### Workflow Deployment Error

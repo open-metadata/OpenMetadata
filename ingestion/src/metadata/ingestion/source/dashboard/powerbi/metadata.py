@@ -12,7 +12,7 @@
 
 import traceback
 import uuid
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -21,7 +21,7 @@ from metadata.generated.schema.api.data.createDashboardDataModel import (
 )
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart, ChartType
-from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboard import Dashboard, DashboardType
 from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
@@ -44,6 +44,7 @@ from metadata.ingestion.source.dashboard.dashboard_service import DashboardServi
 from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataset,
     PowerBIDashboard,
+    PowerBIReport,
     PowerBiTable,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
@@ -103,6 +104,11 @@ class PowerbiSource(DashboardServiceSource):
                     )
                     or []
                 )
+
+            # add the reports to the groups
+            group.reports.extend(
+                self.client.fetch_all_org_reports(group_id=group.id) or []
+            )
 
             # add the datasets to the groups
             group.datasets.extend(
@@ -201,25 +207,33 @@ class PowerbiSource(DashboardServiceSource):
                     continue
                 yield dashboard_details
 
-    def get_dashboards_list(self) -> Optional[List[PowerBIDashboard]]:
+    def get_dashboards_list(
+        self,
+    ) -> Optional[List[Union[PowerBIDashboard, PowerBIReport]]]:
         """
         Get List of all dashboards
         """
-        return self.context.workspace.dashboards
+        return self.context.workspace.reports + self.context.workspace.dashboards
 
-    def get_dashboard_name(self, dashboard: PowerBIDashboard) -> str:
+    def get_dashboard_name(
+        self, dashboard: Union[PowerBIDashboard, PowerBIReport]
+    ) -> str:
         """
         Get Dashboard Name
         """
-        return dashboard.displayName
+        if isinstance(dashboard, PowerBIDashboard):
+            return dashboard.displayName
+        return dashboard.name
 
-    def get_dashboard_details(self, dashboard: PowerBIDashboard) -> PowerBIDashboard:
+    def get_dashboard_details(
+        self, dashboard: Union[PowerBIDashboard, PowerBIReport]
+    ) -> Union[PowerBIDashboard, PowerBIReport]:
         """
         Get Dashboard Details
         """
         return dashboard
 
-    def get_dashboard_url(self, workspace_id: str, dashboard_id: str) -> str:
+    def _get_dashboard_url(self, workspace_id: str, dashboard_id: str) -> str:
         """
         Method to build the dashboard url
         """
@@ -228,7 +242,16 @@ class PowerbiSource(DashboardServiceSource):
             f"{workspace_id}/dashboards/{dashboard_id}"
         )
 
-    def get_chart_url(
+    def _get_report_url(self, workspace_id: str, dashboard_id: str) -> str:
+        """
+        Method to build the dashboard url
+        """
+        return (
+            f"{clean_uri(self.service_connection.hostPort)}/groups/"
+            f"{workspace_id}/reports/{dashboard_id}"
+        )
+
+    def _get_chart_url(
         self, report_id: Optional[str], workspace_id: str, dashboard_id: str
     ) -> str:
         """
@@ -274,7 +297,7 @@ class PowerbiSource(DashboardServiceSource):
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 dataModelType=DataModelType.PowerBIDataModel.value,
                 serviceType=DashboardServiceType.PowerBI.value,
-                columns=self.get_column_info(dataset),
+                columns=self._get_column_info(dataset),
             )
             yield data_model_request
             self.status.scanned(f"Data Model Scanned: {data_model_request.displayName}")
@@ -288,7 +311,7 @@ class PowerbiSource(DashboardServiceSource):
             logger.error(error_msg)
             logger.debug(traceback.format_exc())
 
-    def get_child_columns(self, table: PowerBiTable) -> List[Column]:
+    def _get_child_columns(self, table: PowerBiTable) -> List[Column]:
         """
         Extract the child columns from the fields
         """
@@ -313,7 +336,7 @@ class PowerbiSource(DashboardServiceSource):
                 logger.warning(f"Error processing datamodel nested column: {exc}")
         return columns
 
-    def get_column_info(self, dataset: Dataset) -> Optional[List[Column]]:
+    def _get_column_info(self, dataset: Dataset) -> Optional[List[Column]]:
         """
         Args:
             data_source: DataSource
@@ -330,7 +353,7 @@ class PowerbiSource(DashboardServiceSource):
                     "displayName": table.name,
                     "description": table.description,
                 }
-                child_columns = self.get_child_columns(table=table)
+                child_columns = self._get_child_columns(table=table)
                 if child_columns:
                     parsed_table["children"] = child_columns
                 datasource_columns.append(Column(**parsed_table))
@@ -340,32 +363,138 @@ class PowerbiSource(DashboardServiceSource):
         return datasource_columns
 
     def yield_dashboard(
-        self, dashboard_details: PowerBIDashboard
+        self, dashboard_details: Union[PowerBIDashboard, PowerBIReport]
     ) -> Iterable[CreateDashboardRequest]:
         """
         Method to Get Dashboard Entity, Dashboard Charts & Lineage
         """
-        dashboard_request = CreateDashboardRequest(
-            name=dashboard_details.id,
-            dashboardUrl=self.get_dashboard_url(
-                workspace_id=self.context.workspace.id,
-                dashboard_id=dashboard_details.id,
-            ),
-            displayName=dashboard_details.displayName,
-            description="",
-            charts=[
-                fqn.build(
-                    self.metadata,
-                    entity_type=Chart,
-                    service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
-                    chart_name=chart.name.__root__,
+        try:
+            if isinstance(dashboard_details, PowerBIDashboard):
+                dashboard_request = CreateDashboardRequest(
+                    name=dashboard_details.id,
+                    dashboardUrl=self._get_dashboard_url(
+                        workspace_id=self.context.workspace.id,
+                        dashboard_id=dashboard_details.id,
+                    ),
+                    displayName=dashboard_details.displayName,
+                    dashboardType=DashboardType.Dashboard,
+                    description="",
+                    charts=[
+                        fqn.build(
+                            self.metadata,
+                            entity_type=Chart,
+                            service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
+                            chart_name=chart.name.__root__,
+                        )
+                        for chart in self.context.charts
+                    ],
+                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
-                for chart in self.context.charts
-            ],
-            service=self.context.dashboard_service.fullyQualifiedName.__root__,
-        )
-        yield dashboard_request
-        self.register_record(dashboard_request=dashboard_request)
+            else:
+                dashboard_request = CreateDashboardRequest(
+                    name=dashboard_details.id,
+                    dashboardType=DashboardType.Report,
+                    dashboardUrl=self._get_report_url(
+                        workspace_id=self.context.workspace.id,
+                        dashboard_id=dashboard_details.id,
+                    ),
+                    displayName=dashboard_details.name,
+                    description="",
+                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                )
+            yield dashboard_request
+            self.register_record(dashboard_request=dashboard_request)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error creating dashboard [{dashboard_details}]: {exc}")
+
+    def create_report_dashboard_lineage(
+        self, dashboard_details: PowerBIDashboard
+    ) -> Iterable[CreateDashboardRequest]:
+        """
+        create lineage between report and dashboard
+        """
+        try:
+            charts = dashboard_details.tiles
+            dashboard_fqn = fqn.build(
+                self.metadata,
+                entity_type=Dashboard,
+                service_name=self.config.serviceName,
+                dashboard_name=dashboard_details.id,
+            )
+            dashboard_entity = self.metadata.get_by_name(
+                entity=Dashboard,
+                fqn=dashboard_fqn,
+            )
+            for chart in charts or []:
+                report = self._fetch_report_from_workspace(chart.reportId)
+                if report:
+                    report_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Dashboard,
+                        service_name=self.config.serviceName,
+                        dashboard_name=report.id,
+                    )
+                    report_entity = self.metadata.get_by_name(
+                        entity=Dashboard,
+                        fqn=report_fqn,
+                    )
+
+                    if report_entity and dashboard_entity:
+                        yield self._get_add_lineage_request(
+                            to_entity=dashboard_entity, from_entity=report_entity
+                        )
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error to yield report and dashboard lineage details: {exc}")
+
+    def create_datamodel_report_lineage(
+        self, db_service_name: str, dashboard_details: PowerBIReport
+    ) -> Iterable[CreateDashboardRequest]:
+        """
+        create the lineage between datamodel and report
+        """
+        try:
+            report_fqn = fqn.build(
+                self.metadata,
+                entity_type=Dashboard,
+                service_name=self.config.serviceName,
+                dashboard_name=dashboard_details.id,
+            )
+            report_entity = self.metadata.get_by_name(
+                entity=Dashboard,
+                fqn=report_fqn,
+            )
+
+            dataset = self._fetch_dataset_from_workspace(dashboard_details.datasetId)
+            if dataset:
+                datamodel_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=DashboardDataModel,
+                    service_name=self.config.serviceName,
+                    data_model_name=dataset.id,
+                )
+                datamodel_entity = self.metadata.get_by_name(
+                    entity=DashboardDataModel,
+                    fqn=datamodel_fqn,
+                )
+
+                if datamodel_entity and report_entity:
+                    yield self._get_add_lineage_request(
+                        to_entity=report_entity, from_entity=datamodel_entity
+                    )
+
+                    # create the lineage between table and datamodel
+                    yield from self.create_table_datamodel_lineage(
+                        db_service_name=db_service_name,
+                        tables=dataset.tables,
+                        datamodel_entity=datamodel_entity,
+                    )
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Error to yield datamodel and report lineage details for DB service name [{db_service_name}]: {exc}"
+            )
 
     def create_table_datamodel_lineage(
         self,
@@ -402,49 +531,24 @@ class PowerbiSource(DashboardServiceSource):
                 )
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: PowerBIDashboard, db_service_name: str
+        self,
+        dashboard_details: Union[PowerBIDashboard, PowerBIReport],
+        db_service_name: str,
     ) -> Iterable[AddLineageRequest]:
         """
-        Get lineage between dashboard and data sources
+        We will build the logic to build the logic as below
+        tables - datamodel - report - dashboard
         """
         try:
-            charts = dashboard_details.tiles
-            dashboard_fqn = fqn.build(
-                self.metadata,
-                entity_type=Dashboard,
-                service_name=self.config.serviceName,
-                dashboard_name=dashboard_details.id,
-            )
-            dashboard_entity = self.metadata.get_by_name(
-                entity=Dashboard,
-                fqn=dashboard_fqn,
-            )
-            for chart in charts or []:
-                dataset = self.fetch_dataset_from_workspace(chart.datasetId)
-                if dataset:
-                    # create the lineage between datamodel and dashboard
-                    datamodel_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=DashboardDataModel,
-                        service_name=self.config.serviceName,
-                        data_model_name=dataset.id,
-                    )
-                    datamodel_entity = self.metadata.get_by_name(
-                        entity=DashboardDataModel,
-                        fqn=datamodel_fqn,
-                    )
+            if isinstance(dashboard_details, PowerBIReport):
+                yield from self.create_datamodel_report_lineage(
+                    db_service_name=db_service_name, dashboard_details=dashboard_details
+                )
 
-                    if datamodel_entity and dashboard_entity:
-                        yield self._get_add_lineage_request(
-                            to_entity=dashboard_entity, from_entity=datamodel_entity
-                        )
-
-                    # create the lineage between table and datamodel
-                    yield from self.create_table_datamodel_lineage(
-                        db_service_name=db_service_name,
-                        tables=dataset.tables,
-                        datamodel_entity=datamodel_entity,
-                    )
+            if isinstance(dashboard_details, PowerBIDashboard):
+                yield from self.create_report_dashboard_lineage(
+                    dashboard_details=dashboard_details
+                )
 
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
@@ -453,7 +557,7 @@ class PowerbiSource(DashboardServiceSource):
             )
 
     def yield_dashboard_chart(
-        self, dashboard_details: PowerBIDashboard
+        self, dashboard_details: Union[PowerBIDashboard, PowerBIReport]
     ) -> Optional[Iterable[CreateChartRequest]]:
         """Get chart method
         Args:
@@ -461,37 +565,40 @@ class PowerbiSource(DashboardServiceSource):
         Returns:
             Iterable[Chart]
         """
-        charts = dashboard_details.tiles
-        for chart in charts or []:
-            try:
-                chart_title = chart.title
-                chart_display_name = chart_title if chart_title else chart.id
-                if filter_by_chart(
-                    self.source_config.chartFilterPattern, chart_display_name
-                ):
-                    self.status.filter(chart_display_name, "Chart Pattern not Allowed")
-                    continue
-                yield CreateChartRequest(
-                    name=chart.id,
-                    displayName=chart_display_name,
-                    description="",
-                    chartType=ChartType.Other.value,
-                    chartUrl=self.get_chart_url(
-                        report_id=chart.reportId,
-                        workspace_id=self.context.workspace.id,
-                        dashboard_id=dashboard_details.id,
-                    ),
-                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
-                )
-                self.status.scanned(chart_display_name)
-            except Exception as exc:
-                name = chart.title
-                error = f"Error creating chart [{name}]: {exc}"
-                logger.debug(traceback.format_exc())
-                logger.warning(error)
-                self.status.failed(name, error, traceback.format_exc())
+        if isinstance(dashboard_details, PowerBIDashboard):
+            charts = dashboard_details.tiles
+            for chart in charts or []:
+                try:
+                    chart_title = chart.title
+                    chart_display_name = chart_title if chart_title else chart.id
+                    if filter_by_chart(
+                        self.source_config.chartFilterPattern, chart_display_name
+                    ):
+                        self.status.filter(
+                            chart_display_name, "Chart Pattern not Allowed"
+                        )
+                        continue
+                    yield CreateChartRequest(
+                        name=chart.id,
+                        displayName=chart_display_name,
+                        description="",
+                        chartType=ChartType.Other.value,
+                        chartUrl=self._get_chart_url(
+                            report_id=chart.reportId,
+                            workspace_id=self.context.workspace.id,
+                            dashboard_id=dashboard_details.id,
+                        ),
+                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    )
+                    self.status.scanned(chart_display_name)
+                except Exception as exc:
+                    name = chart.title
+                    error = f"Error creating chart [{name}]: {exc}"
+                    logger.debug(traceback.format_exc())
+                    logger.warning(error)
+                    self.status.failed(name, error, traceback.format_exc())
 
-    def fetch_dataset_from_workspace(
+    def _fetch_dataset_from_workspace(
         self, dataset_id: Optional[str]
     ) -> Optional[Dataset]:
         """
@@ -507,4 +614,22 @@ class PowerbiSource(DashboardServiceSource):
                 None,
             )
             return dataset_data
+        return None
+
+    def _fetch_report_from_workspace(
+        self, report_id: Optional[str]
+    ) -> Optional[Dataset]:
+        """
+        Method to search the report using id in the workspace dict
+        """
+        if report_id:
+            report_data = next(
+                (
+                    report
+                    for report in self.context.workspace.reports or []
+                    if report.id == report_id
+                ),
+                None,
+            )
+            return report_data
         return None
