@@ -127,6 +127,7 @@
     "collapse-all": "Contraer todo",
     "column": "Columna",
     "column-entity": "Columna {{entity}}",
+    "column-lowercase-plural": "columns",
     "column-plural": "Columnas",
     "column-profile": "Column Profile",
     "comment-lowercase": "comentario",
