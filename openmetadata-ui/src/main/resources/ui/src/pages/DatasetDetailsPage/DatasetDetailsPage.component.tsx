@@ -21,7 +21,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { compare, Operation } from 'fast-json-patch';
+import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
@@ -32,7 +32,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
+import { postThread } from 'rest/feedsAPI';
 import {
   addFollower,
   getLatestTableProfileByFqn,
@@ -40,14 +40,10 @@ import {
   patchTableDetails,
   removeFollower,
 } from 'rest/tableAPI';
-import AppState from '../../AppState';
-import { getVersionPath, pagingObject } from '../../constants/constants';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
-import { FeedFilter } from '../../enums/mydata.enum';
+import { getVersionPath } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Table } from '../../generated/entity/data/table';
-import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { Paging } from '../../generated/type/paging';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   addToRecentViewed,
@@ -57,27 +53,22 @@ import {
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
-import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
-import { deletePost, updateThreadData } from '../../utils/FeedUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const DatasetDetailsPage: FunctionComponent = () => {
   const history = useHistory();
   const { t } = useTranslation();
-  const { datasetFQN, tab } =
-    useParams<{ datasetFQN: string; tab: EntityTabs }>();
+  const { datasetFQN } = useParams<{ datasetFQN: string }>();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isEntityThreadLoading, setIsEntityThreadLoading] =
-    useState<boolean>(false);
   const [isTableProfileLoading, setIsTableProfileLoading] =
     useState<boolean>(false);
   const USERId = getCurrentUserId();
   const [tableProfile, setTableProfile] = useState<Table['profile']>();
   const [tableDetails, setTableDetails] = useState<Table>({} as Table);
   const [isError, setIsError] = useState(false);
-  const [entityThread, setEntityThread] = useState<Thread[]>([]);
 
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
@@ -91,47 +82,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     DEFAULT_ENTITY_PERMISSION
   );
 
-  const [paging, setPaging] = useState<Paging>(pagingObject);
-
   const { id: tableId, followers, version: currentVersion = '' } = tableDetails;
-
-  const getFeedData = async (
-    after?: string,
-    feedType?: FeedFilter,
-    threadType?: ThreadType
-  ) => {
-    setIsEntityThreadLoading(true);
-    try {
-      const { data, paging: pagingObj } = await getAllFeeds(
-        getEntityFeedLink(EntityType.TABLE, datasetFQN),
-        after,
-        threadType,
-        feedType,
-        undefined,
-        USERId
-      );
-      setPaging(pagingObj);
-      setEntityThread((prevData) => [...(after ? prevData : []), ...data]);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.entity-feed-plural'),
-        })
-      );
-    } finally {
-      setIsEntityThreadLoading(false);
-    }
-  };
-
-  const handleFeedFetchFromFeedList = (
-    after?: string,
-    feedType?: FeedFilter,
-    threadType?: ThreadType
-  ) => {
-    !after && setEntityThread([]);
-    getFeedData(after, feedType, threadType);
-  };
 
   const fetchResourcePermission = async (entityFqn: string) => {
     setIsLoading(true);
@@ -207,12 +158,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
       }
     }
   };
-
-  useEffect(() => {
-    if (EntityTabs.ACTIVITY_FEED === tab) {
-      getFeedData();
-    }
-  }, [tab, feedCount]);
 
   const getEntityFeedCount = () => {
     getFeedCounts(
@@ -302,41 +247,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
     );
   };
 
-  const postFeedHandler = async (value: string, id: string) => {
-    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
-
-    const data = {
-      message: value,
-      from: currentUser,
-    } as Post;
-
-    try {
-      const res = await postFeedById(id, data);
-      const { id: responseId, posts } = res;
-      setEntityThread((pre) => {
-        return pre.map((thread) => {
-          if (thread.id === responseId) {
-            return { ...res, posts: posts?.slice(-3) };
-          } else {
-            return thread;
-          }
-        });
-      });
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.add-entity-error', {
-          entity: t('label.feed-plural'),
-        })
-      );
-    }
-  };
-
   const createThread = async (data: CreateThread) => {
     try {
-      const res = await postThread(data);
-      setEntityThread((pre) => [...pre, res]);
+      await postThread(data);
       getEntityFeedCount();
     } catch (error) {
       showErrorToast(
@@ -346,23 +259,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
         })
       );
     }
-  };
-
-  const deletePostHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ) => {
-    deletePost(threadId, postId, isThread, setEntityThread);
-  };
-
-  const updateThreadHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean,
-    data: Operation[]
-  ) => {
-    updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
   useEffect(() => {
@@ -399,21 +295,14 @@ const DatasetDetailsPage: FunctionComponent = () => {
     <DatasetDetails
       createThread={createThread}
       dataModel={tableDetails.dataModel}
-      deletePostHandler={deletePostHandler}
       entityFieldTaskCount={entityFieldTaskCount}
       entityFieldThreadCount={entityFieldThreadCount}
-      entityThread={entityThread}
       feedCount={feedCount}
-      fetchFeedHandler={handleFeedFetchFromFeedList}
       followTableHandler={followTable}
-      isEntityThreadLoading={isEntityThreadLoading}
       isTableProfileLoading={isTableProfileLoading}
-      paging={paging}
-      postFeedHandler={postFeedHandler}
       tableDetails={tableDetails}
       tableProfile={tableProfile}
-      unfollowTableHandler={unFollowTable}
-      updateThreadHandler={updateThreadHandler}
+      unFollowTableHandler={unFollowTable}
       versionHandler={versionHandler}
       onTableUpdate={onTableUpdate}
     />

@@ -20,7 +20,6 @@ import {
 import { EntityTabs } from 'enums/entity.enum';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { Paging } from '../../generated/type/paging';
 import TopicDetails from './TopicDetails.component';
 import { TopicDetailsProps } from './TopicDetails.interface';
 import { TOPIC_DETAILS } from './TopicDetails.mock';
@@ -52,20 +51,13 @@ const mockUserTeam = [
 const topicDetailsProps: TopicDetailsProps = {
   topicDetails: TOPIC_DETAILS,
   followTopicHandler: jest.fn(),
-  unfollowTopicHandler: jest.fn(),
+  unFollowTopicHandler: jest.fn(),
   onTopicUpdate: jest.fn(),
   versionHandler: jest.fn(),
-  entityThread: [],
-  isEntityThreadLoading: false,
-  postFeedHandler: jest.fn(),
   feedCount: 0,
   entityFieldThreadCount: [],
   entityFieldTaskCount: [],
   createThread: jest.fn(),
-  deletePostHandler: jest.fn(),
-  paging: {} as Paging,
-  fetchFeedHandler: jest.fn(),
-  updateThreadHandler: jest.fn(),
 };
 
 const mockParams = {

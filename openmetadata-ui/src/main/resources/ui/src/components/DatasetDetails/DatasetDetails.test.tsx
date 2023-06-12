@@ -22,7 +22,6 @@ import { EntityTabs } from 'enums/entity.enum';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { ModelType, Table } from '../../generated/entity/data/table';
-import { Paging } from '../../generated/type/paging';
 import DatasetDetails from './DatasetDetails.component';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
 
@@ -53,39 +52,6 @@ const mockUserTeam = [
   },
 ];
 
-const mockThreads = [
-  {
-    id: '465b2dfb-300e-45f5-a1a6-e19c6225e9e7',
-    href: 'http://localhost:8585/api/v1/feed/465b2dfb-300e-45f5-a1a6-e19c6225e9e7',
-    threadTs: 1647434125848,
-    about: '<#E::table::bigquery_gcp.shopify.raw_product_catalog::description>',
-    entityId: 'f1ebcfdf-d4b8-43bd-add2-1789e25ddde3',
-    createdBy: 'aaron_johnson0',
-    updatedAt: 1647434125848,
-    updatedBy: 'anonymous',
-    resolved: false,
-    message: 'New thread.',
-    postsCount: 0,
-    posts: [],
-    relativeDay: 'Today',
-  },
-  {
-    id: '40c2faec-0159-4d86-9b15-c17f3e1c081b',
-    href: 'http://localhost:8585/api/v1/feed/40c2faec-0159-4d86-9b15-c17f3e1c081b',
-    threadTs: 1647411418056,
-    about: '<#E::table::bigquery_gcp.shopify.raw_product_catalog::description>',
-    entityId: 'f1ebcfdf-d4b8-43bd-add2-1789e25ddde3',
-    createdBy: 'sachin.c',
-    updatedAt: 1647434031435,
-    updatedBy: 'anonymous',
-    resolved: false,
-    message: 'New thread.',
-    postsCount: 0,
-    posts: [],
-    relativeDay: 'Today',
-  },
-];
-
 const datasetDetailsProps: DatasetDetailsProps = {
   followTableHandler: jest.fn(),
   tableDetails: {
@@ -94,19 +60,12 @@ const datasetDetailsProps: DatasetDetailsProps = {
     name: '',
   } as Table,
   tableProfile: {} as Table['profile'],
-  unfollowTableHandler: jest.fn(),
+  unFollowTableHandler: jest.fn(),
   versionHandler: jest.fn(),
-  entityThread: mockThreads,
-  isEntityThreadLoading: false,
-  postFeedHandler: jest.fn(),
   feedCount: 0,
   entityFieldThreadCount: [],
   entityFieldTaskCount: [],
-  paging: {} as Paging,
   createThread: jest.fn(),
-  deletePostHandler: jest.fn(),
-  fetchFeedHandler: jest.fn(),
-  updateThreadHandler: jest.fn(),
   onTableUpdate: jest.fn(),
 };
 

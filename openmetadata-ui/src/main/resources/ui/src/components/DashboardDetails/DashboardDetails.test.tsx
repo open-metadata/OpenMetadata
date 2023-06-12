@@ -25,7 +25,6 @@ import { mockTagList } from 'mocks/Tags.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Dashboard } from '../../generated/entity/data/dashboard';
-import { Paging } from '../../generated/type/paging';
 import DashboardDetails from './DashboardDetails.component';
 import { DashboardDetailsProps } from './DashboardDetails.interface';
 
@@ -62,22 +61,15 @@ const dashboardDetailsProps: DashboardDetailsProps = {
   ],
   dashboardDetails: {} as Dashboard,
   followDashboardHandler: jest.fn(),
-  unfollowDashboardHandler: jest.fn(),
+  unFollowDashboardHandler: jest.fn(),
   chartDescriptionUpdateHandler: jest.fn(),
   chartTagUpdateHandler: jest.fn(),
   onDashboardUpdate: jest.fn(),
   versionHandler: jest.fn(),
-  entityThread: [],
-  isEntityThreadLoading: false,
-  postFeedHandler: jest.fn(),
   feedCount: 0,
   entityFieldThreadCount: [],
   entityFieldTaskCount: [],
   createThread: jest.fn(),
-  deletePostHandler: jest.fn(),
-  paging: {} as Paging,
-  fetchFeedHandler: jest.fn(),
-  updateThreadHandler: jest.fn(),
 };
 
 const mockEntityPermissions = {

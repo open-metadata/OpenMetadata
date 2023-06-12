@@ -14,6 +14,9 @@
 import { Card, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import ActivityFeedProvider, {
+  useActivityFeedProvider,
+} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
@@ -55,20 +58,16 @@ import TopicSchemaFields from './TopicSchema/TopicSchema';
 const TopicDetails: React.FC<TopicDetailsProps> = ({
   topicDetails,
   followTopicHandler,
-  unfollowTopicHandler,
+  unFollowTopicHandler,
   versionHandler,
-  entityThread,
-  isEntityThreadLoading,
-  postFeedHandler,
   feedCount,
   entityFieldThreadCount,
   createThread,
-  deletePostHandler,
-  updateThreadHandler,
   entityFieldTaskCount,
   onTopicUpdate,
 }: TopicDetailsProps) => {
   const { t } = useTranslation();
+  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { topicFQN, tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ topicFQN: string; tab: EntityTabs }>();
   const history = useHistory();
@@ -263,7 +262,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   };
 
   const followTopic = async () => {
-    isFollowing ? await unfollowTopicHandler() : await followTopicHandler();
+    isFollowing ? await unFollowTopicHandler() : await followTopicHandler();
   };
 
   const handleUpdateDisplayName = async (data: EntityName) => {
@@ -346,14 +345,16 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         return <SampleDataTopic topicFQN={topicFQN} />;
       case EntityTabs.ACTIVITY_FEED:
         return (
-          <ActivityFeedTab
-            count={feedCount}
-            entityName={entityName}
-            entityType={EntityType.TOPIC}
-            fqn={topicDetails?.fullyQualifiedName ?? ''}
-            taskCount={entityFieldTaskCount.length}
-            onFeedUpdate={() => Promise.resolve()}
-          />
+          <ActivityFeedProvider>
+            <ActivityFeedTab
+              count={feedCount}
+              entityName={entityName}
+              entityType={EntityType.TOPIC}
+              fqn={topicDetails?.fullyQualifiedName ?? ''}
+              taskCount={entityFieldTaskCount.length}
+              onFeedUpdate={() => Promise.resolve()}
+            />
+          </ActivityFeedProvider>
         );
       case EntityTabs.SCHEMA:
       default:
@@ -402,8 +403,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     isEdit,
     entityName,
     topicFQN,
-    entityThread,
-    isEntityThreadLoading,
   ]);
 
   return (
@@ -441,12 +440,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       {threadLink ? (
         <ActivityThreadPanel
           createThread={createThread}
-          deletePostHandler={deletePostHandler}
+          deletePostHandler={deleteFeed}
           open={Boolean(threadLink)}
-          postFeedHandler={postFeedHandler}
+          postFeedHandler={postFeed}
           threadLink={threadLink}
           threadType={threadType}
-          updateThreadHandler={updateThreadHandler}
+          updateThreadHandler={updateFeed}
           onCancel={onThreadPanelClose}
         />
       ) : null}

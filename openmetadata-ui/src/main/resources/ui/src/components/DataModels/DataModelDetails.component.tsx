@@ -11,28 +11,27 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Space, Tabs } from 'antd';
-import ActivityFeedList from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList';
+import { Card, Space, Tabs } from 'antd';
+import ActivityFeedProvider, {
+  useActivityFeedProvider,
+} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import EntityPageInfo from 'components/common/entityPageInfo/EntityPageInfo';
 import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
-import Loader from 'components/Loader/Loader';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getVersionPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
-import { observerOptions } from 'constants/Mydata.constants';
 import { CSMode } from 'enums/codemirror.enum';
 import { EntityInfo, EntityType } from 'enums/entity.enum';
 import { OwnerType } from 'enums/user.enum';
-import { Paging } from 'generated/type/paging';
-import { useElementInView } from 'hooks/useElementInView';
 import { isUndefined, toString } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { DATA_MODELS_DETAILS_TABS } from 'pages/DataModelPage/DataModelsInterface';
-import React, { RefObject, useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import {
@@ -48,22 +47,14 @@ import { DataModelDetailsProps } from './DataModelDetails.interface';
 import ModelTab from './ModelTab/ModelTab.component';
 
 const DataModelDetails = ({
-  isEntityThreadLoading,
-  paging,
   entityFieldTaskCount,
   entityFieldThreadCount,
-  entityThread,
   feedCount,
   dataModelData,
   dashboardDataModelFQN,
-  postFeedHandler,
   dataModelPermissions,
   createThread,
-  deletePostHandler,
-  updateThreadHandler,
   handleFollowDataModel,
-
-  fetchFeedHandler,
   handleUpdateTags,
   handleUpdateOwner,
   handleUpdateTier,
@@ -71,19 +62,13 @@ const DataModelDetails = ({
   handleTabChange,
   handleUpdateDescription,
   handleUpdateDataModel,
-  handleFeedFilterChange,
   onUpdateDataModel,
 }: DataModelDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
-  const [elementRef, isInView] = useElementInView(observerOptions);
+  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
-
-  const loader = useMemo(
-    () => (isEntityThreadLoading ? <Loader /> : null),
-    [isEntityThreadLoading]
-  );
 
   const {
     hasEditDescriptionPermission,
@@ -200,25 +185,6 @@ const DataModelDetails = ({
     setThreadLink('');
   };
 
-  const fetchMoreThread = (
-    isElementInView: boolean,
-    pagingObj: Paging,
-    isLoading: boolean
-  ) => {
-    if (
-      isElementInView &&
-      pagingObj?.after &&
-      !isLoading &&
-      activeTab === DATA_MODELS_DETAILS_TABS.ACTIVITY
-    ) {
-      fetchFeedHandler(pagingObj.after);
-    }
-  };
-
-  useEffect(() => {
-    fetchMoreThread(isInView, paging, isEntityThreadLoading);
-  }, [paging, isEntityThreadLoading, isInView]);
-
   return (
     <div className="entity-details-container">
       <EntityPageInfo
@@ -308,24 +274,16 @@ const DataModelDetails = ({
               )}
             </span>
           }>
-          <Card className="h-min-full">
-            <Row>
-              <Col data-testid="activityfeed" offset={3} span={18}>
-                <ActivityFeedList
-                  isEntityFeed
-                  withSidePanel
-                  deletePostHandler={deletePostHandler}
-                  entityName={entityName}
-                  feedList={entityThread}
-                  isFeedLoading={isEntityThreadLoading}
-                  postFeedHandler={postFeedHandler}
-                  updateThreadHandler={updateThreadHandler}
-                  onFeedFiltersUpdate={handleFeedFilterChange}
-                />
-              </Col>
-            </Row>
-            {loader}
-          </Card>
+          <ActivityFeedProvider>
+            <ActivityFeedTab
+              count={feedCount}
+              entityName={entityName}
+              entityType={EntityType.DASHBOARD_DATA_MODEL}
+              fqn={dataModelData?.fullyQualifiedName ?? ''}
+              taskCount={entityFieldTaskCount.length}
+              onFeedUpdate={() => Promise.resolve()}
+            />
+          </ActivityFeedProvider>
         </Tabs.TabPane>
         {dataModelData?.sql && (
           <Tabs.TabPane
@@ -369,20 +327,14 @@ const DataModelDetails = ({
       {threadLink ? (
         <ActivityThreadPanel
           createThread={createThread}
-          deletePostHandler={deletePostHandler}
+          deletePostHandler={deleteFeed}
           open={Boolean(threadLink)}
-          postFeedHandler={postFeedHandler}
+          postFeedHandler={postFeed}
           threadLink={threadLink}
-          updateThreadHandler={updateThreadHandler}
+          updateThreadHandler={updateFeed}
           onCancel={onThreadPanelClose}
         />
       ) : null}
-
-      <div
-        data-testid="observer-element"
-        id="observer-element"
-        ref={elementRef as RefObject<HTMLDivElement>}
-      />
     </div>
   );
 };

@@ -132,7 +132,7 @@ const mockData = {
 };
 
 const followMlModelHandler = jest.fn();
-const unfollowMlModelHandler = jest.fn();
+const unFollowMlModelHandler = jest.fn();
 const descriptionUpdateHandler = jest.fn();
 const setActiveTabHandler = jest.fn();
 const tagUpdateHandler = jest.fn();
@@ -143,7 +143,7 @@ const mockProp = {
   mlModelDetail: mockData as Mlmodel,
   activeTab: 1,
   followMlModelHandler,
-  unfollowMlModelHandler,
+  unFollowMlModelHandler,
   descriptionUpdateHandler,
   setActiveTabHandler,
   tagUpdateHandler,

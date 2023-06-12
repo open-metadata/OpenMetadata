@@ -15,8 +15,10 @@ import { Card, Col, Radio, Row, Space, Tabs, Tooltip, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
-import ActivityFeedList from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList';
-import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
+import ActivityFeedProvider, {
+  useActivityFeedProvider,
+} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
@@ -28,34 +30,25 @@ import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.in
 import TableTags from 'components/TableTags/TableTags.component';
 import TasksDAGView from 'components/TasksDAGView/TasksDAGView';
 import { EntityField } from 'constants/Feeds.constants';
-import { compare, Operation } from 'fast-json-patch';
+import { compare } from 'fast-json-patch';
 import { TagSource } from 'generated/type/schema';
 import { isEmpty, isUndefined, map } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
-import React, {
-  RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Redirect, useHistory, useParams } from 'react-router-dom';
-import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
+import { postThread } from 'rest/feedsAPI';
 import { restorePipeline } from 'rest/pipelineAPI';
 import { fetchGlossaryTerms, getGlossaryTermlist } from 'utils/GlossaryUtils';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
-import AppState from '../../AppState';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-link.svg';
 import {
   getPipelineDetailsPath,
   NO_DATA_PLACEHOLDER,
   ROUTES,
 } from '../../constants/constants';
-import { observerOptions } from '../../constants/Mydata.constants';
 import { PIPELINE_TASK_TABS } from '../../constants/pipeline.constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
-import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import {
   Pipeline,
@@ -63,10 +56,8 @@ import {
   TagLabel,
   Task,
 } from '../../generated/entity/data/pipeline';
-import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { Paging } from '../../generated/type/paging';
+import { ThreadType } from '../../generated/entity/feed/thread';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import { useElementInView } from '../../hooks/useElementInView';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   getCountBadge,
@@ -74,19 +65,14 @@ import {
   getFeedCounts,
   refreshPage,
 } from '../../utils/CommonUtils';
-import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
-import {
-  deletePost,
-  getEntityFieldThreadCounts,
-  updateThreadData,
-} from '../../utils/FeedUtils';
+import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import Loader from '../Loader/Loader';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
@@ -97,7 +83,7 @@ const PipelineDetails = ({
   descriptionUpdateHandler,
   followers,
   followPipelineHandler,
-  unfollowPipelineHandler,
+  unFollowPipelineHandler,
   settingsUpdateHandler,
   taskUpdateHandler,
   versionHandler,
@@ -107,6 +93,7 @@ const PipelineDetails = ({
   const history = useHistory();
   const { tab } = useParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
+  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { deleted, owner, description, pipelineStatus, entityName } =
     useMemo(() => {
       return {
@@ -130,11 +117,6 @@ const PipelineDetails = ({
     task: Task;
     index: number;
   }>();
-  const [entityThreadLoading, setEntityThreadLoading] = useState(false);
-  const [entityThreads, setEntityThreads] = useState<Thread[]>([]);
-  const [entityThreadPaging, setEntityThreadPaging] = useState<Paging>({
-    total: 0,
-  } as Paging);
 
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
@@ -146,7 +128,6 @@ const PipelineDetails = ({
 
   const [threadLink, setThreadLink] = useState<string>('');
 
-  const [elementRef, isInView] = useElementInView(observerOptions);
   const [selectedExecution] = useState<PipelineStatus | undefined>(
     pipelineStatus
   );
@@ -159,18 +140,12 @@ const PipelineDetails = ({
   );
 
   const [activeTab, setActiveTab] = useState(PIPELINE_TASK_TABS.LIST_VIEW);
-
-  const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
-
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
   const [glossaryTags, setGlossaryTags] = useState<TagOption[]>([]);
   const [classificationTags, setClassificationTags] = useState<TagOption[]>([]);
 
-  // local state ends
-
-  const USERId = getCurrentUserId();
   const { getEntityPermission } = usePermissionProvider();
 
   const tasksInternal = useMemo(
@@ -179,11 +154,6 @@ const PipelineDetails = ({
         ? pipelineDetails.tasks.map((t) => ({ ...t, tags: t.tags ?? [] }))
         : [],
     [pipelineDetails.tasks]
-  );
-
-  const loader = useMemo(
-    () => (entityThreadLoading ? <Loader /> : null),
-    [entityThreadLoading]
   );
 
   const hasTagEditAccess = useMemo(
@@ -367,7 +337,7 @@ const PipelineDetails = ({
 
   const followPipeline = async () => {
     if (isFollowing) {
-      await unfollowPipelineHandler(getEntityFeedCount);
+      await unFollowPipelineHandler(getEntityFeedCount);
     } else {
       await followPipelineHandler(getEntityFeedCount);
     }
@@ -383,75 +353,6 @@ const PipelineDetails = ({
   const onThreadPanelClose = () => {
     setThreadLink('');
   };
-
-  const getFeedData = (
-    after?: string,
-    feedFilter?: FeedFilter,
-    threadType?: ThreadType
-  ) => {
-    setEntityThreadLoading(true);
-    getAllFeeds(
-      getEntityFeedLink(EntityType.PIPELINE, pipelineFQN),
-      after,
-      threadType,
-      feedFilter,
-      undefined,
-      USERId
-    )
-      .then((res) => {
-        const { data, paging: pagingObj } = res;
-        if (data) {
-          setEntityThreadPaging(pagingObj);
-          setEntityThreads((prevData) => [...(after ? prevData : []), ...data]);
-        } else {
-          showErrorToast(
-            t('server.entity-fetch-error', {
-              entity: t('label.feed-lowercase'),
-            })
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.entity-fetch-error', {
-            entity: t('label.entity-feed-plural'),
-          })
-        );
-      })
-      .finally(() => setEntityThreadLoading(false));
-  };
-
-  const fetchMoreThread = (
-    isElementInView: boolean,
-    pagingObj: Paging,
-    isLoading: boolean
-  ) => {
-    if (
-      isElementInView &&
-      pagingObj?.after &&
-      !isLoading &&
-      tab === EntityTabs.ACTIVITY_FEED
-    ) {
-      getFeedData(
-        pagingObj.after,
-        activityFilter?.feedFilter,
-        activityFilter?.threadType
-      );
-    }
-  };
-
-  useEffect(() => {
-    fetchMoreThread(isInView, entityThreadPaging, entityThreadLoading);
-  }, [entityThreadPaging, entityThreadLoading, isInView]);
-
-  const handleFeedFilterChange = useCallback((feedFilter, threadType) => {
-    setActivityFilter({
-      feedFilter,
-      threadType,
-    });
-    getFeedData(undefined, feedFilter, threadType);
-  }, []);
 
   const handleTableTagSelection = async (
     selectedTags: EntityTags[],
@@ -629,12 +530,6 @@ const PipelineDetails = ({
     ]
   );
 
-  useEffect(() => {
-    if (tab === EntityTabs.ACTIVITY_FEED) {
-      getFeedData();
-    }
-  }, [tab, feedCount]);
-
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
       history.push({
@@ -643,74 +538,18 @@ const PipelineDetails = ({
     }
   };
 
-  const postFeedHandler = (value: string, id: string) => {
-    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
-
-    const data = {
-      message: value,
-      from: currentUser,
-    } as Post;
-    postFeedById(id, data)
-      .then((res) => {
-        if (res) {
-          const { id, posts } = res;
-          setEntityThreads((pre) => {
-            return pre.map((thread) => {
-              if (thread.id === id) {
-                return { ...res, posts: posts?.slice(-3) };
-              } else {
-                return thread;
-              }
-            });
-          });
-          getEntityFeedCount();
-        } else {
-          throw t('server.unexpected-response');
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.add-entity-error', { entity: t('label.feed-lowercase') })
-        );
-      });
-  };
-
-  const createThread = (data: CreateThread) => {
-    postThread(data)
-      .then((res) => {
-        if (res) {
-          setEntityThreads((pre) => [...pre, res]);
-          getEntityFeedCount();
-        } else {
-          showErrorToast(t('server.unexpected-response'));
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.create-entity-error', {
-            entity: t('label.conversation-lowercase'),
-          })
-        );
-      });
-  };
-
-  const deletePostHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ) => {
-    deletePost(threadId, postId, isThread, setEntityThreads);
-  };
-
-  const updateThreadHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean,
-    data: Operation[]
-  ) => {
-    updateThreadData(threadId, postId, isThread, data, setEntityThreads);
+  const createThread = async (data: CreateThread) => {
+    try {
+      await postThread(data);
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.create-entity-error', {
+          entity: t('label.conversation'),
+        })
+      );
+    }
   };
 
   useEffect(() => {
@@ -830,24 +669,16 @@ const PipelineDetails = ({
                   )}
                 </span>
               }>
-              <Row justify="center">
-                <Col span={18}>
-                  <div id="activityfeed">
-                    <ActivityFeedList
-                      isEntityFeed
-                      withSidePanel
-                      deletePostHandler={deletePostHandler}
-                      entityName={entityName}
-                      feedList={entityThreads}
-                      isFeedLoading={entityThreadLoading}
-                      postFeedHandler={postFeedHandler}
-                      updateThreadHandler={updateThreadHandler}
-                      onFeedFiltersUpdate={handleFeedFilterChange}
-                    />
-                  </div>
-                </Col>
-                {loader}
-              </Row>
+              <ActivityFeedProvider>
+                <ActivityFeedTab
+                  count={feedCount}
+                  entityName={entityName}
+                  entityType={EntityType.PIPELINE}
+                  fqn={pipelineDetails?.fullyQualifiedName ?? ''}
+                  taskCount={entityFieldThreadCount.length}
+                  onFeedUpdate={() => Promise.resolve()}
+                />
+              </ActivityFeedProvider>
             </Tabs.TabPane>
 
             <Tabs.TabPane
@@ -906,12 +737,6 @@ const PipelineDetails = ({
         </Col>
       </Row>
 
-      <div
-        data-testid="observer-element"
-        id="observer-element"
-        ref={elementRef as RefObject<HTMLDivElement>}
-      />
-
       {editTask && (
         <ModalWithMarkdownEditor
           header={`${t('label.edit-entity', { entity: t('label.task') })}: "${
@@ -930,12 +755,12 @@ const PipelineDetails = ({
       {threadLink ? (
         <ActivityThreadPanel
           createThread={createThread}
-          deletePostHandler={deletePostHandler}
+          deletePostHandler={deleteFeed}
           open={Boolean(threadLink)}
-          postFeedHandler={postFeedHandler}
+          postFeedHandler={postFeed}
           threadLink={threadLink}
           threadType={threadType}
-          updateThreadHandler={updateThreadHandler}
+          updateThreadHandler={updateFeed}
           onCancel={onThreadPanelClose}
         />
       ) : null}

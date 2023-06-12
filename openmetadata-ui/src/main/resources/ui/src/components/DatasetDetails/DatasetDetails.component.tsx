@@ -15,7 +15,10 @@ import { Card, Col, Row, Skeleton, Space, Tabs, Typography } from 'antd';
 import AppState from 'AppState';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
+import ActivityFeedProvider, {
+  useActivityFeedProvider,
+} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
@@ -24,13 +27,7 @@ import { mockTablePermission } from 'constants/mockTourData.constants';
 import { SearchIndex } from 'enums/search.enum';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
-import React, {
-  RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchQuery } from 'rest/searchAPI';
@@ -46,7 +43,6 @@ import {
   WILD_CARD_CHAR,
 } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
-import { observerOptions } from '../../constants/Mydata.constants';
 import {
   EntityInfo,
   EntityTabs,
@@ -61,9 +57,7 @@ import {
   UsageDetails,
 } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import { useElementInView } from '../../hooks/useElementInView';
 import {
   getCurrentUserId,
   getEntityPlaceHolder,
@@ -80,7 +74,6 @@ import {
   getUsagePercentile,
 } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
@@ -88,7 +81,6 @@ import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
-import Loader from '../Loader/Loader';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -106,29 +98,23 @@ import DbtTab from './DbtTab/DbtTab.component';
 const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   tableProfile,
   followTableHandler,
-  unfollowTableHandler,
+  unFollowTableHandler,
   tableDetails,
   versionHandler,
   dataModel,
-  entityThread,
-  isEntityThreadLoading,
-  postFeedHandler,
   feedCount,
   entityFieldThreadCount,
   createThread,
-  deletePostHandler,
-  paging,
-  fetchFeedHandler,
-  updateThreadHandler,
   entityFieldTaskCount,
   isTableProfileLoading,
   onTableUpdate,
 }: DatasetDetailsProps) => {
   const { t } = useTranslation();
   const location = useLocation();
+  const history = useHistory();
   const { datasetFQN, tab } =
     useParams<{ datasetFQN: string; tab: EntityTabs }>();
-  const history = useHistory();
+  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const [isEdit, setIsEdit] = useState(false);
   const [usage, setUsage] = useState('');
   const [threadLink, setThreadLink] = useState<string>('');
@@ -137,15 +123,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   );
   const [queryCount, setQueryCount] = useState(0);
 
-  const [elementRef, isInView] = useElementInView(observerOptions);
-
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
   // For tour we have to maintain state
   const [activeTab, setActiveTab] = useState(tab ?? EntityTabs.SCHEMA);
 
-  const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
   const {
     tier,
     tableTags,
@@ -567,7 +550,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   };
 
   const followTable = () => {
-    isFollowing ? unfollowTableHandler() : followTableHandler();
+    isFollowing ? unFollowTableHandler() : followTableHandler();
   };
 
   const handleRestoreTable = async () => {
@@ -601,42 +584,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     setThreadLink('');
   };
 
-  const loader = useMemo(
-    () => (isEntityThreadLoading ? <Loader /> : null),
-    [isEntityThreadLoading]
-  );
-
-  const fetchMoreThread = (
-    isElementInView: boolean,
-    pagingObj: Paging,
-    isLoading: boolean
-  ) => {
-    if (
-      isElementInView &&
-      pagingObj?.after &&
-      !isLoading &&
-      activeTab === EntityTabs.ACTIVITY_FEED
-    ) {
-      fetchFeedHandler(
-        pagingObj.after,
-        activityFilter?.feedFilter,
-        activityFilter?.threadType
-      );
-    }
-  };
-
   useEffect(() => {
     usageSummary && setUsageDetails(usageSummary);
   }, [usageSummary]);
-
-  useEffect(() => {
-    fetchMoreThread(isInView, paging, isEntityThreadLoading);
-  }, [paging, isEntityThreadLoading, isInView]);
-
-  const handleFeedFilterChange = useCallback((feedType, threadType) => {
-    setActivityFilter({ feedFilter: feedType, threadType });
-    fetchFeedHandler(undefined, feedType, threadType);
-  }, []);
 
   useEffect(() => {
     if (isTourPage) {
@@ -697,25 +647,16 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         );
       case EntityTabs.ACTIVITY_FEED:
         return (
-          <Card className="m-y-md h-min-full">
-            <Row>
-              <Col data-testid="activityfeed" offset={3} span={18}>
-                <ActivityFeedList
-                  isEntityFeed
-                  withSidePanel
-                  deletePostHandler={deletePostHandler}
-                  entityName={entityName}
-                  feedList={entityThread}
-                  isFeedLoading={isEntityThreadLoading}
-                  postFeedHandler={postFeedHandler}
-                  updateThreadHandler={updateThreadHandler}
-                  onFeedFiltersUpdate={handleFeedFilterChange}
-                />
-              </Col>
-            </Row>
-
-            {loader}
-          </Card>
+          <ActivityFeedProvider>
+            <ActivityFeedTab
+              count={feedCount}
+              entityName={entityName}
+              entityType={EntityType.TABLE}
+              fqn={tableDetails?.fullyQualifiedName ?? ''}
+              taskCount={entityFieldTaskCount.length}
+              onFeedUpdate={() => Promise.resolve()}
+            />
+          </ActivityFeedProvider>
         );
       case EntityTabs.SCHEMA:
       default:
@@ -800,8 +741,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     entityName,
     datasetFQN,
     description,
-    entityThread,
-    isEntityThreadLoading,
     dataModel,
   ]);
 
@@ -872,20 +811,15 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           {tabDetails}
         </div>
 
-        <div
-          data-testid="observer-element"
-          id="observer-element"
-          ref={elementRef as RefObject<HTMLDivElement>}
-        />
         {threadLink ? (
           <ActivityThreadPanel
             createThread={createThread}
-            deletePostHandler={deletePostHandler}
+            deletePostHandler={deleteFeed}
             open={Boolean(threadLink)}
-            postFeedHandler={postFeedHandler}
+            postFeedHandler={postFeed}
             threadLink={threadLink}
             threadType={threadType}
-            updateThreadHandler={updateThreadHandler}
+            updateThreadHandler={updateFeed}
             onCancel={onThreadPanelClose}
           />
         ) : null}

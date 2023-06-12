@@ -11,43 +11,22 @@
  *  limitations under the License.
  */
 
-import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Table } from '../../generated/entity/data/table';
-import { Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { Paging } from '../../generated/type/paging';
-import {
-  EntityFieldThreadCount,
-  ThreadUpdatedFunc,
-} from '../../interface/feed.interface';
+import { EntityFieldThreadCount } from '../../interface/feed.interface';
 
 export interface DatasetDetailsProps {
   entityId?: string;
   tableDetails: Table;
   dataModel?: Table['dataModel'];
   tableProfile: Table['profile'];
-  entityThread: Thread[];
   isTableProfileLoading?: boolean;
-  isEntityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
   entityFieldTaskCount: EntityFieldThreadCount[];
-  paging: Paging;
   createThread: (data: CreateThread) => void;
   followTableHandler: () => void;
-  unfollowTableHandler: () => void;
+  unFollowTableHandler: () => void;
   versionHandler: () => void;
-  postFeedHandler: (value: string, id: string) => void;
-  deletePostHandler: (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ) => void;
-  fetchFeedHandler: (
-    after?: string,
-    feedType?: FeedFilter,
-    threadType?: ThreadType
-  ) => void;
-  updateThreadHandler: ThreadUpdatedFunc;
   onTableUpdate: (updatedTable: Table, key: keyof Table) => Promise<void>;
 }

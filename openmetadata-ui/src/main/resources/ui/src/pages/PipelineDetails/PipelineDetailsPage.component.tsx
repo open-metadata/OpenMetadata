@@ -289,7 +289,7 @@ const PipelineDetailsPage = () => {
       settingsUpdateHandler={settingsUpdateHandler}
       tagUpdateHandler={onTagUpdate}
       taskUpdateHandler={onTaskUpdate}
-      unfollowPipelineHandler={unFollowPipeline}
+      unFollowPipelineHandler={unFollowPipeline}
       versionHandler={versionHandler}
       onExtensionUpdate={handleExtensionUpdate}
     />

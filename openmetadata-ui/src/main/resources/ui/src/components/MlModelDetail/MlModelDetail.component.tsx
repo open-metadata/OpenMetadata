@@ -15,7 +15,10 @@ import { Card, Col, Row, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
+import ActivityFeedProvider, {
+  useActivityFeedProvider,
+} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -24,39 +27,27 @@ import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
-import React, {
-  FC,
-  RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { restoreMlmodel } from 'rest/mlModelAPI';
 import AppState from '../../AppState';
 import { getMlModelDetailsPath } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
-import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { MlHyperParameter } from '../../generated/api/data/createMlModel';
 import { Mlmodel, MlStore } from '../../generated/entity/data/mlmodel';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import { useElementInView } from '../../hooks/useElementInView';
 import { getEmptyPlaceholder, refreshPage } from '../../utils/CommonUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
-import Loader from '../Loader/Loader';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import { MlModelDetailProp } from './MlModelDetail.interface';
@@ -65,18 +56,11 @@ import MlModelFeaturesList from './MlModelFeaturesList';
 const MlModelDetail: FC<MlModelDetailProp> = ({
   mlModelDetail,
   followMlModelHandler,
-  unfollowMlModelHandler,
+  unFollowMlModelHandler,
   descriptionUpdateHandler,
   settingsUpdateHandler,
   updateMlModelFeatures,
   onExtensionUpdate,
-  entityThread,
-  isEntityThreadLoading,
-  fetchFeedHandler,
-  deletePostHandler,
-  postFeedHandler,
-  updateThreadHandler,
-  paging,
   feedCount,
   createThread,
   entityFieldTaskCount,
@@ -85,6 +69,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 }) => {
   const { t } = useTranslation();
   const history = useHistory();
+  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { mlModelFqn, tab: activeTab = EntityTabs.FEATURES } =
     useParams<{ tab: EntityTabs; mlModelFqn: string }>();
 
@@ -100,11 +85,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const [threadLink, setThreadLink] = useState<string>('');
 
   const { getEntityPermission } = usePermissionProvider();
-
-  const loader = useMemo(
-    () => (isEntityThreadLoading ? <Loader /> : null),
-    [isEntityThreadLoading]
-  );
 
   const fetchResourcePermission = useCallback(async () => {
     try {
@@ -122,8 +102,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     }
   }, [mlModelDetail.id, getEntityPermission, setPipelinePermissions]);
 
-  const [elementRef, isInView] = useElementInView(observerOptions);
-
   useEffect(() => {
     if (mlModelDetail.id) {
       fetchResourcePermission();
@@ -134,8 +112,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     () => AppState.getCurrentUserDetails(),
     [AppState.nonSecureUserDetails, AppState.userDetails]
   );
-  const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
-
   const mlModelTags = useMemo(() => {
     return getTagsWithoutTier(mlModelDetail.tags || []);
   }, [mlModelDetail.tags]);
@@ -203,7 +179,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const followMlModel = async () => {
     if (isFollowing) {
-      await unfollowMlModelHandler();
+      await unFollowMlModelHandler();
     } else {
       await followMlModelHandler();
     }
@@ -399,37 +375,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     );
   }, [mlModelDetail, mlModelStoreColumn]);
 
-  const fetchMoreThread = (
-    isElementInView: boolean,
-    pagingObj: Paging,
-    isLoading: boolean
-  ) => {
-    if (
-      isElementInView &&
-      pagingObj?.after &&
-      !isLoading &&
-      activeTab === EntityTabs.ACTIVITY_FEED
-    ) {
-      fetchFeedHandler(
-        pagingObj.after,
-        activityFilter?.feedFilter,
-        activityFilter?.threadType
-      );
-    }
-  };
-
-  const handleFeedFilterChange = useCallback((feedType, threadType) => {
-    setActivityFilter({
-      feedFilter: feedType,
-      threadType,
-    });
-    fetchFeedHandler(undefined, feedType, threadType);
-  }, []);
-
-  useEffect(() => {
-    fetchMoreThread(isInView, paging, isEntityThreadLoading);
-  }, [paging, isEntityThreadLoading, isInView]);
-
   const tabDetails = useMemo(() => {
     switch (activeTab) {
       case EntityTabs.CUSTOM_PROPERTIES:
@@ -468,22 +413,16 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         );
       case EntityTabs.ACTIVITY_FEED:
         return (
-          <Row className="h-full p-x-lg" id="activityfeed">
-            <Col offset={3} span={18}>
-              <ActivityFeedList
-                isEntityFeed
-                withSidePanel
-                deletePostHandler={deletePostHandler}
-                entityName={mlModelDetail.name}
-                feedList={entityThread}
-                isFeedLoading={isEntityThreadLoading}
-                postFeedHandler={postFeedHandler}
-                updateThreadHandler={updateThreadHandler}
-                onFeedFiltersUpdate={handleFeedFilterChange}
-              />
-            </Col>
-            {loader}
-          </Row>
+          <ActivityFeedProvider>
+            <ActivityFeedTab
+              count={feedCount}
+              entityName={mlModelDetail.name}
+              entityType={EntityType.DASHBOARD}
+              fqn={mlModelDetail?.fullyQualifiedName ?? ''}
+              taskCount={entityFieldTaskCount.length}
+              onFeedUpdate={() => Promise.resolve()}
+            />
+          </ActivityFeedProvider>
         );
       case EntityTabs.FEATURES:
       default:
@@ -525,8 +464,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     isEdit,
     entityFieldThreadCount,
     entityFieldTaskCount,
-    entityThread,
-    isEntityThreadLoading,
     getMlHyperParameters,
     getMlModelStore,
   ]);
@@ -563,20 +500,15 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         </Col>
       </Row>
 
-      <div
-        data-testid="observer-element"
-        id="observer-element"
-        ref={elementRef as RefObject<HTMLDivElement>}
-      />
       {threadLink ? (
         <ActivityThreadPanel
           createThread={createThread}
-          deletePostHandler={deletePostHandler}
+          deletePostHandler={deleteFeed}
           open={Boolean(threadLink)}
-          postFeedHandler={postFeedHandler}
+          postFeedHandler={postFeed}
           threadLink={threadLink}
           threadType={threadType}
-          updateThreadHandler={updateThreadHandler}
+          updateThreadHandler={updateFeed}
           onCancel={handleThreadPanelClose}
         />
       ) : null}

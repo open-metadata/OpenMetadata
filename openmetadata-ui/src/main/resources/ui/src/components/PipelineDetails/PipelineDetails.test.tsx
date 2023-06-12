@@ -100,7 +100,7 @@ const PipelineDetailsProps = {
   taskUpdateHandler: mockTaskUpdateHandler,
   setActiveTabHandler: jest.fn(),
   followPipelineHandler: jest.fn(),
-  unfollowPipelineHandler: jest.fn(),
+  unFollowPipelineHandler: jest.fn(),
   settingsUpdateHandler: jest.fn(),
   descriptionUpdateHandler: jest.fn(),
   tagUpdateHandler: jest.fn(),

@@ -156,22 +156,15 @@ const TourPage = () => {
         return (
           <DatasetDetails
             createThread={handleCountChange}
-            deletePostHandler={handleCountChange}
             entityFieldTaskCount={[]}
             entityFieldThreadCount={[]}
-            entityThread={mockFeedData}
             feedCount={0}
-            fetchFeedHandler={handleCountChange}
             followTableHandler={handleCountChange}
-            isEntityThreadLoading={false}
-            paging={{} as Paging}
-            postFeedHandler={handleCountChange}
             tableDetails={mockDatasetData.tableDetails as unknown as Table}
             tableProfile={
               mockDatasetData.tableProfile as unknown as Table['profile']
             }
-            unfollowTableHandler={handleCountChange}
-            updateThreadHandler={handleOnClick}
+            unFollowTableHandler={handleCountChange}
             versionHandler={handleCountChange}
             onTableUpdate={handleCountChange}
           />

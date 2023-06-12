@@ -23,12 +23,9 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
-import { FeedFilter } from 'enums/mydata.enum';
-import { compare, Operation } from 'fast-json-patch';
+import { compare } from 'fast-json-patch';
 import { CreateThread } from 'generated/api/feed/createThread';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
-import { Post, Thread, ThreadType } from 'generated/entity/feed/thread';
-import { Paging } from 'generated/type/paging';
 import { LabelType, State, TagSource } from 'generated/type/tagLabel';
 import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { isUndefined, omitBy } from 'lodash';
@@ -49,7 +46,7 @@ import {
   patchDataModelDetails,
   removeDataModelFollower,
 } from 'rest/dataModelsAPI';
-import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
+import { postThread } from 'rest/feedsAPI';
 import {
   getCurrentUserId,
   getEntityMissingError,
@@ -59,12 +56,9 @@ import {
   getDataModelsDetailPath,
   getSortedDataModelColumnTags,
 } from 'utils/DataModelsUtils';
-import { getEntityFeedLink } from 'utils/EntityUtils';
-import { deletePost, updateThreadData } from 'utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
-import { DATA_MODELS_DETAILS_TABS } from './DataModelsInterface';
 
 const DataModelsPage = () => {
   const history = useHistory();
@@ -78,11 +72,6 @@ const DataModelsPage = () => {
   const [dataModelPermissions, setDataModelPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [dataModelData, setDataModelData] = useState<DashboardDataModel>();
-
-  const [entityThread, setEntityThread] = useState<Thread[]>([]);
-  const [isEntityThreadLoading, setIsEntityThreadLoading] =
-    useState<boolean>(false);
-  const [paging, setPaging] = useState<Paging>({} as Paging);
 
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
@@ -115,42 +104,6 @@ const DataModelsPage = () => {
     };
   }, [dataModelData]);
 
-  const getFeedData = useCallback(
-    async (
-      after?: string,
-      feedFilter?: FeedFilter,
-      threadType?: ThreadType
-    ) => {
-      setIsEntityThreadLoading(true);
-
-      try {
-        const { data, paging: pagingObj } = await getAllFeeds(
-          getEntityFeedLink(
-            EntityType.DASHBOARD_DATA_MODEL,
-            dashboardDataModelFQN
-          ),
-          after,
-          threadType,
-          feedFilter,
-          undefined,
-          currentUser?.id
-        );
-        setPaging(pagingObj);
-        setEntityThread((prevData) => [...(after ? prevData : []), ...data]);
-      } catch (err) {
-        showErrorToast(
-          err as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.feed-plural'),
-          })
-        );
-      } finally {
-        setIsEntityThreadLoading(false);
-      }
-    },
-    [dashboardDataModelFQN]
-  );
-
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.DASHBOARD_DATA_MODEL,
@@ -161,64 +114,6 @@ const DataModelsPage = () => {
     );
   };
 
-  const deletePostHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ) => {
-    deletePost(threadId, postId, isThread, setEntityThread);
-  };
-
-  const postFeedHandler = (value: string, id: string) => {
-    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
-
-    const data = {
-      message: value,
-      from: currentUser,
-    } as Post;
-    postFeedById(id, data)
-      .then((res) => {
-        if (res) {
-          const { id, posts } = res;
-          setEntityThread((pre) => {
-            return pre.map((thread) => {
-              if (thread.id === id) {
-                return { ...res, posts: posts?.slice(-3) };
-              } else {
-                return thread;
-              }
-            });
-          });
-          getEntityFeedCount();
-        } else {
-          throw t('server.unexpected-response');
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.add-entity-error', {
-            entity: t('label.feed'),
-          })
-        );
-      });
-  };
-
-  const updateThreadHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean,
-    data: Operation[]
-  ) => {
-    updateThreadData(threadId, postId, isThread, data, setEntityThread);
-  };
-
-  const handleFeedFilterChange = useCallback(
-    (feedType, threadType) => {
-      getFeedData(undefined, feedType, threadType);
-    },
-    [paging]
-  );
   const fetchResourcePermission = async (dashboardDataModelFQN: string) => {
     setIsLoading(true);
     try {
@@ -238,24 +133,18 @@ const DataModelsPage = () => {
     }
   };
 
-  const createThread = (data: CreateThread) => {
-    postThread(data)
-      .then((res) => {
-        if (res) {
-          setEntityThread((pre) => [...pre, res]);
-          getEntityFeedCount();
-        } else {
-          showErrorToast(t('server.unexpected-response'));
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.create-entity-error', {
-            entity: t('label.conversation-lowercase'),
-          })
-        );
-      });
+  const createThread = async (data: CreateThread) => {
+    try {
+      await postThread(data);
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.create-entity-error', {
+          entity: t('label.conversation'),
+        })
+      );
+    }
   };
   const fetchDataModelDetails = async (dashboardDataModelFQN: string) => {
     setIsLoading(true);
@@ -446,12 +335,6 @@ const DataModelsPage = () => {
   };
 
   useEffect(() => {
-    if (tab === DATA_MODELS_DETAILS_TABS.ACTIVITY) {
-      getFeedData();
-    }
-  }, [tab, feedCount, dashboardDataModelFQN]);
-
-  useEffect(() => {
     if (hasViewPermission) {
       fetchDataModelDetails(dashboardDataModelFQN);
       getEntityFeedCount();
@@ -486,13 +369,9 @@ const DataModelsPage = () => {
       dashboardDataModelFQN={dashboardDataModelFQN}
       dataModelData={dataModelData}
       dataModelPermissions={dataModelPermissions}
-      deletePostHandler={deletePostHandler}
       entityFieldTaskCount={entityFieldTaskCount}
       entityFieldThreadCount={entityFieldThreadCount}
-      entityThread={entityThread}
       feedCount={feedCount}
-      fetchFeedHandler={getFeedData}
-      handleFeedFilterChange={handleFeedFilterChange}
       handleFollowDataModel={handleFollowDataModel}
       handleTabChange={handleTabChange}
       handleUpdateDataModel={handleColumnUpdateDataModel}
@@ -500,10 +379,6 @@ const DataModelsPage = () => {
       handleUpdateOwner={handleUpdateOwner}
       handleUpdateTags={handleUpdateTags}
       handleUpdateTier={handleUpdateTier}
-      isEntityThreadLoading={isEntityThreadLoading}
-      paging={paging}
-      postFeedHandler={postFeedHandler}
-      updateThreadHandler={updateThreadHandler}
       onUpdateDataModel={handleUpdateDataModel}
     />
   );
