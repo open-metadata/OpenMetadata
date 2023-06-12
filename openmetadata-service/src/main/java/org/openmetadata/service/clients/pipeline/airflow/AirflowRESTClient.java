@@ -25,6 +25,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import javax.net.ssl.SSLContext;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
@@ -221,30 +222,47 @@ public class AirflowRESTClient extends PipelineServiceClient {
         Response.Status.fromStatusCode(response.statusCode()));
   }
 
+  /**
+   * Scenarios handled here: 1. Failed to access Airflow APIs: No response from Airflow; APIs might not be installed 2.
+   * Auth failed when accessing Airflow APIs 3. Different versions between server and client
+   */
   @Override
   public Response getServiceStatus() {
     HttpResponse<String> response;
     try {
-      response = getRequestNoAuthForJsonContent(serviceURL, API_ENDPOINT);
+      response = getRequestAuthenticatedForJsonContent("%s/%s/health-auth", serviceURL, API_ENDPOINT);
+
+      // We can reach the APIs and get the status back from Airflow
       if (response.statusCode() == 200) {
         JSONObject responseJSON = new JSONObject(response.body());
         String ingestionVersion = responseJSON.getString("version");
 
         if (Boolean.TRUE.equals(validServerClientVersions(ingestionVersion))) {
-          Map<String, String> status = Map.of("status", "healthy");
-          return Response.status(200, status.toString()).build();
+          Map<String, String> status = buildHealthyStatus(ingestionVersion);
+          return Response.ok(status, MediaType.APPLICATION_JSON_TYPE).build();
         } else {
           Map<String, String> status =
-              Map.of(
-                  "status",
-                  "unhealthy",
-                  "reason",
-                  String.format(
-                      "Got Ingestion Version %s and Server Version %s. They should match.",
-                      ingestionVersion, SERVER_VERSION));
-          return Response.status(500, status.toString()).build();
+              buildUnhealthyStatus(buildVersionMismatchErrorMessage(ingestionVersion, SERVER_VERSION));
+          return Response.ok(status, MediaType.APPLICATION_JSON_TYPE).build();
         }
       }
+
+      // Auth error when accessing the APIs
+      if (response.statusCode() == 401 || response.statusCode() == 403) {
+        Map<String, String> status =
+            buildUnhealthyStatus(
+                String.format("Authentication failed for user [%s] trying to access the Airflow APIs.", this.username));
+        return Response.ok(status, MediaType.APPLICATION_JSON_TYPE).build();
+      }
+
+      // APIs URL not found
+      if (response.statusCode() == 404) {
+        Map<String, String> status =
+            buildUnhealthyStatus("Airflow APIs not found. Please follow the installation guide.");
+
+        return Response.ok(status, MediaType.APPLICATION_JSON_TYPE).build();
+      }
+
     } catch (Exception e) {
       throw PipelineServiceClientException.byMessage("Failed to get REST status.", e.getMessage());
     }
@@ -346,12 +364,5 @@ public class AirflowRESTClient extends PipelineServiceClient {
     return HttpRequest.newBuilder(URI.create(url))
         .header(CONTENT_HEADER, CONTENT_TYPE)
         .header(AUTH_HEADER, getBasicAuthenticationHeader(username, password));
-  }
-
-  private HttpResponse<String> getRequestNoAuthForJsonContent(Object... stringReplacement)
-      throws IOException, InterruptedException {
-    String url = String.format("%s/%s/health", stringReplacement);
-    HttpRequest request = HttpRequest.newBuilder(URI.create(url)).header(CONTENT_HEADER, CONTENT_TYPE).GET().build();
-    return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
 }

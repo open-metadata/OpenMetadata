@@ -145,9 +145,33 @@ export const importTeam = async (
 ) => {
   const configOptions = {
     headers: { 'Content-type': 'text/plain' },
+    params: {
+      dryRun,
+    },
   };
   const response = await APIClient.put<string, AxiosResponse<CSVImportResult>>(
-    `/teams/name/${teamName}/import?dryRun=${dryRun}`,
+    `/teams/name/${teamName}/import`,
+    data,
+    configOptions
+  );
+
+  return response.data;
+};
+
+export const importUserInTeam = async (
+  team: string,
+  data: string,
+  dryRun = true
+) => {
+  const configOptions = {
+    headers: { 'Content-type': 'text/plain' },
+    params: {
+      team,
+      dryRun,
+    },
+  };
+  const response = await APIClient.put<string, AxiosResponse<CSVImportResult>>(
+    `/users/import`,
     data,
     configOptions
   );

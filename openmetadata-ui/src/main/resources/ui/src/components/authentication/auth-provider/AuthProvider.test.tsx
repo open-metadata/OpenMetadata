@@ -18,8 +18,20 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AppState from 'AppState';
+import { refreshTokenKey } from 'constants/constants';
 import React from 'react';
 import AuthProvider, { useAuthContext } from './AuthProvider';
+
+const localStorageMock = {
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+  clear: jest.fn(),
+};
+
+Object.defineProperty(window, 'localStorage', {
+  value: localStorageMock,
+});
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockReturnValue({ push: jest.fn(), listen: jest.fn() }),
@@ -69,5 +81,35 @@ describe('Test auth provider', () => {
 
     expect(mockUpdateUserDetails).toHaveBeenCalled();
     expect(mockUpdateUserDetails).toHaveBeenCalledWith({});
+  });
+
+  it('Logout handler should remove the refresh token', async () => {
+    const ConsumerComponent = () => {
+      const { onLogoutHandler } = useAuthContext();
+
+      return (
+        <button data-testid="logout-button" onClick={onLogoutHandler}>
+          Logout
+        </button>
+      );
+    };
+
+    render(
+      <AuthProvider childComponentType={ConsumerComponent}>
+        <ConsumerComponent />
+      </AuthProvider>
+    );
+
+    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+
+    const logoutButton = screen.getByTestId('logout-button');
+
+    expect(logoutButton).toBeInTheDocument();
+
+    await act(async () => {
+      userEvent.click(logoutButton);
+    });
+
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith(refreshTokenKey);
   });
 });
