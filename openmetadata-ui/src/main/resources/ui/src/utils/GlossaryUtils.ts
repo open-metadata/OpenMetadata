@@ -244,16 +244,23 @@ export const getGlossaryTermHierarchy = (
       parentNode && nodes[obj.fqn] && parentNode.children?.push(nodes[obj.fqn]);
 
       if (!parentNode) {
-        const glossary: GlossaryTermNodeProps = {
-          title: obj.glossary.name ?? '',
-          value: obj.glossary.fullyQualifiedName ?? '',
-          key: obj.glossary.fullyQualifiedName ?? '',
-          selectable: false,
-          children: [],
-        };
+        const glossaryName = obj.glossary.name ?? '';
+        const existInTree = tree.find((item) => item.title === glossaryName);
 
-        glossary.children?.push(nodes[obj.fqn]);
-        tree.push(glossary);
+        if (existInTree) {
+          nodes[glossaryName].children?.push(nodes[obj.fqn]);
+        } else {
+          nodes[glossaryName] = {
+            title: glossaryName,
+            value: obj.glossary.fullyQualifiedName ?? '',
+            key: obj.glossary.fullyQualifiedName ?? '',
+            selectable: false,
+            children: [],
+          };
+
+          nodes[glossaryName].children?.push(nodes[obj.fqn]);
+          tree.push(nodes[glossaryName]);
+        }
       }
     }
   });
