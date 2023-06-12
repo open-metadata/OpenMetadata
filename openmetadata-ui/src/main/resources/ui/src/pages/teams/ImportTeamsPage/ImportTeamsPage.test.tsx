@@ -198,7 +198,7 @@ describe('ImportTeamsPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('On click of cancel, redirect to team tab of teams page', async () => {
+  it('Should redirect to team tab of teams page on clicking of cancel', async () => {
     act(() => {
       render(<ImportTeamsPage />);
     });
@@ -242,7 +242,7 @@ describe('ImportTeamsPage', () => {
     expect(await screen.findByText('UserImportResult')).toBeInTheDocument();
   });
 
-  it('On click of cancel, redirect to users tab of teams page', async () => {
+  it('Should redirect to users tab of teams page on clicking of cancel', async () => {
     mockLocation.search = '?type=users';
     act(() => {
       render(<ImportTeamsPage />);
