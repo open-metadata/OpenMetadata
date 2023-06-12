@@ -55,7 +55,7 @@ import {
 import { ExtraInfo } from 'Models';
 import AddAttributeModal from 'pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import { ImportType } from 'pages/teams/ImportTeamsPage/ImportTeamsPage.interface';
-import { default as Qs, default as QueryString } from 'qs';
+import Qs from 'qs';
 import React, {
   Fragment,
   useCallback,
@@ -665,7 +665,7 @@ const TeamDetailsV1 = ({
         currentTeam.name,
         EntityAction.IMPORT
       ),
-      search: QueryString.stringify({ type: ImportType.TEAMS }),
+      search: Qs.stringify({ type: ImportType.TEAMS }),
     });
   }, []);
 
