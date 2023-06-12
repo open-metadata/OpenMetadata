@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Radio, Row, Space, Tabs, Tooltip, Typography } from 'antd';
-import Card from 'antd/lib/card/Card';
+import { Card, Col, Radio, Row, Space, Tabs, Tooltip, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';

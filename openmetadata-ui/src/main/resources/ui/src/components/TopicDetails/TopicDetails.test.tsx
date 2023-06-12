@@ -86,6 +86,15 @@ jest.mock('../EntityLineage/EntityLineage.component', () => {
 jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
 });
+
+jest.mock('../common/title-breadcrumb/title-breadcrumb.component', () => {
+  return jest.fn().mockReturnValue(<p>Breadcrumb</p>);
+});
+
+jest.mock('components/containers/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviwer</p>);
 });

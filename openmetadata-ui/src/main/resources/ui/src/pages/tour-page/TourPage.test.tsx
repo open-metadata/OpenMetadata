@@ -33,10 +33,6 @@ jest.mock('components/MyData/MyData.component', () => {
   return jest.fn().mockReturnValue(<div>MyDataComponent</div>);
 });
 
-jest.mock('components/Explore/Explore.component', () => {
-  return jest.fn().mockReturnValue(<div>ExploreComponent</div>);
-});
-
 jest.mock('components/DatasetDetails/DatasetDetails.component', () => {
   return jest.fn().mockReturnValue(<div>DatasetDetailsComponent</div>);
 });

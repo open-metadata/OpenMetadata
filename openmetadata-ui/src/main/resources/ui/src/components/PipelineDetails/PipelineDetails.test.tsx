@@ -162,6 +162,10 @@ jest.mock('../TasksDAGView/TasksDAGView', () => {
   return jest.fn().mockReturnValue(<p data-testid="tasks-dag">Tasks DAG</p>);
 });
 
+jest.mock('components/containers/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
 jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
   CustomPropertyTable: jest
     .fn()

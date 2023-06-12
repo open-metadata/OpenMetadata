@@ -12,9 +12,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Divider, Row, Space, Typography } from 'antd';
-import Col from 'antd/es/grid/col';
-import Tooltip from 'antd/es/tooltip';
+import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconExternalLink } from 'assets/svg/external-link.svg';

@@ -155,6 +155,10 @@ jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
     .mockReturnValue(<p>CustomPropertyTable.component</p>),
 }));
 
+jest.mock('components/containers/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
   getCountBadge: jest.fn(),

@@ -15,10 +15,6 @@ import { fireEvent, getByTestId, render } from '@testing-library/react';
 import React, { forwardRef } from 'react';
 import AddGlossary from './AddGlossary.component';
 
-jest.mock('../containers/PageLayout', () =>
-  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
-);
-
 jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
   jest.fn().mockReturnValue(<p>Sidebar</p>)
 );

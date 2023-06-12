@@ -60,7 +60,7 @@ jest.mock('rest/teamsAPI', () => ({
   getTeams: jest.fn().mockImplementation(() => Promise.resolve(mockTeamsData)),
 }));
 
-jest.mock('../containers/PageLayout', () =>
+jest.mock('../containers/PageLayoutV1', () =>
   jest
     .fn()
     .mockImplementation(
