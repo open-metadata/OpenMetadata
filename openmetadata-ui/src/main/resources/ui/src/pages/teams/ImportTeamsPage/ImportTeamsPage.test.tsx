@@ -18,26 +18,37 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { MOCK_CURRENT_TEAM } from 'mocks/Teams.mock';
+import { MOCK_CURRENT_TEAM, MOCK_MARKETING_TEAM } from 'mocks/Teams.mock';
 import React from 'react';
-import { getTeamByName, importTeam } from 'rest/teamsAPI';
+import { getTeamByName, importTeam, importUserInTeam } from 'rest/teamsAPI';
+import { getTeamsWithFqnPath } from 'utils/RouterUtils';
 import ImportTeamsPage from './ImportTeamsPage';
 
 jest.mock('components/common/EntityImport/EntityImport.component', () => ({
-  EntityImport: jest.fn().mockImplementation(({ children, onImport }) => {
-    return (
-      <div data-testid="entity-import">
-        {children}{' '}
-        <button data-testid="import" onClick={onImport}>
-          import
-        </button>
-      </div>
-    );
-  }),
+  EntityImport: jest
+    .fn()
+    .mockImplementation(({ children, onImport, onCancel }) => {
+      return (
+        <div data-testid="entity-import">
+          {children}{' '}
+          <button data-testid="import" onClick={onImport}>
+            import
+          </button>
+          <button data-testid="cancel" onClick={onCancel}>
+            cancel
+          </button>
+        </div>
+      );
+    }),
 }));
 jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockImplementation(() => {
-    return <div>ErrorPlaceHolder</div>;
+  return jest.fn().mockImplementation(({ children }) => {
+    return (
+      <div>
+        ErrorPlaceHolder
+        <div>{children}</div>
+      </div>
+    );
   });
 });
 jest.mock(
@@ -53,25 +64,48 @@ jest.mock('components/Loader/Loader', () => {
     return <div>Loader</div>;
   });
 });
-jest.mock('components/TeamImportResult/TeamImportResult.component', () => ({
-  TeamImportResult: jest.fn().mockImplementation(() => {
-    return <div>TeamImportResult</div>;
-  }),
-}));
+jest.mock(
+  'components/Team/TeamImportResult/TeamImportResult.component',
+  () => ({
+    TeamImportResult: jest.fn().mockImplementation(() => {
+      return <div>TeamImportResult</div>;
+    }),
+  })
+);
+jest.mock(
+  'components/Team/UserImportResult/UserImportResult.component',
+  () => ({
+    UserImportResult: jest.fn().mockImplementation(() => {
+      return <div>UserImportResult</div>;
+    }),
+  })
+);
+const mockParams = {
+  fqn: 'Organization',
+};
+const mockLocation = {
+  search: '?type=teams',
+};
+const mockHistory = {
+  push: jest.fn(),
+};
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
-  useParams: jest.fn().mockImplementation(() => ({ fqn: 'Organization' })),
+  useHistory: jest.fn().mockImplementation(() => mockHistory),
+  useParams: jest.fn().mockImplementation(() => mockParams),
+  useLocation: jest.fn().mockImplementation(() => mockLocation),
 }));
 jest.mock('rest/teamsAPI', () => ({
   getTeamByName: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: MOCK_CURRENT_TEAM })),
+    .mockImplementation(() => Promise.resolve(MOCK_CURRENT_TEAM)),
   importTeam: jest.fn(),
+  importUserInTeam: jest.fn(),
 }));
 jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,
+      EditAll: true,
     }),
   }),
 }));
@@ -84,6 +118,7 @@ describe('ImportTeamsPage', () => {
 
     expect(await screen.findByTestId('import-teams')).toBeInTheDocument();
     expect(await screen.findByTestId('title')).toBeInTheDocument();
+    expect(await screen.findByTestId('cancel')).toBeInTheDocument();
     expect(await screen.findByTestId('entity-import')).toBeInTheDocument();
   });
 
@@ -145,5 +180,82 @@ describe('ImportTeamsPage', () => {
     });
 
     expect(await screen.findByText('TeamImportResult')).toBeInTheDocument();
+  });
+
+  it('If team type is group and import type is team, Error placeholder should visible', async () => {
+    (getTeamByName as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(MOCK_MARKETING_TEAM)
+    );
+    act(() => {
+      render(<ImportTeamsPage />);
+    });
+
+    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        'message.group-type-team-not-allowed-to-have-sub-team'
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('On click of cancel, redirect to team tab of teams page', async () => {
+    act(() => {
+      render(<ImportTeamsPage />);
+    });
+    const cancelBtn = await screen.findByTestId('cancel');
+
+    await act(async () => {
+      fireEvent.click(cancelBtn);
+    });
+
+    expect(mockHistory.push).toHaveBeenCalledWith({
+      pathname: getTeamsWithFqnPath(MOCK_CURRENT_TEAM.fullyQualifiedName),
+      search: 'activeTab=teams',
+    });
+  });
+
+  // keep user import related test below this
+  it('UserImportResult should visible', async () => {
+    mockLocation.search = '?type=users';
+    (importUserInTeam as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        data: {
+          dryRun: true,
+          status: 'success',
+          numberOfRowsProcessed: 1,
+          numberOfRowsPassed: 1,
+          numberOfRowsFailed: 0,
+          importResultsCsv:
+            // eslint-disable-next-line max-len
+            'status,details,name*,displayName,description,email*,timezone,isAdmin,teams*,Roles\r\nsuccess,Entity updated,aaron_johnson0,Aaron Johnson,,aaron_johnson0@gmail.com,,false,Applications,DataSteward\r\n',
+        },
+      })
+    );
+    act(() => {
+      render(<ImportTeamsPage />);
+    });
+    const importBtn = await screen.findByTestId('import');
+    await act(async () => {
+      fireEvent.click(importBtn);
+    });
+
+    expect(await screen.findByText('UserImportResult')).toBeInTheDocument();
+  });
+
+  it('On click of cancel, redirect to users tab of teams page', async () => {
+    mockLocation.search = '?type=users';
+    act(() => {
+      render(<ImportTeamsPage />);
+    });
+    const cancelBtn = await screen.findByTestId('cancel');
+
+    await act(async () => {
+      fireEvent.click(cancelBtn);
+    });
+
+    expect(mockHistory.push).toHaveBeenCalledWith({
+      pathname: getTeamsWithFqnPath(MOCK_CURRENT_TEAM.fullyQualifiedName),
+      search: 'activeTab=users',
+    });
   });
 });

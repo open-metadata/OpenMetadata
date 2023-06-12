@@ -148,16 +148,18 @@ const FormBuilder: FunctionComponent<Props> = ({
           </div>
         </div>
       )}
-      {!isEmpty(schema) && !isUndefined(localFormData) && (
-        <TestConnection
-          connectionType={serviceType}
-          formData={localFormData}
-          isTestingDisabled={disableTestConnection}
-          serviceCategory={serviceCategory}
-          serviceName={serviceName}
-          onValidateFormRequiredFields={handleRequiredFieldsValidation}
-        />
-      )}
+      {!isEmpty(schema) &&
+        !isUndefined(localFormData) &&
+        isAirflowAvailable && (
+          <TestConnection
+            connectionType={serviceType}
+            formData={localFormData}
+            isTestingDisabled={disableTestConnection}
+            serviceCategory={serviceCategory}
+            serviceName={serviceName}
+            onValidateFormRequiredFields={handleRequiredFieldsValidation}
+          />
+        )}
       <div className="tw-mt-6 d-flex tw-justify-between">
         <div />
         <div className="tw-text-right" data-testid="buttons">

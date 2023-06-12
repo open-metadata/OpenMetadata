@@ -24,14 +24,14 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getTeamByName, updateTeam } from 'rest/teamsAPI';
+import { Transi18next } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
-import { TABLE_CONSTANTS } from '../../constants/Teams.constants';
-import { Team } from '../../generated/entity/teams/team';
-import { Transi18next } from '../../utils/CommonUtils';
-import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
-import { getTableExpandableConfig } from '../../utils/TableUtils';
-import { getMovedTeamData } from '../../utils/TeamUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { getTeamsWithFqnPath } from 'utils/RouterUtils';
+import { getTableExpandableConfig } from 'utils/TableUtils';
+import { getMovedTeamData } from 'utils/TeamUtils';
+import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+import { TABLE_CONSTANTS } from '../../../constants/Teams.constants';
+import { Team } from '../../../generated/entity/teams/team';
 import {
   DraggableBodyRowProps,
   MovedTeamProps,
