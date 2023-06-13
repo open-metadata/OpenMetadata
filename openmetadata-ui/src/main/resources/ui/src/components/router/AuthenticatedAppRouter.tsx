@@ -343,6 +343,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route
         exact
+        component={DatabaseDetails}
+        path={ROUTES.DATABASE_DETAILS_WITH_SUB_TAB}
+      />
+      <Route
+        exact
         component={DatabaseSchemaPageComponent}
         path={ROUTES.SCHEMA_DETAILS}
       />
@@ -350,6 +355,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={DatabaseSchemaPageComponent}
         path={ROUTES.SCHEMA_DETAILS_WITH_TAB}
+      />
+      <Route
+        exact
+        component={DatabaseSchemaPageComponent}
+        path={ROUTES.SCHEMA_DETAILS_WITH_SUB_TAB}
       />
       <Route exact component={TableDetailsPageV1} path={ROUTES.TABLE_DETAILS} />
       <Route
@@ -370,6 +380,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route
         exact
+        component={TopicDetailsPage}
+        path={ROUTES.TOPIC_DETAILS_WITH_SUB_TAB}
+      />
+      <Route
+        exact
         component={DashboardDetailsPage}
         path={ROUTES.DASHBOARD_DETAILS}
       />
@@ -380,6 +395,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route
         exact
+        component={DashboardDetailsPage}
+        path={ROUTES.DASHBOARD_DETAILS_WITH_SUB_TAB}
+      />
+      <Route
+        exact
         component={DataModelDetailsPage}
         path={ROUTES.DATA_MODEL_DETAILS}
       />
@@ -387,6 +407,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={DataModelDetailsPage}
         path={ROUTES.DATA_MODEL_DETAILS_WITH_TAB}
+      />
+      <Route
+        exact
+        component={DataModelDetailsPage}
+        path={ROUTES.DATA_MODEL_DETAILS_WITH_SUB_TAB}
       />
       <Route
         exact
@@ -408,6 +433,17 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={PipelineDetailsPage}
         path={ROUTES.PIPELINE_DETAILS}
       />
+      <Route
+        exact
+        component={PipelineDetailsPage}
+        path={ROUTES.PIPELINE_DETAILS_WITH_TAB}
+      />
+      <Route
+        exact
+        component={PipelineDetailsPage}
+        path={ROUTES.PIPELINE_DETAILS_WITH_SUB_TAB}
+      />
+
       <Route exact component={ContainerPage} path={ROUTES.CONTAINER_DETAILS} />
       <Route
         exact
@@ -416,8 +452,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route
         exact
-        component={PipelineDetailsPage}
-        path={ROUTES.PIPELINE_DETAILS_WITH_TAB}
+        component={ContainerPage}
+        path={ROUTES.CONTAINER_DETAILS_WITH_SUB_TAB}
       />
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
       <AdminProtectedRoute
@@ -443,6 +479,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={MlModelPage} path={ROUTES.MLMODEL_DETAILS} />
       <Route
         exact
+        component={MlModelPage}
+        path={ROUTES.MLMODEL_DETAILS_WITH_SUB_TAB}
+      />
+
+      <Route
+        exact
         component={AddDataQualityTestPage}
         path={ROUTES.ADD_DATA_QUALITY_TEST_CASE}
       />
@@ -455,11 +497,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={ProfilerDashboardPage}
         path={ROUTES.PROFILER_DASHBOARD_WITH_TAB}
-      />
-      <Route
-        exact
-        component={MlModelPage}
-        path={ROUTES.MLMODEL_DETAILS_WITH_TAB}
       />
       <Route exact component={AddGlossaryPage} path={ROUTES.ADD_GLOSSARY} />
       <AdminProtectedRoute

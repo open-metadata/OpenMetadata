@@ -31,13 +31,7 @@ import TierCard from 'components/common/TierCard/TierCard';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import {
-  getDashboardDetailsPath,
-  getMlModelDetailsPath,
-  getPipelineDetailsPath,
-  getTableTabPath,
-  getTopicDetailsPath,
-} from 'constants/constants';
+import { getDashboardDetailsPath } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
@@ -53,8 +47,7 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getActiveAnnouncement } from 'rest/feedsAPI';
-import { getCurrentUserId } from 'utils/CommonUtils';
-import { getContainerDetailPath } from 'utils/ContainerDetailUtils';
+import { getCurrentUserId, getEntityDetailLink } from 'utils/CommonUtils';
 import {
   getBreadcrumbForEntitiesWithServiceOnly,
   getBreadcrumbForTable,
@@ -350,59 +343,15 @@ export const DataAssetsHeader = ({
     if (!dataAsset.fullyQualifiedName) {
       return;
     }
-    let path = '';
-    switch (entityType) {
-      default:
-      case EntityType.TABLE:
-        path = getTableTabPath(
-          dataAsset.fullyQualifiedName,
-          EntityTabs.ACTIVITY_FEED,
-          ActivityFeedTabs.TASKS
-        );
 
-        break;
-
-      case EntityType.TOPIC:
-        path = getTopicDetailsPath(
-          dataAsset.fullyQualifiedName,
-          EntityTabs.ACTIVITY_FEED
-        );
-
-        break;
-
-      case EntityType.DASHBOARD:
-        path = getDashboardDetailsPath(
-          dataAsset.fullyQualifiedName,
-          EntityTabs.ACTIVITY_FEED
-        );
-
-        break;
-      case EntityType.PIPELINE:
-        path = getPipelineDetailsPath(
-          dataAsset.fullyQualifiedName,
-          EntityTabs.ACTIVITY_FEED
-        );
-
-        break;
-
-      case EntityType.MLMODEL:
-        path = getMlModelDetailsPath(
-          dataAsset.fullyQualifiedName,
-          EntityTabs.ACTIVITY_FEED
-        );
-
-        break;
-
-      case EntityType.CONTAINER:
-        path = getContainerDetailPath(
-          dataAsset.fullyQualifiedName,
-          EntityTabs.ACTIVITY_FEED
-        );
-
-        break;
-    }
-
-    history.push(path);
+    history.push(
+      getEntityDetailLink(
+        entityType,
+        dataAsset.fullyQualifiedName,
+        EntityTabs.ACTIVITY_FEED,
+        ActivityFeedTabs.TASKS
+      )
+    );
   };
 
   return (

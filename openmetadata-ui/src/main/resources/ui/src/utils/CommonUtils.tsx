@@ -50,7 +50,16 @@ import AppState from '../AppState';
 import { AddIngestionState } from '../components/AddIngestion/addIngestion.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  getContainerDetailPath,
+  getDashboardDetailsPath,
+  getDatabaseDetailsPath,
+  getDatabaseSchemaDetailsPath,
+  getDataModelDetailsPath,
+  getMlModelDetailsPath,
+  getPipelineDetailsPath,
+  getTableTabPath,
   getTeamAndUserDetailsPath,
+  getTopicDetailsPath,
   getUserPath,
   imageTypes,
   LOCALSTORAGE_RECENTLY_SEARCHED,
@@ -61,7 +70,7 @@ import {
   validEmailRegEx,
 } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
-import { EntityType, FqnPart } from '../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { FilterPatternEnum } from '../enums/filterPattern.enum';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -905,4 +914,61 @@ export const reduceColorOpacity = (color: string, opacity: number): string => {
   const _opacity = Math.round(Math.min(Math.max(opacity || 1, 0), 1) * 255);
 
   return color + _opacity.toString(16).toUpperCase();
+};
+
+export const getEntityDetailLink = (
+  entityType: EntityType,
+  fqn: string,
+  tab: EntityTabs,
+  subTab?: string
+) => {
+  let path = '';
+  switch (entityType) {
+    default:
+    case EntityType.TABLE:
+      path = getTableTabPath(fqn, tab, subTab);
+
+      break;
+
+    case EntityType.TOPIC:
+      path = getTopicDetailsPath(fqn, tab, subTab);
+
+      break;
+
+    case EntityType.DASHBOARD:
+      path = getDashboardDetailsPath(fqn, tab, subTab);
+
+      break;
+    case EntityType.PIPELINE:
+      path = getPipelineDetailsPath(fqn, tab, subTab);
+
+      break;
+
+    case EntityType.MLMODEL:
+      path = getMlModelDetailsPath(fqn, tab, subTab);
+
+      break;
+
+    case EntityType.CONTAINER:
+      path = getContainerDetailPath(fqn, tab, subTab);
+
+      break;
+
+    case EntityType.DASHBOARD_DATA_MODEL:
+      path = getDataModelDetailsPath(fqn, tab, subTab);
+
+      break;
+
+    case EntityType.DATABASE:
+      path = getDatabaseDetailsPath(fqn, tab, subTab);
+
+      break;
+
+    case EntityType.DATABASE_SCHEMA:
+      path = getDatabaseSchemaDetailsPath(fqn, tab, subTab);
+
+      break;
+  }
+
+  return path;
 };

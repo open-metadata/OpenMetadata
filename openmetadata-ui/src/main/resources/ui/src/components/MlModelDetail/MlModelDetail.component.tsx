@@ -417,7 +417,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             <ActivityFeedTab
               count={feedCount}
               entityName={mlModelDetail.name}
-              entityType={EntityType.DASHBOARD}
+              entityType={EntityType.MLMODEL}
               fqn={mlModelDetail?.fullyQualifiedName ?? ''}
               taskCount={entityFieldTaskCount.length}
               onFeedUpdate={() => Promise.resolve()}

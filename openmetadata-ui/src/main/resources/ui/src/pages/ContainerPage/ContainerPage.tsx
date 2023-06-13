@@ -36,7 +36,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
-import { getVersionPath } from 'constants/constants';
+import { getContainerDetailPath, getVersionPath } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
@@ -64,7 +64,6 @@ import {
   refreshPage,
   sortTagsCaseInsensitive,
 } from 'utils/CommonUtils';
-import { getContainerDetailPath } from 'utils/ContainerDetailUtils';
 import { getEntityLineage, getEntityName } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getLineageViewPath } from 'utils/RouterUtils';

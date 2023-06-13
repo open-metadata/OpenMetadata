@@ -62,10 +62,10 @@ import {
   getTopicVersion,
   getTopicVersions,
 } from 'rest/topicsAPI';
-import { getContainerDetailPath } from 'utils/ContainerDetailUtils';
 import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
+  getContainerDetailPath,
   getDashboardDetailsPath,
   getDataModelDetailsPath,
   getMlModelDetailsPath,

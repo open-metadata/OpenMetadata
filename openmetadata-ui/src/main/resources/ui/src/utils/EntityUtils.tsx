@@ -38,6 +38,7 @@ import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  getContainerDetailPath,
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
@@ -71,7 +72,6 @@ import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
-import { getContainerDetailPath } from './ContainerDetailUtils';
 import Fqn from './Fqn';
 import { getGlossaryPath } from './RouterUtils';
 import {

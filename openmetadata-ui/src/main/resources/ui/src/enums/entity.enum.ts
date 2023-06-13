@@ -152,6 +152,7 @@ export enum EntityTabs {
   DATA_Model = 'data-model',
   INGESTIONS = 'ingestions',
   CONNECTION = 'connection',
+  SQL = 'sql',
 }
 
 export enum EntityAction {

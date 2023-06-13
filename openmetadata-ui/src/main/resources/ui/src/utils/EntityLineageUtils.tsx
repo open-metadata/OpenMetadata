@@ -67,6 +67,7 @@ import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  getContainerDetailPath,
   getDashboardDetailsPath,
   getDataModelDetailsPath,
   getMlModelPath,
@@ -101,7 +102,6 @@ import {
   getPartialNameFromTableFQN,
   prepareLabel,
 } from './CommonUtils';
-import { getContainerDetailPath } from './ContainerDetailUtils';
 import { getEntityName } from './EntityUtils';
 import SVGIcons from './SvgUtils';
 import { getEntityLink } from './TableUtils';

@@ -12,7 +12,7 @@
  */
 import { Menu } from 'antd';
 import Loader from 'components/Loader/Loader';
-import { getTableTabPath, pagingObject } from 'constants/constants';
+import { pagingObject } from 'constants/constants';
 import { observerOptions } from 'constants/Mydata.constants';
 import { EntityTabs } from 'enums/entity.enum';
 import { FeedFilter } from 'enums/mydata.enum';
@@ -30,7 +30,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getCountBadge } from 'utils/CommonUtils';
+import { getCountBadge, getEntityDetailLink } from 'utils/CommonUtils';
 import { getEntityField } from 'utils/FeedUtils';
 import '../../Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -45,6 +45,7 @@ export const ActivityFeedTab = ({
   count,
   taskCount,
   fqn,
+  entityType,
 }: ActivityFeedTabProps) => {
   const [paging] = useState<Paging>(pagingObject);
   const history = useHistory();
@@ -52,8 +53,10 @@ export const ActivityFeedTab = ({
   const [elementRef, isInView] = useElementInView(observerOptions);
   const { subTab: activeTab = 'all' } = useParams<{ subTab: string }>();
 
-  const handleTabChange = (tab: string) => {
-    history.push(getTableTabPath(fqn, EntityTabs.ACTIVITY_FEED, tab));
+  const handleTabChange = (subTab: string) => {
+    history.push(
+      getEntityDetailLink(entityType, fqn, EntityTabs.ACTIVITY_FEED, subTab)
+    );
   };
 
   const {

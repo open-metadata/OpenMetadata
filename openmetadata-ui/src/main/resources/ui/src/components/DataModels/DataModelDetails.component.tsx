@@ -26,11 +26,10 @@ import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getVersionPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { CSMode } from 'enums/codemirror.enum';
-import { EntityInfo, EntityType } from 'enums/entity.enum';
+import { EntityInfo, EntityTabs, EntityType } from 'enums/entity.enum';
 import { OwnerType } from 'enums/user.enum';
 import { isUndefined, toString } from 'lodash';
 import { ExtraInfo } from 'Models';
-import { DATA_MODELS_DETAILS_TABS } from 'pages/DataModelPage/DataModelsInterface';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -222,14 +221,15 @@ const DataModelDetails = ({
         onThreadLinkSelect={onThreadLinkSelect}
         onUpdateDisplayName={handleUpdateDisplayName}
       />
-      <Tabs activeKey={activeTab} className="h-full" onChange={handleTabChange}>
+      <Tabs
+        activeKey={activeTab}
+        className="h-full"
+        onChange={(activeKey: string) =>
+          handleTabChange(activeKey as EntityTabs)
+        }>
         <Tabs.TabPane
-          key={DATA_MODELS_DETAILS_TABS.MODEL}
-          tab={
-            <span data-testid={DATA_MODELS_DETAILS_TABS.MODEL}>
-              {t('label.model')}
-            </span>
-          }>
+          key={EntityTabs.MODEL}
+          tab={<span data-testid={EntityTabs.MODEL}>{t('label.model')}</span>}>
           <Card className="h-full">
             <Space className="w-full" direction="vertical" size={8}>
               <DescriptionV1
@@ -263,14 +263,14 @@ const DataModelDetails = ({
         </Tabs.TabPane>
 
         <Tabs.TabPane
-          key={DATA_MODELS_DETAILS_TABS.ACTIVITY}
+          key={EntityTabs.ACTIVITY_FEED}
           tab={
-            <span data-testid={DATA_MODELS_DETAILS_TABS.ACTIVITY}>
+            <span data-testid={EntityTabs.ACTIVITY_FEED}>
               {t('label.activity-feed-and-task-plural')}{' '}
               {getCountBadge(
                 feedCount,
                 '',
-                DATA_MODELS_DETAILS_TABS.ACTIVITY === activeTab
+                EntityTabs.ACTIVITY_FEED === activeTab
               )}
             </span>
           }>
@@ -287,9 +287,9 @@ const DataModelDetails = ({
         </Tabs.TabPane>
         {dataModelData?.sql && (
           <Tabs.TabPane
-            key={DATA_MODELS_DETAILS_TABS.SQL}
+            key={EntityTabs.SQL}
             tab={
-              <span data-testid={DATA_MODELS_DETAILS_TABS.SQL}>
+              <span data-testid={EntityTabs.SQL}>
                 {t('label.sql-uppercase')}
               </span>
             }>
@@ -308,11 +308,9 @@ const DataModelDetails = ({
         )}
 
         <Tabs.TabPane
-          key={DATA_MODELS_DETAILS_TABS.LINEAGE}
+          key={EntityTabs.LINEAGE}
           tab={
-            <span data-testid={DATA_MODELS_DETAILS_TABS.LINEAGE}>
-              {t('label.lineage')}
-            </span>
+            <span data-testid={EntityTabs.LINEAGE}>{t('label.lineage')}</span>
           }>
           <Card className="h-full card-body-full" data-testid="lineage-details">
             <EntityLineageComponent

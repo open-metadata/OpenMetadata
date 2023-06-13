@@ -12,6 +12,7 @@
  */
 
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { EntityTabs } from 'enums/entity.enum';
 import { CreateThread } from 'generated/api/feed/createThread';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Column } from 'generated/entity/data/table';
@@ -30,8 +31,8 @@ export interface DataModelDetailsProps {
   handleUpdateTags: (selectedTags?: Array<EntityTags>) => void;
   handleUpdateOwner: (updatedOwner?: DashboardDataModel['owner']) => void;
   handleUpdateTier: (updatedTier?: string) => void;
-  activeTab: string;
-  handleTabChange: (tabValue: string) => void;
+  activeTab: EntityTabs;
+  handleTabChange: (tabValue: EntityTabs) => void;
   handleUpdateDescription: (value: string) => Promise<void>;
   handleUpdateDataModel: (updatedDataModel: Column[]) => Promise<void>;
   onUpdateDataModel: (

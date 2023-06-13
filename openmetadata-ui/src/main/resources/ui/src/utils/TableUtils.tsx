@@ -41,6 +41,7 @@ import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
+  getContainerDetailPath,
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
@@ -71,7 +72,6 @@ import {
   getTableFQNFromColumnFQN,
   sortTagsCaseInsensitive,
 } from './CommonUtils';
-import { getContainerDetailPath } from './ContainerDetailUtils';
 import { getGlossaryPath, getSettingPath } from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import { ordinalize } from './StringsUtils';

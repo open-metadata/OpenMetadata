@@ -27,8 +27,8 @@ import { getPipelineByFqn } from 'rest/pipelineAPI';
 import { getContainerByName } from 'rest/storageAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTopicByFqn } from 'rest/topicsAPI';
-import { getContainerDetailPath } from 'utils/ContainerDetailUtils';
 import {
+  getContainerDetailPath,
   getDashboardDetailsPath,
   getMlModelPath,
   getPipelineDetailsPath,

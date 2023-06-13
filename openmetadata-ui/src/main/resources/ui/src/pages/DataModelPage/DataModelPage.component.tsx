@@ -21,8 +21,9 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { getDataModelDetailsPath } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityType } from 'enums/entity.enum';
+import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { CreateThread } from 'generated/api/feed/createThread';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
@@ -52,10 +53,7 @@ import {
   getEntityMissingError,
   getFeedCounts,
 } from 'utils/CommonUtils';
-import {
-  getDataModelsDetailPath,
-  getSortedDataModelColumnTags,
-} from 'utils/DataModelsUtils';
+import { getSortedDataModelColumnTags } from 'utils/DataModelsUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
@@ -65,7 +63,8 @@ const DataModelsPage = () => {
   const { t } = useTranslation();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { dashboardDataModelFQN, tab } = useParams() as Record<string, string>;
+  const { dashboardDataModelFQN, tab } =
+    useParams<{ dashboardDataModelFQN: string; tab: EntityTabs }>();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
@@ -162,10 +161,10 @@ const DataModelsPage = () => {
     }
   };
 
-  const handleTabChange = (tabValue: string) => {
+  const handleTabChange = (tabValue: EntityTabs) => {
     if (tabValue !== tab) {
       history.push({
-        pathname: getDataModelsDetailPath(dashboardDataModelFQN, tabValue),
+        pathname: getDataModelDetailsPath(dashboardDataModelFQN, tabValue),
       });
     }
   };
