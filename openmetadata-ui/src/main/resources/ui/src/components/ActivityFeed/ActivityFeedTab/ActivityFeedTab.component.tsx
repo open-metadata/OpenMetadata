@@ -78,13 +78,13 @@ export const ActivityFeedTab = ({
 
   const handleFeedFetchFromFeedList = useCallback(
     (after?: string) => {
-      getFeedData(feedFilter, after, threadType);
+      getFeedData(feedFilter, after, threadType, entityType, fqn);
     },
     [threadType, feedFilter]
   );
 
   useEffect(() => {
-    getFeedData(feedFilter, undefined, threadType);
+    getFeedData(feedFilter, undefined, threadType, entityType, fqn);
   }, [feedFilter, threadType]);
 
   const handleFeedClick = useCallback(

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityType } from 'enums/entity.enum';
 import { FeedFilter } from 'enums/mydata.enum';
 import { ReactionOperation } from 'enums/reactions.enum';
 import { Operation } from 'fast-json-patch';
@@ -44,7 +45,9 @@ export interface ActivityFeedProviderContextType {
   getFeedData: (
     filterType?: FeedFilter,
     after?: string,
-    type?: ThreadType
+    type?: ThreadType,
+    entityType?: EntityType,
+    fqn?: string
   ) => Promise<Thread[]>;
   showDrawer: (thread: Thread) => void;
   hideDrawer: () => void;

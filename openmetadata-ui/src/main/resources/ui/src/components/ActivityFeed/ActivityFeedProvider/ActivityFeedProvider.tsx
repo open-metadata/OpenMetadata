@@ -12,6 +12,7 @@
  */
 import AppState from 'AppState';
 import { AxiosError } from 'axios';
+import { EntityType } from 'enums/entity.enum';
 import { FeedFilter } from 'enums/mydata.enum';
 import { ReactionOperation } from 'enums/reactions.enum';
 import { compare, Operation } from 'fast-json-patch';
@@ -35,12 +36,13 @@ import { useTranslation } from 'react-i18next';
 import {
   deletePostById,
   deleteThread,
+  getAllFeeds,
   getFeedById,
-  getFeedsWithFilter,
   postFeedById,
   updatePost,
   updateThread,
 } from 'rest/feedsAPI';
+import { getEntityFeedLink } from 'utils/EntityUtils';
 import { getUpdatedThread } from 'utils/FeedUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import ActivityFeedDrawer from '../ActivityFeedDrawer/ActivityFeedDrawer';
@@ -90,18 +92,26 @@ const ActivityFeedProvider = ({ children }: Props) => {
   }, []);
 
   const getFeedData = useCallback(
-    async (filterType?: FeedFilter, after?: string, type?: ThreadType) => {
+    async (
+      filterType?: FeedFilter,
+      after?: string,
+      type?: ThreadType,
+      entityType?: EntityType,
+      fqn?: string
+    ) => {
       try {
         setLoading(true);
         const feedFilterType = filterType ?? FeedFilter.ALL;
         const userId =
           feedFilterType === FeedFilter.ALL ? undefined : currentUser?.id;
 
-        const { data } = await getFeedsWithFilter(
-          userId,
-          feedFilterType,
+        const { data } = await getAllFeeds(
+          getEntityFeedLink(entityType, fqn),
           after,
-          type
+          type,
+          feedFilterType,
+          undefined,
+          userId
         );
         setEntityThread([...data]);
 
