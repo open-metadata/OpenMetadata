@@ -120,7 +120,7 @@ const ActivityFeedActions = ({
       return false;
     } else if (feed.type === ThreadType.Task && !isPost) {
       return false;
-    } else if (isAuthor || currentUser?.isAdmin) {
+    } else if (isAuthor) {
       return true;
     }
 

@@ -23,7 +23,6 @@ import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { TaskOperation } from 'constants/Feeds.constants';
 import { TaskType } from 'generated/api/feed/createThread';
 import { TaskDetails, ThreadTaskStatus } from 'generated/entity/feed/thread';
-import { TagLabel } from 'generated/type/tagLabel';
 import { useAuth } from 'hooks/authHooks';
 import { isEmpty, isEqual, isUndefined, noop } from 'lodash';
 import ClosedTask from 'pages/TasksPage/shared/ClosedTask';
@@ -150,18 +149,15 @@ export const TaskTab = ({
       .catch((err: AxiosError) => showErrorToast(err));
   };
 
-  const onTaskResolve = (formObj: {
-    updateTags: TagLabel[];
-    description: string;
-  }) => {
+  const onTaskResolve = () => {
     if (isTaskTags) {
-      const tagsData = { newValue: JSON.stringify(formObj.updateTags || '[]') };
-
-      tagsData.newValue = JSON.stringify(formObj.updateTags);
+      const tagsData = {
+        newValue: taskDetails?.suggestion || '[]',
+      };
 
       updateTaskData(tagsData as TaskDetails);
     } else {
-      const data = { newValue: formObj.description };
+      const data = { newValue: taskDetails?.suggestion };
       updateTaskData(data as TaskDetails);
     }
   };
@@ -239,75 +235,62 @@ export const TaskTab = ({
           />
         </Col>
         <Col span={24}>
-          <Form form={form} layout="vertical" onFinish={onTaskResolve}>
-            {isTaskDescription && (
-              <Form.Item
-                data-testid="tags-label"
-                label={t('label.description')}
-                name="description">
-                <DescriptionTask
-                  hasEditAccess={hasEditAccess()}
-                  isTaskActionEdit={false}
-                  suggestion={task.task?.suggestion ?? ''}
-                  taskDetail={task}
-                  value={currentDescription()}
-                  onChange={(value) => form.setFieldValue('description', value)}
-                />
-              </Form.Item>
+          {isTaskDescription && (
+            <DescriptionTask
+              hasEditAccess={hasEditAccess()}
+              isTaskActionEdit={false}
+              suggestion={task.task?.suggestion ?? ''}
+              taskDetail={task}
+              value={currentDescription()}
+              onChange={(value) => form.setFieldValue('description', value)}
+            />
+          )}
+
+          {isTaskTags && (
+            <TagsTask
+              currentTags={getCurrentTags()}
+              hasEditAccess={hasEditAccess()}
+              isTaskActionEdit={false}
+              task={taskDetails}
+              value={
+                form.getFieldValue('updateTags') ??
+                JSON.stringify(task.task?.suggestion) ??
+                '[]'
+              }
+              onChange={(newTags) => form.setFieldValue('updateTags', newTags)}
+            />
+          )}
+
+          {task?.posts?.map((reply) => (
+            <ActivityFeedCardV1
+              isPost
+              feed={task}
+              hidePopover={false}
+              key={reply.id}
+              post={reply}
+            />
+          ))}
+          <ActivityFeedEditor onSave={onSave} />
+
+          <Space
+            className="m-t-sm items-end w-full"
+            data-testid="task-cta-buttons"
+            size="small">
+            {(hasTaskUpdateAccess() || isCreator) && !isTaskClosed && (
+              <Button onClick={noop}>{t('label.close')}</Button>
             )}
 
-            {isTaskTags && (
-              <Form.Item
-                data-testid="tags-label"
-                label={t('label.tag-plural')}
-                name="updateTags">
-                <TagsTask
-                  currentTags={getCurrentTags()}
-                  hasEditAccess={hasEditAccess()}
-                  isTaskActionEdit={false}
-                  task={taskDetails}
-                  value={
-                    form.getFieldValue('updateTags') ??
-                    JSON.stringify(task.task?.suggestion) ??
-                    '[]'
-                  }
-                  onChange={(newTags) =>
-                    form.setFieldValue('updateTags', newTags)
-                  }
-                />
-              </Form.Item>
+            {isTaskClosed ? (
+              <ClosedTask task={taskDetails} />
+            ) : (
+              <Button
+                className="ant-btn-primary-custom"
+                type="primary"
+                onClick={onTaskResolve}>
+                {t('label.accept')}
+              </Button>
             )}
-
-            {task?.posts?.map((reply) => (
-              <ActivityFeedCardV1
-                isPost
-                feed={task}
-                key={reply.id}
-                post={reply}
-              />
-            ))}
-            <ActivityFeedEditor onSave={onSave} />
-
-            <Space
-              className="m-t-sm items-end w-full"
-              data-testid="task-cta-buttons"
-              size="small">
-              {(hasTaskUpdateAccess() || isCreator) && !isTaskClosed && (
-                <Button onClick={noop}>{t('label.close')}</Button>
-              )}
-
-              {isTaskClosed ? (
-                <ClosedTask task={taskDetails} />
-              ) : (
-                <Button
-                  className="ant-btn-primary-custom"
-                  type="primary"
-                  onClick={() => form.submit()}>
-                  {t('label.accept')}
-                </Button>
-              )}
-            </Space>
-          </Form>
+          </Space>
         </Col>
       </Row>
     </div>

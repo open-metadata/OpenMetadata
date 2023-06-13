@@ -18,7 +18,11 @@ import { pagingObject } from 'constants/constants';
 import { observerOptions } from 'constants/Mydata.constants';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { FeedFilter } from 'enums/mydata.enum';
-import { Thread, ThreadType } from 'generated/entity/feed/thread';
+import {
+  Thread,
+  ThreadTaskStatus,
+  ThreadType,
+} from 'generated/entity/feed/thread';
 import { Paging } from 'generated/type/paging';
 import { useElementInView } from 'hooks/useElementInView';
 import { noop } from 'lodash';
@@ -134,6 +138,39 @@ export const ActivityFeedTab = ({
     ? getEntityField(selectedThread.about)
     : '';
 
+  const threads = useMemo(() => {
+    if (activeTab === ActivityFeedTabs.TASKS) {
+      return entityThread.filter(
+        (thread) =>
+          taskFilter === 'open'
+            ? thread.task?.status === ThreadTaskStatus.Open
+            : thread.task?.status === ThreadTaskStatus.Closed,
+        []
+      );
+    }
+
+    return entityThread;
+  }, [activeTab, entityThread, taskFilter]);
+
+  const [openTasks, closedTasks] = useMemo(() => {
+    if (activeTab === ActivityFeedTabs.TASKS) {
+      return entityThread.reduce(
+        (acc, curr) => {
+          if (curr.task?.status === ThreadTaskStatus.Open) {
+            acc[0] = acc[0] + 1;
+          } else {
+            acc[1] = acc[1] + 1;
+          }
+
+          return acc;
+        },
+        [0, 0]
+      );
+    }
+
+    return [0, 0];
+  }, [entityThread, activeTab]);
+
   return (
     <div className="d-flex h-full overflow-hidden">
       <Menu
@@ -189,7 +226,7 @@ export const ActivityFeedTab = ({
               key="open"
               type="ghost"
               onClick={() => setTaskFilter('open')}>
-              {taskCount} {t('label.open')}
+              {openTasks} {t('label.open')}
             </Button>
             <Button
               className={classNames('d-flex  no-border', {
@@ -199,13 +236,14 @@ export const ActivityFeedTab = ({
               key="close"
               type="ghost"
               onClick={() => setTaskFilter('close')}>
-              {taskCount} {t('label.close')}
+              {closedTasks} {t('label.close')}
             </Button>
           </div>
         )}
         <ActivityFeedListV1
+          hidePopover
           activeFeedId={selectedThread?.id}
-          feedList={entityThread}
+          feedList={threads}
           isLoading={loading}
           showThread={false}
           onFeedClick={handleFeedClick}
@@ -231,7 +269,11 @@ export const ActivityFeedTab = ({
                   onCancel={noop}
                 />
               </div>
-              <FeedPanelBodyV1 showThread feed={selectedThread} />
+              <FeedPanelBodyV1
+                showThread
+                feed={selectedThread}
+                hidePopover={false}
+              />
               <ActivityFeedEditor onSave={onSave} />
             </div>
           ) : (

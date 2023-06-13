@@ -87,6 +87,7 @@ const FeedsWidget = () => {
             children: (
               <ActivityFeedListV1
                 feedList={entityThread}
+                hidePopover={false}
                 isLoading={loading}
                 showThread={false}
               />
@@ -98,6 +99,7 @@ const FeedsWidget = () => {
             children: (
               <ActivityFeedListV1
                 feedList={entityThread}
+                hidePopover={false}
                 isLoading={loading}
                 showThread={false}
               />
@@ -114,6 +116,7 @@ const FeedsWidget = () => {
             children: (
               <ActivityFeedListV1
                 feedList={entityThread}
+                hidePopover={false}
                 isLoading={loading}
                 showThread={false}
               />

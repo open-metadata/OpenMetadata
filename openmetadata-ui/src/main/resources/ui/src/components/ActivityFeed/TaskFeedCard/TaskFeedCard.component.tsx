@@ -18,7 +18,7 @@ import EntityPopOverCard from 'components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { Post, Thread, ThreadTaskStatus } from 'generated/entity/feed/thread';
-import { isUndefined } from 'lodash';
+import { isUndefined, noop } from 'lodash';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -48,6 +48,7 @@ interface TaskFeedCardProps {
   isEntityFeed?: boolean;
   isOpenInDrawer?: boolean;
   isActive?: boolean;
+  hidePopover: boolean;
 }
 
 const TaskFeedCard = ({
@@ -57,6 +58,7 @@ const TaskFeedCard = ({
   isEntityFeed = false,
   showThread = true,
   isActive,
+  hidePopover = false,
 }: TaskFeedCardProps) => {
   const { t } = useTranslation();
   const timeStamp = feed.threadTs;
@@ -168,7 +170,7 @@ const TaskFeedCard = ({
                     </div>
                     <div
                       className="d-flex items-center thread-count cursor-pointer m-l-xs"
-                      onClick={showReplies}>
+                      onClick={!hidePopover ? showReplies : noop}>
                       <ThreadIcon width={20} />{' '}
                       <span className="text-xs p-l-xss">{postLength}</span>
                     </div>
@@ -195,12 +197,14 @@ const TaskFeedCard = ({
           ) : null}
         </Row>
 
-        <ActivityFeedActions
-          feed={feed}
-          isPost={false}
-          post={post}
-          onEditPost={onEditPost}
-        />
+        {!hidePopover && (
+          <ActivityFeedActions
+            feed={feed}
+            isPost={false}
+            post={post}
+            onEditPost={onEditPost}
+          />
+        )}
       </div>
     </>
   );
