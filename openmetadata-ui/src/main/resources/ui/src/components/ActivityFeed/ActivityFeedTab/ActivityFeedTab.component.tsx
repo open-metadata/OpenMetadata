@@ -199,7 +199,7 @@ export const ActivityFeedTab = ({
               />
             </div>
             <FeedPanelBodyV1 showThread feed={selectedThread} />
-            <ActivityFeedEditor onSave={onSave} />
+            <ActivityFeedEditor buttonClass="m-r-md" onSave={onSave} />
           </div>
         )}
       </div>

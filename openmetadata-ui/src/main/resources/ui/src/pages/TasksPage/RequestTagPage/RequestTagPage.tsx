@@ -16,6 +16,7 @@ import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { capitalize, isNil } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
@@ -50,9 +51,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
 import TagSuggestion from '../shared/TagSuggestion';
-import TaskPageLayout from '../shared/TaskPageLayout';
 import '../TaskPage.style.less';
-import { cardStyles } from '../TaskPage.styles';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const RequestTag = () => {
@@ -188,7 +187,7 @@ const RequestTag = () => {
   }, [entityData]);
 
   return (
-    <TaskPageLayout>
+    <PageLayoutV1 center pageTitle={t('label.task')}>
       <Space className="w-full" direction="vertical" size="middle">
         <TitleBreadcrumb
           titleLinks={[
@@ -205,7 +204,6 @@ const RequestTag = () => {
         <Card
           className="m-t-0 request-tags"
           key="request-tags"
-          style={{ ...cardStyles }}
           title={t('label.create-entity', {
             entity: t('label.task'),
           })}>
@@ -327,7 +325,7 @@ const RequestTag = () => {
 
         {getColumnDetails()}
       </div>
-    </TaskPageLayout>
+    </PageLayoutV1>
   );
 };
 

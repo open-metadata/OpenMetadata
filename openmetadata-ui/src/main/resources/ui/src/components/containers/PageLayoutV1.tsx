@@ -80,7 +80,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         </div>
       )}
       <Row
-        className={className}
+        className={classNames(className, 'bg-white')}
         data-testid="page-layout-v1"
         gutter={[0, 16]}
         style={pageContainerStyles}>
@@ -94,7 +94,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         )}
         <Col
           className={classNames(
-            'page-layout-v1-center p-y-sm page-layout-v1-vertical-scroll bg-white',
+            'page-layout-v1-center p-y-sm page-layout-v1-vertical-scroll',
             {
               'flex justify-center': center,
             }
