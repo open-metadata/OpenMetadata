@@ -19,14 +19,13 @@ import uuid
 from pathlib import Path
 from unittest import TestCase
 
-from ingestion.build.lib.metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
-    BasicAuth,
-)
-
 # We need to patch the environment before importing Airflow
 # At module load it already inits the configurations.
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
+)
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
