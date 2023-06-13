@@ -13,6 +13,7 @@
 
 import { IChangeEvent } from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
+import AirflowMessageBanner from 'components/common/AirflowMessageBanner/AirflowMessageBanner';
 import { StorageServiceType } from 'generated/entity/data/container';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
@@ -142,7 +143,12 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
     );
   };
 
-  return <Fragment>{getConfigFields()}</Fragment>;
+  return (
+    <Fragment>
+      <AirflowMessageBanner />
+      {getConfigFields()}
+    </Fragment>
+  );
 };
 
 export default ConnectionConfigForm;
