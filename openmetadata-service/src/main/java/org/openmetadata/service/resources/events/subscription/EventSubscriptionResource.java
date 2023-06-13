@@ -143,12 +143,8 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       List<EventSubscription> eventSubList = JsonUtils.readObjects(listAllEventsSubscriptions, EventSubscription.class);
       eventSubList.forEach(
           (subscription) -> {
-            if (subscription.getAlertType() == CreateEventSubscription.AlertType.CHANGE_EVENT) {
-              if (subscription.getSubscriptionType() != ACTIVITY_FEED) {
-                repository.addSubscriptionPublisher(subscription);
-              }
-            } else if (subscription.getAlertType() == CreateEventSubscription.AlertType.DATA_INSIGHT_REPORT) {
-              ReportsHandler.getInstance().addDataReportConfig(subscription);
+            if (subscription.getSubscriptionType() != ACTIVITY_FEED) {
+              repository.addSubscriptionPublisher(subscription);
             }
           });
     } catch (Exception ex) {

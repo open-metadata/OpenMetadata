@@ -25,4 +25,8 @@ public interface SubscriptionAction {
   default Boolean getSendToFollowers() {
     return false;
   }
+
+  default Boolean getSendToTeams() {
+    return false;
+  }
 }
