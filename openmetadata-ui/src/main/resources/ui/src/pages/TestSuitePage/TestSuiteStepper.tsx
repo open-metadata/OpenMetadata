@@ -106,7 +106,9 @@ const TestSuiteStepper = () => {
     <ResizablePanels
       firstPanel={{
         children: (
-          <div className="max-width-md w-9/10 service-form-container">
+          <div
+            className="max-width-md w-9/10 service-form-container"
+            data-testid="test-suite-stepper-container">
             <TitleBreadcrumb titleLinks={TEST_SUITE_STEPPER_BREADCRUMB} />
             <Space className="m-t-md" direction="vertical" size="middle">
               {addIngestion ? (
