@@ -125,7 +125,7 @@ def _add_password(url, connection, attr) -> str:
     if not password:
         password = SecretStr("")
         if hasattr(connection, "authType"):
-            password = getattr(connection.authType, attr, None)
+            password = getattr(connection.authType, attr, SecretStr(""))
             if isinstance(connection.authType, AWSCredentials):
                 aws_client = AWSClient(config=connection.authType).get_rds_client()
                 host, port = connection.hostPort.split(":")
