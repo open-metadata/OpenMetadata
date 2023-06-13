@@ -10,11 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Space, Tabs, Tooltip, Typography } from 'antd';
+import { Button, Popover, Space, Tabs, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { WILD_CARD_CHAR } from 'constants/char.constants';
 import { PAGE_SIZE_MEDIUM } from 'constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { EntityReference } from 'generated/entity/data/table';
@@ -294,23 +293,18 @@ export const UserTeamSelectableList = ({
       showArrow={false}
       trigger="click"
       onOpenChange={setPopupVisible}>
-      {children ? (
-        children
-      ) : (
-        <Tooltip
-          placement="topRight"
-          title={hasPermission ? 'Update Owner' : NO_PERMISSION_FOR_ACTION}>
-          <Button
-            className="flex-center p-0"
-            data-testid="edit-owner"
-            disabled={!hasPermission}
-            icon={<EditIcon width="14px" />}
-            size="small"
-            type="text"
-            onClick={() => setPopupVisible(true)}
-          />
-        </Tooltip>
-      )}
+      {children
+        ? children
+        : hasPermission && (
+            <Button
+              className="flex-center p-0"
+              data-testid="edit-owner"
+              icon={<EditIcon width="14px" />}
+              size="small"
+              type="text"
+              onClick={() => setPopupVisible(true)}
+            />
+          )}
     </Popover>
   );
 };

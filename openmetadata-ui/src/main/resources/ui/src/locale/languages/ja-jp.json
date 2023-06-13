@@ -1,6 +1,7 @@
 {
   "label": {
     "aborted": "中断",
+    "accept": "Accept",
     "accept-suggestion": "提案を受け入れる",
     "access": "アクセス",
     "account": "アカウント",
@@ -161,6 +162,7 @@
     "create-entity": "{{entity}}を作成",
     "create-new-test-suite": "新しいテストスイートを作成",
     "created-a-task-lowercase": "タスクを作成",
+    "created-by": "Created By",
     "created-by-me": "自分が作成したもの",
     "created-lowercase": "作成済",
     "creating-account": "アカウントの作成",

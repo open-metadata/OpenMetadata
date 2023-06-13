@@ -483,10 +483,14 @@ const TableDetailsPageV1 = () => {
         children: (
           <ActivityFeedProvider>
             <ActivityFeedTab
+              columns={tableDetails?.columns}
               count={feedCount - entityFieldTaskCount.length}
+              description={tableDetails?.description}
               entityName={entityName}
               entityType={EntityType.TABLE}
               fqn={tableDetails?.fullyQualifiedName ?? ''}
+              owner={tableDetails?.owner}
+              tags={tableDetails?.tags}
               taskCount={entityFieldTaskCount.length}
               onFeedUpdate={getEntityFeedCount}
             />

@@ -10,11 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Menu } from 'antd';
+import { Button, Menu } from 'antd';
+import classNames from 'classnames';
 import Loader from 'components/Loader/Loader';
+import { TaskTab } from 'components/Task/TaskTab/TaskTab.component';
 import { pagingObject } from 'constants/constants';
 import { observerOptions } from 'constants/Mydata.constants';
-import { EntityTabs } from 'enums/entity.enum';
+import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { FeedFilter } from 'enums/mydata.enum';
 import { Thread, ThreadType } from 'generated/entity/feed/thread';
 import { Paging } from 'generated/type/paging';
@@ -39,19 +41,30 @@ import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './activity-feed-tab.less';
-import { ActivityFeedTabProps } from './ActivityFeedTab.interface';
+import {
+  ActivityFeedTabProps,
+  ActivityFeedTabs,
+} from './ActivityFeedTab.interface';
+import { ReactComponent as TaskCloseIcon } from '/assets/svg/ic-close-task.svg';
+import { ReactComponent as TaskIcon } from '/assets/svg/ic-task.svg';
 
 export const ActivityFeedTab = ({
   count,
   taskCount,
   fqn,
+  owner,
+  tags,
+  description,
+  columns,
   entityType,
 }: ActivityFeedTabProps) => {
   const [paging] = useState<Paging>(pagingObject);
   const history = useHistory();
   const { t } = useTranslation();
   const [elementRef, isInView] = useElementInView(observerOptions);
-  const { subTab: activeTab = 'all' } = useParams<{ subTab: string }>();
+  const { subTab: activeTab = 'all' } =
+    useParams<{ subTab: ActivityFeedTabs }>();
+  const [taskFilter, setTaskFilter] = useState<'open' | 'close'>('open');
 
   const handleTabChange = (subTab: string) => {
     history.push(
@@ -164,12 +177,32 @@ export const ActivityFeedTab = ({
       />
 
       <div style={{ flex: '0 0 calc(50% - 125px)' }}>
-        <div
-          className="w-full"
-          data-testid="observer-element"
-          id="observer-element"
-          ref={elementRef as RefObject<HTMLDivElement>}
-        />
+        {activeTab === ActivityFeedTabs.TASKS && (
+          <div
+            className="d-flex gap-2 p-sm"
+            style={{ backgroundColor: '#F8F8F8' }}>
+            <Button
+              className={classNames('d-flex  no-border', {
+                'text-medium': taskFilter === 'open',
+              })}
+              icon={<TaskIcon className="m-r-xss" width={14} />}
+              key="open"
+              type="ghost"
+              onClick={() => setTaskFilter('open')}>
+              {taskCount} {t('label.open')}
+            </Button>
+            <Button
+              className={classNames('d-flex  no-border', {
+                'text-medium': taskFilter === 'close',
+              })}
+              icon={<TaskCloseIcon className="m-r-xss" width={14} />}
+              key="close"
+              type="ghost"
+              onClick={() => setTaskFilter('close')}>
+              {taskCount} {t('label.close')}
+            </Button>
+          </div>
+        )}
         <ActivityFeedListV1
           activeFeedId={selectedThread?.id}
           feedList={entityThread}
@@ -177,8 +210,6 @@ export const ActivityFeedTab = ({
           showThread={false}
           onFeedClick={handleFeedClick}
         />
-
-        {loader}
       </div>
       <div
         style={{
@@ -186,23 +217,53 @@ export const ActivityFeedTab = ({
           borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
         }}>
         {loading && loader}
-        {selectedThread && !loading && (
-          <div id="feed-panel">
-            <div className="feed-explore-heading">
-              <FeedPanelHeader
-                hideCloseIcon
-                className="p-x-md"
-                entityFQN={fqn}
-                entityField={entityField as string}
-                threadType={selectedThread?.type ?? ThreadType.Conversation}
-                onCancel={noop}
-              />
+        {selectedThread &&
+          !loading &&
+          (activeTab !== ActivityFeedTabs.TASKS ? (
+            <div id="feed-panel">
+              <div className="feed-explore-heading">
+                <FeedPanelHeader
+                  hideCloseIcon
+                  className="p-x-md"
+                  entityFQN={fqn}
+                  entityField={entityField as string}
+                  threadType={selectedThread?.type ?? ThreadType.Conversation}
+                  onCancel={noop}
+                />
+              </div>
+              <FeedPanelBodyV1 showThread feed={selectedThread} />
+              <ActivityFeedEditor onSave={onSave} />
             </div>
-            <FeedPanelBodyV1 showThread feed={selectedThread} />
-            <ActivityFeedEditor buttonClass="m-r-md" onSave={onSave} />
-          </div>
-        )}
+          ) : (
+            <div id="task-panel">
+              {entityType === EntityType.TABLE ? (
+                <TaskTab
+                  columns={columns}
+                  description={description}
+                  entityType={EntityType.TABLE}
+                  owner={owner}
+                  tags={tags}
+                  task={selectedThread}
+                />
+              ) : (
+                <TaskTab
+                  description={description}
+                  entityType={entityType}
+                  owner={owner}
+                  tags={tags}
+                  task={selectedThread}
+                />
+              )}
+            </div>
+          ))}
       </div>
+      <div
+        className="w-full"
+        data-testid="observer-element"
+        id="observer-element"
+        ref={elementRef as RefObject<HTMLDivElement>}
+      />
+      {loader}
     </div>
   );
 };
