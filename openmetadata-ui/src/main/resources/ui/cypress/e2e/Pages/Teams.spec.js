@@ -316,7 +316,7 @@ describe('Teams flow should work properly', () => {
       .should('be.visible')
       .contains(TEAM_DETAILS.updatedname);
     verifyResponseStatusCode('@getUserDetails', 200);
-    cy.get('[data-testid="manage-button"]')
+    cy.get('[data-testid="header"] [data-testid="manage-button"]')
       .should('exist')
       .should('be.visible')
       .click();
@@ -355,7 +355,9 @@ describe('Teams flow should work properly', () => {
     // Check if soft deleted team is shown when 'Deleted Teams' switch is on
     cy.get('table').should('not.contain', TEAM_DETAILS.name);
 
-    cy.get('[data-testid="manage-button"]').should('exist').click();
+    cy.get('[data-testid="header"] [data-testid="manage-button"]')
+      .should('exist')
+      .click();
 
     cy.get('[data-testid="deleted-menu-item-switch"').should('exist').click();
 
@@ -375,7 +377,7 @@ describe('Teams flow should work properly', () => {
       .contains(TEAM_DETAILS.updatedname);
     verifyResponseStatusCode('@getUserDetails', 200);
 
-    cy.get('[data-testid="manage-button"]')
+    cy.get('[data-testid="header"] [data-testid="manage-button"]')
       .should('exist')
       .should('be.visible')
       .click();
@@ -430,7 +432,7 @@ describe('Teams flow should work properly', () => {
 
     verifyResponseStatusCode('@getSelectedTeam', 200);
     verifyResponseStatusCode('@getUserDetails', 200);
-    cy.get('[data-testid="manage-button"]')
+    cy.get('[data-testid="header"] [data-testid="manage-button"]')
       .should('exist')
       .should('be.visible')
       .click();

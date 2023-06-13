@@ -90,6 +90,12 @@ For more information on Google Cloud Storage authentication click [here](https:/
 
 Path of the `manifest.json`, `catalog.json` and `run_results.json` files stored in the local system or in the container in which openmetadata server is running can be directly provided.
 
+{% note %}
+
+The files present in local system repository where DBT is hosted, cannot be accessed from the Openmetadata container file system. Instead one should setup a process such that `manifest.json`, `catalog.json` are updated periodically in Openmetadata container file system.
+
+{% /note %}
+
 {% image
   src="/images/v1.0.0/features/ingestion/workflows/dbt/local-storage.png"
   alt="local-storage"
