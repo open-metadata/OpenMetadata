@@ -19,6 +19,10 @@ import uuid
 from pathlib import Path
 from unittest import TestCase
 
+from ingestion.build.lib.metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
+
 # We need to patch the environment before importing Airflow
 # At module load it already inits the configurations.
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -216,7 +220,11 @@ class TestAirflowOps(TestCase):
                 connection=DatabaseConnection(
                     config=MysqlConnection(
                         username="username",
-                        password="password",
+                        authType={
+                            BasicAuth(
+                                password="password",
+                            )
+                        },
                         hostPort="http://localhost:1234",
                     )
                 ),
