@@ -23,7 +23,6 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
@@ -42,12 +41,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.tagLabel import (
-    LabelType,
-    State,
-    TagLabel,
-    TagSource,
-)
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import delete_entity_from_source
@@ -63,6 +57,7 @@ from metadata.ingestion.source.connections import get_test_connection_fn
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.tag_utils import get_tag_label
 
 logger = ingestion_logger()
 
@@ -270,21 +265,18 @@ class DatabaseServiceSource(
         Pick up the tags registered in the context
         searching by entity FQN
         """
-        return [
-            TagLabel(
-                tagFQN=fqn.build(
-                    self.metadata,
-                    entity_type=Tag,
-                    classification_name=tag_and_category.classification_request.name.__root__,
+
+        tag_labels = []
+        for tag_and_category in self.context.tags or []:
+            if tag_and_category.fqn.__root__ == entity_fqn:
+                tag_label = get_tag_label(
+                    metadata=self.metadata,
                     tag_name=tag_and_category.tag_request.name.__root__,
-                ),
-                labelType=LabelType.Automated,
-                state=State.Suggested,
-                source=TagSource.Classification,
-            )
-            for tag_and_category in self.context.tags or []
-            if tag_and_category.fqn.__root__ == entity_fqn
-        ] or None
+                    classification_name=tag_and_category.classification_request.name.__root__,
+                )
+                if tag_label:
+                    tag_labels.append(tag_label)
+        return tag_labels or None
 
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
         """

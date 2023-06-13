@@ -249,28 +249,36 @@ class AirflowLineageRunner:
             pipeline=EntityReference(id=pipeline.id, type="pipeline")
         )
 
-        for fqn_in, fqn_out in zip(xlets.inlets, xlets.outlets):
-            table_in: Optional[Table] = self.metadata.get_by_name(
-                entity=Table, fqn=fqn_in
+        for from_fqn in xlets.inlets or []:
+            from_entity: Optional[Table] = self.metadata.get_by_name(
+                entity=Table, fqn=from_fqn
             )
-            table_out: Optional[Table] = self.metadata.get_by_name(
-                entity=Table, fqn=fqn_out
-            )
-
-            if table_in and table_out:
-                try:
-                    lineage = AddLineageRequest(
-                        edge=EntitiesEdge(
-                            fromEntity=EntityReference(id=table_in.id, type="table"),
-                            toEntity=EntityReference(id=table_out.id, type="table"),
-                            lineageDetails=lineage_details,
-                        ),
+            if from_entity:
+                for to_fqn in xlets.outlets or []:
+                    to_entity: Optional[Table] = self.metadata.get_by_name(
+                        entity=Table, fqn=to_fqn
                     )
-                    self.metadata.add_lineage(lineage)
-                except AttributeError as err:
-                    self.dag.log.error(
-                        f"Error trying to compute lineage due to: {err}."
-                    )
+                    if to_entity:
+                        lineage = AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=EntityReference(
+                                    id=from_entity.id, type="table"
+                                ),
+                                toEntity=EntityReference(id=to_entity.id, type="table"),
+                                lineageDetails=lineage_details,
+                            )
+                        )
+                        self.metadata.add_lineage(lineage)
+                    else:
+                        self.dag.log.warning(
+                            f"Could not find Table [{to_fqn}] from "
+                            f"[{pipeline.fullyQualifiedName.__root__}] outlets"
+                        )
+            else:
+                self.dag.log.warning(
+                    f"Could not find Table [{from_fqn}] from "
+                    f"[{pipeline.fullyQualifiedName.__root__}] inlets"
+                )
 
     def clean_lineage(self, pipeline: Pipeline, xlets: XLets):
         """

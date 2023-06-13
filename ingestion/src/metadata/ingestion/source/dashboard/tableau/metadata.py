@@ -14,10 +14,6 @@ Tableau source module
 import traceback
 from typing import Iterable, List, Optional, Set
 
-from metadata.generated.schema.api.classification.createClassification import (
-    CreateClassificationRequest,
-)
-from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -56,10 +52,11 @@ from metadata.ingestion.source.dashboard.tableau.models import (
     UpstreamTable,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.utils import fqn, tag_utils
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
@@ -172,27 +169,13 @@ class TableauSource(DashboardServiceSource):
         """
         Fetch Dashboard Tags
         """
-        if self.source_config.includeTags:
-            for tag in self.tags:
-                try:
-                    classification = OMetaTagAndClassification(
-                        classification_request=CreateClassificationRequest(
-                            name=TABLEAU_TAG_CATEGORY,
-                            description="Tags associates with tableau entities",
-                        ),
-                        tag_request=CreateTagRequest(
-                            classification=TABLEAU_TAG_CATEGORY,
-                            name=tag.label,
-                            description="Tableau Tag",
-                        ),
-                    )
-                    yield classification
-                    logger.info(
-                        f"Classification {TABLEAU_TAG_CATEGORY}, Tag {tag} Ingested"
-                    )
-                except Exception as err:
-                    logger.debug(traceback.format_exc())
-                    logger.error(f"Error ingesting tag [{tag}]: {err}")
+        yield from get_ometa_tag_and_classification(
+            tags=[tag.label for tag in self.tags],
+            classification_name=TABLEAU_TAG_CATEGORY,
+            tag_description="Tableau Tag",
+            classification_desciption="Tags associated with tableau entities",
+            include_tags=self.source_config.includeTags,
+        )
 
     def yield_datamodel(
         self, dashboard_details: TableauDashboard
@@ -263,7 +246,7 @@ class TableauSource(DashboardServiceSource):
                     )
                     for data_model in self.context.dataModels or []
                 ],
-                tags=tag_utils.get_tag_labels(
+                tags=get_tag_labels(
                     metadata=self.metadata,
                     tags=[tag.label for tag in dashboard_details.tags],
                     classification_name=TABLEAU_TAG_CATEGORY,
@@ -368,7 +351,7 @@ class TableauSource(DashboardServiceSource):
                     displayName=chart.name,
                     chartType=get_standard_chart_type(chart.sheetType),
                     chartUrl=chart_url,
-                    tags=tag_utils.get_tag_labels(
+                    tags=get_tag_labels(
                         metadata=self.metadata,
                         tags=[tag.label for tag in chart.tags],
                         classification_name=TABLEAU_TAG_CATEGORY,

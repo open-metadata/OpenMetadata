@@ -135,13 +135,20 @@ class AirflowLineageTest(TestCase):
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
+        create_inlet_2 = CreateTableRequest(
+            name="lineage-test-inlet2",
+            databaseSchema=create_schema_entity.fullyQualifiedName,
+            columns=[Column(name="id", dataType=DataType.BIGINT)],
+        )
+
         create_outlet = CreateTableRequest(
             name="lineage-test-outlet",
             databaseSchema=create_schema_entity.fullyQualifiedName,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
-        cls.table_inlet = cls.metadata.create_or_update(data=create_inlet)
+        cls.metadata.create_or_update(data=create_inlet)
+        cls.metadata.create_or_update(data=create_inlet_2)
         cls.table_outlet = cls.metadata.create_or_update(data=create_outlet)
 
     @classmethod
@@ -279,20 +286,27 @@ class AirflowLineageTest(TestCase):
         """
         Validate that the pipeline has proper lineage
         """
-        lineage = self.metadata.get_lineage_by_name(
-            entity=Table,
-            fqn="test-service-table-lineage.test-db.test-schema.lineage-test-inlet",
-        )
-        node_names = set((node["name"] for node in lineage.get("nodes") or []))
-        self.assertEqual(node_names, {"lineage-test-outlet"})
-        self.assertEqual(len(lineage.get("downstreamEdges")), 1)
-        self.assertEqual(
-            lineage["downstreamEdges"][0]["toEntity"],
-            str(self.table_outlet.id.__root__),
-        )
-        self.assertEqual(
-            lineage["downstreamEdges"][0]["lineageDetails"]["pipeline"][
-                "fullyQualifiedName"
-            ],
-            f"{PIPELINE_SERVICE_NAME}.{OM_LINEAGE_DAG_NAME}",
-        )
+        root_name = "test-service-table-lineage.test-db.test-schema"
+
+        # Check that both inlets have the same outlet
+        for inlet_table in [
+            f"{root_name}.lineage-test-inlet",
+            f"{root_name}.lineage-test-inlet2",
+        ]:
+            lineage = self.metadata.get_lineage_by_name(
+                entity=Table,
+                fqn=inlet_table,
+            )
+            node_names = set((node["name"] for node in lineage.get("nodes") or []))
+            self.assertEqual(node_names, {"lineage-test-outlet"})
+            self.assertEqual(len(lineage.get("downstreamEdges")), 1)
+            self.assertEqual(
+                lineage["downstreamEdges"][0]["toEntity"],
+                str(self.table_outlet.id.__root__),
+            )
+            self.assertEqual(
+                lineage["downstreamEdges"][0]["lineageDetails"]["pipeline"][
+                    "fullyQualifiedName"
+                ],
+                f"{PIPELINE_SERVICE_NAME}.{OM_LINEAGE_DAG_NAME}",
+            )
