@@ -917,7 +917,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         values = manifest_node.test_metadata.kwargs.get("values")
         dbt_test_values = ""
         if values:
-            dbt_test_values = ",".join(values)
+            dbt_test_values = ",".join(str(value) for value in values)
         test_case_param_values = [
             {"name": manifest_node.test_metadata.name, "value": dbt_test_values}
         ]

@@ -16,7 +16,7 @@ import org.openmetadata.service.util.EntityUtil;
 */
 public class TestConnectionDefinitionRepository extends EntityRepository<TestConnectionDefinition> {
 
-  private static final String UPDATE_FIELDS = "";
+  private static final String UPDATE_FIELDS = "steps";
   private static final String PATCH_FIELDS = "";
 
   public TestConnectionDefinitionRepository(CollectionDAO dao) {
@@ -72,6 +72,18 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
   @Override
   public EntityUpdater getUpdater(
       TestConnectionDefinition original, TestConnectionDefinition updated, Operation operation) {
-    return null;
+    return new TestConnectionDefinitionUpdater(original, updated, operation);
+  }
+
+  public class TestConnectionDefinitionUpdater extends EntityUpdater {
+    public TestConnectionDefinitionUpdater(
+        TestConnectionDefinition original, TestConnectionDefinition updated, Operation operation) {
+      super(original, updated, operation);
+    }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      recordChange("steps", original.getSteps(), updated.getSteps(), true);
+    }
   }
 }
