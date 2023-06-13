@@ -30,7 +30,6 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
 from metadata.generated.schema.entity.services.connections.database.common.iamAuthConfig import (
     IamAuthConfigurationSource,
 )
-from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.ingestion.connections.headers import inject_query_header_by_conn
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
 

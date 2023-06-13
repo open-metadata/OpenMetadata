@@ -95,7 +95,7 @@ class OMetaServiceTest(TestCase):
         assert service
         assert service.serviceType == DatabaseServiceType.Mysql
         assert (
-            service.connection.config.password.get_secret_value()
+            service.connection.config.authType.password.get_secret_value()
             == "openmetadata_password"
         )
 

@@ -126,7 +126,9 @@ class OMetaDatabaseServiceTest(TestCase):
         new_connection = DatabaseConnection(
             config=MysqlConnection(
                 username="username",
-                password="password",
+                authType=BasicAuth(
+                    password="password",
+                ),
                 hostPort="http://localhost:2000",
             )
         )
