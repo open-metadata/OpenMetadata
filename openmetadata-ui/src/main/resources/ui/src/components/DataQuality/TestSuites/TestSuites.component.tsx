@@ -32,6 +32,8 @@ import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Searchbar from 'components/common/searchbar/Searchbar';
 import ProfilerProgressWidget from 'components/TableProfiler/Component/ProfilerProgressWidget';
+import { ROUTES } from 'constants/constants';
+import { PROGRESS_BAR_COLOR } from 'constants/TestSuite.constant';
 import { TestCaseStatus } from 'generated/tests/testCase';
 import { TestSuite } from 'generated/tests/testSuite';
 import { EntityReference } from 'generated/type/entityReference';
@@ -39,7 +41,7 @@ import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface
 import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import { getListTestSuites } from 'rest/testAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { showErrorToast } from 'utils/ToastUtils';
@@ -127,7 +129,12 @@ export const TestSuites = () => {
         dataIndex: 'success',
         key: 'success',
         width: 150,
-        render: () => <ProfilerProgressWidget value={0.2} />,
+        render: () => (
+          <ProfilerProgressWidget
+            strokeColor={PROGRESS_BAR_COLOR}
+            value={0.2}
+          />
+        ),
       },
       {
         title: t('label.owner'),
@@ -245,9 +252,11 @@ export const TestSuites = () => {
                 value={status}
                 onChange={(value) => handleSearchParam(value, 'status')}
               />
-              <Button type="primary">
-                {t('label.add-entity', { entity: t('label.test-suite') })}
-              </Button>
+              <Link to={ROUTES.ADD_TEST_SUITES}>
+                <Button type="primary">
+                  {t('label.add-entity', { entity: t('label.test-suite') })}
+                </Button>
+              </Link>
             </Space>
           </Col>
         </Row>

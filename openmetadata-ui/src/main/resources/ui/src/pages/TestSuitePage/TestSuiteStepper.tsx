@@ -24,6 +24,7 @@ import SuccessScreen from 'components/common/success-screen/SuccessScreen';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import IngestionStepper from 'components/IngestionStepper/IngestionStepper.component';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
+import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -36,7 +37,7 @@ import { FormSubmitType } from '../../enums/form.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { getCurrentUserId } from '../../utils/CommonUtils';
-import { getTestSuitePath } from '../../utils/RouterUtils';
+import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import AddTestSuiteForm from './AddTestSuiteForm';
 import { TestSuiteFormDataProps } from './testSuite.interface';
@@ -50,7 +51,7 @@ const TestSuiteStepper = () => {
   const [addIngestion, setAddIngestion] = useState<boolean>(false);
 
   const handleViewTestSuiteClick = () => {
-    history.push(getTestSuitePath(testSuiteResponse?.fullyQualifiedName || ''));
+    history.push(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
   };
 
   const onSubmitTestSuite = async (data: TestSuiteFormDataProps) => {
