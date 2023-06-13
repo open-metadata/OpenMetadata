@@ -20,7 +20,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
-import TeamDetailsV1 from 'components/TeamDetails/TeamDetailsV1';
+import TeamDetailsV1 from 'components/Team/TeamDetails/TeamDetailsV1';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
