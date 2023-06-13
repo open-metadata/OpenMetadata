@@ -104,7 +104,7 @@ function DashboardSummary({
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
       <>
-        <Row className="m-md" gutter={[0, 4]}>
+        <Row className="m-md m-t-0" gutter={[0, 4]}>
           <Col span={24}>
             <Row>
               {entityInfo.map((info) => {

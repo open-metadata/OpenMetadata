@@ -713,7 +713,7 @@ const TagsPage = () => {
           dataIndex: 'description',
           key: 'description',
           render: (text: string, record: Tag) => (
-            <div className="tw-group tableBody-cell">
+            <>
               <div className="cursor-pointer d-flex">
                 <div>
                   {text ? (
@@ -742,7 +742,7 @@ const TagsPage = () => {
                   <span className="text-grey-muted">{t('label.not-used')}</span>
                 )}
               </div>
-            </div>
+            </>
           ),
         },
         {

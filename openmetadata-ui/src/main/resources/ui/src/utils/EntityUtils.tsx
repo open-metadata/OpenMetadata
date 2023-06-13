@@ -25,7 +25,6 @@ import {
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
 import { ExplorePageTabs } from 'enums/Explore.enum';
-import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
@@ -1009,10 +1008,8 @@ export const getEntityBreadcrumbs = (
     case EntityType.TAG:
       return [
         {
-          name: getEntityName((entity as Tag).classification),
-          url: getTagsDetailsPath(
-            (entity as Tag).classification?.fullyQualifiedName ?? ''
-          ),
+          name: getEntityName(entity),
+          url: getTagsDetailsPath(entity?.fullyQualifiedName ?? ''),
         },
       ];
 

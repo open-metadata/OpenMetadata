@@ -270,7 +270,7 @@ function TableSummary({
   return (
     <SummaryPanelSkeleton loading={isLoading || isEmpty(tableDetails)}>
       <>
-        <Row className="m-md" gutter={[0, 4]}>
+        <Row className="m-md m-t-0" gutter={[0, 4]}>
           <Col span={24}>
             <Row gutter={[0, 4]}>
               {entityInfo.map((info) => {
@@ -357,7 +357,7 @@ function TableSummary({
               <Col span={24}>
                 <Typography.Text
                   className="summary-panel-section-title"
-                  data-testid="profiler-header">
+                  data-testid="tags-header">
                   {t('label.tag-plural')}
                 </Typography.Text>
               </Col>
