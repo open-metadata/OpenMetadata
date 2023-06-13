@@ -220,11 +220,9 @@ class TestAirflowOps(TestCase):
                 connection=DatabaseConnection(
                     config=MysqlConnection(
                         username="username",
-                        authType={
-                            BasicAuth(
-                                password="password",
-                            )
-                        },
+                        authType=BasicAuth(
+                            password="password",
+                        ),
                         hostPort="http://localhost:1234",
                     )
                 ),

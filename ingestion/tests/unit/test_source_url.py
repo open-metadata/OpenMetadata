@@ -37,7 +37,7 @@ class TestConfig(TestCase):
         """
         connection = MysqlConnection(
             username="username",
-            authType={BasicAuth(password="password")},
+            authType=BasicAuth(password="password"),
             hostPort="localhost:1234",
         )
         url = get_connection_url_common(connection)
