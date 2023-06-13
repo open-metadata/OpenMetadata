@@ -287,6 +287,10 @@ export const ROUTES = {
   TEST_SUITES_EDIT_INGESTION: `/test-suites/${PLACEHOLDER_TEST_SUITE_FQN}/edit-ingestion/${PLACEHOLDER_ROUTE_INGESTION_FQN}`,
   ADD_TEST_SUITES: `/add-test-suites`,
 
+  // data quality
+  DATA_QUALITY: '/data-quality',
+  DATA_QUALITY_WITH_TAB: `/data-quality/${PLACEHOLDER_ROUTE_TAB}`,
+
   // logs viewer
   LOGS: `/${LOG_ENTITY_TYPE}/${INGESTION_NAME}/logs`,
 

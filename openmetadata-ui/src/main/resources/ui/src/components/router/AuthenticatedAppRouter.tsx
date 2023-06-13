@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import DataQualityPage from 'pages/DataQuality/DataQualityPage';
 import LineagePage from 'pages/LineagePage/LineagePage';
 import React, { FunctionComponent, useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
@@ -598,6 +599,25 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         )}
         path={ROUTES.TEST_SUITES}
       />
+      <AdminProtectedRoute
+        exact
+        component={DataQualityPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEST_SUITE,
+          permissions
+        )}
+        path={ROUTES.DATA_QUALITY_WITH_TAB}
+      />
+      <AdminProtectedRoute
+        exact
+        component={DataQualityPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEST_SUITE,
+          permissions
+        )}
+        path={ROUTES.DATA_QUALITY}
+      />
+
       <AdminProtectedRoute
         exact
         component={TestCaseDetailsPage}

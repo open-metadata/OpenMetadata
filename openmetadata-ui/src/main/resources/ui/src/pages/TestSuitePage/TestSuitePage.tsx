@@ -139,7 +139,7 @@ const TestSuitePage = () => {
             overlayStyle={{ maxWidth: '400px' }}
             placement="topLeft"
             title={
-              description.length > MAX_CHAR_LIMIT_TEST_SUITE && description
+              description?.length > MAX_CHAR_LIMIT_TEST_SUITE && description
             }>
             <Typography.Paragraph className="ant-typography-ellipsis-custom">
               <RichTextEditorPreviewer

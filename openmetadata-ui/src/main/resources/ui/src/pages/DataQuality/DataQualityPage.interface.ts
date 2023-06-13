@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,27 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-.ant-tabs-tab.ant-tabs-tab-active {
-  font-weight: 500;
-}
-
-.ant-tabs.ant-tabs-top.h-full {
-  .ant-tabs-content.ant-tabs-content-top {
-    height: 100%;
-    .ant-tabs-tabpane {
-      height: 100%;
-    }
-  }
-}
-
-.ant-tabs-tab + .ant-tabs-tab {
-  margin: 0 0 0 24px;
-}
-
-.custom-tab-spacing {
-  .ant-tabs-nav {
-    margin: 0 !important;
-    padding: 0 24px;
-  }
+export enum DataQualityPageTabs {
+  TEST_SUITES = 'test-suites',
+  TABLES = 'tables',
+  TEST_CASES = 'test-cases',
 }
