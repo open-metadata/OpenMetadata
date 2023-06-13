@@ -163,7 +163,8 @@ class OMetaWorkflowTest(TestCase):
 
         # The ingestion-bot should see the password
         self.assertEqual(
-            res.request.connection.config.authType.password.get_secret_value(), "password"
+            res.request.connection.config.authType.password.get_secret_value(),
+            "password",
         )
 
     def test_get_id(self):
