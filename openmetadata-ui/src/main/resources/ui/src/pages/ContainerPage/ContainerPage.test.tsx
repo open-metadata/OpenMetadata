@@ -66,6 +66,10 @@ jest.mock('components/common/entityPageInfo/EntityPageInfo', () => {
     .mockReturnValue(<div data-testid="entity-page-info">EntityPageInfo</div>);
 });
 
+jest.mock('components/FeedEditor/FeedEditor', () => {
+  return jest.fn().mockReturnValue(<p>ActivityFeedEditor</p>);
+});
+
 jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
   return jest
     .fn()
@@ -135,6 +139,7 @@ let mockParams = {
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
   useParams: jest.fn().mockImplementation(() => mockParams),
+  useLocation: jest.fn().mockReturnValue({ pathname: 'pathname' }),
 }));
 
 describe('Container Page Component', () => {

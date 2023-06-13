@@ -225,7 +225,9 @@ const AddKPIPage = () => {
     <ResizablePanels
       firstPanel={{
         children: (
-          <div className="max-width-md w-9/10 service-form-container">
+          <div
+            className="max-width-md w-9/10 service-form-container"
+            data-testid="add-kpi-container">
             <TitleBreadcrumb className="my-4" titleLinks={breadcrumb} />
             <Card>
               <Typography.Paragraph
@@ -458,14 +460,14 @@ const AddKPIPage = () => {
       })}
       secondPanel={{
         children: (
-          <>
+          <div data-testid="right-panel">
             <Typography.Paragraph className="text-base font-medium">
               {t('label.add-entity', {
                 entity: t('label.kpi-uppercase'),
               })}
             </Typography.Paragraph>
             <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>
-          </>
+          </div>
         ),
         className: 'p-md service-doc-panel',
         minWidth: 60,

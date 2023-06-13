@@ -54,6 +54,10 @@ jest.mock('components/common/next-previous/NextPrevious', () =>
     ))
 );
 
+jest.mock('components/FeedEditor/FeedEditor', () => {
+  return jest.fn().mockReturnValue(<p>ActivityFeedEditor</p>);
+});
+
 jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
   jest
     .fn()

@@ -187,6 +187,10 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
+jest.mock('components/FeedEditor/FeedEditor', () => {
+  return jest.fn().mockReturnValue(<p>ActivityFeedEditor</p>);
+});
+
 jest.mock('components/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
 });
@@ -219,12 +223,18 @@ jest.mock('../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel', () => {
   return jest.fn().mockReturnValue(<p>ActivityThreadPanel</p>);
 });
 
+jest.mock('components/containers/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
 jest.mock('../../utils/CommonUtils', () => {
   return {
     getEntityName: jest.fn().mockReturnValue('entityName'),
     getEntityPlaceHolder: jest.fn().mockReturnValue('entityPlaceholder'),
     getOwnerValue: jest.fn().mockReturnValue('Owner'),
     getEmptyPlaceholder: jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>),
+    getCurrentUserId: jest.fn().mockReturnValue('testId'),
+    getCountBadge: jest.fn().mockReturnValue(<p>1</p>),
   };
 });
 
