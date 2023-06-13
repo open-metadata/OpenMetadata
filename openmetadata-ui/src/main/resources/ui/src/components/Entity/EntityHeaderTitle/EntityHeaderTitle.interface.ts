@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 export interface EntityHeaderTitleProps {
+  className?: string;
   icon: React.ReactNode;
   name: string;
   displayName?: string;

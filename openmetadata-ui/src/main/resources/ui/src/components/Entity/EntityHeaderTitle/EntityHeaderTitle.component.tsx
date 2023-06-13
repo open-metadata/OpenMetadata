@@ -31,6 +31,7 @@ const EntityHeaderTitle = ({
   serviceName,
   badge,
   isDisabled,
+  className,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useLocation();
@@ -43,6 +44,7 @@ const EntityHeaderTitle = ({
   const content = (
     <Row
       align="middle"
+      className={className}
       data-testid={`${serviceName}-${name}`}
       gutter={16}
       wrap={false}>
@@ -64,7 +66,7 @@ const EntityHeaderTitle = ({
           ellipsis={{ tooltip: true }}>
           {stringToHTML(displayName || name)}
           {isDisabled && (
-            <Typography.Text className="text-grey-muted text-sm font-normal m-l-xs">
+            <Typography.Text className="text-grey-muted text-sm font-normal font-italic m-l-xs">
               {`(${t('label.disabled')})`}
             </Typography.Text>
           )}
