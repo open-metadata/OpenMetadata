@@ -16,18 +16,31 @@ import {
   Row,
   Select,
   Space,
-  Statistic,
   Switch,
   Table,
   Typography,
 } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
+import { ColumnsType } from 'antd/lib/table';
+import { AxiosError } from 'axios';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import { LastRunGraph } from 'components/common/LastRunGraph/LastRunGraph.component';
+import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Searchbar from 'components/common/searchbar/Searchbar';
+import ProfilerProgressWidget from 'components/TableProfiler/Component/ProfilerProgressWidget';
 import { TestCaseStatus } from 'generated/tests/testCase';
+import { TestSuite } from 'generated/tests/testSuite';
+import { EntityReference } from 'generated/type/entityReference';
+import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import QueryString from 'qs';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { getListTestSuites } from 'rest/testAPI';
+import { getEntityName } from 'utils/EntityUtils';
+import { showErrorToast } from 'utils/ToastUtils';
+import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
 
 type SearchParams = {
   searchValue: string;
@@ -37,8 +50,12 @@ type SearchParams = {
 
 export const TestSuites = () => {
   const { t } = useTranslation();
+  const { tabs = DataQualityPageTabs.TEST_SUITES } =
+    useParams<{ tabs: DataQualityPageTabs }>();
   const history = useHistory();
   const location = useLocation();
+
+  const [testSuites, setTestSuites] = useState<TestSuite[]>([]);
 
   const params = useMemo(() => {
     const search = location.search;
@@ -67,6 +84,85 @@ export const TestSuites = () => {
     return testCaseStatus;
   }, []);
 
+  const columns = useMemo(() => {
+    const data: ColumnsType<TestSuite> = [
+      {
+        title: t('label.name'),
+        dataIndex: 'name',
+        key: 'name',
+        fixed: true,
+        width: 250,
+        render: (_, record) => (
+          <Typography.Paragraph>{getEntityName(record)}</Typography.Paragraph>
+        ),
+      },
+      {
+        title: t('label.description'),
+        dataIndex: 'description',
+        key: 'description',
+        width: 300,
+        render: (text: string) =>
+          text ? (
+            <RichTextEditorPreviewer markdown={text} />
+          ) : (
+            <Typography.Text
+              className="text-grey-muted"
+              data-testid="no-description">
+              {t('label.no-description')}
+            </Typography.Text>
+          ),
+      },
+      {
+        title: t('label.test-plural'),
+        dataIndex: 'tests',
+        key: 'tests',
+        width: 100,
+        render: () => 10,
+      },
+      {
+        title: `${t('label.success')} %`,
+        dataIndex: 'success',
+        key: 'success',
+        width: 150,
+        render: () => <ProfilerProgressWidget value={0.2} />,
+      },
+      {
+        title: t('label.owner'),
+        dataIndex: 'owner',
+        key: 'owner',
+        width: 150,
+        render: (owner: EntityReference) => <OwnerLabel owner={owner} />,
+      },
+      {
+        title: t('label.last-run'),
+        dataIndex: 'lastRun',
+        key: 'lastRun',
+        width: 150,
+        render: () => `09/may 10.36`,
+      },
+      {
+        title: t('label.result-plural'),
+        dataIndex: 'lastResults',
+        key: 'lastResults',
+        width: 200,
+        render: () => (
+          <div className="m-t-xss">
+            <LastRunGraph />
+          </div>
+        ),
+      },
+      {
+        title: t('label.action-plural'),
+        dataIndex: 'actions',
+        width: 100,
+        key: 'actions',
+        fixed: 'right',
+      },
+    ];
+
+    return data;
+  }, []);
+
   const handleSearchParam = (
     value: string | boolean,
     key: keyof SearchParams
@@ -76,12 +172,28 @@ export const TestSuites = () => {
     });
   };
 
+  const fetchTestSuites = async () => {
+    try {
+      const result = await getListTestSuites({ fields: 'owner,tests' });
+      setTestSuites(result.data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  useEffect(() => {
+    if (tabs === DataQualityPageTabs.TEST_SUITES) {
+      fetchTestSuites();
+    }
+  }, [tabs]);
+
   return (
     <Row className="p-x-lg p-t-md" gutter={[16, 16]}>
       <Col span={24}>
         <Row justify="space-between">
           <Col span={8}>
             <Searchbar
+              removeMargin
               searchValue={searchValue}
               onSearch={(value) => handleSearchParam(value, 'searchValue')}
             />
@@ -112,27 +224,22 @@ export const TestSuites = () => {
         </Row>
       </Col>
 
-      <Col span={24}>
-        <Row gutter={16}>
-          <Col span={4}>
-            <Statistic title="Success" value={112893} />
-          </Col>
-          <Col span={4}>
-            <Statistic title="Aborted" value={112893} />
-          </Col>
-          <Col span={4}>
-            <Statistic title="Failed" value={112893} />
-          </Col>
-          <Col span={6}>
-            <Statistic title="Success Percentage" value={112893} />
-          </Col>
-          <Col span={6}>
-            <Statistic title="Latest Results" value={112893} />
-          </Col>
-        </Row>
+      <Col className="data-quality-summary" span={24}>
+        <SummaryPanel />
       </Col>
       <Col span={24}>
-        <Table dataSource={[]} />
+        <Table
+          bordered
+          columns={columns}
+          data-testid="test-suite-table"
+          dataSource={testSuites}
+          locale={{
+            emptyText: <FilterTablePlaceHolder />,
+          }}
+          pagination={false}
+          scroll={{ x: 1500 }}
+          size="middle"
+        />
       </Col>
     </Row>
   );

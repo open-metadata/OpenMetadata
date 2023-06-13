@@ -28,7 +28,7 @@ export const OwnerLabel = ({
   hasPermission,
 }: {
   owner?: EntityReference;
-  onUpdate: (owner?: EntityReference) => void;
+  onUpdate?: (owner?: EntityReference) => void;
   hasPermission?: boolean;
 }) => {
   const displayName = getEntityName(owner);
@@ -68,11 +68,13 @@ export const OwnerLabel = ({
           {t('label.no-entity', { entity: t('label.owner') })}
         </Typography.Text>
       )}
-      <UserTeamSelectableList
-        hasPermission={Boolean(hasPermission)}
-        owner={owner}
-        onUpdate={onUpdate}
-      />
+      {onUpdate && (
+        <UserTeamSelectableList
+          hasPermission={Boolean(hasPermission)}
+          owner={owner}
+          onUpdate={onUpdate}
+        />
+      )}
     </Space>
   );
 };

@@ -10,24 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import url('../../../../styles/variables.less');
+import { Typography } from 'antd';
+import classNames from 'classnames';
+import React from 'react';
+import './summary-card.style.less';
+import { SummaryCardProps } from './SummaryCard.interface';
 
-.profiler-item {
-  width: 100px;
-  height: 80px;
-  text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  border-radius: 10px;
-  &.green {
-    background: @green-2;
-  }
-  &.amber {
-    background: @yellow-1;
-  }
-  &.red {
-    background: @red-2;
-  }
-}
+export const SummaryCard = ({ type, title, description }: SummaryCardProps) => {
+  return (
+    <div className={classNames('summary-card', type)}>
+      <Typography.Paragraph className="summary-card-title">
+        {title}
+      </Typography.Paragraph>
+      <Typography.Paragraph className="summary-card-description">
+        {description}
+      </Typography.Paragraph>
+    </div>
+  );
+};

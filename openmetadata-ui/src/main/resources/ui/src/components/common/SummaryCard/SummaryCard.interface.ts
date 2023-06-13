@@ -10,24 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import url('../../../../styles/variables.less');
-
-.profiler-item {
-  width: 100px;
-  height: 80px;
-  text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  border-radius: 10px;
-  &.green {
-    background: @green-2;
-  }
-  &.amber {
-    background: @yellow-1;
-  }
-  &.red {
-    background: @red-2;
-  }
+export interface SummaryCardProps {
+  type?: 'success' | 'failed' | 'aborted';
+  title: string;
+  description: React.ReactNode;
 }

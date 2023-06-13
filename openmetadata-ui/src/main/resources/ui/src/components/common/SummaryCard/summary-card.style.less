@@ -10,24 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import url('../../../../styles/variables.less');
-
-.profiler-item {
-  width: 100px;
-  height: 80px;
-  text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
+@import url('../../../styles/variables.less');
+.summary-card {
+  padding: 16px;
+  width: 100%;
+  border: @global-border;
   border-radius: 10px;
-  &.green {
+  background: @grey-1;
+
+  .summary-card-title {
+    color: @text-grey-muted;
+    margin-bottom: 4px;
+  }
+
+  .summary-card-description {
+    font-weight: 500;
+    font-size: 18px;
+    margin-bottom: 0;
+  }
+
+  &.success {
     background: @green-2;
   }
-  &.amber {
+  &.aborted {
     background: @yellow-1;
   }
-  &.red {
+  &.failed {
     background: @red-2;
   }
 }
