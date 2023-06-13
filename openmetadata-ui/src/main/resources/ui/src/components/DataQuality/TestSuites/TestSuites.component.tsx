@@ -18,10 +18,13 @@ import {
   Space,
   Switch,
   Table,
+  Tooltip,
   Typography,
 } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
+import { ReactComponent as IconDelete } from 'assets/svg/ic-delete.svg';
 import { AxiosError } from 'axios';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { LastRunGraph } from 'components/common/LastRunGraph/LastRunGraph.component';
@@ -157,6 +160,32 @@ export const TestSuites = () => {
         width: 100,
         key: 'actions',
         fixed: 'right',
+        render: (_, record) => {
+          return (
+            <Row align="middle">
+              <Col>
+                <Tooltip placement="bottomRight">
+                  <Button
+                    className="flex-center"
+                    data-testid={`edit-${record.name}`}
+                    icon={<IconEdit width={16} />}
+                    type="text"
+                  />
+                </Tooltip>
+              </Col>
+              <Col>
+                <Tooltip placement="bottomLeft">
+                  <Button
+                    className="flex-center"
+                    data-testid={`delete-${record.name}`}
+                    icon={<IconDelete width={16} />}
+                    type="text"
+                  />
+                </Tooltip>
+              </Col>
+            </Row>
+          );
+        },
       },
     ];
 
