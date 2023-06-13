@@ -97,6 +97,7 @@
     "broker-plural": "Agents",
     "browse": "Naviguer",
     "browse-csv-file": "Naviguer le fichier CSV",
+    "by-entity": "By {{entity}}",
     "by-lowercase": "par",
     "ca-certs": "CA Certs",
     "cancel": "Annuler",

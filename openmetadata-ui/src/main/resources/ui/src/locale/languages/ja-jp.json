@@ -97,6 +97,7 @@
     "broker-plural": "ブローカー",
     "browse": "Browse",
     "browse-csv-file": "CSVファイルを見る",
+    "by-entity": "By {{entity}}",
     "by-lowercase": "by",
     "ca-certs": "CA Certs",
     "cancel": "キャンセル",

@@ -97,6 +97,7 @@
     "broker-plural": "Brokers",
     "browse": "浏览",
     "browse-csv-file": "打开 CSV 文件",
+    "by-entity": "By {{entity}}",
     "by-lowercase": "by",
     "ca-certs": "CA 证书",
     "cancel": "取消",

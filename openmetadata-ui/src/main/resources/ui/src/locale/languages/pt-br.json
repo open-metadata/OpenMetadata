@@ -97,6 +97,7 @@
     "broker-plural": "Brokers",
     "browse": "Browse",
     "browse-csv-file": "Pesquisar arquivo CSV",
+    "by-entity": "By {{entity}}",
     "by-lowercase": "by",
     "ca-certs": "Certificados CA",
     "cancel": "Cancelar",
