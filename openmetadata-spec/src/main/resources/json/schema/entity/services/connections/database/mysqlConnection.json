@@ -45,7 +45,7 @@
           "$ref": "./common/basicAuth.json"
         },
         {
-          "$ref": "../../../../security/credentials/awsCredentials.json"
+          "$ref": "./common/iamAuthConfig.json"
         }
       ]
     },

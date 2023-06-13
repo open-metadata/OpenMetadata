@@ -32,7 +32,7 @@ public class MysqlConnectionClassConverter extends ClassConverter {
   public Object convert(Object object) {
     MysqlConnection mysqlConnection = (MysqlConnection) JsonUtils.convertValue(object, this.clazz);
 
-    tryToConvertOrFail(mysqlConnection.getAuthType(), CONFIG_SOURCE_CLASSES).ifPresent(mysqlConnection::setAuthType);
+    tryToConvert(mysqlConnection.getAuthType(), CONFIG_SOURCE_CLASSES).ifPresent(mysqlConnection::setAuthType);
 
     return mysqlConnection;
   }

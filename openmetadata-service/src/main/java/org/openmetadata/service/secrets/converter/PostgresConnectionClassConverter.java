@@ -14,7 +14,6 @@
 package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
-import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.common.IamAuthConfig;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
@@ -26,15 +25,14 @@ public class PostgresConnectionClassConverter extends ClassConverter {
   private static final List<Class<?>> CONFIG_SOURCE_CLASSES = List.of(basicAuth.class, IamAuthConfig.class);
 
   public PostgresConnectionClassConverter() {
-    super(MysqlConnection.class);
+    super(PostgresConnection.class);
   }
 
   @Override
   public Object convert(Object object) {
     PostgresConnection postgresConnection = (PostgresConnection) JsonUtils.convertValue(object, this.clazz);
 
-    tryToConvertOrFail(postgresConnection.getAuthType(), CONFIG_SOURCE_CLASSES)
-        .ifPresent(postgresConnection::setAuthType);
+    tryToConvert(postgresConnection.getAuthType(), CONFIG_SOURCE_CLASSES).ifPresent(postgresConnection::setAuthType);
 
     return postgresConnection;
   }
