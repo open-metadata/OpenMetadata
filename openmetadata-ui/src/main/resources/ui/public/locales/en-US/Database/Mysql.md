@@ -50,6 +50,8 @@ $$
 
 ## IAM Auth Config
 
+### Note: If you are using IAM auth, add `"ssl": {"ssl-mode": "allow"} under Connection Arguments`
+
 $$section
 ### AWS Access Key ID $(id="awsAccessKeyId")
 
@@ -178,4 +180,5 @@ $$
 $$section
 ### Connection Arguments $(id="connectionArguments")
 Additional connection arguments such as security or protocol configs that can be sent to the service during connection.
+#### Note: If you are using IAM auth, add `"ssl": {"ssl-mode": "allow"} under Connection Arguments`
 $$
