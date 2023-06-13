@@ -15,6 +15,7 @@ Get and test connection utilities
 from functools import partial
 from typing import Any, Callable, Dict, Optional
 from urllib.parse import quote_plus
+from metadata.generated.schema.entity.services.connections.database.common.iamAuthConfig import IamAuthConfigurationSource
 
 from pydantic import SecretStr
 from sqlalchemy import create_engine
@@ -126,15 +127,15 @@ def _add_password(url, connection, attr) -> str:
         password = SecretStr("")
         if hasattr(connection, "authType"):
             password = getattr(connection.authType, attr, SecretStr(""))
-            if isinstance(connection.authType, AWSCredentials):
-                aws_client = AWSClient(config=connection.authType).get_rds_client()
+            if isinstance(connection.authType, IamAuthConfigurationSource):
+                aws_client = AWSClient(config=connection.authType.awsConfig).get_rds_client()
                 host, port = connection.hostPort.split(":")
                 password = SecretStr(
                     aws_client.generate_db_auth_token(
                         DBHostname=host,
                         Port=port,
                         DBUsername=connection.username,
-                        Region=connection.authType.awsRegion,
+                        Region=connection.authType.awsConfig.awsRegion,
                     )
                 )
     url += f":{quote_plus(password.get_secret_value())}"
