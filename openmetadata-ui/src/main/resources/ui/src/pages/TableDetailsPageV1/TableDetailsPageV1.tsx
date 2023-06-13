@@ -10,16 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Divider, Row, Tabs } from 'antd';
+import { Card, Col, Divider, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import ActivityFeedProvider, {
   useActivityFeedProvider,
 } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
+import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import DbtTab from 'components/DatasetDetails/DbtTab/DbtTab.component';
+import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
 import Loader from 'components/Loader/Loader';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -29,6 +33,8 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import SampleDataTableComponent from 'components/SampleDataTable/SampleDataTable.component';
 import SchemaTab from 'components/SchemaTab/SchemaTab.component';
+import TableProfilerV1 from 'components/TableProfiler/TableProfilerV1';
+import TableQueries from 'components/TableQueries/TableQueries';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
@@ -360,6 +366,10 @@ const TableDetailsPageV1 = () => {
     await handleTagsUpdate(updatedTags);
   };
 
+  const onExtensionUpdate = async (updatedData: Table) => {
+    await onTableUpdate(updatedData, 'extension');
+  };
+
   const schemaTab = useMemo(
     () => (
       <Row gutter={[0, 16]} wrap={false}>
@@ -518,6 +528,12 @@ const TableDetailsPageV1 = () => {
           tablePermissions.ViewQueries
         ),
         key: EntityTabs.TABLE_QUERIES,
+        children: (
+          <TableQueries
+            isTableDeleted={tableDetails?.deleted}
+            tableId={tableDetails?.id ?? ''}
+          />
+        ),
       },
       {
         label: (
@@ -533,10 +549,30 @@ const TableDetailsPageV1 = () => {
           tablePermissions.ViewTests
         ),
         key: EntityTabs.PROFILER,
+        children: (
+          <TableProfilerV1
+            isTableDeleted={tableDetails?.deleted}
+            permissions={tablePermissions}
+            tableFqn={tableDetails?.fullyQualifiedName || ''}
+          />
+        ),
       },
       {
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
+        children: (
+          <Card
+            className="card-body-full m-md w-auto h-70vh"
+            id="lineageDetails">
+            <EntityLineageComponent
+              deleted={tableDetails?.deleted}
+              entityType={EntityType.TABLE}
+              hasEditAccess={
+                tablePermissions.EditAll || tablePermissions.EditLineage
+              }
+            />
+          </Card>
+        ),
       },
       {
         label: (
@@ -544,6 +580,7 @@ const TableDetailsPageV1 = () => {
         ),
         // isHidden: !(dataModel?.sql ?? dataModel?.rawSql),
         key: EntityTabs.DBT,
+        children: <DbtTab dataModel={tableDetails?.dataModel} />,
       },
       {
         label: (
@@ -553,11 +590,33 @@ const TableDetailsPageV1 = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
+        children: (
+          <CustomPropertyTable
+            entityDetails={tableDetails as CustomPropertyProps['entityDetails']}
+            entityType={EntityType.TABLE}
+            handleExtensionUpdate={onExtensionUpdate}
+            hasEditAccess={
+              tablePermissions.EditAll || tablePermissions.EditCustomFields
+            }
+          />
+        ),
       },
     ];
 
     return allTabs.filter((data) => !data.isHidden);
-  }, [tablePermissions, activeTab, schemaTab]);
+  }, [
+    schemaTab,
+    tablePermissions,
+    activeTab,
+    schemaTab,
+    tableDetails,
+    feedCount,
+    entityFieldTaskCount,
+    entityName,
+    entityFieldTaskCount,
+    onExtensionUpdate,
+    getEntityFeedCount,
+  ]);
 
   const onTierUpdate = useCallback(
     async (newTier?: string) => {
