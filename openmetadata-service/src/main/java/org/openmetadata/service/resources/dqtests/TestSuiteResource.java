@@ -417,7 +417,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   }
 
   @DELETE
-  @Path("executable/name/{name}")
+  @Path("/executable/name/{name}")
   @Operation(
       operationId = "deleteTestSuiteByName",
       summary = "Delete a test suite",
@@ -453,7 +453,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   }
 
   @DELETE
-  @Path("executable/{id}")
+  @Path("/executable/{id}")
   @Operation(
       operationId = "deleteTestSuite",
       summary = "Delete a test suite",

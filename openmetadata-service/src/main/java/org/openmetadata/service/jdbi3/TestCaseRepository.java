@@ -5,8 +5,10 @@ import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.util.RestUtil.ENTITY_NO_CHANGE;
 import static org.openmetadata.service.util.RestUtil.ENTITY_UPDATED;
+import static org.openmetadata.service.util.RestUtil.LOGICAL_TEST_CASES_ADDED;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -284,20 +286,33 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
-  public RestUtil.PutResponse<?> addTestCasesToLogicalTestSuite(TestSuite testSuite, List<UUID> testCaseIds) {
+  public RestUtil.PutResponse<TestSuite> addTestCasesToLogicalTestSuite(TestSuite testSuite, List<UUID> testCaseIds)
+      throws IOException {
     bulkAddToRelationship(testSuite.getId(), testCaseIds, TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
-    return new RestUtil.PutResponse<>(
-        Response.Status.OK,
-        testSuite,
-        String.format(RestUtil.TEST_CASES_ADDED, testCaseIds.size(), testSuite.getName()));
+    List<EntityReference> testCasesEntityReferences = new ArrayList<>();
+    for (UUID testCaseId : testCaseIds) {
+      TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "", Include.ALL);
+      testCasesEntityReferences.add(
+          new EntityReference()
+              .withId(testCase.getId())
+              .withName(testCase.getName())
+              .withFullyQualifiedName(testCase.getFullyQualifiedName())
+              .withDescription(testCase.getDescription())
+              .withDisplayName(testCase.getDisplayName())
+              .withHref(testCase.getHref())
+              .withDeleted(testCase.getDeleted()));
+    }
+    testSuite.setTests(testCasesEntityReferences);
+    return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASES_ADDED);
   }
 
   public RestUtil.DeleteResponse<TestCase> deleteTestCaseFromLogicalTestSuite(UUID testSuiteId, UUID testCaseId)
       throws IOException {
     TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, null, null);
     deleteRelationship(testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS);
-    return new RestUtil.DeleteResponse<>(
-        testCase, String.format(RestUtil.TEST_CASE_REMOVED_FROM_LOGICAL_TEST_SUITE, testSuiteId));
+    EntityReference entityReference = Entity.getEntityReferenceById(TEST_SUITE, testSuiteId, Include.ALL);
+    testCase.setTestSuite(entityReference);
+    return new RestUtil.DeleteResponse<>(testCase, RestUtil.ENTITY_DELETED);
   }
 
   @Override
