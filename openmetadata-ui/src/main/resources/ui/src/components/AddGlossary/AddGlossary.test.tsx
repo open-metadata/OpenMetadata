@@ -44,6 +44,15 @@ jest.mock('rest/glossaryAPI', () => ({
   addGlossaries: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
+jest.mock('components/common/ResizablePanels/ResizablePanels', () =>
+  jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <>
+      <div>{firstPanel.children}</div>
+      <div>{secondPanel.children}</div>
+    </>
+  ))
+);
+
 const mockOnCancel = jest.fn();
 const mockOnSave = jest.fn();
 
