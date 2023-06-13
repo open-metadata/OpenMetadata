@@ -121,14 +121,14 @@ const LeftSidebar = () => {
         </Col>
         <Col
           className={`left-panel-item p-md ${
-            location.pathname.includes(ROUTES.TEST_SUITES) ? 'active' : ''
+            location.pathname.includes(ROUTES.DATA_QUALITY) ? 'active' : ''
           }`}
           span={24}>
           <NavLink
             className="no-underline"
             data-testid="appbar-item-data-quality"
             to={{
-              pathname: ROUTES.TEST_SUITES,
+              pathname: ROUTES.DATA_QUALITY,
             }}>
             <div className="d-flex flex-col items-center">
               <QualityIcon className="m-0" width={30} />
