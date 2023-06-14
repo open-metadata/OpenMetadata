@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { Button, Popover, Space, Typography } from 'antd';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
@@ -178,68 +177,62 @@ const Description: FC<DescriptionProps> = ({
 
   const DescriptionActions = () => {
     return !isReadOnly ? (
-      <div className="text-right">
-        <Space align="end" className="self-end" size={0}>
-          {hasEditAccess && (
-            <Button
-              className="w-7 h-7 p-0 flex-center text-primary"
-              data-testid="edit-description"
-              icon={<IconEdit height={16} width={16} />}
-              type="text"
-              onClick={handleUpdate}
-            />
-          )}
-          {isTaskSupported(entityType as EntityType) ? (
-            <Fragment>
-              <RequestDescriptionEl />
-              {getDescriptionTaskElement()}
-            </Fragment>
-          ) : null}
+      <Space align="end" size={0}>
+        {hasEditAccess && (
+          <Button
+            className="w-7 h-7 p-0 flex-center"
+            data-testid="edit-description"
+            icon={<IconEdit height={16} width={16} />}
+            type="text"
+            onClick={handleUpdate}
+          />
+        )}
+        {isTaskSupported(entityType as EntityType) ? (
+          <Fragment>
+            <RequestDescriptionEl />
+            {getDescriptionTaskElement()}
+          </Fragment>
+        ) : null}
 
-          <DescriptionThreadEl descriptionThread={thread} />
-        </Space>
-      </div>
+        <DescriptionThreadEl descriptionThread={thread} />
+      </Space>
     ) : null;
   };
 
   return (
-    <div className={`schema-description relative ${className}`}>
-      <div
-        className="relative"
-        style={{
-          background: 'rgba(113, 71, 232, 0.05)',
-          padding: 16,
-          borderRadius: '10px',
-        }}>
-        <div
-          className="description h-full tw-overflow-y-scroll relative "
-          data-testid="description"
-          id="center">
-          {description?.trim() ? (
-            <RichTextEditorPreviewer
-              enableSeeMoreVariant={!removeBlur}
-              markdown={description}
-            />
-          ) : (
-            <span className="text-grey-muted p-y-xs">
-              {t('label.no-entity', {
-                entity: t('label.description'),
-              })}
-            </span>
-          )}
+    <div className={`schema-description tw-relative ${className}`}>
+      <Space align="end" className="description-inner-main-container" size={4}>
+        <div className="tw-relative">
+          <div
+            className="description tw-h-full tw-overflow-y-scroll tw-relative "
+            data-testid="description"
+            id="center">
+            {description?.trim() ? (
+              <RichTextEditorPreviewer
+                enableSeeMoreVariant={!removeBlur}
+                markdown={description}
+              />
+            ) : (
+              <span className="text-grey-muted p-y-xs">
+                {t('label.no-entity', {
+                  entity: t('label.description'),
+                })}
+              </span>
+            )}
+          </div>
         </div>
         <DescriptionActions />
-        <ModalWithMarkdownEditor
-          header={header || t('label.edit-description-for', { entityName })}
-          placeholder={t('label.enter-entity', {
-            entity: t('label.description'),
-          })}
-          value={description}
-          visible={Boolean(isEdit)}
-          onCancel={onCancel}
-          onSave={handleSave}
-        />
-      </div>
+      </Space>
+      <ModalWithMarkdownEditor
+        header={header || t('label.edit-description-for', { entityName })}
+        placeholder={t('label.enter-entity', {
+          entity: t('label.description'),
+        })}
+        value={description}
+        visible={Boolean(isEdit)}
+        onCancel={onCancel}
+        onSave={handleSave}
+      />
     </div>
   );
 };

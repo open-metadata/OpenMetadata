@@ -162,6 +162,7 @@ const LeftSidebar = () => {
           items={items}
           mode="vertical"
           selectedKeys={subMenuItemSelected}
+          triggerSubMenuAction="click"
         />
       </Row>
       <Row className="p-y-sm">

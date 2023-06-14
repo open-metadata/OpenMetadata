@@ -106,7 +106,9 @@ function GlossaryTermSummary({
               <Typography.Text
                 className="text-grey-body"
                 data-testid="no-reviewer-header">
-                {t('label.no-reviewer')}
+                {t('label.no-entity', {
+                  entity: t('label.children-lowercase'),
+                })}
               </Typography.Text>
             )}
           </Col>
@@ -155,6 +157,9 @@ function GlossaryTermSummary({
           </Col>
           <Col span={24}>
             <SummaryList
+              emptyPlaceholderText={t('label.no-entity', {
+                entity: t('label.children-lowercase'),
+              })}
               entityType={SummaryEntityType.COLUMN}
               formattedEntityData={formattedColumnsData}
             />
