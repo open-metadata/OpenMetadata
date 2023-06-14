@@ -8,6 +8,7 @@ import static org.openmetadata.service.jdbi3.TestCaseRepository.TESTCASE_RESULT_
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Table;
@@ -49,12 +50,12 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   private TestSummary getTestSummary(TestSuite entity) throws IOException {
     List<EntityReference> testCases = getTestCases(entity);
     HashMap<String, Integer> testCaseSummary = new HashMap<>();
-    for (EntityReference testCase : testCases) {
-      String json =
-          daoCollection
-              .entityExtensionTimeSeriesDao()
-              .getLatestExtension(testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION);
-      if (json == null) continue;
+    List<String> testCaseFQNs =
+        testCases.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.toList());
+    List<String> jsonList =
+        daoCollection.entityExtensionTimeSeriesDao().getLatestExtensionByFQNs(testCaseFQNs, TESTCASE_RESULT_EXTENSION);
+
+    for (String json : jsonList) {
       TestCaseResult testCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
       String status = testCaseResult.getTestCaseStatus().toString();
       testCaseSummary.put(status, testCaseSummary.getOrDefault(status, 0) + 1);

@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
@@ -25,6 +26,8 @@ import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -313,6 +316,25 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     EntityReference entityReference = Entity.getEntityReferenceById(TEST_SUITE, testSuiteId, Include.ALL);
     testCase.setTestSuite(entityReference);
     return new RestUtil.DeleteResponse<>(testCase, RestUtil.ENTITY_DELETED);
+  }
+
+  public TestSummary getTestSummary() throws IOException {
+    List<TestCase> testCases = listAll(Fields.EMPTY_FIELDS, new ListFilter());
+    List<String> testCaseFQNs = testCases.stream().map(TestCase::getFullyQualifiedName).collect(Collectors.toList());
+    List<String> jsonList =
+        daoCollection.entityExtensionTimeSeriesDao().getLatestExtensionByFQNs(testCaseFQNs, TESTCASE_RESULT_EXTENSION);
+
+    HashMap<String, Integer> testCaseSummary = new HashMap<>();
+    for (String json : jsonList) {
+      TestCaseResult testCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
+      String status = testCaseResult.getTestCaseStatus().toString();
+      testCaseSummary.put(status, testCaseSummary.getOrDefault(status, 0) + 1);
+    }
+
+    return new TestSummary()
+        .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
+        .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
+        .withSuccess(testCaseSummary.getOrDefault(TestCaseStatus.Success.toString(), 0));
   }
 
   @Override

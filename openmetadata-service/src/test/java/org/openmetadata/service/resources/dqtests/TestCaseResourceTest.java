@@ -46,6 +46,7 @@ import org.openmetadata.schema.tests.type.TestCaseFailureStatus;
 import org.openmetadata.schema.tests.type.TestCaseFailureStatusType;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -331,6 +332,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             TestUtils.dateToTimestamp("2021-10-15"),
             ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, testCase1ResultList, 4);
+
+    TestSummary testSummary = getTestSummary(ADMIN_AUTH_HEADERS);
+    assertEquals(1, testSummary.getFailed());
+    assertEquals(1, testSummary.getSuccess());
+    assertEquals(0, testSummary.getAborted());
   }
 
   @Test
@@ -636,6 +642,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     target = target.queryParam("startTs", start);
     target = target.queryParam("endTs", end);
     return TestUtils.get(target, TestCaseResource.TestCaseResultList.class, authHeaders);
+  }
+
+  private TestSummary getTestSummary(Map<String, String> authHeaders) throws IOException {
+    WebTarget target = getCollection().path("/executionSummary");
+    return TestUtils.get(target, TestSummary.class, authHeaders);
   }
 
   public ResultList<TestCase> getTestCases(

@@ -2886,6 +2886,12 @@ public interface CollectionDAO {
     String getLatestExtension(@Bind("entityFQN") String entityFQN, @Bind("extension") String extension);
 
     @SqlQuery(
+        "SELECT ranked.json FROM (SELECT json, ROW_NUMBER() OVER(PARTITION BY entityFQN ORDER BY `timestamp` DESC) AS row_num "
+            + "FROM entity_extension_time_series WHERE entityFQN IN (<entityFQNs>)) ranked WHERE ranked.row_num = 1")
+    List<String> getLatestExtensionByFQNs(
+        @BindList("entityFQNs") List<String> entityFQNs, @Bind("extension") String extension);
+
+    @SqlQuery(
         "SELECT json FROM entity_extension_time_series WHERE extension = :extension "
             + "ORDER BY timestamp DESC LIMIT 1")
     String getLatestByExtension(@Bind("extension") String extension);
