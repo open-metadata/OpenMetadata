@@ -37,7 +37,7 @@ from metadata.generated.schema.type.schema import DataTypeTopic
 from metadata.ingestion.source.database.datalake.models import DatalakeColumnWrapper
 from metadata.parsers.avro_parser import parse_avro_schema
 from metadata.utils.constants import UTF_8
-from metadata.utils.datalake.datalake_utils import DatalakeFileFormatException
+from metadata.utils.datalake.exception import DatalakeFileFormatException
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()

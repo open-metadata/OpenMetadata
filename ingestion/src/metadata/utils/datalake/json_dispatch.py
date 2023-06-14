@@ -30,7 +30,7 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
     S3Config,
 )
 from metadata.utils.constants import UTF_8
-from metadata.utils.datalake.datalake_utils import DatalakeFileFormatException
+from metadata.utils.datalake.exception import DatalakeFileFormatException
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
