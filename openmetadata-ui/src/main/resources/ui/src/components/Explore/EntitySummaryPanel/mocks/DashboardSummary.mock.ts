@@ -27,7 +27,7 @@ export const mockDashboardEntityDetails: Dashboard = {
   version: 0.1,
   updatedAt: 1672627828951,
   updatedBy: 'admin',
-  dashboardUrl: 'http://localhost:808/superset/dashboard/deck/',
+  sourceUrl: 'http://localhost:808/superset/dashboard/deck/',
   charts: [
     {
       id: 'eba9c260-4036-4c57-92fe-6c6e3d703bda',

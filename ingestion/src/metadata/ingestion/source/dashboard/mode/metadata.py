@@ -91,7 +91,7 @@ class ModeSource(DashboardServiceSource):
         """
         dashboard_request = CreateDashboardRequest(
             name=dashboard_details.get(client.TOKEN),
-            dashboardUrl=dashboard_details[client.LINKS][client.SHARE][client.HREF],
+            sourceUrl=dashboard_details[client.LINKS][client.SHARE][client.HREF],
             displayName=dashboard_details.get(client.NAME),
             description=dashboard_details.get(client.DESCRIPTION)
             if dashboard_details.get(client.DESCRIPTION)

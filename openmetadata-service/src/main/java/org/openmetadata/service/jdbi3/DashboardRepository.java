@@ -40,7 +40,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   private static final String DASHBOARD_UPDATE_FIELDS = "owner,tags,charts,extension,followers,dataModels";
   private static final String DASHBOARD_PATCH_FIELDS = "owner,tags,charts,extension,followers,dataModels";
 
-  private static final String DASHBOARD_URL = "dashboardUrl";
+  private static final String DASHBOARD_URL = "sourceUrl";
 
   public DashboardRepository(CollectionDAO dao) {
     super(

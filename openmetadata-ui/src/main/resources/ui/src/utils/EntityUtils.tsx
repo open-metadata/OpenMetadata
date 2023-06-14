@@ -331,7 +331,7 @@ export const getEntityOverview = (
       return overview;
     }
     case ExplorePageTabs.DASHBOARDS: {
-      const { owner, tags, dashboardUrl, service, displayName } =
+      const { owner, tags, sourceUrl, service, displayName } =
         entityDetail as Dashboard;
       const tier = getTierFromTableTags(tags || []);
 
@@ -352,7 +352,7 @@ export const getEntityOverview = (
             'label.url-uppercase'
           )}`,
           value: displayName || NO_DATA,
-          url: dashboardUrl,
+          url: sourceUrl,
           isLink: true,
           isExternal: true,
           visible: [

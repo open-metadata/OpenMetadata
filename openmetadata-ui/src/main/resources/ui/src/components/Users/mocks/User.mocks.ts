@@ -921,7 +921,7 @@ export const mockEntityData: {
         version: 0.2,
         updatedAt: 1681241402148,
         updatedBy: 'admin',
-        dashboardUrl: 'http://localhost:808/superset/dashboard/deck/',
+        sourceUrl: 'http://localhost:808/superset/dashboard/deck/',
         charts: [
           {
             deleted: false,

@@ -252,7 +252,7 @@ class TableauSource(DashboardServiceSource):
                     classification_name=TABLEAU_TAG_CATEGORY,
                     include_tags=self.source_config.includeTags,
                 ),
-                dashboardUrl=dashboard_details.webpageUrl,
+                sourceUrl=dashboard_details.webpageUrl,
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
             )
             yield dashboard_request

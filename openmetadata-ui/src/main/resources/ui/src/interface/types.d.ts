@@ -223,7 +223,7 @@ declare module 'Models' {
     };
     brokers?: Array<string>;
     schemaRegistry?: string;
-    dashboardUrl?: string;
+    sourceUrl?: string;
     username?: string;
     password?: string;
     url?: string;

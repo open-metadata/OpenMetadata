@@ -649,7 +649,7 @@ def _(record: Dashboard, _: OpenMetadata) -> DashboardESDocument:
         version=record.version.__root__,
         updatedAt=record.updatedAt.__root__,
         updatedBy=record.updatedBy,
-        dashboardUrl=record.dashboardUrl,
+        sourceUrl=record.sourceUrl,
         charts=record.charts.__root__,
         href=record.href.__root__,
         deleted=record.deleted,

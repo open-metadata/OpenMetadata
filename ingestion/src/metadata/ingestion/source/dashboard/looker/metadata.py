@@ -538,7 +538,7 @@ class LookerSource(DashboardServiceSource):
                 )
                 for chart in self.context.charts
             ],
-            dashboardUrl=f"{clean_uri(self.service_connection.hostPort)}/dashboards/{dashboard_details.id}",
+            sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/dashboards/{dashboard_details.id}",
             service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
         yield dashboard_request

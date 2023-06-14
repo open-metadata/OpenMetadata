@@ -372,7 +372,7 @@ class PowerbiSource(DashboardServiceSource):
             if isinstance(dashboard_details, PowerBIDashboard):
                 dashboard_request = CreateDashboardRequest(
                     name=dashboard_details.id,
-                    dashboardUrl=self._get_dashboard_url(
+                    sourceUrl=self._get_dashboard_url(
                         workspace_id=self.context.workspace.id,
                         dashboard_id=dashboard_details.id,
                     ),
@@ -393,7 +393,7 @@ class PowerbiSource(DashboardServiceSource):
                 dashboard_request = CreateDashboardRequest(
                     name=dashboard_details.id,
                     dashboardType=DashboardType.Report,
-                    dashboardUrl=self._get_report_url(
+                    sourceUrl=self._get_report_url(
                         workspace_id=self.context.workspace.id,
                         dashboard_id=dashboard_details.id,
                     ),
@@ -580,7 +580,7 @@ class PowerbiSource(DashboardServiceSource):
                         name=chart.id,
                         displayName=chart_display_name,
                         chartType=ChartType.Other.value,
-                        chartUrl=self._get_chart_url(
+                        sourceUrl=self._get_chart_url(
                             report_id=chart.reportId,
                             workspace_id=self.context.workspace.id,
                             dashboard_id=dashboard_details.id,

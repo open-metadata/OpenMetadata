@@ -133,7 +133,7 @@ class QuicksightSource(DashboardServiceSource):
         """
         dashboard_request = CreateDashboardRequest(
             name=dashboard_details["DashboardId"],
-            dashboardUrl=self.dashboard_url,
+            sourceUrl=self.dashboard_url,
             displayName=dashboard_details["Name"],
             description=dashboard_details["Version"].get("Description", ""),
             charts=[

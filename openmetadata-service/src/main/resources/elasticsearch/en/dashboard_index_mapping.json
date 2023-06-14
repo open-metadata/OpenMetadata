@@ -95,7 +95,7 @@
       "href": {
         "type": "text"
       },
-      "dashboardUrl": {
+      "sourceUrl": {
         "type": "text"
       },
       "charts": {

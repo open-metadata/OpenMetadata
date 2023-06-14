@@ -275,7 +275,7 @@ class LookerUnitTest(TestCase):
                 displayName="title1",
                 description="description",
                 charts=[],
-                dashboardUrl="https://my-looker.com/dashboards/1",
+                sourceUrl="https://my-looker.com/dashboards/1",
                 service=self.looker.context.dashboard_service.fullyQualifiedName.__root__,
                 owner=None,
             )

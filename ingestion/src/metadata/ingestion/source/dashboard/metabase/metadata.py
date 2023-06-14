@@ -99,7 +99,7 @@ class MetabaseSource(DashboardServiceSource):
             )
             dashboard_request = CreateDashboardRequest(
                 name=dashboard_details.id,
-                dashboardUrl=dashboard_url,
+                sourceUrl=dashboard_url,
                 displayName=dashboard_details.name,
                 description=dashboard_details.description,
                 charts=[

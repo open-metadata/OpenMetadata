@@ -163,7 +163,7 @@ EXPECTED_DASHBOARD = [
         name="1",
         displayName="test_db",
         description="SAMPLE DESCRIPTION",
-        dashboardUrl="http://metabase.com/dashboard/1-test-db",
+        sourceUrl="http://metabase.com/dashboard/1-test-db",
         charts=[],
         service=FullyQualifiedEntityName(__root__="mock_metabase"),
     )
