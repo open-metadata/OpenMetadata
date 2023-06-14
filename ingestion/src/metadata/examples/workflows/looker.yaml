@@ -4,10 +4,9 @@ source:
   serviceConnection:
     config:
       type: Looker
-      username: username
-      password: password
+      clientId: clientId
+      clientSecret: clientSecret
       hostPort: http://hostPort
-      env: env
   sourceConfig:
     config:
       type: DashboardMetadata

@@ -8,7 +8,7 @@ source:
         awsAccessKeyId: aws_access_key_id
         awsSecretAccessKey: aws_secret_access_key
         awsRegion: aws region
-        endPointURL: https://quicksight.<region_name>.amazonaws.com
+        endPointURL: https://quicksight.region_name.amazonaws.com
       awsAccountId: aws_account_id
   sourceConfig:
     config:

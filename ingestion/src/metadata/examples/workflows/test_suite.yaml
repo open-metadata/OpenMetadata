@@ -1,10 +1,11 @@
 source:
   type: TestSuite
   serviceName: service_name
+  serviceConnection: {}
   sourceConfig:
     config:
       type: TestSuite
-      entityFullyQualifiedName: ''
+      entityFullyQualifiedName: db.schema.columns
 processor:
   type: orm-test-runner
   config:

@@ -3,9 +3,11 @@ source:
   serviceName: local_deltalake
   serviceConnection:
     config:
-      metastoreHostPort: localhost:9083
-      metastoreFilePath: <path_to_metastore>/metastore_db
-      appName: MyApp
+      type: DeltaLake
+      metastoreConnection:
+        metastoreHostPort: localhost:9083
+        # metastoreFilePath: <path_to_metastore>/metastore_db
+      appName: OpenMetadata
   sourceConfig:
     config:
       type: DatabaseMetadata
