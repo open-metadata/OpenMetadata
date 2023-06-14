@@ -278,6 +278,7 @@ export const ActivityFeedTab = ({
                 />
               </div>
               <FeedPanelBodyV1
+                isOpenInDrawer
                 showThread
                 feed={selectedThread}
                 hidePopover={false}
