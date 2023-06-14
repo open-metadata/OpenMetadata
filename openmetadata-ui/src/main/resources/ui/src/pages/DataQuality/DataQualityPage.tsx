@@ -28,18 +28,18 @@ const DataQualityPage = () => {
   const tabDetails = useMemo(() => {
     const tab: TabsProps['items'] = [
       {
-        label: t('label.by-entity', { entity: t('label.test-suite-plural') }),
-        key: DataQualityPageTabs.TEST_SUITES,
-        children: <TestSuites />,
-      },
-      {
         label: t('label.by-entity', { entity: t('label.table-plural') }),
-
+        children: <TestSuites />,
         key: DataQualityPageTabs.TABLES,
       },
       {
-        label: t('label.by-entity', { entity: t('label.test-plural') }),
+        label: t('label.by-entity', { entity: t('label.test-case-plural') }),
         key: DataQualityPageTabs.TEST_CASES,
+      },
+      {
+        label: t('label.by-entity', { entity: t('label.test-suite-plural') }),
+        key: DataQualityPageTabs.TEST_SUITES,
+        children: <TestSuites />,
       },
     ];
 
@@ -65,7 +65,8 @@ const DataQualityPage = () => {
         </Col>
         <Col span={24}>
           <Tabs
-            activeKey={activeTab ?? DataQualityPageTabs.TEST_SUITES}
+            destroyInactiveTabPane
+            activeKey={activeTab ?? DataQualityPageTabs.TABLES}
             className="custom-tab-spacing"
             data-testid="tabs"
             items={tabDetails}

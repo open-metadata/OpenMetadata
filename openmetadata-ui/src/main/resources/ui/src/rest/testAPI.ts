@@ -171,6 +171,15 @@ export const createTestSuites = async (data: CreateTestSuite) => {
   return response.data;
 };
 
+export const createExecutableTestSuite = async (data: CreateTestSuite) => {
+  const response = await APIClient.post<
+    CreateTestSuite,
+    AxiosResponse<TestSuite>
+  >(`${testSuiteUrl}/executable`, data);
+
+  return response.data;
+};
+
 export const getTestSuiteByName = async (
   name: string,
   params?: ListTestCaseParams

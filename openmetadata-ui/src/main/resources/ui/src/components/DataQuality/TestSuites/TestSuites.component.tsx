@@ -18,22 +18,19 @@ import {
   Space,
   Switch,
   Table,
-  Tooltip,
   Typography,
 } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { ColumnsType } from 'antd/lib/table';
-import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
-import { ReactComponent as IconDelete } from 'assets/svg/ic-delete.svg';
 import { AxiosError } from 'axios';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { LastRunGraph } from 'components/common/LastRunGraph/LastRunGraph.component';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Searchbar from 'components/common/searchbar/Searchbar';
 import ProfilerProgressWidget from 'components/TableProfiler/Component/ProfilerProgressWidget';
-import { ROUTES } from 'constants/constants';
+import { getTableTabPath, ROUTES } from 'constants/constants';
 import { PROGRESS_BAR_COLOR } from 'constants/TestSuite.constant';
+import { EntityTabs } from 'enums/entity.enum';
 import { TestCaseStatus } from 'generated/tests/testCase';
 import { TestSuite } from 'generated/tests/testSuite';
 import { EntityReference } from 'generated/type/entityReference';
@@ -44,6 +41,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import { getListTestSuites } from 'rest/testAPI';
 import { getEntityName } from 'utils/EntityUtils';
+import { getTestSuitePath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
 
@@ -55,12 +53,13 @@ type SearchParams = {
 
 export const TestSuites = () => {
   const { t } = useTranslation();
-  const { tabs = DataQualityPageTabs.TEST_SUITES } =
-    useParams<{ tabs: DataQualityPageTabs }>();
+  const { tab = DataQualityPageTabs.TABLES } =
+    useParams<{ tab: DataQualityPageTabs }>();
   const history = useHistory();
   const location = useLocation();
 
   const [testSuites, setTestSuites] = useState<TestSuite[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const params = useMemo(() => {
     const search = location.search;
@@ -89,6 +88,12 @@ export const TestSuites = () => {
     return testCaseStatus;
   }, []);
 
+  const testSuiteData = useMemo(() => {
+    return testSuites.filter((value) =>
+      tab === DataQualityPageTabs.TABLES ? value.executable : !value.executable
+    );
+  }, [testSuites, tab]);
+
   const columns = useMemo(() => {
     const data: ColumnsType<TestSuite> = [
       {
@@ -97,32 +102,24 @@ export const TestSuites = () => {
         key: 'name',
         fixed: true,
         width: 250,
-        render: (_, record) => (
-          <Typography.Paragraph>{getEntityName(record)}</Typography.Paragraph>
-        ),
-      },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        width: 300,
-        render: (text: string) =>
-          text ? (
-            <RichTextEditorPreviewer markdown={text} />
-          ) : (
-            <Typography.Text
-              className="text-grey-muted"
-              data-testid="no-description">
-              {t('label.no-description')}
-            </Typography.Text>
-          ),
+        render: (_, record) => {
+          const path =
+            tab === DataQualityPageTabs.TABLES
+              ? getTableTabPath(
+                  record.executableEntityReference?.fullyQualifiedName ?? '',
+                  EntityTabs.PROFILER
+                )
+              : getTestSuitePath(record.fullyQualifiedName ?? record.name);
+
+          return <Link to={path}>{getEntityName(record)}</Link>;
+        },
       },
       {
         title: t('label.test-plural'),
         dataIndex: 'tests',
         key: 'tests',
         width: 100,
-        render: () => 10,
+        render: (value: TestSuite['tests']) => value?.length,
       },
       {
         title: `${t('label.success')} %`,
@@ -161,39 +158,6 @@ export const TestSuites = () => {
           </div>
         ),
       },
-      {
-        title: t('label.action-plural'),
-        dataIndex: 'actions',
-        width: 100,
-        key: 'actions',
-        fixed: 'right',
-        render: (_, record) => {
-          return (
-            <Row align="middle">
-              <Col>
-                <Tooltip placement="bottomRight">
-                  <Button
-                    className="flex-center"
-                    data-testid={`edit-${record.name}`}
-                    icon={<IconEdit width={16} />}
-                    type="text"
-                  />
-                </Tooltip>
-              </Col>
-              <Col>
-                <Tooltip placement="bottomLeft">
-                  <Button
-                    className="flex-center"
-                    data-testid={`delete-${record.name}`}
-                    icon={<IconDelete width={16} />}
-                    type="text"
-                  />
-                </Tooltip>
-              </Col>
-            </Row>
-          );
-        },
-      },
     ];
 
     return data;
@@ -209,19 +173,20 @@ export const TestSuites = () => {
   };
 
   const fetchTestSuites = async () => {
+    setIsLoading(true);
     try {
       const result = await getListTestSuites({ fields: 'owner,tests' });
       setTestSuites(result.data);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    if (tabs === DataQualityPageTabs.TEST_SUITES) {
-      fetchTestSuites();
-    }
-  }, [tabs]);
+    fetchTestSuites();
+  }, [tab]);
 
   return (
     <Row className="p-x-lg p-t-md" gutter={[16, 16]}>
@@ -252,11 +217,13 @@ export const TestSuites = () => {
                 value={status}
                 onChange={(value) => handleSearchParam(value, 'status')}
               />
-              <Link to={ROUTES.ADD_TEST_SUITES}>
-                <Button type="primary">
-                  {t('label.add-entity', { entity: t('label.test-suite') })}
-                </Button>
-              </Link>
+              {tab === DataQualityPageTabs.TEST_SUITES && (
+                <Link to={ROUTES.ADD_TEST_SUITES}>
+                  <Button type="primary">
+                    {t('label.add-entity', { entity: t('label.test-suite') })}
+                  </Button>
+                </Link>
+              )}
             </Space>
           </Col>
         </Row>
@@ -270,12 +237,12 @@ export const TestSuites = () => {
           bordered
           columns={columns}
           data-testid="test-suite-table"
-          dataSource={testSuites}
+          dataSource={testSuiteData}
+          loading={isLoading}
           locale={{
             emptyText: <FilterTablePlaceHolder />,
           }}
           pagination={false}
-          scroll={{ x: 1500 }}
           size="middle"
         />
       </Col>

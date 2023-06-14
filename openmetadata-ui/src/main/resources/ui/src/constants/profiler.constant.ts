@@ -327,13 +327,13 @@ export const codeMirrorOption = {
 };
 
 export const STEPS_FOR_ADD_TEST_CASE: Array<StepperStepType> = [
-  { name: t('label.select-add-test-suite'), step: 1 },
   {
     name: t('label.configure-entity', {
       entity: t('label.test-case-lowercase'),
     }),
-    step: 2,
+    step: 1,
   },
+  { name: t('label.success'), step: 2 },
 ];
 
 export const SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME = [

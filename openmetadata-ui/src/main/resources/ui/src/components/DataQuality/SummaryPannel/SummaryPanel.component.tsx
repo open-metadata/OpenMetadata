@@ -11,27 +11,36 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import { LastRunGraph } from 'components/common/LastRunGraph/LastRunGraph.component';
 import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
 import React from 'react';
+import { formatNumberWithComma } from 'utils/CommonUtils';
 
 export const SummaryPanel = () => {
   return (
     <Row gutter={16}>
-      <Col flex="20%">
-        <SummaryCard description={32} title="Success" type="success" />
+      <Col span={6}>
+        <SummaryCard
+          description={formatNumberWithComma(1000)}
+          title="Success"
+          type="success"
+        />
       </Col>
-      <Col flex="20%">
-        <SummaryCard description={112893} title="Aborted" type="aborted" />
+      <Col span={6}>
+        <SummaryCard
+          description={formatNumberWithComma(500)}
+          title="Aborted"
+          type="aborted"
+        />
       </Col>
-      <Col flex="20%">
-        <SummaryCard description={112893} title="Failed" type="failed" />
+      <Col span={6}>
+        <SummaryCard
+          description={formatNumberWithComma(500)}
+          title="Failed"
+          type="failed"
+        />
       </Col>
-      <Col flex="20%">
-        <SummaryCard description={112893} title="Success Percentage" />
-      </Col>
-      <Col flex="20%">
-        <SummaryCard description={<LastRunGraph />} title="Latest Results" />
+      <Col span={6}>
+        <SummaryCard description={formatNumberWithComma(2000)} title="Total" />
       </Col>
     </Row>
   );
