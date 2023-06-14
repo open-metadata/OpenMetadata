@@ -20,15 +20,6 @@ body {
   font-family: 'Poppins', sans-serif;
   font-feature-settings: normal !important;
 }
-a {
-  color: #2eaadc;
-  text-decoration: none;
-}
-a:hover,
-a:focus {
-  color: #2eaadc;
-  text-decoration: none;
-}
 
 p {
   margin-bottom: 0px;
@@ -709,7 +700,7 @@ body .profiler-graph .recharts-active-dot circle {
   background-color: #6b7280;
 }
 .leaf-node.core .react-flow__handle {
-  background-color: #7147e8;
+  background-color: #0950c5;
 }
 .react-flow__edge {
   pointer-events: all;
@@ -717,7 +708,7 @@ body .profiler-graph .recharts-active-dot circle {
 }
 
 .react-flow__edge.selected .react-flow__edge-path {
-  stroke: #7147e8;
+  stroke: #0950c5;
 }
 
 .react-flow__node-default,
@@ -935,7 +926,7 @@ code {
 
 .ant-btn-text:hover span {
   text-decoration: underline;
-  color: #7147e8;
+  color: #0950c5;
   background-color: transparent;
 }
 
@@ -971,7 +962,7 @@ code {
 }
 
 .ant-advaced-field-select {
-  color: #7147e8;
+  color: #0950c5;
   min-width: 130px;
 }
 .ant-suggestion-dropdown {
@@ -1001,28 +992,28 @@ code {
 /* Antd custom button CSS */
 .ant-btn-link-custom,
 .ant-btn-link-custom:hover {
-  color: #7147e8;
+  color: #0950c5;
 }
 .ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
 .ant-btn-primary-custom {
-  background: #7147e8;
+  background: #0950c5;
   color: #ffffff;
-  border-color: #7147e8;
+  border-color: #0950c5;
 }
 
 .ant-dropdown-button.ant-btn-primary-dropdown
   > .ant-btn-primary.ant-btn-icon-only {
-  background: #7147e8;
+  background: #0950c5;
   color: #ffffff;
-  border-color: #7147e8;
+  border-color: #0950c5;
   border-left-color: #ffffff;
 }
 .ant-btn-primary-custom:hover,
 .ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
 .ant-btn-primary-custom span:hover {
-  background: #7147e8;
+  background: #0950c5;
   color: #ffffff;
-  border-color: #7147e8;
+  border-color: #0950c5;
   text-decoration: none;
 }
 
@@ -1037,10 +1028,10 @@ code {
   outline: none;
 }
 .ant-select-custom:not(.ant-select-disabled):hover .ant-select-selector {
-  border-color: #7147e8;
+  border-color: #0950c5;
 }
 .ant-select-focused {
-  border-color: #7147e8;
+  border-color: #0950c5;
   outline: none;
 }
 
@@ -1074,13 +1065,13 @@ code {
   > .ant-tabs-nav-wrap
   > .ant-tabs-nav-list
   > .ant-tabs-tab:hover {
-  color: #7147e8;
+  color: #0950c5;
 }
 .ant-tabs-custom-threadpanel > .ant-tabs-nav > .ant-tabs-nav-wrap {
   padding: 0px 16px;
 }
 .ant-tabs-ink-bar {
-  background: #7147e8;
+  background: #0950c5;
 }
 /* Description tabs CSS */
 
@@ -1173,7 +1164,7 @@ div.ant-typography-ellipsis-custom {
 }
 
 .ant-dropdown-menu-item-selected {
-  color: #7147e8;
+  color: #0950c5;
   background-color: #7147e825;
 }
 
@@ -1183,7 +1174,7 @@ div.ant-typography-ellipsis-custom {
 
 /* antd switch css */
 .ant-switch-checked {
-  background: #7147e8;
+  background: #0950c5;
 }
 /* antd switch css */
 

@@ -188,7 +188,7 @@
   .leaf-node.selected,
   .leaf-node.selected:hover {
     @apply tw-border-primary-active;
-    box-shadow: 0 0 0 0.5px #7147e8;
+    box-shadow: 0 0 0 0.5px #0950c5;
   }
   .tw-filter-seperator {
     @apply tw-mb-1;
