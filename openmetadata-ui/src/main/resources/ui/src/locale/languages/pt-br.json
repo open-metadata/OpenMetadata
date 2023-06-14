@@ -130,6 +130,7 @@
     "collapse-all": "Recolher todas",
     "column": "Coluna",
     "column-entity": "Coluna {{entity}}",
+    "column-lowercase": "column",
     "column-plural": "Colunas",
     "column-profile": "Column Profile",
     "comment-lowercase": "comentar",

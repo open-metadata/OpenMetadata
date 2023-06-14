@@ -130,6 +130,7 @@
     "collapse-all": "全部折叠",
     "column": "列",
     "column-entity": "列{{entity}}",
+    "column-lowercase": "column",
     "column-plural": "列",
     "column-profile": "Column Profile",
     "comment-lowercase": "评论",

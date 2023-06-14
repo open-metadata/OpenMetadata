@@ -130,6 +130,7 @@
     "collapse-all": "全て折り畳む",
     "column": "カラム",
     "column-entity": "カラム {{entity}}",
+    "column-lowercase": "column",
     "column-plural": "カラム",
     "column-profile": "Column Profile",
     "comment-lowercase": "コメント",
