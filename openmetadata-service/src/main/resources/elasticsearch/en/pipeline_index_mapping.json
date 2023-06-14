@@ -90,7 +90,7 @@
       "href": {
         "type": "text"
       },
-      "pipelineUrl": {
+      "sourceUrl": {
         "type": "text"
       },
       "tasks": {

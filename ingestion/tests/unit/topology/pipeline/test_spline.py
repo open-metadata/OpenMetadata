@@ -81,7 +81,7 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
     name=PIPELINE_ID,
     displayName="jdbc postgres ssl app",
     description="",
-    pipelineUrl=MOCK_PIPELINE_URL,
+    sourceUrl=MOCK_PIPELINE_URL,
     tasks=[
         Task(
             name=PIPELINE_ID,
@@ -107,7 +107,7 @@ MOCK_PIPELINE = Pipeline(
     fullyQualifiedName=f"spline_source.{PIPELINE_ID}",
     displayName="MSSQL <> Postgres",
     description="",
-    pipelineUrl=MOCK_PIPELINE_URL,
+    sourceUrl=MOCK_PIPELINE_URL,
     tasks=[
         Task(
             name=PIPELINE_ID,

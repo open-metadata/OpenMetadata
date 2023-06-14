@@ -321,7 +321,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       updateTasks(original, updated);
-      recordChange("pipelineUrl", original.getPipelineUrl(), updated.getPipelineUrl());
+      recordChange("sourceUrl", original.getPipelineUrl(), updated.getPipelineUrl());
       recordChange("concurrency", original.getConcurrency(), updated.getConcurrency());
       recordChange("pipelineLocation", original.getPipelineLocation(), updated.getPipelineLocation());
     }

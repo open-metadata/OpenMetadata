@@ -855,7 +855,7 @@ class SampleDataSource(
                 name=pipeline["name"],
                 displayName=pipeline["displayName"],
                 description=pipeline["description"],
-                pipelineUrl=pipeline["pipelineUrl"],
+                sourceUrl=pipeline["sourceUrl"],
                 tasks=pipeline["tasks"],
                 service=self.pipeline_service.fullyQualifiedName,
             )

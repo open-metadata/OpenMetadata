@@ -829,7 +829,7 @@ export const mockEntityData: {
         version: 0.2,
         updatedAt: 1681241412012,
         updatedBy: 'admin',
-        pipelineUrl: 'http://localhost:8080/tree?dag_id=dim_address_etl',
+        sourceUrl: 'http://localhost:8080/tree?dag_id=dim_address_etl',
         tasks: [
           {
             taskType: 'PrestoOperator',

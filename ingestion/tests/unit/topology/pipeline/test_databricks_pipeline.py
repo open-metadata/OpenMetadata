@@ -143,7 +143,7 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
     name="606358633757175",
     displayName="OpenMetadata Databricks Workflow",
     description="OpenMetadata Databricks Workflow",
-    pipelineUrl="",
+    sourceUrl="",
     tasks=[
         Task(
             name="task_1",

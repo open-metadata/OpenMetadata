@@ -70,7 +70,7 @@ export interface DataObj {
   api_version?: string;
   server?: string;
   env?: string;
-  pipelineUrl?: string;
+  sourceUrl?: string;
 }
 
 export interface EditObj {

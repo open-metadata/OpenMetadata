@@ -171,7 +171,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
       },
       {
         key: `${currentVersionData.serviceType} Url`,
-        value: (currentVersionData as Pipeline).pipelineUrl,
+        value: (currentVersionData as Pipeline).sourceUrl,
         placeholderText:
           currentVersionData.displayName ?? currentVersionData.name,
         isLink: true,

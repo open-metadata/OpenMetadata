@@ -22,7 +22,7 @@ export const mockPipelineEntityDetails: Pipeline = {
   version: 0.1,
   updatedAt: 1672627829327,
   updatedBy: 'admin',
-  pipelineUrl: 'http://localhost:8080/tree?dag_id=dim_address_etl',
+  sourceUrl: 'http://localhost:8080/tree?dag_id=dim_address_etl',
   tasks: [
     {
       name: 'dim_address_task',

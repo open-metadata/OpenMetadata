@@ -17,7 +17,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/pipeline
 - **`version`**: Metadata version of the entity. Refer to *../../type/entityHistory.json#/definitions/entityVersion*.
 - **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`updatedBy`** *(string)*: User who made the update.
-- **`pipelineUrl`** *(string)*: Pipeline  URL to visit/manage. This URL points to respective pipeline service UI.
+- **`sourceUrl`** *(string)*: Pipeline  URL to visit/manage. This URL points to respective pipeline service UI.
 - **`concurrency`** *(integer)*: Concurrency of the Pipeline.
 - **`pipelineLocation`** *(string)*: Pipeline Code Location.
 - **`startDate`**: Start date of the workflow. Refer to *../../type/basic.json#/definitions/dateTime*.

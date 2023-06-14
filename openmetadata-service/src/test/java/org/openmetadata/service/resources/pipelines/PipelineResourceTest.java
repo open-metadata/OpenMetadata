@@ -499,7 +499,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     fieldAdded(change, "description", "newDescription");
     fieldAdded(change, "tasks", TASKS);
     fieldAdded(change, "concurrency", 5);
-    fieldUpdated(change, "pipelineUrl", "http://localhost:8080", "https://airflow.open-metadata.org");
+    fieldUpdated(change, "sourceUrl", "http://localhost:8080", "https://airflow.open-metadata.org");
     pipeline =
         updateAndCheckEntity(
             request

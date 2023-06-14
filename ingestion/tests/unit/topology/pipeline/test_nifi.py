@@ -110,7 +110,7 @@ EXPECTED_NIFI_DETAILS = NifiPipelineDetails(
 EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
     name="d3d6b945-0182-1000-d7e4-d81b8f79f310",
     displayName="NiFi Flow",
-    pipelineUrl=(
+    sourceUrl=(
         "https://localhost:8443/nifi-api/flow/"
         "process-groups/d3d6b945-0182-1000-d7e4-d81b8f79f310"
     ),
@@ -152,7 +152,7 @@ MOCK_PIPELINE = Pipeline(
     name="d3d6b945-0182-1000-d7e4-d81b8f79f310",
     fullyQualifiedName="nifi_source.d3d6b945-0182-1000-d7e4-d81b8f79f310",
     displayName="NiFi Flow",
-    pipelineUrl=(
+    sourceUrl=(
         "https://localhost:8443/nifi-api/flow/"
         "process-groups/d3d6b945-0182-1000-d7e4-d81b8f79f310"
     ),

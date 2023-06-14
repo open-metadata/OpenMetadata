@@ -691,7 +691,7 @@ def _create_pipeline_es_doc(record: Pipeline, _: OpenMetadata) -> PipelineESDocu
         version=record.version.__root__,
         updatedAt=record.updatedAt.__root__,
         updatedBy=record.updatedBy,
-        pipelineUrl=record.pipelineUrl,
+        sourceUrl=record.sourceUrl,
         tasks=record.tasks,
         href=record.href.__root__,
         deleted=record.deleted,

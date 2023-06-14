@@ -151,7 +151,7 @@ EXPECTED_PIPELINE = [
         name="1",
         displayName="Nihar Dataflows",
         description="THis is description for Nihar dataflow",
-        pipelineUrl=None,
+        sourceUrl=None,
         concurrency=None,
         pipelineLocation=None,
         startDate=datetime(2022, 10, 7, 13, 20, 16, tzinfo=timezone.utc),

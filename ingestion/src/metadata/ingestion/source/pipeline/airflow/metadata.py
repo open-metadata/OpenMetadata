@@ -368,7 +368,7 @@ class AirflowSource(PipelineServiceSource):
             pipeline_request = CreatePipelineRequest(
                 name=pipeline_details.dag_id,
                 description=pipeline_details.description,
-                pipelineUrl=f"{clean_uri(self.service_connection.hostPort)}/tree?dag_id={pipeline_details.dag_id}",
+                sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/tree?dag_id={pipeline_details.dag_id}",
                 concurrency=pipeline_details.max_active_runs,
                 pipelineLocation=pipeline_details.fileloc,
                 startDate=pipeline_details.start_date.isoformat()

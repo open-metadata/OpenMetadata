@@ -76,7 +76,7 @@ EXPECTED_CREATED_PIPELINES = [
         name="graph5164c131c3524a271e7ecce49766d50a479b5ff4",
         displayName="story_recommender_job",
         description=None,
-        pipelineUrl=None,
+        sourceUrl=None,
         concurrency=None,
         pipelineLocation=None,
         startDate=None,
@@ -228,7 +228,7 @@ MOCK_PIPELINE = Pipeline(
     fullyQualifiedName="dagster_source.do_it_all_with_default_config",
     displayName="do_it_all_with_default_config",
     description="",
-    pipelineUrl=MOCK_CONNECTION_URI_PATH,
+    sourceUrl=MOCK_CONNECTION_URI_PATH,
     tasks=[
         Task(
             name="a58b1856-729c-493b-bc87-6d2269b43ec0",

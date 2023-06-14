@@ -84,7 +84,7 @@ const mockTasks = [
 const mockTaskUpdateHandler = jest.fn();
 
 const PipelineDetailsProps = {
-  pipelineUrl: '',
+  sourceUrl: '',
   serviceType: '',
   users: [],
   pipelineDetails: { tasks: mockTasks } as Pipeline,

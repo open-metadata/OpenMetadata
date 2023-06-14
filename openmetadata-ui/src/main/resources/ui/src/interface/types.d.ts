@@ -232,7 +232,7 @@ declare module 'Models' {
     api_version?: string;
     server?: string;
     env?: string;
-    pipelineUrl?: string;
+    sourceUrl?: string;
   };
 
   export type ImageShape = 'circle' | 'square';

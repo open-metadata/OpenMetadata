@@ -315,11 +315,11 @@ const PipelineDetails = ({
       key: EntityInfo.TIER,
       value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
     },
-    ...(pipelineDetails.pipelineUrl
+    ...(pipelineDetails.sourceUrl
       ? [
           {
             key: `${serviceType} ${EntityInfo.URL}`,
-            value: pipelineDetails.pipelineUrl,
+            value: pipelineDetails.sourceUrl,
             placeholderText: entityName,
             isLink: true,
             openInNewTab: true,
