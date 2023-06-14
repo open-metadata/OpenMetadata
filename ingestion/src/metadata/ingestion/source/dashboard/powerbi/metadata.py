@@ -378,7 +378,6 @@ class PowerbiSource(DashboardServiceSource):
                     ),
                     displayName=dashboard_details.displayName,
                     dashboardType=DashboardType.Dashboard,
-                    description="",
                     charts=[
                         fqn.build(
                             self.metadata,
@@ -399,7 +398,6 @@ class PowerbiSource(DashboardServiceSource):
                         dashboard_id=dashboard_details.id,
                     ),
                     displayName=dashboard_details.name,
-                    description="",
                     service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
             yield dashboard_request
@@ -581,7 +579,6 @@ class PowerbiSource(DashboardServiceSource):
                     yield CreateChartRequest(
                         name=chart.id,
                         displayName=chart_display_name,
-                        description="",
                         chartType=ChartType.Other.value,
                         chartUrl=self._get_chart_url(
                             report_id=chart.reportId,
