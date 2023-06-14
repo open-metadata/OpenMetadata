@@ -51,7 +51,7 @@ const LeftSidebar = () => {
             data-testid="governance">
             <GovernIcon className="m-0" width={30} />
             <Typography.Text className="left-panel-label">
-              {t('label.govern')}
+              {t('label.govern', { lng: 'en-US' })}
             </Typography.Text>
           </div>
         ),
@@ -68,7 +68,7 @@ const LeftSidebar = () => {
                 <span className="left-panel-item d-flex flex-col items-center">
                   <GlossaryIcon className="m-0" width={30} />
                   <Typography.Text className="left-panel-label">
-                    {t('label.glossary')}
+                    {t('label.glossary', { lng: 'en-US' })}
                   </Typography.Text>
                 </span>
               </NavLink>
@@ -86,7 +86,7 @@ const LeftSidebar = () => {
                 <div className="left-panel-item d-flex flex-col items-center">
                   <ClassificationIcon className="m-0" width={30} />
                   <Typography.Text className="left-panel-label">
-                    {t('label.classification')}
+                    {t('label.classification', { lng: 'en-US' })}
                   </Typography.Text>
                 </div>
               </NavLink>
@@ -114,7 +114,7 @@ const LeftSidebar = () => {
             <div className=" d-flex flex-col items-center">
               <ExploreIcon className="m-0" width={30} />
               <Typography.Text className="left-panel-label">
-                {t('label.explore')}
+                {t('label.explore', { lng: 'en-US' })}
               </Typography.Text>
             </div>
           </NavLink>
@@ -133,7 +133,7 @@ const LeftSidebar = () => {
             <div className="d-flex flex-col items-center">
               <QualityIcon className="m-0" width={30} />
               <Typography.Text className="left-panel-label">
-                {t('label.quality')}
+                {t('label.quality', { lng: 'en-US' })}
               </Typography.Text>
             </div>
           </NavLink>
@@ -152,7 +152,7 @@ const LeftSidebar = () => {
             <div className="d-flex flex-col items-center">
               <InsightsIcon className="m-0" width={30} />
               <Typography.Text className="left-panel-label">
-                {t('label.insight-plural')}
+                {t('label.insight-plural', { lng: 'en-US' })}
               </Typography.Text>
             </div>
           </NavLink>
@@ -180,7 +180,7 @@ const LeftSidebar = () => {
             <div className="d-flex flex-col items-center">
               <SettingsIcon className="m-0" width={30} />
               <Typography.Text className="left-panel-label">
-                {t('label.setting-plural')}
+                {t('label.setting-plural', { lng: 'en-US' })}
               </Typography.Text>
             </div>
           </NavLink>
@@ -191,7 +191,7 @@ const LeftSidebar = () => {
             onClick={() => onLogoutHandler()}>
             <LogoutIcon className="m-0" width={30} />
             <Typography.Text className="left-panel-label">
-              {t('label.logout')}
+              {t('label.logout', { lng: 'en-US' })}
             </Typography.Text>
           </div>
         </Col>
