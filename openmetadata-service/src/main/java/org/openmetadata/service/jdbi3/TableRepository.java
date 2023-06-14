@@ -41,6 +41,7 @@ import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.json.JsonPatch;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
@@ -69,10 +70,14 @@ import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskDetails;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -259,10 +264,9 @@ public class TableRepository extends EntityRepository<Table> {
         entityRelationshipRecords.stream()
             .filter(entityRelationshipRecord -> entityRelationshipRecord.getType().equals(Entity.TEST_SUITE))
             .findFirst();
-    if (!testSuiteRelationshipRecord.isEmpty()) {
-      return getEntity(Entity.TEST_SUITE, testSuiteRelationshipRecord.get().getId(), "*", Include.ALL);
-    }
-    return null;
+    return testSuiteRelationshipRecord.isPresent()
+        ? getEntity(Entity.TEST_SUITE, testSuiteRelationshipRecord.get().getId(), "*", Include.ALL)
+        : null;
   }
 
   @Transaction
@@ -733,6 +737,36 @@ public class TableRepository extends EntityRepository<Table> {
     return allTags;
   }
 
+  @Override
+  public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) throws IOException {
+    // TODO move this as the first check
+    validateEntityLinkFieldExists(entityLink, task.getType());
+    if (entityLink.getFieldName().equals("columns")) {
+      Table table = getByName(null, entityLink.getEntityFQN(), getFields("columns,tags"), Include.ALL);
+      Column column =
+          table.getColumns().stream()
+              .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          CatalogExceptionMessage.invalidFieldName("column", entityLink.getArrayFieldName())));
+
+      String origJson = JsonUtils.pojoToJson(table);
+      if (EntityUtil.isDescriptionTask(task.getType())) {
+        column.setDescription(newValue);
+      } else if (EntityUtil.isTagTask(task.getType())) {
+        List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
+        column.setTags(tags);
+      }
+      String updatedEntityJson = JsonUtils.pojoToJson(table);
+      JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
+      patch(null, table.getId(), user, patch);
+      return;
+    }
+    super.update(task, entityLink, newValue, user);
+  }
+
   private void getColumnTags(boolean setTags, List<Column> columns) {
     for (Column c : listOrEmpty(columns)) {
       c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : null);
@@ -945,6 +979,12 @@ public class TableRepository extends EntityRepository<Table> {
     List<Column> columns = table.getColumns();
     for (Column c : listOrEmpty(columns)) {
       c.setCustomMetrics(setMetrics ? getCustomMetrics(table, c.getName()) : null);
+    }
+  }
+
+  private void validateEntityLinkFieldExists(EntityLink entityLink, TaskType taskType) {
+    if (entityLink.getFieldName() == null) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidTaskField(entityLink, taskType));
     }
   }
 
