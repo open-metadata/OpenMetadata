@@ -56,9 +56,9 @@ const DataQualityPage = () => {
     <PageLayoutV1 pageTitle="Quality">
       <Row className="p-t-md" gutter={[0, 16]}>
         <Col className="p-x-lg" span={24}>
-          <Typography.Paragraph className="font-medium m-b-md">
+          <Typography.Title className="m-b-md" level={5}>
             {t('label.data-quality')}
-          </Typography.Paragraph>
+          </Typography.Title>
           <Typography.Paragraph className="text-grey-muted">
             {t('message.page-sub-header-for-data-quality')}
           </Typography.Paragraph>

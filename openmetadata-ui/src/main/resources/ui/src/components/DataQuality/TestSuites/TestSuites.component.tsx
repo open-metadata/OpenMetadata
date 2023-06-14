@@ -238,7 +238,7 @@ export const TestSuites = () => {
             <Space size={12}>
               <div>
                 <Typography.Text className="text-grey-muted">
-                  {t('label.delete')}
+                  {t('label.deleted')}
                 </Typography.Text>{' '}
                 <Switch
                   checked={deleted === 'true'}
