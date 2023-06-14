@@ -3,6 +3,7 @@ package org.openmetadata.service.resources.dqtests;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
@@ -314,7 +315,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   void get_filterTestSuiteType_200(TestInfo test) throws IOException {
     // Create a logical test suite
     CreateTestSuite createTestSuite = createRequest(test);
-    TestSuite testSuite = createEntity(createTestSuite, ADMIN_AUTH_HEADERS);
+    createEntity(createTestSuite, ADMIN_AUTH_HEADERS);
 
     Map<String, String> queryParams = new HashMap<>();
 
@@ -324,22 +325,22 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     queryParams.put("testSuiteType", "executable");
     testSuiteResultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(2, testSuiteResultList.getData().size());
-    testSuiteResultList.getData().stream()
-                    .forEach(
-                            ts -> {
-                              assertEquals(true, ts.getExecutable());
-                            }
-                    );
+    testSuiteResultList
+        .getData()
+        .forEach(
+            ts -> {
+              assertEquals(true, ts.getExecutable());
+            });
 
     queryParams.put("testSuiteType", "logical");
     testSuiteResultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(1, testSuiteResultList.getData().size());
-    testSuiteResultList.getData().stream()
-            .forEach(
-                    ts -> {
-                      assertEquals(false, ts.getExecutable());
-                    }
-            );
+    testSuiteResultList
+        .getData()
+        .forEach(
+            ts -> {
+              assertEquals(false, ts.getExecutable());
+            });
   }
 
   @Test
@@ -447,6 +448,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
       TestSuite storedTestSuite = testSuiteMap.get(result.getName());
       if (storedTestSuite == null) continue;
       validateCreatedEntity(storedTestSuite, result, ADMIN_AUTH_HEADERS);
+      assertNotNull(storedTestSuite.getSummary());
     }
   }
 

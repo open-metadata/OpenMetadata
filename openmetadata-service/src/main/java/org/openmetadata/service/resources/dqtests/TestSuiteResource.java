@@ -67,7 +67,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public static final String NON_EXECUTABLE_TEST_SUITE_DELETION_ERROR =
       "Cannot delete executable test suite. To delete executable test suite, use DELETE /v1/dataQuality/testSuites/executable/<...>";
 
-  static final String FIELDS = "owner,tests";
+  static final String FIELDS = "owner,tests,summary";
 
   @Override
   public TestSuite addHref(UriInfo uriInfo, TestSuite testSuite) {
