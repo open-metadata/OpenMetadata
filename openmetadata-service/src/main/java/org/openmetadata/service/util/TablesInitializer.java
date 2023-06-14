@@ -185,7 +185,7 @@ public final class TablesInitializer {
     }
     String jdbcUrl = dataSourceFactory.getUrl();
     String user = dataSourceFactory.getUser();
-    String password = dataSourceFactory.getPassword();
+    String password = getPassword(config);
     boolean disableValidateOnMigrate = commandLine.hasOption(DISABLE_VALIDATE_ON_MIGRATE);
     if (disableValidateOnMigrate) {
       printToConsoleInDebug("Disabling validation on schema migrate");
