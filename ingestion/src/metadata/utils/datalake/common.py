@@ -12,10 +12,34 @@
 """
 Module to define Datalake Exceptions
 """
-from typing import Any
+from typing import Any, Dict
+
+from metadata.utils.constants import CHUNKSIZE
+
+AZURE_PATH = "abfs://{bucket_name}@{account_name}.dfs.core.windows.net/{key}"
 
 
 class DatalakeFileFormatException(Exception):
     def __init__(self, config_source: Any, file_name: str) -> None:
         message = f"Missing implementation for {config_source.__class__.__name__} for {file_name}"
         super().__init__(message)
+
+
+def return_azure_storage_options(config_source: Any) -> Dict:
+    connection_args = config_source.securityConfig
+    return {
+        "tenant_id": connection_args.tenantId,
+        "client_id": connection_args.clientId,
+        "account_name": connection_args.accountName,
+        "client_secret": connection_args.clientSecret.get_secret_value(),
+    }
+
+
+def dataframe_to_chunks(df):
+    """
+    Reads the Dataframe and returns list of dataframes broken down in chunks
+    """
+    return [
+        df[range_iter : range_iter + CHUNKSIZE]
+        for range_iter in range(0, len(df), CHUNKSIZE)
+    ]
