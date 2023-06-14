@@ -21,9 +21,8 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
-import { getDataModelDetailsPath } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
+import { EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { CreateThread } from 'generated/api/feed/createThread';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
@@ -40,7 +39,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   addDataModelFollower,
   getDataModelsByName,
@@ -59,18 +58,19 @@ import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 
 const DataModelsPage = () => {
-  const history = useHistory();
   const { t } = useTranslation();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { dashboardDataModelFQN, tab } =
-    useParams<{ dashboardDataModelFQN: string; tab: EntityTabs }>();
+  const { dashboardDataModelFQN } =
+    useParams<{ dashboardDataModelFQN: string }>();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
   const [dataModelPermissions, setDataModelPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const [dataModelData, setDataModelData] = useState<DashboardDataModel>();
+  const [dataModelData, setDataModelData] = useState<DashboardDataModel>(
+    {} as DashboardDataModel
+  );
 
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
@@ -158,14 +158,6 @@ const DataModelsPage = () => {
       setHasError(true);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleTabChange = (tabValue: EntityTabs) => {
-    if (tabValue !== tab) {
-      history.push({
-        pathname: getDataModelDetailsPath(dashboardDataModelFQN, tabValue),
-      });
     }
   };
 
@@ -316,17 +308,11 @@ const DataModelsPage = () => {
     try {
       const response = await handleUpdateDataModelData(updatedDataModel);
 
-      setDataModelData((prev) => {
-        if (isUndefined(prev)) {
-          return;
-        }
-
-        return {
-          ...prev,
-          [key]: response[key],
-          version: response.version,
-        };
-      });
+      setDataModelData((prev) => ({
+        ...prev,
+        [key]: response[key],
+        version: response.version,
+      }));
       getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -363,17 +349,14 @@ const DataModelsPage = () => {
 
   return (
     <DataModelDetails
-      activeTab={tab}
       createThread={createThread}
-      dashboardDataModelFQN={dashboardDataModelFQN}
       dataModelData={dataModelData}
       dataModelPermissions={dataModelPermissions}
       entityFieldTaskCount={entityFieldTaskCount}
       entityFieldThreadCount={entityFieldThreadCount}
       feedCount={feedCount}
+      handleColumnUpdateDataModel={handleColumnUpdateDataModel}
       handleFollowDataModel={handleFollowDataModel}
-      handleTabChange={handleTabChange}
-      handleUpdateDataModel={handleColumnUpdateDataModel}
       handleUpdateDescription={handleUpdateDescription}
       handleUpdateOwner={handleUpdateOwner}
       handleUpdateTags={handleUpdateTags}

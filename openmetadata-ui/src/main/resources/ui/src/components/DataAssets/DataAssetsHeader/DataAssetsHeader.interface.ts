@@ -16,6 +16,7 @@ import { OperationPermission } from 'components/PermissionProvider/PermissionPro
 import { EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
+import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
 import { Table } from 'generated/entity/data/table';
@@ -48,6 +49,7 @@ export type DataAssetsHeaderProps = {
   | DataAssetDashboard
   | DataAssetMlmodel
   | DataAssetContainer
+  | DataAssetDashboardDataModel
 );
 
 export interface DataAssetTable {
@@ -77,6 +79,11 @@ export interface DataAssetMlmodel {
 export interface DataAssetContainer {
   dataAsset: Container;
   entityType: EntityType.CONTAINER;
+}
+
+export interface DataAssetDashboardDataModel {
+  dataAsset: DashboardDataModel;
+  entityType: EntityType.DASHBOARD_DATA_MODEL;
 }
 
 export interface DataAssetHeaderInfo {

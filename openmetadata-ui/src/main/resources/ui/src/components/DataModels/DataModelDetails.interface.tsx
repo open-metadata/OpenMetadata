@@ -12,10 +12,10 @@
  */
 
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { EntityTabs } from 'enums/entity.enum';
 import { CreateThread } from 'generated/api/feed/createThread';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Column } from 'generated/entity/data/table';
+import { EntityReference } from 'generated/entity/type';
 import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { EntityTags } from 'Models';
 
@@ -23,18 +23,15 @@ export interface DataModelDetailsProps {
   entityFieldThreadCount: EntityFieldThreadCount[];
   entityFieldTaskCount: EntityFieldThreadCount[];
   feedCount: number;
-  dataModelData?: DashboardDataModel;
-  dashboardDataModelFQN: string;
+  dataModelData: DashboardDataModel;
   dataModelPermissions: OperationPermission;
   createThread: (data: CreateThread) => void;
-  handleFollowDataModel: () => void;
-  handleUpdateTags: (selectedTags?: Array<EntityTags>) => void;
-  handleUpdateOwner: (updatedOwner?: DashboardDataModel['owner']) => void;
-  handleUpdateTier: (updatedTier?: string) => void;
-  activeTab: EntityTabs;
-  handleTabChange: (tabValue: EntityTabs) => void;
+  handleFollowDataModel: () => Promise<void>;
+  handleUpdateTags: (selectedTags?: EntityTags[]) => void;
+  handleUpdateOwner: (owner?: EntityReference) => Promise<void>;
+  handleUpdateTier: (tier?: string) => Promise<void>;
   handleUpdateDescription: (value: string) => Promise<void>;
-  handleUpdateDataModel: (updatedDataModel: Column[]) => Promise<void>;
+  handleColumnUpdateDataModel: (updatedDataModel: Column[]) => Promise<void>;
   onUpdateDataModel: (
     updatedDataModel: DashboardDataModel,
     key: keyof DashboardDataModel

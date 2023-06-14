@@ -36,6 +36,7 @@ import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
+import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
 import { Table } from 'generated/entity/data/table';
@@ -332,6 +333,25 @@ export const DataAssetsHeader = ({
 
         returnData.breadcrumbs =
           getBreadcrumbForEntitiesWithServiceOnly(containerDetails);
+
+        break;
+
+      case EntityType.DASHBOARD_DATA_MODEL:
+        const dataModelDetails = dataAsset as DashboardDataModel;
+
+        returnData.extraInfo = (
+          <>
+            {dataModelDetails.dataModelType && (
+              <ExtraInfoLabel
+                label={t('label.data-model-type')}
+                value={dataModelDetails.dataModelType}
+              />
+            )}
+          </>
+        );
+
+        returnData.breadcrumbs =
+          getBreadcrumbForEntitiesWithServiceOnly(dataModelDetails);
 
         break;
     }
