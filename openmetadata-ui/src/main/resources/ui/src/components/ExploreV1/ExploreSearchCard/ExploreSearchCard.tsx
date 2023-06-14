@@ -108,7 +108,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     }, [source]);
 
     const breadcrumbs = useMemo(
-      () => getEntityBreadcrumbs(source, source.entityType as EntityType),
+      () => getEntityBreadcrumbs(source, source.entityType as EntityType, true),
       [source]
     );
 

@@ -23,7 +23,10 @@ import {
   EntityWithServices,
 } from 'components/Explore/explore.interface';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
+import {
+  SearchedDataProps,
+  SourceType,
+} from 'components/searched-data/SearchedData.interface';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
@@ -935,7 +938,10 @@ export const getBreadcrumbForTable = (
       ? [
           {
             name: getEntityName(entity),
-            url: '#',
+            url: getEntityLinkFromType(
+              entity.fullyQualifiedName ?? '',
+              (entity as SourceType).entityType as EntityType
+            ),
           },
         ]
       : []),
@@ -964,7 +970,10 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
       ? [
           {
             name: getEntityName(entity),
-            url: '#',
+            url: getEntityLinkFromType(
+              entity.fullyQualifiedName ?? '',
+              (entity as SourceType).entityType as EntityType
+            ),
           },
         ]
       : []),

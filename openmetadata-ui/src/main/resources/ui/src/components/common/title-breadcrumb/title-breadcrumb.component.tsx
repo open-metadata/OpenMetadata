@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import React, {
   FunctionComponent,
@@ -102,19 +101,17 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                   </Link>
                 ) : (
                   <>
-                    <Tooltip align={{ offset: [0, 10] }} title={link.name}>
-                      <span
-                        className={classNames(
-                          classes,
-                          'inactive-link tw-cursor-text hover:tw-text-primary hover:tw-no-underline'
-                        )}
-                        data-testid="inactive-link"
-                        style={{
-                          maxWidth,
-                        }}>
-                        {link.name}
-                      </span>
-                    </Tooltip>
+                    <span
+                      className={classNames(
+                        classes,
+                        'inactive-link tw-cursor-text hover:tw-text-primary hover:tw-no-underline'
+                      )}
+                      data-testid="inactive-link"
+                      style={{
+                        maxWidth,
+                      }}>
+                      {link.name}
+                    </span>
                     {noLink && index < titleLinks.length - 1 && (
                       <span className="tw-px-2 text-grey-muted">/</span>
                     )}
