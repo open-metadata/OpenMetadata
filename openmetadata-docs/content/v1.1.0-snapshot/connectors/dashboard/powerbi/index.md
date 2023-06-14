@@ -11,7 +11,7 @@ slug: /connectors/dashboard/powerbi
 | Charts     | {% icon iconName="check" /%} |
 | Owners     | {% icon iconName="cross" /%} |
 | Tags       | {% icon iconName="cross" /%} |
-| Datamodels | {% icon iconName="cross" /%} |
+| Datamodels | {% icon iconName="check" /%} |
 | Lineage    | {% icon iconName="check" /%} |
 
 In this section, we provide guides and references to use the PowerBI connector.
@@ -358,6 +358,22 @@ caption="View the Ingestion Pipeline from the Service Page" /%}
 {% /step %}
 
 {% /stepsContainer %}
+
+## PowerBI Lineage
+
+We are creating the lineage between `Tables - DataSources - Reports - Dashboards`.
+
+Below images show the lineage as shown in PowerBI and the lineage displayed in OpenMetadata
+
+{% image
+  src="/images/v1.1.0/connectors/powerbi/lineage-powerbi.png"
+  alt="PowerBI Lineage"
+  caption="Lineage in PowerBI" /%}
+
+{% image
+  src="/images/v1.1.0/connectors/powerbi/lineage-powerbi-om.png"
+  alt="PowerBI Lineage OpenMetadata"
+  caption="PowerBI Lineage in OpenMetadata" /%}
 
 ## Troubleshooting
 
