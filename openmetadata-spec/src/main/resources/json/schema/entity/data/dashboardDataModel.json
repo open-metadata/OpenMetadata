@@ -18,7 +18,8 @@
         "SupersetDataModel",
         "MetabaseDataModel",
         "LookMlView",
-        "LookMlExplore"
+        "LookMlExplore",
+        "PowerBIDataModel"
       ],
       "javaEnums": [
         {
@@ -35,6 +36,9 @@
         },
         {
           "name": "LookMlExplore"
+        },
+        {
+          "name": "PowerBIDataModel"
         }
       ]
     }
