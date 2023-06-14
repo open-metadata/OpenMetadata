@@ -167,7 +167,7 @@ public final class TablesInitializer {
     }
     String jdbcUrl = dataSourceFactory.getUrl();
     String user = dataSourceFactory.getUser();
-    String password = dataSourceFactory.getPassword();
+    String password = getPassword(config);
     boolean disableValidateOnMigrate = commandLine.hasOption(DISABLE_VALIDATE_ON_MIGRATE);
     if (disableValidateOnMigrate) {
       printToConsoleInDebug("Disabling validation on schema migrate");
@@ -229,7 +229,9 @@ public final class TablesInitializer {
       throws SQLException {
     final Jdbi jdbi =
         Jdbi.create(
-            config.getDataSourceFactory().getUrl(), config.getDataSourceFactory().getUser(), getPassword(config));
+            config.getDataSourceFactory().getUrl(),
+            config.getDataSourceFactory().getUser(),
+            config.getDataSourceFactory().getPassword());
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
