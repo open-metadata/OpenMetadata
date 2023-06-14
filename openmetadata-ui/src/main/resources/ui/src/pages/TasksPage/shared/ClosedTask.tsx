@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { t } from 'i18next';
@@ -21,18 +22,20 @@ import { getDayTimeByTimeStamp } from '../../../utils/TimeUtils';
 
 interface ClosedTaskProps {
   task: Thread['task'];
+  className?: string;
 }
 
-const ClosedTask: FC<ClosedTaskProps> = ({ task }) => {
+const ClosedTask: FC<ClosedTaskProps> = ({ task, className }) => {
   return (
-    <div className="d-flex" data-testid="task-closed">
+    <div className={classNames(className, 'd-flex')} data-testid="task-closed">
       <UserPopOverCard userName={task?.closedBy || ''}>
         <span className="d-flex">
           <ProfilePicture
             displayName={task?.closedBy}
             id=""
             name={task?.closedBy || ''}
-            width="20"
+            type="circle"
+            width="24"
           />
           <span
             className="tw-font-semibold tw-cursor-pointer hover:tw-underline tw-ml-1"

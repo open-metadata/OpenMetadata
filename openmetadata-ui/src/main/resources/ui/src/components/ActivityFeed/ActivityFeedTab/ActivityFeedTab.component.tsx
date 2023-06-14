@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Menu } from 'antd';
+import { Menu, Typography } from 'antd';
 import classNames from 'classnames';
 import Loader from 'components/Loader/Loader';
 import { TaskTab } from 'components/Task/TaskTab/TaskTab.component';
@@ -49,7 +49,7 @@ import {
   ActivityFeedTabProps,
   ActivityFeedTabs,
 } from './ActivityFeedTab.interface';
-import { ReactComponent as TaskCloseIcon } from '/assets/svg/ic-close-task.svg';
+import { ReactComponent as CheckIcon } from '/assets/svg/ic-check.svg';
 import { ReactComponent as TaskIcon } from '/assets/svg/ic-task.svg';
 
 export const ActivityFeedTab = ({
@@ -70,12 +70,6 @@ export const ActivityFeedTab = ({
     useParams<{ subTab: ActivityFeedTabs }>();
   const [taskFilter, setTaskFilter] = useState<'open' | 'close'>('open');
 
-  const handleTabChange = (subTab: string) => {
-    history.push(
-      getEntityDetailLink(entityType, fqn, EntityTabs.ACTIVITY_FEED, subTab)
-    );
-  };
-
   const {
     postFeed,
     selectedThread,
@@ -84,6 +78,13 @@ export const ActivityFeedTab = ({
     getFeedData,
     loading,
   } = useActivityFeedProvider();
+
+  const handleTabChange = (subTab: string) => {
+    history.push(
+      getEntityDetailLink(entityType, fqn, EntityTabs.ACTIVITY_FEED, subTab)
+    );
+    setActiveThread();
+  };
 
   const { feedFilter, threadType } = useMemo(() => {
     return {
@@ -216,28 +217,35 @@ export const ActivityFeedTab = ({
       <div style={{ flex: '0 0 calc(50% - 125px)' }}>
         {activeTab === ActivityFeedTabs.TASKS && (
           <div
-            className="d-flex gap-2 p-sm"
+            className="d-flex gap-4 p-sm p-x-lg"
             style={{ backgroundColor: '#F8F8F8' }}>
-            <Button
-              className={classNames('d-flex  no-border', {
-                'text-medium': taskFilter === 'open',
+            <Typography.Text
+              className={classNames(
+                'cursor-pointer p-l-xss d-flex items-center',
+                {
+                  'font-medium': taskFilter === 'open',
+                }
+              )}
+              onClick={() => {
+                setTaskFilter('open');
+                setActiveThread();
+              }}>
+              {' '}
+              <TaskIcon className="m-r-xss" width={14} /> {openTasks}{' '}
+              {t('label.open')}
+            </Typography.Text>
+            <Typography.Text
+              className={classNames('cursor-pointer d-flex items-center', {
+                'font-medium': taskFilter === 'close',
               })}
-              icon={<TaskIcon className="m-r-xss" width={14} />}
-              key="open"
-              type="ghost"
-              onClick={() => setTaskFilter('open')}>
-              {openTasks} {t('label.open')}
-            </Button>
-            <Button
-              className={classNames('d-flex  no-border', {
-                'text-medium': taskFilter === 'close',
-              })}
-              icon={<TaskCloseIcon className="m-r-xss" width={14} />}
-              key="close"
-              type="ghost"
-              onClick={() => setTaskFilter('close')}>
-              {closedTasks} {t('label.close')}
-            </Button>
+              onClick={() => {
+                setTaskFilter('close');
+                setActiveThread();
+              }}>
+              {' '}
+              <CheckIcon className="m-r-xss" width={14} /> {closedTasks}{' '}
+              {t('label.close')}
+            </Typography.Text>
           </div>
         )}
         <ActivityFeedListV1

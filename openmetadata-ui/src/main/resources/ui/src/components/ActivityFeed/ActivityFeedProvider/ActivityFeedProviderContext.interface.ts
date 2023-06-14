@@ -28,7 +28,7 @@ export interface ActivityFeedProviderContextType {
   selectedThread: Thread | undefined;
   isDrawerOpen: boolean;
   focusReplyEditor: boolean;
-  setActiveThread: (thread: Thread) => void;
+  setActiveThread: (thread?: Thread) => void;
   deleteFeed: (
     threadId: string,
     postId: string,

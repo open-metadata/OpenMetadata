@@ -70,7 +70,7 @@ const ActivityFeedProvider = ({ children }: Props) => {
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
 
-  const setActiveThread = useCallback((active: Thread) => {
+  const setActiveThread = useCallback((active?: Thread) => {
     setSelectedThread(active);
   }, []);
 

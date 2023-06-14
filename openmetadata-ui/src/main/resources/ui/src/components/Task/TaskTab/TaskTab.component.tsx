@@ -11,7 +11,17 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Col, Form, Row, Space, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Dropdown,
+  Form,
+  MenuProps,
+  Row,
+  Space,
+  Typography,
+} from 'antd';
+import Modal from 'antd/lib/modal/Modal';
 import AppState from 'AppState';
 import { AxiosError } from 'axios';
 import ActivityFeedCardV1 from 'components/ActivityFeed/ActivityFeedCard/ActivityFeedCardV1';
@@ -28,24 +38,25 @@ import { isEmpty, isEqual, isUndefined, noop } from 'lodash';
 import ClosedTask from 'pages/TasksPage/shared/ClosedTask';
 import DescriptionTask from 'pages/TasksPage/shared/DescriptionTask';
 import TagsTask from 'pages/TasksPage/shared/TagsTask';
-import React, { useCallback, useEffect, useMemo } from 'react';
+import {
+  TaskAction,
+  TaskActionMode,
+} from 'pages/TasksPage/TasksPage.interface';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { updateTask } from 'rest/feedsAPI';
 import { ENTITY_LINK_SEPARATOR } from 'utils/EntityUtils';
-import {
-  entityDisplayName,
-  getEntityField,
-  getEntityFQN,
-  prepareFeedLink,
-} from 'utils/FeedUtils';
+import { getEntityField, getEntityFQN, prepareFeedLink } from 'utils/FeedUtils';
 import { getEntityLink } from 'utils/TableUtils';
 import {
   getColumnObject,
   isDescriptionTask,
   isTagsTask,
+  TASK_ACTION_LIST,
 } from 'utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+import Fqn from './../../../utils/Fqn';
 import { TaskTabProps } from './TaskTab.interface';
 import { ReactComponent as TaskCloseIcon } from '/assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '/assets/svg/ic-open-task.svg';
@@ -66,8 +77,10 @@ export const TaskTab = ({
   const history = useHistory();
   const { isAdminUser } = useAuth();
   const { postFeed } = useActivityFeedProvider();
+  const [taskAction, setTaskAction] = useState<TaskAction>(TASK_ACTION_LIST[0]);
 
   const isTaskClosed = isEqual(taskDetails?.status, ThreadTaskStatus.Closed);
+  const [showEditTaskModel, setShowEditTaskModel] = useState(false);
 
   // get current user details
   const currentUser = useMemo(
@@ -117,7 +130,7 @@ export const TaskTab = ({
   const isTaskTags = isTagsTask(taskDetails?.type as TaskType);
 
   const getTaskLinkElement = entityCheck && (
-    <Typography.Text>
+    <Typography.Text className="font-medium text-md">
       <span>{`#${taskDetails?.id} `}</span>
 
       <Typography.Text>{taskDetails?.type}</Typography.Text>
@@ -130,7 +143,7 @@ export const TaskTab = ({
             data-testid="entitylink"
             to={prepareFeedLink(entityType, entityFQN)}
             onClick={(e) => e.stopPropagation()}>
-            {entityDisplayName(entityType, entityFQN)}
+            {Fqn.split(entityFQN).join('  >  ')}
           </Link>
         </EntityPopOverCard>
       </>
@@ -199,68 +212,80 @@ export const TaskTab = ({
     form.setFieldValue('description', currentDescription());
   }, [columnObject, entityField, currentDescription]);
 
+  const handleMenuItemClick: MenuProps['onClick'] = (info) => {
+    if (info.key === TaskActionMode.EDIT) {
+      setShowEditTaskModel(true);
+    } else {
+      onTaskResolve();
+    }
+    setTaskAction(
+      TASK_ACTION_LIST.find((action) => action.key === info.key) ??
+        TASK_ACTION_LIST[0]
+    );
+  };
+
   return (
-    <div className="p-sm">
-      <Row gutter={[0, 24]}>
-        <Col className="d-flex items-center" span={24}>
-          <Icon
-            className="m-r-xs"
-            component={
-              taskDetails?.status === ThreadTaskStatus.Open
-                ? TaskOpenIcon
-                : TaskCloseIcon
+    <Row className="p-y-sm p-x-md" gutter={[0, 24]}>
+      <Col className="d-flex items-center" span={24}>
+        <Icon
+          className="m-r-xs"
+          component={
+            taskDetails?.status === ThreadTaskStatus.Open
+              ? TaskOpenIcon
+              : TaskCloseIcon
+          }
+          style={{ fontSize: '18px' }}
+        />
+
+        {getTaskLinkElement}
+      </Col>
+      <Col span={24}>
+        <Typography.Text className="text-grey-muted">
+          {t('label.assignee-plural')}:{' '}
+        </Typography.Text>
+
+        <OwnerLabel
+          hasPermission={false}
+          owner={taskDetails?.assignees[0]}
+          onUpdate={noop}
+        />
+        <Typography.Text className="text-grey-muted">
+          {t('label.created-by')}:{' '}
+        </Typography.Text>
+        <OwnerLabel
+          hasPermission={false}
+          owner={{ name: task.createdBy, type: 'user', id: '' }}
+          onUpdate={noop}
+        />
+      </Col>
+      <Col span={24}>
+        {isTaskDescription && (
+          <DescriptionTask
+            hasEditAccess={hasEditAccess()}
+            isTaskActionEdit={false}
+            suggestion={task.task?.suggestion ?? ''}
+            taskDetail={task}
+            value={currentDescription()}
+            onChange={(value) => form.setFieldValue('description', value)}
+          />
+        )}
+
+        {isTaskTags && (
+          <TagsTask
+            currentTags={getCurrentTags()}
+            hasEditAccess={hasEditAccess()}
+            isTaskActionEdit={false}
+            task={taskDetails}
+            value={
+              form.getFieldValue('updateTags') ??
+              JSON.stringify(task.task?.suggestion) ??
+              '[]'
             }
-            style={{ fontSize: '18px' }}
+            onChange={(newTags) => form.setFieldValue('updateTags', newTags)}
           />
+        )}
 
-          {getTaskLinkElement}
-        </Col>
-        <Col span={24}>
-          <Typography.Text className="text-grey-muted">
-            {t('label.assignee-plural')}:{' '}
-          </Typography.Text>
-
-          <OwnerLabel
-            hasPermission={false}
-            owner={taskDetails?.assignees[0]}
-            onUpdate={noop}
-          />
-          <Typography.Text className="text-grey-muted">
-            {t('label.created-by')}:{' '}
-          </Typography.Text>
-          <OwnerLabel
-            hasPermission={false}
-            owner={{ name: task.createdBy, type: 'user', id: '' }}
-            onUpdate={noop}
-          />
-        </Col>
-        <Col span={24}>
-          {isTaskDescription && (
-            <DescriptionTask
-              hasEditAccess={hasEditAccess()}
-              isTaskActionEdit={false}
-              suggestion={task.task?.suggestion ?? ''}
-              taskDetail={task}
-              value={currentDescription()}
-              onChange={(value) => form.setFieldValue('description', value)}
-            />
-          )}
-
-          {isTaskTags && (
-            <TagsTask
-              currentTags={getCurrentTags()}
-              hasEditAccess={hasEditAccess()}
-              isTaskActionEdit={false}
-              task={taskDetails}
-              value={
-                form.getFieldValue('updateTags') ??
-                JSON.stringify(task.task?.suggestion) ??
-                '[]'
-              }
-              onChange={(newTags) => form.setFieldValue('updateTags', newTags)}
-            />
-          )}
-
+        <div className="m-l-lg">
           {task?.posts?.map((reply) => (
             <ActivityFeedCardV1
               isPost
@@ -270,29 +295,65 @@ export const TaskTab = ({
               post={reply}
             />
           ))}
+        </div>
+        {task.task?.status === ThreadTaskStatus.Open && (
           <ActivityFeedEditor onSave={onSave} />
+        )}
 
-          <Space
-            className="m-t-sm items-end w-full"
-            data-testid="task-cta-buttons"
-            size="small">
-            {(hasTaskUpdateAccess() || isCreator) && !isTaskClosed && (
-              <Button onClick={noop}>{t('label.close')}</Button>
-            )}
+        <Space
+          className="m-t-sm items-end w-full"
+          data-testid="task-cta-buttons"
+          size="small">
+          {(hasTaskUpdateAccess() || isCreator) && !isTaskClosed && (
+            <Button onClick={noop}>{t('label.close')}</Button>
+          )}
 
-            {isTaskClosed ? (
-              <ClosedTask task={taskDetails} />
-            ) : (
-              <Button
-                className="ant-btn-primary-custom"
+          {isTaskClosed ? (
+            <ClosedTask className="ml-8 m-t-sm p-l-md" task={taskDetails} />
+          ) : (
+            <>
+              <Dropdown.Button
+                menu={{
+                  items: TASK_ACTION_LIST,
+                  selectable: true,
+                  selectedKeys: [taskAction.key],
+                  onClick: handleMenuItemClick,
+                }}
                 type="primary"
                 onClick={onTaskResolve}>
-                {t('label.accept')}
-              </Button>
-            )}
-          </Space>
-        </Col>
-      </Row>
-    </div>
+                {taskAction.label}
+              </Dropdown.Button>
+            </>
+          )}
+        </Space>
+      </Col>
+      <Modal open={showEditTaskModel} title={`Edit task #${taskDetails?.id}`}>
+        <Form>
+          {isTaskTags ? (
+            <TagsTask
+              isTaskActionEdit
+              currentTags={getCurrentTags()}
+              hasEditAccess={hasEditAccess()}
+              task={taskDetails}
+              value={
+                form.getFieldValue('updateTags') ??
+                JSON.stringify(task.task?.suggestion) ??
+                '[]'
+              }
+              onChange={(newTags) => form.setFieldValue('updateTags', newTags)}
+            />
+          ) : (
+            <DescriptionTask
+              isTaskActionEdit
+              hasEditAccess={hasEditAccess()}
+              suggestion={task.task?.suggestion ?? ''}
+              taskDetail={task}
+              value={currentDescription()}
+              onChange={(value) => form.setFieldValue('description', value)}
+            />
+          )}
+        </Form>
+      </Modal>
+    </Row>
   );
 };
