@@ -67,7 +67,7 @@
 		    "name": "dim_location_etl",
 			"displayName": "dim_location etl",
 			"description": "dim_location ETL pipeline",
-			"pipelineUrl": "http://localhost:8080/tree?dag_id=dim_address_etl",
+			"sourceUrl": "http://localhost:8080/tree?dag_id=dim_address_etl",
 			"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
 			"downstreamTasks": ["assert_table_exists"],
 			"taskType": "TrinoOperator"
