@@ -10,12 +10,8 @@
     "sourceConfig":{"config":{}}
   },
   "sink": {
-    "type": "elasticsearch",
-    "config": {
-      "es_host": "localhost",
-      "es_port": 9200,
-      "recreate_indexes": true
-    }
+    "type": "metadata-rest",
+    "config": {}
   },
   "workflowConfig": {
     "openMetadataServerConfig": {

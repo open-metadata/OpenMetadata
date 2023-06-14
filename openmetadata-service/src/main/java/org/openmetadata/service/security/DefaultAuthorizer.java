@@ -22,6 +22,7 @@ import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.type.ResourcePermission;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
@@ -80,6 +81,15 @@ public class DefaultAuthorizer implements Authorizer {
   public void authorizeAdmin(SecurityContext securityContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     if (subjectContext.isAdmin()) {
+      return;
+    }
+    throw new AuthorizationException(notAdmin(securityContext.getUserPrincipal().getName()));
+  }
+
+  @Override
+  public void authorizeAdminOrIngestionBot(SecurityContext securityContext) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (subjectContext.isAdmin() || subjectContext.getUser().getName().equals(Entity.INGESTION_BOT_NAME)) {
       return;
     }
     throw new AuthorizationException(notAdmin(securityContext.getUserPrincipal().getName()));

@@ -21,6 +21,9 @@ from pydantic import BaseModel, ValidationError
 from requests.exceptions import HTTPError
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.api.createEventPublisherJob import (
+    CreateEventPublisherJob,
+)
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
@@ -34,6 +37,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
+from metadata.generated.schema.system.eventPublisherJob import PublisherType
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.models.delete_entity import DeleteEntity
@@ -111,6 +115,7 @@ class MetadataRestSink(Sink[Entity]):
             OMetaTestCaseResultsSample, self.write_test_case_results_sample
         )
         self.write_record.register(OMetaTopicSampleData, self.write_topic_sample_data)
+        self.write_record.register(CreateEventPublisherJob, self.write_reindex_data)
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -485,6 +490,20 @@ class MetadataRestSink(Sink[Entity]):
             logger.debug(traceback.format_exc())
             logger.error(
                 f"Unexpected error while ingesting table constraints for table id [{record.table.id}]: {exc}"
+            )
+
+    def write_reindex_data(self, record: CreateEventPublisherJob):
+        """
+        Patch table constraints
+        """
+        try:
+            if record.publisherType == PublisherType.elasticSearch:
+                self.metadata.reindex_es(config=record)
+                logger.debug("Successfully created the elasticsearch reindex job")
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Unexpected error while triggering elasticsearch reindex job: {exc}"
             )
 
     def close(self):

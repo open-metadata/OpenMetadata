@@ -437,8 +437,8 @@ public class SearchResource {
       })
   public Response reindexLatestJob(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
       throws IOException {
-    // Only admins  can issue a reindex request
-    authorizer.authorizeAdmin(securityContext);
+    // Only admins or ingestion bot can issue a reindex request
+    authorizer.authorizeAdminOrIngestionBot(securityContext);
     return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getLatestJob()).build();
   }
 
@@ -520,7 +520,8 @@ public class SearchResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateEventPublisherJob createRequest) {
-    authorizer.authorizeAdmin(securityContext);
+    // Only admins or ingestion bot can issue a reindex request
+    authorizer.authorizeAdminOrIngestionBot(securityContext);
     return Response.status(Response.Status.CREATED)
         .entity(
             ReIndexingHandler.getInstance()
