@@ -13,81 +13,10 @@
 
 package org.openmetadata.service.resources;
 
-import static java.lang.String.format;
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
-import static javax.ws.rs.core.Response.Status.CREATED;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.csv.EntityCsvTest.assertSummary;
-import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
-import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
-import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.Entity.FIELD_DELETED;
-import static org.openmetadata.service.Entity.FIELD_EXTENSION;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-import static org.openmetadata.service.Entity.FIELD_TAGS;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.entityIsNotEmpty;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.readOnlyAttribute;
-import static org.openmetadata.service.security.SecurityUtil.authHeaders;
-import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
-import static org.openmetadata.service.util.EntityUtil.fieldAdded;
-import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
-import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
-import static org.openmetadata.service.util.EntityUtil.getEntityReference;
-import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
-import static org.openmetadata.service.util.TestUtils.NON_EXISTENT_ENTITY;
-import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
-import static org.openmetadata.service.util.TestUtils.UpdateType;
-import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
-import static org.openmetadata.service.util.TestUtils.assertEntityPagination;
-import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
-import static org.openmetadata.service.util.TestUtils.assertListNotNull;
-import static org.openmetadata.service.util.TestUtils.assertListNull;
-import static org.openmetadata.service.util.TestUtils.assertResponse;
-import static org.openmetadata.service.util.TestUtils.assertResponseContains;
-import static org.openmetadata.service.util.TestUtils.checkUserFollowing;
-import static org.openmetadata.service.util.TestUtils.validateEntityReference;
-import static org.openmetadata.service.util.TestUtils.validateEntityReferences;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Optional;
-import java.util.Random;
-import java.util.UUID;
-import java.util.function.BiConsumer;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import javax.json.JsonPatch;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.text.RandomStringGenerator;
@@ -198,6 +127,78 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
+
+import javax.json.JsonPatch;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response.Status;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Optional;
+import java.util.Random;
+import java.util.UUID;
+import java.util.function.BiConsumer;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
+import static java.lang.String.format;
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.CREATED;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.OK;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.csv.EntityCsvTest.assertSummary;
+import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
+import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.FIELD_DELETED;
+import static org.openmetadata.service.Entity.FIELD_EXTENSION;
+import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityIsNotEmpty;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.readOnlyAttribute;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
+import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
+import static org.openmetadata.service.util.EntityUtil.fieldAdded;
+import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
+import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
+import static org.openmetadata.service.util.EntityUtil.getEntityReference;
+import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
+import static org.openmetadata.service.util.TestUtils.NON_EXISTENT_ENTITY;
+import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
+import static org.openmetadata.service.util.TestUtils.UpdateType;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
+import static org.openmetadata.service.util.TestUtils.assertEntityPagination;
+import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
+import static org.openmetadata.service.util.TestUtils.assertListNotNull;
+import static org.openmetadata.service.util.TestUtils.assertListNull;
+import static org.openmetadata.service.util.TestUtils.assertResponse;
+import static org.openmetadata.service.util.TestUtils.assertResponseContains;
+import static org.openmetadata.service.util.TestUtils.checkUserFollowing;
+import static org.openmetadata.service.util.TestUtils.validateEntityReference;
+import static org.openmetadata.service.util.TestUtils.validateEntityReferences;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -346,6 +347,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   // tests are run to save time. But over the course of development of a release, when tests are run enough times,
   // the webhook tests are run for all the entities.
   public static boolean runWebhookTests;
+
+  protected boolean supportsSearchIndex = false;
 
   public EntityResourceTest(
       String entityType,
@@ -1630,7 +1633,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  void checkIndexCreated() throws IOException {
+  protected void checkIndexCreated() throws IOException {
     RestClient client = getSearchClient();
     Request request = new Request("GET", "/_cat/indices");
     request.addParameter("format", "json");
@@ -1652,82 +1655,88 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  void checkCreatedEntity(TestInfo test) throws IOException, InterruptedException {
-    // create entity
-    T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-    EntityReference entityReference = getEntityReference(entity);
-    String indexName = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
-    Thread.sleep(2000L);
-    SearchResponse response = getResponseFormSearch(indexName);
-    List<String> entityIds = new ArrayList();
-    SearchHit[] hits = response.getHits().getHits();
-    for (SearchHit hit : hits) {
-      Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-      entityIds.add(sourceAsMap.get("id").toString());
-    }
-    // verify is it present in search
-    assertTrue(entityIds.contains(entity.getId().toString()));
-  }
-
-  @Test
-  void checkDeletedEntity(TestInfo test) throws HttpResponseException, InterruptedException {
-    // create entity
-    T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-    EntityReference entityReference = getEntityReference(entity);
-    String indexName = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
-    Thread.sleep(2000L);
-    SearchResponse response = getResponseFormSearch(indexName);
-    List<String> entityIds = new ArrayList();
-    SearchHit[] hits = response.getHits().getHits();
-    for (SearchHit hit : hits) {
-      Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-      entityIds.add(sourceAsMap.get("id").toString());
-    }
-    // verify is it present in search
-    assertTrue(entityIds.contains(entity.getId().toString()));
-    entityIds.clear();
-    // delete entity
-    WebTarget target = getResource(entity.getId());
-    TestUtils.delete(target, entityClass, ADMIN_AUTH_HEADERS);
-    // search again in search after deleting
-    Thread.sleep(2000L);
-    response = getResponseFormSearch(indexName);
-    hits = response.getHits().getHits();
-    for (SearchHit hit : hits) {
-      Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-      entityIds.add(sourceAsMap.get("id").toString());
-    }
-    // verify if it is deleted from the search as well
-    assertTrue(!entityIds.contains(entity.getId().toString()));
-  }
-
-  @Test
-  void updateDescriptionAndCheckInSearch(TestInfo test) throws IOException, InterruptedException {
-    T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-    EntityReference entityReference = getEntityReference(entity);
-    String indexName = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
-    String desc = "";
-    String original = JsonUtils.pojoToJson(entity);
-    entity.setDescription("update description");
-    entity = patchEntity(entity.getId(), original, entity, ADMIN_AUTH_HEADERS);
-    Thread.sleep(2000L);
-    SearchResponse response = getResponseFormSearch(indexName);
-    SearchHit[] hits = response.getHits().getHits();
-    for (SearchHit hit : hits) {
-      Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-      if (sourceAsMap.get("id").toString().equals(entity.getId().toString())) {
-        desc = sourceAsMap.get("description").toString();
-        break;
+  protected void checkCreatedEntity(TestInfo test) throws IOException, InterruptedException {
+    if (supportsSearchIndex) {
+      // create entity
+      T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+      EntityReference entityReference = getEntityReference(entity);
+      String indexName = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
+      Thread.sleep(2000L);
+      SearchResponse response = getResponseFormSearch(indexName);
+      List<String> entityIds = new ArrayList();
+      SearchHit[] hits = response.getHits().getHits();
+      for (SearchHit hit : hits) {
+        Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+        entityIds.add(sourceAsMap.get("id").toString());
       }
+      // verify is it present in search
+      assertTrue(entityIds.contains(entity.getId().toString()));
     }
-    // check if description is updated in search as well
-    assertEquals(entity.getDescription(), desc);
   }
 
   @Test
-  void deleteTagAndCheckRelationshipsInSearch(TestInfo test)
+  protected void checkDeletedEntity(TestInfo test) throws HttpResponseException, InterruptedException {
+    if (supportsSearchIndex) {
+      // create entity
+      T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+      EntityReference entityReference = getEntityReference(entity);
+      String indexName = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
+      Thread.sleep(2000L);
+      SearchResponse response = getResponseFormSearch(indexName);
+      List<String> entityIds = new ArrayList();
+      SearchHit[] hits = response.getHits().getHits();
+      for (SearchHit hit : hits) {
+        Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+        entityIds.add(sourceAsMap.get("id").toString());
+      }
+      // verify is it present in search
+      assertTrue(entityIds.contains(entity.getId().toString()));
+      entityIds.clear();
+      // delete entity
+      WebTarget target = getResource(entity.getId());
+      TestUtils.delete(target, entityClass, ADMIN_AUTH_HEADERS);
+      // search again in search after deleting
+      Thread.sleep(2000L);
+      response = getResponseFormSearch(indexName);
+      hits = response.getHits().getHits();
+      for (SearchHit hit : hits) {
+        Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+        entityIds.add(sourceAsMap.get("id").toString());
+      }
+      // verify if it is deleted from the search as well
+      assertTrue(!entityIds.contains(entity.getId().toString()));
+    }
+  }
+
+  @Test
+  protected void updateDescriptionAndCheckInSearch(TestInfo test) throws IOException, InterruptedException {
+    if (supportsSearchIndex) {
+      T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+      EntityReference entityReference = getEntityReference(entity);
+      String indexName = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
+      String desc = "";
+      String original = JsonUtils.pojoToJson(entity);
+      entity.setDescription("update description");
+      entity = patchEntity(entity.getId(), original, entity, ADMIN_AUTH_HEADERS);
+      Thread.sleep(2000L);
+      SearchResponse response = getResponseFormSearch(indexName);
+      SearchHit[] hits = response.getHits().getHits();
+      for (SearchHit hit : hits) {
+        Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+        if (sourceAsMap.get("id").toString().equals(entity.getId().toString())) {
+          desc = sourceAsMap.get("description").toString();
+          break;
+        }
+      }
+      // check if description is updated in search as well
+      assertEquals(entity.getDescription(), desc);
+    }
+  }
+
+  @Test
+  protected void deleteTagAndCheckRelationshipsInSearch(TestInfo test)
       throws HttpResponseException, JsonProcessingException, InterruptedException {
-    if (supportsTags) {
+    if (supportsTags && supportsSearchIndex) {
       // create an entity
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
       EntityReference entityReference = getEntityReference(entity);
@@ -1774,12 +1783,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
           break;
         }
       }
-      // check if the realtionships of tag are also deleted in search
+      // check if the relationships of tag are also deleted in search
       assertTrue(!fqnList.contains(tagLabel.getTagFQN()));
     }
   }
 
-  public static List<NamedXContentRegistry.Entry> getDefaultNamedXContents() {
+  private static List<NamedXContentRegistry.Entry> getDefaultNamedXContents() {
     Map<String, ContextParser<Object, ? extends Aggregation>> map = new HashMap<>();
     map.put(TopHitsAggregationBuilder.NAME, (p, c) -> ParsedTopHits.fromXContent(p, (String) c));
     map.put(StringTerms.NAME, (p, c) -> ParsedStringTerms.fromXContent(p, (String) c));
@@ -1793,7 +1802,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return entries;
   }
 
-  public static SearchResponse getResponseFormSearch(String indexName) throws HttpResponseException {
+  private static SearchResponse getResponseFormSearch(String indexName) throws HttpResponseException {
     WebTarget target = getResource(String.format("search/query?q=&index=%s&from=0&deleted=false&size=50", indexName));
     String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
     SearchResponse response = null;

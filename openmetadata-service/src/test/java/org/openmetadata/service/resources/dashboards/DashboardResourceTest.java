@@ -57,6 +57,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
 
   public DashboardResourceTest() {
     super(Entity.DASHBOARD, Dashboard.class, DashboardList.class, "dashboards", DashboardResource.FIELDS);
+    supportsSearchIndex = true;
   }
 
   @BeforeAll

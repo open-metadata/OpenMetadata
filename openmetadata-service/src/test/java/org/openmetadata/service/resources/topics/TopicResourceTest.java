@@ -75,6 +75,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   public TopicResourceTest() {
     super(Entity.TOPIC, Topic.class, TopicList.class, "topics", TopicResource.FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Test
