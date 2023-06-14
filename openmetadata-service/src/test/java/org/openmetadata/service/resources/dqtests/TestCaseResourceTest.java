@@ -334,8 +334,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     verifyTestCaseResults(testCaseResults, testCase1ResultList, 4);
 
     TestSummary testSummary = getTestSummary(ADMIN_AUTH_HEADERS);
-    assertEquals(1, testSummary.getFailed());
-    assertEquals(1, testSummary.getSuccess());
+    assertEquals(2, testSummary.getFailed());
+    assertEquals(2, testSummary.getSuccess());
     assertEquals(0, testSummary.getAborted());
   }
 

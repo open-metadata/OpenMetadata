@@ -52,6 +52,9 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     HashMap<String, Integer> testCaseSummary = new HashMap<>();
     List<String> testCaseFQNs =
         testCases.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.toList());
+
+    if (testCaseFQNs.isEmpty()) return new TestSummary();
+
     List<String> jsonList =
         daoCollection.entityExtensionTimeSeriesDao().getLatestExtensionByFQNs(testCaseFQNs, TESTCASE_RESULT_EXTENSION);
 
@@ -63,7 +66,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     return new TestSummary()
         .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
         .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
-        .withSuccess(testCaseSummary.getOrDefault(TestCaseStatus.Success.toString(), 0));
+        .withSuccess(testCaseSummary.getOrDefault(TestCaseStatus.Success.toString(), 0))
+        .withTotal(testCaseFQNs.size());
   }
 
   @Override

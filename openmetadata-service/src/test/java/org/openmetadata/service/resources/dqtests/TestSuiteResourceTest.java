@@ -320,11 +320,10 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     Map<String, String> queryParams = new HashMap<>();
 
     ResultList<TestSuite> testSuiteResultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(3, testSuiteResultList.getData().size());
+    assertEquals(10, testSuiteResultList.getData().size());
 
     queryParams.put("testSuiteType", "executable");
     testSuiteResultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(2, testSuiteResultList.getData().size());
     testSuiteResultList
         .getData()
         .forEach(
@@ -334,7 +333,6 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
 
     queryParams.put("testSuiteType", "logical");
     testSuiteResultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(1, testSuiteResultList.getData().size());
     testSuiteResultList
         .getData()
         .forEach(

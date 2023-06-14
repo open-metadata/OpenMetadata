@@ -20,6 +20,10 @@
         "aborted": {
           "description": "Number of test cases that aborted.",
           "type": "integer"
+        },
+        "total": {
+          "description": "Total number of test cases.",
+          "type": "integer"
         }
       }
     },
