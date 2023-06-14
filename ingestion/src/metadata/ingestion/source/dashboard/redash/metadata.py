@@ -16,10 +16,6 @@ from typing import Iterable, List, Optional
 
 from packaging import version
 
-from metadata.generated.schema.api.classification.createClassification import (
-    CreateClassificationRequest,
-)
-from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -42,10 +38,11 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.utils import fqn, tag_utils
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
@@ -94,27 +91,13 @@ class RedashSource(DashboardServiceSource):
         """
         Fetch Dashboard Tags
         """
-        if self.source_config.includeTags:
-            for tag in self.tags:
-                try:
-                    classification = OMetaTagAndClassification(
-                        classification_request=CreateClassificationRequest(
-                            name=REDASH_TAG_CATEGORY,
-                            description="Tags associates with redash entities",
-                        ),
-                        tag_request=CreateTagRequest(
-                            classification=REDASH_TAG_CATEGORY,
-                            name=tag,
-                            description="Redash Tag",
-                        ),
-                    )
-                    yield classification
-                    logger.info(
-                        f"Classification {REDASH_TAG_CATEGORY}, Tag {tag} Ingested"
-                    )
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(f"Error ingesting tag {tag}: {exc}")
+        yield from get_ometa_tag_and_classification(
+            tags=self.tags,
+            classification_name=REDASH_TAG_CATEGORY,
+            tag_description="Redash Tag",
+            classification_desciption="Tags associated with redash entities",
+            include_tags=self.source_config.includeTags,
+        )
 
     def get_dashboards_list(self) -> Optional[List[dict]]:
         """
@@ -192,7 +175,7 @@ class RedashSource(DashboardServiceSource):
                 ],
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 dashboardUrl=self.get_dashboard_url(dashboard_details),
-                tags=tag_utils.get_tag_labels(
+                tags=get_tag_labels(
                     metadata=self.metadata,
                     tags=dashboard_details.get("tags"),
                     classification_name=REDASH_TAG_CATEGORY,

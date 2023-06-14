@@ -23,6 +23,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -52,6 +53,7 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.jdbi3.ClassificationRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -75,6 +77,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "classifications", order = 4) // Initialize before TagResource, Glossary, and GlossaryTerms
 public class ClassificationResource extends EntityResource<Classification, ClassificationRepository> {
   public static final String TAG_COLLECTION_PATH = "/v1/classifications/";
+  static final String FIELDS = "usageCount,termCount";
 
   static class ClassificationList extends ResultList<Classification> {
     /* Required for serde */
@@ -85,8 +88,11 @@ public class ClassificationResource extends EntityResource<Classification, Class
     Objects.requireNonNull(collectionDAO, "TagRepository must not be null");
   }
 
-  @SuppressWarnings("unused") // Method used by reflection
-  static final String FIELDS = "usageCount,termCount";
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("usageCount,termCount", MetadataOperation.VIEW_BASIC);
+    return null;
+  }
 
   @GET
   @Operation(

@@ -28,6 +28,7 @@ public class ResourceRegistry {
               MetadataOperation.CREATE,
               MetadataOperation.DELETE,
               MetadataOperation.VIEW_ALL,
+              MetadataOperation.VIEW_BASIC,
               MetadataOperation.EDIT_ALL,
               MetadataOperation.EDIT_DESCRIPTION,
               MetadataOperation.EDIT_DISPLAY_NAME));

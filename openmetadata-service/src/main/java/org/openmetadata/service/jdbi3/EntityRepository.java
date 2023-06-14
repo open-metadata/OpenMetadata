@@ -92,6 +92,8 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.type.TaskDetails;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
@@ -103,6 +105,7 @@ import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
@@ -263,6 +266,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Set fullyQualifiedName of an entity */
   public void setFullyQualifiedName(T entity) {
     entity.setFullyQualifiedName(entity.getName());
+  }
+
+  /** Update an entity based suggested description and tags in the task */
+  public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) throws IOException {
+    TaskType taskType = task.getType();
+    T entity = getByName(null, entityLink.getEntityFQN(), getFields("tags"), Include.ALL);
+    String origJson = JsonUtils.pojoToJson(entity);
+    if (EntityUtil.isDescriptionTask(taskType) && entityLink.getFieldName().equals(FIELD_DESCRIPTION)) {
+      entity.setDescription(newValue);
+    } else if (supportsTags && EntityUtil.isTagTask(taskType) && entityLink.getFieldName().equals("tags")) {
+      List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
+      entity.setTags(tags);
+    } else {
+      // Not supported
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.invalidFieldForTask(entityLink.getFieldName(), task.getType()));
+    }
+    String updatedEntityJson = JsonUtils.pojoToJson(entity);
+    JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
+    patch(null, entity.getId(), user, patch);
   }
 
   /**

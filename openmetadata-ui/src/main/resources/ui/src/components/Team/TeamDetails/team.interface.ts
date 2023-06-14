@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Team } from '../../generated/entity/teams/team';
+import { Team } from '../../../generated/entity/teams/team';
 
 export interface TeamHierarchyProps {
   currentTeam?: Team;
