@@ -63,6 +63,11 @@ export enum EntityField {
   TASKS = 'tasks',
   ML_FEATURES = 'mlFeatures',
   SCHEMA_TEXT = 'schemaText',
+  OWNER = 'owner',
+  REVIEWERS = 'reviewers',
+  SYNONYMS = 'synonyms',
+  RELATEDTERMS = 'relatedTerms',
+  REFERENCES = 'references',
 }
 
 export const ANNOUNCEMENT_BG = '#FFFDF8';

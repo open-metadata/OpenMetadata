@@ -14,6 +14,7 @@ import { Button, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { TagDetails } from 'components/TableQueries/TableQueryRightPanel/TableQueryRightPanel.interface';
 import TagsContainer from 'components/Tag/TagsContainer/tags-container';
+import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { t } from 'i18next';
@@ -23,12 +24,18 @@ import React, { useEffect, useState } from 'react';
 import { getAllTagsForOptions } from 'utils/TagsUtils';
 
 type Props = {
+  isVersionView?: boolean;
   editable: boolean;
   tags?: TagLabel[];
   onTagsUpdate: (updatedTags: TagLabel[]) => Promise<void>;
 };
 
-const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
+const TagsInput: React.FC<Props> = ({
+  tags = [],
+  editable,
+  onTagsUpdate,
+  isVersionView,
+}) => {
   const [isEditTags, setIsEditTags] = useState(false);
   const [tagDetails, setTagDetails] = useState<TagDetails>({
     isLoading: false,
@@ -114,19 +121,23 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
           />
         )}
       </div>
-      <TagsContainer
-        className="glossary-select"
-        editable={isEditTags}
-        isLoading={tagDetails.isLoading}
-        selectedTags={getSelectedTags()}
-        showAddTagButton={editable && isEmpty(tags)}
-        size="small"
-        tagList={tagDetails.options}
-        type="label"
-        onAddButtonClick={addButtonHandler}
-        onCancel={() => setIsEditTags(false)}
-        onSelectionChange={handleTagSelection}
-      />
+      {isVersionView ? (
+        <TagsViewer sizeCap={-1} tags={tags} type="border" />
+      ) : (
+        <TagsContainer
+          className="glossary-select"
+          editable={isEditTags}
+          isLoading={tagDetails.isLoading}
+          selectedTags={getSelectedTags()}
+          showAddTagButton={editable && isEmpty(tags)}
+          size="small"
+          tagList={tagDetails.options}
+          type="label"
+          onAddButtonClick={addButtonHandler}
+          onCancel={() => setIsEditTags(false)}
+          onSelectionChange={handleTagSelection}
+        />
+      )}
     </div>
   );
 };

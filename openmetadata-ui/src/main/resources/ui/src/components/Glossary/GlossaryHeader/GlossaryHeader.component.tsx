@@ -44,12 +44,14 @@ import { getEntityDeleteMessage } from 'utils/CommonUtils';
 import {
   getGlossaryPath,
   getGlossaryPathWithAction,
+  getGlossaryTermsPath,
   getGlossaryTermsVersionsPath,
   getGlossaryVersionsPath,
 } from 'utils/RouterUtils';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
 
 export interface GlossaryHeaderProps {
+  isVersionView?: boolean;
   supportAddOwner?: boolean;
   selectedData: Glossary | GlossaryTerm;
   permissions: OperationPermission;
@@ -68,6 +70,7 @@ const GlossaryHeader = ({
   isGlossary,
   onAssetAdd,
   onAddGlossaryTerm,
+  isVersionView,
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -97,12 +100,22 @@ const GlossaryHeader = ({
     );
 
   const handleVersionClick = async () => {
-    const path = isGlossary
-      ? getGlossaryVersionsPath(selectedData.id, toString(selectedData.version))
-      : getGlossaryTermsVersionsPath(
-          selectedData.id,
-          toString(selectedData.version)
-        );
+    let path: string;
+    if (isVersionView) {
+      path = isGlossary
+        ? getGlossaryPath(selectedData.fullyQualifiedName)
+        : getGlossaryTermsPath(selectedData.fullyQualifiedName ?? '');
+    } else {
+      path = isGlossary
+        ? getGlossaryVersionsPath(
+            selectedData.id,
+            toString(selectedData.version)
+          )
+        : getGlossaryTermsVersionsPath(
+            selectedData.id,
+            toString(selectedData.version)
+          );
+    }
 
     history.push(path);
   };
@@ -352,27 +365,29 @@ const GlossaryHeader = ({
                 />
               )}
 
-              <Dropdown
-                align={{ targetOffset: [-12, 0] }}
-                className="m-l-xs"
-                menu={{
-                  items: manageButtonContent,
-                }}
-                open={showActions}
-                overlayClassName="glossary-manage-dropdown-list-container"
-                overlayStyle={{ width: '350px' }}
-                placement="bottomRight"
-                trigger={['click']}
-                onOpenChange={setShowActions}>
-                <Tooltip placement="right">
-                  <Button
-                    className="glossary-manage-dropdown-button tw-px-1.5"
-                    data-testid="manage-button"
-                    onClick={() => setShowActions(true)}>
-                    <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                  </Button>
-                </Tooltip>
-              </Dropdown>
+              {!isVersionView && (
+                <Dropdown
+                  align={{ targetOffset: [-12, 0] }}
+                  className="m-l-xs"
+                  menu={{
+                    items: manageButtonContent,
+                  }}
+                  open={showActions}
+                  overlayClassName="glossary-manage-dropdown-list-container"
+                  overlayStyle={{ width: '350px' }}
+                  placement="bottomRight"
+                  trigger={['click']}
+                  onOpenChange={setShowActions}>
+                  <Tooltip placement="right">
+                    <Button
+                      className="glossary-manage-dropdown-button tw-px-1.5"
+                      data-testid="manage-button"
+                      onClick={() => setShowActions(true)}>
+                      <IconDropdown className="anticon self-center manage-dropdown-icon" />
+                    </Button>
+                  </Tooltip>
+                </Dropdown>
+              )}
             </div>
           </div>
         </Col>

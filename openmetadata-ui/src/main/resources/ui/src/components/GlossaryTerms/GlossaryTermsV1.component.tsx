@@ -30,6 +30,7 @@ import AssetsTabs, { AssetsTabRef } from './tabs/AssetsTabs.component';
 import GlossaryOverviewTab from './tabs/GlossaryOverviewTab.component';
 
 type Props = {
+  isVersionView?: boolean;
   permissions: OperationPermission;
   glossaryTerm: GlossaryTerm;
   childGlossaryTerms: GlossaryTerm[];
@@ -55,6 +56,7 @@ const GlossaryTermsV1 = ({
   termsLoading,
   onAddGlossaryTerm,
   onEditGlossaryTerm,
+  isVersionView,
 }: Props) => {
   const {
     glossaryName: glossaryFqn,
@@ -86,59 +88,64 @@ const GlossaryTermsV1 = ({
         children: (
           <GlossaryOverviewTab
             isGlossary={false}
+            isVersionView={isVersionView}
             permissions={permissions}
             selectedData={glossaryTerm}
             onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
           />
         ),
       },
-      {
-        label: (
-          <div data-testid="terms">
-            {t('label.glossary-term-plural')}
-            <span className="p-l-xs ">
-              {getCountBadge(
-                childGlossaryTerms.length,
-                '',
-                activeTab === 'terms'
-              )}
-            </span>
-          </div>
-        ),
-        key: 'terms',
-        children: (
-          <GlossaryTermTab
-            childGlossaryTerms={childGlossaryTerms}
-            isGlossary={false}
-            permissions={permissions}
-            refreshGlossaryTerms={refreshGlossaryTerms}
-            selectedData={glossaryTerm}
-            termsLoading={termsLoading}
-            onAddGlossaryTerm={onAddGlossaryTerm}
-            onEditGlossaryTerm={onEditGlossaryTerm}
-          />
-        ),
-      },
-      {
-        label: (
-          <div data-testid="assets">
-            {t('label.asset-plural')}
-            <span className="p-l-xs ">
-              {getCountBadge(assetCount ?? 0, '', activeTab === 'assets')}
-            </span>
-          </div>
-        ),
-        key: 'assets',
-        children: (
-          <AssetsTabs
-            isSummaryPanelOpen={isSummaryPanelOpen}
-            permissions={permissions}
-            ref={assetTabRef}
-            onAddAsset={() => setAssetModelVisible(true)}
-            onAssetClick={onAssetClick}
-          />
-        ),
-      },
+      ...(!isVersionView
+        ? [
+            {
+              label: (
+                <div data-testid="terms">
+                  {t('label.glossary-term-plural')}
+                  <span className="p-l-xs ">
+                    {getCountBadge(
+                      childGlossaryTerms.length,
+                      '',
+                      activeTab === 'terms'
+                    )}
+                  </span>
+                </div>
+              ),
+              key: 'terms',
+              children: (
+                <GlossaryTermTab
+                  childGlossaryTerms={childGlossaryTerms}
+                  isGlossary={false}
+                  permissions={permissions}
+                  refreshGlossaryTerms={refreshGlossaryTerms}
+                  selectedData={glossaryTerm}
+                  termsLoading={termsLoading}
+                  onAddGlossaryTerm={onAddGlossaryTerm}
+                  onEditGlossaryTerm={onEditGlossaryTerm}
+                />
+              ),
+            },
+            {
+              label: (
+                <div data-testid="assets">
+                  {t('label.asset-plural')}
+                  <span className="p-l-xs ">
+                    {getCountBadge(assetCount ?? 0, '', activeTab === 'assets')}
+                  </span>
+                </div>
+              ),
+              key: 'assets',
+              children: (
+                <AssetsTabs
+                  isSummaryPanelOpen={isSummaryPanelOpen}
+                  permissions={permissions}
+                  ref={assetTabRef}
+                  onAddAsset={() => setAssetModelVisible(true)}
+                  onAssetClick={onAssetClick}
+                />
+              ),
+            },
+          ]
+        : []),
     ];
 
     return items;
@@ -187,6 +194,7 @@ const GlossaryTermsV1 = ({
         <Col span={24}>
           <GlossaryHeader
             isGlossary={false}
+            isVersionView={isVersionView}
             permissions={permissions}
             selectedData={glossaryTerm}
             onAddGlossaryTerm={onAddGlossaryTerm}

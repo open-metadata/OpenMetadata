@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import classNames from 'classnames';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import {
@@ -21,6 +22,8 @@ import {
   diffWordsWithSpace,
 } from 'diff';
 import { OwnerType } from 'enums/user.enum';
+import { Glossary } from 'generated/entity/data/glossary';
+import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Field, Topic } from 'generated/entity/data/topic';
 import { EntityReference } from 'generated/entity/type';
 import { t } from 'i18next';
@@ -82,11 +85,7 @@ export const getDiffByFieldName = (
   name: string,
   changeDescription: ChangeDescription,
   exactMatch?: boolean
-): {
-  added: FieldChange | undefined;
-  deleted: FieldChange | undefined;
-  updated: FieldChange | undefined;
-} => {
+): EntityDiffProps => {
   const fieldsAdded = changeDescription?.fieldsAdded || [];
   const fieldsDeleted = changeDescription?.fieldsDeleted || [];
   const fieldsUpdated = changeDescription?.fieldsUpdated || [];
@@ -122,6 +121,38 @@ export const getDiffValue = (oldValue: string, newValue: string) => {
   });
 };
 
+export const getAddedDiffElement = (text: string) => {
+  return (
+    <Typography.Text
+      underline
+      className="diff-added"
+      data-testid="diff-added"
+      key={uniqueId()}>
+      {text}
+    </Typography.Text>
+  );
+};
+
+export const getRemovedDiffElement = (text: string) => {
+  return (
+    <Typography.Text
+      delete
+      className="text-grey-muted"
+      data-testid="diff-removed"
+      key={uniqueId()}>
+      {text}
+    </Typography.Text>
+  );
+};
+
+export const getNormalDiffElement = (text: string) => {
+  return (
+    <Typography.Text data-testid="diff-normal" key={uniqueId()}>
+      {text}
+    </Typography.Text>
+  );
+};
+
 export const getDescriptionDiff = (
   oldDescription: string,
   newDescription: string,
@@ -135,35 +166,20 @@ export const getDescriptionDiff = (
 
   const result = diffArr.map((diff) => {
     if (diff.added) {
-      return ReactDOMServer.renderToString(
-        <ins className="diff-added" data-testid="diff-added" key={uniqueId()}>
-          {diff.value}
-        </ins>
-      );
+      return ReactDOMServer.renderToString(getAddedDiffElement(diff.value));
     }
     if (diff.removed) {
-      return ReactDOMServer.renderToString(
-        <del
-          data-testid="diff-removed"
-          key={uniqueId()}
-          style={{ color: 'grey', textDecoration: 'line-through' }}>
-          {diff.value}
-        </del>
-      );
+      return ReactDOMServer.renderToString(getRemovedDiffElement(diff.value));
     }
 
-    return ReactDOMServer.renderToString(
-      <span data-testid="diff-normal" key={uniqueId()}>
-        {diff.value}
-      </span>
-    );
+    return ReactDOMServer.renderToString(getNormalDiffElement(diff.value));
   });
 
   return result.join('');
 };
 
 export const getEntityVersionDescription = (
-  currentVersionData: VersionData,
+  currentVersionData: VersionData | Glossary,
   changeDescription: ChangeDescription
 ) => {
   const descriptionDiff = getDiffByFieldName(
@@ -200,7 +216,7 @@ export const getTagsDiff = (
 };
 
 export const getEntityVersionTags = (
-  currentVersionData: VersionData,
+  currentVersionData: VersionData | Glossary | GlossaryTerm,
   changeDescription: ChangeDescription
 ) => {
   const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
@@ -422,8 +438,8 @@ export const getUpdatedMessageSchema = (
           const tagsDiff = getTagsDiff(oldTags, newTags);
           [...tagsDiff, ...(i.tags as Array<TagLabelWithStatus>)].forEach(
             (elem: TagLabelWithStatus) => {
-              if (!flag[elem.tagFQN as string]) {
-                flag[elem.tagFQN as string] = true;
+              if (!flag[elem.tagFQN]) {
+                flag[elem.tagFQN] = true;
                 uniqueTags.push(elem);
               }
             }
@@ -607,8 +623,8 @@ export function getColumnsDataWithVersionChanges<
 
           [...tagsDiff, ...(i.tags as TagLabelWithStatus[])].forEach(
             (elem: TagLabelWithStatus) => {
-              if (!flag[elem.tagFQN as string]) {
-                flag[elem.tagFQN as string] = true;
+              if (!flag[elem.tagFQN]) {
+                flag[elem.tagFQN] = true;
                 uniqueTags.push(elem);
               }
             }

@@ -16,15 +16,23 @@ import { Button, Select, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import TagButton from 'components/TagButton/TagButton.component';
 import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from 'constants/constants';
+import { EntityField } from 'constants/Feeds.constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
+import { ChangeDescription } from 'generated/entity/type';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  getChangedEntityNewValue,
+  getChangedEntityOldValue,
+  getDiffByFieldName,
+} from 'utils/EntityVersionUtils';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 
 interface GlossaryTermSynonymsProps {
+  isVersionView?: boolean;
   permissions: OperationPermission;
   glossaryTerm: GlossaryTerm;
   onGlossaryTermUpdate: (glossaryTerm: GlossaryTerm) => void;
@@ -34,16 +42,17 @@ const GlossaryTermSynonyms = ({
   permissions,
   glossaryTerm,
   onGlossaryTermUpdate,
+  isVersionView,
 }: GlossaryTermSynonymsProps) => {
   const [isViewMode, setIsViewMode] = useState<boolean>(true);
   const [synonyms, setSynonyms] = useState<string[]>([]);
 
   const getSynonyms = () => (
     <div className="d-flex flex-wrap">
-      {synonyms.map((synonym, index) => (
+      {synonyms.map((synonym) => (
         <TagButton
           className="glossary-synonym-tag"
-          key={index}
+          key={synonym}
           label={synonym}
         />
       ))}
@@ -64,6 +73,61 @@ const GlossaryTermSynonyms = ({
       )}
     </div>
   );
+
+  const getSynonymsContainer = useCallback(() => {
+    if (!isVersionView) {
+      return getSynonyms();
+    }
+    const changeDescription = glossaryTerm.changeDescription;
+    const synonymsDiff = getDiffByFieldName(
+      EntityField.SYNONYMS,
+      changeDescription as ChangeDescription
+    );
+
+    const addedSynonyms: string[] = JSON.parse(
+      getChangedEntityNewValue(synonymsDiff) ?? '[]'
+    );
+    const deletedSynonyms: string[] = JSON.parse(
+      getChangedEntityOldValue(synonymsDiff) ?? '[]'
+    );
+
+    const unchangedSynonyms = glossaryTerm.synonyms
+      ? glossaryTerm.synonyms.filter(
+          (synonym) =>
+            !addedSynonyms.find(
+              (addedSynonym: string) => addedSynonym === synonym
+            )
+        )
+      : [];
+
+    return (
+      <div className="d-flex flex-wrap">
+        {unchangedSynonyms.map((synonym) => (
+          <TagButton
+            className="glossary-synonym-tag"
+            key={synonym}
+            label={synonym}
+          />
+        ))}
+        {addedSynonyms.map((synonym) => (
+          <TagButton
+            className="glossary-synonym-tag"
+            key={synonym}
+            label={synonym}
+            versionData={{ added: true }}
+          />
+        ))}
+        {deletedSynonyms.map((synonym) => (
+          <TagButton
+            className="glossary-synonym-tag"
+            key={synonym}
+            label={synonym}
+            versionData={{ removed: true }}
+          />
+        ))}
+      </div>
+    );
+  }, [glossaryTerm]);
 
   const handleCancel = () => {
     setSynonyms(glossaryTerm.synonyms || []);
@@ -116,7 +180,7 @@ const GlossaryTermSynonyms = ({
       </div>
 
       {isViewMode ? (
-        getSynonyms()
+        getSynonymsContainer()
       ) : (
         <div className="d-flex items-center gap-2">
           <Select

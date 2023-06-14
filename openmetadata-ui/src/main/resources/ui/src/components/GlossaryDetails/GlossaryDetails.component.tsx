@@ -17,12 +17,15 @@ import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.co
 import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import GlossaryDetailsRightPanel from 'components/GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import React, { useState } from 'react';
+import { ChangeDescription } from 'generated/entity/type';
+import React, { useMemo, useState } from 'react';
+import { getEntityVersionDescription } from 'utils/EntityVersionUtils';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import './GlossaryDetails.style.less';
 
 type props = {
+  isVersionView?: boolean;
   permissions: OperationPermission;
   glossary: Glossary;
   glossaryTerms: GlossaryTerm[];
@@ -44,6 +47,7 @@ const GlossaryDetails = ({
   refreshGlossaryTerms,
   onAddGlossaryTerm,
   onEditGlossaryTerm,
+  isVersionView,
 }: props) => {
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
@@ -61,6 +65,17 @@ const GlossaryDetails = ({
     }
   };
 
+  const glossaryDescription = useMemo(() => {
+    if (isVersionView) {
+      return getEntityVersionDescription(
+        glossary,
+        glossary.changeDescription as ChangeDescription
+      );
+    } else {
+      return glossary.description;
+    }
+  }, [glossary, isVersionView]);
+
   return (
     <Row
       className="glossary-details"
@@ -69,6 +84,7 @@ const GlossaryDetails = ({
       <Col span={24}>
         <GlossaryHeader
           isGlossary
+          isVersionView={isVersionView}
           permissions={permissions}
           selectedData={glossary}
           onAddGlossaryTerm={onAddGlossaryTerm}
@@ -83,8 +99,8 @@ const GlossaryDetails = ({
             <Space className="w-full" direction="vertical" size={24}>
               <DescriptionV1
                 wrapInCard
-                description={glossary?.description || ''}
-                entityName={glossary?.displayName ?? glossary?.name}
+                description={glossaryDescription}
+                entityName={glossary.displayName ?? glossary.name}
                 hasEditAccess={
                   permissions.EditDescription || permissions.EditAll
                 }
@@ -108,6 +124,7 @@ const GlossaryDetails = ({
           <Col span={6}>
             <GlossaryDetailsRightPanel
               isGlossary
+              isVersionView={isVersionView}
               permissions={permissions}
               selectedData={glossary}
               onUpdate={updateGlossary}

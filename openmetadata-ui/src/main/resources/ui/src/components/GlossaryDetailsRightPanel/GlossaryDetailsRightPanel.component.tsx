@@ -24,17 +24,28 @@ import {
   getUserPath,
   NO_DATA_PLACEHOLDER,
 } from 'constants/constants';
+import { EntityField } from 'constants/Feeds.constants';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
+import { ChangeDescription } from 'generated/entity/type';
 import { EntityReference } from 'generated/type/entityReference';
 import { t } from 'i18next';
-import { cloneDeep, includes, isEqual } from 'lodash';
-import React, { useMemo } from 'react';
+import { cloneDeep, includes, isEqual, isUndefined } from 'lodash';
+import React, { useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
+import {
+  getChangedEntityNewValue,
+  getChangedEntityOldValue,
+  getDiffByFieldName,
+  getDiffValue,
+  getEntityVersionTags,
+} from 'utils/EntityVersionUtils';
 import { Glossary, TagLabel } from '../../generated/entity/data/glossary';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
+import GlossaryReviewers from './GlossaryReviewers';
 
 type props = {
+  isVersionView?: boolean;
   permissions: OperationPermission;
   selectedData: Glossary | GlossaryTerm;
   isGlossary: boolean;
@@ -46,6 +57,7 @@ const GlossaryDetailsRightPanel = ({
   selectedData,
   isGlossary,
   onUpdate,
+  isVersionView,
 }: props) => {
   const hasEditReviewerAccess = useMemo(() => {
     return permissions.EditAll || permissions.EditReviewers;
@@ -90,6 +102,36 @@ const GlossaryDetailsRightPanel = ({
     onUpdate(updatedData);
   };
 
+  const getUserNames = useCallback(
+    (user: EntityReference) => {
+      const ownerName = getEntityName(user);
+      if (!isVersionView) {
+        return ownerName;
+      }
+
+      const ownerDiff = getDiffByFieldName(
+        EntityField.OWNER,
+        selectedData.changeDescription as ChangeDescription
+      );
+
+      const oldOwner = JSON.parse(getChangedEntityOldValue(ownerDiff) ?? '{}');
+      const newOwner = JSON.parse(getChangedEntityNewValue(ownerDiff) ?? '{}');
+
+      const diffOwnerName = getDiffValue(
+        oldOwner?.displayName || oldOwner?.name || '',
+        newOwner?.displayName || newOwner?.name || ''
+      );
+
+      const shouldShowDiff =
+        !isUndefined(ownerDiff?.added) ||
+        !isUndefined(ownerDiff?.deleted) ||
+        !isUndefined(ownerDiff?.updated);
+
+      return shouldShowDiff ? diffOwnerName : ownerName;
+    },
+    [selectedData, isVersionView]
+  );
+
   return (
     <Card>
       <Row gutter={[0, 40]}>
@@ -130,7 +172,7 @@ const GlossaryDetailsRightPanel = ({
                     ? getTeamAndUserDetailsPath(selectedData.owner.name ?? '')
                     : getUserPath(selectedData.owner.name ?? '')
                 }>
-                {getEntityName(selectedData.owner)}
+                {getUserNames(selectedData.owner)}
               </Link>
             </Space>
           )}
@@ -186,24 +228,10 @@ const GlossaryDetailsRightPanel = ({
               )}
           </div>
           <div>
-            {selectedData.reviewers && selectedData.reviewers.length > 0 && (
-              <Space wrap data-testid="glossary-reviewer-name" size={6}>
-                {selectedData.reviewers.map((reviewer) => (
-                  <Space className="m-r-xss" key={reviewer.id} size={4}>
-                    <ProfilePicture
-                      displayName={getEntityName(reviewer)}
-                      id={reviewer.id || ''}
-                      name={reviewer.name || ''}
-                      textClass="text-xs"
-                      width="20"
-                    />
-                    <Link to={getUserPath(reviewer.name ?? '')}>
-                      {getEntityName(reviewer)}
-                    </Link>
-                  </Space>
-                ))}
-              </Space>
-            )}
+            <GlossaryReviewers
+              glossaryData={selectedData}
+              isVersionView={isVersionView}
+            />
 
             {hasEditReviewerAccess && noReviewersSelected && (
               <UserSelectableList
@@ -230,7 +258,15 @@ const GlossaryDetailsRightPanel = ({
             {isGlossary && (
               <TagsInput
                 editable={permissions.EditAll || permissions.EditTags}
-                tags={selectedData.tags}
+                isVersionView={isVersionView}
+                tags={
+                  isVersionView
+                    ? getEntityVersionTags(
+                        selectedData,
+                        selectedData.changeDescription as ChangeDescription
+                      )
+                    : selectedData.tags
+                }
                 onTagsUpdate={handleTagsUpdate}
               />
             )}
