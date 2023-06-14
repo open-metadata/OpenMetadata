@@ -376,6 +376,7 @@ class PowerbiSource(DashboardServiceSource):
                         workspace_id=self.context.workspace.id,
                         dashboard_id=dashboard_details.id,
                     ),
+                    project=str(self.context.workspace.name),
                     displayName=dashboard_details.displayName,
                     dashboardType=DashboardType.Dashboard,
                     charts=[
@@ -393,6 +394,7 @@ class PowerbiSource(DashboardServiceSource):
                 dashboard_request = CreateDashboardRequest(
                     name=dashboard_details.id,
                     dashboardType=DashboardType.Report,
+                    project=str(self.context.workspace.name),
                     dashboardUrl=self._get_report_url(
                         workspace_id=self.context.workspace.id,
                         dashboard_id=dashboard_details.id,
