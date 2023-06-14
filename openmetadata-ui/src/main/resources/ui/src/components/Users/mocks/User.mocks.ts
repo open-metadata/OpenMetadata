@@ -833,7 +833,7 @@ export const mockEntityData: {
         tasks: [
           {
             taskType: 'PrestoOperator',
-            taskUrl:
+            sourceUrl:
               'http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=dim_address_task',
             displayName: 'dim_address Task',
             downstreamTasks: ['assert_table_exists'],
@@ -845,7 +845,7 @@ export const mockEntityData: {
           },
           {
             taskType: 'HiveOperator',
-            taskUrl:
+            sourceUrl:
               'http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists',
             displayName: 'Assert Table Exists',
             downstreamTasks: [],

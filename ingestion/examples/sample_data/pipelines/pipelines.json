@@ -9,7 +9,7 @@
 				"name": "presto_task",
 				"displayName": "Presto Task",
 				"description": "Airflow operator to perform ETL on presto tables",
-				"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
+				"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
 				"downstreamTasks": ["assert_table_exists"],
 				"taskType": "PrestoOperator"
 				},
@@ -17,7 +17,7 @@
 				"name": "assert_table_exists",
 				"displayName": "Assert Table Exists",
 				"description": "Assert if a table exists",
-				"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
+				"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
 				"downstreamTasks": [],
 				"taskType": "HiveOperator"
 				}
@@ -32,7 +32,7 @@
 				"name": "dim_address_task",
 				"displayName": "dim_address Task",
 				"description": "Airflow operator to perform ETL and generate dim_address table",
-				"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=dim_address_task",
+				"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=dim_address_task",
 				"downstreamTasks": ["assert_table_exists"],
 				"taskType": "PrestoOperator"
 				},
@@ -40,7 +40,7 @@
 				"name": "assert_table_exists",
 				"displayName": "Assert Table Exists",
 				"description": "Assert if a table exists",
-				"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
+				"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
 				"downstreamTasks": [],
 				"taskType": "HiveOperator"
 				}
@@ -55,7 +55,7 @@
 				"name": "dim_user_task",
 				"displayName": "dim_user Task",
 				"description": "Airflow operator to perform ETL and generate dim_user table",
-				"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=dim_user_task",
+				"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=dim_user_task",
 				"downstreamTasks": ["assert_table_exists"],
 				"taskType": "PrestoOperator"
 				},
@@ -63,7 +63,7 @@
 				"name": "assert_table_exists",
 				"displayName": "Assert Table Exists",
 				"description": "Assert if a table exists",
-				"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
+				"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
 				"downstreamTasks": [],
 				"taskType": "HiveOperator"
 				}
@@ -78,7 +78,7 @@
 				"name": "dim_location_task",
 				"displayName": "dim_location Task",
 				"description": "Airflow operator to perform ETL and generate dim_location table",
-				"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=dim_location_task",
+				"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=dim_location_task",
 				"downstreamTasks": ["assert_table_exists"],
 				"taskType": "PrestoOperator"
 				},
@@ -86,7 +86,7 @@
 				"name": "assert_table_exists",
 				"displayName": "Assert Table Exists",
 				"description": "Assert if a table exists",
-				"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
+				"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
 				"downstreamTasks": [],
 				"taskType": "HiveOperator"
 				}
@@ -101,7 +101,7 @@
 				"name": "dim_product_task",
 				"displayName": "dim_product Task",
 				"description": "Airflow operator to perform ETL and generate dim_product table",
-				"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=dim_product_task",
+				"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=dim_product_task",
 				"downstreamTasks": ["assert_table_exists"],
 				"taskType": "PrestoOperator"
 				},
@@ -109,7 +109,7 @@
 				"name": "assert_table_exists",
 				"displayName": "Assert Table Exists",
 				"description": "Assert if a table exists",
-				"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
+				"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
 				"downstreamTasks": [],
 				"taskType": "HiveOperator"
 				}
@@ -124,7 +124,7 @@
 				"name": "trino_task",
 				"displayName": "Trino Task",
 				"description": "Airflow operator to perform ETL on trino tables",
-				"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
+				"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
 				"downstreamTasks": ["assert_table_exists"],
 				"taskType": "TrinoOperator"
 			},
@@ -132,7 +132,7 @@
 				"name": "assert_table_exists",
 				"displayName": "Assert Table Exists",
 				"description": "Assert if a table exists",
-				"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
+				"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
 				"downstreamTasks": [],
 				"taskType": "HiveOperator"
 				}
@@ -147,7 +147,7 @@
 				"name": "hive_create_table",
 				"displayName": "Hive Create Table",
 				"description": "Hive Create Table Task",
-				"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=hive_create_table",
+				"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=hive_create_table",
 				"downstreamTasks": ["assert_table_exits"],
 				"taskType": "HiveOperator"
 				},
@@ -155,7 +155,7 @@
 				"name": "assert_table_exists",
 				"displayName": "Assert Table Exists",
 				"description": "Assert if a table exists",
-				"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
+				"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
 				"downstreamTasks": [],
 				"taskType": "HiveOperator"
 				}
@@ -170,7 +170,7 @@
 				"name": "snowflake_task",
 				"displayName": "Snowflake Task",
 				"description": "Airflow operator to perform ETL on snowflake tables",
-				"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
+				"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
 				"downstreamTasks": ["assert_table_exists"],
 				"taskType": "SnowflakeOperator"
 				},
@@ -178,7 +178,7 @@
 				"name": "assert_table_exists",
 				"displayName": "Assert Table Exists",
 				"description": "Assert if a table exists",
-				"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
+				"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
 				"downstreamTasks": [],
 				"taskType": "HiveOperator"
 				}]

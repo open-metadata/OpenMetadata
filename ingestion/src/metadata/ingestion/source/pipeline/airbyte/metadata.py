@@ -91,7 +91,7 @@ class AirbyteSource(PipelineServiceSource):
                 name=connection["connectionId"],
                 displayName=connection["name"],
                 description="",
-                taskUrl=f"{connection_url}/status",
+                sourceUrl=f"{connection_url}/status",
             )
         ]
 

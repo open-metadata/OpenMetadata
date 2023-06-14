@@ -592,13 +592,13 @@ const PipelineDetails = ({
         dataIndex: 'name',
         title: t('label.name'),
         render: (_, record) =>
-          isEmpty(record.taskUrl) ? (
+          isEmpty(record.sourceUrl) ? (
             <span>{getEntityName(record)}</span>
           ) : (
             <Link
               className="flex items-center gap-2"
               target="_blank"
-              to={{ pathname: record.taskUrl }}>
+              to={{ pathname: record.sourceUrl }}>
               <span>{getEntityName(record)}</span>
               <ExternalLinkIcon height={14} width={14} />
             </Link>

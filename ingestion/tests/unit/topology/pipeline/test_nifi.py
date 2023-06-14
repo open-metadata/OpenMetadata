@@ -118,7 +118,7 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
         Task(
             name="d3f023ac-0182-1000-8bbe-e2b00347fff8",
             displayName="FetchFile",
-            taskUrl=(
+            sourceUrl=(
                 "https://localhost:8443/nifi-api/"
                 "processors/d3f023ac-0182-1000-8bbe-e2b00347fff8"
             ),
@@ -128,7 +128,7 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
         Task(
             name="d3f1304d-0182-1000-f0f5-9a6927976941",
             displayName="ListFile",
-            taskUrl=(
+            sourceUrl=(
                 "https://localhost:8443/nifi-api/"
                 "processors/d3f1304d-0182-1000-f0f5-9a6927976941"
             ),
@@ -160,7 +160,7 @@ MOCK_PIPELINE = Pipeline(
         Task(
             name="d3f023ac-0182-1000-8bbe-e2b00347fff8",
             displayName="FetchFile",
-            taskUrl=(
+            sourceUrl=(
                 "https://localhost:8443/nifi-api/processors/"
                 "d3f023ac-0182-1000-8bbe-e2b00347fff8"
             ),
@@ -170,7 +170,7 @@ MOCK_PIPELINE = Pipeline(
         Task(
             name="d3f1304d-0182-1000-f0f5-9a6927976941",
             displayName="ListFile",
-            taskUrl=(
+            sourceUrl=(
                 "https://localhost:8443/nifi-api/processors/"
                 "d3f1304d-0182-1000-f0f5-9a6927976941"
             ),

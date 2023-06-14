@@ -388,7 +388,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         key: 'displayName',
         width: 250,
         render: (_, record) => (
-          <Link target="_blank" to={{ pathname: record.taskUrl }}>
+          <Link target="_blank" to={{ pathname: record.sourceUrl }}>
             <Space>
               <span>{getEntityName(record)}</span>
               <SVGIcons

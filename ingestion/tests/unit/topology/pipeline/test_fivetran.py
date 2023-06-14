@@ -107,7 +107,7 @@ MOCK_PIPELINE = Pipeline(
             name="wackiness_remote_aiding_pointless",
             displayName="test <> postgres_rds",
             description="",
-            taskUrl="",
+            sourceUrl="",
         )
     ],
     service=EntityReference(

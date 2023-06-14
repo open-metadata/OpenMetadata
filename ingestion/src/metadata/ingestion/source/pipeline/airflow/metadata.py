@@ -309,7 +309,7 @@ class AirflowSource(PipelineServiceSource):
             Task(
                 name=task.task_id,
                 description=task.doc_md,
-                taskUrl=(
+                sourceUrl=(
                     f"{clean_uri(host_port)}/taskinstance/list/"
                     f"?flt1_dag_id_equals={dag.dag_id}&_flt_3_task_id={task.task_id}"
                 ),

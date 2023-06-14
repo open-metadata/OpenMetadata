@@ -86,7 +86,7 @@ EXPECTED_CREATED_PIPELINES = [
                 displayName="s3__recommender__recommender_model",
                 fullyQualifiedName=None,
                 description=None,
-                taskUrl=None,
+                sourceUrl=None,
                 downstreamTasks=["s3__recommender__user_story_matrix"],
                 taskType=None,
                 taskSQL=None,
@@ -99,7 +99,7 @@ EXPECTED_CREATED_PIPELINES = [
                 displayName="s3__recommender__user_story_matrix",
                 fullyQualifiedName=None,
                 description=None,
-                taskUrl=None,
+                sourceUrl=None,
                 downstreamTasks=["snowflake__recommender__comment_stories"],
                 taskType=None,
                 taskSQL=None,
@@ -112,7 +112,7 @@ EXPECTED_CREATED_PIPELINES = [
                 displayName="snowflake__recommender__comment_stories",
                 fullyQualifiedName=None,
                 description=None,
-                taskUrl=None,
+                sourceUrl=None,
                 downstreamTasks=[],
                 taskType=None,
                 taskSQL=None,
@@ -125,7 +125,7 @@ EXPECTED_CREATED_PIPELINES = [
                 displayName="snowflake__recommender__component_top_stories",
                 fullyQualifiedName=None,
                 description=None,
-                taskUrl=None,
+                sourceUrl=None,
                 downstreamTasks=[
                     "s3__recommender__recommender_model",
                     "s3__recommender__user_story_matrix",
@@ -141,7 +141,7 @@ EXPECTED_CREATED_PIPELINES = [
                 displayName="snowflake__recommender__user_top_recommended_stories",
                 fullyQualifiedName=None,
                 description=None,
-                taskUrl=None,
+                sourceUrl=None,
                 downstreamTasks=[
                     "s3__recommender__recommender_model",
                     "s3__recommender__user_story_matrix",
@@ -234,7 +234,7 @@ MOCK_PIPELINE = Pipeline(
             name="a58b1856-729c-493b-bc87-6d2269b43ec0",
             displayName="do_it_all_with_default_config",
             description="",
-            taskUrl="",
+            sourceUrl="",
         )
     ],
     service=EntityReference(

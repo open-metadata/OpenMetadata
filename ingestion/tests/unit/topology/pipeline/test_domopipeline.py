@@ -51,7 +51,7 @@ MOCK_PIPELINE = Pipeline(
             name="a58b1856-729c-493b-bc87-6d2269b43ec0",
             displayName="do_it_all_with_default_config",
             description="",
-            taskUrl="",
+            sourceUrl="",
         )
     ],
     service=EntityReference(
@@ -161,7 +161,7 @@ EXPECTED_PIPELINE = [
                 displayName="Nihar Dataflows",
                 fullyQualifiedName=None,
                 description="THis is description for Nihar dataflow",
-                taskUrl=None,
+                sourceUrl=None,
                 downstreamTasks=None,
                 taskType=None,
                 taskSQL=None,

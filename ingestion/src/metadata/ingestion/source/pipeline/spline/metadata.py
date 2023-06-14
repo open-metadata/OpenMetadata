@@ -71,7 +71,7 @@ class SplineSource(PipelineServiceSource):
                 name=pipeline_details.executionEventId,
                 displayName=pipeline_details.applicationName,
                 description="",
-                taskUrl=connection_url,
+                sourceUrl=connection_url,
             )
         ]
 

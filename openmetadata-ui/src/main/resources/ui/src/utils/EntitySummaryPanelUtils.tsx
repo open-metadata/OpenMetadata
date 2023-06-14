@@ -87,7 +87,7 @@ export const getFormattedEntityData = (
       return (entityInfo as Task[]).map((task) => ({
         name: task.name,
         title: (
-          <Link target="_blank" to={{ pathname: task.taskUrl }}>
+          <Link target="_blank" to={{ pathname: task.sourceUrl }}>
             <div className="d-flex items-center">
               <Text
                 className="entity-title text-primary font-medium m-r-xss"

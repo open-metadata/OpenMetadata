@@ -87,7 +87,7 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
             name=PIPELINE_ID,
             displayName="jdbc postgres ssl app",
             description="",
-            taskUrl=MOCK_PIPELINE_URL,
+            sourceUrl=MOCK_PIPELINE_URL,
         )
     ],
     service=FullyQualifiedEntityName(__root__="spline_source"),
@@ -113,7 +113,7 @@ MOCK_PIPELINE = Pipeline(
             name=PIPELINE_ID,
             displayName="jdbc postgres ssl app",
             description="",
-            taskUrl=MOCK_PIPELINE_URL,
+            sourceUrl=MOCK_PIPELINE_URL,
         )
     ],
     service=EntityReference(

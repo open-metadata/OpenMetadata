@@ -114,7 +114,7 @@ class NifiSource(PipelineServiceSource):
                 Task(
                     name=processor.id_,
                     displayName=processor.name,
-                    taskUrl=f"{clean_uri(self.service_connection.hostPort)}{processor.uri}",
+                    sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{processor.uri}",
                     taskType=processor.type_,
                     downstreamTasks=self._get_downstream_tasks_from(
                         source_id=processor.id_,
