@@ -121,6 +121,11 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
           @Min(0)
           @Max(1000000)
           int limitParam,
+      @Parameter(
+              description = "Returns executable or logical test suites. If omitted, returns all test suites.",
+              schema = @Schema(type = "string", example = "executable"))
+          @QueryParam("testSuiteType")
+          String testSuiteType,
       @Parameter(description = "Returns list of test definitions before this cursor", schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
@@ -135,6 +140,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
           Include include)
       throws IOException {
     ListFilter filter = new ListFilter(include);
+    filter.addQueryParam("testSuiteType", testSuiteType);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 

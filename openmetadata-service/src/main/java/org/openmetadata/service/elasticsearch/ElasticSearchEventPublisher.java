@@ -481,17 +481,17 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
       throws IOException {
     // Process creation of test cases (linked to a logical test suite) by adding reference to existing test cases
     List<EntityReference> testCaseReferences = testSuite.getTests();
-    EntityReference testSuiteEntityReference =
-        new EntityReference()
+    TestSuite testSuiteReference =
+        new TestSuite()
             .withId(testSuite.getId())
-            .withType(Entity.TEST_SUITE)
             .withName(testSuite.getName())
             .withDisplayName(testSuite.getDisplayName())
-            .withFullyQualifiedName(testSuite.getFullyQualifiedName())
             .withDescription(testSuite.getDescription())
+            .withFullyQualifiedName(testSuite.getFullyQualifiedName())
             .withDeleted(testSuite.getDeleted())
-            .withHref(testSuite.getHref());
-    Map<String, Object> testSuiteDoc = JsonUtils.getMap(testSuiteEntityReference);
+            .withHref(testSuite.getHref())
+            .withExecutable(testSuite.getExecutable());
+    Map<String, Object> testSuiteDoc = JsonUtils.getMap(testSuiteReference);
     if (event.getEventType() == ENTITY_UPDATED) {
       for (EntityReference testcaseReference : testCaseReferences) {
         UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, testcaseReference.getId().toString());
@@ -526,7 +526,6 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         updateElasticSearch(updateRequest);
         break;
       case ENTITY_DELETED:
-        testCaseIndex = new TestCaseIndex((TestCase) event.getEntity());
         EntityReference testSuiteReference = ((TestCase) event.getEntity()).getTestSuite();
         TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, testSuiteReference.getId(), "", Include.ALL);
         if (testSuite.getExecutable()) {

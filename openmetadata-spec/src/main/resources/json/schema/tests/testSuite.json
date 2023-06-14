@@ -107,6 +107,6 @@
       "$ref": "../type/entityReference.json"
     }
   },
-  "required": ["name", "description"],
+  "required": ["name"],
   "additionalProperties": false
 }

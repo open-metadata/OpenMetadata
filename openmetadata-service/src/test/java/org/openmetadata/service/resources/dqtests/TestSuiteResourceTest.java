@@ -311,6 +311,38 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   }
 
   @Test
+  void get_filterTestSuiteType_200(TestInfo test) throws IOException {
+    // Create a logical test suite
+    CreateTestSuite createTestSuite = createRequest(test);
+    TestSuite testSuite = createEntity(createTestSuite, ADMIN_AUTH_HEADERS);
+
+    Map<String, String> queryParams = new HashMap<>();
+
+    ResultList<TestSuite> testSuiteResultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(3, testSuiteResultList.getData().size());
+
+    queryParams.put("testSuiteType", "executable");
+    testSuiteResultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(2, testSuiteResultList.getData().size());
+    testSuiteResultList.getData().stream()
+                    .forEach(
+                            ts -> {
+                              assertEquals(true, ts.getExecutable());
+                            }
+                    );
+
+    queryParams.put("testSuiteType", "logical");
+    testSuiteResultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(1, testSuiteResultList.getData().size());
+    testSuiteResultList.getData().stream()
+            .forEach(
+                    ts -> {
+                      assertEquals(false, ts.getExecutable());
+                    }
+            );
+  }
+
+  @Test
   @Override
   protected void post_entityCreateWithInvalidName_400() {
     // Create an entity with mandatory name field null
