@@ -23,7 +23,7 @@ import {
   WorkflowType,
 } from 'generated/entity/automations/workflow';
 import { TestConnectionStep } from 'generated/entity/services/connections/testConnectionDefinition';
-import { toNumber } from 'lodash';
+import { isEmpty, toNumber } from 'lodash';
 import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -169,9 +169,12 @@ const TestConnection: FC<TestConnectionProps> = ({
   };
 
   const handleDeleteWorkflow = async (workflowId: string) => {
+    if (isEmpty(workflowId)) {
+      return;
+    }
+
     try {
-      const response = await deleteWorkflowById(workflowId, true);
-      setCurrentWorkflow(response);
+      await deleteWorkflowById(workflowId, true);
     } catch (error) {
       // do not throw error for this API
     }
