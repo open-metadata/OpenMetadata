@@ -27,6 +27,7 @@ import { getDataModelDetailsByFQN } from 'rest/dataModelsAPI';
 import { getUserSuggestions } from 'rest/miscAPI';
 import { getMlModelByFQN } from 'rest/mlModelAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
+import { getContainerByFQN } from 'rest/storageAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTopicByFqn } from 'rest/topicsAPI';
 import {
@@ -190,6 +191,7 @@ export const TASK_ENTITIES = [
   EntityType.TOPIC,
   EntityType.PIPELINE,
   EntityType.MLMODEL,
+  EntityType.CONTAINER,
   EntityType.DATABASE_SCHEMA,
   EntityType.DASHBOARD_DATA_MODEL,
 ];
@@ -272,6 +274,10 @@ export const getBreadCrumbList = (
       return [service(ServiceCategory.DASHBOARD_SERVICES), activeEntity];
     }
 
+    case EntityType.CONTAINER: {
+      return [service(ServiceCategory.STORAGE_SERVICES), activeEntity];
+    }
+
     default:
       return [];
   }
@@ -335,6 +341,15 @@ export const fetchEntityDetail = (
 
     case EntityType.DASHBOARD_DATA_MODEL:
       getDataModelDetailsByFQN(entityFQN, DataModelFields)
+        .then((res) => {
+          setEntityData(res);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+
+    case EntityType.CONTAINER:
+      getContainerByFQN(entityFQN, DataModelFields)
         .then((res) => {
           setEntityData(res);
         })

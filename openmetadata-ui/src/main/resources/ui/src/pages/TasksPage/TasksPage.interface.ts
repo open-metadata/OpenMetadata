@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -25,6 +26,7 @@ export type EntityData =
   | Dashboard
   | Pipeline
   | Mlmodel
+  | Container
   | DatabaseSchema
   | DashboardDataModel;
 

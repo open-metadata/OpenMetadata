@@ -485,6 +485,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
       <Route
         exact
+        component={MlModelPage}
+        path={ROUTES.MLMODEL_DETAILS_WITH_TAB}
+      />
+
+      <Route
+        exact
         component={AddDataQualityTestPage}
         path={ROUTES.ADD_DATA_QUALITY_TEST_CASE}
       />

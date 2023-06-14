@@ -15,7 +15,6 @@ import { Card, Col, Row, Space, Table, Tabs, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import ActivityFeedProvider, {
   useActivityFeedProvider,
 } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -27,8 +26,8 @@ import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAss
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import TableTags from 'components/TableTags/TableTags.component';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
+import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
 import { getDashboardDetailsPath } from 'constants/constants';
-import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { compare } from 'fast-json-patch';
 import { TagSource } from 'generated/type/schema';
 import { isEmpty, isUndefined, map } from 'lodash';
@@ -120,6 +119,8 @@ const DashboardDetails = ({
     entityName,
     followers = [],
     deleted,
+    dashboardTags,
+    tier,
   } = useMemo(() => {
     const { tags = [] } = dashboardDetails;
 
@@ -241,42 +242,6 @@ const DashboardDetails = ({
     }
   }, [charts]);
 
-  const tabs = useMemo(() => {
-    const allTabs = [
-      {
-        label: (
-          <TabsLabel id={EntityTabs.DETAILS} name={t('label.detail-plural')} />
-        ),
-        key: EntityTabs.DETAILS,
-      },
-      {
-        label: (
-          <TabsLabel
-            count={feedCount}
-            id={EntityTabs.ACTIVITY_FEED}
-            isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-            name={t('label.activity-feed-and-task-plural')}
-          />
-        ),
-        key: EntityTabs.ACTIVITY_FEED,
-      },
-      {
-        label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
-        key: EntityTabs.LINEAGE,
-      },
-      {
-        label: (
-          <TabsLabel
-            id={EntityTabs.CUSTOM_PROPERTIES}
-            name={t('label.custom-property-plural')}
-          />
-        ),
-        key: EntityTabs.CUSTOM_PROPERTIES,
-      },
-    ];
-
-    return allTabs;
-  }, [feedCount]);
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       history.push(getDashboardDetailsPath(dashboardFQN, activeKey));
@@ -511,6 +476,21 @@ const DashboardDetails = ({
     );
   };
 
+  const handleTagSelection = async (selectedTags: EntityTags[]) => {
+    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => ({
+      source: tag.source,
+      tagFQN: tag.tagFQN,
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+    }));
+
+    if (updatedTags && dashboardDetails) {
+      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
+      const updatedDashboard = { ...dashboardDetails, tags: updatedTags };
+      await onDashboardUpdate(updatedDashboard, 'tags');
+    }
+  };
+
   const tableColumn: ColumnsType<ChartType> = useMemo(
     () => [
       {
@@ -541,13 +521,13 @@ const DashboardDetails = ({
         }),
         dataIndex: 'chartType',
         key: 'chartType',
-        width: 100,
+        width: 120,
       },
       {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
-        width: 300,
+        width: 350,
         render: renderDescription,
       },
       {
@@ -613,36 +593,93 @@ const DashboardDetails = ({
     ]
   );
 
-  const tabDetails = useMemo(() => {
-    switch (activeTab) {
-      case EntityTabs.CUSTOM_PROPERTIES:
-        return (
-          <CustomPropertyTable
-            className="mt-0-important"
-            entityDetails={
-              dashboardDetails as CustomPropertyProps['entityDetails']
-            }
-            entityType={EntityType.DASHBOARD}
-            handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={
-              dashboardPermissions.EditAll ||
-              dashboardPermissions.EditCustomFields
-            }
+  const tabs = useMemo(
+    () => [
+      {
+        label: (
+          <TabsLabel id={EntityTabs.DETAILS} name={t('label.detail-plural')} />
+        ),
+        key: EntityTabs.DETAILS,
+        children: (
+          <Row gutter={[0, 16]} wrap={false}>
+            <Col className="p-t-sm m-l-lg" flex="auto">
+              <div className="d-flex flex-col gap-4">
+                <DescriptionV1
+                  description={dashboardDetails.description}
+                  entityFieldThreads={getEntityFieldThreadCounts(
+                    EntityField.DESCRIPTION,
+                    entityFieldThreadCount
+                  )}
+                  entityFqn={dashboardDetails.fullyQualifiedName}
+                  entityName={entityName}
+                  entityType={EntityType.DASHBOARD}
+                  hasEditAccess={
+                    dashboardPermissions.EditAll ||
+                    dashboardPermissions.EditDescription
+                  }
+                  isEdit={isEdit}
+                  isReadOnly={dashboardDetails.deleted}
+                  owner={dashboardDetails.owner}
+                  onCancel={onCancel}
+                  onDescriptionEdit={onDescriptionEdit}
+                  onDescriptionUpdate={onDescriptionUpdate}
+                  onThreadLinkSelect={onThreadLinkSelect}
+                />
+
+                {isEmpty(charts) ? (
+                  <ErrorPlaceHolder />
+                ) : (
+                  <Table
+                    bordered
+                    className="p-t-xs"
+                    columns={tableColumn}
+                    data-testid="charts-table"
+                    dataSource={charts}
+                    pagination={false}
+                    rowKey="id"
+                    scroll={{ x: 1200 }}
+                    size="small"
+                  />
+                )}
+              </div>
+            </Col>
+            <Col
+              className="p-t-sm"
+              flex="320px"
+              style={{
+                borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
+                marginLeft: '20px',
+                padding: '0 8px',
+              }}>
+              <TagsContainerV1
+                editable={
+                  dashboardPermissions.EditAll || dashboardPermissions.EditTags
+                }
+                entityFieldThreads={getEntityFieldThreadCounts(
+                  EntityField.TAGS,
+                  entityFieldThreadCount
+                )}
+                entityFqn={dashboardDetails.fullyQualifiedName}
+                entityType={EntityType.DASHBOARD}
+                selectedTags={dashboardTags}
+                onSelectionChange={handleTagSelection}
+                onThreadLinkSelect={onThreadLinkSelect}
+              />
+            </Col>
+          </Row>
+        ),
+      },
+      {
+        label: (
+          <TabsLabel
+            count={feedCount}
+            id={EntityTabs.ACTIVITY_FEED}
+            isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+            name={t('label.activity-feed-and-task-plural')}
           />
-        );
-      case EntityTabs.LINEAGE:
-        return (
-          <Card className={classNames(ENTITY_CARD_CLASS, 'card-body-full')}>
-            <EntityLineageComponent
-              entityType={EntityType.DASHBOARD}
-              hasEditAccess={
-                dashboardPermissions.EditAll || dashboardPermissions.EditLineage
-              }
-            />
-          </Card>
-        );
-      case EntityTabs.ACTIVITY_FEED:
-        return (
+        ),
+        key: EntityTabs.ACTIVITY_FEED,
+        children: (
           <ActivityFeedProvider>
             <ActivityFeedTab
               count={feedCount}
@@ -653,60 +690,65 @@ const DashboardDetails = ({
               onFeedUpdate={() => Promise.resolve()}
             />
           </ActivityFeedProvider>
-        );
-      case EntityTabs.DETAILS:
-      default:
-        return (
-          <div className="p-x-lg">
-            <DescriptionV1
-              description={dashboardDetails.description}
-              entityFieldThreads={getEntityFieldThreadCounts(
-                EntityField.DESCRIPTION,
-                entityFieldThreadCount
-              )}
-              entityFqn={dashboardDetails.fullyQualifiedName}
-              entityName={entityName}
+        ),
+      },
+      {
+        label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
+        key: EntityTabs.LINEAGE,
+        children: (
+          <Card className="card-body-full m-md w-auto h-70vh">
+            <EntityLineageComponent
               entityType={EntityType.DASHBOARD}
               hasEditAccess={
-                dashboardPermissions.EditAll ||
-                dashboardPermissions.EditDescription
+                dashboardPermissions.EditAll || dashboardPermissions.EditLineage
               }
-              isEdit={isEdit}
-              isReadOnly={dashboardDetails.deleted}
-              owner={dashboardDetails.owner}
-              onCancel={onCancel}
-              onDescriptionEdit={onDescriptionEdit}
-              onDescriptionUpdate={onDescriptionUpdate}
-              onThreadLinkSelect={onThreadLinkSelect}
             />
-            {isEmpty(charts) ? (
-              <ErrorPlaceHolder />
-            ) : (
-              <Table
-                bordered
-                className="p-t-xs"
-                columns={tableColumn}
-                data-testid="charts-table"
-                dataSource={charts}
-                pagination={false}
-                rowKey="id"
-                size="small"
-              />
-            )}
-          </div>
-        );
-    }
-  }, [
-    activeTab,
-    isEdit,
-    dashboardDetails,
-    charts,
-    entityFieldTaskCount,
-    entityFieldThreadCount,
-    entityName,
-    tableColumn,
-    dashboardPermissions,
-  ]);
+          </Card>
+        ),
+      },
+      {
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        children: (
+          <CustomPropertyTable
+            entityDetails={
+              dashboardDetails as CustomPropertyProps['entityDetails']
+            }
+            entityType={EntityType.DASHBOARD}
+            handleExtensionUpdate={onExtensionUpdate}
+            hasEditAccess={
+              dashboardPermissions.EditAll ||
+              dashboardPermissions.EditCustomFields
+            }
+          />
+        ),
+      },
+    ],
+    [
+      feedCount,
+      activeTab,
+      isEdit,
+      tableColumn,
+      dashboardDetails,
+      charts,
+      entityFieldTaskCount,
+      entityFieldThreadCount,
+      entityName,
+      dashboardPermissions,
+      dashboardTags,
+      getEntityFieldThreadCounts,
+      onCancel,
+      onDescriptionEdit,
+      onDescriptionUpdate,
+      onThreadLinkSelect,
+      handleTagSelection,
+    ]
+  );
 
   return (
     <PageLayoutV1
@@ -731,12 +773,11 @@ const DashboardDetails = ({
         <Col span={24}>
           <Tabs
             activeKey={activeTab ?? EntityTabs.SCHEMA}
-            className="p-x-lg"
+            className="entity-details-page-tabs"
             data-testid="tabs"
             items={tabs}
             onChange={handleTabChange}
           />
-          {tabDetails}
         </Col>
       </Row>
 

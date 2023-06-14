@@ -25,7 +25,6 @@ export interface PipeLineDetailsProp {
   unFollowPipelineHandler: (fetchCount: () => void) => Promise<void>;
   settingsUpdateHandler: (updatedPipeline: Pipeline) => Promise<void>;
   descriptionUpdateHandler: (updatedPipeline: Pipeline) => Promise<void>;
-  tagUpdateHandler: (updatedPipeline: Pipeline, fetchCount: () => void) => void;
   taskUpdateHandler: (patch: Array<Operation>) => Promise<void>;
   versionHandler: () => void;
   onExtensionUpdate: (updatedPipeline: Pipeline) => Promise<void>;

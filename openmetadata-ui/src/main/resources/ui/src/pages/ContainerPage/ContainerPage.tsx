@@ -13,6 +13,11 @@
 import { Card, Col, Row, Tabs } from 'antd';
 import AppState from 'AppState';
 import { AxiosError } from 'axios';
+import ActivityFeedProvider, {
+  useActivityFeedProvider,
+} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
@@ -36,19 +41,26 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import TabsLabel from 'components/TabsLabel/TabsLabel.component';
+import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
 import { getContainerDetailPath, getVersionPath } from 'constants/constants';
+import { EntityField } from 'constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
+import { CreateThread, ThreadType } from 'generated/api/feed/createThread';
 import { Container } from 'generated/entity/data/container';
 import { EntityLineage } from 'generated/type/entityLineage';
 import { EntityReference } from 'generated/type/entityReference';
-import { LabelType, State, TagSource } from 'generated/type/tagLabel';
+import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
+import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { isUndefined, omitBy, toString } from 'lodash';
 import { observer } from 'mobx-react';
+import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { postThread } from 'rest/feedsAPI';
 import { getLineageByFQN } from 'rest/lineageAPI';
 import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
 import {
@@ -61,10 +73,12 @@ import {
 import {
   getCurrentUserId,
   getEntityMissingError,
+  getFeedCounts,
   refreshPage,
   sortTagsCaseInsensitive,
 } from 'utils/CommonUtils';
 import { getEntityLineage, getEntityName } from 'utils/EntityUtils';
+import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getLineageViewPath } from 'utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
@@ -74,6 +88,7 @@ const ContainerPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
+  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { entityFQN: containerName, tab = EntityTabs.SCHEMA } =
     useParams<{ entityFQN: string; tab: EntityTabs }>();
 
@@ -99,6 +114,19 @@ const ContainerPage = () => {
     id: undefined,
     state: false,
   });
+
+  const [feedCount, setFeedCount] = useState<number>(0);
+  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
+  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
+
+  const [threadLink, setThreadLink] = useState<string>('');
+  const [threadType, setThreadType] = useState<ThreadType>(
+    ThreadType.Conversation
+  );
 
   // data fetching methods
   const fetchContainerParent = async (
@@ -190,9 +218,7 @@ const ContainerPage = () => {
   const {
     hasViewPermission,
     hasEditDescriptionPermission,
-
     hasEditTagsPermission,
-
     hasEditCustomFieldsPermission,
     hasEditLineagePermission,
   } = useMemo(() => {
@@ -210,32 +236,50 @@ const ContainerPage = () => {
     };
   }, [containerPermissions]);
 
-  const { deleted, owner, description, version, entityName, isUserFollowing } =
-    useMemo(() => {
-      return {
-        deleted: containerData?.deleted,
-        owner: containerData?.owner,
-        description: containerData?.description,
-        version: containerData?.version,
-        tier: getTierTags(containerData?.tags ?? []),
-        tags: getTagsWithoutTier(containerData?.tags ?? []),
-        entityId: containerData?.id,
-        entityName: getEntityName(containerData),
-        isUserFollowing: containerData?.followers?.some(
-          ({ id }: { id: string }) => id === getCurrentUserId()
-        ),
-        followers: containerData?.followers ?? [],
-        size: containerData?.size || 0,
-        numberOfObjects: containerData?.numberOfObjects || 0,
-        partitioned: containerData?.dataModel?.isPartitioned,
-      };
-    }, [containerData]);
+  const {
+    deleted,
+    owner,
+    description,
+    version,
+    entityName,
+    isUserFollowing,
+    tags,
+    tier,
+  } = useMemo(() => {
+    return {
+      deleted: containerData?.deleted,
+      owner: containerData?.owner,
+      description: containerData?.description,
+      version: containerData?.version,
+      tier: getTierTags(containerData?.tags ?? []),
+      tags: getTagsWithoutTier(containerData?.tags ?? []),
+      entityId: containerData?.id,
+      entityName: getEntityName(containerData),
+      isUserFollowing: containerData?.followers?.some(
+        ({ id }: { id: string }) => id === getCurrentUserId()
+      ),
+      followers: containerData?.followers ?? [],
+      size: containerData?.size || 0,
+      numberOfObjects: containerData?.numberOfObjects || 0,
+      partitioned: containerData?.dataModel?.isPartitioned,
+    };
+  }, [containerData]);
 
   // get current user details
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
+
+  const getEntityFeedCount = () => {
+    getFeedCounts(
+      EntityType.CONTAINER,
+      containerName,
+      setEntityFieldThreadCount,
+      setEntityFieldTaskCount,
+      setFeedCount
+    );
+  };
 
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
@@ -264,6 +308,7 @@ const ContainerPage = () => {
         description: newDescription,
         version,
       }));
+      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -289,6 +334,7 @@ const ContainerPage = () => {
           version,
         };
       });
+      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -317,6 +363,7 @@ const ContainerPage = () => {
           followers: [...(containerData?.followers ?? []), ...newValue],
         }));
       }
+      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -335,6 +382,7 @@ const ContainerPage = () => {
           owner: newOwner,
           version,
         }));
+        getEntityFeedCount();
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -363,6 +411,7 @@ const ContainerPage = () => {
           tags: newTags,
           version,
         }));
+        getEntityFeedCount();
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -454,6 +503,7 @@ const ContainerPage = () => {
     try {
       const response = await handleUpdateContainerData(updatedContainer);
       setContainerData(response);
+      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -474,6 +524,7 @@ const ContainerPage = () => {
         dataModel: newDataModel,
         version,
       }));
+      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -484,6 +535,230 @@ const ContainerPage = () => {
       getVersionPath(EntityType.CONTAINER, containerName, toString(version))
     );
   };
+
+  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
+    setThreadLink(link);
+    if (threadType) {
+      setThreadType(threadType);
+    }
+  };
+
+  const onThreadPanelClose = () => {
+    setThreadLink('');
+  };
+
+  const createThread = async (data: CreateThread) => {
+    try {
+      await postThread(data);
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.create-entity-error', {
+          entity: t('label.conversation'),
+        })
+      );
+    }
+  };
+
+  const handleTagSelection = async (selectedTags: EntityTags[]) => {
+    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => {
+      return {
+        source: tag.source,
+        tagFQN: tag.tagFQN,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+      };
+    });
+
+    if (updatedTags && containerData) {
+      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
+      const updatedContainer = { ...containerData, tags: updatedTags };
+      await handleExtensionUpdate(updatedContainer);
+    }
+  };
+
+  const tabs = useMemo(
+    () => [
+      {
+        label: (
+          <TabsLabel id={EntityTabs.SCHEMA} name={t('label.detail-plural')} />
+        ),
+        key: EntityTabs.SCHEMA,
+        children: (
+          <Row gutter={[0, 16]} wrap={false}>
+            <Col className="p-t-sm m-l-lg" flex="auto">
+              <div className="d-flex flex-col gap-4">
+                <DescriptionV1
+                  description={description}
+                  entityFieldThreads={getEntityFieldThreadCounts(
+                    EntityField.DESCRIPTION,
+                    entityFieldThreadCount
+                  )}
+                  entityFqn={containerName}
+                  entityName={entityName}
+                  entityType={EntityType.CONTAINER}
+                  hasEditAccess={hasEditDescriptionPermission}
+                  isEdit={isEditDescription}
+                  isReadOnly={deleted}
+                  owner={owner}
+                  onCancel={() => setIsEditDescription(false)}
+                  onDescriptionEdit={() => setIsEditDescription(true)}
+                  onDescriptionUpdate={handleUpdateDescription}
+                  onThreadLinkSelect={onThreadLinkSelect}
+                />
+
+                <ContainerDataModel
+                  dataModel={containerData?.dataModel}
+                  hasDescriptionEditAccess={hasEditDescriptionPermission}
+                  hasTagEditAccess={hasEditTagsPermission}
+                  isReadOnly={Boolean(deleted)}
+                  onUpdate={handleUpdateDataModel}
+                />
+              </div>
+            </Col>
+            <Col
+              className="p-t-sm"
+              flex="320px"
+              style={{
+                borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
+                marginLeft: '20px',
+                padding: '0 8px',
+              }}>
+              <TagsContainerV1
+                editable={hasEditDescriptionPermission}
+                entityFieldThreads={getEntityFieldThreadCounts(
+                  EntityField.TAGS,
+                  entityFieldThreadCount
+                )}
+                entityFqn={containerName}
+                entityType={EntityType.CONTAINER}
+                selectedTags={tags}
+                onSelectionChange={handleTagSelection}
+                onThreadLinkSelect={onThreadLinkSelect}
+              />
+            </Col>
+          </Row>
+        ),
+      },
+      {
+        label: (
+          <TabsLabel
+            count={feedCount}
+            id={EntityTabs.ACTIVITY_FEED}
+            isActive={tab === EntityTabs.ACTIVITY_FEED}
+            name={t('label.activity-feed-and-task-plural')}
+          />
+        ),
+        key: EntityTabs.ACTIVITY_FEED,
+        children: (
+          <ActivityFeedProvider>
+            <ActivityFeedTab
+              count={feedCount}
+              entityName={entityName}
+              entityType={EntityType.CONTAINER}
+              fqn={containerName}
+              taskCount={entityFieldTaskCount.length}
+              onFeedUpdate={() => Promise.resolve()}
+            />
+          </ActivityFeedProvider>
+        ),
+      },
+      {
+        label: (
+          <TabsLabel id={EntityTabs.CHILDREN} name={t('label.children')} />
+        ),
+        key: EntityTabs.CHILDREN,
+        children: (
+          <Row className="p-md" gutter={[0, 16]}>
+            <Col span={24}>
+              {isChildrenLoading ? (
+                <Loader />
+              ) : (
+                <ContainerChildren childrenList={containerChildrenData} />
+              )}
+            </Col>
+          </Row>
+        ),
+      },
+
+      {
+        label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
+        key: EntityTabs.LINEAGE,
+        children: (
+          <Card className="card-body-full m-md w-auto h-70vh">
+            <EntityLineageComponent
+              addLineageHandler={handleAddLineage}
+              deleted={deleted}
+              entityLineage={entityLineage}
+              entityLineageHandler={(lineage: EntityLineage) =>
+                setEntityLineage(lineage)
+              }
+              entityType={EntityType.CONTAINER}
+              hasEditAccess={hasEditLineagePermission}
+              isLoading={isLineageLoading}
+              isNodeLoading={isNodeLoading}
+              lineageLeafNodes={leafNodes}
+              loadNodeHandler={handleLoadLineageNode}
+              removeLineageHandler={handleRemoveLineage}
+              onFullScreenClick={handleFullScreenClick}
+            />
+          </Card>
+        ),
+      },
+      {
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        children: (
+          <CustomPropertyTable
+            entityDetails={
+              containerData as CustomPropertyProps['entityDetails']
+            }
+            entityType={EntityType.CONTAINER}
+            handleExtensionUpdate={handleExtensionUpdate}
+            hasEditAccess={hasEditCustomFieldsPermission}
+          />
+        ),
+      },
+    ],
+    [
+      description,
+      containerName,
+      entityName,
+      hasEditDescriptionPermission,
+      hasEditTagsPermission,
+      isEditDescription,
+      hasEditLineagePermission,
+      hasEditCustomFieldsPermission,
+      deleted,
+      owner,
+      isNodeLoading,
+      leafNodes,
+      isLineageLoading,
+      isChildrenLoading,
+      entityFieldThreadCount,
+      tags,
+      entityLineage,
+      entityFieldTaskCount,
+      feedCount,
+      containerChildrenData,
+      handleAddLineage,
+      handleUpdateDataModel,
+      handleUpdateDescription,
+      getEntityFieldThreadCounts,
+      handleTagSelection,
+      onThreadLinkSelect,
+      handleLoadLineageNode,
+      handleRemoveLineage,
+      handleFullScreenClick,
+      handleExtensionUpdate,
+    ]
+  );
 
   // Effects
   useEffect(() => {
@@ -506,6 +781,10 @@ const ContainerPage = () => {
       fetchContainerChildren(containerName);
     }
   }, [tab, containerName]);
+
+  useEffect(() => {
+    getEntityFeedCount();
+  }, [containerName]);
 
   // Rendering
   if (isLoading || !containerData) {
@@ -535,8 +814,7 @@ const ContainerPage = () => {
             dataAsset={containerData}
             entityType={EntityType.CONTAINER}
             permissions={containerPermissions}
-            // TODO: update count once we have activity feed tab
-            taskCount={0}
+            taskCount={entityFieldTaskCount.length}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={handleFollowContainer}
             onOwnerUpdate={handleUpdateOwner}
@@ -547,107 +825,26 @@ const ContainerPage = () => {
         </Col>
         <Col span={24}>
           <Tabs
-            activeKey={tab}
-            className="h-full p-x-lg"
-            onChange={handleTabChange}>
-            <Tabs.TabPane
-              key={EntityTabs.SCHEMA}
-              tab={
-                <span data-testid={EntityTabs.SCHEMA}>{t('label.schema')}</span>
-              }>
-              <Row className="h-full" gutter={[0, 16]}>
-                <Col span={24}>
-                  <DescriptionV1
-                    description={description}
-                    entityFqn={containerName}
-                    entityName={entityName}
-                    entityType={EntityType.CONTAINER}
-                    hasEditAccess={hasEditDescriptionPermission}
-                    isEdit={isEditDescription}
-                    isReadOnly={deleted}
-                    owner={owner}
-                    onCancel={() => setIsEditDescription(false)}
-                    onDescriptionEdit={() => setIsEditDescription(true)}
-                    onDescriptionUpdate={handleUpdateDescription}
-                  />
-                </Col>
-                <Col span={24}>
-                  <ContainerDataModel
-                    dataModel={containerData?.dataModel}
-                    hasDescriptionEditAccess={hasEditDescriptionPermission}
-                    hasTagEditAccess={hasEditTagsPermission}
-                    isReadOnly={Boolean(deleted)}
-                    onUpdate={handleUpdateDataModel}
-                  />
-                </Col>
-              </Row>
-            </Tabs.TabPane>
-            <Tabs.TabPane
-              key={EntityTabs.CHILDREN}
-              tab={
-                <span data-testid={EntityTabs.CHILDREN}>
-                  {t('label.children')}
-                </span>
-              }>
-              <Card className="h-full">
-                <Row gutter={[0, 16]}>
-                  <Col span={24}>
-                    {isChildrenLoading ? (
-                      <Loader />
-                    ) : (
-                      <ContainerChildren childrenList={containerChildrenData} />
-                    )}
-                  </Col>
-                </Row>
-              </Card>
-            </Tabs.TabPane>
-            <Tabs.TabPane
-              key={EntityTabs.LINEAGE}
-              tab={
-                <span data-testid={EntityTabs.LINEAGE}>
-                  {t('label.lineage')}
-                </span>
-              }>
-              <Card
-                className="h-full card-body-full"
-                data-testid="lineage-details">
-                <EntityLineageComponent
-                  addLineageHandler={handleAddLineage}
-                  deleted={deleted}
-                  entityLineage={entityLineage}
-                  entityLineageHandler={(lineage: EntityLineage) =>
-                    setEntityLineage(lineage)
-                  }
-                  entityType={EntityType.CONTAINER}
-                  hasEditAccess={hasEditLineagePermission}
-                  isLoading={isLineageLoading}
-                  isNodeLoading={isNodeLoading}
-                  lineageLeafNodes={leafNodes}
-                  loadNodeHandler={handleLoadLineageNode}
-                  removeLineageHandler={handleRemoveLineage}
-                  onFullScreenClick={handleFullScreenClick}
-                />
-              </Card>
-            </Tabs.TabPane>
-            <Tabs.TabPane
-              key={EntityTabs.CUSTOM_PROPERTIES}
-              tab={
-                <span data-testid={EntityTabs.CUSTOM_PROPERTIES}>
-                  {t('label.custom-property-plural')}
-                </span>
-              }>
-              <CustomPropertyTable
-                className="mt-0-important"
-                entityDetails={
-                  containerData as CustomPropertyProps['entityDetails']
-                }
-                entityType={EntityType.CONTAINER}
-                handleExtensionUpdate={handleExtensionUpdate}
-                hasEditAccess={hasEditCustomFieldsPermission}
-              />
-            </Tabs.TabPane>
-          </Tabs>
+            activeKey={tab ?? EntityTabs.DETAILS}
+            className="entity-details-page-tabs"
+            data-testid="tabs"
+            items={tabs}
+            onChange={handleTabChange}
+          />
         </Col>
+
+        {threadLink ? (
+          <ActivityThreadPanel
+            createThread={createThread}
+            deletePostHandler={deleteFeed}
+            open={Boolean(threadLink)}
+            postFeedHandler={postFeed}
+            threadLink={threadLink}
+            threadType={threadType}
+            updateThreadHandler={updateFeed}
+            onCancel={onThreadPanelClose}
+          />
+        ) : null}
       </Row>
     </PageLayoutV1>
   );

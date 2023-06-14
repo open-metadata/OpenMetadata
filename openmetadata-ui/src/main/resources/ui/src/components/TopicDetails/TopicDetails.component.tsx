@@ -13,7 +13,6 @@
 
 import { Card, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import ActivityFeedProvider, {
   useActivityFeedProvider,
 } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -23,8 +22,9 @@ import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
+import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
 import { getTopicDetailsPath } from 'constants/constants';
-import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
+import { TagLabel } from 'generated/type/schema';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -88,6 +88,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     description,
     followers = [],
     entityName,
+    topicTags,
+    tier,
   } = useMemo(() => {
     return {
       ...topicDetails,
@@ -118,59 +120,66 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   }, [topicDetails.id, getEntityPermission, setTopicPermissions]);
 
-  useEffect(() => {
-    if (topicDetails.id) {
-      fetchResourcePermission();
+  const followTopic = async () => {
+    isFollowing ? await unFollowTopicHandler() : await followTopicHandler();
+  };
+
+  const handleUpdateDisplayName = async (data: EntityName) => {
+    const updatedData = {
+      ...topicDetails,
+      displayName: data.displayName,
+    };
+    await onTopicUpdate(updatedData, 'displayName');
+  };
+  const onExtensionUpdate = async (updatedData: Topic) => {
+    await onTopicUpdate(updatedData, 'extension');
+  };
+
+  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
+    setThreadLink(link);
+    if (threadType) {
+      setThreadType(threadType);
     }
-  }, [topicDetails.id]);
+  };
+  const onThreadPanelClose = () => {
+    setThreadLink('');
+  };
 
-  const tabs = useMemo(() => {
-    const allTabs = [
-      {
-        label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
-        key: EntityTabs.SCHEMA,
-      },
-      {
-        label: (
-          <TabsLabel
-            count={feedCount}
-            id={EntityTabs.ACTIVITY_FEED}
-            isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-            name={t('label.activity-feed-and-task-plural')}
-          />
-        ),
-        key: EntityTabs.ACTIVITY_FEED,
-      },
-      {
-        label: (
-          <TabsLabel
-            id={EntityTabs.SAMPLE_DATA}
-            name={t('label.sample-data')}
-          />
-        ),
-        key: EntityTabs.SAMPLE_DATA,
-      },
-      {
-        label: <TabsLabel id={EntityTabs.CONFIG} name={t('label.config')} />,
-        key: EntityTabs.CONFIG,
-      },
-      {
-        label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
-        key: EntityTabs.LINEAGE,
-      },
-      {
-        label: (
-          <TabsLabel
-            id={EntityTabs.CUSTOM_PROPERTIES}
-            name={t('label.custom-property-plural')}
-          />
-        ),
-        key: EntityTabs.CUSTOM_PROPERTIES,
-      },
-    ];
+  const handleSchemaFieldsUpdate = async (
+    updatedMessageSchema: Topic['messageSchema']
+  ) => {
+    try {
+      await onTopicUpdate(
+        {
+          ...topicDetails,
+          messageSchema: updatedMessageSchema,
+        },
+        'messageSchema'
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
-    return allTabs;
-  }, [activeTab, feedCount]);
+  const handleRestoreTopic = async () => {
+    try {
+      await restoreTopic(topicDetails.id);
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.topic'),
+        }),
+        2000
+      );
+      refreshPage();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.topic'),
+        })
+      );
+    }
+  };
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
@@ -241,110 +250,98 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   };
 
-  const handleRestoreTopic = async () => {
-    try {
-      await restoreTopic(topicDetails.id);
-      showSuccessToast(
-        t('message.restore-entities-success', {
-          entity: t('label.topic'),
-        }),
-        2000
-      );
-      refreshPage();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('message.restore-entities-error', {
-          entity: t('label.topic'),
-        })
-      );
+  const handleTagSelection = async (selectedTags: EntityTags[]) => {
+    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => ({
+      source: tag.source,
+      tagFQN: tag.tagFQN,
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+    }));
+
+    if (updatedTags && topicDetails) {
+      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
+      const updatedTopic = { ...topicDetails, tags: updatedTags };
+      await onTopicUpdate(updatedTopic, 'tags');
     }
   };
 
-  const followTopic = async () => {
-    isFollowing ? await unFollowTopicHandler() : await followTopicHandler();
-  };
-
-  const handleUpdateDisplayName = async (data: EntityName) => {
-    const updatedData = {
-      ...topicDetails,
-      displayName: data.displayName,
-    };
-    await onTopicUpdate(updatedData, 'displayName');
-  };
-  const onExtensionUpdate = async (updatedData: Topic) => {
-    await onTopicUpdate(updatedData, 'extension');
-  };
-
-  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
-    setThreadLink(link);
-    if (threadType) {
-      setThreadType(threadType);
-    }
-  };
-  const onThreadPanelClose = () => {
-    setThreadLink('');
-  };
-
-  const handleSchemaFieldsUpdate = async (
-    updatedMessageSchema: Topic['messageSchema']
-  ) => {
-    try {
-      await onTopicUpdate(
-        {
-          ...topicDetails,
-          messageSchema: updatedMessageSchema,
-        },
-        'messageSchema'
-      );
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const tabDetails = useMemo(() => {
-    switch (activeTab) {
-      case EntityTabs.CUSTOM_PROPERTIES:
-        return (
-          <CustomPropertyTable
-            className="mt-0-important"
-            entityDetails={topicDetails as CustomPropertyProps['entityDetails']}
-            entityType={EntityType.TOPIC}
-            handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={
-              topicPermissions.EditAll || topicPermissions.EditCustomFields
-            }
+  const tabs = useMemo(
+    () => [
+      {
+        label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
+        key: EntityTabs.SCHEMA,
+        children: (
+          <Row gutter={[0, 16]} wrap={false}>
+            <Col className="p-t-sm m-l-lg" flex="auto">
+              <div className="d-flex flex-col gap-4">
+                <DescriptionV1
+                  description={topicDetails.description}
+                  entityFieldThreads={getEntityFieldThreadCounts(
+                    EntityField.DESCRIPTION,
+                    entityFieldThreadCount
+                  )}
+                  entityFqn={topicDetails.fullyQualifiedName}
+                  entityName={entityName}
+                  entityType={EntityType.TOPIC}
+                  hasEditAccess={
+                    topicPermissions.EditAll || topicPermissions.EditDescription
+                  }
+                  isEdit={isEdit}
+                  isReadOnly={topicDetails.deleted}
+                  owner={topicDetails.owner}
+                  onCancel={onCancel}
+                  onDescriptionEdit={onDescriptionEdit}
+                  onDescriptionUpdate={onDescriptionUpdate}
+                  onThreadLinkSelect={onThreadLinkSelect}
+                />
+                <TopicSchemaFields
+                  hasDescriptionEditAccess={
+                    topicPermissions.EditAll || topicPermissions.EditDescription
+                  }
+                  hasTagEditAccess={
+                    topicPermissions.EditAll || topicPermissions.EditTags
+                  }
+                  isReadOnly={Boolean(topicDetails.deleted)}
+                  messageSchema={topicDetails.messageSchema}
+                  onUpdate={handleSchemaFieldsUpdate}
+                />
+              </div>
+            </Col>
+            <Col
+              className="p-t-sm"
+              flex="320px"
+              style={{
+                borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
+                marginLeft: '20px',
+                padding: '0 8px',
+              }}>
+              <TagsContainerV1
+                editable={topicPermissions.EditAll || topicPermissions.EditTags}
+                entityFieldThreads={getEntityFieldThreadCounts(
+                  EntityField.TAGS,
+                  entityFieldThreadCount
+                )}
+                entityFqn={topicDetails.fullyQualifiedName}
+                entityType={EntityType.TOPIC}
+                selectedTags={topicTags}
+                onSelectionChange={handleTagSelection}
+                onThreadLinkSelect={onThreadLinkSelect}
+              />
+            </Col>
+          </Row>
+        ),
+      },
+      {
+        label: (
+          <TabsLabel
+            count={feedCount}
+            id={EntityTabs.ACTIVITY_FEED}
+            isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+            name={t('label.activity-feed-and-task-plural')}
           />
-        );
-      case EntityTabs.LINEAGE:
-        return (
-          <Card
-            className={classNames(ENTITY_CARD_CLASS, 'card-body-full')}
-            data-testid="lineage-details">
-            <EntityLineageComponent
-              entityType={EntityType.TOPIC}
-              hasEditAccess={
-                topicPermissions.EditAll || topicPermissions.EditLineage
-              }
-            />
-          </Card>
-        );
-      case EntityTabs.CONFIG:
-        return (
-          <Card
-            className={classNames(ENTITY_CARD_CLASS, 'h-full')}
-            data-testid="config-details">
-            <SchemaEditor
-              className="custom-code-mirror-theme"
-              editorClass="table-query-editor"
-              value={JSON.stringify(topicDetails.topicConfig)}
-            />
-          </Card>
-        );
-      case EntityTabs.SAMPLE_DATA:
-        return <SampleDataTopic topicFQN={topicFQN} />;
-      case EntityTabs.ACTIVITY_FEED:
-        return (
+        ),
+        key: EntityTabs.ACTIVITY_FEED,
+        children: (
           <ActivityFeedProvider>
             <ActivityFeedTab
               count={feedCount}
@@ -355,55 +352,86 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               onFeedUpdate={() => Promise.resolve()}
             />
           </ActivityFeedProvider>
-        );
-      case EntityTabs.SCHEMA:
-      default:
-        return (
-          <div className="p-x-lg">
-            <DescriptionV1
-              description={topicDetails.description}
-              entityFieldThreads={getEntityFieldThreadCounts(
-                EntityField.DESCRIPTION,
-                entityFieldThreadCount
-              )}
-              entityFqn={topicDetails.fullyQualifiedName}
-              entityName={entityName}
+        ),
+      },
+      {
+        label: (
+          <TabsLabel
+            id={EntityTabs.SAMPLE_DATA}
+            name={t('label.sample-data')}
+          />
+        ),
+        key: EntityTabs.SAMPLE_DATA,
+        children: <SampleDataTopic topicFQN={topicFQN} />,
+      },
+      {
+        label: <TabsLabel id={EntityTabs.CONFIG} name={t('label.config')} />,
+        key: EntityTabs.CONFIG,
+        children: (
+          <Card className="m-md w-auto" data-testid="config-details">
+            <SchemaEditor
+              className="custom-code-mirror-theme"
+              editorClass="table-query-editor"
+              value={JSON.stringify(topicDetails.topicConfig)}
+            />
+          </Card>
+        ),
+      },
+      {
+        label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
+        key: EntityTabs.LINEAGE,
+        children: (
+          <Card
+            className="card-body-full m-md w-auto h-70vh"
+            data-testid="lineage-details"
+            id="lineageDetails">
+            <EntityLineageComponent
               entityType={EntityType.TOPIC}
               hasEditAccess={
-                topicPermissions.EditAll || topicPermissions.EditDescription
+                topicPermissions.EditAll || topicPermissions.EditLineage
               }
-              isEdit={isEdit}
-              isReadOnly={topicDetails.deleted}
-              owner={topicDetails.owner}
-              onCancel={onCancel}
-              onDescriptionEdit={onDescriptionEdit}
-              onDescriptionUpdate={onDescriptionUpdate}
-              onThreadLinkSelect={onThreadLinkSelect}
             />
-            <TopicSchemaFields
-              hasDescriptionEditAccess={
-                topicPermissions.EditAll || topicPermissions.EditDescription
-              }
-              hasTagEditAccess={
-                topicPermissions.EditAll || topicPermissions.EditTags
-              }
-              isReadOnly={Boolean(topicDetails.deleted)}
-              messageSchema={topicDetails.messageSchema}
-              onUpdate={handleSchemaFieldsUpdate}
-            />
-          </div>
-        );
+          </Card>
+        ),
+      },
+      {
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        children: (
+          <CustomPropertyTable
+            entityDetails={topicDetails as CustomPropertyProps['entityDetails']}
+            entityType={EntityType.TOPIC}
+            handleExtensionUpdate={onExtensionUpdate}
+            hasEditAccess={
+              topicPermissions.EditAll || topicPermissions.EditCustomFields
+            }
+          />
+        ),
+      },
+    ],
+    [
+      activeTab,
+      feedCount,
+      topicDetails,
+      entityFieldTaskCount,
+      entityFieldThreadCount,
+      topicPermissions,
+      isEdit,
+      entityName,
+      topicFQN,
+    ]
+  );
+
+  useEffect(() => {
+    if (topicDetails.id) {
+      fetchResourcePermission();
     }
-  }, [
-    activeTab,
-    topicDetails,
-    entityFieldTaskCount,
-    entityFieldThreadCount,
-    topicPermissions,
-    isEdit,
-    entityName,
-    topicFQN,
-  ]);
+  }, [topicDetails.id]);
 
   return (
     <PageLayoutV1
@@ -428,12 +456,11 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         <Col span={24}>
           <Tabs
             activeKey={activeTab ?? EntityTabs.SCHEMA}
-            className="p-x-lg"
+            className="entity-details-page-tabs"
             data-testid="tabs"
             items={tabs}
             onChange={handleTabChange}
           />
-          {tabDetails}
         </Col>
       </Row>
 
