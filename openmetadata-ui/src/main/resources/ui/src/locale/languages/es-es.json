@@ -1,6 +1,7 @@
 {
   "label": {
     "aborted": "Abortado",
+    "accept": "Accept",
     "accept-suggestion": "Aceptar sugerencia",
     "access": "Acceso",
     "account": "Cuenta",
@@ -161,6 +162,7 @@
     "create-entity": "Crear {{entity}}",
     "create-new-test-suite": "Crear nueva suite de tests",
     "created-a-task-lowercase": "creó una tarea",
+    "created-by": "Created By",
     "created-by-me": "Creado por mí",
     "created-lowercase": "creado",
     "creating-account": "Creando cuenta",

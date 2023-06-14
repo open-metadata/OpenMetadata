@@ -81,6 +81,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
             isOpenInDrawer
             showThread
             feed={selectedThread as Thread}
+            hidePopover={false}
           />
           <ActivityFeedEditor
             buttonClass="tw-mr-4"

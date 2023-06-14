@@ -1,6 +1,7 @@
 {
   "label": {
     "aborted": "Interrompu",
+    "accept": "Accept",
     "accept-suggestion": "Accepter la Suggestion",
     "access": "Accès",
     "account": "Compte",
@@ -161,6 +162,7 @@
     "create-entity": "Créer {{entity}}",
     "create-new-test-suite": "Créer un nouvel ensemble de test",
     "created-a-task-lowercase": "a créé une tâche",
+    "created-by": "Created By",
     "created-by-me": "Créé·e par moi",
     "created-lowercase": "créé·e",
     "creating-account": "Création du compte",

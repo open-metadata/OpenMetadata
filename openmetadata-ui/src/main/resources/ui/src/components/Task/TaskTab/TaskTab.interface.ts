@@ -12,33 +12,21 @@
  */
 import { EntityType } from 'enums/entity.enum';
 import { Column } from 'generated/entity/data/table';
+import { Thread } from 'generated/entity/feed/thread';
 import { EntityReference } from 'generated/entity/type';
 import { TagLabel } from 'generated/type/tagLabel';
 
-export type FeedKeys = 'all' | 'mentions' | 'tasks';
-
-export enum ActivityFeedTabs {
-  ALL = 'all',
-  MENTIONS = 'mentions',
-  TASKS = 'tasks',
-}
-
-export interface ActivityFeedTabBasicProps {
-  fqn: string;
-  entityName: string;
-  onFeedUpdate: () => void;
-  count: number;
-  taskCount: number;
+export type TaskTabProps = {
+  task: Thread;
   owner?: EntityReference;
   tags?: TagLabel[];
   description?: string;
-}
+} & (
+  | TableTaskTabProps
+  | { columns?: undefined; entityType: Exclude<EntityType, EntityType.TABLE> }
+);
 
-export type ActivityFeedTabProps = ActivityFeedTabBasicProps &
-  (
-    | {
-        columns?: Column[];
-        entityType: EntityType.TABLE;
-      }
-    | { columns?: undefined; entityType: Exclude<EntityType, EntityType.TABLE> }
-  );
+export interface TableTaskTabProps {
+  columns?: Column[];
+  entityType: EntityType.TABLE;
+}

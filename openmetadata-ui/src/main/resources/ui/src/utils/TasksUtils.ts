@@ -358,6 +358,17 @@ export const getTaskActionList = (): TaskAction[] => [
   },
 ];
 
+export const TASK_ACTION_LIST: TaskAction[] = [
+  {
+    label: i18Next.t('label.accept-suggestion'),
+    key: TaskActionMode.VIEW,
+  },
+  {
+    label: i18Next.t('label.edit-amp-accept-suggestion'),
+    key: TaskActionMode.EDIT,
+  },
+];
+
 export const isDescriptionTask = (taskType: TaskType) =>
   [TaskType.RequestDescription, TaskType.UpdateDescription].includes(taskType);
 

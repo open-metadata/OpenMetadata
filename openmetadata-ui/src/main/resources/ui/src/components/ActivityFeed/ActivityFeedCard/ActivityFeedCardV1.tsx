@@ -34,6 +34,7 @@ interface ActivityFeedCardV1Props {
   showThread?: boolean;
   isPost: boolean;
   isActive?: boolean;
+  hidePopover: boolean;
 }
 
 const ActivityFeedCardV1 = ({
@@ -43,6 +44,7 @@ const ActivityFeedCardV1 = ({
   showThread = true,
   isPost = false,
   isActive,
+  hidePopover = false,
 }: ActivityFeedCardV1Props) => {
   const postLength = feed?.postsCount ?? 0;
   const [isEditPost, setIsEditPost] = useState(false);
@@ -127,7 +129,7 @@ const ActivityFeedCardV1 = ({
                     </div>
                     <div
                       className="d-flex items-center thread-count cursor-pointer"
-                      onClick={showReplies}>
+                      onClick={!hidePopover ? showReplies : noop}>
                       <ThreadIcon width={18} />{' '}
                       <span className="text-xs p-l-xss">{postLength}</span>
                     </div>
@@ -145,12 +147,14 @@ const ActivityFeedCardV1 = ({
           </Row>
         )}
 
-        <ActivityFeedActions
-          feed={feed}
-          isPost={isPost}
-          post={post}
-          onEditPost={onEditPost}
-        />
+        {!hidePopover && (
+          <ActivityFeedActions
+            feed={feed}
+            isPost={isPost}
+            post={post}
+            onEditPost={onEditPost}
+          />
+        )}
       </div>
     </>
   );

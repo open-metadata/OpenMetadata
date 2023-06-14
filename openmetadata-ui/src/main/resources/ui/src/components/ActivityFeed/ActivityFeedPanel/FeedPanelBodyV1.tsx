@@ -26,6 +26,7 @@ interface FeedPanelBodyPropV1 {
   isOpenInDrawer?: boolean;
   onFeedClick?: (feed: Thread) => void;
   isActive?: boolean;
+  hidePopover: boolean;
 }
 
 const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
@@ -35,6 +36,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   isOpenInDrawer = false,
   onFeedClick,
   isActive,
+  hidePopover = false,
 }) => {
   const { t } = useTranslation();
   const mainFeed = {
@@ -60,6 +62,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
       {feed.type === ThreadType.Task ? (
         <TaskFeedCard
           feed={feed}
+          hidePopover={hidePopover}
           isActive={isActive}
           isOpenInDrawer={isOpenInDrawer}
           key={feed.id}
@@ -69,6 +72,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
       ) : (
         <ActivityFeedCardV1
           feed={feed}
+          hidePopover={hidePopover}
           isActive={isActive}
           isPost={false}
           key={feed.id}
@@ -95,6 +99,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
             <ActivityFeedCardV1
               isPost
               feed={feed}
+              hidePopover={hidePopover}
               key={reply.id}
               post={reply}
             />
