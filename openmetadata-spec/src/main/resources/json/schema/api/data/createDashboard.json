@@ -19,6 +19,9 @@
       "description": "Description of the database instance. What it has and how to use it.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "dashboardType": {
+      "$ref": "../../entity/data/dashboard.json#/definitions/dashboardType"
+    },
     "dashboardUrl": {
       "description": "Dashboard URL suffix from its service.",
       "type": "string"
