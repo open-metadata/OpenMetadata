@@ -12,7 +12,6 @@
  */
 
 export enum EntityType {
-  DATASET = 'dataset',
   TABLE = 'table',
   TOPIC = 'topic',
   DASHBOARD = 'dashboard',

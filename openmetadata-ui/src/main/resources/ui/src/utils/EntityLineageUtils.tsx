@@ -1384,7 +1384,6 @@ export const removeLineageHandler = async (data: EdgeData): Promise<void> => {
 
 export const getParamByEntityType = (entityType: EntityType): string => {
   switch (entityType) {
-    case EntityType.DATASET:
     case EntityType.TABLE:
       return 'datasetFQN';
     case EntityType.TOPIC:

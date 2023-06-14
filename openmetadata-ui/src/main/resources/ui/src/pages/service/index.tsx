@@ -1163,7 +1163,7 @@ const ServicePage: FunctionComponent = () => {
                   description={description || ''}
                   entityFqn={serviceFQN}
                   entityName={serviceFQN}
-                  entityType={serviceCategory.slice(0, -1)}
+                  entityType={serviceCategory.slice(0, -1) as EntityType}
                   hasEditAccess={
                     servicePermission.EditAll ||
                     servicePermission.EditDescription
