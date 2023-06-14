@@ -307,14 +307,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 />
               </div>
             </Col>
-            <Col
-              className="p-t-sm"
-              flex="320px"
-              style={{
-                borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
-                marginLeft: '20px',
-                padding: '0 8px',
-              }}>
+            <Col className="entity-tag-right-panel-container" flex="320px">
               <TagsContainerV1
                 editable={topicPermissions.EditAll || topicPermissions.EditTags}
                 entityFieldThreads={getEntityFieldThreadCounts(

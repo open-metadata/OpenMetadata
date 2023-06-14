@@ -425,14 +425,7 @@ const TableDetailsPageV1 = () => {
             />
           </div>
         </Col>
-        <Col
-          className="p-t-sm"
-          flex="320px"
-          style={{
-            borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
-            marginLeft: '20px',
-            padding: '0 8px',
-          }}>
+        <Col className="entity-tag-right-panel-container" flex="320px">
           {!isEmpty(joinedTables) ? (
             <>
               <FrequentlyJoinedTables joinedTables={joinedTables} />
