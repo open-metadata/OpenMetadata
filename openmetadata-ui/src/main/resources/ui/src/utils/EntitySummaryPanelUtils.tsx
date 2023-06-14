@@ -64,7 +64,7 @@ export const getFormattedEntityData = (
       return (entityInfo as Chart[]).map((chart) => ({
         name: chart.name,
         title: (
-          <Link target="_blank" to={{ pathname: chart.chartUrl }}>
+          <Link target="_blank" to={{ pathname: chart.sourceUrl }}>
             <div className="d-flex items-center">
               <Text className="entity-title text-primary font-medium m-r-xss">
                 {getTitleName(chart)}

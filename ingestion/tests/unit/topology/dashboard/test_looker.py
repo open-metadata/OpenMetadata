@@ -365,7 +365,7 @@ class LookerUnitTest(TestCase):
             displayName="chart_title1",
             description="subtitle; Some body text; Some note",
             chartType=ChartType.Line,
-            chartUrl="https://my-looker.com/dashboard_elements/chart_id1",
+            sourceUrl="https://my-looker.com/dashboard_elements/chart_id1",
             service=self.looker.context.dashboard_service.fullyQualifiedName.__root__,
         )
 

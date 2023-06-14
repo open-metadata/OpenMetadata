@@ -387,7 +387,7 @@ class AmundsenSource(Source[Entity]):
                 name=chart_id,
                 displayName=name,
                 description="",
-                chartUrl=url,
+                sourceUrl=url,
                 chartType=get_standard_chart_type(chart_type).value,
                 service=self.dashboard_service.fullyQualifiedName,
             )

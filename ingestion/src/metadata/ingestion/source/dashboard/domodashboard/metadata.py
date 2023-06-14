@@ -212,7 +212,7 @@ class DomodashboardSource(DashboardServiceSource):
                         name=chart_id,
                         description=chart.description,
                         displayName=chart.name,
-                        chartUrl=chart_url,
+                        sourceUrl=chart_url,
                         service=self.context.dashboard_service.fullyQualifiedName.__root__,
                         chartType=get_standard_chart_type(chart.metadata.chartType),
                     )

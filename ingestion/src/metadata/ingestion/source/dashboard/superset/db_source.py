@@ -118,7 +118,7 @@ class SupersetDBSource(SupersetSourceMixin):
                 chartType=get_standard_chart_type(
                     chart_json.get("viz_type", ChartType.Other.value)
                 ),
-                chartUrl=f"{clean_uri(self.service_connection.hostPort)}/explore/?slice_id={chart_json['id']}",
+                sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/explore/?slice_id={chart_json['id']}",
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
             )
             yield chart

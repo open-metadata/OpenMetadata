@@ -201,7 +201,7 @@ class ModeSource(DashboardServiceSource):
                         displayName=chart_name,
                         description="",
                         chartType=ChartType.Other,
-                        chartUrl=chart[client.LINKS]["report_viz_web"][client.HREF],
+                        sourceUrl=chart[client.LINKS]["report_viz_web"][client.HREF],
                         service=self.context.dashboard_service.fullyQualifiedName.__root__,
                     )
                     self.status.scanned(chart_name)

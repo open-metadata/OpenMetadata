@@ -632,8 +632,8 @@ const DashboardDetails = ({
         render: (_, record) => {
           const chartName = getEntityName(record);
 
-          return record.chartUrl ? (
-            <Typography.Link href={record.chartUrl} target="_blank">
+          return record.sourceUrl ? (
+            <Typography.Link href={record.sourceUrl} target="_blank">
               <Space>
                 {chartName}
                 <ExternalLinkIcon height={14} width={14} />

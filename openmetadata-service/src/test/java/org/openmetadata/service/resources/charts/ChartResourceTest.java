@@ -100,7 +100,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     chart.withChartType(type1).withChartUrl("url1").withDescription("desc1");
     fieldAdded(change, "description", "desc1");
     fieldAdded(change, "chartType", type1);
-    fieldAdded(change, "chartUrl", "url1");
+    fieldAdded(change, "sourceUrl", "url1");
 
     chart =
         updateAndCheckEntity(
@@ -116,7 +116,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
 
     fieldUpdated(change, "description", "desc1", "desc2");
     fieldUpdated(change, "chartType", type1, type2);
-    fieldUpdated(change, "chartUrl", "url1", "url2");
+    fieldUpdated(change, "sourceUrl", "url1", "url2");
 
     updateAndCheckEntity(
         request.withDescription("desc2").withChartType(type2).withChartUrl("url2"),
@@ -146,7 +146,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     chart.withChartType(type1).withChartUrl("url1").withDescription("desc1");
     fieldAdded(change, "description", "desc1");
     fieldAdded(change, "chartType", type1);
-    fieldAdded(change, "chartUrl", "url1");
+    fieldAdded(change, "sourceUrl", "url1");
 
     chart = patchEntityAndCheck(chart, originalJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
@@ -155,7 +155,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     change = getChangeDescription(chart.getVersion());
     fieldUpdated(change, "description", "desc1", "desc2");
     fieldUpdated(change, "chartType", type1, type2);
-    fieldUpdated(change, "chartUrl", "url1", "url2");
+    fieldUpdated(change, "sourceUrl", "url1", "url2");
 
     chart.withChartType(type2).withChartUrl("url2").withDescription("desc2");
     patchEntityAndCheck(chart, originalJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);

@@ -721,7 +721,7 @@ class SampleDataSource(
                     displayName=chart["displayName"],
                     description=chart["description"],
                     chartType=get_standard_chart_type(chart["chartType"]),
-                    chartUrl=chart["chartUrl"],
+                    sourceUrl=chart["sourceUrl"],
                     service=self.looker_service.fullyQualifiedName,
                 )
                 self.status.scanned(f"Chart Scanned: {chart_ev.name.__root__}")
@@ -803,7 +803,7 @@ class SampleDataSource(
                     displayName=chart["displayName"],
                     description=chart["description"],
                     chartType=get_standard_chart_type(chart["chartType"]),
-                    chartUrl=chart["chartUrl"],
+                    sourceUrl=chart["sourceUrl"],
                     service=self.dashboard_service.fullyQualifiedName,
                 )
                 self.status.scanned(f"Chart Scanned: {chart_ev.name.__root__}")

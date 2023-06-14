@@ -208,7 +208,7 @@ EXPECTED_CHART = CreateChartRequest(
     displayName="% Rural",
     description="TEST DESCRIPTION",
     chartType=ChartType.Other.value,
-    chartUrl="https://my-superset.com/explore/?slice_id=37",
+    sourceUrl="https://my-superset.com/explore/?slice_id=37",
     service=EXPECTED_DASH_SERVICE.fullyQualifiedName,
 )
 
