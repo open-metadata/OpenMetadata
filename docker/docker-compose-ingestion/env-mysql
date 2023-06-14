@@ -5,7 +5,7 @@ AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS="/opt/airflow/dag_gene
 # MySQL Environment Variables for ingestion service
 AIRFLOW_DB_HOST="mysql"
 AIRFLOW_DB_PORT="3306"
-AIRFLOW_DB="AIRFLOW_DB:-airflow_db"
+AIRFLOW_DB="airflow_db"
 AIRFLOW_DB_SCHEME="mysql+pymysql"
 DB_USER="airflow_user"
 DB_PASSWORD="airflow_pass"
