@@ -228,6 +228,7 @@ class TableauSource(DashboardServiceSource):
                 name=dashboard_details.id,
                 displayName=dashboard_details.name,
                 description=dashboard_details.description,
+                project=dashboard_details.project.name,
                 charts=[
                     fqn.build(
                         self.metadata,

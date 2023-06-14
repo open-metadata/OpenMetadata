@@ -234,6 +234,7 @@ class PowerbiSource(DashboardServiceSource):
                 workspace_id=self.context.workspace.id,
                 dashboard_id=dashboard_details.id,
             ),
+            project=str(self.context.workspace.name),
             displayName=dashboard_details.displayName,
             description="",
             charts=[
