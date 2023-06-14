@@ -12,6 +12,7 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
@@ -42,7 +43,6 @@ import {
   getEntityOverview,
 } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import SVGIcons from 'utils/SvgUtils';
 import { API_RES_MAX_SIZE, ROUTES } from '../../../../constants/constants';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../../../constants/profiler.constant';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
@@ -298,12 +298,7 @@ function TableSummary({
                             to={{ pathname: info.url }}>
                             {info.value}
                             {info.isExternal ? (
-                              <SVGIcons
-                                alt="external-link"
-                                className="m-l-xs"
-                                icon="external-link"
-                                width="12px"
-                              />
+                              <IconExternalLink className="m-l-xs" width={12} />
                             ) : null}
                           </Link>
                         ) : (
@@ -338,7 +333,7 @@ function TableSummary({
           </>
         ) : null}
 
-        <Row className="m-md" gutter={[0, 16]}>
+        <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"
@@ -353,7 +348,7 @@ function TableSummary({
 
         {isExplore ? (
           <>
-            <Row className="m-md" gutter={[0, 16]}>
+            <Row className="m-md" gutter={[0, 8]}>
               <Col span={24}>
                 <Typography.Text
                   className="summary-panel-section-title"

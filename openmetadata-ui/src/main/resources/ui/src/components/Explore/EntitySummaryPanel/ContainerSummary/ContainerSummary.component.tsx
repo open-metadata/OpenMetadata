@@ -12,6 +12,7 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import classNames from 'classnames';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
@@ -27,7 +28,6 @@ import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from 'utils/EntityUtils';
-import SVGIcons from 'utils/SvgUtils';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 import { ContainerSummaryProps } from './ContainerSummary.interface';
@@ -83,12 +83,7 @@ function ContainerSummary({
                             to={{ pathname: info.url }}>
                             {info.value}
                             {info.isExternal ? (
-                              <SVGIcons
-                                alt="external-link"
-                                className="m-l-xs"
-                                icon="external-link"
-                                width="12px"
-                              />
+                              <IconExternalLink width={12} />
                             ) : null}
                           </Link>
                         ) : (
@@ -109,7 +104,7 @@ function ContainerSummary({
         </Row>
         <Divider className="m-y-xs" />
 
-        <Row className="m-md" gutter={[0, 16]}>
+        <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"

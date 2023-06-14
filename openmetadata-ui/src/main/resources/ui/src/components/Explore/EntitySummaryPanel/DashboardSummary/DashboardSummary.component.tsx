@@ -12,6 +12,7 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
@@ -28,7 +29,6 @@ import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from 'utils/EntityUtils';
-import SVGIcons from 'utils/SvgUtils';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { Dashboard } from '../../../../generated/entity/data/dashboard';
 import { fetchCharts } from '../../../../utils/DashboardDetailsUtils';
@@ -127,22 +127,17 @@ function DashboardSummary({
                       <Col data-testid="dashboard-url-value" span={16}>
                         {info.isLink ? (
                           <Link
-                            className="d-flex items-center"
+                            className="d-flex"
                             component={Typography.Link}
                             target={info.isExternal ? '_blank' : '_self'}
                             to={{ pathname: info.url }}>
-                            <Typography.Link
-                              className="text-primary"
-                              data-testid="dashboard-link-name">
+                            <Typography.Link data-testid="dashboard-link-name">
                               {info.value}
                             </Typography.Link>
                             {info.isExternal ? (
-                              <SVGIcons
-                                alt="external-link"
+                              <IconExternalLink
                                 className="m-l-xss"
-                                height="14px"
-                                icon="external-link"
-                                width="14px"
+                                width={12}
                               />
                             ) : null}
                           </Link>
@@ -174,7 +169,7 @@ function DashboardSummary({
           </>
         ) : (
           <>
-            <Row className="m-md" gutter={[0, 16]}>
+            <Row className="m-md" gutter={[0, 8]}>
               <Col span={24}>
                 <Typography.Text
                   className="summary-panel-section-title"

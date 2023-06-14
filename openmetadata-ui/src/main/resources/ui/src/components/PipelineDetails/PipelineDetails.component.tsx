@@ -41,7 +41,7 @@ import { postThread } from 'rest/feedsAPI';
 import { restorePipeline } from 'rest/pipelineAPI';
 import { fetchGlossaryTerms, getGlossaryTermlist } from 'utils/GlossaryUtils';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
-import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-link.svg';
+import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-links.svg';
 import {
   getPipelineDetailsPath,
   NO_DATA_PLACEHOLDER,

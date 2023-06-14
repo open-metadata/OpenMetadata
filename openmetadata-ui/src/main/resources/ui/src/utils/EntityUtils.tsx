@@ -456,7 +456,7 @@ export const getEntityOverview = (
 
       const overview = [
         {
-          name: i18next.t('label.number-of-object-plural'),
+          name: i18next.t('label.object-plural'),
           value: numberOfObjects,
           isLink: false,
           visible,

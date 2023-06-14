@@ -12,6 +12,7 @@
  */
 
 import { Col, Divider, Row, Space, Typography } from 'antd';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
@@ -25,7 +26,6 @@ import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from 'utils/EntityUtils';
-import SVGIcons from 'utils/SvgUtils';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { Pipeline } from '../../../../generated/entity/data/pipeline';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
@@ -95,18 +95,15 @@ function PipelineSummary({
                         {info.isLink ? (
                           <Space align="start">
                             <Typography.Link
-                              className="d-flex items-center"
+                              className="d-flex"
                               data-testid="pipeline-link-name"
                               href={info.url}
                               target={info.isExternal ? '_blank' : '_self'}>
                               {info.value}
                               {info.isExternal ? (
-                                <SVGIcons
-                                  alt="external-link"
+                                <IconExternalLink
                                   className="m-l-xss"
-                                  height="14px"
-                                  icon="external-link"
-                                  width="14px"
+                                  width={12}
                                 />
                               ) : null}
                             </Typography.Link>
@@ -139,7 +136,7 @@ function PipelineSummary({
           </>
         ) : (
           <>
-            <Row className="m-md" gutter={[0, 16]}>
+            <Row className="m-md" gutter={[0, 8]}>
               <Col span={24}>
                 <Typography.Text
                   className="summary-panel-section-title"

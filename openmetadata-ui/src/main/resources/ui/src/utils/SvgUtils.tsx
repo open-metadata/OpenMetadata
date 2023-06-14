@@ -73,8 +73,6 @@ import IconEditPrimary from '../assets/svg/edit-primary.svg';
 import IconError from '../assets/svg/error.svg';
 import IconExitFullScreen from '../assets/svg/exit-full-screen.svg';
 import IconExternalLinkGrey from '../assets/svg/external-link-grey.svg';
-import IconExternalLinkWhite from '../assets/svg/external-link-white.svg';
-import IconExternalLink from '../assets/svg/external-link.svg';
 import IconFailBadge from '../assets/svg/fail-badge.svg';
 import IconFilterPrimary from '../assets/svg/filter-primary.svg';
 import IconFitView from '../assets/svg/fitview.svg';
@@ -296,8 +294,6 @@ export const Icons = {
   CONFIG: 'icon-config',
   SLACK: 'slack',
   SLACK_GREY: 'slack-grey',
-  EXTERNAL_LINK: 'external-link',
-  EXTERNAL_LINK_WHITE: 'external-link-white',
   EXTERNAL_LINK_GREY: 'external-link-grey',
   PROFILER: 'icon-profiler',
   PIPELINE: 'pipeline',
@@ -750,14 +746,6 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       break;
     case Icons.SLACK_GREY:
       IconComponent = IconSlackGrey;
-
-      break;
-    case Icons.EXTERNAL_LINK:
-      IconComponent = IconExternalLink;
-
-      break;
-    case Icons.EXTERNAL_LINK_WHITE:
-      IconComponent = IconExternalLinkWhite;
 
       break;
     case Icons.EXTERNAL_LINK_GREY:

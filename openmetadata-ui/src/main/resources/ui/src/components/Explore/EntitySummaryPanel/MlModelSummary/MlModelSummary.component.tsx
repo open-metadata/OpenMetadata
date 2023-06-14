@@ -12,6 +12,7 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
@@ -26,7 +27,6 @@ import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from 'utils/EntityUtils';
-import SVGIcons from 'utils/SvgUtils';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { Mlmodel } from '../../../../generated/entity/data/mlmodel';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
@@ -98,12 +98,9 @@ function MlModelSummary({
                             to={{ pathname: info.url }}>
                             {info.value}
                             {info.isExternal ? (
-                              <SVGIcons
-                                alt="external-link"
+                              <IconExternalLink
                                 className="m-l-xss"
-                                height="14px"
-                                icon="external-link"
-                                width="14px"
+                                width={12}
                               />
                             ) : null}
                           </Link>
@@ -135,7 +132,7 @@ function MlModelSummary({
           </>
         ) : (
           <>
-            <Row className="m-md" gutter={[0, 16]}>
+            <Row className="m-md" gutter={[0, 8]}>
               <Col span={24}>
                 <Typography.Text
                   className="summary-panel-section-title"

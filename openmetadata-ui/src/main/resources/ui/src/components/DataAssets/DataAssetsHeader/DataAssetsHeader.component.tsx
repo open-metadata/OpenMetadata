@@ -15,7 +15,7 @@ import Icon from '@ant-design/icons';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as IconExternalLink } from 'assets/svg/external-link.svg';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import { ReactComponent as TaskOpenIcon } from 'assets/svg/ic-open-task.svg';
 import { ReactComponent as ShareIcon } from 'assets/svg/ic-share.svg';
 import { ReactComponent as StarFilledIcon } from 'assets/svg/ic-star-filled.svg';

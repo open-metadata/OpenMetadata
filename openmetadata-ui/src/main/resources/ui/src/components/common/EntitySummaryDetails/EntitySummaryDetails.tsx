@@ -14,6 +14,7 @@
 import { Button as AntdButton, Button, Space } from 'antd';
 import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import classNames from 'classnames';
 import { isString, isUndefined, lowerCase, noop, toLower } from 'lodash';
@@ -251,12 +252,7 @@ const EntitySummaryDetails = ({
                 {data.openInNewTab && (
                   <>
                     &nbsp;
-                    <SVGIcons
-                      alt="external-link"
-                      className="tw-align-middle"
-                      icon="external-link"
-                      width="16px"
-                    />
+                    <IconExternalLink width={12} />
                   </>
                 )}
               </a>
