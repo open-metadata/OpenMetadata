@@ -3,11 +3,7 @@ from unittest import TestCase
 
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 
-try:
-    import importlib.resources as pkg_resources
-except ImportError:
-    import pkg_resources
-
+import importlib.resources
 import yaml
 
 
@@ -17,7 +13,7 @@ class TestWorkflowParse(TestCase):
     """
 
     def test_parse_workflow_config(self):
-        package_path = f'{pkg_resources.files("metadata")}/examples/workflows'
+        package_path = f'{importlib.resources.files("metadata")}/examples/workflows'
         workflow_files = [files for _, _, files in walk(package_path)]
         for yaml_file in workflow_files[0]:
             with self.subTest(file_name=yaml_file):
