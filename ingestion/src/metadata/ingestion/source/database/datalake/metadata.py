@@ -64,6 +64,7 @@ from metadata.utils.datalake.datalake_utils import (
     fetch_dataframe,
 )
 from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, DEFAULT_DATABASE
+from metadata.utils.datalake.datalake_utils import SupportedTypes, fetch_dataframe
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -579,7 +580,7 @@ class DatalakeSource(DatabaseServiceSource):
         return table
 
     def check_valid_file_type(self, key_name):
-        for supported_types in SUPPORTED_TYPES:
+        for supported_types in SupportedTypes:
             if key_name.endswith(supported_types.value):
                 return True
         return False
