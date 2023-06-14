@@ -306,8 +306,10 @@ const TestConnection: FC<TestConnectionProps> = ({
       showErrorToast(error as AxiosError);
 
       // delete the workflow if there is an exception
-      currentWorkflowRef.current?.id &&
-        (await handleDeleteWorkflow(currentWorkflowRef.current.id));
+      const workflowId = currentWorkflowRef.current?.id;
+      if (workflowId) {
+        await handleDeleteWorkflow(workflowId);
+      }
     }
   };
 
@@ -332,8 +334,9 @@ const TestConnection: FC<TestConnectionProps> = ({
       /**
        * if workflow is present then delete the workflow when component unmount
        */
-      if (currentWorkflowRef.current?.id) {
-        handleDeleteWorkflow(currentWorkflowRef.current.id);
+      const workflowId = currentWorkflowRef.current?.id;
+      if (workflowId) {
+        handleDeleteWorkflow(workflowId);
       }
     };
   }, []);
