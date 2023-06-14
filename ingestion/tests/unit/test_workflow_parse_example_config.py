@@ -16,7 +16,7 @@ class TestWorkflowParse(TestCase):
     Test parsing scenarios of JSON Schemas
     """
 
-    def test_get_service_type(self):
+    def test_parse_workflow_config(self):
         package_path = f'{pkg_resources.files("metadata")}/examples/workflows'
         workflow_files = [files for _, _, files in walk(package_path)]
         for yaml_file in workflow_files[0]:
