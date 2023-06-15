@@ -18,8 +18,6 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
-import pytest
-
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
