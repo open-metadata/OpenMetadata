@@ -61,7 +61,6 @@ export interface DataObj {
   databaseConnection?: DatabaseConnection;
   brokers?: Array<string>;
   schemaRegistry?: string;
-  sourceUrl?: string;
   username?: string;
   password?: string;
   url?: string;
