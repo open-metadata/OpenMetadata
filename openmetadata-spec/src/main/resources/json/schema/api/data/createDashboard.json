@@ -22,7 +22,7 @@
     "dashboardType": {
       "$ref": "../../entity/data/dashboard.json#/definitions/dashboardType"
     },
-    "dashboardUrl": {
+    "sourceUrl": {
       "description": "Dashboard URL suffix from its service.",
       "type": "string"
     },

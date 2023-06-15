@@ -304,7 +304,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         .withName(task.getName())
         .withDisplayName(task.getDisplayName())
         .withFullyQualifiedName(task.getFullyQualifiedName())
-        .withTaskUrl(task.getTaskUrl())
+        .withSourceUrl(task.getSourceUrl())
         .withTaskType(task.getTaskType())
         .withDownstreamTasks(task.getDownstreamTasks())
         .withTaskSQL(task.getTaskSQL())
@@ -321,7 +321,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       updateTasks(original, updated);
-      recordChange("pipelineUrl", original.getPipelineUrl(), updated.getPipelineUrl());
+      recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("concurrency", original.getConcurrency(), updated.getConcurrency());
       recordChange("pipelineLocation", original.getPipelineLocation(), updated.getPipelineLocation());
     }
