@@ -240,6 +240,7 @@ const RequestDescription = () => {
               })}:`}
               name="title">
               <Input
+                disabled
                 placeholder={t('label.task-entity', {
                   entity: t('label.title'),
                 })}

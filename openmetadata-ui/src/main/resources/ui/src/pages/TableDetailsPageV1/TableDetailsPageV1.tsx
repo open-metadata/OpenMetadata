@@ -433,6 +433,7 @@ const TableDetailsPageV1 = () => {
             </>
           ) : null}
           <TagsContainerV1
+            showLimited
             editable={tablePermissions.EditAll || tablePermissions.EditTags}
             entityFieldThreads={getEntityFieldThreadCounts(
               EntityField.TAGS,

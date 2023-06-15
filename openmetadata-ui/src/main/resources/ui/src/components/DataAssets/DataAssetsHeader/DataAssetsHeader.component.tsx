@@ -204,7 +204,7 @@ export const DataAssetsHeader = ({
                 label={t('label.usage')}
                 value={getUsagePercentile(
                   tableDetails.usageSummary?.weeklyStats?.percentileRank || 0,
-                  true
+                  false
                 )}
               />
             )}
