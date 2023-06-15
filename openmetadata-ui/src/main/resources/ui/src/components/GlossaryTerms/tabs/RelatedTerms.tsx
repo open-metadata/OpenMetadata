@@ -20,8 +20,8 @@ import { EntityField } from 'constants/Feeds.constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { ChangeDescription } from 'generated/entity/type';
 import { t } from 'i18next';
-import { cloneDeep, debounce, includes } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import { cloneDeep, debounce, includes, isEmpty } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
 import { getEntityName } from 'utils/EntityUtils';
@@ -191,6 +191,15 @@ const RelatedTerms = ({
         )
       : [];
 
+    const noSynonyms =
+      isEmpty(unchangedRelatedTerms) &&
+      isEmpty(addedRelatedTerms) &&
+      isEmpty(deletedRelatedTerms);
+
+    if (noSynonyms) {
+      return <div>{NO_DATA_PLACEHOLDER}</div>;
+    }
+
     return (
       <div className="d-flex flex-wrap">
         {unchangedRelatedTerms.map((relatedTerm) =>
@@ -205,6 +214,43 @@ const RelatedTerms = ({
       </div>
     );
   }, [glossaryTerm]);
+
+  const relatedTermsContainer = useMemo(
+    () =>
+      isVersionView ? (
+        getVersionRelatedTerms()
+      ) : (
+        <div className="d-flex flex-wrap">
+          {permissions.EditAll && selectedOption.length === 0 && (
+            <TagButton
+              className="tw-text-primary cursor-pointer"
+              dataTestId="related-term-add-button"
+              icon={<PlusIcon height={16} name="plus" width={16} />}
+              label={t('label.add')}
+              tooltip=""
+              onClick={() => {
+                setIsIconVisible(false);
+              }}
+            />
+          )}
+
+          {selectedOption.map((entity: EntityReference) =>
+            getRelatedTermElement(entity)
+          )}
+
+          {!permissions.EditAll && selectedOption.length === 0 && (
+            <div>{NO_DATA_PLACEHOLDER}</div>
+          )}
+        </div>
+      ),
+    [
+      permissions,
+      selectedOption,
+      isVersionView,
+      getVersionRelatedTerms,
+      getRelatedTermElement,
+    ]
+  );
 
   return (
     <div className="flex flex-col" data-testid="related-term-container">
@@ -231,30 +277,7 @@ const RelatedTerms = ({
       </div>
 
       {isIconVisible ? (
-        <div className="d-flex flex-wrap">
-          {permissions.EditAll && selectedOption.length === 0 && (
-            <TagButton
-              className="tw-text-primary cursor-pointer"
-              dataTestId="related-term-add-button"
-              icon={<PlusIcon height={16} name="plus" width={16} />}
-              label={t('label.add')}
-              tooltip=""
-              onClick={() => {
-                setIsIconVisible(false);
-              }}
-            />
-          )}
-
-          {isVersionView
-            ? getVersionRelatedTerms()
-            : selectedOption.map((entity: EntityReference) =>
-                getRelatedTermElement(entity)
-              )}
-
-          {!permissions.EditAll && selectedOption.length === 0 && (
-            <div>{NO_DATA_PLACEHOLDER}</div>
-          )}
-        </div>
+        relatedTermsContainer
       ) : (
         <div className="d-flex items-center gap-2">
           <Select

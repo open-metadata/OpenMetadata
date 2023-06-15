@@ -100,6 +100,15 @@ const GlossaryTermSynonyms = ({
         )
       : [];
 
+    const noSynonyms =
+      isEmpty(unchangedSynonyms) &&
+      isEmpty(addedSynonyms) &&
+      isEmpty(deletedSynonyms);
+
+    if (noSynonyms) {
+      return <div>{NO_DATA_PLACEHOLDER}</div>;
+    }
+
     return (
       <div className="d-flex flex-wrap">
         {unchangedSynonyms.map((synonym) => (

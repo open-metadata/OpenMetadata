@@ -20,6 +20,7 @@ import TagButton from 'components/TagButton/TagButton.component';
 import {
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
+  SUCCESS_COLOR,
   TEXT_BODY_COLOR,
   TEXT_GREY_MUTED,
 } from 'constants/constants';
@@ -27,7 +28,7 @@ import { EntityField } from 'constants/Feeds.constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { ChangeDescription } from 'generated/entity/type';
 import { t } from 'i18next';
-import { cloneDeep, isEqual } from 'lodash';
+import { cloneDeep, isEmpty, isEqual } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   getChangedEntityNewValue,
@@ -94,6 +95,19 @@ const GlossaryTermReferences = ({
 
   const getReferenceElement = useCallback(
     (ref: TermReference, versionStatus?: VersionStatus) => {
+      let iconColor: string;
+      let textClassName: string;
+      if (versionStatus?.added) {
+        iconColor = SUCCESS_COLOR;
+        textClassName = 'text-success';
+      } else if (versionStatus?.removed) {
+        iconColor = TEXT_GREY_MUTED;
+        textClassName = 'text-grey-muted';
+      } else {
+        iconColor = TEXT_BODY_COLOR;
+        textClassName = 'text-body';
+      }
+
       return (
         <Tag
           className={classNames(
@@ -111,17 +125,10 @@ const GlossaryTermReferences = ({
               <div className="d-flex items-center">
                 <ExternalLinkIcon
                   className="m-r-xss"
-                  color={
-                    versionStatus?.removed ? TEXT_GREY_MUTED : TEXT_BODY_COLOR
-                  }
+                  color={iconColor}
                   width="12px"
                 />
-                <span
-                  className={classNames(
-                    versionStatus?.removed ? 'text-grey-muted' : 'text-body'
-                  )}>
-                  {ref.name}
-                </span>
+                <span className={textClassName}>{ref.name}</span>
               </div>
             </a>
           </Tooltip>
@@ -154,6 +161,15 @@ const GlossaryTermReferences = ({
             )
         )
       : [];
+
+    const noSynonyms =
+      isEmpty(unchangedReferences) &&
+      isEmpty(addedReferences) &&
+      isEmpty(deletedReferences);
+
+    if (noSynonyms) {
+      return <div>{NO_DATA_PLACEHOLDER}</div>;
+    }
 
     return (
       <div className="d-flex flex-wrap">
@@ -199,26 +215,28 @@ const GlossaryTermReferences = ({
           </div>
         </Space>
         <>
-          <div className="d-flex flex-wrap">
-            {isVersionView
-              ? getVersionReferenceElements()
-              : references.map((ref) => getReferenceElement(ref))}
-            {permissions.EditAll && references.length === 0 && (
-              <TagButton
-                className="tw-text-primary cursor-pointer"
-                dataTestId="term-references-add-button"
-                icon={<PlusIcon height={16} name="plus" width={16} />}
-                label={t('label.add')}
-                tooltip=""
-                onClick={() => {
-                  setIsViewMode(false);
-                }}
-              />
-            )}
-            {!permissions.EditAll && references.length === 0 && (
-              <div>{NO_DATA_PLACEHOLDER}</div>
-            )}
-          </div>
+          {isVersionView ? (
+            getVersionReferenceElements()
+          ) : (
+            <div className="d-flex flex-wrap">
+              {references.map((ref) => getReferenceElement(ref))}
+              {permissions.EditAll && references.length === 0 && (
+                <TagButton
+                  className="tw-text-primary cursor-pointer"
+                  dataTestId="term-references-add-button"
+                  icon={<PlusIcon height={16} name="plus" width={16} />}
+                  label={t('label.add')}
+                  tooltip=""
+                  onClick={() => {
+                    setIsViewMode(false);
+                  }}
+                />
+              )}
+              {!permissions.EditAll && references.length === 0 && (
+                <div>{NO_DATA_PLACEHOLDER}</div>
+              )}
+            </div>
+          )}
         </>
       </div>
 
