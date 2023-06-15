@@ -99,7 +99,7 @@ class MetabaseSource(DashboardServiceSource):
             )
             dashboard_request = CreateDashboardRequest(
                 name=dashboard_details.id,
-                dashboardUrl=dashboard_url,
+                sourceUrl=dashboard_url,
                 displayName=dashboard_details.name,
                 description=dashboard_details.description,
                 charts=[
@@ -151,7 +151,7 @@ class MetabaseSource(DashboardServiceSource):
                     displayName=chart_details.name,
                     description=chart_details.description,
                     chartType=get_standard_chart_type(chart_details.display).value,
-                    chartUrl=chart_url,
+                    sourceUrl=chart_url,
                     service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
                 self.status.scanned(chart_details.name)
