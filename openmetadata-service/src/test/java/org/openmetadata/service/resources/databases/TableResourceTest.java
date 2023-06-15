@@ -1772,7 +1772,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     DatabaseResourceTest databaseTest = new DatabaseResourceTest();
 
     // Create Database
-    CreateDatabase createDatabase = databaseTest.createRequest(getEntityName(test)).withRetentionPeriod("P30D");
+    CreateDatabase createDatabase = databaseTest.createRequest(getEntityName(test));
     Database database = databaseTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
     // Create Database Schema
     CreateDatabaseSchema createDatabaseSchema =
@@ -1797,6 +1797,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     HashMap<String, String> queryParams = new HashMap<>();
     queryParams.put("includeEmptyTestSuite", "false");
     queryParams.put("fields", "testSuite");
+    queryParams.put("limit", "100");
     ResultList<Table> tables = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertTrue(tables.getData().isEmpty());
 
