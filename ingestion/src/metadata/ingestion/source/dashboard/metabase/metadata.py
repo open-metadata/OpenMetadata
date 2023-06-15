@@ -35,6 +35,7 @@ from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.metabase.models import (
     MetabaseChart,
+    MetabaseCollection,
     MetabaseDashboard,
     MetabaseDashboardDetails,
 )
@@ -68,6 +69,18 @@ class MetabaseSource(DashboardServiceSource):
             )
         return cls(config, metadata_config)
 
+    def __init__(
+        self,
+        config: WorkflowSource,
+        metadata_config: OpenMetadataConnection,
+    ):
+        super().__init__(config, metadata_config)
+        self.collections: List[MetabaseCollection] = []
+
+    def prepare(self):
+        self.collections = self.client.get_collections_list()
+        return super().prepare()
+
     def get_dashboards_list(self) -> Optional[List[MetabaseDashboard]]:
         """
         Get List of all dashboards
@@ -86,6 +99,28 @@ class MetabaseSource(DashboardServiceSource):
         """
         return self.client.get_dashboard_details(dashboard.id)
 
+    def _get_collection_name(self, collection_id: Optional[str]) -> Optional[str]:
+        """
+        Method to search the dataset using id in the workspace dict
+        """
+        try:
+            if collection_id:
+                collection_name = next(
+                    (
+                        collection.name
+                        for collection in self.collections
+                        if collection.id == collection_id
+                    ),
+                    None,
+                )
+                return collection_name
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error fetching the collection details for [{collection_id}]: {exc}"
+            )
+        return None
+
     def yield_dashboard(
         self, dashboard_details: MetabaseDashboardDetails
     ) -> Iterable[CreateDashboardRequest]:
@@ -102,6 +137,9 @@ class MetabaseSource(DashboardServiceSource):
                 sourceUrl=dashboard_url,
                 displayName=dashboard_details.name,
                 description=dashboard_details.description,
+                project=self._get_collection_name(
+                    collection_id=dashboard_details.collection_id
+                ),
                 charts=[
                     fqn.build(
                         self.metadata,

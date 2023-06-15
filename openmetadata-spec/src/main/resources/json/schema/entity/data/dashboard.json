@@ -48,6 +48,10 @@
       "description": "Description of the dashboard, what it is, and how to use it.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "project": {
+      "description": "Name of the project / workspace / collection in which the dashboard is contained",
+      "type": "string"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
