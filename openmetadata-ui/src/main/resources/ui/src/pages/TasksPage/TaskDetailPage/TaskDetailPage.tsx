@@ -94,7 +94,6 @@ import {
 import { getDayTimeByTimeStamp } from '../../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
-import ClosedTask from '../shared/ClosedTask';
 import ColumnDetail from '../shared/ColumnDetail';
 import CommentModal from '../shared/CommentModal';
 import DescriptionTask from '../shared/DescriptionTask';
@@ -778,11 +777,7 @@ const TaskDetailPage = () => {
                         </Button>
                       )}
 
-                      {isTaskClosed ? (
-                        <ClosedTask task={taskDetail.task} />
-                      ) : (
-                        actionButtons
-                      )}
+                      {!isTaskClosed && actionButtons}
                     </Space>
                   </Form>
                 </Card>

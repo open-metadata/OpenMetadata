@@ -35,7 +35,6 @@ import { TaskType } from 'generated/api/feed/createThread';
 import { TaskDetails, ThreadTaskStatus } from 'generated/entity/feed/thread';
 import { useAuth } from 'hooks/authHooks';
 import { isEmpty, isEqual, isUndefined, noop } from 'lodash';
-import ClosedTask from 'pages/TasksPage/shared/ClosedTask';
 import DescriptionTask from 'pages/TasksPage/shared/DescriptionTask';
 import TagsTask from 'pages/TasksPage/shared/TagsTask';
 import {
@@ -81,6 +80,7 @@ export const TaskTab = ({
 
   const isTaskClosed = isEqual(taskDetails?.status, ThreadTaskStatus.Closed);
   const [showEditTaskModel, setShowEditTaskModel] = useState(false);
+  const [comment, setCommnent] = useState('');
 
   // get current user details
   const currentUser = useMemo(
@@ -224,6 +224,22 @@ export const TaskTab = ({
     );
   };
 
+  const onTaskReject = () => {
+    if (comment && taskDetails?.id) {
+      //   setIsLoadingOnSave(true);
+      updateTask(TaskOperation.REJECT, taskDetails?.id + '', {
+        comment,
+      } as unknown as TaskDetails)
+        .then(() => {
+          showSuccessToast(t('server.task-closed-successfully'));
+          //   setModalVisible(false);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+    } else {
+      showErrorToast(t('server.task-closed-without-comment'));
+    }
+  };
+
   return (
     <Row className="p-y-sm p-x-md" gutter={[0, 24]}>
       <Col className="d-flex items-center" span={24}>
@@ -297,7 +313,7 @@ export const TaskTab = ({
           ))}
         </div>
         {task.task?.status === ThreadTaskStatus.Open && (
-          <ActivityFeedEditor onSave={onSave} />
+          <ActivityFeedEditor onSave={onSave} onTextChange={setCommnent} />
         )}
 
         <Space
@@ -305,12 +321,10 @@ export const TaskTab = ({
           data-testid="task-cta-buttons"
           size="small">
           {(hasTaskUpdateAccess() || isCreator) && !isTaskClosed && (
-            <Button onClick={noop}>{t('label.close')}</Button>
+            <Button onClick={onTaskReject}>{t('label.close')}</Button>
           )}
 
-          {isTaskClosed ? (
-            <ClosedTask className="ml-8 m-t-sm p-l-md" task={taskDetails} />
-          ) : (
+          {!isTaskClosed && (
             <>
               <Dropdown.Button
                 menu={{
