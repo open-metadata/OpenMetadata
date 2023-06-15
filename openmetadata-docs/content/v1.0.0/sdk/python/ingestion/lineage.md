@@ -159,6 +159,7 @@ represents the edge between two Entities, typed under `EntitiesEdge`.
 ```python
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityReference import EntityReference
 
 add_lineage_request = AddLineageRequest(
     description="test lineage",
