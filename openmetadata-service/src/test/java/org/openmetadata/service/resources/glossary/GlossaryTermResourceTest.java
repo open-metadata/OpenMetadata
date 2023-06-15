@@ -181,7 +181,10 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     GlossaryTerm t12 =
         createEntity(
-            create.withName("t12").withGlossary(glossary.getFullyQualifiedName()).withParent(t1.getFullyQualifiedName()),
+            create
+                .withName("t12")
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withParent(t1.getFullyQualifiedName()),
             ADMIN_AUTH_HEADERS);
     assertEntityReferences(glossary.getReviewers(), t12.getReviewers()); // Reviewers are inherited
     assertReference(glossary.getOwner(), t12.getOwner()); // Owner is inherited

@@ -106,8 +106,6 @@ public class FullyQualifiedName {
     return parent;
   }
 
-
-
   public static String getRoot(String fqn) {
     // Split fqn of format a.b.c.d and return the root a
     String[] split = split(fqn);
