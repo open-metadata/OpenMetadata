@@ -12,14 +12,24 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { ObjectFieldTemplateProps } from '@rjsf/utils';
+import {
+  ObjectFieldTemplatePropertyType,
+  ObjectFieldTemplateProps,
+} from '@rjsf/utils';
 import { Button, Collapse, Space } from 'antd';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { ADVANCED_PROPERTIES } from 'constants/Services.constant';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { Fragment, FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
+import './object-field-template.less';
 
 const { Panel } = Collapse;
+
+interface PropertyMap {
+  advancedProperties: ObjectFieldTemplatePropertyType[];
+  normalProperties: ObjectFieldTemplatePropertyType[];
+}
 
 export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
   (props: ObjectFieldTemplateProps) => {
@@ -27,6 +37,30 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
 
     const { formContext, idSchema, title, onAddClick, schema, properties } =
       props;
+
+    const { advancedProperties, normalProperties } = properties.reduce(
+      (propertyMap, currentProperty) => {
+        const isAdvancedProperty = ADVANCED_PROPERTIES.includes(
+          currentProperty.name
+        );
+
+        let advancedProperties = [...propertyMap.advancedProperties];
+        let normalProperties = [...propertyMap.normalProperties];
+
+        if (isAdvancedProperty) {
+          advancedProperties = [...advancedProperties, currentProperty];
+        } else {
+          normalProperties = [...normalProperties, currentProperty];
+        }
+
+        return { ...propertyMap, advancedProperties, normalProperties };
+      },
+      {
+        advancedProperties: [],
+
+        normalProperties: [],
+      } as PropertyMap
+    );
 
     const fieldElement = (
       <Fragment>
@@ -60,7 +94,7 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
             />
           )}
         </Space>
-        {properties.map((element, index) => (
+        {normalProperties.map((element, index) => (
           <div
             className={classNames('property-wrapper', {
               'additional-fields': schema.additionalProperties,
@@ -69,18 +103,23 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
             {element.content}
           </div>
         ))}
+        {!isEmpty(advancedProperties) && (
+          <Collapse ghost className="advanced-properties-collapse">
+            <Panel header={t('label.advanced-configuration')} key="1">
+              {advancedProperties.map((element, index) => (
+                <div
+                  className={classNames('property-wrapper', {
+                    'additional-fields': schema.additionalProperties,
+                  })}
+                  key={`${element.content.key}-${index}`}>
+                  {element.content}
+                </div>
+              ))}
+            </Panel>
+          </Collapse>
+        )}
       </Fragment>
     );
-
-    if (schema.additionalProperties) {
-      return (
-        <Collapse ghost>
-          <Panel header={t('label.advanced-configuration')} key="1">
-            {fieldElement}
-          </Panel>
-        </Collapse>
-      );
-    }
 
     return fieldElement;
   };
