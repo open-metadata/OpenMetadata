@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
+@import url('../variables.less');
 @background: #d9ceee;
-@border: #0950c5;
 
 .ingestion-content {
   display: flex;
@@ -32,7 +32,7 @@
   z-index: 1;
 }
 .ingestion-rounder.active {
-  border-color: @border;
+  border-color: @primary-color;
 }
 .ingestion-rounder.completed {
   background-color: @background;
@@ -44,7 +44,7 @@
   display: block;
   margin-top: -4px;
   font-weight: 900;
-  color: @border;
+  color: @primary-color;
 }
 
 .ingestion-deploy-line {
@@ -89,14 +89,14 @@
 
 .ant-steps-small .ant-steps-item-title {
   font-size: 12px;
-  color: @border;
+  color: @primary-color;
 }
 
 .ant-steps-item-finish
   > .ant-steps-item-container
   > .ant-steps-item-content
   > .ant-steps-item-title {
-  color: @border;
+  color: @primary-color;
 }
 
 .ant-steps-item-process

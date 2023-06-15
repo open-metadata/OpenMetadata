@@ -700,7 +700,7 @@ body .profiler-graph .recharts-active-dot circle {
   background-color: #6b7280;
 }
 .leaf-node.core .react-flow__handle {
-  background-color: #0950c5;
+  background-color: #0968da;
 }
 .react-flow__edge {
   pointer-events: all;
@@ -708,7 +708,7 @@ body .profiler-graph .recharts-active-dot circle {
 }
 
 .react-flow__edge.selected .react-flow__edge-path {
-  stroke: #0950c5;
+  stroke: #0968da;
 }
 
 .react-flow__node-default,
@@ -926,7 +926,7 @@ code {
 
 .ant-btn-text:hover span {
   text-decoration: underline;
-  color: #0950c5;
+  color: #0968da;
   background-color: transparent;
 }
 
@@ -962,7 +962,7 @@ code {
 }
 
 .ant-advaced-field-select {
-  color: #0950c5;
+  color: #0968da;
   min-width: 130px;
 }
 .ant-suggestion-dropdown {
@@ -992,28 +992,28 @@ code {
 /* Antd custom button CSS */
 .ant-btn-link-custom,
 .ant-btn-link-custom:hover {
-  color: #0950c5;
+  color: #0968da;
 }
 .ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
 .ant-btn-primary-custom {
-  background: #0950c5;
+  background: #0968da;
   color: #ffffff;
-  border-color: #0950c5;
+  border-color: #0968da;
 }
 
 .ant-dropdown-button.ant-btn-primary-dropdown
   > .ant-btn-primary.ant-btn-icon-only {
-  background: #0950c5;
+  background: #0968da;
   color: #ffffff;
-  border-color: #0950c5;
+  border-color: #0968da;
   border-left-color: #ffffff;
 }
 .ant-btn-primary-custom:hover,
 .ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
 .ant-btn-primary-custom span:hover {
-  background: #0950c5;
+  background: #0968da;
   color: #ffffff;
-  border-color: #0950c5;
+  border-color: #0968da;
   text-decoration: none;
 }
 
@@ -1028,10 +1028,10 @@ code {
   outline: none;
 }
 .ant-select-custom:not(.ant-select-disabled):hover .ant-select-selector {
-  border-color: #0950c5;
+  border-color: #0968da;
 }
 .ant-select-focused {
-  border-color: #0950c5;
+  border-color: #0968da;
   outline: none;
 }
 
@@ -1065,13 +1065,13 @@ code {
   > .ant-tabs-nav-wrap
   > .ant-tabs-nav-list
   > .ant-tabs-tab:hover {
-  color: #0950c5;
+  color: #0968da;
 }
 .ant-tabs-custom-threadpanel > .ant-tabs-nav > .ant-tabs-nav-wrap {
   padding: 0px 16px;
 }
 .ant-tabs-ink-bar {
-  background: #0950c5;
+  background: #0968da;
 }
 /* Description tabs CSS */
 
@@ -1164,7 +1164,7 @@ div.ant-typography-ellipsis-custom {
 }
 
 .ant-dropdown-menu-item-selected {
-  color: #0950c5;
+  color: #0968da;
   background-color: #7147e825;
 }
 
@@ -1174,7 +1174,7 @@ div.ant-typography-ellipsis-custom {
 
 /* antd switch css */
 .ant-switch-checked {
-  background: #0950c5;
+  background: #0968da;
 }
 /* antd switch css */
 

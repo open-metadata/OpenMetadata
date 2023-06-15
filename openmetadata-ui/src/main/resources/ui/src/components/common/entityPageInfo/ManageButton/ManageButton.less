@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import url('../../../../styles/variables.less');
 
-@manage-button-bg-primary: #0950c5;
 @manage-dropdown-bg-primary: #d9ceee;
-@white: #ffffff;
 
 .manage-button {
   .ant-space-item:first-child {
@@ -40,7 +39,7 @@
 .manage-dropdown-button:focus {
   .ant-btn {
     .manage-dropdown-icon {
-      color: @manage-button-bg-primary;
+      color: @primary-color;
       opacity: 0.5;
     }
   }
@@ -48,7 +47,7 @@
     color: @white;
     font-weight: 600;
   }
-  background-color: @manage-button-bg-primary;
+  background-color: @primary-color;
 }
 
 .manage-dropdown-list-container {
