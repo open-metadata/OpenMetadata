@@ -160,6 +160,7 @@ class TableauDashboard(TableauBaseModel):
     class Config:
         extra = Extra.allow
 
+    project: Optional[TableauBaseModel]
     description: Optional[str]
     owner: Optional[TableauOwner]
     tags: Optional[List[TableauTag]] = []
