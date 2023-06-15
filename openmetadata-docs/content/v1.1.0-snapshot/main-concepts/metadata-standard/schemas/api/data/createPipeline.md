@@ -12,7 +12,7 @@ slug: /main-concepts/metadata-standard/schemas/api/data/createpipeline
 - **`name`**: Name that identifies this pipeline instance uniquely. Refer to *../../type/basic.json#/definitions/entityName*.
 - **`displayName`** *(string)*: Display Name that identifies this Pipeline. It could be title or label from the source services.
 - **`description`**: Description of the pipeline instance. What it has and how to use it. Refer to *../../type/basic.json#/definitions/markdown*.
-- **`pipelineUrl`** *(string)*: Pipeline URL suffix to visit/manage. This URL points to respective pipeline service UI.
+- **`sourceUrl`** *(string)*: Pipeline URL suffix to visit/manage. This URL points to respective pipeline service UI.
 - **`concurrency`** *(integer)*: Concurrency of the Pipeline.
 - **`pipelineLocation`** *(string)*: Pipeline Code Location.
 - **`startDate`**: Start date of the workflow. Refer to *../../type/basic.json#/definitions/dateTime*.

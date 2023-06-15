@@ -198,7 +198,7 @@ EXPECTED_DASH = CreateDashboardRequest(
     name=14,
     displayName="My DASH",
     description="",
-    dashboardUrl="https://my-superset.com/superset/dashboard/14/",
+    sourceUrl="https://my-superset.com/superset/dashboard/14/",
     charts=[chart.fullyQualifiedName for chart in EXPECTED_CHATRT_ENTITY],
     service=EXPECTED_DASH_SERVICE.fullyQualifiedName,
 )
@@ -208,7 +208,7 @@ EXPECTED_CHART = CreateChartRequest(
     displayName="% Rural",
     description="TEST DESCRIPTION",
     chartType=ChartType.Other.value,
-    chartUrl="https://my-superset.com/explore/?slice_id=37",
+    sourceUrl="https://my-superset.com/explore/?slice_id=37",
     service=EXPECTED_DASH_SERVICE.fullyQualifiedName,
 )
 

@@ -82,7 +82,7 @@
           "description": "Description of this Task.",
           "$ref": "../../type/basic.json#/definitions/markdown"
         },
-        "taskUrl": {
+        "sourceUrl": {
           "description": "Task URL to visit/manage. This URL points to respective pipeline service UI.",
           "type": "string"
         },
@@ -179,7 +179,7 @@
       "description": "User who made the update.",
       "type": "string"
     },
-    "pipelineUrl": {
+    "sourceUrl": {
       "description": "Pipeline  URL to visit/manage. This URL points to respective pipeline service UI.",
       "type": "string"
     },

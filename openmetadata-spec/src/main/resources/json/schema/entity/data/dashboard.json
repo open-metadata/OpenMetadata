@@ -63,7 +63,7 @@
     "dashboardType": {
       "$ref": "#/definitions/dashboardType"
     },
-    "dashboardUrl": {
+    "sourceUrl": {
       "description": "Dashboard URL suffix from its service.",
       "type": "string"
     },
