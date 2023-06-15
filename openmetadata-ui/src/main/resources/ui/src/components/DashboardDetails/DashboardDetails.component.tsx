@@ -675,11 +675,9 @@ const DashboardDetails = ({
         children: (
           <ActivityFeedProvider>
             <ActivityFeedTab
-              count={feedCount}
               entityName={entityName}
               entityType={EntityType.DASHBOARD}
               fqn={dashboardDetails?.fullyQualifiedName ?? ''}
-              taskCount={entityFieldTaskCount.length}
               onFeedUpdate={() => Promise.resolve()}
             />
           </ActivityFeedProvider>
@@ -754,7 +752,6 @@ const DashboardDetails = ({
             dataAsset={dashboardDetails}
             entityType={EntityType.DASHBOARD}
             permissions={dashboardPermissions}
-            taskCount={entityFieldTaskCount.length}
             onDisplayNameUpdate={onUpdateDisplayName}
             onFollowClick={followDashboard}
             onOwnerUpdate={onOwnerUpdate}

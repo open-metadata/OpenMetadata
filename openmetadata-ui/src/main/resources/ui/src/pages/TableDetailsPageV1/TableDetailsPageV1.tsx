@@ -477,14 +477,12 @@ const TableDetailsPageV1 = () => {
           <ActivityFeedProvider>
             <ActivityFeedTab
               columns={tableDetails?.columns}
-              count={feedCount - entityFieldTaskCount.length}
               description={tableDetails?.description}
               entityName={entityName}
               entityType={EntityType.TABLE}
               fqn={tableDetails?.fullyQualifiedName ?? ''}
               owner={tableDetails?.owner}
               tags={tableDetails?.tags}
-              taskCount={entityFieldTaskCount.length}
               onFeedUpdate={getEntityFeedCount}
             />
           </ActivityFeedProvider>
@@ -608,9 +606,7 @@ const TableDetailsPageV1 = () => {
     schemaTab,
     tableDetails,
     feedCount,
-    entityFieldTaskCount,
     entityName,
-    entityFieldTaskCount,
     onExtensionUpdate,
     getEntityFeedCount,
   ]);
@@ -763,7 +759,6 @@ const TableDetailsPageV1 = () => {
             dataAsset={tableDetails}
             entityType={EntityType.TABLE}
             permissions={tablePermissions}
-            taskCount={entityFieldTaskCount.length}
             onDisplayNameUpdate={handleDisplayNameUpdate}
             onFollowClick={handleFollowTable}
             onOwnerUpdate={handleUpdateOwner}

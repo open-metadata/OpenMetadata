@@ -863,11 +863,9 @@ const DatabaseDetails: FunctionComponent = () => {
                   {activeTab === EntityTabs.ACTIVITY_FEED && (
                     <ActivityFeedProvider>
                       <ActivityFeedTab
-                        count={feedCount}
                         entityName={databaseName}
                         entityType={EntityType.DATABASE}
                         fqn={database?.fullyQualifiedName ?? ''}
-                        taskCount={entityFieldThreadCount.length}
                         onFeedUpdate={() => Promise.resolve()}
                       />
                     </ActivityFeedProvider>

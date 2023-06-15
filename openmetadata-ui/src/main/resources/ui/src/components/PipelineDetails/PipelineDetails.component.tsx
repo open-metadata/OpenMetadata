@@ -34,7 +34,7 @@ import TasksDAGView from 'components/TasksDAGView/TasksDAGView';
 import { EntityField } from 'constants/Feeds.constants';
 import { compare } from 'fast-json-patch';
 import { TagSource } from 'generated/type/schema';
-import { isEmpty, isUndefined, map } from 'lodash';
+import { isEmpty, isUndefined, map, noop } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -129,9 +129,6 @@ const PipelineDetails = ({
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
     EntityFieldThreadCount[]
   >([]);
-  const [entityTaskCount, setEntityTaskCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
 
   const [threadLink, setThreadLink] = useState<string>('');
 
@@ -173,7 +170,7 @@ const PipelineDetails = ({
       EntityType.PIPELINE,
       pipelineFQN,
       setEntityFieldThreadCount,
-      setEntityTaskCount,
+      noop,
       setFeedCount
     );
   };
@@ -684,11 +681,9 @@ const PipelineDetails = ({
         children: (
           <ActivityFeedProvider>
             <ActivityFeedTab
-              count={feedCount}
               entityName={entityName}
               entityType={EntityType.PIPELINE}
               fqn={pipelineDetails?.fullyQualifiedName ?? ''}
-              taskCount={entityFieldThreadCount.length}
               onFeedUpdate={() => Promise.resolve()}
             />
           </ActivityFeedProvider>
@@ -790,7 +785,6 @@ const PipelineDetails = ({
             dataAsset={pipelineDetails}
             entityType={EntityType.PIPELINE}
             permissions={pipelinePermissions}
-            taskCount={entityTaskCount.length}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followPipeline}
             onOwnerUpdate={onOwnerUpdate}

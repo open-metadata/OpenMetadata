@@ -776,11 +776,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               {activeTab === EntityTabs.ACTIVITY_FEED && (
                 <ActivityFeedProvider>
                   <ActivityFeedTab
-                    count={feedCount}
                     entityName={databaseSchemaName}
                     entityType={EntityType.DATABASE_SCHEMA}
                     fqn={databaseSchema?.fullyQualifiedName ?? ''}
-                    taskCount={entityFieldThreadCount.length}
                     onFeedUpdate={() => Promise.resolve()}
                   />
                 </ActivityFeedProvider>

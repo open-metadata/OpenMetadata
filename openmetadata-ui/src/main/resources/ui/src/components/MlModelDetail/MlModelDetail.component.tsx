@@ -422,11 +422,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         children: (
           <ActivityFeedProvider>
             <ActivityFeedTab
-              count={feedCount}
               entityName={mlModelDetail.name}
               entityType={EntityType.MLMODEL}
               fqn={mlModelDetail?.fullyQualifiedName ?? ''}
-              taskCount={entityFieldTaskCount.length}
               onFeedUpdate={() => Promise.resolve()}
             />
           </ActivityFeedProvider>
@@ -513,7 +511,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             dataAsset={mlModelDetail}
             entityType={EntityType.MLMODEL}
             permissions={mlModelPermissions}
-            taskCount={entityFieldTaskCount.length}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followMlModel}
             onOwnerUpdate={onOwnerUpdate}

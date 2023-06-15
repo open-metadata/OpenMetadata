@@ -31,7 +31,7 @@ import {
   getEntityLinkFromType,
   getEntityName,
 } from 'utils/EntityUtils';
-import { stringToHTML } from 'utils/StringsUtils';
+import { getEncodedFqn, stringToHTML } from 'utils/StringsUtils';
 import { getServiceIcon, getUsagePercentile } from 'utils/TableUtils';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
@@ -155,7 +155,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                   to={
                     source.fullyQualifiedName && source.entityType
                       ? getEntityLinkFromType(
-                          source.fullyQualifiedName ?? '',
+                          getEncodedFqn(source.fullyQualifiedName),
                           source.entityType as EntityType
                         )
                       : ''
