@@ -393,6 +393,12 @@ site_menu:
     url: /connectors/database/vertica/cli
   - category: Connectors / Database / Vertica / Troubleshooting
     url: /connectors/database/vertica/troubleshooting
+  - category: Connectors / Database / MongoDB
+    url: /connectors/database/mongodb
+  - category: Connectors / Database / MongoDB / Airflow
+    url: /connectors/database/mongodb/airflow
+  - category: Connectors / Database / MongoDB / CLI
+    url: /connectors/database/mongodb/cli
   - category: Connectors / Dashboard
     url: /connectors/dashboard
 
