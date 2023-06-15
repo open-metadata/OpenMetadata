@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Checkbox, Col, Row, Space, Typography } from 'antd';
+import { Checkbox, Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
@@ -31,7 +31,7 @@ import {
   getEntityLinkFromType,
   getEntityName,
 } from 'utils/EntityUtils';
-import { stringToHTML } from 'utils/StringsUtils';
+import { getEncodedFqn, stringToHTML } from 'utils/StringsUtils';
 import { getServiceIcon, getUsagePercentile } from 'utils/TableUtils';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
@@ -138,14 +138,14 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           ) : (
             <Row gutter={[8, 8]}>
               <Col span={24}>
-                <Space>
+                <div className="d-flex gap-2 items-center">
                   {serviceIcon}
                   <div
                     className="entity-breadcrumb"
                     data-testid="category-name">
                     <TitleBreadcrumb titleLinks={breadcrumbs} />
                   </div>
-                </Space>
+                </div>
               </Col>
               <Col span={24}>
                 <Link
@@ -155,7 +155,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                   to={
                     source.fullyQualifiedName && source.entityType
                       ? getEntityLinkFromType(
-                          source.fullyQualifiedName ?? '',
+                          getEncodedFqn(source.fullyQualifiedName),
                           source.entityType as EntityType
                         )
                       : ''

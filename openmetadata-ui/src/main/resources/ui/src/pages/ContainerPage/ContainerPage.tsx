@@ -647,11 +647,9 @@ const ContainerPage = () => {
         children: (
           <ActivityFeedProvider>
             <ActivityFeedTab
-              count={feedCount}
               entityName={entityName}
               entityType={EntityType.CONTAINER}
               fqn={containerName}
-              taskCount={entityFieldTaskCount.length}
               onFeedUpdate={() => Promise.resolve()}
             />
           </ActivityFeedProvider>
@@ -807,7 +805,6 @@ const ContainerPage = () => {
             dataAsset={containerData}
             entityType={EntityType.CONTAINER}
             permissions={containerPermissions}
-            taskCount={entityFieldTaskCount.length}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={handleFollowContainer}
             onOwnerUpdate={handleUpdateOwner}

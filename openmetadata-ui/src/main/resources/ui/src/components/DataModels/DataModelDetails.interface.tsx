@@ -21,7 +21,6 @@ import { EntityTags } from 'Models';
 
 export interface DataModelDetailsProps {
   entityFieldThreadCount: EntityFieldThreadCount[];
-  entityFieldTaskCount: EntityFieldThreadCount[];
   feedCount: number;
   dataModelData: DashboardDataModel;
   dataModelPermissions: OperationPermission;

@@ -27,8 +27,6 @@ export interface ActivityFeedTabBasicProps {
   fqn: string;
   entityName: string;
   onFeedUpdate: () => void;
-  count: number;
-  taskCount: number;
   owner?: EntityReference;
   tags?: TagLabel[];
   description?: string;

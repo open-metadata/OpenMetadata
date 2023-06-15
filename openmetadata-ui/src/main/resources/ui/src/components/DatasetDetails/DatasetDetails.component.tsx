@@ -649,11 +649,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         return (
           <ActivityFeedProvider>
             <ActivityFeedTab
-              count={feedCount}
               entityName={entityName}
               entityType={EntityType.TABLE}
               fqn={tableDetails?.fullyQualifiedName ?? ''}
-              taskCount={entityFieldTaskCount.length}
               onFeedUpdate={() => Promise.resolve()}
             />
           </ActivityFeedProvider>

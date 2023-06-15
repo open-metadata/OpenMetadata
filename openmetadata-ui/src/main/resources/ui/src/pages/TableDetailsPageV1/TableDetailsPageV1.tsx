@@ -433,6 +433,7 @@ const TableDetailsPageV1 = () => {
             </>
           ) : null}
           <TagsContainerV1
+            showLimited
             editable={tablePermissions.EditAll || tablePermissions.EditTags}
             entityFieldThreads={getEntityFieldThreadCounts(
               EntityField.TAGS,
@@ -477,14 +478,12 @@ const TableDetailsPageV1 = () => {
           <ActivityFeedProvider>
             <ActivityFeedTab
               columns={tableDetails?.columns}
-              count={feedCount - entityFieldTaskCount.length}
               description={tableDetails?.description}
               entityName={entityName}
               entityType={EntityType.TABLE}
               fqn={tableDetails?.fullyQualifiedName ?? ''}
               owner={tableDetails?.owner}
               tags={tableDetails?.tags}
-              taskCount={entityFieldTaskCount.length}
               onFeedUpdate={getEntityFeedCount}
             />
           </ActivityFeedProvider>
@@ -608,9 +607,7 @@ const TableDetailsPageV1 = () => {
     schemaTab,
     tableDetails,
     feedCount,
-    entityFieldTaskCount,
     entityName,
-    entityFieldTaskCount,
     onExtensionUpdate,
     getEntityFeedCount,
   ]);
@@ -756,14 +753,13 @@ const TableDetailsPageV1 = () => {
       className="bg-white"
       pageTitle="Table details"
       title="Table details">
-      <Row className="" gutter={[0, 12]}>
+      <Row gutter={[0, 12]}>
         {/* Entity Heading */}
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
             dataAsset={tableDetails}
             entityType={EntityType.TABLE}
             permissions={tablePermissions}
-            taskCount={entityFieldTaskCount.length}
             onDisplayNameUpdate={handleDisplayNameUpdate}
             onFollowClick={handleFollowTable}
             onOwnerUpdate={handleUpdateOwner}

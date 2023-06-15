@@ -77,9 +77,7 @@ const DataModelsPage = () => {
     EntityFieldThreadCount[]
   >([]);
 
-  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
+  const [, setEntityFieldTaskCount] = useState<EntityFieldThreadCount[]>([]);
 
   // get current user details
   const currentUser = useMemo(
@@ -352,7 +350,6 @@ const DataModelsPage = () => {
       createThread={createThread}
       dataModelData={dataModelData}
       dataModelPermissions={dataModelPermissions}
-      entityFieldTaskCount={entityFieldTaskCount}
       entityFieldThreadCount={entityFieldThreadCount}
       feedCount={feedCount}
       handleColumnUpdateDataModel={handleColumnUpdateDataModel}

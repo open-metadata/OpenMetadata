@@ -36,7 +36,9 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { getFeedCount } from 'rest/feedsAPI';
 import { getCountBadge, getEntityDetailLink } from 'utils/CommonUtils';
+import { getEntityFeedLink } from 'utils/EntityUtils';
 import { getEntityField } from 'utils/FeedUtils';
 import '../../Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -53,8 +55,6 @@ import { ReactComponent as CheckIcon } from '/assets/svg/ic-check.svg';
 import { ReactComponent as TaskIcon } from '/assets/svg/ic-task.svg';
 
 export const ActivityFeedTab = ({
-  count,
-  taskCount,
   fqn,
   owner,
   tags,
@@ -69,6 +69,8 @@ export const ActivityFeedTab = ({
   const { subTab: activeTab = 'all' } =
     useParams<{ subTab: ActivityFeedTabs }>();
   const [taskFilter, setTaskFilter] = useState<'open' | 'close'>('open');
+  const [allCount, setAllCount] = useState(0);
+  const [tasksCount, setTasksCount] = useState(0);
 
   const {
     postFeed,
@@ -85,6 +87,35 @@ export const ActivityFeedTab = ({
     );
     setActiveThread();
   };
+
+  const fetchFeedsCount = () => {
+    // To get conversation count
+    getFeedCount(
+      getEntityFeedLink(entityType, fqn),
+      ThreadType.Conversation
+    ).then((res) => {
+      if (res) {
+        setAllCount(res.totalCount);
+      } else {
+        throw t('server.entity-feed-fetch-error');
+      }
+    });
+
+    // To get open tasks count
+    getFeedCount(getEntityFeedLink(entityType, fqn), ThreadType.Task).then(
+      (res) => {
+        if (res) {
+          setTasksCount(res.totalCount);
+        } else {
+          throw t('server.entity-feed-fetch-error');
+        }
+      }
+    );
+  };
+
+  useEffect(() => {
+    fetchFeedsCount();
+  }, []);
 
   const { feedFilter, threadType } = useMemo(() => {
     return {
@@ -173,7 +204,7 @@ export const ActivityFeedTab = ({
   }, [entityThread, activeTab]);
 
   return (
-    <div className="d-flex h-full overflow-hidden">
+    <div className="d-flex " style={{ minHeight: 'calc(100vh - 230px)' }}>
       <Menu
         className="custom-menu w-72 p-t-sm"
         data-testid="global-setting-left-panel"
@@ -181,8 +212,8 @@ export const ActivityFeedTab = ({
           {
             label: (
               <div className="d-flex justify-between">
-                <span className="font-normal">{t('label.all')}</span>
-                <span>{getCountBadge(count)}</span>
+                <span>{t('label.all')}</span>
+                <span>{getCountBadge(allCount)}</span>
               </div>
             ),
             key: 'all',
@@ -190,7 +221,7 @@ export const ActivityFeedTab = ({
           {
             label: (
               <div className="d-flex justify-between">
-                <span className="font-normal">{t('label.mention-plural')}</span>
+                <span>{t('label.mention-plural')}</span>
               </div>
             ),
             key: 'mentions',
@@ -198,8 +229,8 @@ export const ActivityFeedTab = ({
           {
             label: (
               <div className="d-flex justify-between">
-                <span className="font-normal">{t('label.task-plural')}</span>
-                <span>{getCountBadge(taskCount)}</span>
+                <span>{t('label.task-plural')}</span>
+                <span>{getCountBadge(tasksCount)}</span>
               </div>
             ),
             key: 'tasks',
@@ -283,7 +314,7 @@ export const ActivityFeedTab = ({
                 feed={selectedThread}
                 hidePopover={false}
               />
-              <ActivityFeedEditor onSave={onSave} />
+              <ActivityFeedEditor className="m-md" onSave={onSave} />
             </div>
           ) : (
             <div id="task-panel">

@@ -14,6 +14,7 @@
 import { Button, Card, Form, FormProps, Input, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
+import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
@@ -24,10 +25,11 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
+import { getEntityDetailLink } from 'utils/CommonUtils';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
   CreateThread,
   TaskType,
@@ -46,7 +48,6 @@ import {
   fetchOptions,
   getBreadCrumbList,
   getColumnObject,
-  getTaskDetailPath,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
@@ -164,13 +165,20 @@ const UpdateTag = () => {
       type: ThreadType.Task,
     };
     postThread(data)
-      .then((res) => {
+      .then(() => {
         showSuccessToast(
           t('server.create-entity-success', {
             entity: t('label.task'),
           })
         );
-        history.push(getTaskDetailPath(res.task?.id.toString() ?? ''));
+        history.push(
+          getEntityDetailLink(
+            entityType as EntityType,
+            entityFQN,
+            EntityTabs.ACTIVITY_FEED,
+            ActivityFeedTabs.TASKS
+          )
+        );
       })
       .catch((err: AxiosError) => showErrorToast(err));
   };
@@ -236,6 +244,7 @@ const UpdateTag = () => {
               label={`${t('label.title')}:`}
               name="title">
               <Input
+                disabled
                 placeholder={t('label.task-entity', {
                   entity: t('label.title'),
                 })}

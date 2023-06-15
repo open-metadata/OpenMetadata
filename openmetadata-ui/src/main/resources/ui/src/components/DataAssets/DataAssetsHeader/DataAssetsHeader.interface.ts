@@ -35,7 +35,6 @@ export type DataAssetsSourceMapping = {
 
 export type DataAssetsHeaderProps = {
   permissions: OperationPermission;
-  taskCount: number;
   onTierUpdate: (tier?: string) => Promise<void>;
   onOwnerUpdate: (owner?: EntityReference) => Promise<void>;
   onVersionClick: () => void;

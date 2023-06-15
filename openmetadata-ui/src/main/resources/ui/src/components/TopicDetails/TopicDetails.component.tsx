@@ -337,11 +337,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         children: (
           <ActivityFeedProvider>
             <ActivityFeedTab
-              count={feedCount}
               entityName={entityName}
               entityType={EntityType.TOPIC}
               fqn={topicDetails?.fullyQualifiedName ?? ''}
-              taskCount={entityFieldTaskCount.length}
               onFeedUpdate={() => Promise.resolve()}
             />
           </ActivityFeedProvider>
@@ -437,7 +435,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             dataAsset={topicDetails}
             entityType={EntityType.TOPIC}
             permissions={topicPermissions}
-            taskCount={entityFieldTaskCount.length}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followTopic}
             onOwnerUpdate={onOwnerUpdate}

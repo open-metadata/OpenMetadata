@@ -42,7 +42,6 @@ import { DataModelDetailsProps } from './DataModelDetails.interface';
 import ModelTab from './ModelTab/ModelTab.component';
 
 const DataModelDetails = ({
-  entityFieldTaskCount,
   entityFieldThreadCount,
   feedCount,
   dataModelData,
@@ -232,11 +231,9 @@ const DataModelDetails = ({
         children: (
           <ActivityFeedProvider>
             <ActivityFeedTab
-              count={feedCount}
               entityName={entityName}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
               fqn={dataModelData?.fullyQualifiedName ?? ''}
-              taskCount={entityFieldTaskCount.length}
               onFeedUpdate={() => Promise.resolve()}
             />
           </ActivityFeedProvider>
@@ -306,7 +303,6 @@ const DataModelDetails = ({
             dataAsset={dataModelData}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             permissions={dataModelPermissions}
-            taskCount={entityFieldTaskCount.length}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={handleFollowDataModel}
             onOwnerUpdate={handleUpdateOwner}

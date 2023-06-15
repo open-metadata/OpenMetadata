@@ -41,13 +41,17 @@ import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
 import { Table } from 'generated/entity/data/table';
 import { Topic } from 'generated/entity/data/topic';
-import { Thread } from 'generated/entity/feed/thread';
+import {
+  Thread,
+  ThreadTaskStatus,
+  ThreadType,
+} from 'generated/entity/feed/thread';
 import { useClipboard } from 'hooks/useClipBoard';
 import { t } from 'i18next';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getActiveAnnouncement } from 'rest/feedsAPI';
+import { getActiveAnnouncement, getFeedCount } from 'rest/feedsAPI';
 import { getCurrentUserId, getEntityDetailLink } from 'utils/CommonUtils';
 import {
   getBreadcrumbForEntitiesWithServiceOnly,
@@ -111,10 +115,10 @@ export const DataAssetsHeader = ({
   entityType,
   onRestoreDataAsset,
   onDisplayNameUpdate,
-  taskCount,
 }: DataAssetsHeaderProps) => {
   const USERId = getCurrentUserId();
   const { onCopyToClipBoard } = useClipboard(window.location.href);
+  const [taskCount, setTaskCount] = useState(0);
   const history = useHistory();
   const icon = useMemo(
     () =>
@@ -153,8 +157,28 @@ export const DataAssetsHeader = ({
     }
   };
 
+  const fetchTaskCount = () => {
+    // To get open tasks count
+    getFeedCount(
+      getEntityFeedLink(entityType, dataAsset.fullyQualifiedName),
+      ThreadType.Task,
+      ThreadTaskStatus.Open
+    )
+      .then((res) => {
+        if (res) {
+          setTaskCount(res.totalCount);
+        } else {
+          throw t('server.entity-feed-fetch-error');
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(err, t('server.entity-feed-fetch-error'));
+      });
+  };
+
   useEffect(() => {
     fetchActiveAnnouncement();
+    fetchTaskCount();
   }, [dataAsset.fullyQualifiedName]);
 
   const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(() => {
@@ -180,7 +204,7 @@ export const DataAssetsHeader = ({
                 label={t('label.usage')}
                 value={getUsagePercentile(
                   tableDetails.usageSummary?.weeklyStats?.percentileRank || 0,
-                  true
+                  false
                 )}
               />
             )}
@@ -442,16 +466,13 @@ export const DataAssetsHeader = ({
         <Col span={6}>
           <Space className="items-end w-full" direction="vertical" size={16}>
             <Space>
-              {taskCount ? (
+              <ButtonGroup size="small">
                 <Button
                   className="w-16 p-0"
                   icon={<Icon component={TaskOpenIcon} />}
                   onClick={handleOpenTaskClick}>
                   <Typography.Text>{taskCount}</Typography.Text>
                 </Button>
-              ) : null}
-
-              <ButtonGroup size="small">
                 <Button
                   className="w-16 p-0"
                   icon={<Icon component={VersionIcon} />}

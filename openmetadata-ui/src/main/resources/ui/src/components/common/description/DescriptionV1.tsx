@@ -169,11 +169,10 @@ const DescriptionV1 = ({
       <Space
         className="schema-description d-flex"
         direction="vertical"
-        size={0}>
-        <div className="d-flex items-center">
-          <Text className="m-b-md text-grey-muted">
-            {t('label.description')}
-          </Text>
+        size={16}>
+        <div className="d-flex items-center justify-between">
+          <Text className="right-panel-label">{t('label.description')}</Text>
+          {editButton()}
         </div>
         <div>
           {description?.trim() ? (
@@ -184,7 +183,6 @@ const DescriptionV1 = ({
           ) : (
             <span>{t('label.no-description')}</span>
           )}
-          {editButton()}
           <ModalWithMarkdownEditor
             header={t('label.edit-description-for', { entityName })}
             placeholder={t('label.enter-entity', {

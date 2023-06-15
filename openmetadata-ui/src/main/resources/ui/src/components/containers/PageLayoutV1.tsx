@@ -35,7 +35,6 @@ interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
 }
 
 export const pageContainerStyles: CSSProperties = {
-  height: '100%',
   padding: 0,
   marginTop: 0,
   marginBottom: 0,
@@ -82,7 +81,6 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
       <Row
         className={classNames(className, 'bg-white')}
         data-testid="page-layout-v1"
-        gutter={[0, 16]}
         style={pageContainerStyles}>
         {leftPanel && (
           <Col

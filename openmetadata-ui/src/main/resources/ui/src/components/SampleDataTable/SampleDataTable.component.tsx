@@ -56,7 +56,7 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
         title: (
           <Space direction="vertical" size={0}>
             <Typography.Text> {column}</Typography.Text>
-            <Typography.Text className="text-grey-muted">{`(${lowerCase(
+            <Typography.Text className="text-grey-muted text-xs font-normal">{`(${lowerCase(
               matchedColumn?.dataType ?? ''
             )})`}</Typography.Text>
           </Space>
