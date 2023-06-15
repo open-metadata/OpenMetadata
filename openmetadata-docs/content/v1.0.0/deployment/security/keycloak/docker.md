@@ -12,69 +12,41 @@ To enable security for the Docker deployment, follow the next steps:
 Create an `openmetadata_keycloak.env` file and add the following contents as an example. Use the information
 generated when setting up the account.
 
-The configuration below already uses the presets shown in the example of keycloak configurations, you can change to yours.
+- Update `AUTHORIZER_ADMIN_PRINCIPALS` to add login names of the admin users in  section as shown below. Make sure you configure the name from email, example: xyz@helloworld.com, initialAdmins username will be ```xyz``
+- Update the `principalDomain` to your company domain name.  Example from above, principalDomain should be ```helloworld.com```
 
-### 1.1 Before 0.12.1
+{% note noteType="Warning" %}
 
-```shell
-# OpenMetadata Server Authentication Configuration
-AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
-AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter
-AUTHORIZER_ADMIN_PRINCIPALS=[admin-user]  # Your `name` from name@domain.com
-AUTHORIZER_INGESTION_PRINCIPALS=[ingestion-bot,service-account-open-metadata]
-AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
+It is important to leave the publicKeys configuration to have both Keycloak Cognito public keys URL and OpenMetadata public keys URL. 
 
-AUTHENTICATION_PROVIDER=custom-oidc
-CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME=KeyCloak
-AUTHENTICATION_PUBLIC_KEYS=[http://localhost:8081/auth/realms/data-sec/protocol/openid-connect/certs]
-AUTHENTICATION_AUTHORITY=http://localhost:8081/auth/realms/data-sec
-AUTHENTICATION_CLIENT_ID=open-metadata # Update with your Client ID
-AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
+1. Keycloak Public Keys are used to authenticate User's login
+2. OpenMetadata JWT keys are used to authenticate Bot's login
+3. Important to update the URLs documented in below configuration. The below config reflects a setup where all dependencies are hosted in a single host. Example openmetadata:8585 might not be the same domain you may be using in your installation.
+4. OpenMetadata ships default public/private key, These must be changed in your production deployment to avoid any security issues.
 
-# Airflow Configuration
-AIRFLOW_AUTH_PROVIDER=custom-oidc
-OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID=open-metadata # Update with your Client ID
-OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY={Secret Key} # Update with your Secret Key
-OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL="http://localhost:8081/realms/data-sec/protocol/openid-connect/token"
-```
+For more details, follow [Enabling JWT Authenticaiton](deployment/security/enable-jwt-tokens)
 
-### 1.2 After 0.12.1
+{% /note %}
+
 
 ```shell
 # OpenMetadata Server Authentication Configuration
 AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
 AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter
 AUTHORIZER_ADMIN_PRINCIPALS=[admin-user]  # Your `name` from name@domain.com
-AUTHORIZER_INGESTION_PRINCIPALS=[ingestion-bot,service-account-open-metadata]
 AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
 
 AUTHENTICATION_PROVIDER=custom-oidc
 CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME=KeyCloak
-AUTHENTICATION_PUBLIC_KEYS=[{http://localhost:8081/auth/realms/data-sec/protocol/openid-connect/certs}]
+AUTHENTICATION_PUBLIC_KEYS=[{http://localhost:8081/auth/realms/data-sec/protocol/openid-connect/certs, http://openmetadata:8585/api/v1/system/config/jwks}]
 AUTHENTICATION_AUTHORITY={http://localhost:8081/auth/realms/data-sec}
 AUTHENTICATION_CLIENT_ID=open-metadata # Update with your Client ID
 AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
 ```
 
-### 1.3 After 0.13.0
-
-```shell
-# OpenMetadata Server Authentication Configuration
-AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
-AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter
-AUTHORIZER_ADMIN_PRINCIPALS=[admin-user]  # Your `name` from name@domain.com
-AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
-
-AUTHENTICATION_PROVIDER=custom-oidc
-CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME=KeyCloak
-AUTHENTICATION_PUBLIC_KEYS=[{http://localhost:8081/auth/realms/data-sec/protocol/openid-connect/certs}]
-AUTHENTICATION_AUTHORITY={http://localhost:8081/auth/realms/data-sec}
-AUTHENTICATION_CLIENT_ID=open-metadata # Update with your Client ID
-AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
-```
-
-**Note:** Follow [this](/how-to-guides/feature-configurations/bots) guide to configure the `ingestion-bot` credentials for
-ingesting data from Airflow.
+{% note noteType="Tip" %}
+ Follow [this guide](/how-to-guides/feature-configurations/bots) to configure the `ingestion-bot` credentials for ingesting data using Connectors.
+{% /note %}
 
 ## 2. Start Docker
 

@@ -49,6 +49,7 @@ import looker from '../assets/img/service-icon-looker.png';
 import mariadb from '../assets/img/service-icon-mariadb.png';
 import metabase from '../assets/img/service-icon-metabase.png';
 import mode from '../assets/img/service-icon-mode.png';
+import mongodb from '../assets/img/service-icon-mongodb.png';
 import mssql from '../assets/img/service-icon-mssql.png';
 import nifi from '../assets/img/service-icon-nifi.png';
 import oracle from '../assets/img/service-icon-oracle.png';
@@ -169,6 +170,7 @@ export const AMAZON_S3 = amazonS3;
 export const GCS = gcs;
 export const MS_AZURE = msAzure;
 export const SPLINE = spline;
+export const MONGODB = mongodb;
 
 export const PLUS = plus;
 export const NOSERVICE = noService;
