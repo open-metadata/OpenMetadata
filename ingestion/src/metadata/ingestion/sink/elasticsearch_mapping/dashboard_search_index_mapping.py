@@ -94,7 +94,7 @@ DASHBOARD_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
       "href": {
         "type": "text"
       },
-      "dashboardUrl": {
+      "sourceUrl": {
         "type": "text"
       },
       "charts": {

@@ -44,6 +44,17 @@ class PowerBIDashboard(BaseModel):
     tiles: Optional[List[Tile]] = []
 
 
+class PowerBIReport(BaseModel):
+    """
+    PowerBI PowerBIReport Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/reports/get-report#report
+    """
+
+    id: str
+    name: str
+    datasetId: Optional[str]
+
+
 class DashboardsResponse(BaseModel):
     """
     PowerBI DashboardsResponse Model
@@ -52,6 +63,16 @@ class DashboardsResponse(BaseModel):
 
     odata_context: str = Field(alias="@odata.context")
     value: List[PowerBIDashboard]
+
+
+class ReportsResponse(BaseModel):
+    """
+    PowerBI ReportsResponse Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/reports/get-reports-in-group
+    """
+
+    odata_context: str = Field(alias="@odata.context")
+    value: List[PowerBIReport]
 
 
 class TilesResponse(BaseModel):
@@ -64,6 +85,17 @@ class TilesResponse(BaseModel):
     value: List[Tile]
 
 
+class PowerBiColumns(BaseModel):
+    """
+    PowerBI Column Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/push-datasets/datasets-get-tables-in-group#column
+    """
+
+    name: str
+    dataType: Optional[str]
+    columnType: Optional[str]
+
+
 class PowerBiTable(BaseModel):
     """
     PowerBI Table Model
@@ -71,6 +103,8 @@ class PowerBiTable(BaseModel):
     """
 
     name: str
+    columns: Optional[List[PowerBiColumns]]
+    description: Optional[str]
 
 
 class TablesResponse(BaseModel):
@@ -92,6 +126,7 @@ class Dataset(BaseModel):
     id: str
     name: str
     tables: Optional[List[PowerBiTable]] = []
+    description: Optional[str]
 
 
 class DatasetResponse(BaseModel):
@@ -115,6 +150,7 @@ class Group(BaseModel):
     type: Optional[str]
     state: Optional[str]
     dashboards: Optional[List[PowerBIDashboard]] = []
+    reports: Optional[List[PowerBIReport]] = []
     datasets: Optional[List[Dataset]] = []
 
 

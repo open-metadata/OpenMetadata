@@ -95,7 +95,7 @@ export const DASHBOARD_DATA = [
     version: 0.4,
     updatedAt: 1670841493940,
     updatedBy: 'sachin.c',
-    dashboardUrl: 'http://localhost:808/superset/dashboard/deck/',
+    sourceUrl: 'http://localhost:808/superset/dashboard/deck/',
     href: 'http://sandbox-beta.open-metadata.org/api/v1/dashboards/04d014be-e24b-40df-913b-c3d3e8c95548',
     owner: {
       id: '0ff251d7-f0ab-4892-96d9-35191f36bf8b',
@@ -168,7 +168,7 @@ export const DASHBOARD_DATA = [
     version: 0.1,
     updatedAt: 1668510719495,
     updatedBy: 'ingestion-bot',
-    dashboardUrl: 'http://localhost:808/superset/dashboard/7/',
+    sourceUrl: 'http://localhost:808/superset/dashboard/7/',
     href: 'http://sandbox-beta.open-metadata.org/api/v1/dashboards/0ab07868-b2da-4879-b29d-0977fac0c360',
     tags: [],
     service: {
@@ -206,7 +206,7 @@ export const DASHBOARD_DATA = [
     version: 0.1,
     updatedAt: 1668510719649,
     updatedBy: 'ingestion-bot',
-    dashboardUrl: 'http://localhost:808/superset/dashboard/misc_charts/',
+    sourceUrl: 'http://localhost:808/superset/dashboard/misc_charts/',
     href: 'http://sandbox-beta.open-metadata.org/api/v1/dashboards/359e20da-d8d5-4f68-9694-417b8b24c74d',
     tags: [],
     service: {
