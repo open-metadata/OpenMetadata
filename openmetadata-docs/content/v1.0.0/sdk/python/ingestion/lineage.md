@@ -296,7 +296,7 @@ from metadata.generated.schema.type.entityLineage import (
 # Prepare a new table
 table_c = CreateTableRequest(
     name="tableC",
-    databaseSchema=create_schema_entity.ifullyQualifiedName,
+    databaseSchema=create_schema_entity.fullyQualifiedName,
     columns=[Column(name="id", dataType=DataType.BIGINT)],
 )
 
