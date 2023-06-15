@@ -1778,23 +1778,23 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Database database = databaseTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
     // Create Database Schema
     CreateDatabaseSchema createDatabaseSchema =
-            schemaResourceTest.createRequest(test).withDatabase(database.getFullyQualifiedName());
+        schemaResourceTest.createRequest(test).withDatabase(database.getFullyQualifiedName());
     DatabaseSchema schema =
-            schemaResourceTest
-                    .createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS)
-                    .withDatabase(database.getEntityReference());
+        schemaResourceTest
+            .createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS)
+            .withDatabase(database.getEntityReference());
     schema = schemaResourceTest.getEntity(schema.getId(), "", ADMIN_AUTH_HEADERS);
     // Create Table 1
     CreateTable createTable1 = createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
     Table table1 = createEntity(createTable1, ADMIN_AUTH_HEADERS).withDatabase(database.getEntityReference());
     // Create Table 2
     CreateTable createTable2 =
-            createRequest(test.getClass().getName() + "2").withDatabaseSchema(schema.getFullyQualifiedName());
+        createRequest(test.getClass().getName() + "2").withDatabaseSchema(schema.getFullyQualifiedName());
     createEntity(createTable2, ADMIN_AUTH_HEADERS).withDatabase(database.getEntityReference());
     // Create Executable Test Suite
     CreateTestSuite createExecutableTestSuite = testSuiteResourceTest.createRequest(table1.getFullyQualifiedName());
     TestSuite executableTestSuite =
-            testSuiteResourceTest.createExecutableTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
+        testSuiteResourceTest.createExecutableTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
 
     HashMap<String, String> queryParams = new HashMap<>();
     queryParams.put("includeEmptyTestSuite", "false");
@@ -1805,9 +1805,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     for (int i = 0; i < 5; i++) {
       CreateTestCase create =
-              testCaseResourceTest
-                      .createRequest("test_testSuite__" + i)
-                      .withTestSuite(executableTestSuite.getFullyQualifiedName());
+          testCaseResourceTest
+              .createRequest("test_testSuite__" + i)
+              .withTestSuite(executableTestSuite.getFullyQualifiedName());
       testCaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     }
 
