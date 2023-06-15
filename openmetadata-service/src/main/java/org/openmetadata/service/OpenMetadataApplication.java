@@ -403,7 +403,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       ElasticSearchEventPublisher elasticSearchEventPublisher =
           new ElasticSearchEventPublisher(
               openMetadataApplicationConfig.getElasticSearchConfiguration(), jdbi.onDemand(CollectionDAO.class));
-      ;
       EventPubSub.addEventHandler(elasticSearchEventPublisher);
     }
 
