@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.search;
 
-import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
 import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ELASTIC_SEARCH_EXTENSION;
@@ -25,7 +24,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.UUID;
 import javax.validation.Valid;
@@ -47,8 +45,10 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.search.sort.SortOrder;
 import org.elasticsearch.search.suggest.Suggest;
 import org.openmetadata.schema.api.CreateEventPublisherJob;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.elasticsearch.ElasticSearchRequest;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.IndexUtil;
@@ -72,9 +72,7 @@ public class SearchResource {
     this.authorizer = authorizer;
   }
 
-  public void initialize(OpenMetadataApplicationConfig config)
-      throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, InstantiationException,
-          IllegalAccessException {
+  public void initialize(OpenMetadataApplicationConfig config) {
     if (config.getElasticSearchConfiguration() != null) {
       searchClient = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), dao);
       ReIndexingHandler.initialize(searchClient, dao);
@@ -171,26 +169,24 @@ public class SearchResource {
       query = "*";
     }
     Object sortOrder;
-    if (searchClient.getSearchType().equals(IndexUtil.OPEN_SEARCH_CLIENT)) {
+    if (searchClient.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPEN_SEARCH)) {
       sortOrder = sortOrderOs;
     } else {
       sortOrder = sortOrderEs;
     }
-    String response =
-        searchClient.entityBuilder(
-            query,
-            from,
-            size,
-            queryFilter,
-            postFilter,
-            fetchSource,
-            trackTotalHits,
-            sortFieldParam,
-            deleted,
-            index,
-            sortOrder,
-            includeSourceFields);
-    return Response.status(OK).entity(response).build();
+    ElasticSearchRequest request =
+        new ElasticSearchRequest.ElasticSearchRequestBuilder(query, size, index)
+            .from(from)
+            .queryFilter(queryFilter)
+            .postFilter(postFilter)
+            .fetchSource(fetchSource)
+            .trackTotalHits(trackTotalHits)
+            .sortFieldParam(sortFieldParam)
+            .deleted(deleted)
+            .sortOrder(sortOrder)
+            .includeSourceFields(includeSourceFields)
+            .build();
+    return searchClient.search(request);
   }
 
   @GET
@@ -237,14 +233,21 @@ public class SearchResource {
                   "Get only selected fields of the document body for each hit. Empty value will return all fields")
           @QueryParam("include_source_fields")
           List<String> includeSourceFields,
-      @DefaultValue("false") @QueryParam("deleted") String deleted)
+      @DefaultValue("false") @QueryParam("deleted") boolean deleted)
       throws IOException {
 
     if (nullOrEmpty(query)) {
       query = "*";
     }
 
-    return searchClient.suggest(fieldName, query, size, deleted, fetchSource, includeSourceFields, index);
+    ElasticSearchRequest request =
+        new ElasticSearchRequest.ElasticSearchRequestBuilder(query, size, index)
+            .fieldName(fieldName)
+            .deleted(deleted)
+            .fetchSource(fetchSource)
+            .includeSourceFields(includeSourceFields)
+            .build();
+    return searchClient.suggest(request);
   }
 
   @GET

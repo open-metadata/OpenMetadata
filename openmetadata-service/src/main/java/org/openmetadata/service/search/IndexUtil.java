@@ -1,9 +1,9 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.getIndexMapping;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
-import java.io.IOException;
-import java.io.InputStream;
+import java.security.KeyStoreException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
@@ -11,6 +11,7 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import javax.net.ssl.SSLContext;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
@@ -23,9 +24,10 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.search.elasticSearch.ElasticSearchClientImpl;
-import org.openmetadata.service.search.openSearch.OpenSearchClientImpl;
+import org.openmetadata.service.search.elastic.ElasticSearchClientImpl;
+import org.openmetadata.service.search.open.OpenSearchClientImpl;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.SSLUtil;
 
 @Slf4j
 public class IndexUtil {
@@ -38,13 +40,8 @@ public class IndexUtil {
   public static final String ENTITY_REPORT_DATA = "entityReportData";
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = "webAnalyticEntityViewReportData";
   public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = "webAnalyticUserActivityReportData";
-
-  public static final String OPEN_SEARCH_CLIENT = "OpenSearch";
-
   public static final Map<String, String> ENTITY_TYPE_TO_INDEX_MAP;
 
-  EnumMap<ElasticSearchIndexDefinition.ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes =
-      new EnumMap<>(ElasticSearchIndexDefinition.ElasticSearchIndexType.class);
   private static final Map<ElasticSearchIndexDefinition.ElasticSearchIndexType, Set<String>>
       INDEX_TO_MAPPING_FIELDS_MAP = new EnumMap<>(ElasticSearchIndexDefinition.ElasticSearchIndexType.class);
 
@@ -61,10 +58,6 @@ public class IndexUtil {
 
   public IndexUtil(CollectionDAO dao) {
     this.dao = dao;
-    for (ElasticSearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType :
-        ElasticSearchIndexDefinition.ElasticSearchIndexType.values()) {
-      elasticSearchIndexes.put(elasticSearchIndexType, ElasticSearchIndexStatus.NOT_CREATED);
-    }
   }
 
   public enum ElasticSearchIndexStatus {
@@ -73,29 +66,14 @@ public class IndexUtil {
     FAILED
   }
 
-  public void setIndexStatus(
-      ElasticSearchIndexDefinition.ElasticSearchIndexType indexType,
-      ElasticSearchIndexStatus elasticSearchIndexStatus) {
-    elasticSearchIndexes.put(indexType, elasticSearchIndexStatus);
-  }
-
   public static SearchClient getSearchClient(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
     SearchClient client;
-    if (esConfig.getSearchType().equals(OPEN_SEARCH_CLIENT)) {
+    if (esConfig.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPEN_SEARCH)) {
       client = new OpenSearchClientImpl(esConfig, dao);
     } else {
       client = new ElasticSearchClientImpl(esConfig, dao);
     }
     return client;
-  }
-
-  public static String getIndexMapping(
-      ElasticSearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType, String lang) throws IOException {
-    InputStream in =
-        ElasticSearchIndexDefinition.class.getResourceAsStream(
-            String.format(elasticSearchIndexType.indexMappingFile, lang.toLowerCase()));
-    assert in != null;
-    return new String(in.readAllBytes());
   }
 
   /**
@@ -191,5 +169,17 @@ public class IndexUtil {
     } catch (Exception e) {
       LOG.error("Failed to Update Elastic Search Job Info");
     }
+  }
+
+  public static SSLContext createElasticSearchSSLContext(ElasticSearchConfiguration elasticSearchConfiguration)
+      throws KeyStoreException {
+
+    if (elasticSearchConfiguration.getScheme().equals("https")) {
+      return SSLUtil.createSSLContext(
+          elasticSearchConfiguration.getTruststorePath(),
+          elasticSearchConfiguration.getTruststorePassword(),
+          "ElasticSearch");
+    }
+    return null;
   }
 }

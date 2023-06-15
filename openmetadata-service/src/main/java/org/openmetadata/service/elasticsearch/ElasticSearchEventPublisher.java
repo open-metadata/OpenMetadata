@@ -21,7 +21,6 @@ import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinitio
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
@@ -50,11 +49,9 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   private final CollectionDAO dao;
-  private SearchClient searchClient;
+  private final SearchClient searchClient;
 
-  public ElasticSearchEventPublisher(ElasticSearchConfiguration esConfig, CollectionDAO dao)
-      throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, InstantiationException,
-          IllegalAccessException {
+  public ElasticSearchEventPublisher(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
     super(esConfig.getBatchSize());
     this.dao = dao;
     // needs Db connection

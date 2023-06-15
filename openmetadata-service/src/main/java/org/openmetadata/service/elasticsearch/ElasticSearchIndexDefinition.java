@@ -2,24 +2,17 @@ package org.openmetadata.service.elasticsearch;
 
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import lombok.Builder;
-import lombok.Getter;
 import lombok.SneakyThrows;
-import lombok.extern.jackson.Jacksonized;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.IndexMappingLanguage;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -121,11 +114,12 @@ public class ElasticSearchIndexDefinition {
   }
 
   public static String getIndexMapping(ElasticSearchIndexType elasticSearchIndexType, String lang) throws IOException {
-    InputStream in =
+    try (InputStream in =
         ElasticSearchIndexDefinition.class.getResourceAsStream(
-            String.format(elasticSearchIndexType.indexMappingFile, lang.toLowerCase()));
-    assert in != null;
-    return new String(in.readAllBytes());
+            String.format(elasticSearchIndexType.indexMappingFile, lang.toLowerCase()))) {
+      assert in != null;
+      return new String(in.readAllBytes());
+    }
   }
 
   /**
@@ -189,54 +183,5 @@ public class ElasticSearchIndexDefinition {
       fields = INDEX_TO_MAPPING_FIELDS_MAP.get(getIndexMappingByEntityType(entityType));
     }
     return fields;
-  }
-}
-
-@JsonInclude(JsonInclude.Include.NON_NULL)
-@Jacksonized
-@Getter
-@Builder
-class ElasticSearchSuggest {
-  String input;
-  Integer weight;
-}
-
-@Getter
-@Builder
-class FlattenColumn {
-  String name;
-  String description;
-  List<TagLabel> tags;
-}
-
-@Getter
-@Builder
-class FlattenSchemaField {
-  String name;
-  String description;
-  List<TagLabel> tags;
-}
-
-class ParseTags {
-  TagLabel tierTag;
-  final List<TagLabel> tags;
-
-  ParseTags(List<TagLabel> tags) {
-    if (!tags.isEmpty()) {
-      List<TagLabel> tagsList = new ArrayList<>(tags);
-      for (TagLabel tag : tagsList) {
-        String tier = tag.getTagFQN().split("\\.")[0];
-        if (tier.equalsIgnoreCase("tier")) {
-          tierTag = tag;
-          break;
-        }
-      }
-      if (tierTag != null) {
-        tagsList.remove(tierTag);
-      }
-      this.tags = tagsList;
-    } else {
-      this.tags = tags;
-    }
   }
 }

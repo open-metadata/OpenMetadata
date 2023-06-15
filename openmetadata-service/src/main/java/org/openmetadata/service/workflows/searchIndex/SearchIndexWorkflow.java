@@ -37,6 +37,7 @@ import org.elasticsearch.action.bulk.BulkResponse;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.Failure;
 import org.openmetadata.schema.system.FailureDetails;
@@ -47,14 +48,13 @@ import org.openmetadata.service.exception.ProcessorException;
 import org.openmetadata.service.exception.SinkException;
 import org.openmetadata.service.exception.SourceException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchClient;
-import org.openmetadata.service.search.elasticSearch.ElasticSearchDataInsightProcessor;
-import org.openmetadata.service.search.elasticSearch.ElasticSearchEntitiesProcessor;
-import org.openmetadata.service.search.elasticSearch.ElasticSearchIndexSink;
-import org.openmetadata.service.search.openSearch.OpenSearchDataInsightProcessor;
-import org.openmetadata.service.search.openSearch.OpenSearchEntitiesProcessor;
-import org.openmetadata.service.search.openSearch.OpenSearchIndexSink;
+import org.openmetadata.service.search.elastic.ElasticSearchDataInsightProcessor;
+import org.openmetadata.service.search.elastic.ElasticSearchEntitiesProcessor;
+import org.openmetadata.service.search.elastic.ElasticSearchIndexSink;
+import org.openmetadata.service.search.open.OpenSearchDataInsightProcessor;
+import org.openmetadata.service.search.open.OpenSearchEntitiesProcessor;
+import org.openmetadata.service.search.open.OpenSearchIndexSink;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ReIndexingHandler;
@@ -67,8 +67,8 @@ public class SearchIndexWorkflow implements Runnable {
   private static final String ENTITY_TYPE_ERROR_MSG = "EntityType: %s %n Cause: %s %n Stack: %s";
   private final List<PaginatedEntitiesSource> paginatedEntitiesSources = new ArrayList<>();
   private final List<PaginatedDataInsightSource> paginatedDataInsightSources = new ArrayList<>();
-  private Processor entityProcessor;
-  private Processor dataInsigshProcessor;
+  private final Processor entityProcessor;
+  private Processor dataInsightProcessor;
   private Sink searchIndexSink;
   private final SearchClient searchClient;
   @Getter final EventPublisherJob jobData;
@@ -98,13 +98,13 @@ public class SearchIndexWorkflow implements Runnable {
               }
             });
     this.searchClient = client;
-    if (searchClient.getSearchType().equals(IndexUtil.OPEN_SEARCH_CLIENT)) {
+    if (searchClient.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPEN_SEARCH)) {
       this.entityProcessor = new OpenSearchEntitiesProcessor();
-      this.dataInsigshProcessor = new OpenSearchDataInsightProcessor();
+      this.dataInsightProcessor = new OpenSearchDataInsightProcessor();
       this.searchIndexSink = new OpenSearchIndexSink(searchClient);
     } else {
       this.entityProcessor = new ElasticSearchEntitiesProcessor();
-      this.dataInsigshProcessor = new ElasticSearchDataInsightProcessor();
+      this.dataInsightProcessor = new ElasticSearchDataInsightProcessor();
       this.searchIndexSink = new ElasticSearchIndexSink(searchClient);
     }
   }
@@ -154,7 +154,7 @@ public class SearchIndexWorkflow implements Runnable {
           resultList = paginatedEntitiesSource.readNext(null);
           requestToProcess = resultList.getData().size() + resultList.getErrors().size();
           if (!resultList.getData().isEmpty()) {
-            if (searchClient.getSearchType().equals(IndexUtil.OPEN_SEARCH_CLIENT)) {
+            if (searchClient.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPEN_SEARCH)) {
               // process data to build Reindex Request
               org.opensearch.action.bulk.BulkRequest requests =
                   (org.opensearch.action.bulk.BulkRequest) entityProcessor.process(resultList, contextData);
@@ -234,10 +234,10 @@ public class SearchIndexWorkflow implements Runnable {
           resultList = paginatedDataInsightSource.readNext(null);
           requestToProcess = resultList.getData().size() + resultList.getErrors().size();
           if (!resultList.getData().isEmpty()) {
-            if (searchClient.getSearchType().equals(IndexUtil.OPEN_SEARCH_CLIENT)) {
+            if (searchClient.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPEN_SEARCH)) {
               // process data to build Reindex Request
               org.opensearch.action.bulk.BulkRequest requests =
-                  (org.opensearch.action.bulk.BulkRequest) dataInsigshProcessor.process(resultList, contextData);
+                  (org.opensearch.action.bulk.BulkRequest) dataInsightProcessor.process(resultList, contextData);
               // process data to build Reindex Request
               org.opensearch.action.bulk.BulkResponse response =
                   (org.opensearch.action.bulk.BulkResponse) searchIndexSink.write(requests, contextData);
@@ -246,7 +246,7 @@ public class SearchIndexWorkflow implements Runnable {
               success = searchClient.getSuccessFromBulkResponse(response);
             } else {
               // process data to build Reindex Request
-              BulkRequest requests = (BulkRequest) dataInsigshProcessor.process(resultList, contextData);
+              BulkRequest requests = (BulkRequest) dataInsightProcessor.process(resultList, contextData);
               // process data to build Reindex Request
               BulkResponse response = (BulkResponse) searchIndexSink.write(requests, contextData);
               handleErrorsEs(resultList, "", response, currentTime);
@@ -289,7 +289,7 @@ public class SearchIndexWorkflow implements Runnable {
               success,
               failed,
               paginatedDataInsightSource.getStats(),
-              dataInsigshProcessor.getStats(),
+              dataInsightProcessor.getStats(),
               searchIndexSink.getStats());
           sendUpdates();
         }
