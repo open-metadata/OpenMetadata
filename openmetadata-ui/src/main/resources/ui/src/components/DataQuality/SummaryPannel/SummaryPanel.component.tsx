@@ -13,34 +13,47 @@
 import { Col, Row } from 'antd';
 import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
 import React from 'react';
-import { formatNumberWithComma } from 'utils/CommonUtils';
+import { useTranslation } from 'react-i18next';
+import {} from 'utils/CommonUtils';
 
 export const SummaryPanel = () => {
+  const { t } = useTranslation();
+  const total = 2000;
+
   return (
     <Row gutter={16}>
       <Col span={6}>
         <SummaryCard
-          description={formatNumberWithComma(1000)}
-          title="Success"
+          className="h-full"
+          showProgressBar={false}
+          title={t('label.total-entity', { entity: t('label.test') })}
+          total={total}
+          value={2000}
+        />
+      </Col>
+      <Col span={6}>
+        <SummaryCard
+          title={t('label.success')}
+          total={total}
           type="success"
+          value={1000}
         />
       </Col>
       <Col span={6}>
         <SummaryCard
-          description={formatNumberWithComma(500)}
-          title="Aborted"
+          title={t('label.aborted')}
+          total={total}
           type="aborted"
+          value={500}
         />
       </Col>
       <Col span={6}>
         <SummaryCard
-          description={formatNumberWithComma(500)}
-          title="Failed"
+          title={t('label.failed')}
+          total={total}
           type="failed"
+          value={500}
         />
-      </Col>
-      <Col span={6}>
-        <SummaryCard description={formatNumberWithComma(2000)} title="Total" />
       </Col>
     </Row>
   );

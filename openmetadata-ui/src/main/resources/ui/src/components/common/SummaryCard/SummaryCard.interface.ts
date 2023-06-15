@@ -13,5 +13,8 @@
 export interface SummaryCardProps {
   type?: 'success' | 'failed' | 'aborted';
   title: string;
-  description: React.ReactNode;
+  value: number;
+  total: number;
+  showProgressBar?: boolean;
+  className?: string;
 }

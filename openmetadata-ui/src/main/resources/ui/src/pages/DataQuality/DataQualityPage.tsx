@@ -13,6 +13,7 @@
 
 import { Col, Row, Tabs, TabsProps, Typography } from 'antd';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { TestCases } from 'components/DataQuality/TestCases/TestCases.component';
 import { TestSuites } from 'components/DataQuality/TestSuites/TestSuites.component';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -35,6 +36,7 @@ const DataQualityPage = () => {
       {
         label: t('label.by-entity', { entity: t('label.test-case-plural') }),
         key: DataQualityPageTabs.TEST_CASES,
+        children: <TestCases />,
       },
       {
         label: t('label.by-entity', { entity: t('label.test-suite-plural') }),

@@ -14,7 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { CreateTestCase } from 'generated/api/tests/createTestCase';
-import { RestoreRequestType } from 'Models';
+import { PagingResponse, RestoreRequestType } from 'Models';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import { TestCase, TestCaseResult } from '../generated/tests/testCase';
 import {
@@ -61,7 +61,7 @@ const testDefinitionUrl = '/dataQuality/testDefinitions';
 
 // testCase section
 export const getListTestCase = async (params?: ListTestCaseParams) => {
-  const response = await APIClient.get<{ data: TestCase[]; paging: Paging }>(
+  const response = await APIClient.get<PagingResponse<TestCase[]>>(
     testCaseUrl,
     {
       params,

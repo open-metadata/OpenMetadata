@@ -54,13 +54,11 @@ export const LastRunGraph = () => {
         <Tooltip
           key={i}
           placement="bottom"
-          title="2 Failure on, 13th June 2023">
+          title={`2 ${value.status} on, 13th June 2023`}>
           <div
             className={classNames(
               'last-run-box',
-              TestCaseStatus.Success === value.status && value.percent < 100
-                ? ''
-                : value.status.toLocaleLowerCase()
+              value.status.toLocaleLowerCase()
             )}
           />
         </Tooltip>

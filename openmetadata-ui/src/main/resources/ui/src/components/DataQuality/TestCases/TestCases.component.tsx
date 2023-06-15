@@ -10,66 +10,46 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  Col,
-  Row,
-  Select,
-  Space,
-  Switch,
-  Table,
-  Typography,
-} from 'antd';
+import { Col, Row, Select, Space, Switch, Table, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
-import { LastRunGraph } from 'components/common/LastRunGraph/LastRunGraph.component';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import Searchbar from 'components/common/searchbar/Searchbar';
-import ProfilerProgressWidget from 'components/TableProfiler/Component/ProfilerProgressWidget';
 import {
   getTableTabPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
-  ROUTES,
 } from 'constants/constants';
-import { PROGRESS_BAR_COLOR } from 'constants/TestSuite.constant';
-import { EntityTabs } from 'enums/entity.enum';
-import { TestCaseStatus } from 'generated/tests/testCase';
-import { TestSuite } from 'generated/tests/testSuite';
-import { EntityReference } from 'generated/type/entityReference';
+import {
+  TestCase,
+  TestCaseResult,
+  TestCaseStatus,
+} from 'generated/tests/testCase';
 import { Include } from 'generated/type/include';
 import { Paging } from 'generated/type/paging';
+import { t } from 'i18next';
 import { isString } from 'lodash';
 import { PagingResponse } from 'Models';
 import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
-import { getListTestSuites, ListParams } from 'rest/testAPI';
+import { getListTestCase, ListTestCaseParams } from 'rest/testAPI';
+import { getNameFromFQN } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
-import { getTestSuitePath } from 'utils/RouterUtils';
+import { getDecodedFqn } from 'utils/StringsUtils';
+import { getEntityFqnFromEntityLink } from 'utils/TableUtils';
+import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { DataQualitySearchParams } from '../DataQuality.interface';
 import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
 
-export const TestSuites = () => {
-  const { t } = useTranslation();
-  const { tab = DataQualityPageTabs.TABLES } =
-    useParams<{ tab: DataQualityPageTabs }>();
+export const TestCases = () => {
   const history = useHistory();
   const location = useLocation();
-
-  const [testSuites, setTestSuites] = useState<PagingResponse<TestSuite[]>>({
-    data: [],
-    paging: { total: 0 },
-  });
-  const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
-
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const { tab } = useParams<{ tab: DataQualityPageTabs }>();
 
   const params = useMemo(() => {
     const search = location.search;
@@ -80,9 +60,15 @@ export const TestSuites = () => {
 
     return params as DataQualitySearchParams;
   }, [location]);
-
   const { searchValue = '', status = '', deleted } = params;
   const isDeleted = deleted === 'true';
+
+  const [testCase, setTestCase] = useState<PagingResponse<TestCase[]>>({
+    data: [],
+    paging: { total: 0 },
+  });
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
 
   const statusOption = useMemo(() => {
     const testCaseStatus: DefaultOptionType[] = Object.values(
@@ -99,75 +85,90 @@ export const TestSuites = () => {
     return testCaseStatus;
   }, []);
 
-  const testSuiteData = useMemo(() => {
-    return testSuites.data.filter((value) =>
-      tab === DataQualityPageTabs.TABLES ? value.executable : !value.executable
-    );
-  }, [testSuites, tab]);
-
   const columns = useMemo(() => {
-    const data: ColumnsType<TestSuite> = [
+    const data: ColumnsType<TestCase> = [
       {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        fixed: true,
         width: 250,
         render: (_, record) => {
-          const path =
-            tab === DataQualityPageTabs.TABLES
-              ? getTableTabPath(
-                  record.executableEntityReference?.fullyQualifiedName ?? '',
-                  EntityTabs.PROFILER
-                )
-              : getTestSuitePath(record.fullyQualifiedName ?? record.name);
-
-          return <Link to={path}>{getEntityName(record)}</Link>;
+          return (
+            <Typography.Paragraph>{getEntityName(record)}</Typography.Paragraph>
+          );
         },
       },
       {
-        title: t('label.test-plural'),
-        dataIndex: 'tests',
-        key: 'tests',
-        width: 100,
-        render: (value: TestSuite['tests']) => value?.length,
+        title: t('label.test-suite'),
+        dataIndex: 'testSuite',
+        key: 'testSuite',
+        width: 250,
+        render: (value) => {
+          return (
+            <Typography.Paragraph>{getEntityName(value)}</Typography.Paragraph>
+          );
+        },
       },
       {
-        title: `${t('label.success')} %`,
-        dataIndex: 'success',
-        key: 'success',
+        title: t('label.table'),
+        dataIndex: 'entityLink',
+        key: 'table',
         width: 150,
-        render: () => (
-          <ProfilerProgressWidget
-            strokeColor={PROGRESS_BAR_COLOR}
-            value={0.2}
-          />
-        ),
+        render: (entityLink) => {
+          const tableFqn = getEntityFqnFromEntityLink(entityLink);
+          const name = getNameFromFQN(tableFqn);
+
+          return (
+            <Link
+              data-testid="table-link"
+              to={getTableTabPath(tableFqn, 'profiler')}
+              onClick={(e) => e.stopPropagation()}>
+              {name}
+            </Link>
+          );
+        },
       },
       {
-        title: t('label.owner'),
-        dataIndex: 'owner',
-        key: 'owner',
+        title: t('label.column'),
+        dataIndex: 'entityLink',
+        key: 'column',
         width: 150,
-        render: (owner: EntityReference) => <OwnerLabel owner={owner} />,
+        render: (entityLink) => {
+          const isColumn = entityLink.includes('::columns::');
+
+          if (isColumn) {
+            const name = getNameFromFQN(
+              getDecodedFqn(
+                getEntityFqnFromEntityLink(entityLink, isColumn),
+                true
+              )
+            );
+
+            return name;
+          }
+
+          return '--';
+        },
       },
       {
         title: t('label.last-run'),
-        dataIndex: 'lastRun',
+        dataIndex: 'testCaseResult',
         key: 'lastRun',
         width: 150,
-        render: () => 'May 09, 2023 10.36',
+        render: (result: TestCaseResult) =>
+          result?.timestamp
+            ? getFormattedDateFromSeconds(
+                result.timestamp,
+                'MMM dd, yyyy HH:mm'
+              )
+            : '--',
       },
       {
-        title: t('label.result-plural'),
-        dataIndex: 'lastResults',
-        key: 'lastResults',
-        width: 200,
-        render: () => (
-          <div className="m-t-xss">
-            <LastRunGraph />
-          </div>
-        ),
+        title: 'Resolution',
+        dataIndex: 'resolution',
+        key: 'resolution',
+        width: 150,
+        render: () => '--',
       },
     ];
 
@@ -183,14 +184,14 @@ export const TestSuites = () => {
     });
   };
 
-  const fetchTestSuites = async (params?: ListParams) => {
+  const fetchTestCases = async (params?: ListTestCaseParams) => {
     setIsLoading(true);
     try {
-      const result = await getListTestSuites({
+      const response = await getListTestCase({
         ...params,
-        fields: 'owner,tests',
+        fields: 'testDefinition,testCaseResult,testSuite',
       });
-      setTestSuites(result);
+      setTestCase(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -202,18 +203,20 @@ export const TestSuites = () => {
     cursorValue: string | number,
     activePage?: number
   ) => {
-    const { paging } = testSuites;
+    const { paging } = testCase;
     if (isString(cursorValue)) {
-      fetchTestSuites({ [cursorValue]: paging?.[cursorValue as keyof Paging] });
+      fetchTestCases({ [cursorValue]: paging?.[cursorValue as keyof Paging] });
     }
     activePage && setCurrentPage(activePage);
   };
 
   useEffect(() => {
-    fetchTestSuites({
-      include: isDeleted ? Include.Deleted : Include.NonDeleted,
-    });
-  }, [tab, deleted]);
+    if (tab === DataQualityPageTabs.TEST_CASES) {
+      fetchTestCases({
+        include: isDeleted ? Include.Deleted : Include.NonDeleted,
+      });
+    }
+  }, [tab, isDeleted]);
 
   return (
     <Row className="p-x-lg p-t-md" gutter={[16, 16]}>
@@ -244,18 +247,10 @@ export const TestSuites = () => {
                 value={status}
                 onChange={(value) => handleSearchParam(value, 'status')}
               />
-              {tab === DataQualityPageTabs.TEST_SUITES && (
-                <Link to={ROUTES.ADD_TEST_SUITES}>
-                  <Button type="primary">
-                    {t('label.add-entity', { entity: t('label.test-suite') })}
-                  </Button>
-                </Link>
-              )}
             </Space>
           </Col>
         </Row>
       </Col>
-
       <Col span={24}>
         <SummaryPanel />
       </Col>
@@ -263,24 +258,25 @@ export const TestSuites = () => {
         <Table
           bordered
           columns={columns}
-          data-testid="test-suite-table"
-          dataSource={testSuiteData}
+          data-testid="test-case-table"
+          dataSource={testCase.data}
           loading={isLoading}
           locale={{
             emptyText: <FilterTablePlaceHolder />,
           }}
           pagination={false}
+          scroll={{ x: 1500 }}
           size="small"
         />
       </Col>
       <Col span={24}>
-        {testSuites.paging.total > PAGE_SIZE && (
+        {testCase.paging.total > PAGE_SIZE && (
           <NextPrevious
             currentPage={currentPage}
             pageSize={PAGE_SIZE}
-            paging={testSuites.paging}
+            paging={testCase.paging}
             pagingHandler={handlePagingClick}
-            totalCount={testSuites.paging.total}
+            totalCount={testCase.paging.total}
           />
         )}
       </Col>

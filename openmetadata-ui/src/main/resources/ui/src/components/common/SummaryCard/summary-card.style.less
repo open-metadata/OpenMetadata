@@ -16,7 +16,8 @@
   width: 100%;
   border: @global-border;
   border-radius: 10px;
-  background: @grey-1;
+  background: @white;
+  justify-content: space-between;
 
   .summary-card-title {
     color: @text-grey-muted;
@@ -29,13 +30,34 @@
     margin-bottom: 0;
   }
 
-  &.success {
-    background: @green-2;
+  .ant-progress-circle {
+    .ant-progress-text {
+      font-weight: 500;
+    }
   }
-  &.aborted {
-    background: @yellow-1;
+
+  .success.ant-progress-circle {
+    .ant-progress-circle-path {
+      stroke: @green-3;
+    }
+    .ant-progress-text {
+      color: @green-3;
+    }
   }
-  &.failed {
-    background: @red-2;
+  .aborted.ant-progress-circle {
+    .ant-progress-circle-path {
+      stroke: @yellow-2;
+    }
+    .ant-progress-text {
+      color: @yellow-2;
+    }
+  }
+  .failed.ant-progress-circle {
+    .ant-progress-circle-path {
+      stroke: @red-3;
+    }
+    .ant-progress-text {
+      color: @red-3;
+    }
   }
 }

@@ -10,21 +10,36 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Progress, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import React from 'react';
+import { formatNumberWithComma } from 'utils/CommonUtils';
 import './summary-card.style.less';
 import { SummaryCardProps } from './SummaryCard.interface';
 
-export const SummaryCard = ({ type, title, description }: SummaryCardProps) => {
+export const SummaryCard = ({
+  type,
+  title,
+  value,
+  total,
+  showProgressBar = true,
+  className,
+}: SummaryCardProps) => {
+  const percent = (value / total) * 100;
+
   return (
-    <div className={classNames('summary-card', type)}>
-      <Typography.Paragraph className="summary-card-title">
-        {title}
-      </Typography.Paragraph>
-      <Typography.Paragraph className="summary-card-description">
-        {description}
-      </Typography.Paragraph>
-    </div>
+    <Space className={classNames('summary-card', className)}>
+      <div>
+        <Typography.Paragraph className="summary-card-title">
+          {title}
+        </Typography.Paragraph>
+        <Typography.Paragraph className="summary-card-description">
+          {formatNumberWithComma(value)}
+        </Typography.Paragraph>
+      </div>
+      {showProgressBar && (
+        <Progress className={type} percent={percent} type="circle" width={65} />
+      )}
+    </Space>
   );
 };
