@@ -230,7 +230,6 @@ class MongoDBUnitTest(TestCase):
                 self.mongo_source.get_tables_name_and_type()
             )
 
-    @pytest.mark.skip(reason="Need to be fixed")
     def test_yield_tables(self):
         Column.__eq__ = custom_column_compare
         with patch.object(
