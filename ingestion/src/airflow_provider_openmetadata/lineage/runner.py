@@ -139,7 +139,7 @@ class AirflowLineageRunner:
         return [
             Task(
                 name=task.task_id,
-                taskUrl=self.get_task_url(task),
+                sourceUrl=self.get_task_url(task),
                 taskType=task.task_type,
                 startDate=task.start_date.isoformat() if task.start_date else None,
                 endDate=task.end_date.isoformat() if task.end_date else None,
@@ -158,7 +158,7 @@ class AirflowLineageRunner:
         pipeline_request = CreatePipelineRequest(
             name=self.dag.dag_id,
             description=self.dag.description,
-            pipelineUrl=f"{clean_uri(self.host_port)}/tree?dag_id={self.dag.dag_id}",
+            sourceUrl=f"{clean_uri(self.host_port)}/tree?dag_id={self.dag.dag_id}",
             concurrency=self.dag.max_active_tasks,
             pipelineLocation=self.dag.fileloc,
             startDate=self.dag.start_date.isoformat() if self.dag.start_date else None,

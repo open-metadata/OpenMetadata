@@ -211,7 +211,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
 
     public void updateDashboardUrl(Dashboard original, Dashboard updated) throws IOException {
-      recordChange(DASHBOARD_URL, original.getDashboardUrl(), updated.getDashboardUrl());
+      recordChange(DASHBOARD_URL, original.getSourceUrl(), updated.getSourceUrl());
     }
   }
 }
