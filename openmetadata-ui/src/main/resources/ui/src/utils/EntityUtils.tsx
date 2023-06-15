@@ -937,7 +937,7 @@ export const getBreadcrumbForTable = (
     ...(includeCurrent
       ? [
           {
-            name: getEntityName(entity),
+            name: entity.name,
             url: getEntityLinkFromType(
               entity.fullyQualifiedName ?? '',
               (entity as SourceType).entityType as EntityType
@@ -969,7 +969,7 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
     ...(includeCurrent
       ? [
           {
-            name: getEntityName(entity),
+            name: entity.name,
             url: getEntityLinkFromType(
               entity.fullyQualifiedName ?? '',
               (entity as SourceType).entityType as EntityType
@@ -1017,7 +1017,7 @@ export const getEntityBreadcrumbs = (
     case EntityType.TAG:
       return [
         {
-          name: getEntityName(entity),
+          name: entity.name,
           url: getTagsDetailsPath(entity?.fullyQualifiedName ?? ''),
         },
       ];

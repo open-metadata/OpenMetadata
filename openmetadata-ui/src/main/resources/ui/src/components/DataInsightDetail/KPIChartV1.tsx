@@ -185,14 +185,14 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
       className="kpi-widget-card h-full"
       data-testid="kpi-card"
       id="kpi-charts"
-      loading={isLoading}
-      title={
-        <div className="p-y-xss">
+      loading={isLoading}>
+      <Row>
+        <Col span={24}>
           <Typography.Text className="font-medium">
             {t('label.kpi-title')}
           </Typography.Text>
-        </div>
-      }>
+        </Col>
+      </Row>
       {kpiList.length ? (
         <Row>
           {graphData.length ? (

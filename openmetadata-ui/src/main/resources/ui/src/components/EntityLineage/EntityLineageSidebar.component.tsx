@@ -13,6 +13,7 @@
 
 import Icon from '@ant-design/icons';
 import classNames from 'classnames';
+import { PRIMERY_COLOR } from 'constants/constants';
 import { capitalize, isEmpty, uniqueId } from 'lodash';
 import React, { FC, HTMLAttributes } from 'react';
 import { Node } from 'reactflow';
@@ -60,7 +61,11 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
             className="drag-icon"
             component={DragIconDotted}
             rotate={90}
-            style={{ color: '#7147E8', fontSize: '18px', fontWeight: 'bold' }}
+            style={{
+              color: PRIMERY_COLOR,
+              fontSize: '18px',
+              fontWeight: 'bold',
+            }}
           />
         </span>
       </div>
