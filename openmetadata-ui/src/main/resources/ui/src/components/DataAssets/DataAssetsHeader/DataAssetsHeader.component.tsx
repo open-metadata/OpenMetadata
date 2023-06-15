@@ -466,14 +466,13 @@ export const DataAssetsHeader = ({
         <Col span={6}>
           <Space className="items-end w-full" direction="vertical" size={16}>
             <Space>
-              <Button
-                className="w-16 p-0"
-                icon={<Icon component={TaskOpenIcon} />}
-                onClick={handleOpenTaskClick}>
-                <Typography.Text>{taskCount}</Typography.Text>
-              </Button>
-
               <ButtonGroup size="small">
+                <Button
+                  className="w-16 p-0"
+                  icon={<Icon component={TaskOpenIcon} />}
+                  onClick={handleOpenTaskClick}>
+                  <Typography.Text>{taskCount}</Typography.Text>
+                </Button>
                 <Button
                   className="w-16 p-0"
                   icon={<Icon component={VersionIcon} />}
