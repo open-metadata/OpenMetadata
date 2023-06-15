@@ -1091,7 +1091,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     Map<String, TagLabel> map = new HashMap<>();
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
       // When two tags have the same parent that is mutuallyExclusive, then throw an error
-      String parentFqn = FullyQualifiedName.getParent(tagLabel.getTagFQN());
+      String parentFqn = FullyQualifiedName.getParentFQN(tagLabel.getTagFQN());
       TagLabel stored = map.put(parentFqn, tagLabel);
       if (stored != null && TagLabelCache.getInstance().mutuallyExclusive(tagLabel)) {
         throw new IllegalArgumentException(CatalogExceptionMessage.mutuallyExclusiveLabels(tagLabel, stored));
