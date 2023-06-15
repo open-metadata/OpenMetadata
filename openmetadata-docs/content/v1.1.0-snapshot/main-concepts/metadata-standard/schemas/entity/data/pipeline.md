@@ -17,7 +17,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/pipeline
 - **`version`**: Metadata version of the entity. Refer to *../../type/entityHistory.json#/definitions/entityVersion*.
 - **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`updatedBy`** *(string)*: User who made the update.
-- **`pipelineUrl`** *(string)*: Pipeline  URL to visit/manage. This URL points to respective pipeline service UI.
+- **`sourceUrl`** *(string)*: Pipeline  URL to visit/manage. This URL points to respective pipeline service UI.
 - **`concurrency`** *(integer)*: Concurrency of the Pipeline.
 - **`pipelineLocation`** *(string)*: Pipeline Code Location.
 - **`startDate`**: Start date of the workflow. Refer to *../../type/basic.json#/definitions/dateTime*.
@@ -48,7 +48,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/pipeline
   - **`displayName`** *(string)*: Display Name that identifies this Task. It could be title or label from the pipeline services.
   - **`fullyQualifiedName`** *(string)*: A unique name that identifies a pipeline in the format 'ServiceName.PipelineName.TaskName'.
   - **`description`**: Description of this Task. Refer to *../../type/basic.json#/definitions/markdown*.
-  - **`taskUrl`** *(string)*: Task URL to visit/manage. This URL points to respective pipeline service UI.
+  - **`sourceUrl`** *(string)*: Task URL to visit/manage. This URL points to respective pipeline service UI.
   - **`downstreamTasks`** *(array)*: All the tasks that are downstream of this task. Default: `None`.
     - **Items** *(string)*
   - **`taskType`** *(string)*: Type of the Task. Usually refers to the class it implements.

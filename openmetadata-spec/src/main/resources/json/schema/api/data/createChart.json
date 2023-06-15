@@ -22,7 +22,7 @@
     "chartType": {
       "$ref": "../../entity/data/chart.json#/definitions/chartType"
     },
-    "chartUrl": {
+    "sourceUrl": {
       "description": "Chart URL suffix from its service.",
       "type": "string"
     },

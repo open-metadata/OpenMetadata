@@ -76,7 +76,7 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
     name="wackiness_remote_aiding_pointless",
     displayName="test <> postgres_rds",
     description="",
-    pipelineUrl="",
+    sourceUrl="",
     tasks=[
         Task(
             name="wackiness_remote_aiding_pointless",
@@ -101,13 +101,13 @@ MOCK_PIPELINE = Pipeline(
     fullyQualifiedName="fivetran_source.wackiness_remote_aiding_pointless",
     displayName="test <> postgres_rds",
     description="",
-    pipelineUrl="",
+    sourceUrl="",
     tasks=[
         Task(
             name="wackiness_remote_aiding_pointless",
             displayName="test <> postgres_rds",
             description="",
-            taskUrl="",
+            sourceUrl="",
         )
     ],
     service=EntityReference(

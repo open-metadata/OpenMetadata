@@ -93,7 +93,7 @@
     "chartType": {
       "$ref": "#/definitions/chartType"
     },
-    "chartUrl": {
+    "sourceUrl": {
       "description": "Chart URL suffix from its service.",
       "type": "string"
     },

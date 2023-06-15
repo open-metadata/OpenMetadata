@@ -71,7 +71,7 @@ class SplineSource(PipelineServiceSource):
                 name=pipeline_details.executionEventId,
                 displayName=pipeline_details.applicationName,
                 description="",
-                taskUrl=connection_url,
+                sourceUrl=connection_url,
             )
         ]
 
@@ -93,7 +93,7 @@ class SplineSource(PipelineServiceSource):
             name=pipeline_details.executionEventId,
             displayName=pipeline_details.applicationName,
             description="",
-            pipelineUrl=connection_url,
+            sourceUrl=connection_url,
             tasks=self.get_connections_jobs(pipeline_details, connection_url),
             service=self.context.pipeline_service.fullyQualifiedName.__root__,
         )
