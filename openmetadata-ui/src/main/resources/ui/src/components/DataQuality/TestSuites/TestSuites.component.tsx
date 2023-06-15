@@ -10,16 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  Col,
-  Row,
-  Select,
-  Space,
-  Switch,
-  Table,
-  Typography,
-} from 'antd';
+import { Button, Col, Row, Select, Space, Table } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -40,7 +31,6 @@ import { EntityTabs } from 'enums/entity.enum';
 import { TestCaseStatus } from 'generated/tests/testCase';
 import { TestSuite } from 'generated/tests/testSuite';
 import { EntityReference } from 'generated/type/entityReference';
-import { Include } from 'generated/type/include';
 import { Paging } from 'generated/type/paging';
 import { isString } from 'lodash';
 import { PagingResponse } from 'Models';
@@ -81,8 +71,7 @@ export const TestSuites = () => {
     return params as DataQualitySearchParams;
   }, [location]);
 
-  const { searchValue = '', status = '', deleted } = params;
-  const isDeleted = deleted === 'true';
+  const { searchValue = '', status = '' } = params;
 
   const statusOption = useMemo(() => {
     const testCaseStatus: DefaultOptionType[] = Object.values(
@@ -210,10 +199,8 @@ export const TestSuites = () => {
   };
 
   useEffect(() => {
-    fetchTestSuites({
-      include: isDeleted ? Include.Deleted : Include.NonDeleted,
-    });
-  }, [tab, deleted]);
+    fetchTestSuites();
+  }, [tab]);
 
   return (
     <Row className="p-x-lg p-t-md" gutter={[16, 16]}>
@@ -228,15 +215,6 @@ export const TestSuites = () => {
           </Col>
           <Col>
             <Space size={12}>
-              <div>
-                <Typography.Text className="text-grey-muted">
-                  {t('label.deleted')}
-                </Typography.Text>{' '}
-                <Switch
-                  checked={isDeleted}
-                  onChange={(value) => handleSearchParam(value, 'deleted')}
-                />
-              </div>
               <Select
                 className="w-32"
                 options={statusOption}

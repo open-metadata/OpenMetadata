@@ -13,5 +13,4 @@
 export type DataQualitySearchParams = {
   searchValue: string;
   status: string;
-  deleted: string;
 };

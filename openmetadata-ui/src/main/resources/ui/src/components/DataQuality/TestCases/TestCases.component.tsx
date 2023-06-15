@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Select, Space, Switch, Table, Typography } from 'antd';
+import { Col, Row, Select, Space, Table, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -27,7 +27,6 @@ import {
   TestCaseResult,
   TestCaseStatus,
 } from 'generated/tests/testCase';
-import { Include } from 'generated/type/include';
 import { Paging } from 'generated/type/paging';
 import { t } from 'i18next';
 import { isString } from 'lodash';
@@ -60,8 +59,7 @@ export const TestCases = () => {
 
     return params as DataQualitySearchParams;
   }, [location]);
-  const { searchValue = '', status = '', deleted } = params;
-  const isDeleted = deleted === 'true';
+  const { searchValue = '', status = '' } = params;
 
   const [testCase, setTestCase] = useState<PagingResponse<TestCase[]>>({
     data: [],
@@ -212,11 +210,9 @@ export const TestCases = () => {
 
   useEffect(() => {
     if (tab === DataQualityPageTabs.TEST_CASES) {
-      fetchTestCases({
-        include: isDeleted ? Include.Deleted : Include.NonDeleted,
-      });
+      fetchTestCases();
     }
-  }, [tab, isDeleted]);
+  }, [tab]);
 
   return (
     <Row className="p-x-lg p-t-md" gutter={[16, 16]}>
@@ -231,15 +227,6 @@ export const TestCases = () => {
           </Col>
           <Col>
             <Space size={12}>
-              <div>
-                <Typography.Text className="text-grey-muted">
-                  {t('label.deleted')}
-                </Typography.Text>{' '}
-                <Switch
-                  checked={isDeleted}
-                  onChange={(value) => handleSearchParam(value, 'deleted')}
-                />
-              </div>
               <Select
                 className="w-32"
                 options={statusOption}
