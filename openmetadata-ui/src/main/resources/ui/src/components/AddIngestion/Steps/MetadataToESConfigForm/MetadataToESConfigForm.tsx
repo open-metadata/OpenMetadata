@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Divider, Form, Input, Row, Switch } from 'antd';
+import { Button, Col, Divider, Form, Input, Row, Select, Switch } from 'antd';
 import { AddIngestionState } from 'components/AddIngestion/addIngestion.interface';
+import {
+  ELASTIC_SEARCH_INITIAL_VALUES,
+  RE_INDEX_LANG_OPTIONS,
+} from 'constants/elasticsearch.constant';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConfigClass } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -47,12 +51,13 @@ const MetadataToESConfigForm = ({
 
   const initialValues = useMemo(
     () => ({
-      caCerts: data.metadataToESConfig?.caCerts,
-      regionName: data.metadataToESConfig?.regionName,
-      timeout: data.metadataToESConfig?.timeout,
-      useAwsCredentials: data.metadataToESConfig?.useAwsCredentials,
-      useSSL: data.metadataToESConfig?.useSSL,
-      verifyCerts: data.metadataToESConfig?.verifyCerts,
+      recreateIndex: data.metadataToESConfig?.recreateIndex,
+      searchIndexMappingLanguage:
+        data.metadataToESConfig?.searchIndexMappingLanguage ??
+        ELASTIC_SEARCH_INITIAL_VALUES.searchIndexMappingLanguage,
+      batchSize:
+        data.metadataToESConfig?.batchSize ??
+        ELASTIC_SEARCH_INITIAL_VALUES.batchSize,
     }),
     [data]
   );
@@ -65,52 +70,26 @@ const MetadataToESConfigForm = ({
       layout="vertical"
       onFinish={handleSubmit}
       onFocus={(e) => onFocus(e.target.id)}>
-      <Item label={t('label.ca-certs')} name="caCerts">
-        <Input id="root/caCerts" />
+      <Item label={t('label.batch-size')} name="batchSize">
+        <Input id="root/batchSize" type="number" />
       </Item>
-      <Item label={t('label.region-name')} name="regionName">
-        <Input id="root/regionName" />
-      </Item>
-      <Item label={t('label.timeout')} name="timeout">
-        <Input id="root/timeout" type="number" />
+      <Item label={t('label.language')} name="searchIndexMappingLanguage">
+        <Select
+          id="root/searchIndexMappingLanguage"
+          options={RE_INDEX_LANG_OPTIONS}
+        />
       </Item>
       <Divider />
-      <Item name="useAwsCredentials">
+      <Item name="recreateIndex">
         <Row>
-          <Col span={8}>{t('label.use-aws-credential-plural')}</Col>
+          <Col span={8}>{t('label.recreate-index-plural')}</Col>
           <Col span={16}>
             <Switch
-              defaultChecked={initialValues.useAwsCredentials}
-              id="root/useAwsCredentials"
+              defaultChecked={initialValues.recreateIndex}
+              id="root/recreateIndex"
               onChange={(value) =>
-                form.setFieldsValue({ useAwsCredentials: value })
+                form.setFieldsValue({ recreateIndex: value })
               }
-            />
-          </Col>
-        </Row>
-      </Item>
-      <Divider />
-      <Item name="useSSL">
-        <Row>
-          <Col span={8}>{t('label.use-ssl-uppercase')}</Col>
-          <Col span={16}>
-            <Switch
-              defaultChecked={initialValues.useSSL}
-              id="root/useSSL"
-              onChange={(value) => form.setFieldsValue({ useSSL: value })}
-            />
-          </Col>
-        </Row>
-      </Item>
-      <Divider />
-      <Item name="verifyCerts">
-        <Row>
-          <Col span={8}>{t('label.verify-cert-plural')}</Col>
-          <Col span={16}>
-            <Switch
-              defaultChecked={initialValues.verifyCerts}
-              id="root/verifyCerts"
-              onChange={(value) => form.setFieldsValue({ verifyCerts: value })}
             />
           </Col>
         </Row>

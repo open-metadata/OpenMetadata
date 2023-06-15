@@ -24,7 +24,11 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.system.eventPublisherJob import PublisherType, Status
+from metadata.generated.schema.system.eventPublisherJob import (
+    PublisherType,
+    RunMode,
+    Status,
+)
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -57,6 +61,7 @@ class MetadataElasticsearchSource(Source[Entity]):
         self.service_connection: MetadataESConnection = (
             config.serviceConnection.__root__.config
         )
+        self.source_config = self.config.sourceConfig.config
 
     def prepare(self):
         pass
@@ -75,11 +80,11 @@ class MetadataElasticsearchSource(Source[Entity]):
         yield CreateEventPublisherJob(
             name=self.config.serviceName,
             publisherType=PublisherType.elasticSearch,
-            runMode=self.service_connection.runMode,
-            batchSize=self.service_connection.batchSize,
-            searchIndexMappingLanguage=self.service_connection.searchIndexMappingLanguage,
+            runMode=RunMode.batch,
+            batchSize=self.source_config.batchSize,
+            searchIndexMappingLanguage=self.source_config.searchIndexMappingLanguage,
             entities=self.service_connection.entities,
-            recreateIndex=self.service_connection.recreateIndex,
+            recreateIndex=self.source_config.recreateIndex,
         )
 
         self.log_reindex_status()

@@ -36,10 +36,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    SourceConfig,
-    WorkflowConfig,
-)
+from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -70,7 +67,7 @@ def build_es_reindex_workflow_config(
             type="metadata_elasticsearch",
             serviceName=ingestion_pipeline.service.fullyQualifiedName,
             serviceConnection=MetadataConnection(config=MetadataESConnection()),
-            sourceConfig=SourceConfig(),
+            sourceConfig=ingestion_pipeline.sourceConfig,
         ),
         sink=sink,
         workflowConfig=WorkflowConfig(
