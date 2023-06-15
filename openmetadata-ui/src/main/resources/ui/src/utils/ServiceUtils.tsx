@@ -73,6 +73,7 @@ import {
   MLFLOW,
   ML_MODEL_DEFAULT,
   MODE,
+  MONGODB,
   MSSQL,
   MYSQL,
   NIFI,
@@ -216,6 +217,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DatabaseServiceType.Datalake:
       return DATALAKE;
+
+    case DatabaseServiceType.MongoDB:
+      return MONGODB;
 
     case MessagingServiceType.Kafka:
       return KAFKA;
