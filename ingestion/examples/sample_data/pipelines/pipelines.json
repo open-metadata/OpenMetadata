@@ -4,6 +4,8 @@
 			"displayName": "Presto ETL",
 			"description": "Presto ETL pipeline",
 			"sourceUrl": "http://localhost:8080/tree?dag_id=presto_etl",
+			"owner": "aaron_johnson0@gmail.com",
+			"scheduleInterval": "* * * * *",
 			"tasks": [
 				{
 				"name": "presto_task",

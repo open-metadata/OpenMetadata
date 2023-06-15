@@ -278,10 +278,9 @@ class AirflowSource(PipelineServiceSource):
                     description=data.get("_description", None),
                     start_date=data.get("start_date", None),
                     tasks=data.get("tasks", []),
-                    owners=data.get("default_args", [])["__var"].get("email", [])
-                    if data.get("default_args")
-                    else None,
                 )
+                if self.source_config.includeOwners:
+                    dag.owners=data.get("default_args", [])["__var"].get("email", []) if data.get("default_args") else None
                 yield dag
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
