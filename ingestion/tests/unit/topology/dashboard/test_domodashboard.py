@@ -97,7 +97,7 @@ EXPECTED_DASHBOARD = CreateDashboardRequest(
     name="552315335",
     displayName="New Dashboard",
     description=None,
-    dashboardUrl="https://domain.domo.com/page/552315335",
+    sourceUrl="https://domain.domo.com/page/552315335",
     charts=[],
     tags=None,
     owner=None,
@@ -114,7 +114,7 @@ EXPECTED_CHARTS = [
             " Identify over-performers and understand the secrets to their success."
         ),
         chartType="Other",
-        chartUrl="https://domain.domo.com/page/552315335/kpis/details/1982511286",
+        sourceUrl="https://domain.domo.com/page/552315335/kpis/details/1982511286",
         tags=None,
         owner=None,
         service=FullyQualifiedEntityName(__root__="domodashboard_source_test"),
@@ -127,7 +127,7 @@ EXPECTED_CHARTS = [
             " Identify over-performers and understand the secrets to their success."
         ),
         chartType="Other",
-        chartUrl="https://domain.domo.com/page/552315335/kpis/details/781210736",
+        sourceUrl="https://domain.domo.com/page/552315335/kpis/details/781210736",
         tags=None,
         owner=None,
         service=FullyQualifiedEntityName(__root__="domodashboard_source_test"),

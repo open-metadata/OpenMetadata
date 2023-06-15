@@ -94,7 +94,7 @@ describe('PipelineSummary component tests', () => {
   it('If the pipeline url is not present in pipeline details, "-" should be displayed as pipeline url value', () => {
     render(
       <PipelineSummary
-        entityDetails={{ ...mockPipelineEntityDetails, pipelineUrl: undefined }}
+        entityDetails={{ ...mockPipelineEntityDetails, sourceUrl: undefined }}
       />,
       {
         wrapper: MemoryRouter,

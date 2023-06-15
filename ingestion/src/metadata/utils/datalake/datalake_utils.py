@@ -117,3 +117,17 @@ def fetch_dataframe(
             f"Error fetching file {bucket_name}/{key} using {config_source.__class__.__name__} due to: {err}"
         )
     return None
+
+
+def _get_root_col(col_name: str) -> str:
+    return col_name.split(COMPLEX_COLUMN_SEPARATOR)[1]
+
+
+def clean_dataframe(df):
+    all_complex_root_columns = set(
+        _get_root_col(col) for col in df if COMPLEX_COLUMN_SEPARATOR in col
+    )
+    for complex_col in all_complex_root_columns:
+        if complex_col in df.columns:
+            df = df.drop(complex_col, axis=1)
+    return df
