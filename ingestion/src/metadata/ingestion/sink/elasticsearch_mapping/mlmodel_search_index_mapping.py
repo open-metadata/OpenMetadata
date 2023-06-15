@@ -94,7 +94,7 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
       "href": {
         "type": "text"
       },
-      "pipelineUrl": {
+      "sourceUrl": {
         "type": "text"
       },
       "mlFeatures": {
