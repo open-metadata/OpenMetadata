@@ -65,7 +65,7 @@ const mockTasks = [
     name: 'snowflake_task',
     displayName: 'Snowflake Task',
     description: 'Airflow operator to perform ETL on snowflake tables',
-    taskUrl:
+    sourceUrl:
       'http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists',
     downstreamTasks: ['assert_table_exists'],
     taskType: 'SnowflakeOperator',
@@ -74,7 +74,7 @@ const mockTasks = [
     name: 'assert_table_exists',
     displayName: 'Assert Table Exists',
     description: 'Assert if a table exists',
-    taskUrl:
+    sourceUrl:
       'http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists',
     downstreamTasks: [],
     taskType: 'HiveOperator',
@@ -84,7 +84,7 @@ const mockTasks = [
 const mockTaskUpdateHandler = jest.fn();
 
 const PipelineDetailsProps = {
-  pipelineUrl: '',
+  sourceUrl: '',
   serviceType: '',
   users: [],
   pipelineDetails: { tasks: mockTasks } as Pipeline,

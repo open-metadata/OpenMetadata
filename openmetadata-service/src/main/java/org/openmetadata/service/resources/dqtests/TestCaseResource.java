@@ -11,7 +11,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -37,9 +39,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -49,8 +53,10 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
@@ -175,8 +181,45 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     // Override OperationContext to change the entity to table and operation from VIEW_ALL to VIEW_TESTS
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     Fields fields = getFields(fieldsParam);
-    return super.listInternal(
-        uriInfo, securityContext, fields, filter, limitParam, before, after, operationContext, resourceContext);
+
+    ResultList<TestCase> tests =
+        super.listInternal(
+            uriInfo, securityContext, fields, filter, limitParam, before, after, operationContext, resourceContext);
+
+    List<TestCase> maskedTests =
+        tests.getData().stream()
+            .map(
+                testCase -> {
+                  try {
+                    EntityLink testCaseLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+                    Table table =
+                        Entity.getEntityByName(
+                            Entity.TABLE, testCaseLink.getEntityFQN(), "owner,tags", Include.NON_DELETED);
+
+                    // Ignore table tests
+                    if (testCaseLink.getFieldName() == null) return testCase;
+
+                    Optional<Column> referencedColumn =
+                        table.getColumns().stream()
+                            .filter(
+                                col -> testCaseLink.getFullyQualifiedFieldValue().equals(col.getFullyQualifiedName()))
+                            .findFirst();
+
+                    if (referencedColumn.isPresent()) {
+                      Column col = referencedColumn.get();
+                      // We need the table owner to know if we can authorize the access
+                      boolean authorizePII = authorizer.authorizePII(securityContext, table.getOwner());
+                      return PIIMasker.getTestCase(col, testCase, authorizePII);
+                    }
+                    return testCase;
+                  } catch (IOException e) {
+                    throw new RuntimeException(e);
+                  }
+                })
+            .collect(Collectors.toList());
+
+    tests.setData(maskedTests);
+    return tests;
   }
 
   @GET

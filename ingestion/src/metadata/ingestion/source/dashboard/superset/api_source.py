@@ -71,7 +71,7 @@ class SupersetAPISource(SupersetSourceMixin):
             name=dashboard_details["id"],
             displayName=dashboard_details["dashboard_title"],
             description="",
-            dashboardUrl=f"{clean_uri(self.service_connection.hostPort)}{dashboard_details['url']}",
+            sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{dashboard_details['url']}",
             charts=[
                 fqn.build(
                     self.metadata,
@@ -111,7 +111,7 @@ class SupersetAPISource(SupersetSourceMixin):
                 chartType=get_standard_chart_type(
                     chart_json.get("viz_type", ChartType.Other.value)
                 ),
-                chartUrl=f"{clean_uri(self.service_connection.hostPort)}{chart_json.get('url')}",
+                sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{chart_json.get('url')}",
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
             )
             yield chart
