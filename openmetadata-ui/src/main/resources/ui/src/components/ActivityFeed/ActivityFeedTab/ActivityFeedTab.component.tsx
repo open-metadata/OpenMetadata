@@ -204,7 +204,7 @@ export const ActivityFeedTab = ({
   }, [entityThread, activeTab]);
 
   return (
-    <div className="d-flex h-full overflow-hidden">
+    <div className="d-flex " style={{ minHeight: 'calc(100vh - 230px)' }}>
       <Menu
         className="custom-menu w-72 p-t-sm"
         data-testid="global-setting-left-panel"
@@ -314,7 +314,7 @@ export const ActivityFeedTab = ({
                 feed={selectedThread}
                 hidePopover={false}
               />
-              <ActivityFeedEditor className="m-sm" onSave={onSave} />
+              <ActivityFeedEditor className="m-md" onSave={onSave} />
             </div>
           ) : (
             <div id="task-panel">

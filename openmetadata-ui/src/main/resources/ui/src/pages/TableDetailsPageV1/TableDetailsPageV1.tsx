@@ -752,7 +752,7 @@ const TableDetailsPageV1 = () => {
       className="bg-white"
       pageTitle="Table details"
       title="Table details">
-      <Row className="" gutter={[0, 12]}>
+      <Row gutter={[0, 12]}>
         {/* Entity Heading */}
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
