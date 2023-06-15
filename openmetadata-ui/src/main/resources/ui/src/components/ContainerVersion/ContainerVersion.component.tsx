@@ -13,7 +13,11 @@
 
 import { Card, Tabs } from 'antd';
 import classNames from 'classnames';
+import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
+import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import TabsLabel from 'components/TabsLabel/TabsLabel.component';
+import { getVersionPathWithTab } from 'constants/constants';
 import {
   ChangeDescription,
   Column,
@@ -22,10 +26,16 @@ import {
 import { cloneDeep, toString } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 import { bytesToSize } from 'utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { EntityInfo, EntityTabs, FqnPart } from '../../enums/entity.enum';
+import {
+  EntityInfo,
+  EntityTabs,
+  EntityType,
+  FqnPart,
+} from '../../enums/entity.enum';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
   getColumnsDataWithVersionChanges,
@@ -54,6 +64,8 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
   versionHandler,
 }: ContainerVersionProp) => {
   const { t } = useTranslation();
+  const history = useHistory();
+  const { tab } = useParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
@@ -84,12 +96,16 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
     return getColumnsDataWithVersionChanges<Column>(changeDescription, colList);
   }, [currentVersionData, changeDescription]);
 
-  const tabs = [
-    {
-      label: t('label.schema'),
-      key: EntityTabs.SCHEMA,
-    },
-  ];
+  const handleTabChange = (activeKey: string) => {
+    history.push(
+      getVersionPathWithTab(
+        EntityType.CONTAINER,
+        containerFQN,
+        String(version),
+        activeKey
+      )
+    );
+  };
 
   useEffect(() => {
     setChangeDescription(
@@ -121,32 +137,58 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
             versionHandler={backHandler}
           />
           <div className="tw-mt-1 d-flex flex-col flex-grow ">
-            <Tabs activeKey={EntityTabs.SCHEMA} items={tabs} />
-            <Card className="m-y-md">
-              <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                <div className="tw-col-span-full">
-                  <Description
-                    isReadOnly
-                    description={getEntityVersionDescription(
-                      currentVersionData,
-                      changeDescription
-                    )}
-                  />
-                </div>
+            <Tabs
+              defaultActiveKey={tab ?? EntityTabs.SCHEMA}
+              onChange={handleTabChange}>
+              <Tabs.TabPane
+                key={EntityTabs.SCHEMA}
+                tab={
+                  <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />
+                }>
+                <Card className="m-y-md">
+                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
+                    <div className="tw-col-span-full">
+                      <Description
+                        isReadOnly
+                        description={getEntityVersionDescription(
+                          currentVersionData,
+                          changeDescription
+                        )}
+                      />
+                    </div>
 
-                <div className="tw-col-span-full">
-                  <VersionTable
-                    columnName={getPartialNameFromTableFQN(
-                      containerFQN,
-                      [FqnPart.Column],
-                      FQN_SEPARATOR_CHAR
-                    )}
-                    columns={columns}
-                    joins={[]}
+                    <div className="tw-col-span-full">
+                      <VersionTable
+                        columnName={getPartialNameFromTableFQN(
+                          containerFQN,
+                          [FqnPart.Column],
+                          FQN_SEPARATOR_CHAR
+                        )}
+                        columns={columns}
+                        joins={[]}
+                      />
+                    </div>
+                  </div>
+                </Card>
+              </Tabs.TabPane>
+              <Tabs.TabPane
+                key={EntityTabs.CUSTOM_PROPERTIES}
+                tab={
+                  <TabsLabel
+                    id={EntityTabs.CUSTOM_PROPERTIES}
+                    name={t('label.custom-property-plural')}
                   />
-                </div>
-              </div>
-            </Card>
+                }>
+                <CustomPropertyTable
+                  isVersionView
+                  entityDetails={
+                    currentVersionData as CustomPropertyProps['entityDetails']
+                  }
+                  entityType={EntityType.CONTAINER}
+                  hasEditAccess={false}
+                />
+              </Tabs.TabPane>
+            </Tabs>
           </div>
         </div>
       )}

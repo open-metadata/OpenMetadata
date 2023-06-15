@@ -27,9 +27,10 @@ export type EntityDetails = Table &
   Container;
 
 export interface CustomPropertyProps {
+  isVersionView?: boolean;
   entityDetails: EntityDetails;
   entityType: EntityType;
-  handleExtensionUpdate: (updatedTable: EntityDetails) => Promise<void>;
+  handleExtensionUpdate?: (updatedTable: EntityDetails) => Promise<void>;
   hasEditAccess: boolean;
   className?: string;
 }

@@ -14,14 +14,18 @@
 import { Card, Space, Table, Tabs } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
+import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
+import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
-import { EntityInfo, EntityTabs } from 'enums/entity.enum';
+import { getVersionPathWithTab } from 'constants/constants';
+import { EntityInfo, EntityTabs, EntityType } from 'enums/entity.enum';
 import { t } from 'i18next';
 import { EntityDiffProps } from 'interface/EntityVersion.interface';
 import { cloneDeep, isEqual } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -64,6 +68,8 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   backHandler,
   versionHandler,
 }: PipelineVersionProp) => {
+  const history = useHistory();
+  const { tab } = useParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
@@ -75,13 +81,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   const isEndsWithField = (name: string | undefined, checkWith: string) => {
     return name?.endsWith(checkWith);
   };
-
-  const tabs = [
-    {
-      label: t('label.task-plural'),
-      key: EntityTabs.TASKS,
-    },
-  ];
 
   const extraInfo = useMemo(() => {
     const { pipelineUrl, serviceType, displayName, name } =
@@ -255,6 +254,17 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
     );
   }, [currentVersionData]);
 
+  const handleTabChange = (activeKey: string) => {
+    history.push(
+      getVersionPathWithTab(
+        EntityType.PIPELINE,
+        currentVersionData.fullyQualifiedName ?? '',
+        String(version),
+        activeKey
+      )
+    );
+  };
+
   const tableColumn: ColumnsType<Task> = useMemo(
     () => [
       {
@@ -352,32 +362,61 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
             versionHandler={backHandler}
           />
           <div className="tw-mt-1 d-flex flex-col flex-grow ">
-            <Tabs activeKey={EntityTabs.TASKS} items={tabs} />
-            <Card className="m-y-md">
-              <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                <div className="tw-col-span-full">
-                  <Description
-                    isReadOnly
-                    description={getEntityVersionDescription(
-                      currentVersionData,
-                      changeDescription
-                    )}
+            <Tabs
+              defaultActiveKey={tab ?? EntityTabs.TASKS}
+              onChange={handleTabChange}>
+              <Tabs.TabPane
+                key={EntityTabs.TASKS}
+                tab={
+                  <TabsLabel
+                    id={EntityTabs.TASKS}
+                    name={t('label.task-plural')}
                   />
-                </div>
-                <div className="m-y-md tw-col-span-full">
-                  <Table
-                    bordered
-                    columns={tableColumn}
-                    data-testid="schema-table"
-                    dataSource={pipelineVersionTableData}
-                    pagination={false}
-                    rowKey="name"
-                    scroll={{ x: 1200 }}
-                    size="small"
+                }>
+                <Card className="m-y-md">
+                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
+                    <div className="tw-col-span-full">
+                      <Description
+                        isReadOnly
+                        description={getEntityVersionDescription(
+                          currentVersionData,
+                          changeDescription
+                        )}
+                      />
+                    </div>
+                    <div className="m-y-md tw-col-span-full">
+                      <Table
+                        bordered
+                        columns={tableColumn}
+                        data-testid="schema-table"
+                        dataSource={pipelineVersionTableData}
+                        pagination={false}
+                        rowKey="name"
+                        scroll={{ x: 1200 }}
+                        size="small"
+                      />
+                    </div>
+                  </div>
+                </Card>
+              </Tabs.TabPane>
+              <Tabs.TabPane
+                key={EntityTabs.CUSTOM_PROPERTIES}
+                tab={
+                  <TabsLabel
+                    id={EntityTabs.CUSTOM_PROPERTIES}
+                    name={t('label.custom-property-plural')}
                   />
-                </div>
-              </div>
-            </Card>
+                }>
+                <CustomPropertyTable
+                  isVersionView
+                  entityDetails={
+                    currentVersionData as CustomPropertyProps['entityDetails']
+                  }
+                  entityType={EntityType.PIPELINE}
+                  hasEditAccess={false}
+                />
+              </Tabs.TabPane>
+            </Tabs>
           </div>
         </div>
       )}

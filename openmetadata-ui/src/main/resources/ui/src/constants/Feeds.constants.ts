@@ -68,6 +68,7 @@ export enum EntityField {
   SYNONYMS = 'synonyms',
   RELATEDTERMS = 'relatedTerms',
   REFERENCES = 'references',
+  EXTENSION = 'extension',
 }
 
 export const ANNOUNCEMENT_BG = '#FFFDF8';

@@ -14,11 +14,15 @@
 import { Card, Space, Table, Tabs } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
+import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
+import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import { EntityInfo, EntityTabs } from 'enums/entity.enum';
+import TabsLabel from 'components/TabsLabel/TabsLabel.component';
+import { getVersionPathWithTab } from 'constants/constants';
+import { EntityInfo, EntityTabs, EntityType } from 'enums/entity.enum';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 import {
   ChangeDescription,
@@ -52,15 +56,11 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   versionHandler,
 }: DashboardVersionProp) => {
   const { t } = useTranslation();
+  const history = useHistory();
+  const { tab } = useParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
-  const tabs = [
-    {
-      label: t('label.detail-plural'),
-      key: EntityTabs.SCHEMA,
-    },
-  ];
 
   const extraInfo = useMemo(() => {
     const { dashboardUrl, serviceType, displayName, name } =
@@ -81,6 +81,17 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         : []),
     ];
   }, [currentVersionData, changeDescription, owner, tier]);
+
+  const handleTabChange = (activeKey: string) => {
+    history.push(
+      getVersionPathWithTab(
+        EntityType.DASHBOARD,
+        currentVersionData.fullyQualifiedName ?? '',
+        String(version),
+        activeKey
+      )
+    );
+  };
 
   useEffect(() => {
     setChangeDescription(
@@ -170,34 +181,60 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
             />
             <div className="tw-mt-1 d-flex flex-col flex-grow ">
               <Tabs
-                activeKey={EntityTabs.SCHEMA}
                 data-testid="tabs"
-                items={tabs}
-              />
-              <Card className="m-y-md">
-                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                  <div className="tw-col-span-full">
-                    <Description
-                      isReadOnly
-                      description={getEntityVersionDescription(
-                        currentVersionData,
-                        changeDescription
-                      )}
+                defaultActiveKey={tab ?? EntityTabs.DETAILS}
+                onChange={handleTabChange}>
+                <Tabs.TabPane
+                  key={EntityTabs.DETAILS}
+                  tab={
+                    <TabsLabel
+                      id={EntityTabs.DETAILS}
+                      name={t('label.detail-plural')}
                     />
-                  </div>
-                  <div className="m-y-md tw-col-span-full">
-                    <Table
-                      bordered
-                      columns={tableColumn}
-                      data-testid="schema-table"
-                      dataSource={(currentVersionData as Dashboard)?.charts}
-                      pagination={false}
-                      rowKey="id"
-                      size="small"
+                  }>
+                  <Card className="m-y-md">
+                    <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
+                      <div className="tw-col-span-full">
+                        <Description
+                          isReadOnly
+                          description={getEntityVersionDescription(
+                            currentVersionData,
+                            changeDescription
+                          )}
+                        />
+                      </div>
+                      <div className="m-y-md tw-col-span-full">
+                        <Table
+                          bordered
+                          columns={tableColumn}
+                          data-testid="schema-table"
+                          dataSource={(currentVersionData as Dashboard)?.charts}
+                          pagination={false}
+                          rowKey="id"
+                          size="small"
+                        />
+                      </div>
+                    </div>
+                  </Card>
+                </Tabs.TabPane>
+                <Tabs.TabPane
+                  key={EntityTabs.CUSTOM_PROPERTIES}
+                  tab={
+                    <TabsLabel
+                      id={EntityTabs.CUSTOM_PROPERTIES}
+                      name={t('label.custom-property-plural')}
                     />
-                  </div>
-                </div>
-              </Card>
+                  }>
+                  <CustomPropertyTable
+                    isVersionView
+                    entityDetails={
+                      currentVersionData as CustomPropertyProps['entityDetails']
+                    }
+                    entityType={EntityType.DASHBOARD}
+                    hasEditAccess={false}
+                  />
+                </Tabs.TabPane>
+              </Tabs>
             </div>
           </div>
         )}

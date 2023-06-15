@@ -13,12 +13,17 @@
 
 import { Card, Tabs } from 'antd';
 import classNames from 'classnames';
+import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
+import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TopicSchemaFields from 'components/TopicDetails/TopicSchema/TopicSchema';
+import { getVersionPathWithTab } from 'constants/constants';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
-import { EntityInfo, EntityTabs } from 'enums/entity.enum';
+import { EntityInfo, EntityTabs, EntityType } from 'enums/entity.enum';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 import { ChangeDescription, Topic } from '../../generated/entity/data/topic';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -48,16 +53,11 @@ const TopicVersion: FC<TopicVersionProp> = ({
   versionHandler,
 }: TopicVersionProp) => {
   const { t } = useTranslation();
+  const history = useHistory();
+  const { tab } = useParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
-
-  const tabs = [
-    {
-      label: t('label.schema'),
-      key: EntityTabs.SCHEMA,
-    },
-  ];
 
   const extraInfo = useMemo(() => {
     const {
@@ -126,6 +126,17 @@ const TopicVersion: FC<TopicVersionProp> = ({
     );
   }, [currentVersionData]);
 
+  const handleTabChange = (activeKey: string) => {
+    history.push(
+      getVersionPathWithTab(
+        EntityType.TOPIC,
+        currentVersionData.fullyQualifiedName ?? '',
+        String(version),
+        activeKey
+      )
+    );
+  };
+
   return (
     <PageLayoutV1
       pageTitle={t('label.entity-detail-plural', {
@@ -150,28 +161,54 @@ const TopicVersion: FC<TopicVersionProp> = ({
             versionHandler={backHandler}
           />
           <div className="tw-mt-1 d-flex flex-col flex-grow ">
-            <Tabs activeKey={EntityTabs.SCHEMA} items={tabs} />
-            <Card className={ENTITY_CARD_CLASS}>
-              <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                <div className="tw-col-span-full">
-                  <Description
+            <Tabs
+              defaultActiveKey={tab ?? EntityTabs.SCHEMA}
+              onChange={handleTabChange}>
+              <Tabs.TabPane
+                key={EntityTabs.SCHEMA}
+                tab={
+                  <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />
+                }>
+                <Card className={ENTITY_CARD_CLASS}>
+                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
+                    <div className="tw-col-span-full">
+                      <Description
+                        isReadOnly
+                        description={getEntityVersionDescription(
+                          currentVersionData,
+                          changeDescription
+                        )}
+                      />
+                    </div>
+                  </div>
+                  <TopicSchemaFields
+                    defaultExpandAllRows
                     isReadOnly
-                    description={getEntityVersionDescription(
-                      currentVersionData,
-                      changeDescription
-                    )}
+                    hasDescriptionEditAccess={false}
+                    hasTagEditAccess={false}
+                    messageSchema={messageSchemaDiff}
+                    showSchemaDisplayTypeSwitch={false}
                   />
-                </div>
-              </div>
-              <TopicSchemaFields
-                defaultExpandAllRows
-                isReadOnly
-                hasDescriptionEditAccess={false}
-                hasTagEditAccess={false}
-                messageSchema={messageSchemaDiff}
-                showSchemaDisplayTypeSwitch={false}
-              />
-            </Card>
+                </Card>
+              </Tabs.TabPane>
+              <Tabs.TabPane
+                key={EntityTabs.CUSTOM_PROPERTIES}
+                tab={
+                  <TabsLabel
+                    id={EntityTabs.CUSTOM_PROPERTIES}
+                    name={t('label.custom-property-plural')}
+                  />
+                }>
+                <CustomPropertyTable
+                  isVersionView
+                  entityDetails={
+                    currentVersionData as CustomPropertyProps['entityDetails']
+                  }
+                  entityType={EntityType.TOPIC}
+                  hasEditAccess={false}
+                />
+              </Tabs.TabPane>
+            </Tabs>
           </div>
         </div>
       )}

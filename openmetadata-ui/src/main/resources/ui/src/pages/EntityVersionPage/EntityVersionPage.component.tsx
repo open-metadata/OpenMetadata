@@ -73,8 +73,14 @@ import {
   getTableDetailsPath,
   getTopicDetailsPath,
   getVersionPath,
+  getVersionPathWithTab,
 } from '../../constants/constants';
-import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  FqnPart,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Table } from '../../generated/entity/data/table';
@@ -102,6 +108,7 @@ export type VersionData =
 
 const EntityVersionPage: FunctionComponent = () => {
   const { t } = useTranslation();
+  const { tab } = useParams<{ tab: EntityTabs }>();
   const history = useHistory();
   const [tier, setTier] = useState<TagLabel>();
   const [owner, setOwner] = useState<
@@ -128,36 +135,36 @@ const EntityVersionPage: FunctionComponent = () => {
   const backHandler = () => {
     switch (entityType) {
       case EntityType.TABLE:
-        history.push(getTableDetailsPath(entityFQN));
+        history.push(getTableDetailsPath(entityFQN, tab));
 
         break;
 
       case EntityType.TOPIC:
-        history.push(getTopicDetailsPath(entityFQN));
+        history.push(getTopicDetailsPath(entityFQN, tab));
 
         break;
 
       case EntityType.DASHBOARD:
-        history.push(getDashboardDetailsPath(entityFQN));
+        history.push(getDashboardDetailsPath(entityFQN, tab));
 
         break;
 
       case EntityType.PIPELINE:
-        history.push(getPipelineDetailsPath(entityFQN));
+        history.push(getPipelineDetailsPath(entityFQN, tab));
 
         break;
 
       case EntityType.MLMODEL:
-        history.push(getMlModelDetailsPath(entityFQN));
+        history.push(getMlModelDetailsPath(entityFQN, tab));
 
         break;
 
       case EntityType.CONTAINER:
-        history.push(getContainerDetailPath(entityFQN));
+        history.push(getContainerDetailPath(entityFQN, tab));
 
         break;
       case EntityType.DASHBOARD_DATA_MODEL:
-        history.push(getDataModelDetailsPath(entityFQN));
+        history.push(getDataModelDetailsPath(entityFQN, tab));
 
         break;
 
@@ -167,7 +174,13 @@ const EntityVersionPage: FunctionComponent = () => {
   };
 
   const versionHandler = (v = version) => {
-    history.push(getVersionPath(entityType, entityFQN, v as string));
+    if (tab) {
+      history.push(
+        getVersionPathWithTab(entityType, entityFQN, v as string, tab)
+      );
+    } else {
+      history.push(getVersionPath(entityType, entityFQN, v as string));
+    }
   };
 
   const setEntityState = (

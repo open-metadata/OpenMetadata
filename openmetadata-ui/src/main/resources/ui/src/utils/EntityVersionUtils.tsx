@@ -13,6 +13,7 @@
 
 import { Typography } from 'antd';
 import classNames from 'classnames';
+import { EntityDetails } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import {
   ArrayChange,
@@ -685,3 +686,23 @@ export function getColumnsDataWithVersionChanges<
     return [...newColumns, ...(colList ?? [])];
   }
 }
+
+export const getUpdatedExtensionDiffFields = (
+  entityDetails: EntityDetails,
+  extensionDiff: EntityDiffProps
+) => {
+  const extensionObj = entityDetails.extension;
+  const newValues = getChangedEntityNewValue(extensionDiff);
+  const oldValues = getChangedEntityOldValue(extensionDiff);
+
+  const changedFieldName = extensionDiff.updated?.name?.split('.')[1];
+
+  return extensionObj && changedFieldName
+    ? {
+        extensionObject: {
+          ...extensionObj,
+          [changedFieldName]: getDescriptionDiff(oldValues, newValues),
+        },
+      }
+    : { extensionObject: {} };
+};

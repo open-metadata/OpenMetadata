@@ -423,6 +423,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.PIPELINE_DETAILS_WITH_TAB}
       />
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
+      <Route
+        exact
+        component={EntityVersionPage}
+        path={ROUTES.ENTITY_VERSION_WITH_TAB}
+      />
       <AdminProtectedRoute
         exact
         component={GlossaryPage}

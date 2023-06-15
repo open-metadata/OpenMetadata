@@ -218,6 +218,7 @@ export const ROUTES = {
   TABLE_DETAILS: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}`,
   TABLE_DETAILS_WITH_TAB: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ENTITY_VERSION: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+  ENTITY_VERSION_WITH_TAB: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
   TOPIC_DETAILS: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}`,
   TOPIC_DETAILS_WITH_TAB: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   DASHBOARD_DETAILS: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}`,
@@ -336,6 +337,22 @@ export const getVersionPath = (
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
     .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, fqn)
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
+export const getVersionPathWithTab = (
+  entityType: string,
+  fqn: string,
+  version: string,
+  tab: string
+) => {
+  let path = ROUTES.ENTITY_VERSION_WITH_TAB;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
+    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, fqn)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version)
+    .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;
 };

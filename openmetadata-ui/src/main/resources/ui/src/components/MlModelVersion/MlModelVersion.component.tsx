@@ -13,17 +13,24 @@
 
 import { Card, Col, Divider, Row, Space, Tabs, Typography } from 'antd';
 import classNames from 'classnames';
+import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
+import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import SourceList from 'components/MlModelDetail/SourceList.component';
+import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
-import { getDashboardDetailsPath } from 'constants/constants';
-import { EntityInfo, EntityTabs } from 'enums/entity.enum';
+import {
+  getDashboardDetailsPath,
+  getVersionPathWithTab,
+} from 'constants/constants';
+import { EntityInfo, EntityTabs, EntityType } from 'enums/entity.enum';
 import { MlFeature, Mlmodel } from 'generated/entity/data/mlmodel';
 import { cloneDeep, isEqual, isUndefined } from 'lodash';
 import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
 import { EntityField } from '../../constants/Feeds.constants';
@@ -61,16 +68,12 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   versionHandler,
 }: MlModelVersionProp) => {
   const { t } = useTranslation();
+  const history = useHistory();
+  const { tab } = useParams<{ tab: EntityTabs }>();
 
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
-  const tabs = [
-    {
-      label: t('label.feature-plural'),
-      key: EntityTabs.FEATURES,
-    },
-  ];
 
   const extraInfo = useMemo(() => {
     const { algorithm, server, target, dashboard } =
@@ -184,6 +187,17 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
     handleFeatureTagChangeDiff,
   ]);
 
+  const handleTabChange = (activeKey: string) => {
+    history.push(
+      getVersionPathWithTab(
+        EntityType.MLMODEL,
+        currentVersionData.fullyQualifiedName ?? '',
+        String(version),
+        activeKey
+      )
+    );
+  };
+
   useEffect(() => {
     setChangeDescription(
       currentVersionData.changeDescription as ChangeDescription
@@ -216,147 +230,178 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
             versionHandler={backHandler}
           />
           <div className="m-t-xss">
-            <Tabs activeKey={EntityTabs.FEATURES} items={tabs} />
-            <Card className="m-y-md">
-              <Description
-                isReadOnly
-                description={getEntityVersionDescription(
-                  currentVersionData,
-                  changeDescription
-                )}
-              />
-              <div>
-                {(currentVersionData as Mlmodel).mlFeatures &&
-                (currentVersionData as Mlmodel).mlFeatures?.length ? (
-                  <Fragment>
-                    <Row data-testid="feature-list">
-                      <Col span={24}>
-                        <Divider className="m-y-md" />
-                      </Col>
-                      <Col span={24}>
-                        <Typography.Title level={5}>
-                          {t('label.feature-plural-used')}
-                        </Typography.Title>
-                      </Col>
+            <Tabs
+              defaultActiveKey={tab ?? EntityTabs.FEATURES}
+              onChange={handleTabChange}>
+              <Tabs.TabPane
+                key={EntityTabs.FEATURES}
+                tab={
+                  <TabsLabel
+                    id={EntityTabs.FEATURES}
+                    name={t('label.feature-plural')}
+                  />
+                }>
+                <Card className="m-y-md">
+                  <Description
+                    isReadOnly
+                    description={getEntityVersionDescription(
+                      currentVersionData,
+                      changeDescription
+                    )}
+                  />
+                  <div>
+                    {(currentVersionData as Mlmodel).mlFeatures &&
+                    (currentVersionData as Mlmodel).mlFeatures?.length ? (
+                      <Fragment>
+                        <Row data-testid="feature-list">
+                          <Col span={24}>
+                            <Divider className="m-y-md" />
+                          </Col>
+                          <Col span={24}>
+                            <Typography.Title level={5}>
+                              {t('label.feature-plural-used')}
+                            </Typography.Title>
+                          </Col>
 
-                      {mlFeaturesData?.map((feature: MlFeature) => (
-                        <Col key={feature.fullyQualifiedName} span={24}>
-                          <Card
-                            bordered
-                            className="m-b-xlg"
-                            data-testid="feature-card"
-                            key={feature.fullyQualifiedName}>
-                            <Row>
-                              <Col className="m-b-xs" span={24}>
-                                <Typography.Text className="font-semibold">
-                                  {feature.name}
-                                </Typography.Text>
-                              </Col>
-                              <Col className="m-b-xs" span={24}>
-                                <Space align="start">
-                                  <Space>
-                                    <Typography.Text className="text-grey-muted">
-                                      {`${t('label.type')}:`}
-                                    </Typography.Text>{' '}
-                                    <Typography.Text>
-                                      {feature.dataType || '--'}
-                                    </Typography.Text>
-                                  </Space>
-                                  <Divider
-                                    className="border-gray"
-                                    type="vertical"
-                                  />
-                                  <Space>
-                                    <Typography.Text className="text-grey-muted">
-                                      {`${t('label.algorithm')}:`}
-                                    </Typography.Text>{' '}
-                                    <Typography.Text>
-                                      {feature.featureAlgorithm || '--'}
-                                    </Typography.Text>
-                                  </Space>
-                                </Space>
-                              </Col>
-                              <Col className="m-b-xs" span={24}>
-                                <Row gutter={8} wrap={false}>
-                                  <Col flex="120px">
-                                    <Typography.Text className="text-grey-muted">
-                                      {`${t('label.glossary-term-plural')} :`}
+                          {mlFeaturesData?.map((feature: MlFeature) => (
+                            <Col key={feature.fullyQualifiedName} span={24}>
+                              <Card
+                                bordered
+                                className="m-b-xlg"
+                                data-testid="feature-card"
+                                key={feature.fullyQualifiedName}>
+                                <Row>
+                                  <Col className="m-b-xs" span={24}>
+                                    <Typography.Text className="font-semibold">
+                                      {feature.name}
                                     </Typography.Text>
                                   </Col>
-
-                                  <Col flex="auto">
-                                    <TagsViewer
-                                      sizeCap={-1}
-                                      tags={
-                                        getFilterTags(feature.tags ?? [])
-                                          .Glossary
-                                      }
-                                      type="border"
-                                    />
-                                  </Col>
-                                </Row>
-                              </Col>
-
-                              <Col className="m-b-xs" span={24}>
-                                <Row gutter={8} wrap={false}>
-                                  <Col flex="120px">
-                                    <Typography.Text className="text-grey-muted">
-                                      {`${t('label.tag-plural')} :`}
-                                    </Typography.Text>
-                                  </Col>
-                                  <Col flex="auto">
-                                    <TagsViewer
-                                      sizeCap={-1}
-                                      tags={
-                                        getFilterTags(feature.tags ?? [])
-                                          .Classification
-                                      }
-                                      type="border"
-                                    />
-                                  </Col>
-                                </Row>
-                              </Col>
-
-                              <Col className="m-b-xs" span={24}>
-                                <Row gutter={8} wrap={false}>
-                                  <Col flex="120px">
-                                    <Typography.Text className="text-grey-muted">
-                                      {`${t('label.description')} :`}
-                                    </Typography.Text>
-                                  </Col>
-                                  <Col flex="auto">
+                                  <Col className="m-b-xs" span={24}>
                                     <Space align="start">
-                                      {feature.description ? (
-                                        <RichTextEditorPreviewer
-                                          enableSeeMoreVariant={false}
-                                          markdown={feature.description}
-                                        />
-                                      ) : (
+                                      <Space>
                                         <Typography.Text className="text-grey-muted">
-                                          {t('label.no-entity', {
-                                            entity: t('label.description'),
-                                          })}
+                                          {`${t('label.type')}:`}
+                                        </Typography.Text>{' '}
+                                        <Typography.Text>
+                                          {feature.dataType || '--'}
                                         </Typography.Text>
-                                      )}
+                                      </Space>
+                                      <Divider
+                                        className="border-gray"
+                                        type="vertical"
+                                      />
+                                      <Space>
+                                        <Typography.Text className="text-grey-muted">
+                                          {`${t('label.algorithm')}:`}
+                                        </Typography.Text>{' '}
+                                        <Typography.Text>
+                                          {feature.featureAlgorithm || '--'}
+                                        </Typography.Text>
+                                      </Space>
                                     </Space>
                                   </Col>
-                                </Row>
-                              </Col>
+                                  <Col className="m-b-xs" span={24}>
+                                    <Row gutter={8} wrap={false}>
+                                      <Col flex="120px">
+                                        <Typography.Text className="text-grey-muted">
+                                          {`${t(
+                                            'label.glossary-term-plural'
+                                          )} :`}
+                                        </Typography.Text>
+                                      </Col>
 
-                              <Col span={24}>
-                                <SourceList feature={feature} />
-                              </Col>
-                            </Row>
-                          </Card>
-                        </Col>
-                      ))}
-                    </Row>
-                  </Fragment>
-                ) : (
-                  <ErrorPlaceHolder />
-                )}
-              </div>
-            </Card>
+                                      <Col flex="auto">
+                                        <TagsViewer
+                                          sizeCap={-1}
+                                          tags={
+                                            getFilterTags(feature.tags ?? [])
+                                              .Glossary
+                                          }
+                                          type="border"
+                                        />
+                                      </Col>
+                                    </Row>
+                                  </Col>
+
+                                  <Col className="m-b-xs" span={24}>
+                                    <Row gutter={8} wrap={false}>
+                                      <Col flex="120px">
+                                        <Typography.Text className="text-grey-muted">
+                                          {`${t('label.tag-plural')} :`}
+                                        </Typography.Text>
+                                      </Col>
+                                      <Col flex="auto">
+                                        <TagsViewer
+                                          sizeCap={-1}
+                                          tags={
+                                            getFilterTags(feature.tags ?? [])
+                                              .Classification
+                                          }
+                                          type="border"
+                                        />
+                                      </Col>
+                                    </Row>
+                                  </Col>
+
+                                  <Col className="m-b-xs" span={24}>
+                                    <Row gutter={8} wrap={false}>
+                                      <Col flex="120px">
+                                        <Typography.Text className="text-grey-muted">
+                                          {`${t('label.description')} :`}
+                                        </Typography.Text>
+                                      </Col>
+                                      <Col flex="auto">
+                                        <Space align="start">
+                                          {feature.description ? (
+                                            <RichTextEditorPreviewer
+                                              enableSeeMoreVariant={false}
+                                              markdown={feature.description}
+                                            />
+                                          ) : (
+                                            <Typography.Text className="text-grey-muted">
+                                              {t('label.no-entity', {
+                                                entity: t('label.description'),
+                                              })}
+                                            </Typography.Text>
+                                          )}
+                                        </Space>
+                                      </Col>
+                                    </Row>
+                                  </Col>
+
+                                  <Col span={24}>
+                                    <SourceList feature={feature} />
+                                  </Col>
+                                </Row>
+                              </Card>
+                            </Col>
+                          ))}
+                        </Row>
+                      </Fragment>
+                    ) : (
+                      <ErrorPlaceHolder />
+                    )}
+                  </div>
+                </Card>
+              </Tabs.TabPane>
+              <Tabs.TabPane
+                key={EntityTabs.CUSTOM_PROPERTIES}
+                tab={
+                  <TabsLabel
+                    id={EntityTabs.CUSTOM_PROPERTIES}
+                    name={t('label.custom-property-plural')}
+                  />
+                }>
+                <CustomPropertyTable
+                  isVersionView
+                  entityDetails={
+                    currentVersionData as CustomPropertyProps['entityDetails']
+                  }
+                  entityType={EntityType.MLMODEL}
+                  hasEditAccess={false}
+                />
+              </Tabs.TabPane>
+            </Tabs>
           </div>
         </div>
       )}
