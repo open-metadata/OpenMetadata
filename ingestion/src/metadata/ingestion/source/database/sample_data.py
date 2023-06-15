@@ -850,8 +850,8 @@ class SampleDataSource(
             yield dashboard_ev
 
     def ingest_pipelines(self) -> Iterable[Pipeline]:
-        owner = None
         for pipeline in self.pipelines["pipelines"]:
+            owner = None
             if pipeline.get("owner"):
                 user = self.metadata.get_user_by_email(email=pipeline.get("owner"))
                 if user:
