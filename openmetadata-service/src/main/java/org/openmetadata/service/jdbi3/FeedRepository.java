@@ -132,6 +132,7 @@ public class FeedRepository {
 
     if (thread.getType() == ThreadType.Task) {
       thread.withTask(thread.getTask().withId(getNextTaskId())); // Assign taskId for a task
+      populateAssignees(thread);
     } else if (thread.getType() == ThreadType.Announcement) {
       // Validate start and end time for announcement
       validateAnnouncement(thread.getAnnouncement());
@@ -226,23 +227,17 @@ public class FeedRepository {
       // Add a default message to the Task thread with updated description/tag
       TaskDetails task = thread.getTask();
       TaskType type = task.getType();
-      String oldValue = StringUtils.EMPTY;
-      if (List.of(TaskType.RequestDescription, TaskType.UpdateDescription).contains(type)) {
-        if (task.getOldValue() != null) {
-          oldValue = task.getOldValue();
-        }
+      if (EntityUtil.isDescriptionTask(type)) {
         message =
             String.format(
                 "Resolved the Task with Description - %s",
-                feedMessageFormatter.getPlaintextDiff(oldValue, task.getNewValue()));
-      } else if (List.of(TaskType.RequestTag, TaskType.UpdateTag).contains(type)) {
-        List<TagLabel> tags;
-        if (task.getOldValue() != null) {
-          tags = JsonUtils.readObjects(task.getOldValue(), TagLabel.class);
-          oldValue = getTagFQNs(tags);
-        }
-        tags = JsonUtils.readObjects(task.getNewValue(), TagLabel.class);
-        String newValue = getTagFQNs(tags);
+                feedMessageFormatter.getPlaintextDiff(task.getOldValue(), task.getNewValue()));
+      } else if (EntityUtil.isTagTask(type)) {
+        String oldValue =
+            task.getOldValue() != null
+                ? getTagFQNs(JsonUtils.readObjects(task.getOldValue(), TagLabel.class))
+                : StringUtils.EMPTY;
+        String newValue = getTagFQNs(JsonUtils.readObjects(task.getNewValue(), TagLabel.class));
         message =
             String.format(
                 "Resolved the Task with Tag(s) - %s", feedMessageFormatter.getPlaintextDiff(oldValue, newValue));
@@ -621,16 +616,14 @@ public class FeedRepository {
     List<String> teamNames = teams.stream().map(EntityReference::getName).collect(Collectors.toList());
 
     // check if logged-in user satisfies any of the following
-    // - Creator of the task
     // - logged-in user or the teams they belong to were assigned the task
     // - logged-in user or the teams they belong to, owns the entity that the task is about
     List<EntityReference> assignees = thread.getTask().getAssignees();
-    if (!thread.getCreatedBy().equals(userName)
-        && assignees.stream().noneMatch(assignee -> assignee.getName().equals(userName))
+    if (assignees.stream().noneMatch(assignee -> assignee.getName().equals(userName))
         && assignees.stream().noneMatch(assignee -> teamNames.contains(assignee.getName()))
         && !owner.getName().equals(userName)
         && !teamNames.contains(owner.getName())) {
-      // Only admins or bots can close or resolve task other than the above-mentioned users
+      // Only admins can close or resolve task other than the above-mentioned users
       authorizer.authorizeAdmin(securityContext);
     }
   }

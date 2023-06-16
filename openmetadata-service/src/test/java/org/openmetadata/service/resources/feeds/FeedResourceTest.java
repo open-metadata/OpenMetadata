@@ -100,8 +100,10 @@ import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
+import org.openmetadata.service.formatter.util.FeedMessage;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResource.PostList;
@@ -137,7 +139,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
               ? 0
               : 1;
 
-  private static MessageDecorator feedMessageFormatter = new FeedMessageDecorator();
+  private static final MessageDecorator<FeedMessage> feedMessageFormatter = new FeedMessageDecorator();
 
   @BeforeAll
   public void setup(TestInfo test) throws IOException, URISyntaxException {
@@ -147,8 +149,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     UserResourceTest userResourceTest = new UserResourceTest();
     USER2 = userResourceTest.createEntity(userResourceTest.createRequest(test, 4), TEST_AUTH_HEADERS);
 
-    CreateTable createTable = TABLE_RESOURCE_TEST.createRequest(test);
-    createTable.withOwner(TableResourceTest.USER1_REF);
+    CreateTable createTable = TABLE_RESOURCE_TEST.createRequest(test).withOwner(TableResourceTest.USER1_REF);
     TABLE = TABLE_RESOURCE_TEST.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
 
     TeamResourceTest teamResourceTest = new TeamResourceTest();
@@ -179,7 +180,6 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     CreateThread createThread = create();
     THREAD = createAndCheck(createThread, ADMIN_AUTH_HEADERS);
-
     AUTH_HEADERS = authHeaders(USER.getEmail());
   }
 
@@ -651,6 +651,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   void put_resolveTask_tags_200() throws IOException {
+    // Test user creates a task for TABLE (owned by USER) and assigns it to User2
     String newValue = "[" + JsonUtils.pojoToJson(USER_ADDRESS_TAG_LABEL) + "]";
     CreateTaskDetails taskDetails =
         new CreateTaskDetails()
@@ -663,30 +664,36 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     about = about.substring(0, about.length() - 1) + "::columns::" + C1 + "::tags>";
     CreateThread create =
         create()
+            .withFrom(TEST_USER_NAME)
             .withMessage("Request Tags for column")
             .withTaskDetails(taskDetails)
             .withType(ThreadType.Task)
             .withAbout(about);
 
     Map<String, String> userAuthHeaders = authHeaders(USER.getEmail());
-    createAndCheck(create, userAuthHeaders);
-
-    ThreadList tasks = listTasks(null, null, null, null, null, userAuthHeaders);
-    TaskDetails task = tasks.getData().get(0).getTask();
-    assertNotNull(task.getId());
-    int taskId = task.getId();
+    Map<String, String> user2AuthHeaders = authHeaders(USER2.getEmail());
+    Thread taskThread = createAndCheck(create, TEST_AUTH_HEADERS);
+    int taskId = taskThread.getTask().getId();
 
     ResolveTask resolveTask = new ResolveTask().withNewValue(newValue);
-    resolveTask(taskId, resolveTask, userAuthHeaders);
+
+    // Task can't be resolved by Test user who crated the task
+    assertResponse(
+        () -> resolveTask(taskId, resolveTask, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        CatalogExceptionMessage.notAdmin(TEST_USER_NAME));
+
+    // Task can be resolved by the User2 to whom the task is assigned
+    resolveTask(taskId, resolveTask, user2AuthHeaders);
+
     Table table = TABLE_RESOURCE_TEST.getEntity(TABLE.getId(), "tags", userAuthHeaders);
     List<TagLabel> tags = EntityUtil.getColumn(table, C1).getTags();
     assertEquals(USER_ADDRESS_TAG_LABEL.getTagFQN(), tags.get(0).getTagFQN());
 
-    Thread taskThread = getTask(taskId, userAuthHeaders);
-    task = taskThread.getTask();
-    assertEquals(taskId, task.getId());
-    assertEquals(newValue, task.getNewValue());
-    assertEquals(TaskStatus.Closed, task.getStatus());
+    taskThread = getTask(taskId, userAuthHeaders);
+    assertEquals(taskId, taskThread.getTask().getId());
+    assertEquals(newValue, taskThread.getTask().getNewValue());
+    assertEquals(TaskStatus.Closed, taskThread.getTask().getStatus());
     assertEquals(1, taskThread.getPostsCount());
     assertEquals(1, taskThread.getPosts().size());
     String diff = feedMessageFormatter.getPlaintextDiff("", USER_ADDRESS_TAG_LABEL.getTagFQN());
