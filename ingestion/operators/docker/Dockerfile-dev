@@ -38,6 +38,14 @@ RUN apt-get update \
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
     && rm -rf /var/lib/apt/lists/*
 
+# Add updated postgres/redshift dependencies based on libq
+RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+RUN echo "deb https://apt.postgresql.org/pub/repos/apt/ buster-pgdg main" > /etc/apt/sources.list.d/pgdg.list; \
+    apt-get update; \
+    apt-get install --no-install-recommends -y libpq-dev postgresql-client postgresql-common postgresql postgresql-contrib; \
+    apt-get autoremove -yqq --purge; \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
 RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
  then \
  wget https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip && \

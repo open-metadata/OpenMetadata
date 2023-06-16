@@ -214,8 +214,8 @@ plugins: Dict[str, Set[str]] = {
     "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
-        "sqlalchemy-redshift==0.8.9",
-        "redshift-connector==2.0.908",
+        # Going higher has memory and performance issues
+        "sqlalchemy-redshift==0.8.12",
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
     },

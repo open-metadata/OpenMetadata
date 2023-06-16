@@ -33,23 +33,18 @@ RUN apt-get update \
     unixodbc-dev \
     unzip \
     vim \
-    wget --no-install-recommends
+    wget --no-install-recommends \
+    # Accept MSSQL ODBC License
+    && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Prep to install msodbcsql18
-RUN apt-get update && \
-    apt-get install -y apt-transport-https && \
-    curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
-    curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
-    apt-get update && \
-    ACCEPT_EULA=Y apt-get install msodbcsql18 unixodbc-dev -y
-
-# Prep to install confluent-kafka https://github.com/confluentinc/confluent-kafka-python/issues/1326
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends git g++ make && \
-    cd /tmp && git clone https://github.com/edenhill/librdkafka.git && \
-    cd librdkafka && git checkout tags/v1.9.0 && \
-    ./configure && make && make install && \
-    cd ../ && rm -rf librdkafka
+# Add updated postgres/redshift dependencies based on libq
+RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+RUN echo "deb https://apt.postgresql.org/pub/repos/apt/ buster-pgdg main" > /etc/apt/sources.list.d/pgdg.list; \
+    apt-get update; \
+    apt-get install --no-install-recommends -y libpq-dev postgresql-client postgresql-common postgresql postgresql-contrib; \
+    apt-get autoremove -yqq --purge; \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
  then \
