@@ -21,7 +21,6 @@ import static org.openmetadata.service.Entity.EVENT_SUBSCRIPTION;
 import static org.openmetadata.service.Entity.KPI;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ElasticSearchIndexType.ENTITY_REPORT_DATA_INDEX;
-import static org.openmetadata.service.events.scheduled.ReportsHandler.JOB_CONTEXT_CHART_REPO;
 import static org.openmetadata.service.events.scheduled.ReportsHandler.SEARCH_CLIENT;
 import static org.openmetadata.service.util.SubscriptionUtil.getAdminsData;
 import static org.openmetadata.service.util.SubscriptionUtil.getNumberOfDays;
@@ -39,7 +38,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.alert.type.DataInsightAlertConfig;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
@@ -57,7 +55,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
 import org.openmetadata.service.exception.DataInsightJobException;
-import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchClient;
@@ -75,8 +72,6 @@ public class DataInsightsReportJob implements Job {
 
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
-    DataInsightChartRepository repository =
-        (DataInsightChartRepository) jobExecutionContext.getJobDetail().getJobDataMap().get(JOB_CONTEXT_CHART_REPO);
     SearchClient searchClient = (SearchClient) jobExecutionContext.getJobDetail().getJobDataMap().get(SEARCH_CLIENT);
     EventSubscription dataReport =
         (EventSubscription) jobExecutionContext.getJobDetail().getJobDataMap().get(EVENT_SUBSCRIPTION);
@@ -89,12 +84,12 @@ public class DataInsightsReportJob implements Job {
           JsonUtils.convertValue(dataReport.getSubscriptionConfig(), DataInsightAlertConfig.class);
       // Send to Admins
       if (Boolean.TRUE.equals(insightAlertConfig.getSendToAdmins())) {
-        sendToAdmins(repository, client, scheduleTime, currentTime, numberOfDaysChange);
+        sendToAdmins(searchClient, scheduleTime, currentTime, numberOfDaysChange);
       }
 
       // Send to Teams
       if (Boolean.TRUE.equals(insightAlertConfig.getSendToTeams())) {
-        sendReportsToTeams(repository, client, scheduleTime, currentTime, numberOfDaysChange);
+        sendReportsToTeams(searchClient, scheduleTime, currentTime, numberOfDaysChange);
       }
     } catch (Exception e) {
       LOG.error("[DIReport] Failed in sending report due to", e);
