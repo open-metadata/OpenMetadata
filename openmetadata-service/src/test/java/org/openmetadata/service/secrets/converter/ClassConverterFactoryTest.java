@@ -17,6 +17,8 @@ import org.openmetadata.schema.services.connections.dashboard.SupersetConnection
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
+import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
@@ -30,6 +32,8 @@ public class ClassConverterFactoryTest {
         AirflowConnection.class,
         BigQueryConnection.class,
         DatalakeConnection.class,
+        MysqlConnection.class,
+        PostgresConnection.class,
         DbtGCSConfig.class,
         DbtPipeline.class,
         GCSConfig.class,
@@ -49,6 +53,6 @@ public class ClassConverterFactoryTest {
 
   @Test
   void testClassConvertedMapIsNotModified() {
-    assertEquals(ClassConverterFactory.getConverterMap().size(), 15);
+    assertEquals(ClassConverterFactory.getConverterMap().size(), 17);
   }
 }

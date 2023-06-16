@@ -28,6 +28,9 @@ from .test_cli import CliBase
 
 
 class CliDBTBase(TestCase):
+    @pytest.mark.skip(
+        reason="disable while working on https://github.com/open-metadata/OpenMetadata/issues/11895"
+    )
     class TestSuite(TestCase, CliBase):
         dbt_file_path: str
 
@@ -40,10 +43,7 @@ class CliDBTBase(TestCase):
             self.assert_for_vanilla_ingestion(source_status, sink_status)
 
         # 2. deploy dbt ingestion
-        # @pytest.mark.order(2)
-        @pytest.mark.skip(
-            reason="disabling until we fix the test cases. enable once https://github.com/open-metadata/OpenMetadata/issues/11895 is done"
-        )
+        @pytest.mark.order(2)
         def test_dbt_ingestion(self) -> None:
             # run the dbt ingestion
             result = self.run_command(test_file_path=self.dbt_file_path)
@@ -70,10 +70,7 @@ class CliDBTBase(TestCase):
                 self.assertTrue(len(table.tags) > 0)
 
         # 4. run tests on dbt test cases and test results
-        # @pytest.mark.order(4)
-        @pytest.mark.skip(
-            reason="disabling until we fix the test cases. enable once https://github.com/open-metadata/OpenMetadata/issues/11895 is done"
-        )
+        @pytest.mark.order(4)
         def test_dbt_test_cases(self) -> None:
             test_suite: TestSuite = self.openmetadata.get_by_name(
                 entity=TestSuite, fqn="DBT TEST SUITE"

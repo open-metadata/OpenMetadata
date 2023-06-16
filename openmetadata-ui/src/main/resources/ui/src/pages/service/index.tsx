@@ -900,51 +900,55 @@ const ServicePage: FunctionComponent = () => {
   const testConnectionTab = useMemo(() => {
     return (
       <>
-        <Space className="w-full my-4 justify-between">
-          <AirflowMessageBanner />
-          <div>
-            <Tooltip
-              title={
-                servicePermission.EditAll
-                  ? t('label.edit-entity', {
-                      entity: t('label.connection'),
-                    })
-                  : t('message.no-permission-for-action')
-              }>
-              <Button
-                ghost
-                data-testid="edit-connection-button"
-                disabled={!servicePermission.EditAll}
-                type="primary"
-                onClick={goToEditConnection}>
-                {t('label.edit-entity', {
-                  entity: t('label.connection'),
-                })}
-              </Button>
-            </Tooltip>
-            {allowTestConn && isAirflowAvailable && (
+        <Row className="my-4">
+          <Col span={12}>
+            <AirflowMessageBanner />
+          </Col>
+          <Col span={12}>
+            <Space className="w-full justify-end">
               <Tooltip
                 title={
                   servicePermission.EditAll
-                    ? t('label.test-entity', {
+                    ? t('label.edit-entity', {
                         entity: t('label.connection'),
                       })
                     : t('message.no-permission-for-action')
                 }>
-                <TestConnection
-                  connectionType={serviceDetails?.serviceType ?? ''}
-                  formData={connectionDetails as ConfigData}
-                  isTestingDisabled={isTestingDisabled}
-                  serviceCategory={serviceCategory as ServiceCategory}
-                  serviceName={serviceDetails?.name}
-                  // validation is not required as we have all the data available and not in edit mode
-                  shouldValidateForm={false}
-                  showDetails={false}
-                />
+                <Button
+                  ghost
+                  data-testid="edit-connection-button"
+                  disabled={!servicePermission.EditAll}
+                  type="primary"
+                  onClick={goToEditConnection}>
+                  {t('label.edit-entity', {
+                    entity: t('label.connection'),
+                  })}
+                </Button>
               </Tooltip>
-            )}
-          </div>
-        </Space>
+              {allowTestConn && isAirflowAvailable && (
+                <Tooltip
+                  title={
+                    servicePermission.EditAll
+                      ? t('label.test-entity', {
+                          entity: t('label.connection'),
+                        })
+                      : t('message.no-permission-for-action')
+                  }>
+                  <TestConnection
+                    connectionType={serviceDetails?.serviceType ?? ''}
+                    formData={connectionDetails as ConfigData}
+                    isTestingDisabled={isTestingDisabled}
+                    serviceCategory={serviceCategory as ServiceCategory}
+                    serviceName={serviceDetails?.name}
+                    // validation is not required as we have all the data available and not in edit mode
+                    shouldValidateForm={false}
+                    showDetails={false}
+                  />
+                </Tooltip>
+              )}
+            </Space>
+          </Col>
+        </Row>
         <ServiceConnectionDetails
           connectionDetails={connectionDetails || {}}
           serviceCategory={serviceCategory}
