@@ -32,6 +32,7 @@
     "admin": "管理员",
     "admin-plural": "管理员",
     "admin-profile": "管理员资料",
+    "advanced-configuration": "Advanced Configuration",
     "advanced-entity": "高级{{entity}}",
     "advanced-search": "高级搜索",
     "airflow-config-plural": "airflow 配置",

@@ -32,6 +32,7 @@
     "admin": "Admin",
     "admin-plural": "Admins",
     "admin-profile": "Profile admin",
+    "advanced-configuration": "Advanced Configuration",
     "advanced-entity": "{{entity}} Avancée",
     "advanced-search": "Recherche Avancée",
     "airflow-config-plural": "configs airflow",
