@@ -204,7 +204,7 @@ export const ActivityFeedTab = ({
   }, [entityThread, activeTab]);
 
   return (
-    <div className="d-flex " style={{ minHeight: 'calc(100vh - 230px)' }}>
+    <div className="d-flex">
       <Menu
         className="custom-menu w-72 p-t-sm"
         data-testid="global-setting-left-panel"
@@ -245,7 +245,12 @@ export const ActivityFeedTab = ({
         onClick={(info) => handleTabChange(info.key)}
       />
 
-      <div style={{ flex: '0 0 calc(50% - 125px)' }}>
+      <div
+        style={{
+          flex: '0 0 calc(50% - 125px)',
+          height: 'calc(100vh - 236px)',
+          overflowY: 'scroll',
+        }}>
         {activeTab === ActivityFeedTabs.TASKS && (
           <div
             className="d-flex gap-4 p-sm p-x-lg"
@@ -292,6 +297,8 @@ export const ActivityFeedTab = ({
         style={{
           flex: '0 0 calc(50% - 125px)',
           borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
+          height: 'calc(100vh - 236px)',
+          overflowY: 'scroll',
         }}>
         {loading && loader}
         {selectedThread &&
