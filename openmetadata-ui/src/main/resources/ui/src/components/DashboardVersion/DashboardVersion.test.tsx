@@ -48,19 +48,6 @@ jest.mock('../Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);
 });
 
-jest.mock('../../utils/EntityVersionUtils', () => ({
-  getDescriptionDiff: jest.fn(),
-  getDiffByFieldName: jest.fn().mockImplementation(() => ({
-    updated: {
-      name: 'description',
-      oldValue: '',
-      newValue: 'test description',
-    },
-  })),
-  getDiffValue: jest.fn(),
-  getTagsDiff: jest.fn(),
-}));
-
 jest.mock('components/containers/PageLayoutV1', () => {
   return jest
     .fn()
