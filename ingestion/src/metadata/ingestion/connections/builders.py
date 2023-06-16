@@ -121,14 +121,23 @@ def init_empty_connection_options() -> ConnectionOptions:
     return ConnectionOptions(__root__={})
 
 
-def _add_password(url, connection, attr) -> str:
-    # A helper function that adds the password to the url if it exists
-    password = getattr(connection, attr, None)
+def _add_password(url: str, connection) -> str:
+    """
+    A helper function that adds the password to the url if it exists.
+    Distinguishing between BasicAuth (Password) and IamAuth (AWSConfig)
+    and adding to url.
+    """
+    password_attr = "password"
+    password = getattr(connection, password_attr, None)
+
     if not password:
         password = SecretStr("")
+
+        # Check if IamAuth exists - specific to Mysql and Postgres connection.
         if hasattr(connection, "authType"):
-            password = getattr(connection.authType, attr, SecretStr(""))
+            password = getattr(connection.authType, password_attr, SecretStr(""))
             if isinstance(connection.authType, IamAuthConfigurationSource):
+                # if IAM based, fetch rds client and generate db auth token.
                 aws_client = AWSClient(
                     config=connection.authType.awsConfig
                 ).get_rds_client()
@@ -154,7 +163,7 @@ def get_connection_url_common(connection) -> str:
 
     if connection.username:
         url += f"{quote_plus(connection.username)}"
-        url = _add_password(url, connection, "password")
+        url = _add_password(url, connection)
         url += "@"
 
     url += connection.hostPort
