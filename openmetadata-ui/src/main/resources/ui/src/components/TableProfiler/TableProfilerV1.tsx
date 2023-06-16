@@ -26,7 +26,7 @@ import {
 import { DefaultOptionType } from 'antd/lib/select';
 import { SwitchChangeEventHandler } from 'antd/lib/switch';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
+import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import { mockDatasetData } from 'constants/mockTourData.constants';
@@ -53,10 +53,6 @@ import { ProfileSampleType, Table } from '../../generated/entity/data/table';
 import { TestCase, TestCaseStatus } from '../../generated/tests/testCase';
 import { EntityType as TestType } from '../../generated/tests/testDefinition';
 import { Include } from '../../generated/type/include';
-import {
-  formatNumberWithComma,
-  formTwoDigitNmber,
-} from '../../utils/CommonUtils';
 import { updateTestResults } from '../../utils/DataQualityAndProfilerUtils';
 import { getAddDataQualityTableTestPath } from '../../utils/RouterUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
@@ -189,7 +185,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
         title: t('label.entity-count', {
           entity: t('label.row'),
         }),
-        value: formatNumberWithComma(profile?.rowCount ?? 0),
+        value: profile?.rowCount ?? 0,
       },
       {
         title: t('label.column-entity', {
@@ -200,21 +196,6 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
       {
         title: `${t('label.profile-sample-type', { type: '' })}`,
         value: getProfileSampleValue(),
-      },
-      {
-        title: t('label.success'),
-        value: formTwoDigitNmber(tableTests.results.success),
-        className: 'success',
-      },
-      {
-        title: t('label.aborted'),
-        value: formTwoDigitNmber(tableTests.results.aborted),
-        className: 'aborted',
-      },
-      {
-        title: t('label.failed'),
-        value: formTwoDigitNmber(tableTests.results.failed),
-        className: 'failed',
       },
     ];
   }, [profile, tableTests]);
@@ -386,8 +367,11 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
         />
       </Col>
       <Col className="data-quality-content-panel" span={20}>
-        <Space className="w-full h-min-full p-sm" direction="vertical">
-          <Row className="m-b-md">
+        <Space
+          className="w-full h-min-full p-sm"
+          direction="vertical"
+          size={16}>
+          <Row>
             <Col span={10}>
               <PageHeader data={getPageHeader} />
             </Col>
@@ -492,26 +476,18 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
             </div>
           )}
 
-          <Row className="rounded-4 border-1 p-md m-b-md">
+          <Space>
             {overallSummery.map((summery) => (
-              <Col
-                className="overall-summery-card"
-                data-testid={`header-card-${summery.title}`}
+              <SummaryCard
+                className={summery.className}
                 key={summery.title}
-                span={4}>
-                <p className="overall-summery-card-title font-medium text-grey-muted m-b-xss">
-                  {summery.title}
-                </p>
-                <p
-                  className={classNames(
-                    'text-2xl font-semibold',
-                    summery.className
-                  )}>
-                  {summery.value}
-                </p>
-              </Col>
+                showProgressBar={false}
+                title={summery.title}
+                total={0}
+                value={summery.value}
+              />
             ))}
-          </Row>
+          </Space>
 
           {isColumnProfile && (
             <ColumnProfileTable

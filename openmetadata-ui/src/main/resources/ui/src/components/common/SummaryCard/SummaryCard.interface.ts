@@ -13,7 +13,7 @@
 export interface SummaryCardProps {
   type?: 'success' | 'failed' | 'aborted';
   title: string;
-  value: number;
+  value: number | string;
   total: number;
   showProgressBar?: boolean;
   className?: string;

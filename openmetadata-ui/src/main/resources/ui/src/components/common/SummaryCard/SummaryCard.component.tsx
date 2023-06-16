@@ -12,7 +12,7 @@
  */
 import { Progress, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { formatNumberWithComma } from 'utils/CommonUtils';
 import './summary-card.style.less';
 import { SummaryCardProps } from './SummaryCard.interface';
@@ -25,7 +25,15 @@ export const SummaryCard = ({
   showProgressBar = true,
   className,
 }: SummaryCardProps) => {
-  const percent = (value / total) * 100;
+  const isStringValue = typeof value === 'string';
+
+  const percent = useMemo(() => {
+    if (!isStringValue) {
+      return (value / total) * 100;
+    }
+
+    return 0;
+  }, [total, value, isStringValue]);
 
   return (
     <Space className={classNames('summary-card', className)}>
@@ -34,7 +42,7 @@ export const SummaryCard = ({
           {title}
         </Typography.Paragraph>
         <Typography.Paragraph className="summary-card-description">
-          {formatNumberWithComma(value)}
+          {isStringValue ? value : formatNumberWithComma(value)}
         </Typography.Paragraph>
       </div>
       {showProgressBar && (
