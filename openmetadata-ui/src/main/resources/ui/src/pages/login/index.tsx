@@ -318,7 +318,7 @@ const SigninPage = () => {
             />
           </div>
           <div className="relative">
-            <div className="flex justify-center mt-44 mb-10">
+            <div className="flex justify-center mt-44 mb-10 d-none">
               <LoginCarousel />
             </div>
           </div>
