@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Divider, Form, Input, Row, Select, Switch } from 'antd';
+import { Button, Col, Divider, Form, Input, Row, Select } from 'antd';
 import { AddIngestionState } from 'components/AddIngestion/addIngestion.interface';
 import {
   ELASTIC_SEARCH_INITIAL_VALUES,
+  RECREATE_INDEX_OPTIONS,
   RE_INDEX_LANG_OPTIONS,
 } from 'constants/elasticsearch.constant';
 import React, { useMemo } from 'react';
@@ -51,7 +52,9 @@ const MetadataToESConfigForm = ({
 
   const initialValues = useMemo(
     () => ({
-      recreateIndex: data.metadataToESConfig?.recreateIndex,
+      recreateIndex:
+        data.metadataToESConfig?.recreateIndex ??
+        ELASTIC_SEARCH_INITIAL_VALUES.recreateIndexPipeline,
       searchIndexMappingLanguage:
         data.metadataToESConfig?.searchIndexMappingLanguage ??
         ELASTIC_SEARCH_INITIAL_VALUES.searchIndexMappingLanguage,
@@ -79,20 +82,8 @@ const MetadataToESConfigForm = ({
           options={RE_INDEX_LANG_OPTIONS}
         />
       </Item>
-      <Divider />
-      <Item name="recreateIndex">
-        <Row>
-          <Col span={8}>{t('label.recreate-index-plural')}</Col>
-          <Col span={16}>
-            <Switch
-              defaultChecked={initialValues.recreateIndex}
-              id="root/recreateIndex"
-              onChange={(value) =>
-                form.setFieldsValue({ recreateIndex: value })
-              }
-            />
-          </Col>
-        </Row>
+      <Item label={t('label.recreate-index-plural')} name="recreateIndex">
+        <Select id="root/recreateIndex" options={RECREATE_INDEX_OPTIONS} />
       </Item>
       <Divider />
       <Row justify="end">

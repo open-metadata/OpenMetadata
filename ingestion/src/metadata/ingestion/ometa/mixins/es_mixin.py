@@ -128,12 +128,12 @@ class ESMixin(Generic[T]):
             logger.debug(f"Failed to trigger es reindex job due to {err}")
             return None
 
-    def get_latest_reindex_job(self) -> Optional[EventPublisherResult]:
+    def get_reindex_job_status(self, job_id: str) -> Optional[EventPublisherResult]:
         """
-        Method to fetch the latest elasticsearch reindex job status
+        Method to fetch the elasticsearch reindex job status
         """
         try:
-            resp = self.client.get(path="/search/reindex/latest")
+            resp = self.client.get(path=f"/search/reindex/{job_id}")
             return EventPublisherResult(**resp)
         except APIError as err:
             logger.debug(traceback.format_exc())

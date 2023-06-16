@@ -10,7 +10,9 @@
 #  limitations under the License.
 """Metadata ES source module"""
 
+import traceback
 from time import sleep
+from typing import Optional
 
 from metadata.generated.schema.api.createEventPublisherJob import (
     CreateEventPublisherJob,
@@ -25,6 +27,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.system.eventPublisherJob import (
+    EventPublisherResult,
     PublisherType,
     RunMode,
     Status,
@@ -32,6 +35,7 @@ from metadata.generated.schema.system.eventPublisherJob import (
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -58,6 +62,7 @@ class MetadataElasticsearchSource(Source[Entity]):
             config.serviceConnection.__root__.config
         )
         self.source_config = self.config.sourceConfig.config
+        self.reindex_job: Optional[EventPublisherResult] = None
 
     def prepare(self):
         pass
@@ -72,8 +77,21 @@ class MetadataElasticsearchSource(Source[Entity]):
             )
         return cls(config, metadata_config)
 
+    def create_reindex_job(self, job_config: CreateEventPublisherJob):
+        """
+        Patch table constraints
+        """
+        try:
+            self.reindex_job = self.metadata.reindex_es(config=job_config)
+            logger.debug("Successfully created the elasticsearch reindex job")
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Unexpected error while triggering elasticsearch reindex job: {exc}"
+            )
+
     def next_record(self) -> None:
-        yield CreateEventPublisherJob(
+        job_config = CreateEventPublisherJob(
             name=self.config.serviceName,
             publisherType=PublisherType.elasticSearch,
             runMode=RunMode.batch,
@@ -83,7 +101,12 @@ class MetadataElasticsearchSource(Source[Entity]):
             recreateIndex=self.source_config.recreateIndex,
         )
 
-        self.log_reindex_status()
+        self.create_reindex_job(job_config)
+
+        if self.reindex_job:
+            self.log_reindex_status()
+
+        yield from []  # nothing to yield
 
     def log_reindex_status(self) -> None:
         """
@@ -95,7 +118,7 @@ class MetadataElasticsearchSource(Source[Entity]):
 
         while status not in {Status.COMPLETED, Status.FAILED, Status.STOPPED}:
             sleep(5)
-            job = self.metadata.get_latest_reindex_job()
+            job = self.metadata.get_reindex_job_status(model_str(self.reindex_job.id))
             if job and job.stats and job.stats.jobStats:
                 logger.info(
                     f"Processed {job.stats.jobStats.processedRecords} records,"
@@ -109,6 +132,9 @@ class MetadataElasticsearchSource(Source[Entity]):
                 current_try += 1
 
             if current_try >= total_retries_count:
+                logger.error(
+                    f"Failed to fetch job stats after {total_retries_count} retries"
+                )
                 break
 
         if job.failure and job.failure.jobError:
