@@ -330,11 +330,11 @@ const DashboardDetails = ({
       key: EntityInfo.TIER,
       value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
     },
-    ...(dashboardDetails.dashboardUrl
+    ...(dashboardDetails.sourceUrl
       ? [
           {
             key: `${serviceType} ${EntityInfo.URL}`,
-            value: dashboardDetails.dashboardUrl,
+            value: dashboardDetails.sourceUrl,
             placeholderText: entityName,
             isLink: true,
             openInNewTab: true,
@@ -632,8 +632,8 @@ const DashboardDetails = ({
         render: (_, record) => {
           const chartName = getEntityName(record);
 
-          return record.chartUrl ? (
-            <Typography.Link href={record.chartUrl} target="_blank">
+          return record.sourceUrl ? (
+            <Typography.Link href={record.sourceUrl} target="_blank">
               <Space>
                 {chartName}
                 <ExternalLinkIcon height={14} width={14} />

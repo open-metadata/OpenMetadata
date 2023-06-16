@@ -24,10 +24,24 @@ class MetabaseDashboard(BaseModel):
     description: Optional[str]
     name: str
     id: int
+    collection_id: Optional[str]
+
+
+class MetabaseCollection(BaseModel):
+    """
+    Metabase dashboard model
+    """
+
+    name: str
+    id: str
 
 
 class MetabaseDashboardList(BaseModel):
     dashboards: Optional[List[MetabaseDashboard]]
+
+
+class MetabaseCollectionList(BaseModel):
+    collections: Optional[List[MetabaseCollection]]
 
 
 class Native(BaseModel):
@@ -66,6 +80,7 @@ class MetabaseDashboardDetails(BaseModel):
     ordered_cards: List[OrderedCard]
     name: Optional[str]
     id: int
+    collection_id: Optional[str]
 
 
 class MetabaseDatabaseDetails(BaseModel):
