@@ -72,3 +72,15 @@ SET json = jsonb_set(
         FROM jsonb_array_elements(json->'tasks') AS t
     )
 );
+
+
+-- Modify migrations for service connection of postgres and mysql to move password under authType
+UPDATE dbservice_entity
+SET json =  jsonb_set(
+json #-'{connection,config,password}',
+'{connection,config,authType}',
+jsonb_build_object('password',json#>'{connection,config,password}')
+) 
+WHERE serviceType IN ('Postgres', 'Mysql')
+  and json#>'{connection,config,password}' is not null;
+

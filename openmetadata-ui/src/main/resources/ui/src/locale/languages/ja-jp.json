@@ -32,6 +32,7 @@
     "admin": "管理者",
     "admin-plural": "管理者",
     "admin-profile": "管理者のプロファイル",
+    "advanced-configuration": "Advanced Configuration",
     "advanced-entity": "高度な{{entity}}",
     "advanced-search": "Advanced Search",
     "airflow-config-plural": "Airflowの設定",

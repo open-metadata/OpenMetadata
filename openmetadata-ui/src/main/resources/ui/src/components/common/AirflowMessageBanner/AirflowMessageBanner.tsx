@@ -18,9 +18,9 @@ import React, { FC } from 'react';
 import './airflow-message-banner.less';
 
 const AirflowMessageBanner: FC<SpaceProps> = ({ className }) => {
-  const { reason, isAirflowAvailable } = useAirflowStatus();
+  const { reason, isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
 
-  if (isAirflowAvailable) {
+  if (isAirflowAvailable || isFetchingStatus) {
     return null;
   }
 

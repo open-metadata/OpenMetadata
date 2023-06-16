@@ -27,6 +27,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -173,6 +174,13 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB.schema"))
           @QueryParam("databaseSchema")
           String databaseSchemaParam,
+      @Parameter(
+              description =
+                  "Include tables with an empty test suite (i.e. no test cases have been created for this table). Default to true",
+              schema = @Schema(type = "boolean", example = "true"))
+          @QueryParam("includeEmptyTestSuite")
+          @DefaultValue("true")
+          boolean includeEmptyTestSuite,
       @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = " + "10) ")
           @DefaultValue("10")
           @Min(0)
@@ -196,7 +204,15 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         new ListFilter(include)
             .addQueryParam("database", databaseParam)
             .addQueryParam("databaseSchema", databaseSchemaParam);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    ResultList<Table> tableList =
+        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    if (!includeEmptyTestSuite) {
+      tableList.setData(
+          tableList.getData().stream()
+              .filter(table -> table.getTestSuite() != null && !table.getTestSuite().getTests().isEmpty())
+              .collect(Collectors.toList()));
+    }
+    return tableList;
   }
 
   @GET

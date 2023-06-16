@@ -15,6 +15,8 @@
 
 package org.openmetadata.service.elasticsearch;
 
+import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
 import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ELASTIC_SEARCH_EXTENSION;
@@ -36,7 +38,6 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.EventPublisherJob.Status;
 import org.openmetadata.schema.system.Failure;
 import org.openmetadata.schema.system.FailureDetails;
-import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.AbstractEventPublisher;
 import org.openmetadata.service.events.errors.EventPublisherException;
@@ -125,6 +126,12 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
           case Entity.CLASSIFICATION:
             searchClient.updateClassification(event);
             break;
+          case Entity.TEST_CASE:
+            updateTestCase(event);
+            break;
+          case Entity.TEST_SUITE:
+            updateTestSuite(event);
+            break;
           default:
             LOG.warn("Ignoring Entity Type {}", entityType);
         }
@@ -175,58 +182,11 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     LOG.info("Shutting down ElasticSearchEventPublisher");
   }
 
-  public void registerElasticSearchJobs() {
-    try {
-      dao.entityExtensionTimeSeriesDao().delete(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
-      long startTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
-      FailureDetails failureDetails = new FailureDetails().withLastFailedAt(0L);
-      EventPublisherJob streamJob =
-          new EventPublisherJob()
-              .withId(UUID.randomUUID())
-              .withName("Elastic Search Stream")
-              .withPublisherType(CreateEventPublisherJob.PublisherType.ELASTIC_SEARCH)
-              .withRunMode(CreateEventPublisherJob.RunMode.STREAM)
-              .withStatus(EventPublisherJob.Status.ACTIVE)
-              .withTimestamp(startTime)
-              .withStartedBy(ADMIN_USER_NAME)
-              .withStartTime(startTime)
-              .withFailure(new Failure().withSinkError(failureDetails));
-      dao.entityExtensionTimeSeriesDao()
-          .insert(
-              ELASTIC_SEARCH_ENTITY_FQN_STREAM,
-              ELASTIC_SEARCH_EXTENSION,
-              "eventPublisherJob",
-              JsonUtils.pojoToJson(streamJob));
-    } catch (Exception e) {
-      LOG.error("Failed to register Elastic Search Job");
-    }
-  }
-
-  public void updateElasticSearchFailureStatus(String context, EventPublisherJob.Status status, String failureMessage) {
-    try {
-      long updateTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
-      String recordString =
-          dao.entityExtensionTimeSeriesDao().getExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
-      EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
-      long originalLastUpdate = lastRecord.getTimestamp();
-      lastRecord.setStatus(status);
-      lastRecord.setTimestamp(updateTime);
-      lastRecord.setFailure(
-          new Failure()
-              .withSinkError(
-                  new FailureDetails()
-                      .withContext(context)
-                      .withLastFailedAt(updateTime)
-                      .withLastFailedReason(failureMessage)));
-
-      dao.entityExtensionTimeSeriesDao()
-          .update(
-              ELASTIC_SEARCH_ENTITY_FQN_STREAM,
-              ELASTIC_SEARCH_EXTENSION,
-              JsonUtils.pojoToJson(lastRecord),
-              originalLastUpdate);
-    } catch (Exception e) {
-      LOG.error("Failed to Update Elastic Search Job Info");
+  private void deleteEntityFromElasticSearchByQuery(DeleteByQueryRequest deleteRequest) throws IOException {
+    if (deleteRequest != null) {
+      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
+      deleteRequest.setRefresh(true);
+      client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
     }
   }
 }
