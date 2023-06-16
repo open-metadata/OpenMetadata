@@ -11,10 +11,13 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Space, Typography } from 'antd';
+import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import classNames from 'classnames';
 import { EntityDetails } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
+import { getTeamAndUserDetailsPath, getUserPath } from 'constants/constants';
 import {
   ArrayChange,
   Change,
@@ -39,8 +42,9 @@ import {
 } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
-import React, { Fragment } from 'react';
+import React, { Fragment, ReactNode } from 'react';
 import ReactDOMServer from 'react-dom/server';
+import { Link } from 'react-router-dom';
 import { EntityField } from '../constants/Feeds.constants';
 import { Column as ContainerColumn } from '../generated/entity/data/container';
 import { Column as TableColumn } from '../generated/entity/data/table';
@@ -52,6 +56,7 @@ import { TagLabel } from '../generated/type/tagLabel';
 import { getEntityName } from './EntityUtils';
 import { TagLabelWithStatus } from './EntityVersionUtils.interface';
 import { isValidJSONString } from './StringsUtils';
+import { getTagsWithoutTier } from './TableUtils';
 
 export const getChangedEntityName = (diffObject?: EntityDiffProps) =>
   diffObject?.added?.name ??
@@ -234,19 +239,13 @@ export const getEntityVersionTags = (
     ...(getTagsDiff(oldTags, newTags) ?? []),
     ...(currentVersionData.tags ?? []),
   ].forEach((elem) => {
-    if (!flag[elem.tagFQN as string]) {
-      flag[elem.tagFQN as string] = true;
+    if (!flag[elem.tagFQN]) {
+      flag[elem.tagFQN] = true;
       uniqueTags.push(elem as TagLabelWithStatus);
     }
   });
 
-  return [
-    ...uniqueTags.map((t) =>
-      t.tagFQN.startsWith('Tier')
-        ? { ...t, tagFQN: t.tagFQN.split(FQN_SEPARATOR_CHAR)[1] }
-        : t
-    ),
-  ];
+  return getTagsWithoutTier(uniqueTags);
 };
 
 export const summaryFormatter = (fieldChange: FieldChange) => {
@@ -507,6 +506,35 @@ export const getUpdatedMessageSchema = (
   }
 };
 
+export const getOwnerInfo = (owner: EntityReference, ownerLabel: ReactNode) => {
+  const isTeamType = owner.type === 'team';
+
+  return (
+    <Space className="m-r-xss" size={4}>
+      {isTeamType ? (
+        <IconTeamsGrey height={18} width={18} />
+      ) : (
+        <ProfilePicture
+          displayName={getEntityName(owner)}
+          id={owner.id ?? ''}
+          name={owner.name ?? ''}
+          textClass="text-xs"
+          type="circle"
+          width="20"
+        />
+      )}
+      <Link
+        to={
+          isTeamType
+            ? getTeamAndUserDetailsPath(owner.name ?? '')
+            : getUserPath(owner.name ?? '')
+        }>
+        {ownerLabel}
+      </Link>
+    </Space>
+  );
+};
+
 export const getCommonExtraInfoForVersionDetails = (
   changeDescription: ChangeDescription,
   owner?: EntityReference,
@@ -520,36 +548,29 @@ export const getCommonExtraInfoForVersionDetails = (
 
   const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
   const newTier = [
-    ...JSON.parse(
-      tagsDiff?.added?.newValue ??
-        tagsDiff?.deleted?.newValue ??
-        tagsDiff?.updated?.newValue ??
-        '[]'
-    ),
+    ...JSON.parse(getChangedEntityNewValue(tagsDiff) ?? '[]'),
   ].find((t) => (t?.tagFQN as string).startsWith('Tier'));
 
   const oldTier = [
-    ...JSON.parse(
-      tagsDiff?.added?.oldValue ??
-        tagsDiff?.deleted?.oldValue ??
-        tagsDiff?.updated?.oldValue ??
-        '[]'
-    ),
+    ...JSON.parse(getChangedEntityOldValue(tagsDiff) ?? '[]'),
   ].find((t) => (t?.tagFQN as string).startsWith('Tier'));
 
   const extraInfo: Array<ExtraInfo> = [
     {
       key: 'Owner',
       value:
-        !isUndefined(ownerDiff?.added) ||
-        !isUndefined(ownerDiff?.deleted) ||
-        !isUndefined(ownerDiff?.updated)
-          ? getDiffValue(
-              oldOwner?.displayName || oldOwner?.name || '',
-              newOwner?.displayName || newOwner?.name || ''
+        !isUndefined(ownerDiff.added) ||
+        !isUndefined(ownerDiff.deleted) ||
+        !isUndefined(ownerDiff.updated)
+          ? getOwnerInfo(
+              isEmpty(newOwner) ? oldOwner : newOwner,
+              getDiffValue(getEntityName(oldOwner), getEntityName(newOwner))
             )
-          : ownerPlaceHolder
-          ? getDiffValue(ownerPlaceHolder, ownerPlaceHolder)
+          : owner
+          ? getOwnerInfo(
+              owner,
+              getDiffValue(ownerPlaceHolder, ownerPlaceHolder)
+            )
           : '',
       profileName:
         newOwner?.type === OwnerType.USER ? newOwner?.name : undefined,

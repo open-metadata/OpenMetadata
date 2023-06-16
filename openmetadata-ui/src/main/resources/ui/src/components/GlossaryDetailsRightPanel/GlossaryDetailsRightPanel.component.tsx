@@ -29,8 +29,8 @@ import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { ChangeDescription } from 'generated/entity/type';
 import { EntityReference } from 'generated/type/entityReference';
 import { t } from 'i18next';
-import { cloneDeep, includes, isEqual, isUndefined } from 'lodash';
-import React, { useCallback, useMemo } from 'react';
+import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
+import React, { ReactNode, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 import {
@@ -102,34 +102,85 @@ const GlossaryDetailsRightPanel = ({
     onUpdate(updatedData);
   };
 
-  const getUserNames = useCallback(
-    (user: EntityReference) => {
-      const ownerName = getEntityName(user);
-      if (!isVersionView) {
-        return ownerName;
+  const getOwner = useCallback(
+    (ownerDisplayName: string | ReactNode, owner?: EntityReference) => {
+      if (owner) {
+        return (
+          <>
+            <ProfilePicture
+              displayName={getEntityName(owner)}
+              id={owner?.id || ''}
+              name={owner?.name ?? ''}
+              textClass="text-xs"
+              width="20"
+            />
+            <Link
+              to={
+                owner.type === 'team'
+                  ? getTeamAndUserDetailsPath(owner.name ?? '')
+                  : getUserPath(owner.name ?? '')
+              }>
+              {ownerDisplayName}
+            </Link>
+          </>
+        );
+      }
+      if (!(permissions.EditOwner || permissions.EditAll)) {
+        return <div>{NO_DATA_PLACEHOLDER}</div>;
       }
 
-      const ownerDiff = getDiffByFieldName(
-        EntityField.OWNER,
-        selectedData.changeDescription as ChangeDescription
-      );
-
-      const oldOwner = JSON.parse(getChangedEntityOldValue(ownerDiff) ?? '{}');
-      const newOwner = JSON.parse(getChangedEntityNewValue(ownerDiff) ?? '{}');
-
-      const diffOwnerName = getDiffValue(
-        oldOwner?.displayName || oldOwner?.name || '',
-        newOwner?.displayName || newOwner?.name || ''
-      );
-
-      const shouldShowDiff =
-        !isUndefined(ownerDiff?.added) ||
-        !isUndefined(ownerDiff?.deleted) ||
-        !isUndefined(ownerDiff?.updated);
-
-      return shouldShowDiff ? diffOwnerName : ownerName;
+      return null;
     },
-    [selectedData, isVersionView]
+    [permissions]
+  );
+
+  const getUserNames = useCallback(
+    (glossaryData: Glossary | GlossaryTerm) => {
+      if (isVersionView) {
+        const ownerDiff = getDiffByFieldName(
+          EntityField.OWNER,
+          glossaryData.changeDescription as ChangeDescription
+        );
+
+        const oldOwner = JSON.parse(
+          getChangedEntityOldValue(ownerDiff) ?? '{}'
+        );
+        const newOwner = JSON.parse(
+          getChangedEntityNewValue(ownerDiff) ?? '{}'
+        );
+
+        const shouldShowDiff =
+          !isEmpty(ownerDiff.added) ||
+          !isEmpty(ownerDiff.deleted) ||
+          !isEmpty(ownerDiff.updated);
+
+        if (shouldShowDiff) {
+          if (!isEmpty(ownerDiff.added)) {
+            const ownerName = getDiffValue('', getEntityName(newOwner));
+
+            return getOwner(ownerName, newOwner);
+          }
+
+          if (!isEmpty(ownerDiff.deleted)) {
+            const ownerName = getDiffValue(getEntityName(oldOwner), '');
+
+            return getOwner(ownerName, oldOwner);
+          }
+
+          if (!isEmpty(ownerDiff.updated)) {
+            const ownerName = getDiffValue(
+              getEntityName(oldOwner),
+              getEntityName(newOwner)
+            );
+
+            return getOwner(ownerName, newOwner);
+          }
+        }
+      }
+
+      return getOwner(getEntityName(glossaryData.owner), glossaryData.owner);
+    },
+    [isVersionView]
   );
 
   return (
@@ -157,25 +208,9 @@ const GlossaryDetailsRightPanel = ({
               )}
           </div>
 
-          {selectedData.owner && getEntityName(selectedData.owner) && (
-            <Space className="m-r-xss" size={4}>
-              <ProfilePicture
-                displayName={getEntityName(selectedData.owner)}
-                id={selectedData.owner?.id || ''}
-                name={selectedData.owner?.name || ''}
-                textClass="text-xs"
-                width="20"
-              />
-              <Link
-                to={
-                  selectedData.owner.type === 'team'
-                    ? getTeamAndUserDetailsPath(selectedData.owner.name ?? '')
-                    : getUserPath(selectedData.owner.name ?? '')
-                }>
-                {getUserNames(selectedData.owner)}
-              </Link>
-            </Space>
-          )}
+          <Space className="m-r-xss" size={4}>
+            {getUserNames(selectedData)}
+          </Space>
 
           {!selectedData.owner &&
             (permissions.EditOwner || permissions.EditAll) && (
@@ -190,11 +225,6 @@ const GlossaryDetailsRightPanel = ({
                   tooltip=""
                 />
               </UserTeamSelectableList>
-            )}
-
-          {!selectedData.owner &&
-            !(permissions.EditOwner || permissions.EditAll) && (
-              <div>{NO_DATA_PLACEHOLDER}</div>
             )}
         </Col>
         <Col span="24">
@@ -229,6 +259,7 @@ const GlossaryDetailsRightPanel = ({
           </div>
           <div>
             <GlossaryReviewers
+              editPermission={hasEditReviewerAccess}
               glossaryData={selectedData}
               isVersionView={isVersionView}
             />
@@ -246,10 +277,6 @@ const GlossaryDetailsRightPanel = ({
                   tooltip=""
                 />
               </UserSelectableList>
-            )}
-
-            {!hasEditReviewerAccess && noReviewersSelected && (
-              <div>{NO_DATA_PLACEHOLDER}</div>
             )}
           </div>
         </Col>

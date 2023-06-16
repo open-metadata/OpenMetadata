@@ -156,6 +156,7 @@ const GlossaryTermsV1 = ({
     activeTab,
     assetCount,
     isSummaryPanelOpen,
+    isVersionView,
   ]);
 
   const fetchGlossaryTermAssets = async () => {

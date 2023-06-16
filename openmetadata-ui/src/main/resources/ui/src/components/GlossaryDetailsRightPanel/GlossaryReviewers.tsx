@@ -13,7 +13,7 @@
 
 import { Space } from 'antd';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import { getUserPath } from 'constants/constants';
+import { getUserPath, NO_DATA_PLACEHOLDER } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { EntityChangeOperations } from 'enums/VersionPage.enum';
 import { Glossary } from 'generated/entity/data/glossary';
@@ -34,11 +34,13 @@ import {
 interface GlossaryReviewersProps {
   glossaryData: Glossary | GlossaryTerm;
   isVersionView?: boolean;
+  editPermission?: boolean;
 }
 
 function GlossaryReviewers({
   isVersionView,
   glossaryData,
+  editPermission,
 }: GlossaryReviewersProps) {
   const getReviewerName = useCallback(
     (reviewer: EntityReference, operation: EntityChangeOperations) => {
@@ -103,19 +105,25 @@ function GlossaryReviewers({
         )
       : [];
 
-    return (
-      <>
-        {unchangedReviewers.map((reviewer) =>
-          getReviewer(reviewer, EntityChangeOperations.NORMAL)
-        )}
-        {addedReviewers.map((reviewer) =>
-          getReviewer(reviewer, EntityChangeOperations.ADDED)
-        )}
-        {deletedReviewers.map((reviewer) =>
-          getReviewer(reviewer, EntityChangeOperations.DELETED)
-        )}
-      </>
-    );
+    if (
+      !isEmpty(unchangedReviewers) ||
+      !isEmpty(addedReviewers) ||
+      !isEmpty(deletedReviewers)
+    ) {
+      return (
+        <>
+          {unchangedReviewers.map((reviewer) =>
+            getReviewer(reviewer, EntityChangeOperations.NORMAL)
+          )}
+          {addedReviewers.map((reviewer) =>
+            getReviewer(reviewer, EntityChangeOperations.ADDED)
+          )}
+          {deletedReviewers.map((reviewer) =>
+            getReviewer(reviewer, EntityChangeOperations.DELETED)
+          )}
+        </>
+      );
+    }
   }
 
   if (
@@ -131,7 +139,7 @@ function GlossaryReviewers({
     );
   }
 
-  return null;
+  return editPermission ? null : <div>{NO_DATA_PLACEHOLDER}</div>;
 }
 
 export default GlossaryReviewers;

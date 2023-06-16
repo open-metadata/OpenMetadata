@@ -136,7 +136,7 @@ const GlossaryTermSynonyms = ({
         ))}
       </div>
     );
-  }, [glossaryTerm]);
+  }, [glossaryTerm, isVersionView, getSynonyms]);
 
   const handleCancel = () => {
     setSynonyms(glossaryTerm.synonyms || []);

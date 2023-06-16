@@ -434,11 +434,8 @@ const EntityVersionPage: FunctionComponent = () => {
       case EntityType.CONTAINER: {
         try {
           const response = await getContainerByName(
-            getPartialNameFromFQN(
-              entityFQN,
-              ['service', 'database'],
-              FQN_SEPARATOR_CHAR
-            ),
+            entityFQN,
+
             'dataModel,owner,tags'
           );
           const { id, owner, tags = [] } = response;
@@ -742,11 +739,7 @@ const EntityVersionPage: FunctionComponent = () => {
       case EntityType.CONTAINER: {
         try {
           const response = await getContainerByName(
-            getPartialNameFromFQN(
-              entityFQN,
-              ['service', 'database'],
-              FQN_SEPARATOR_CHAR
-            ),
+            entityFQN,
             'dataModel,owner,tags'
           );
           const { id } = response;

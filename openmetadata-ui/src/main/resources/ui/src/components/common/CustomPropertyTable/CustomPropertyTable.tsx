@@ -107,14 +107,14 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
   const tableColumn: ColumnsType<CustomProperty> = useMemo(() => {
     return [
       {
-        title: 'Name',
+        title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
         width: '50%',
         render: (_, record) => getEntityName(record),
       },
       {
-        title: 'Value',
+        title: t('label.value'),
         dataIndex: 'value',
         key: 'value',
         width: '50%',
@@ -131,7 +131,13 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
         ),
       },
     ];
-  }, [entityDetails.extension, hasEditAccess, extensionObject, isVersionView]);
+  }, [
+    entityDetails.extension,
+    hasEditAccess,
+    extensionObject,
+    isVersionView,
+    onExtensionUpdate,
+  ]);
 
   useEffect(() => {
     fetchTypeDetail();

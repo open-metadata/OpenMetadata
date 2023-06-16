@@ -118,7 +118,7 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
         ),
       },
     ],
-    []
+    [columnName, joins, data]
   );
 
   const handleSearchAction = (searchValue: string) => {
