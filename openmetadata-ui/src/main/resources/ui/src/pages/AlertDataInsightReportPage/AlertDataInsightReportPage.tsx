@@ -13,6 +13,7 @@
 import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
+  Badge,
   Button,
   Card,
   Col,
@@ -110,13 +111,26 @@ const AlertDataInsightReportPage = () => {
     );
   }
 
+  const isEnabled = Boolean(dataInsightAlert?.enabled);
+
   return (
     <Row align="middle" gutter={[16, 16]}>
       <Col span={24}>
         <Space className="w-full justify-between">
           <PageHeader
             data={{
-              header: t('label.data-insight-report'),
+              header: (
+                <Space align="center" size={4}>
+                  {t('label.data-insight-report')}{' '}
+                  {!isEnabled ? (
+                    <Badge
+                      className="badge-grey"
+                      count={t('label.disabled')}
+                      data-testid="disabled"
+                    />
+                  ) : null}
+                </Space>
+              ),
               subHeader: dataInsightAlert?.description ?? '',
             }}
           />
