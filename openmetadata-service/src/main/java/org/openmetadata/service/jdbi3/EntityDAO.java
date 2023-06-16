@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -92,7 +93,12 @@ public interface EntityDAO<T extends EntityInterface> {
   @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond>")
   String findById(@Define("table") String table, @Bind("id") String id, @Define("cond") String cond);
 
-  @SqlQuery("SELECT json FROM <table> WHERE BINARY <nameColumn> = :name <cond>")
+  @ConnectionAwareSqlQuery(
+      value = "SELECT json FROM <table> WHERE BINARY <nameColumn> = :name <cond>",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value = "SELECT json FROM <table> WHERE <nameColumn> = :name <cond>",
+      connectionType = POSTGRES)
   String findByName(
       @Define("table") String table,
       @Define("nameColumn") String nameColumn,
