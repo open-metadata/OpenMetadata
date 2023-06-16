@@ -170,7 +170,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
       },
       {
         key: `${currentVersionData.serviceType} Url`,
-        value: (currentVersionData as Pipeline).pipelineUrl,
+        value: (currentVersionData as Pipeline).sourceUrl,
         placeholderText:
           currentVersionData.displayName ?? currentVersionData.name,
         isLink: true,
@@ -387,7 +387,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         key: 'displayName',
         width: 250,
         render: (_, record) => (
-          <Link target="_blank" to={{ pathname: record.taskUrl }}>
+          <Link target="_blank" to={{ pathname: record.sourceUrl }}>
             <Space>
               <span>{getEntityName(record)}</span>
               <IconExternalLink className="m-l-xs" width={16} />

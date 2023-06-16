@@ -27,3 +27,48 @@ where serviceType in ('Datalake')
 UPDATE ingestion_pipeline_entity
 SET json = jsonb_set(json::jsonb #- '{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcsConfig}', '{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig}', (json#>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcsConfig}')::jsonb)
 WHERE json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig}' is not null and json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcsConfig}' is not null;
+
+
+-- Rename dashboardUrl in dashboard_entity to sourceUrl
+UPDATE dashboard_entity
+SET json = jsonb_set(json::jsonb #- '{dashboardUrl}' , '{sourceUrl}',
+json#>'{dashboardUrl}')
+where json#>'{dashboardUrl}' is not null;
+
+-- Rename chartUrl in chart_entity to sourceUr
+UPDATE chart_entity
+SET json = jsonb_set(json::jsonb #- '{chartUrl}' , '{sourceUrl}',
+json#>'{chartUrl}')
+where json#>'{chartUrl}' is not null;
+
+-- Rename pipelineUrl in pipeline_entity to sourceUrl
+UPDATE pipeline_entity
+SET json = jsonb_set(json::jsonb #- '{pipelineUrl}' , '{sourceUrl}',
+json#>'{pipelineUrl}')
+where json#>'{pipelineUrl}' is not null;
+
+
+-- Rename taskUrl in pipeline_entity to sourceUrl
+UPDATE pipeline_entity
+SET json = jsonb_set(
+    json::jsonb - 'tasks',
+    '{tasks}',
+    (
+        SELECT jsonb_agg(
+            jsonb_build_object(
+                'name', t ->> 'name',
+                'sourceUrl', t ->> 'taskUrl',
+                'taskType', t ->> 'taskType',
+                'description', t ->> 'description',
+                'displayName', t ->> 'displayName',
+                'fullyQualifiedName', t ->> 'fullyQualifiedName',
+                'downstreamTasks', (t -> 'downstreamTasks')::jsonb,
+                'tags', (t ->> 'tags')::jsonb,
+                'endDate', t ->> 'endDate',
+                'startDate', t ->> 'startDate',
+                'taskSQL', t ->> 'taskSQL'
+            )
+        )
+        FROM jsonb_array_elements(json->'tasks') AS t
+    )
+);

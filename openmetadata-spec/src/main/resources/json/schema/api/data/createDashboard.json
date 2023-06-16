@@ -22,8 +22,12 @@
     "dashboardType": {
       "$ref": "../../entity/data/dashboard.json#/definitions/dashboardType"
     },
-    "dashboardUrl": {
+    "sourceUrl": {
       "description": "Dashboard URL suffix from its service.",
+      "type": "string"
+    },
+    "project": {
+      "description": "Name of the project / workspace / collection in which the dashboard is contained",
       "type": "string"
     },
     "charts": {

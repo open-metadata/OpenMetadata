@@ -59,7 +59,7 @@ function DashboardSummary({
 
       const updatedCharts = chartDetails.map((chartItem) => ({
         ...chartItem,
-        chartUrl: chartItem.chartUrl,
+        sourceUrl: chartItem.sourceUrl,
       }));
 
       setCharts(updatedCharts);

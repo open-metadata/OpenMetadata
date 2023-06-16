@@ -156,7 +156,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
       },
       {
         key: `${currentVersionData.serviceType} Url`,
-        value: (currentVersionData as Dashboard).dashboardUrl,
+        value: (currentVersionData as Dashboard).sourceUrl,
         placeholderText:
           currentVersionData.displayName ?? currentVersionData.name,
         isLink: true,

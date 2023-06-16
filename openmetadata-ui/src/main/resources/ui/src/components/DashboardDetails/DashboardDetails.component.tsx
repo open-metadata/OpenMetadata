@@ -248,6 +248,35 @@ const DashboardDetails = ({
     }
   };
 
+  const extraInfo: Array<ExtraInfo> = [
+    {
+      key: EntityInfo.OWNER,
+      value: getOwnerValue(owner),
+      placeholderText: getEntityPlaceHolder(
+        getEntityName(owner),
+        owner?.deleted
+      ),
+      isLink: true,
+      openInNewTab: false,
+      profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
+    },
+    {
+      key: EntityInfo.TIER,
+      value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
+    },
+    ...(dashboardDetails.sourceUrl
+      ? [
+          {
+            key: `${serviceType} ${EntityInfo.URL}`,
+            value: dashboardDetails.sourceUrl,
+            placeholderText: entityName,
+            isLink: true,
+            openInNewTab: true,
+          },
+        ]
+      : []),
+  ];
+
   const onDescriptionEdit = (): void => {
     setIsEdit(true);
   };
@@ -503,8 +532,8 @@ const DashboardDetails = ({
         render: (_, record) => {
           const chartName = getEntityName(record);
 
-          return record.chartUrl ? (
-            <Typography.Link href={record.chartUrl} target="_blank">
+          return record.sourceUrl ? (
+            <Typography.Link href={record.sourceUrl} target="_blank">
               <Space>
                 {chartName}
                 <ExternalLinkIcon height={14} width={14} />

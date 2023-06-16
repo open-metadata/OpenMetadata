@@ -50,7 +50,7 @@ const mockUserTeam = [
 const dashboardDetailsProps: DashboardDetailsProps = {
   charts: [
     {
-      chartUrl: 'http://localhost',
+      sourceUrl: 'http://localhost',
       chartType: ChartType.Area,
       displayName: 'Test chart',
       id: '1',

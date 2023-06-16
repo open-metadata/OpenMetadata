@@ -281,7 +281,7 @@ export const getEntityOverview = (
     }
 
     case ExplorePageTabs.PIPELINES: {
-      const { owner, tags, pipelineUrl, service, displayName } =
+      const { owner, tags, sourceUrl, service, displayName } =
         entityDetail as Pipeline;
       const tier = getTierFromTableTags(tags || []);
 
@@ -303,7 +303,7 @@ export const getEntityOverview = (
           )}`,
           dataTestId: 'pipeline-url-label',
           value: displayName || NO_DATA,
-          url: pipelineUrl,
+          url: sourceUrl,
           isLink: true,
           isExternal: true,
           visible: [
@@ -333,7 +333,7 @@ export const getEntityOverview = (
       return overview;
     }
     case ExplorePageTabs.DASHBOARDS: {
-      const { owner, tags, dashboardUrl, service, displayName } =
+      const { owner, tags, sourceUrl, service, displayName } =
         entityDetail as Dashboard;
       const tier = getTierFromTableTags(tags || []);
 
@@ -354,7 +354,7 @@ export const getEntityOverview = (
             'label.url-uppercase'
           )}`,
           value: displayName || NO_DATA,
-          url: dashboardUrl,
+          url: sourceUrl,
           isLink: true,
           isExternal: true,
           visible: [

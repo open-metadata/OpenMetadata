@@ -76,7 +76,7 @@ describe('DashboardSummary component tests', () => {
     );
     const ownerLabel = screen.queryByTestId('label.owner-label');
 
-    const dashboardUrl = screen.getAllByTestId('dashboard-url-value');
+    const sourceUrl = screen.getAllByTestId('dashboard-url-value');
 
     const tags = screen.getByText('label.tag-plural');
     const description = screen.getByText('label.description');
@@ -90,7 +90,7 @@ describe('DashboardSummary component tests', () => {
 
     expect(ownerLabel).not.toBeInTheDocument();
 
-    expect(dashboardUrl[0]).toBeInTheDocument();
+    expect(sourceUrl[0]).toBeInTheDocument();
     expect(dashboardLink[0]).toBeInTheDocument();
     expect(dashboardValue[0]).toBeInTheDocument();
 
@@ -107,7 +107,7 @@ describe('DashboardSummary component tests', () => {
         <DashboardSummary
           entityDetails={{
             ...mockDashboardEntityDetails,
-            dashboardUrl: undefined,
+            sourceUrl: undefined,
           }}
         />,
         {

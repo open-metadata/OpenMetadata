@@ -237,6 +237,35 @@ const PipelineDetails = ({
     [followers]
   );
 
+  const extraInfo: Array<ExtraInfo> = [
+    {
+      key: EntityInfo.OWNER,
+      value: owner && getOwnerValue(owner),
+      placeholderText: getEntityPlaceHolder(
+        getEntityName(owner),
+        owner?.deleted
+      ),
+      isLink: true,
+      openInNewTab: false,
+      profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
+    },
+    {
+      key: EntityInfo.TIER,
+      value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
+    },
+    ...(pipelineDetails.sourceUrl
+      ? [
+          {
+            key: `${serviceType} ${EntityInfo.URL}`,
+            value: pipelineDetails.sourceUrl,
+            placeholderText: entityName,
+            isLink: true,
+            openInNewTab: true,
+          },
+        ]
+      : []),
+  ];
+
   const onTaskUpdate = async (taskDescription: string) => {
     if (editTask) {
       const updatedTasks = [...(pipelineDetails.tasks || [])];
@@ -407,13 +436,13 @@ const PipelineDetails = ({
         title: t('label.name'),
         width: 200,
         render: (_, record) =>
-          isEmpty(record.taskUrl) ? (
+          isEmpty(record.sourceUrl) ? (
             <span>{getEntityName(record)}</span>
           ) : (
             <Link
               className="flex items-center gap-2"
               target="_blank"
-              to={{ pathname: record.taskUrl }}>
+              to={{ pathname: record.sourceUrl }}>
               <span>{getEntityName(record)}</span>
               <ExternalLinkIcon height={14} width={14} />
             </Link>
