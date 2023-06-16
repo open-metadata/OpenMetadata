@@ -20,8 +20,6 @@ import org.openmetadata.service.search.SearchClient;
 
 @Slf4j
 public class ElasticSearchIndexDefinition {
-  public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
-  public static final String ELASTIC_SEARCH_ENTITY_FQN_STREAM = "eventPublisher:ElasticSearch:STREAM";
   private static final String MAPPINGS_KEY = "mappings";
   private static final String PROPERTIES_KEY = "properties";
   public static final String ENTITY_REPORT_DATA = "entityReportData";
