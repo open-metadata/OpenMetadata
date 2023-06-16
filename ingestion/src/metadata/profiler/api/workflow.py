@@ -274,6 +274,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 self.source_config.generateSampleData,
                 self.source_config.processPiiSensitive,
             )
+            profiler_runner.close()
         except Exception as exc:
             name = entity.fullyQualifiedName.__root__
             error = f"Unexpected exception processing entity [{name}]: {exc}"
