@@ -374,3 +374,9 @@ export const TEST_CONNECTION_INFO_MESSAGE = i18n.t(
 export const TEST_CONNECTION_WARNING_MESSAGE = i18n.t(
   'message.connection-test-warning'
 );
+
+export const ADVANCED_PROPERTIES = [
+  'connectionArguments',
+  'connectionOptions',
+  'scheme',
+];
