@@ -1606,6 +1606,19 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         CatalogExceptionMessage.systemEntityDeleteNotAllowed(systemEntity.getName(), entityType));
   }
 
+  @Test
+  void checkFindEntityByNameCaseSensitive(TestInfo test) throws HttpResponseException {
+    // Create the entity
+    T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    // Ensure the entity is found with the actual fully qualified name
+    assertNotNull(getEntityByName(entity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS));
+    // Attempt to fetch the entity with the fully qualified name in uppercase, which should result in "Not Found" error
+    assertResponse(
+        () -> getEntityByName(entity.getFullyQualifiedName().toUpperCase(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(entityType, entity.getFullyQualifiedName().toUpperCase()));
+  }
+
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity functionality for tests
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
