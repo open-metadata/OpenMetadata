@@ -121,3 +121,5 @@ SET json = JSON_INSERT(
     JSON_EXTRACT(json, '$.connection.config.password'))
 where serviceType in ('Postgres', 'Mysql');
 
+-- Clean old test connections
+TRUNCATE automations_workflow;

@@ -84,3 +84,5 @@ jsonb_build_object('password',json#>'{connection,config,password}')
 WHERE serviceType IN ('Postgres', 'Mysql')
   and json#>'{connection,config,password}' is not null;
 
+-- Clean old test connections
+TRUNCATE automations_workflow;
