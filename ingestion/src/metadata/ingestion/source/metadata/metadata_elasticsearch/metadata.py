@@ -43,10 +43,6 @@ class MetadataElasticsearchSource(Source[Entity]):
     Used for metadata to ES pipeline
     """
 
-    """
-    Metadata Source to Fetch All Entities from backend
-    """
-
     config: WorkflowSource
 
     def __init__(
