@@ -39,7 +39,11 @@ import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
-import { getListTestSuites, ListParams } from 'rest/testAPI';
+import {
+  getListTestSuites,
+  ListTestSuitePrams,
+  TestSuiteType,
+} from 'rest/testAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { getTestSuitePath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
@@ -87,12 +91,6 @@ export const TestSuites = () => {
 
     return testCaseStatus;
   }, []);
-
-  const testSuiteData = useMemo(() => {
-    return testSuites.data.filter((value) =>
-      tab === DataQualityPageTabs.TABLES ? value.executable : !value.executable
-    );
-  }, [testSuites, tab]);
 
   const columns = useMemo(() => {
     const data: ColumnsType<TestSuite> = [
@@ -172,12 +170,16 @@ export const TestSuites = () => {
     });
   };
 
-  const fetchTestSuites = async (params?: ListParams) => {
+  const fetchTestSuites = async (params?: ListTestSuitePrams) => {
     setIsLoading(true);
     try {
       const result = await getListTestSuites({
         ...params,
         fields: 'owner,tests',
+        testSuiteType:
+          tab === DataQualityPageTabs.TABLES
+            ? TestSuiteType.executable
+            : TestSuiteType.logical,
       });
       setTestSuites(result);
     } catch (error) {
@@ -242,7 +244,7 @@ export const TestSuites = () => {
           bordered
           columns={columns}
           data-testid="test-suite-table"
-          dataSource={testSuiteData}
+          dataSource={testSuites.data}
           loading={isLoading}
           locale={{
             emptyText: <FilterTablePlaceHolder />,

@@ -21,8 +21,8 @@ export const SummaryPanel = () => {
   const total = 2000;
 
   return (
-    <Row gutter={16}>
-      <Col span={6}>
+    <Row wrap gutter={[16, 16]}>
+      <Col flex="25%">
         <SummaryCard
           className="h-full"
           showProgressBar={false}
@@ -31,7 +31,7 @@ export const SummaryPanel = () => {
           value={2000}
         />
       </Col>
-      <Col span={6}>
+      <Col flex="25%">
         <SummaryCard
           title={t('label.success')}
           total={total}
@@ -39,7 +39,7 @@ export const SummaryPanel = () => {
           value={1000}
         />
       </Col>
-      <Col span={6}>
+      <Col flex="25%">
         <SummaryCard
           title={t('label.aborted')}
           total={total}
@@ -47,7 +47,7 @@ export const SummaryPanel = () => {
           value={500}
         />
       </Col>
-      <Col span={6}>
+      <Col flex="25%">
         <SummaryCard
           title={t('label.failed')}
           total={total}

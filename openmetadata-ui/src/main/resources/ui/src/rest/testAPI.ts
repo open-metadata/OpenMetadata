@@ -35,6 +35,15 @@ export type ListParams = {
   include?: Include;
 };
 
+export enum TestSuiteType {
+  executable = 'executable',
+  logical = 'logical',
+}
+
+export type ListTestSuitePrams = ListParams & {
+  testSuiteType?: TestSuiteType;
+};
+
 export type ListTestCaseParams = ListParams & {
   entityLink?: string;
   testSuiteId?: string;
@@ -151,7 +160,7 @@ export const getTestDefinitionById = async (
 };
 
 // testSuite Section
-export const getListTestSuites = async (params?: ListParams) => {
+export const getListTestSuites = async (params?: ListTestSuitePrams) => {
   const response = await APIClient.get<{
     data: TestSuite[];
     paging: Paging;

@@ -14,6 +14,8 @@ import { Col, Row, Select, Space, Table, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
+import AppBadge from 'components/common/Badge/Badge.component';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import Searchbar from 'components/common/searchbar/Searchbar';
@@ -44,6 +46,7 @@ import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { DataQualitySearchParams } from '../DataQuality.interface';
 import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
+import './test-cases.style.less';
 
 export const TestCases = () => {
   const history = useHistory();
@@ -163,10 +166,21 @@ export const TestCases = () => {
       },
       {
         title: 'Resolution',
-        dataIndex: 'resolution',
+        dataIndex: 'testCaseResult',
         key: 'resolution',
         width: 150,
-        render: () => '--',
+        render: (value: TestCaseResult) => {
+          const label = value.testCaseFailureStatus?.testCaseFailureStatusType;
+
+          return label ? (
+            <AppBadge
+              className={classNames('resolution', label.toLocaleLowerCase())}
+              label={label}
+            />
+          ) : (
+            '--'
+          );
+        },
       },
     ];
 
@@ -244,6 +258,7 @@ export const TestCases = () => {
       <Col span={24}>
         <Table
           bordered
+          className="test-case-table-container"
           columns={columns}
           data-testid="test-case-table"
           dataSource={testCase.data}
