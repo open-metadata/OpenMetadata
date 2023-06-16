@@ -26,6 +26,10 @@
       "description": "Dashboard URL suffix from its service.",
       "type": "string"
     },
+    "project": {
+      "description": "Name of the project / workspace / collection in which the dashboard is contained",
+      "type": "string"
+    },
     "charts": {
       "description": "List of fully qualified name of charts included in this Dashboard.",
       "type": "array",

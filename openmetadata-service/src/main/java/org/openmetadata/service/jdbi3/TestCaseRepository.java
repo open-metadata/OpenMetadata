@@ -5,13 +5,16 @@ import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.util.RestUtil.ENTITY_NO_CHANGE;
 import static org.openmetadata.service.util.RestUtil.ENTITY_UPDATED;
+import static org.openmetadata.service.util.RestUtil.LOGICAL_TEST_CASES_ADDED;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
@@ -23,6 +26,8 @@ import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -284,20 +289,56 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
-  public RestUtil.PutResponse<?> addTestCasesToLogicalTestSuite(TestSuite testSuite, List<UUID> testCaseIds) {
+  public RestUtil.PutResponse<TestSuite> addTestCasesToLogicalTestSuite(TestSuite testSuite, List<UUID> testCaseIds)
+      throws IOException {
     bulkAddToRelationship(testSuite.getId(), testCaseIds, TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
-    return new RestUtil.PutResponse<>(
-        Response.Status.OK,
-        testSuite,
-        String.format(RestUtil.TEST_CASES_ADDED, testCaseIds.size(), testSuite.getName()));
+    List<EntityReference> testCasesEntityReferences = new ArrayList<>();
+    for (UUID testCaseId : testCaseIds) {
+      TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "", Include.ALL);
+      testCasesEntityReferences.add(
+          new EntityReference()
+              .withId(testCase.getId())
+              .withName(testCase.getName())
+              .withFullyQualifiedName(testCase.getFullyQualifiedName())
+              .withDescription(testCase.getDescription())
+              .withDisplayName(testCase.getDisplayName())
+              .withHref(testCase.getHref())
+              .withDeleted(testCase.getDeleted()));
+    }
+    testSuite.setTests(testCasesEntityReferences);
+    return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASES_ADDED);
   }
 
   public RestUtil.DeleteResponse<TestCase> deleteTestCaseFromLogicalTestSuite(UUID testSuiteId, UUID testCaseId)
       throws IOException {
     TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, null, null);
     deleteRelationship(testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS);
-    return new RestUtil.DeleteResponse<>(
-        testCase, String.format(RestUtil.TEST_CASE_REMOVED_FROM_LOGICAL_TEST_SUITE, testSuiteId));
+    EntityReference entityReference = Entity.getEntityReferenceById(TEST_SUITE, testSuiteId, Include.ALL);
+    testCase.setTestSuite(entityReference);
+    return new RestUtil.DeleteResponse<>(testCase, RestUtil.ENTITY_DELETED);
+  }
+
+  public TestSummary getTestSummary() throws IOException {
+    List<TestCase> testCases = listAll(Fields.EMPTY_FIELDS, new ListFilter());
+    List<String> testCaseFQNs = testCases.stream().map(TestCase::getFullyQualifiedName).collect(Collectors.toList());
+
+    if (testCaseFQNs.isEmpty()) return new TestSummary();
+
+    List<String> jsonList =
+        daoCollection.entityExtensionTimeSeriesDao().getLatestExtensionByFQNs(testCaseFQNs, TESTCASE_RESULT_EXTENSION);
+
+    HashMap<String, Integer> testCaseSummary = new HashMap<>();
+    for (String json : jsonList) {
+      TestCaseResult testCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
+      String status = testCaseResult.getTestCaseStatus().toString();
+      testCaseSummary.put(status, testCaseSummary.getOrDefault(status, 0) + 1);
+    }
+
+    return new TestSummary()
+        .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
+        .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
+        .withSuccess(testCaseSummary.getOrDefault(TestCaseStatus.Success.toString(), 0))
+        .withTotal(testCaseFQNs.size());
   }
 
   @Override
