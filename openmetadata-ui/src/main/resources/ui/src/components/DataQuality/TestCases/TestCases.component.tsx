@@ -10,28 +10,48 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Select, Space, Table, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Row,
+  Select,
+  Space,
+  Table,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
+import { ReactComponent as IconCheckMark } from 'assets/svg/ic-check-mark.svg';
+import { ReactComponent as IconDelete } from 'assets/svg/ic-delete.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import EditTestCaseModal from 'components/AddDataQualityTest/EditTestCaseModal';
 import AppBadge from 'components/common/Badge/Badge.component';
+import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import { StatusBox } from 'components/common/LastRunGraph/LastRunGraph.component';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import Searchbar from 'components/common/searchbar/Searchbar';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import {
   getTableTabPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
 } from 'constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
+import { Operation } from 'generated/entity/policies/policy';
 import {
   TestCase,
+  TestCaseFailureStatus,
   TestCaseResult,
   TestCaseStatus,
 } from 'generated/tests/testCase';
 import { Paging } from 'generated/type/paging';
 import { t } from 'i18next';
-import { isString } from 'lodash';
+import { isString, isUndefined } from 'lodash';
 import { PagingResponse } from 'Models';
 import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import QueryString from 'qs';
@@ -40,18 +60,40 @@ import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import { getListTestCase, ListTestCaseParams } from 'rest/testAPI';
 import { getNameFromFQN } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
+import { checkPermission } from 'utils/PermissionsUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { getEntityFqnFromEntityLink } from 'utils/TableUtils';
 import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { DataQualitySearchParams } from '../DataQuality.interface';
 import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
+import { TestCaseStatusModal } from '../TestCaseStatusModal/TestCaseStatusModal.component';
 import './test-cases.style.less';
 
 export const TestCases = () => {
   const history = useHistory();
   const location = useLocation();
   const { tab } = useParams<{ tab: DataQualityPageTabs }>();
+  const { permissions } = usePermissionProvider();
+
+  const [selectedTestCase, setSelectedTestCase] = useState<TestCase>();
+  const [editTestCase, setEditTestCase] = useState<TestCase>();
+
+  const testCaseEditPermission = useMemo(() => {
+    return checkPermission(
+      Operation.EditAll,
+      ResourceEntity.TEST_CASE,
+      permissions
+    );
+  }, [permissions]);
+
+  const testCaseDeletePermission = useMemo(() => {
+    return checkPermission(
+      Operation.Delete,
+      ResourceEntity.TEST_CASE,
+      permissions
+    );
+  }, [permissions]);
 
   const params = useMemo(() => {
     const search = location.search;
@@ -94,8 +136,20 @@ export const TestCases = () => {
         key: 'name',
         width: 250,
         render: (_, record) => {
+          const status = record.testCaseResult?.testCaseStatus;
+
           return (
-            <Typography.Paragraph>{getEntityName(record)}</Typography.Paragraph>
+            <Space>
+              <Tooltip title={status}>
+                <div>
+                  <StatusBox status={status?.toLocaleLowerCase()} />
+                </div>
+              </Tooltip>
+
+              <Typography.Paragraph className="m-0">
+                {getEntityName(record)}
+              </Typography.Paragraph>
+            </Space>
           );
         },
       },
@@ -170,7 +224,7 @@ export const TestCases = () => {
         key: 'resolution',
         width: 150,
         render: (value: TestCaseResult) => {
-          const label = value.testCaseFailureStatus?.testCaseFailureStatusType;
+          const label = value?.testCaseFailureStatus?.testCaseFailureStatusType;
 
           return label ? (
             <AppBadge
@@ -182,10 +236,88 @@ export const TestCases = () => {
           );
         },
       },
+      {
+        title: t('label.action-plural'),
+        dataIndex: 'actions',
+        key: 'actions',
+        width: 100,
+        fixed: 'right',
+        render: (_, record) => {
+          const status = record.testCaseResult?.testCaseStatus;
+
+          return (
+            <Row align="middle">
+              <Tooltip
+                placement="bottomRight"
+                title={
+                  testCaseEditPermission
+                    ? t('label.edit')
+                    : NO_PERMISSION_FOR_ACTION
+                }>
+                <Button
+                  className="flex-center"
+                  data-testid={`edit-${record.name}`}
+                  disabled={!testCaseEditPermission}
+                  icon={<IconEdit width={16} />}
+                  type="text"
+                  onClick={(e) => {
+                    // preventing expand/collapse on click of edit button
+                    e.stopPropagation();
+                    setEditTestCase(record);
+                  }}
+                />
+              </Tooltip>
+
+              <Tooltip
+                placement="bottomLeft"
+                title={
+                  testCaseDeletePermission
+                    ? t('label.delete')
+                    : NO_PERMISSION_FOR_ACTION
+                }>
+                <Button
+                  className="flex-center"
+                  data-testid={`delete-${record.name}`}
+                  disabled={!testCaseDeletePermission}
+                  icon={<IconDelete width={16} />}
+                  type="text"
+                  onClick={(e) => {
+                    // preventing expand/collapse on click of delete button
+                    e.stopPropagation();
+                    setSelectedTestCase(record);
+                  }}
+                />
+              </Tooltip>
+              {status === TestCaseStatus.Failed && (
+                <Tooltip
+                  placement="bottomRight"
+                  title={
+                    testCaseEditPermission
+                      ? t('label.edit-entity', { entity: t('label.status') })
+                      : NO_PERMISSION_FOR_ACTION
+                  }>
+                  <Button
+                    className="flex-center"
+                    data-testid={`update-status-${record.name}`}
+                    disabled={!testCaseEditPermission}
+                    icon={<IconCheckMark height={18} width={18} />}
+                    type="text"
+                    onClick={(e) => {
+                      // preventing expand/collapse on click of edit button
+                      e.stopPropagation();
+                      setEditTestCase(record);
+                    }}
+                  />
+                </Tooltip>
+              )}
+            </Row>
+          );
+        },
+      },
     ];
 
     return data;
-  }, []);
+  }, [testCaseEditPermission, testCaseDeletePermission]);
 
   const handleSearchParam = (
     value: string | boolean,
@@ -281,6 +413,28 @@ export const TestCases = () => {
             totalCount={testCase.paging.total}
           />
         )}
+      </Col>
+      <Col span={24}>
+        <EditTestCaseModal
+          testCase={editTestCase as TestCase}
+          visible={!isUndefined(editTestCase)}
+          onCancel={() => setEditTestCase(undefined)}
+          onUpdate={fetchTestCases}
+        />
+
+        <TestCaseStatusModal data={{} as TestCaseFailureStatus} open={false} />
+
+        <DeleteWidgetModal
+          afterDeleteAction={fetchTestCases}
+          allowSoftDelete={false}
+          entityId={selectedTestCase?.id ?? ''}
+          entityName={selectedTestCase?.name ?? ''}
+          entityType="testCase"
+          visible={!isUndefined(selectedTestCase)}
+          onCancel={() => {
+            setSelectedTestCase(undefined);
+          }}
+        />
       </Col>
     </Row>
   );

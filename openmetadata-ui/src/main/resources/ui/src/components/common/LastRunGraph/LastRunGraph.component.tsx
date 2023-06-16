@@ -16,6 +16,10 @@ import { TestCaseStatus } from 'generated/tests/testCase';
 import React from 'react';
 import './last-run-graph.style.less';
 
+export const StatusBox = ({ status }: { status?: string }) => {
+  return <div className={classNames('last-run-box', status)} />;
+};
+
 export const LastRunGraph = () => {
   const data = [
     {
@@ -55,12 +59,9 @@ export const LastRunGraph = () => {
           key={i}
           placement="bottom"
           title={`2 ${value.status} on, 13th June 2023`}>
-          <div
-            className={classNames(
-              'last-run-box',
-              value.status.toLocaleLowerCase()
-            )}
-          />
+          <div>
+            <StatusBox status={value.status.toLocaleLowerCase()} />
+          </div>
         </Tooltip>
       ))}
     </Space>

@@ -10,20 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import url('../../../styles/variables.less');
+import { TestCaseFailureStatus } from 'generated/tests/testCase';
 
-.last-run-box {
-  height: 16px;
-  width: 16px;
-  background: @grey-3;
-  border-radius: @border-radius-base;
-  &.success {
-    background: @green-3;
-  }
-  &.failed {
-    background: @red-3;
-  }
-  &.aborted {
-    background: @yellow-2;
-  }
+export interface TestCaseStatusModalProps {
+  open: boolean;
+  data: TestCaseFailureStatus;
 }
