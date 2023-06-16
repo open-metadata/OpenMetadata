@@ -95,6 +95,8 @@ import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
+import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Query;
@@ -102,6 +104,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.CustomMetric;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
@@ -129,6 +132,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
+import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
+import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.service.resources.query.QueryResource;
@@ -1288,7 +1293,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(query1.getQuery(), createdQuery.getQuery());
     assertEquals(query1.getDuration(), createdQuery.getDuration());
 
-    // Update bote
+    // Update bot
     VoteRequest request = new VoteRequest().withUpdatedVoteType(VoteRequest.VoteType.VOTED_UP);
     WebTarget target = getResource(String.format("queries/%s/vote", createdQuery.getId().toString()));
     ChangeEvent changeEvent = TestUtils.put(target, request, ChangeEvent.class, OK, ADMIN_AUTH_HEADERS);
@@ -1759,6 +1764,57 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals("P30D", table.getRetentionPeriod());
     table = getEntity(table.getId(), "", ADMIN_AUTH_HEADERS);
     assertEquals("P30D", table.getRetentionPeriod());
+  }
+
+  @Test
+  void get_tablesWithTestCases(TestInfo test) throws IOException {
+    TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    DatabaseSchemaResourceTest schemaResourceTest = new DatabaseSchemaResourceTest();
+    DatabaseResourceTest databaseTest = new DatabaseResourceTest();
+
+    // Create Database
+    CreateDatabase createDatabase = databaseTest.createRequest(getEntityName(test));
+    Database database = databaseTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+    // Create Database Schema
+    CreateDatabaseSchema createDatabaseSchema =
+        schemaResourceTest.createRequest(test).withDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema =
+        schemaResourceTest
+            .createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS)
+            .withDatabase(database.getEntityReference());
+    schema = schemaResourceTest.getEntity(schema.getId(), "", ADMIN_AUTH_HEADERS);
+    // Create Table 1
+    CreateTable createTable1 = createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
+    Table table1 = createEntity(createTable1, ADMIN_AUTH_HEADERS).withDatabase(database.getEntityReference());
+    // Create Table 2
+    CreateTable createTable2 =
+        createRequest(test.getClass().getName() + "2").withDatabaseSchema(schema.getFullyQualifiedName());
+    createEntity(createTable2, ADMIN_AUTH_HEADERS).withDatabase(database.getEntityReference());
+    // Create Executable Test Suite
+    CreateTestSuite createExecutableTestSuite = testSuiteResourceTest.createRequest(table1.getFullyQualifiedName());
+    TestSuite executableTestSuite =
+        testSuiteResourceTest.createExecutableTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
+
+    HashMap<String, String> queryParams = new HashMap<>();
+    queryParams.put("includeEmptyTestSuite", "false");
+    queryParams.put("fields", "testSuite");
+    queryParams.put("limit", "100");
+    ResultList<Table> tables = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertTrue(tables.getData().isEmpty());
+
+    for (int i = 0; i < 5; i++) {
+      CreateTestCase create =
+          testCaseResourceTest
+              .createRequest("test_testSuite__" + i)
+              .withTestSuite(executableTestSuite.getFullyQualifiedName());
+      testCaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    }
+
+    tables = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(1, tables.getData().size());
+    assertEquals(table1.getId(), tables.getData().get(0).getId());
+    assertNotNull(tables.getData().get(0).getTestSuite());
   }
 
   @Test

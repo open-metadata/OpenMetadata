@@ -15,6 +15,8 @@
 
 package org.openmetadata.service.elasticsearch;
 
+import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
@@ -51,15 +53,18 @@ import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.engine.DocumentMissingException;
 import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.MatchQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.TermQueryBuilder;
 import org.elasticsearch.index.query.WildcardQueryBuilder;
 import org.elasticsearch.index.reindex.DeleteByQueryRequest;
+import org.elasticsearch.index.reindex.UpdateByQueryRequest;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.script.ScriptType;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.CreateEventPublisherJob;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -80,11 +85,14 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.EventPublisherJob.Status;
 import org.openmetadata.schema.system.Failure;
 import org.openmetadata.schema.system.FailureDetails;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
@@ -177,6 +185,12 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
             break;
           case Entity.CLASSIFICATION:
             updateClassification(event);
+            break;
+          case Entity.TEST_CASE:
+            updateTestCase(event);
+            break;
+          case Entity.TEST_SUITE:
+            updateTestSuite(event);
             break;
           default:
             LOG.warn("Ignoring Entity Type {}", entityType);
@@ -427,6 +441,106 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     }
   }
 
+  private void updateTestSuite(ChangeEvent event) throws IOException {
+    ElasticSearchIndexType indexType = ElasticSearchIndexDefinition.getIndexMappingByEntityType(Entity.TEST_CASE);
+    TestSuite testSuite = (TestSuite) event.getEntity();
+    UUID testSuiteId = testSuite.getId();
+
+    if (event.getEventType() == ENTITY_DELETED) {
+      if (testSuite.getExecutable()) {
+        DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexType.indexName);
+        deleteByQueryRequest.setQuery(new MatchQueryBuilder("testSuite.id", testSuiteId.toString()));
+        deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
+      } else {
+        UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexType.indexName);
+        updateByQueryRequest.setQuery(new MatchQueryBuilder("testSuite.id", testSuiteId.toString()));
+        String scriptTxt =
+            "for (int i = 0; i < ctx._source.testSuite.length; i++) { if (ctx._source.testSuite[i].id == '%s') { ctx._source.testSuite.remove(i) }}";
+        Script script =
+            new Script(
+                ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, String.format(scriptTxt, testSuiteId), new HashMap<>());
+        updateByQueryRequest.setScript(script);
+        updateElasticSearchByQuery(updateByQueryRequest);
+      }
+    }
+  }
+
+  private void updateTestCase(ChangeEvent event) throws IOException {
+    ElasticSearchIndexType indexType = ElasticSearchIndexDefinition.getIndexMappingByEntityType(Entity.TEST_CASE);
+    // creating a new test case will return a TestCase entity while bulk adding test cases will return
+    // the logical test suite entity with the newly added test cases
+    EntityInterface entityInterface = (EntityInterface) event.getEntity();
+    if (entityInterface instanceof TestCase) {
+      processTestCase((TestCase) entityInterface, event, indexType);
+    } else {
+      addTestCaseFromLogicalTestSuite((TestSuite) entityInterface, event, indexType);
+    }
+  }
+
+  private void addTestCaseFromLogicalTestSuite(TestSuite testSuite, ChangeEvent event, ElasticSearchIndexType indexType)
+      throws IOException {
+    // Process creation of test cases (linked to a logical test suite) by adding reference to existing test cases
+    List<EntityReference> testCaseReferences = testSuite.getTests();
+    TestSuite testSuiteReference =
+        new TestSuite()
+            .withId(testSuite.getId())
+            .withName(testSuite.getName())
+            .withDisplayName(testSuite.getDisplayName())
+            .withDescription(testSuite.getDescription())
+            .withFullyQualifiedName(testSuite.getFullyQualifiedName())
+            .withDeleted(testSuite.getDeleted())
+            .withHref(testSuite.getHref())
+            .withExecutable(testSuite.getExecutable());
+    Map<String, Object> testSuiteDoc = JsonUtils.getMap(testSuiteReference);
+    if (event.getEventType() == ENTITY_UPDATED) {
+      for (EntityReference testcaseReference : testCaseReferences) {
+        UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, testcaseReference.getId().toString());
+        String scripText = "ctx._source.testSuite.add(params)";
+        Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scripText, testSuiteDoc);
+        updateRequest.script(script);
+        updateElasticSearch(updateRequest);
+      }
+    }
+  }
+
+  private void processTestCase(TestCase testCase, ChangeEvent event, ElasticSearchIndexType indexType)
+      throws IOException {
+    // Process creation of test cases (linked to an executable test suite
+    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, testCase.getId().toString());
+    TestCaseIndex testCaseIndex;
+
+    switch (event.getEventType()) {
+      case ENTITY_CREATED:
+        testCaseIndex = new TestCaseIndex((TestCase) event.getEntity());
+        updateRequest.doc(JsonUtils.pojoToJson(testCaseIndex.buildESDocForCreate()), XContentType.JSON);
+        updateRequest.docAsUpsert(true);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_UPDATED:
+        testCaseIndex = new TestCaseIndex((TestCase) event.getEntity());
+        scriptedUpsert(testCaseIndex.buildESDoc(), updateRequest);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_SOFT_DELETED:
+        softDeleteEntity(updateRequest);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_DELETED:
+        EntityReference testSuiteReference = ((TestCase) event.getEntity()).getTestSuite();
+        TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, testSuiteReference.getId(), "", Include.ALL);
+        if (testSuite.getExecutable()) {
+          // Delete the test case from the index if deleted from an executable test suite
+          DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, event.getEntityId().toString());
+          deleteEntityFromElasticSearch(deleteRequest);
+        } else {
+          // for non-executable test suites, simply remove the testSuite from the testCase and update the index
+          scriptedDeleteTestCase(updateRequest, testSuite.getId());
+          updateElasticSearch(updateRequest);
+        }
+        break;
+    }
+  }
+
   private void updateTag(ChangeEvent event) throws IOException {
     UpdateRequest updateRequest =
         new UpdateRequest(ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName, event.getEntityId().toString());
@@ -633,6 +747,15 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     updateRequest.scriptedUpsert(true);
   }
 
+  private void scriptedDeleteTestCase(UpdateRequest updateRequest, UUID testSuiteId) {
+    // Remove logical test suite from test case `testSuite` field
+    String scriptTxt =
+        "for (int i = 0; i < ctx._source.testSuite.length; i++) { if (ctx._source.testSuite[i].id == '%s') { ctx._source.testSuite.remove(i) }}";
+    scriptTxt = String.format(scriptTxt, testSuiteId);
+    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
+    updateRequest.script(script);
+  }
+
   private void softDeleteEntity(UpdateRequest updateRequest) {
     String scriptTxt = "ctx._source.deleted=true";
     Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
@@ -643,6 +766,13 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     if (updateRequest != null) {
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
       client.update(updateRequest, RequestOptions.DEFAULT);
+    }
+  }
+
+  private void updateElasticSearchByQuery(UpdateByQueryRequest updateByQueryRequest) throws IOException {
+    if (updateByQueryRequest != null) {
+      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
+      client.updateByQuery(updateByQueryRequest, RequestOptions.DEFAULT);
     }
   }
 

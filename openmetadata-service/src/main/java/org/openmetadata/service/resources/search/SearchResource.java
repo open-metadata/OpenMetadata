@@ -258,6 +258,9 @@ public class SearchResource {
       case "query_search_index":
         searchSourceBuilder = buildQuerySearchBuilder(query, from, size);
         break;
+      case "test_case_search_index":
+        searchSourceBuilder = buildTestCaseSearch(query, from, size);
+        break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(query, from, size);
         break;
@@ -901,6 +904,39 @@ public class SearchResource {
     hb.field(highlightTagDisplayName);
     hb.field(highlightDescription);
     hb.field(highlightTagName);
+    hb.preTags(PRE_TAG);
+    hb.postTags(POST_TAG);
+
+    return searchBuilder(queryBuilder, hb, from, size);
+  }
+
+  private SearchSourceBuilder buildTestCaseSearch(String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .field(FIELD_NAME, 10.0f)
+            .field(DESCRIPTION, 3.0f)
+            .field("testSuite.fullyQualifiedName", 10.0f)
+            .field("testSuite.name", 10.0f)
+            .field("testSuite.description", 3.0f)
+            .field("entityLink", 3.0f)
+            .field("entityFQN", 10.0f)
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
+
+    HighlightBuilder.Field highlightTestCaseDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
+    highlightTestCaseDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightTestCaseName = new HighlightBuilder.Field(FIELD_NAME);
+    highlightTestCaseName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightTestSuiteName = new HighlightBuilder.Field("testSuite.name");
+    highlightTestSuiteName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightTestSuiteDescription = new HighlightBuilder.Field("testSuite.description");
+    highlightTestSuiteDescription.highlighterType(UNIFIED);
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightTestCaseDescription);
+    hb.field(highlightTestCaseName);
+    hb.field(highlightTestSuiteName);
+    hb.field(highlightTestSuiteDescription);
+
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
 

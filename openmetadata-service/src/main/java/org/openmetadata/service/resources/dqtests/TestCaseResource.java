@@ -43,6 +43,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -682,7 +683,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext = new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().entity(testSuite).build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-
+    if (testSuite.getExecutable()) {
+      throw new IllegalArgumentException("You are trying to add test cases to an executable test suite.");
+    }
     List<UUID> testCaseIds = createLogicalTestCases.getTestCaseIds();
 
     int existingTestCaseCount = repository.getTestCaseCount(testCaseIds);
@@ -690,6 +693,26 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       throw new IllegalArgumentException("You are trying to add one or more test cases that do not exist.");
     }
     return repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
+  }
+
+  @GET
+  @Path("/executionSummary")
+  @Operation(
+      operationId = "getExecutionSummaryOfTestCases",
+      summary = "Get the execution summary of test cases",
+      description = "Get the execution summary of test cases.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Tests Execution Summary",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSummary.class)))
+      })
+  public TestSummary getTestsExecutionSummary(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
+      throws IOException {
+    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().build();
+    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    return repository.getTestSummary();
   }
 
   private TestCase getTestCase(CreateTestCase create, String user, EntityLink entityLink) throws IOException {

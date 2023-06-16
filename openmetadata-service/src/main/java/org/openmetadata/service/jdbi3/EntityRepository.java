@@ -1449,6 +1449,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void updateDescription() throws JsonProcessingException {
       if (operation.isPut() && !nullOrEmpty(original.getDescription()) && updatedByBot()) {
         // Revert change to non-empty description if it is being updated by a bot
+        // This is to prevent bots from overwriting the description. Description need to be
+        // updated with a PATCH request
         updated.setDescription(original.getDescription());
         return;
       }
