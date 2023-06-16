@@ -38,6 +38,8 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class MetadataServiceResourceTest extends EntityResourceTest<MetadataService, CreateMetadataService> {
+  public static final String DEFAULT_OPENMETADATA_SERVICE_NAME = "OpenMetadata";
+
   public MetadataServiceResourceTest() {
     super(
         Entity.METADATA_SERVICE,
@@ -67,6 +69,12 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
 
     metadataService = metadataServiceResourceTest.createEntity(createMetadata, ADMIN_AUTH_HEADERS);
     ATLAS_SERVICE_REFERENCE = metadataService.getEntityReference();
+  }
+
+  @Test
+  void defaultOpenMetadataServiceMustExist(TestInfo test) throws HttpResponseException {
+    MetadataService service = getEntityByName(DEFAULT_OPENMETADATA_SERVICE_NAME, ADMIN_AUTH_HEADERS);
+    assertEquals(service.getName(), DEFAULT_OPENMETADATA_SERVICE_NAME);
   }
 
   @Test

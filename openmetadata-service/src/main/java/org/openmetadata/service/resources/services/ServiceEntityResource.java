@@ -53,9 +53,11 @@ public abstract class ServiceEntityResource<
   }
 
   protected T decryptOrNullify(SecurityContext securityContext, T service) {
-    service
-        .getConnection()
-        .setConfig(retrieveServiceConnectionConfig(service, authorizer.shouldMaskPasswords(securityContext)));
+    if (service.getConnection() != null) {
+      service
+          .getConnection()
+          .setConfig(retrieveServiceConnectionConfig(service, authorizer.shouldMaskPasswords(securityContext)));
+    }
     return service;
   }
 
