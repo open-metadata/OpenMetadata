@@ -2918,15 +2918,16 @@ public interface CollectionDAO {
             + "ORDER BY extension")
     List<ExtensionRecord> getExtensions(@Bind("id") String id, @Bind("extensionPrefix") String extensionPrefix);
 
-    @SqlUpdate("DELETE FROM entity_extension_time_series WHERE entityFQN = :entityFQN")
-    void deleteAll(@Bind("entityFQN") String entityFQN);
+    @SqlUpdate("DELETE FROM entity_extension_time_series WHERE entityFQNHash = :entityFQNHash")
+    void deleteAll(@Bind("entityFQNHash") String entityFQNHash);
+
+    @SqlUpdate(
+        "DELETE FROM entity_extension_time_series WHERE entityFQNHash = :entityFQNHash AND extension = :extension")
+    void delete(@Bind("entityFQNHash") String entityFQNHash, @Bind("extension") String extension);
 
     // This just saves the limit number of records, and remove all other with given extension
     @SqlUpdate(
-        "DELETE FROM entity_extension_time_series WHERE extension = :extension AND entityFQN NOT IN(SELECT entityFQN FROM (select * from entity_extension_time_series WHERE extension = :extension ORDER BY timestamp DESC LIMIT :records) AS subquery)")
-    void delete(@Bind("entityFQNHash") String entityFQNHash, @Bind("extension") String extension);
-
-    @SqlUpdate("DELETE FROM entity_extension_time_series WHERE entityFQNHash = :entityFQNHash")
+        "DELETE FROM entity_extension_time_series WHERE extension = :extension AND entityFQNHash NOT IN(SELECT entityFQN FROM (select * from entity_extension_time_series WHERE extension = :extension ORDER BY timestamp DESC LIMIT :records) AS subquery)")
     void deleteLastRecords(@Bind("extension") String extension, @Bind("records") int noOfRecord);
 
     @SqlUpdate(

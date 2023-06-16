@@ -53,6 +53,7 @@ public class ListFilter {
     condition = addCondition(condition, getWebhookCondition(tableName));
     condition = addCondition(condition, getWebhookTypeCondition(tableName));
     condition = addCondition(condition, getTestCaseCondition());
+    condition = addCondition(condition, getTestSuiteCondition());
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
 
@@ -109,15 +110,15 @@ public class ListFilter {
 
   private String getTestCaseCondition() {
     String condition1 = "";
-    String entityFQNHash = getQueryParam("entityFQNHash");
+    String entityFQN = getQueryParam("entityFQN");
     boolean includeAllTests = Boolean.parseBoolean(getQueryParam("includeAllTests"));
-    if (entityFQNHash != null) {
+    if (entityFQN != null) {
       condition1 =
           includeAllTests
               ? String.format(
-                  "entityFQNHash LIKE '%s%s%%' OR entityFQNHash = '%s'",
-                  escape(entityFQNHash), Entity.SEPARATOR, escapeApostrophe(entityFQNHash))
-              : String.format("entityFQNHash = '%s'", escapeApostrophe(entityFQNHash));
+                  "entityFQN LIKE '%s%s%%' OR entityFQN = '%s'",
+                  escape(entityFQN), Entity.SEPARATOR, escapeApostrophe(entityFQN))
+              : String.format("entityFQN = '%s'", escapeApostrophe(entityFQN));
     }
 
     String condition2 = "";
@@ -129,6 +130,29 @@ public class ListFilter {
               testSuiteId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal(), Entity.TEST_SUITE);
     }
     return addCondition(condition1, condition2);
+  }
+
+  private String getTestSuiteCondition() {
+    String testSuiteType = getQueryParam("testSuiteType");
+
+    if (testSuiteType == null) {
+      return "";
+    }
+
+    switch (testSuiteType) {
+      case ("executable"):
+        if (DatasourceConfig.getInstance().isMySQL()) {
+          return "JSON_UNQUOTE(JSON_EXTRACT(json, '$.executable')) = 'true'";
+        }
+        return "json->>'executable' = 'true'";
+      case ("logical"):
+        if (DatasourceConfig.getInstance().isMySQL()) {
+          return "JSON_UNQUOTE(JSON_EXTRACT(json, '$.executable')) = 'false'";
+        }
+        return "json->>'executable' = 'false'";
+      default:
+        return "";
+    }
   }
 
   private String getFqnPrefixCondition(String tableName, String fqnPrefix) {

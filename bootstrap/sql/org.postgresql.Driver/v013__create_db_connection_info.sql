@@ -68,7 +68,8 @@ ALTER TABLE policy_entity DROP COLUMN fullyQualifiedName,  ADD COLUMN fqnHash VA
 
 ALTER TABLE role_entity DROP CONSTRAINT role_entity_name_key,  ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
 ALTER TABLE automations_workflow DROP CONSTRAINT automations_workflow_name_key,  ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE test_connection_definition  ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
+ALTER TABLE test_connection_definition  ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash),
+    ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL;
 
 
 -- update services
@@ -107,7 +108,7 @@ ALTER TABLE ingestion_pipeline_entity DROP COLUMN fullyQualifiedName, ADD COLUMN
 ALTER TABLE storage_container_entity  DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
  ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL;
 ALTER TABLE dashboard_data_model_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
- ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') STORED NOT NULL;
+ ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL;
 
 ALTER TABLE query_entity  ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
 ALTER TABLE team_entity DROP CONSTRAINT team_entity_name_key, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);

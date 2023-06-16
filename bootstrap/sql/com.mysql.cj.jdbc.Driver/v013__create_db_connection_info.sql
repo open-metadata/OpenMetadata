@@ -84,7 +84,8 @@ ALTER TABLE policy_entity DROP COLUMN fullyQualifiedName,  ADD COLUMN fqnHash VA
 
 ALTER TABLE role_entity DROP KEY `name`,  ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
 ALTER TABLE automations_workflow DROP KEY `name`,  ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE test_connection_definition ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
+ALTER TABLE test_connection_definition ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash),
+    ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
 
 
 -- update services

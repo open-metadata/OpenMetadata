@@ -182,7 +182,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
       ResultList<Pipeline> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Pipeline db : list.getData()) {
-        assertEquals(service, db.getService().getName());
+        assertEquals(service, db.getService().getFullyQualifiedName());
       }
     }
   }

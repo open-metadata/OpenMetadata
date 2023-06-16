@@ -50,7 +50,9 @@ public interface EntityDAO<T extends EntityInterface> {
     return "name";
   }
 
-  String getNameHashColumn();
+  default String getNameHashColumn() {
+    return "nameHash";
+  };
 
   default boolean supportsSoftDelete() {
     return true;
@@ -58,27 +60,27 @@ public interface EntityDAO<T extends EntityInterface> {
 
   /** Common queries for all entities implemented here. Do not override. */
   @ConnectionAwareSqlUpdate(
-      value = "INSERT INTO <table> (<nameColumnHash>, json) VALUES (:nameColumnHashValue, :json)",
+      value = "INSERT INTO <table> (<nameHashColumn>, json) VALUES (:nameHashColumnValue, :json)",
       connectionType = MYSQL)
   @ConnectionAwareSqlUpdate(
-      value = "INSERT INTO <table> (<nameColumnHash>, json) VALUES (:nameColumnHashValue, :json :: jsonb)",
+      value = "INSERT INTO <table> (<nameHashColumn>, json) VALUES (:nameHashColumnValue, :json :: jsonb)",
       connectionType = POSTGRES)
   void insert(
       @Define("table") String table,
-      @Define("nameColumnHash") String nameColumnHash,
-      @Bind("nameColumnHashValue") String nameColumnHashValue,
+      @Define("nameHashColumn") String nameHashColumn,
+      @Bind("nameHashColumnValue") String nameHashColumnValue,
       @Bind("json") String json);
 
   @ConnectionAwareSqlUpdate(
-      value = "UPDATE <table> SET  json = :json, <nameColumnHash> = :nameColumnHashValue WHERE id = :id",
+      value = "UPDATE <table> SET  json = :json, <nameHashColumn> = :nameHashColumnValue WHERE id = :id",
       connectionType = MYSQL)
   @ConnectionAwareSqlUpdate(
-      value = "UPDATE <table> SET  json = (:json :: jsonb), <nameColumnHash> = :nameColumnHashValue WHERE id = :id",
+      value = "UPDATE <table> SET  json = (:json :: jsonb), <nameHashColumn> = :nameHashColumnValue WHERE id = :id",
       connectionType = POSTGRES)
   void update(
       @Define("table") String table,
-      @Define("nameColumnHash") String nameColumnHash,
-      @Bind("nameColumnHashValue") String nameColumnHashValue,
+      @Define("nameHashColumn") String nameHashColumn,
+      @Bind("nameHashColumnValue") String nameHashColumnValue,
       @Bind("id") String id,
       @Bind("json") String json);
 
@@ -288,7 +290,7 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   default List<String> listAfter(ListFilter filter, int limit, int offset) {
-    return listAfter(getTableName(), getNameColumn(), filter.getCondition(), limit, offset);
+    return listAfter(getTableName(), getNameHashColumn(), filter.getCondition(), limit, offset);
   }
 
   default void exists(UUID id) {

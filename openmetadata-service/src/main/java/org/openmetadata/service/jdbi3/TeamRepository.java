@@ -565,7 +565,7 @@ public class TeamRepository extends EntityRepository<Team> {
       }
 
       // Field 6 - Owner
-      importedTeam.setOwner(getEntityReference(printer, csvRecord, 5, Entity.USER));
+      importedTeam.setOwner(getOwner(printer, csvRecord, 5));
       if (!processRecord) {
         return null;
       }
@@ -600,7 +600,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     private void getParents(CSVPrinter printer, CSVRecord csvRecord, Team importedTeam) throws IOException {
-      List<EntityReference> parentRefs = getEntityReferences(printer, csvRecord, 4, Entity.TEAM);
+      List<EntityReference> parentRefs = getUserOrTeamEntityReferences(printer, csvRecord, 4, Entity.TEAM);
 
       // Validate team being created is under the hierarchy of the team for which CSV is being imported to
       for (EntityReference parentRef : listOrEmpty(parentRefs)) {

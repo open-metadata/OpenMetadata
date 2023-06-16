@@ -30,6 +30,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -66,7 +67,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         JsonUtils.readValue(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .getExtensionAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp),
+                .getExtensionAtTimestamp(FullyQualifiedName.buildHash(fqn), TESTCASE_RESULT_EXTENSION, timestamp),
             TestCaseResult.class);
 
     TestCaseResult updated = JsonUtils.applyPatch(original, patch, TestCaseResult.class);
@@ -76,7 +77,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       updated.getTestCaseFailureStatus().setUpdatedAt(System.currentTimeMillis());
       daoCollection
           .entityExtensionTimeSeriesDao()
-          .update(fqn, TESTCASE_RESULT_EXTENSION, JsonUtils.pojoToJson(updated), timestamp);
+          .update(
+              FullyQualifiedName.buildHash(fqn), TESTCASE_RESULT_EXTENSION, JsonUtils.pojoToJson(updated), timestamp);
       change = ENTITY_UPDATED;
     }
     return new RestUtil.PatchResponse<>(Response.Status.OK, updated, change);
@@ -85,7 +87,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   @Override
   public void setFullyQualifiedName(TestCase test) {
     EntityLink entityLink = EntityLink.parse(test.getEntityLink());
-    test.setFullyQualifiedName(FullyQualifiedName.add(entityLink.getFullyQualifiedFieldValue(), test.getName()));
+    test.setFullyQualifiedName(
+        FullyQualifiedName.add(
+            entityLink.getFullyQualifiedFieldValue(), EntityInterfaceUtil.quoteName(test.getName())));
     test.setEntityFQN(entityLink.getFullyQualifiedFieldValue());
   }
 

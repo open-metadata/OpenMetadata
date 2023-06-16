@@ -18,6 +18,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.CsvUtil.FIELD_SEPARATOR;
 import static org.openmetadata.csv.CsvUtil.addEntityReference;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
 import static org.openmetadata.csv.CsvUtil.addField;
@@ -244,7 +245,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       addEntityReferences(recordList, entity.getRelatedTerms());
       addField(recordList, termReferencesToRecord(entity.getReferences()));
       addTagLabels(recordList, entity.getTags());
-      addEntityReferences(recordList, entity.getReviewers());
+      addField(recordList, reviewerReferencesToRecord(entity.getReviewers()));
       addOwner(recordList, entity.getOwner());
       addField(recordList, entity.getStatus().value());
       return recordList;
@@ -255,7 +256,13 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           ? null
           : list.stream()
               .map(termReference -> termReference.getName() + CsvUtil.FIELD_SEPARATOR + termReference.getEndpoint())
-              .collect(Collectors.joining(";"));
+              .collect(Collectors.joining(FIELD_SEPARATOR));
+    }
+
+    private String reviewerReferencesToRecord(List<EntityReference> reviewers) {
+      return nullOrEmpty(reviewers)
+          ? null
+          : reviewers.stream().map(EntityReference::getName).collect(Collectors.joining(FIELD_SEPARATOR));
     }
   }
 
