@@ -45,6 +45,7 @@ import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
+import org.openmetadata.schema.alert.type.DataInsightAlertConfig;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
@@ -89,8 +90,17 @@ public class DataInsightsReportJob implements Job {
     long scheduleTime = currentTime - getTimeFromSchedule(dataReport.getTrigger());
     int numberOfDaysChange = getNumberOfDays(dataReport.getTrigger());
     try {
-      sendReportsToTeams(repository, client, scheduleTime, currentTime, numberOfDaysChange);
-      sendToAdmins(repository, client, scheduleTime, currentTime, numberOfDaysChange);
+      DataInsightAlertConfig insightAlertConfig =
+          JsonUtils.convertValue(dataReport.getSubscriptionConfig(), DataInsightAlertConfig.class);
+      // Send to Admins
+      if (Boolean.TRUE.equals(insightAlertConfig.getSendToAdmins())) {
+        sendToAdmins(repository, client, scheduleTime, currentTime, numberOfDaysChange);
+      }
+
+      // Send to Teams
+      if (Boolean.TRUE.equals(insightAlertConfig.getSendToTeams())) {
+        sendReportsToTeams(repository, client, scheduleTime, currentTime, numberOfDaysChange);
+      }
     } catch (Exception e) {
       LOG.error("[DIReport] Failed in sending report due to", e);
       throw new DataInsightJobException(e);
@@ -523,8 +533,10 @@ public class DataInsightsReportJob implements Job {
           return 604800000L;
         case MONTHLY:
           return 2592000000L;
+        default:
+          throw new IllegalArgumentException("Invalid Trigger Type, Cannot be Scheduled.");
       }
     }
-    throw new IllegalArgumentException("Invalid Trigger Type, Can only be Scheduled.");
+    throw new IllegalArgumentException("Invalid Trigger Type, Cannot be Scheduled.");
   }
 }

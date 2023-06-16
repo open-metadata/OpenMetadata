@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import url('../variables.less');
 
-import { ReactNode } from 'react';
-
-export interface HeaderProps {
-  data: {
-    header: ReactNode;
-    subHeader: string;
-  };
+.badge-grey {
+  .ant-badge-count {
+    background: @grey-bg-with-alpha;
+    color: @grey-3;
+    box-shadow: none;
+    border: 1px solid @grey-3;
+  }
 }
