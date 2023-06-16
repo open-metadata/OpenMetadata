@@ -255,11 +255,11 @@ export const DataAssetsHeader = ({
 
         returnData.extraInfo = (
           <>
-            {dashboardDetails.dashboardUrl && (
+            {dashboardDetails.sourceUrl && (
               <ExtraInfoLink
-                href={dashboardDetails.dashboardUrl}
+                href={dashboardDetails.sourceUrl}
                 label={entityName}
-                value={dashboardDetails.dashboardUrl}
+                value={dashboardDetails.sourceUrl}
               />
             )}
           </>
@@ -274,11 +274,11 @@ export const DataAssetsHeader = ({
 
         returnData.extraInfo = (
           <>
-            {pipelineDetails.pipelineUrl && (
+            {pipelineDetails.sourceUrl && (
               <ExtraInfoLink
-                href={pipelineDetails.pipelineUrl}
+                href={pipelineDetails.sourceUrl}
                 label=""
-                value={pipelineDetails.pipelineUrl}
+                value={pipelineDetails.sourceUrl}
               />
             )}
           </>
