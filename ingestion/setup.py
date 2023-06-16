@@ -95,6 +95,7 @@ base_requirements = {
     "Jinja2>=2.11.3",
     "jsonpatch==1.32",
     "jsonschema",
+    "memory-profiler",
     "mypy_extensions>=0.4.3",
     "pydantic~=1.10",
     VERSIONS["pymysql"],
@@ -213,7 +214,8 @@ plugins: Dict[str, Set[str]] = {
     "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
-        "sqlalchemy-redshift~=0.8",
+        "sqlalchemy-redshift==0.8.9",
+        "redshift-connector==2.0.908",
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
     },
