@@ -1,18 +1,18 @@
-package org.openmetadata.service.search.open;
+package org.openmetadata.service.search.elasticSearch;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.elasticsearch.search.aggregations.Aggregations;
+import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
+import org.elasticsearch.search.aggregations.metrics.Max;
+import org.elasticsearch.search.aggregations.metrics.Sum;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.MostActiveUsers;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
-import org.opensearch.search.aggregations.Aggregations;
-import org.opensearch.search.aggregations.bucket.MultiBucketsAggregation;
-import org.opensearch.search.aggregations.metrics.Max;
-import org.opensearch.search.aggregations.metrics.Sum;
 
-public class OsMostActiveUsersAggregator extends DataInsightAggregatorInterface {
+public class EsMostActiveUsersAggregator extends DataInsightAggregatorInterface {
 
-  public OsMostActiveUsersAggregator(
+  public EsMostActiveUsersAggregator(
       Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
     super(aggregations, dataInsightChartType);
   }
@@ -25,7 +25,7 @@ public class OsMostActiveUsersAggregator extends DataInsightAggregatorInterface 
 
   @Override
   public List<Object> aggregate() {
-    MultiBucketsAggregation userNameBuckets = this.aggregationsOs.get("userName");
+    MultiBucketsAggregation userNameBuckets = this.aggregationsEs.get("userName");
     List<Object> data = new ArrayList<>();
     for (MultiBucketsAggregation.Bucket userNameBucket : userNameBuckets.getBuckets()) {
       String userName = userNameBucket.getKeyAsString();

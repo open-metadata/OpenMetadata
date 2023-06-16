@@ -13,14 +13,10 @@
 
 package org.openmetadata.service;
 
-import static java.lang.String.format;
-
 import io.dropwizard.jersey.jackson.JacksonFeature;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpHost;
 import org.elasticsearch.client.RestClient;
@@ -41,6 +37,11 @@ import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.WebTarget;
+
+import static java.lang.String.format;
+
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class OpenMetadataApplicationTest {
@@ -50,6 +51,10 @@ public abstract class OpenMetadataApplicationTest {
   public static final String FERNET_KEY_1 = "ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ";
   private static ElasticsearchContainer ELASTIC_SEARCH_CONTAINER;
 
+  private static final String JDBC_CONTAINER_CLASS_NAME = "org.testcontainers.containers.MySQLContainer";
+  private static final String JDBC_CONTAINER_IMAGE = "mysql:8";
+  private static final String ELASTIC_SEARCH_CONTAINER_IMAGE = "ocker.elastic.co/elasticsearch/elasticsearch:7.16.0";
+
   static {
     CollectionRegistry.addTestResource(webhookCallbackResource);
     Fernet.getInstance().setFernetKey(FERNET_KEY_1);
@@ -57,10 +62,27 @@ public abstract class OpenMetadataApplicationTest {
 
   @BeforeAll
   public static void createApplication() throws Exception {
+    final String jdbcContainerClassName;
+    final String jdbcContainerImage;
+    final String elasticSearchContainerImage;
     // The system properties are provided by maven-surefire for testing with mysql and postgres
-    final String jdbcContainerClassName = System.getProperty("jdbcContainerClassName");
-    final String jdbcContainerImage = System.getProperty("jdbcContainerImage");
-    final String elasticSearchContainerImage = System.getProperty("elasticSearchContainerClassName");
+    if (System.getProperty("jdbcContainerClassName").isEmpty()
+        || System.getProperty("jdbcContainerClassName") == null) {
+      jdbcContainerClassName = JDBC_CONTAINER_CLASS_NAME;
+    } else {
+      jdbcContainerClassName = System.getProperty("jdbcContainerClassName");
+    }
+    if (System.getProperty("jdbcContainerImage").isEmpty() || System.getProperty("jdbcContainerImage") == null) {
+      jdbcContainerImage = JDBC_CONTAINER_IMAGE;
+    } else {
+      jdbcContainerImage = System.getProperty("jdbcContainerImage");
+    }
+    if (System.getProperty("elasticSearchContainerClassName").isEmpty()
+        || System.getProperty("elasticSearchContainerClassName") == null) {
+      elasticSearchContainerImage = ELASTIC_SEARCH_CONTAINER_IMAGE;
+    } else {
+      elasticSearchContainerImage = System.getProperty("elasticSearchContainerClassName");
+    }
     LOG.info("Using test container class {} and image {}", jdbcContainerClassName, jdbcContainerImage);
 
     JdbcDatabaseContainer<?> sqlContainer =
