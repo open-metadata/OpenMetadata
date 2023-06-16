@@ -9,13 +9,17 @@
     "postgresType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Postgres"],
+      "enum": [
+        "Postgres"
+      ],
       "default": "Postgres"
     },
     "postgresScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["postgresql+psycopg2"],
+      "enum": [
+        "postgresql+psycopg2"
+      ],
       "default": "postgresql+psycopg2"
     }
   },
@@ -37,15 +41,21 @@
       "description": "Username to connect to Postgres. This user should have privileges to read all the metadata in Postgres.",
       "type": "string"
     },
-    "password": {
-      "title": "Password",
-      "description": "Password to connect to Postgres.",
-      "type": "string",
-      "format": "password"
+    "authType": {
+      "title": "Auth Configuration Type",
+      "description": "Choose Auth Config Type.",
+      "oneOf": [
+        {
+          "$ref": "./common/basicAuth.json"
+        },
+        {
+          "$ref": "./common/iamAuthConfig.json"
+        }
+      ]
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "Host and port of the Postgres service.",
+      "description": "Host and port of the source service.",
       "type": "string"
     },
     "database": {
@@ -56,7 +66,14 @@
     "sslMode": {
       "title": "SSL Mode",
       "description": "SSL Mode to connect to postgres database.",
-      "enum": ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"],
+      "enum": [
+        "disable",
+        "allow",
+        "prefer",
+        "require",
+        "verify-ca",
+        "verify-full"
+      ],
       "default": "disable"
     },
     "sslConfig": {
@@ -109,5 +126,9 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username", "database"]
+  "required": [
+    "hostPort",
+    "username",
+    "database"
+  ]
 }
