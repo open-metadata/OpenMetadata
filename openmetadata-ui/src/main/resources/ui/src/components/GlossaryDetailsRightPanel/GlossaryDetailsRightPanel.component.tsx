@@ -183,6 +183,17 @@ const GlossaryDetailsRightPanel = ({
     [isVersionView]
   );
 
+  const tags = useMemo(
+    () =>
+      isVersionView
+        ? getEntityVersionTags(
+            selectedData,
+            selectedData.changeDescription as ChangeDescription
+          )
+        : selectedData.tags,
+    [isVersionView, selectedData]
+  );
+
   return (
     <Card>
       <Row gutter={[0, 40]}>
@@ -286,14 +297,7 @@ const GlossaryDetailsRightPanel = ({
               <TagsInput
                 editable={permissions.EditAll || permissions.EditTags}
                 isVersionView={isVersionView}
-                tags={
-                  isVersionView
-                    ? getEntityVersionTags(
-                        selectedData,
-                        selectedData.changeDescription as ChangeDescription
-                      )
-                    : selectedData.tags
-                }
+                tags={tags}
                 onTagsUpdate={handleTagsUpdate}
               />
             )}

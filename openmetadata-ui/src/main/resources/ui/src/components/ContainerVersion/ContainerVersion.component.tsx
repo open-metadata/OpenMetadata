@@ -113,6 +113,14 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
     );
   }, [currentVersionData]);
 
+  const tags = useMemo(() => {
+    return getEntityVersionTags(currentVersionData, changeDescription);
+  }, [currentVersionData, changeDescription]);
+
+  const description = useMemo(() => {
+    return getEntityVersionDescription(currentVersionData, changeDescription);
+  }, [currentVersionData, changeDescription]);
+
   return (
     <PageLayoutV1
       pageTitle={t('label.entity-detail-plural', {
@@ -130,7 +138,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
             extraInfo={extraInfo}
             followersList={[]}
             serviceType={currentVersionData.serviceType ?? ''}
-            tags={getEntityVersionTags(currentVersionData, changeDescription)}
+            tags={tags}
             tier={undefined}
             titleLinks={breadCrumbList}
             version={version}
@@ -148,13 +156,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
                 <Card className="m-y-md">
                   <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
                     <div className="tw-col-span-full">
-                      <Description
-                        isReadOnly
-                        description={getEntityVersionDescription(
-                          currentVersionData,
-                          changeDescription
-                        )}
-                      />
+                      <Description isReadOnly description={description} />
                     </div>
 
                     <div className="tw-col-span-full">

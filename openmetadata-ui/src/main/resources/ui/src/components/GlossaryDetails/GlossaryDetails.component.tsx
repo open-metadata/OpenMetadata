@@ -65,16 +65,17 @@ const GlossaryDetails = ({
     }
   };
 
-  const glossaryDescription = useMemo(() => {
-    if (isVersionView) {
-      return getEntityVersionDescription(
-        glossary,
-        glossary.changeDescription as ChangeDescription
-      );
-    } else {
-      return glossary.description;
-    }
-  }, [glossary, isVersionView]);
+  const description = useMemo(
+    () =>
+      isVersionView
+        ? getEntityVersionDescription(
+            glossary,
+            glossary.changeDescription as ChangeDescription
+          )
+        : glossary.description,
+
+    [glossary, isVersionView]
+  );
 
   return (
     <Row
@@ -99,7 +100,7 @@ const GlossaryDetails = ({
             <Space className="w-full" direction="vertical" size={24}>
               <DescriptionV1
                 wrapInCard
-                description={glossaryDescription}
+                description={description}
                 entityName={glossary.displayName ?? glossary.name}
                 hasEditAccess={
                   permissions.EditDescription || permissions.EditAll

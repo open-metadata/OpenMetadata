@@ -93,6 +93,14 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
     );
   }, [currentVersionData]);
 
+  const tags = useMemo(() => {
+    return getEntityVersionTags(currentVersionData, changeDescription);
+  }, [currentVersionData, changeDescription]);
+
+  const description = useMemo(() => {
+    return getEntityVersionDescription(currentVersionData, changeDescription);
+  }, [currentVersionData, changeDescription]);
+
   return (
     <PageLayoutV1
       pageTitle={t('label.entity-detail-plural', {
@@ -110,7 +118,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
             extraInfo={extraInfo}
             followersList={[]}
             serviceType={currentVersionData.serviceType ?? ''}
-            tags={getEntityVersionTags(currentVersionData, changeDescription)}
+            tags={tags}
             tier={tier}
             titleLinks={slashedTableName}
             version={Number(version)}
@@ -128,13 +136,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
                 <Card className="m-y-md">
                   <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
                     <div className="tw-col-span-full">
-                      <Description
-                        isReadOnly
-                        description={getEntityVersionDescription(
-                          currentVersionData,
-                          changeDescription
-                        )}
-                      />
+                      <Description isReadOnly description={description} />
                     </div>
 
                     <div className="tw-col-span-full">

@@ -204,6 +204,14 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
     );
   }, [currentVersionData]);
 
+  const tags = useMemo(() => {
+    return getEntityVersionTags(currentVersionData, changeDescription);
+  }, [currentVersionData, changeDescription]);
+
+  const description = useMemo(() => {
+    return getEntityVersionDescription(currentVersionData, changeDescription);
+  }, [currentVersionData, changeDescription]);
+
   return (
     <PageLayoutV1
       pageTitle={t('label.entity-detail-plural', {
@@ -223,7 +231,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
             extraInfo={extraInfo}
             followersList={[]}
             serviceType={currentVersionData.serviceType ?? ''}
-            tags={getEntityVersionTags(currentVersionData, changeDescription)}
+            tags={tags}
             tier={{} as TagLabel}
             titleLinks={slashedMlModelName}
             version={Number(version)}
@@ -242,13 +250,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                   />
                 }>
                 <Card className="m-y-md">
-                  <Description
-                    isReadOnly
-                    description={getEntityVersionDescription(
-                      currentVersionData,
-                      changeDescription
-                    )}
-                  />
+                  <Description isReadOnly description={description} />
                   <div>
                     {(currentVersionData as Mlmodel).mlFeatures &&
                     (currentVersionData as Mlmodel).mlFeatures?.length ? (

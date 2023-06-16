@@ -153,6 +153,14 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
     []
   );
 
+  const tags = useMemo(() => {
+    return getEntityVersionTags(currentVersionData, changeDescription);
+  }, [currentVersionData, changeDescription]);
+
+  const description = useMemo(() => {
+    return getEntityVersionDescription(currentVersionData, changeDescription);
+  }, [currentVersionData, changeDescription]);
+
   return (
     <PageLayoutV1
       pageTitle={t('label.entity-detail-plural', {
@@ -173,7 +181,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               extraInfo={extraInfo}
               followersList={[]}
               serviceType={currentVersionData.serviceType ?? ''}
-              tags={getEntityVersionTags(currentVersionData, changeDescription)}
+              tags={tags}
               tier={{} as TagLabel}
               titleLinks={slashedDashboardName}
               version={Number(version)}
@@ -195,13 +203,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                   <Card className="m-y-md">
                     <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
                       <div className="tw-col-span-full">
-                        <Description
-                          isReadOnly
-                          description={getEntityVersionDescription(
-                            currentVersionData,
-                            changeDescription
-                          )}
-                        />
+                        <Description isReadOnly description={description} />
                       </div>
                       <div className="m-y-md tw-col-span-full">
                         <Table

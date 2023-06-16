@@ -84,6 +84,17 @@ const GlossaryOverviewTab = ({
     }
   };
 
+  const tags = useMemo(
+    () =>
+      isVersionView
+        ? getEntityVersionTags(
+            selectedData,
+            selectedData.changeDescription as ChangeDescription
+          )
+        : selectedData.tags,
+    [isVersionView, selectedData]
+  );
+
   return (
     <Row className="glossary-overview-tab" gutter={[16, 16]}>
       <Col data-testid="updated-by-container" span={18}>
@@ -138,14 +149,7 @@ const GlossaryOverviewTab = ({
                     <TagsInput
                       editable={hasEditTagsPermissions}
                       isVersionView={isVersionView}
-                      tags={
-                        isVersionView
-                          ? getEntityVersionTags(
-                              selectedData,
-                              selectedData.changeDescription as ChangeDescription
-                            )
-                          : selectedData.tags
-                      }
+                      tags={tags}
                       onTagsUpdate={handleTagsUpdate}
                     />
                   </Space>
