@@ -33,7 +33,6 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.elasticsearch.ElasticsearchException;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
@@ -76,6 +75,7 @@ import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.UpdateSearchEventsConstant;
 import org.openmetadata.service.util.JsonUtils;
+import org.opensearch.OpenSearchException;
 import org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.opensearch.action.bulk.BulkItemResponse;
 import org.opensearch.action.bulk.BulkRequest;
@@ -1158,8 +1158,7 @@ public class OpenSearchClientImpl implements SearchClient {
     switch (event.getEventType()) {
       case ENTITY_CREATED:
         testCaseIndex = new TestCaseIndex((TestCase) event.getEntity());
-        updateRequest.doc(
-            JsonUtils.pojoToJson(testCaseIndex.buildESDocForCreate()), org.elasticsearch.xcontent.XContentType.JSON);
+        updateRequest.doc(JsonUtils.pojoToJson(testCaseIndex.buildESDocForCreate()), XContentType.JSON);
         updateRequest.docAsUpsert(true);
         updateElasticSearch(updateRequest);
         break;
@@ -1218,8 +1217,7 @@ public class OpenSearchClientImpl implements SearchClient {
       for (EntityReference testcaseReference : testCaseReferences) {
         UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, testcaseReference.getId().toString());
         String scripText = "ctx._source.testSuite.add(params)";
-        Script script =
-            new Script(ScriptType.INLINE, org.elasticsearch.script.Script.DEFAULT_SCRIPT_LANG, scripText, testSuiteDoc);
+        Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scripText, testSuiteDoc);
         updateRequest.script(script);
         updateElasticSearch(updateRequest);
       }
@@ -1627,7 +1625,7 @@ public class OpenSearchClientImpl implements SearchClient {
                   .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
       return new org.opensearch.client.RestHighLevelClient(restClientBuilder);
     } catch (Exception e) {
-      throw new ElasticsearchException("Failed to create elastic search client ", e);
+      throw new OpenSearchException("Failed to create open search client ", e);
     }
   }
 }

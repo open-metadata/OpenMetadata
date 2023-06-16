@@ -793,7 +793,7 @@ public class ElasticSearchClientImpl implements SearchClient {
       throws IOException {
     UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, event.getEntityId().toString());
     ElasticSearchIndex index = ElasticSearchIndexFactory.buildIndex(entityType, event.getEntity());
-    updateRequest.doc(JsonUtils.pojoToJson(index.buildESDoc()), org.opensearch.common.xcontent.XContentType.JSON);
+    updateRequest.doc(JsonUtils.pojoToJson(index.buildESDoc()), XContentType.JSON);
     updateRequest.docAsUpsert(true);
     updateElasticSearch(updateRequest);
   }
