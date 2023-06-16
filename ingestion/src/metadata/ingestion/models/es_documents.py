@@ -110,7 +110,7 @@ class DashboardESDocument(BaseModel):
     version: float
     updatedAt: Optional[int]
     updatedBy: Optional[str]
-    dashboardUrl: Optional[str]
+    sourceUrl: Optional[str]
     charts: List[EntityReference]
     href: Optional[str]
     owner: EntityReference = None
@@ -140,7 +140,7 @@ class PipelineESDocument(BaseModel):
     version: float
     updatedAt: Optional[int]
     updatedBy: Optional[str]
-    pipelineUrl: Optional[str]
+    sourceUrl: Optional[str]
     tasks: List[Task]
     deleted: bool
     href: Optional[str]

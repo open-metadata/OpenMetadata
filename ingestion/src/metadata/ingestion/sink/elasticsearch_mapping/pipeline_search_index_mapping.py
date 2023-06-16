@@ -83,7 +83,7 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
       "href": {
         "type": "text"
       },
-      "pipelineUrl": {
+      "sourceUrl": {
         "type": "text"
       },
       "tasks": {
@@ -110,7 +110,7 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "type": "text",
             "analyzer": "om_analyzer"
           },
-          "taskUrl": {
+          "sourceUrl": {
             "type": "text"
           },
           "taskType": {

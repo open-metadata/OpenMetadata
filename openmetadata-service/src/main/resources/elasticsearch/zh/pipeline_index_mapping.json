@@ -63,7 +63,7 @@
       "href": {
         "type": "text"
       },
-      "pipelineUrl": {
+      "sourceUrl": {
         "type": "text"
       },
       "tasks": {
@@ -87,7 +87,7 @@
             "analyzer": "ik_max_word",
             "search_analyzer": "ik_smart"
           },
-          "taskUrl": {
+          "sourceUrl": {
             "type": "text"
           },
           "taskType": {

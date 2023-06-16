@@ -15,8 +15,9 @@ To be used by OpenMetadata class
 """
 
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, Type, Union
 from urllib.parse import quote
+from uuid import UUID
 
 from metadata.generated.schema.api.tests.createLogicalTestCases import (
     CreateLogicalTestCases,
@@ -37,6 +38,7 @@ from metadata.generated.schema.tests.testDefinition import (
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -240,6 +242,25 @@ class OMetaTestsMixin:
         resp = self.client.put(path, data=data.json(encoder=show_secrets_encoder))
 
         return entity_class.parse_obj(resp)
+
+    def delete_executable_test_suite(
+        self,
+        entity: Type[TestSuite],
+        entity_id: Union[str, UUID],
+        recursive: bool = False,
+        hard_delete: bool = False,
+    ) -> None:
+        """Delete executable test suite
+
+        Args:
+            entity_id (str): test suite ID
+            recursive (bool, optional): delete children if true
+            hard_delete (bool, optional): hard delete if true
+        """
+        url = f"{self.get_suffix(entity)}/executable/{model_str(entity_id)}"
+        url += f"?recursive={str(recursive).lower()}"
+        url += f"&hardDelete={str(hard_delete).lower()}"
+        self.client.delete(url)
 
     def add_logical_test_cases(self, data: CreateLogicalTestCases) -> None:
         """Add logical test cases to a test suite

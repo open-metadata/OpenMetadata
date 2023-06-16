@@ -362,7 +362,7 @@ class AmundsenSource(Source[Entity]):
                 name=dashboard["name"],
                 displayName=dashboard["name"],
                 description="",
-                dashboardUrl=dashboard["url"],
+                sourceUrl=dashboard["url"],
                 charts=get_chart_entities_from_id(
                     chart_ids=dashboard["chart_ids"],
                     metadata=self.metadata,
@@ -387,7 +387,7 @@ class AmundsenSource(Source[Entity]):
                 name=chart_id,
                 displayName=name,
                 description="",
-                chartUrl=url,
+                sourceUrl=url,
                 chartType=get_standard_chart_type(chart_type).value,
                 service=self.dashboard_service.fullyQualifiedName,
             )

@@ -42,6 +42,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.factory.ParserFactory;
 import org.openmetadata.service.formatter.field.DefaultFieldFormatter;
@@ -264,6 +265,17 @@ public class FormatterUtil {
       String entityType = entityReference.getType();
       String entityFQN = entityReference.getFullyQualifiedName();
       return getChangeEvent(updateBy, EventType.ENTITY_CREATED, entityType, entityInterface)
+          .withEntity(entityInterface)
+          .withEntityFullyQualifiedName(entityFQN);
+    }
+
+    // Handles Bulk Add test cases to a logical test suite
+    if (changeType.equals(RestUtil.LOGICAL_TEST_CASES_ADDED)) {
+      EntityInterface entityInterface = (EntityInterface) responseContext.getEntity();
+      EntityReference entityReference = entityInterface.getEntityReference();
+      String entityType = Entity.TEST_CASE;
+      String entityFQN = entityReference.getFullyQualifiedName();
+      return getChangeEvent(updateBy, EventType.ENTITY_UPDATED, entityType, entityInterface)
           .withEntity(entityInterface)
           .withEntityFullyQualifiedName(entityFQN);
     }

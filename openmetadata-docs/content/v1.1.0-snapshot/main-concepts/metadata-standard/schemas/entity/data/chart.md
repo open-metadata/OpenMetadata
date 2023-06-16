@@ -18,7 +18,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/chart
 - **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`updatedBy`** *(string)*: User who made the update.
 - **`chartType`**: Refer to *#/definitions/chartType*.
-- **`chartUrl`** *(string)*: Chart URL suffix from its service.
+- **`sourceUrl`** *(string)*: Chart URL suffix from its service.
 - **`href`**: Link to the resource corresponding to this entity. Refer to *../../type/basic.json#/definitions/href*.
 - **`owner`**: Owner of this dashboard. Refer to *../../type/entityReference.json*.
 - **`tables`**: Link to table used in this chart. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.

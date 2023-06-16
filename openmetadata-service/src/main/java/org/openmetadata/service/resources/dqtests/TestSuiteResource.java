@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.dqtests;
 
+import static org.openmetadata.schema.type.Include.ALL;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -48,6 +50,7 @@ import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -59,7 +62,12 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "TestSuites")
 public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testSuites";
-  static final String FIELDS = "owner,tests";
+  public static final String EXECUTABLE_TEST_SUITE_DELETION_ERROR =
+      "Cannot delete logical test suite. To delete logical test suite, use DELETE /v1/dataQuality/testSuites/<...>";
+  public static final String NON_EXECUTABLE_TEST_SUITE_DELETION_ERROR =
+      "Cannot delete executable test suite. To delete executable test suite, use DELETE /v1/dataQuality/testSuites/executable/<...>";
+
+  static final String FIELDS = "owner,tests,summary";
 
   @Override
   public TestSuite addHref(UriInfo uriInfo, TestSuite testSuite) {
@@ -113,6 +121,11 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
           @Min(0)
           @Max(1000000)
           int limitParam,
+      @Parameter(
+              description = "Returns executable or logical test suites. If omitted, returns all test suites.",
+              schema = @Schema(type = "string", example = "executable"))
+          @QueryParam("testSuiteType")
+          String testSuiteType,
       @Parameter(description = "Returns list of test definitions before this cursor", schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
@@ -127,6 +140,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
           Include include)
       throws IOException {
     ListFilter filter = new ListFilter(include);
+    filter.addQueryParam("testSuiteType", testSuiteType);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -352,7 +366,71 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   }
 
   @DELETE
+  @Path("/{id}")
+  @Operation(
+      operationId = "deleteLogicalTestSuite",
+      summary = "Delete a logical test suite",
+      description = "Delete a logical test suite by `id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Logical test suite for instance {id} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the logical entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the logical test suite", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "*", ALL);
+    if (testSuite.getExecutable()) {
+      throw new IllegalArgumentException(NON_EXECUTABLE_TEST_SUITE_DELETION_ERROR);
+    }
+    RestUtil.DeleteResponse<TestSuite> response =
+        repository.deleteLogicalTestSuite(securityContext, testSuite, hardDelete);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
+  }
+
+  @DELETE
   @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteLogicalTestSuite",
+      summary = "Delete a logical test suite",
+      description = "Delete a logical test suite by `name`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Logical Test suite for instance {name} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the logical entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "FQN of the logical test suite", schema = @Schema(type = "String")) @PathParam("name")
+          String name)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, name, "*", ALL);
+    if (testSuite.getExecutable()) {
+      throw new IllegalArgumentException(NON_EXECUTABLE_TEST_SUITE_DELETION_ERROR);
+    }
+    RestUtil.DeleteResponse<TestSuite> response =
+        repository.deleteLogicalTestSuite(securityContext, testSuite, hardDelete);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
+  }
+
+  @DELETE
+  @Path("/executable/name/{name}")
   @Operation(
       operationId = "deleteTestSuiteByName",
       summary = "Delete a test suite",
@@ -361,9 +439,13 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Test suite for instance {name} is not found")
       })
-  public Response delete(
+  public Response deleteExecutable(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
       @Parameter(description = "Hard delete the entity. (Default = `false`)")
           @QueryParam("hardDelete")
           @DefaultValue("false")
@@ -371,11 +453,20 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Parameter(description = "Name of the test suite", schema = @Schema(type = "string")) @PathParam("name")
           String name)
       throws IOException {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, name, "*", ALL);
+    if (!testSuite.getExecutable()) {
+      throw new IllegalArgumentException(EXECUTABLE_TEST_SUITE_DELETION_ERROR);
+    }
+    RestUtil.DeleteResponse<TestSuite> response =
+        repository.deleteByName(securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @DELETE
-  @Path("/{id}")
+  @Path("/executable/{id}")
   @Operation(
       operationId = "deleteTestSuite",
       summary = "Delete a test suite",
@@ -384,7 +475,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Test suite for instance {id} is not found")
       })
-  public Response delete(
+  public Response deleteExecutable(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
@@ -397,7 +488,16 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
           boolean hardDelete,
       @Parameter(description = "Id of the test suite", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "*", ALL);
+    if (!testSuite.getExecutable()) {
+      throw new IllegalArgumentException(EXECUTABLE_TEST_SUITE_DELETION_ERROR);
+    }
+    RestUtil.DeleteResponse<TestSuite> response =
+        repository.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @PUT

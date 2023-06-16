@@ -83,16 +83,16 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   };
 
   const extraInfo = useMemo(() => {
-    const { pipelineUrl, serviceType, displayName, name } =
+    const { sourceUrl, serviceType, displayName, name } =
       currentVersionData as Pipeline;
 
     return [
       ...getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
-      ...(pipelineUrl
+      ...(sourceUrl
         ? [
             {
               key: `${serviceType} ${EntityInfo.URL}`,
-              value: pipelineUrl,
+              value: sourceUrl,
               placeholderText: displayName ?? name,
               isLink: true,
               openInNewTab: true,
@@ -275,7 +275,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         key: 'displayName',
         width: 250,
         render: (_, record) => (
-          <Link target="_blank" to={{ pathname: record.taskUrl }}>
+          <Link target="_blank" to={{ pathname: record.sourceUrl }}>
             <Space>
               <span>{getEntityName(record)}</span>
               <SVGIcons

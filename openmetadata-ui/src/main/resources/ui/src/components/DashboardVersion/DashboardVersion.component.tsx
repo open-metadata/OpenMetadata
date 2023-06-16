@@ -63,16 +63,16 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   );
 
   const extraInfo = useMemo(() => {
-    const { dashboardUrl, serviceType, displayName, name } =
+    const { sourceUrl, serviceType, displayName, name } =
       currentVersionData as Dashboard;
 
     return [
       ...getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
-      ...(dashboardUrl
+      ...(sourceUrl
         ? [
             {
               key: `${serviceType} ${EntityInfo.URL}`,
-              value: dashboardUrl,
+              value: sourceUrl,
               placeholderText: displayName ?? name,
               isLink: true,
               openInNewTab: true,

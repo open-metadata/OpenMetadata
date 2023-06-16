@@ -61,7 +61,6 @@ export interface DataObj {
   databaseConnection?: DatabaseConnection;
   brokers?: Array<string>;
   schemaRegistry?: string;
-  dashboardUrl?: string;
   username?: string;
   password?: string;
   url?: string;
@@ -70,7 +69,7 @@ export interface DataObj {
   api_version?: string;
   server?: string;
   env?: string;
-  pipelineUrl?: string;
+  sourceUrl?: string;
 }
 
 export interface EditObj {
