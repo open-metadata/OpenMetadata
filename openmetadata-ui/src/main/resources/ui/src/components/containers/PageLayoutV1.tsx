@@ -92,7 +92,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         )}
         <Col
           className={classNames(
-            'page-layout-v1-center p-y-sm page-layout-v1-vertical-scroll',
+            'page-layout-v1-center p-t-sm page-layout-v1-vertical-scroll',
             {
               'flex justify-center': center,
             }
