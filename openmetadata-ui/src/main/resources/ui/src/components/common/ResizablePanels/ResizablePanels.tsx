@@ -31,7 +31,8 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
       <DocumentTitle title={pageTitle} />
       <ReflexContainer
         className={classNames(className, 'bg-white')}
-        orientation={orientation}>
+        orientation={orientation}
+        style={{ height: 'calc(100vh - 64px)' }}>
         <ReflexElement
           propagateDimensions
           className={classNames(firstPanel.className, {
