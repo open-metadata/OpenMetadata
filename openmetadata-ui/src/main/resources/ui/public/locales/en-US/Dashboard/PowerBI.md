@@ -23,11 +23,9 @@ Go to the `Azure Ad app registrations` page, select your app and add the dashboa
 
 The required permissions are:
 - `Dashboard.Read.All`
-- `Dashboard.ReadWrite.All`
 
-Optional Permissions: (Without granting these permissions, the dataset information cannot be retrieved and the lineage processing will be skipped)
+Optional Permissions: (Without granting these permissions, the dataset information cannot be retrieved and the lineage and datamodels processing will be skipped)
 - `Dataset.Read.All`
-- `Dataset.ReadWrite.All`
 
 $$note
 Make sure that in the API permissions section, **Tenant**-related permissions are not being given to the app
