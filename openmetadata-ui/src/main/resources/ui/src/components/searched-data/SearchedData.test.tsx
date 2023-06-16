@@ -44,6 +44,10 @@ const mockData: SearchedDataProps['data'] = [
         tagFQN: 'tier1',
       },
     },
+    highlight: {
+      name: ['raw_<span class="text-highlighter">customer</span>'],
+      displayName: ['raw_<span class="text-highlighter">customer</span>'],
+    },
   },
   {
     _index: SearchIndex.TABLE,
@@ -82,10 +86,8 @@ const mockData: SearchedDataProps['data'] = [
 const mockPaginate = jest.fn();
 const mockHandleSummaryPanelDisplay = jest.fn();
 
-jest.mock('../common/table-data-card/TableDataCard', () => {
-  return jest
-    .fn()
-    .mockReturnValue(<p data-testid="table-data-card">TableDataCard</p>);
+jest.mock('components/TableDataCardBody/TableDataCardBody', () => {
+  return jest.fn().mockReturnValue(<p>TableDataCardBody</p>);
 });
 
 jest.mock('../common/next-previous/NextPrevious', () => {
@@ -130,6 +132,27 @@ describe('Test SearchedData Component', () => {
     const searchedDataContainer = getAllByTestId(container, 'table-data-card');
 
     expect(searchedDataContainer).toHaveLength(3);
+  });
+
+  it('Should display table card with name and display name highlighted', () => {
+    const { container } = render(<SearchedData {...MOCK_PROPS} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const searchedDataContainer = getAllByTestId(container, 'table-data-card');
+
+    expect(searchedDataContainer).toHaveLength(3);
+
+    const headerName = getAllByTestId(container, 'entity-header-name');
+    const headerDisplayName = getAllByTestId(
+      container,
+      'entity-header-display-name'
+    );
+
+    expect(headerName[0].querySelector('span')).toHaveClass('text-highlighter');
+    expect(headerDisplayName[0].querySelector('span')).toHaveClass(
+      'text-highlighter'
+    );
   });
 
   it('If children is provided it should display', () => {

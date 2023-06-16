@@ -247,9 +247,9 @@ class MetricsTest(TestCase):
         """
         Check Table Metric run
         """
-        table_count = Metrics.ROW_COUNT.value
+        row_count = Metrics.ROW_COUNT.value
         profiler = Profiler(
-            table_count,
+            row_count,
             profiler_interface=self.sqa_profiler_interface,
         )
         res = profiler.compute_metrics()._table_results
@@ -361,11 +361,14 @@ class MetricsTest(TestCase):
 
         age_histogram = res.get(User.age.name)[Metrics.HISTOGRAM.name]
         id_histogram = res.get(User.id.name)[Metrics.HISTOGRAM.name]
+        comments_histogram = res.get(User.comments.name)[Metrics.HISTOGRAM.name]
 
         assert age_histogram
         assert len(age_histogram["frequencies"]) == 1
         assert id_histogram
         assert len(id_histogram["frequencies"]) == 2
+        assert comments_histogram
+        assert len(comments_histogram["frequencies"]) == 1
 
     def test_like_count(self):
         """

@@ -456,6 +456,7 @@ const AddIngestion = ({
             pipelineFilterPattern,
             showPipelineFilter
           ),
+          dbServiceNames: databaseServiceNames,
           type: ConfigType.PipelineMetadata,
           markDeletedPipelines,
           includeTags,
@@ -585,11 +586,17 @@ const AddIngestion = ({
   const createNewIngestion = () => {
     setSaveState(LOADING_STATE.WAITING);
     const { repeatFrequency, enableDebugLog, ingestionName } = state;
+    // below setting is required to trigger workflow which schedule with one day or more frequency
+    const date = new Date(Date.now());
+    date.setUTCHours(0, 0, 0, 0); // setting time to 00:00:00
+    date.setDate(date.getDate() - 1); // subtracting 1 day from current date
+
     const ingestionDetails: CreateIngestionPipeline = {
       airflowConfig: {
         scheduleInterval: isEmpty(repeatFrequency)
           ? undefined
           : repeatFrequency,
+        startDate: date,
       },
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       name: trim(ingestionName),

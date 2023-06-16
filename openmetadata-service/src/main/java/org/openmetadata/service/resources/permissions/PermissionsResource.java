@@ -81,7 +81,7 @@ public class PermissionsResource {
               schema = @Schema(type = "string", example = "john"))
           @QueryParam("user")
           String user) {
-    return new ResourcePermissionList(authorizer.listPermissions(securityContext, user));
+    return new ResultList<>(authorizer.listPermissions(securityContext, user));
   }
 
   @GET
@@ -205,15 +205,10 @@ public class PermissionsResource {
       authorizer.authorize(securityContext, operationContext, resourceContext);
     }
     List<EntityReference> policies = EntityUtil.populateEntityReferencesById(ids, Entity.POLICY);
-    return new ResourcePermissionList(PolicyEvaluator.listPermission(policies));
+    return new ResultList<>(PolicyEvaluator.listPermission(policies));
   }
 
   static class ResourcePermissionList extends ResultList<ResourcePermission> {
-    @SuppressWarnings("unused")
-    public ResourcePermissionList() {}
-
-    public ResourcePermissionList(List<ResourcePermission> data) {
-      super(data, null, null, data.size());
-    }
+    /* Required for serde */
   }
 }

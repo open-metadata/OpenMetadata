@@ -38,6 +38,7 @@ import org.openmetadata.schema.system.FailureDetails;
 import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -55,8 +56,9 @@ public class ElasticSearchIndexDefinition {
   final EnumMap<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes =
       new EnumMap<>(ElasticSearchIndexType.class);
 
-  public static final HashMap<String, String> ENTITY_TYPE_TO_INDEX_MAP;
-  private static final Map<ElasticSearchIndexType, Set<String>> INDEX_TO_MAPPING_FIELDS_MAP = new HashMap<>();
+  protected static final Map<String, String> ENTITY_TYPE_TO_INDEX_MAP;
+  private static final Map<ElasticSearchIndexType, Set<String>> INDEX_TO_MAPPING_FIELDS_MAP =
+      new EnumMap<>(ElasticSearchIndexType.class);
   private final RestHighLevelClient client;
 
   static {
@@ -97,6 +99,8 @@ public class ElasticSearchIndexDefinition {
     TAG_SEARCH_INDEX(Entity.TAG, "tag_search_index", "/elasticsearch/%s/tag_index_mapping.json"),
     ENTITY_REPORT_DATA_INDEX(
         ENTITY_REPORT_DATA, "entity_report_data_index", "/elasticsearch/entity_report_data_index.json"),
+    TEST_CASE_SEARCH_INDEX(
+        Entity.TEST_CASE, "test_case_search_index", "/elasticsearch/%s/test_case_index_mapping.json"),
     WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX(
         Entity.WEB_ANALYTIC_EVENT,
         "web_analytic_entity_view_report_data_index",
@@ -160,7 +164,7 @@ public class ElasticSearchIndexDefinition {
   }
 
   private String getContext(String type, String info) {
-    return String.format("Failed While : %s \n Additional Info:  %s ", type, info);
+    return String.format("Failed While : %s %n Additional Info:  %s ", type, info);
   }
 
   private void updateIndex(ElasticSearchIndexType elasticSearchIndexType, String lang) {
@@ -268,8 +272,10 @@ public class ElasticSearchIndexDefinition {
       return ElasticSearchIndexType.CONTAINER_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.QUERY)) {
       return ElasticSearchIndexType.QUERY_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.TEST_SUITE) || type.equalsIgnoreCase(Entity.TEST_CASE)) {
+      return ElasticSearchIndexType.TEST_CASE_SEARCH_INDEX;
     }
-    throw new RuntimeException("Failed to find index doc for type " + type);
+    throw new EventPublisherException("Failed to find index doc for type " + type);
   }
 
   public static Set<String> getIndexFields(String entityType, IndexMappingLanguage lang) {

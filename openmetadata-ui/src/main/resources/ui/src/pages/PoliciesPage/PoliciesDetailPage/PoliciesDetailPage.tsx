@@ -386,7 +386,7 @@ const PoliciesDetailPage = () => {
               />
 
               <Tabs defaultActiveKey="rules">
-                <TabPane key="rules" tab={t('label.rules')}>
+                <TabPane key="rules" tab={t('label.rule-plural')}>
                   {isEmpty(policy.rules) ? (
                     <ErrorPlaceHolder />
                   ) : (

@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.databases;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,7 +25,9 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -69,7 +73,9 @@ import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.ResultList;
 
@@ -93,40 +99,48 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   public TableResource(CollectionDAO dao, Authorizer authorizer) {
     super(Table.class, new TableRepository(dao), authorizer);
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
     allowedFields.add("customMetrics");
+    addViewOperation(
+        "columns,tableConstraints,tablePartition,joins,viewDefinition,dataModel", MetadataOperation.VIEW_BASIC);
+    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
+    addViewOperation("customMetrics", MetadataOperation.VIEW_TESTS);
+    addViewOperation("testSuite", MetadataOperation.VIEW_TESTS);
+    return listOf(
+        MetadataOperation.VIEW_TESTS,
+        MetadataOperation.VIEW_QUERIES,
+        MetadataOperation.VIEW_DATA_PROFILE,
+        MetadataOperation.VIEW_SAMPLE_DATA,
+        MetadataOperation.VIEW_USAGE,
+        MetadataOperation.EDIT_TESTS,
+        MetadataOperation.EDIT_QUERIES,
+        MetadataOperation.EDIT_DATA_PROFILE,
+        MetadataOperation.EDIT_SAMPLE_DATA,
+        MetadataOperation.EDIT_LINEAGE);
   }
 
   public static class TableList extends ResultList<Table> {
-    @SuppressWarnings("unused")
-    public TableList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
 
   public static class TableProfileList extends ResultList<TableProfile> {
-    @SuppressWarnings("unused")
-    public TableProfileList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
 
   public static class ColumnProfileList extends ResultList<ColumnProfile> {
-    @SuppressWarnings("unused")
-    public ColumnProfileList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
 
   public static class SystemProfileList extends ResultList<SystemProfile> {
-    @SuppressWarnings("unused")
-    public SystemProfileList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
 
   static final String FIELDS =
       "tableConstraints,tablePartition,usageSummary,owner,customMetrics,"
-          + "tags,followers,joins,viewDefinition,dataModel,extension";
+          + "tags,followers,joins,viewDefinition,dataModel,extension,testSuite";
 
   @GET
   @Operation(
@@ -155,6 +169,18 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB"))
           @QueryParam("database")
           String databaseParam,
+      @Parameter(
+              description = "Filter tables by databaseSchema fully qualified name",
+              schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB.schema"))
+          @QueryParam("databaseSchema")
+          String databaseSchemaParam,
+      @Parameter(
+              description =
+                  "Include tables with an empty test suite (i.e. no test cases have been created for this table). Default to true",
+              schema = @Schema(type = "boolean", example = "true"))
+          @QueryParam("includeEmptyTestSuite")
+          @DefaultValue("true")
+          boolean includeEmptyTestSuite,
       @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = " + "10) ")
           @DefaultValue("10")
           @Min(0)
@@ -174,8 +200,19 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    ListFilter filter = new ListFilter(include).addQueryParam("database", databaseParam);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    ListFilter filter =
+        new ListFilter(include)
+            .addQueryParam("database", databaseParam)
+            .addQueryParam("databaseSchema", databaseSchemaParam);
+    ResultList<Table> tableList =
+        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    if (!includeEmptyTestSuite) {
+      tableList.setData(
+          tableList.getData().stream()
+              .filter(table -> table.getTestSuite() != null && !table.getTestSuite().getTests().isEmpty())
+              .collect(Collectors.toList()));
+    }
+    return tableList;
   }
 
   @GET
@@ -438,7 +475,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "string")) UUID userId)
       throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @PUT
@@ -466,7 +503,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     // TODO add EDIT_JOINS operation
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = dao.addJoins(id, joins);
+    Table table = repository.addJoins(id, joins);
     return addHref(uriInfo, table);
   }
 
@@ -490,7 +527,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = dao.addSampleData(id, tableData);
+    Table table = repository.addSampleData(id, tableData);
     return addHref(uriInfo, table);
   }
 
@@ -509,12 +546,15 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public Table getSampleData(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid TableData tableData)
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return addHref(uriInfo, dao.getSampleData(id));
+    ResourceContext resourceContext = getResourceContextById(id);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+
+    Table maskedTable = PIIMasker.getSampleData(repository.getSampleData(id, authorizePII), authorizePII);
+    return addHref(uriInfo, maskedTable);
   }
 
   @DELETE
@@ -532,12 +572,11 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public Table deleteSampleData(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid TableData tableData)
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = dao.deleteSampleData(id);
+    Table table = repository.deleteSampleData(id);
     return addHref(uriInfo, table);
   }
 
@@ -561,7 +600,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = dao.addTableProfilerConfig(id, tableProfilerConfig);
+    Table table = repository.addTableProfilerConfig(id, tableProfilerConfig);
     return addHref(uriInfo, table);
   }
 
@@ -584,8 +623,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    return addHref(uriInfo, table.withTableProfilerConfig(dao.getTableProfilerConfig(table)));
+    Table table = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    return addHref(uriInfo, table.withTableProfilerConfig(repository.getTableProfilerConfig(table)));
   }
 
   @DELETE
@@ -607,7 +646,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = dao.deleteTableProfilerConfig(id);
+    Table table = repository.deleteTableProfilerConfig(id);
     return addHref(uriInfo, table);
   }
 
@@ -630,8 +669,11 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           String fqn)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return dao.getLatestTableProfile(fqn);
+    ResourceContext resourceContext = getResourceContextByName(fqn);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+
+    return PIIMasker.getTableProfile(repository.getLatestTableProfile(fqn, authorizePII), authorizePII);
   }
 
   @GET
@@ -668,7 +710,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return dao.getTableProfiles(fqn, startTs, endTs);
+    return repository.getTableProfiles(fqn, startTs, endTs);
   }
 
   @GET
@@ -705,7 +747,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return dao.getColumnProfiles(fqn, startTs, endTs);
+    return repository.getColumnProfiles(fqn, startTs, endTs);
   }
 
   @GET
@@ -740,7 +782,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("endTs")
           Long endTs)
       throws IOException {
-    return dao.getSystemProfiles(fqn, startTs, endTs);
+    return repository.getSystemProfiles(fqn, startTs, endTs);
   }
 
   @PUT
@@ -763,7 +805,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = dao.addTableProfileData(id, createTableProfile);
+    Table table = repository.addTableProfileData(id, createTableProfile);
     return addHref(uriInfo, table);
   }
 
@@ -793,7 +835,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    dao.deleteTableProfile(fqn, entityType, timestamp);
+    repository.deleteTableProfile(fqn, entityType, timestamp);
     return Response.ok().build();
   }
 
@@ -817,7 +859,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = dao.addDataModel(id, dataModel);
+    Table table = repository.addDataModel(id, dataModel);
     return addHref(uriInfo, table);
   }
 
@@ -842,7 +884,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     CustomMetric customMetric = getCustomMetric(securityContext, createCustomMetric);
-    Table table = dao.addCustomMetric(id, customMetric);
+    Table table = repository.addCustomMetric(id, customMetric);
     return addHref(uriInfo, table);
   }
 
@@ -869,7 +911,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = dao.deleteCustomMetric(id, columnName, customMetricName);
+    Table table = repository.deleteCustomMetric(id, columnName, customMetricName);
     return addHref(uriInfo, table);
   }
 
@@ -893,7 +935,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @PathParam("userId")
           String userId)
       throws IOException {
-    return dao.deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId)).toResponse();
+    return repository
+        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
+        .toResponse();
   }
 
   public static Table validateNewTable(Table table) {
@@ -907,15 +951,16 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   private Table getTable(CreateTable create, String user) throws IOException {
     return validateNewTable(
-        copy(new Table(), create, user)
-            .withColumns(create.getColumns())
-            .withTableConstraints(create.getTableConstraints())
-            .withTablePartition(create.getTablePartition())
-            .withTableType(create.getTableType())
-            .withTags(create.getTags())
-            .withViewDefinition(create.getViewDefinition())
-            .withTableProfilerConfig(create.getTableProfilerConfig())
-            .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema())));
+            copy(new Table(), create, user)
+                .withColumns(create.getColumns())
+                .withTableConstraints(create.getTableConstraints())
+                .withTablePartition(create.getTablePartition())
+                .withTableType(create.getTableType())
+                .withTags(create.getTags())
+                .withViewDefinition(create.getViewDefinition())
+                .withTableProfilerConfig(create.getTableProfilerConfig())
+                .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema())))
+        .withRetentionPeriod(create.getRetentionPeriod());
   }
 
   private CustomMetric getCustomMetric(SecurityContext securityContext, CreateCustomMetric create) {

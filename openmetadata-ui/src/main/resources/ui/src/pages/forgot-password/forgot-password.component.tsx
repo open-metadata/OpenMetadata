@@ -13,7 +13,8 @@
 
 import { Button, Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
-import React, { useState } from 'react';
+import BrandImage from 'components/common/BrandImage/BrandImage';
+import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
@@ -24,17 +25,24 @@ const ForgotPassword = () => {
   const { t } = useTranslation();
   const { handleForgotPassword } = useBasicAuth();
   const history = useHistory();
+  const [loading, setLoading] = useState(false);
 
   const [showResetLinkSentAlert, setShowResetLinkSentAlert] = useState(false);
 
-  const handleSubmit = async (data: { email: string }) => {
-    try {
-      handleForgotPassword && (await handleForgotPassword(data.email));
-      setShowResetLinkSentAlert(true);
-    } catch (error) {
-      setShowResetLinkSentAlert(false);
-    }
-  };
+  const handleSubmit = useCallback(
+    async (data: { email: string }) => {
+      try {
+        setLoading(true);
+        handleForgotPassword && (await handleForgotPassword(data.email));
+        setShowResetLinkSentAlert(true);
+      } catch (error) {
+        setShowResetLinkSentAlert(false);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [setShowResetLinkSentAlert, handleForgotPassword]
+  );
 
   return (
     <div className="h-full py-24 forgot-password-container ">
@@ -44,11 +52,7 @@ const ForgotPassword = () => {
         style={{ maxWidth: '430px' }}>
         <Row gutter={[16, 24]}>
           <Col className="text-center" span={24}>
-            <SVGIcons
-              alt={t('label.open-metadata-logo')}
-              icon={Icons.LOGO}
-              width="152"
-            />
+            <BrandImage className="m-auto" height="auto" width={152} />
           </Col>
           <Col className="flex-center text-center mt-8" span={24}>
             <Typography.Text className="text-xl font-medium text-grey-muted">
@@ -77,7 +81,7 @@ const ForgotPassword = () => {
               </Form.Item>
             </Col>
             <Col className="m-t-md" span={24}>
-              <Button className="w-full" htmlType="submit" type="primary">
+              <Button block htmlType="submit" loading={loading} type="primary">
                 {t('label.submit')}
               </Button>
             </Col>

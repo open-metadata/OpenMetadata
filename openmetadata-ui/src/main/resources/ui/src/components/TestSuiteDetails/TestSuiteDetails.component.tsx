@@ -79,9 +79,9 @@ const TestSuiteDetails = ({
         />
       </Space>
 
-      <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-flex-wrap">
-        {extraInfo.map((info, index) => (
-          <span className="tw-flex" key={index}>
+      <div className="d-flex tw-gap-1 tw-mb-2 tw-mt-1 flex-wrap">
+        {extraInfo.map((info) => (
+          <span className="d-flex" data-testid={info.key} key={info.key}>
             <EntitySummaryDetails
               currentOwner={testSuite?.owner}
               data={info}

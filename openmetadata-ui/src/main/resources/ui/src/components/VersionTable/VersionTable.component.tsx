@@ -12,6 +12,7 @@
  */
 
 import { Col, Row, Table } from 'antd';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { NO_DATA_PLACEHOLDER } from 'constants/constants';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -81,7 +82,7 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
               )}
             </>
           ) : (
-            <span className="tw-no-description">
+            <span className="text-grey-muted">
               {t('label.no-entity', {
                 entity: t('label.description'),
               })}
@@ -97,7 +98,8 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
         render: (tags: Column['tags']) => (
           <TagsViewer
             sizeCap={-1}
-            tags={getFilterTags(tags || []).Classification}
+            tags={getFilterTags(tags ?? []).Classification}
+            type="border"
           />
         ),
       },
@@ -108,7 +110,11 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
         accessor: 'tags',
         width: 272,
         render: (tags: Column['tags']) => (
-          <TagsViewer sizeCap={-1} tags={getFilterTags(tags || []).Glossary} />
+          <TagsViewer
+            sizeCap={-1}
+            tags={getFilterTags(tags ?? []).Glossary}
+            type="border"
+          />
         ),
       },
     ],
@@ -140,12 +146,16 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
       </Col>
       <Col>
         <Table
+          bordered
           columns={versionTableColumns}
           data-testid="entity-table"
           dataSource={data}
           expandable={{
             ...getTableExpandableConfig<Column>(),
             defaultExpandedRowKeys: [],
+          }}
+          locale={{
+            emptyText: <FilterTablePlaceHolder />,
           }}
           pagination={false}
           rowKey="name"

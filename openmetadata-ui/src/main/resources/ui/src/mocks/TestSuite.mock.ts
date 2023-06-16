@@ -624,6 +624,55 @@ export const MOCK_TEST_CASE = [
   },
 ] as TestCase[];
 
+export const MOCK_SQL_TEST_CASE = {
+  id: 'e2a54308-c2af-4695-8bd6-b993453792d5',
+  name: 'dim_address_tableCustomSQLQuery',
+  fullyQualifiedName:
+    'sample_data.ecommerce_db.shopify.dim_address.dim_address_tableCustomSQLQuery',
+  description: '',
+  testDefinition: {
+    id: '41a6b311-9e30-4ece-bcb4-87c896f6dc00',
+    type: 'testDefinition',
+    name: 'tableCustomSQLQuery',
+    fullyQualifiedName: 'tableCustomSQLQuery',
+    description: 'Test if a custom SQL returns 0 row or `COUNT(<x>) == 0`',
+    displayName: 'Custom SQL Query',
+    deleted: false,
+    href: '',
+  },
+  entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+  entityFQN: 'sample_data.ecommerce_db.shopify.dim_address',
+  testSuite: {
+    id: 'e858fe50-364b-46ea-bc26-86852c30ce10',
+    type: 'testSuite',
+    name: 'critical_metrics_suite',
+    fullyQualifiedName: 'critical_metrics_suite',
+    description:
+      'This is a critical test suite running tests important for the business',
+    deleted: false,
+    href: '',
+  },
+  parameterValues: [
+    {
+      name: 'sqlExpression',
+      value: 'select * from dim_address;',
+    },
+  ],
+  version: 0.1,
+  owner: {
+    id: 'a2c17db1-e41d-4c45-82d2-2dbe23ad5969',
+    type: 'user',
+    name: 'admin',
+    fullyQualifiedName: 'admin',
+    deleted: false,
+    href: '',
+  },
+  updatedAt: 1683709073678,
+  updatedBy: 'admin',
+  href: '',
+  deleted: false,
+} as TestCase;
+
 export const MOCK_CHART_COLLECTION_DATA = {
   data: [
     {
@@ -739,6 +788,45 @@ export const MOCK_TABLE_ROW_INSERTED_COUNT_TO_BE_BETWEEN = {
   deleted: false,
 };
 
+export const MOCK_TABLE_CUSTOM_SQL_QUERY = {
+  id: '9fdc266a-f262-4607-aafb-34562926ab3c',
+  name: 'tableCustomSQLQuery',
+  displayName: 'Custom SQL Query',
+  fullyQualifiedName: 'tableCustomSQLQuery',
+  description: 'Test if a custom SQL returns 0 row or `COUNT(<x>) == 0`',
+  entityType: 'TABLE',
+  testPlatforms: ['OpenMetadata'],
+  supportedDataTypes: [],
+  parameterDefinition: [
+    {
+      name: 'sqlExpression',
+      displayName: 'SQL Expression',
+      dataType: 'STRING',
+      description: 'SQL expression to run against the table',
+      required: true,
+      optionValues: [],
+    },
+    {
+      name: 'strategy',
+      displayName: 'Strategy',
+      dataType: 'ARRAY',
+      description:
+        'Strategy to use to run the custom SQL query (i.e. `SELECT COUNT(<col>)` or `SELECT <col> (defaults to COUNT)',
+      required: false,
+      optionValues: ['ROWS', 'COUNT'],
+    },
+    {
+      name: 'threshold',
+      displayName: 'Threshold',
+      dataType: 'NUMBER',
+      description:
+        'Threshold to use to determine if the test passes or fails (defaults to 0).',
+      required: false,
+      optionValues: [],
+    },
+  ],
+};
+
 export const MOCK_TABLE_COLUMN_NAME_TO_EXIST = {
   id: '6d4e4673-fd7f-4b37-811e-7645c3c17e93',
   name: 'tableColumnNameToExist',
@@ -764,3 +852,105 @@ export const MOCK_TABLE_COLUMN_NAME_TO_EXIST = {
   href: 'http://sandbox-beta.open-metadata.org/api/v1/dataQuality/testDefinitions/6d4e4673-fd7f-4b37-811e-7645c3c17e93',
   deleted: false,
 };
+
+export const MOCK_TEST_CASE_RESULT = [
+  {
+    timestamp: 1683699927,
+    testCaseStatus: 'Success',
+    result: 'Found max=65 vs. the expected min=50, max=100.',
+    testResultValue: [
+      {
+        name: 'max',
+        value: '65',
+      },
+    ],
+  },
+  {
+    timestamp: 1683616212,
+    testCaseStatus: 'Success',
+    result: 'Found max=65 vs. the expected min=50, max=100.',
+    testResultValue: [
+      {
+        name: 'max',
+        value: '65',
+      },
+    ],
+  },
+  {
+    timestamp: 1683615873,
+    testCaseStatus: 'Success',
+    result: 'Found max=65 vs. the expected min=50, max=100.',
+    testResultValue: [
+      {
+        name: 'max',
+        value: '65',
+      },
+    ],
+  },
+  {
+    timestamp: 1683613527,
+    testCaseStatus: 'Failed',
+    result: 'Found max=25 vs. the expected min=50, max=100.',
+    testResultValue: [
+      {
+        name: 'max',
+        value: '25',
+      },
+    ],
+  },
+  {
+    timestamp: 1683529812,
+    testCaseStatus: 'Failed',
+    result: 'Found max=25 vs. the expected min=50, max=100.',
+    testResultValue: [
+      {
+        name: 'max',
+        value: '25',
+      },
+    ],
+  },
+  {
+    timestamp: 1683529473,
+    testCaseStatus: 'Failed',
+    result: 'Found max=25 vs. the expected min=50, max=100.',
+    testResultValue: [
+      {
+        name: 'max',
+        value: '25',
+      },
+    ],
+  },
+  {
+    timestamp: 1683527127,
+    testCaseStatus: 'Success',
+    result: 'Found max=56 vs. the expected min=50, max=100.',
+    testResultValue: [
+      {
+        name: 'max',
+        value: '56',
+      },
+    ],
+  },
+  {
+    timestamp: 1683443412,
+    testCaseStatus: 'Success',
+    result: 'Found max=56 vs. the expected min=50, max=100.',
+    testResultValue: [
+      {
+        name: 'max',
+        value: '56',
+      },
+    ],
+  },
+  {
+    timestamp: 1683443073,
+    testCaseStatus: 'Success',
+    result: 'Found max=56 vs. the expected min=50, max=100.',
+    testResultValue: [
+      {
+        name: 'max',
+        value: '56',
+      },
+    ],
+  },
+];

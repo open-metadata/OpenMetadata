@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import Appbar from 'components/app-bar/Appbar';
 import ApplicationConfigProvider from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { AuthProvider } from 'components/authentication/auth-provider/AuthProvider';
-import ErrorBoundry from 'components/ErrorBoundry/ErrorBoundry';
+import { EntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import ErrorBoundary from 'components/ErrorBoundary/ErrorBoundary';
 import GlobalSearchProvider from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import PermissionProvider from 'components/PermissionProvider/PermissionProvider';
 import AppRouter from 'components/router/AppRouter';
@@ -35,24 +35,25 @@ const App: FunctionComponent = () => {
       <div className="content-wrapper" data-testid="content-wrapper">
         <Router>
           <I18nextProvider i18n={i18n}>
-            <ErrorBoundry>
-              <AuthProvider childComponentType={AppRouter}>
-                <ApplicationConfigProvider>
+            <ErrorBoundary>
+              <ApplicationConfigProvider>
+                <AuthProvider childComponentType={AppRouter}>
                   <HelmetProvider>
                     <WebAnalyticsProvider>
                       <PermissionProvider>
                         <WebSocketProvider>
                           <GlobalSearchProvider>
-                            <Appbar />
-                            <AppRouter />
+                            <EntityExportModalProvider>
+                              <AppRouter />
+                            </EntityExportModalProvider>
                           </GlobalSearchProvider>
                         </WebSocketProvider>
                       </PermissionProvider>
                     </WebAnalyticsProvider>
                   </HelmetProvider>
-                </ApplicationConfigProvider>
-              </AuthProvider>
-            </ErrorBoundry>
+                </AuthProvider>
+              </ApplicationConfigProvider>
+            </ErrorBoundary>
           </I18nextProvider>
         </Router>
         <ToastContainer {...TOAST_OPTIONS} newestOnTop />

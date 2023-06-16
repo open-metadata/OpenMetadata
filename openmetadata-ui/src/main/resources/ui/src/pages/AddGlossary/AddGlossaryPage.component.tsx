@@ -14,7 +14,6 @@
 import { AxiosError } from 'axios';
 import AddGlossary from 'components/AddGlossary/AddGlossary.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { ERROR_MESSAGE } from 'constants/constants';
@@ -78,11 +77,12 @@ const AddGlossaryPage: FunctionComponent = () => {
         getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
           ? t('server.entity-already-exist', {
               entity: t('label.glossary'),
+              entityPlural: t('label.glossary-lowercase-plural'),
               name: data.name,
             })
           : (error as AxiosError),
         t('server.add-entity-error', {
-          entity: t('label.glossary'),
+          entity: t('label.glossary-lowercase'),
         })
       );
     } finally {
@@ -135,23 +135,21 @@ const AddGlossaryPage: FunctionComponent = () => {
   }, []);
 
   return (
-    <PageContainerV1>
-      <div className="self-center">
-        <AddGlossary
-          allowAccess={createPermission}
-          fetchTags={fetchTags}
-          header={t('label.add-entity', {
-            entity: t('label.glossary'),
-          })}
-          isLoading={isLoading}
-          isTagLoading={isTagLoading}
-          slashedBreadcrumb={slashedBreadcrumb}
-          tagList={tagList}
-          onCancel={handleCancel}
-          onSave={onSave}
-        />
-      </div>
-    </PageContainerV1>
+    <div className="self-center">
+      <AddGlossary
+        allowAccess={createPermission}
+        fetchTags={fetchTags}
+        header={t('label.add-entity', {
+          entity: t('label.glossary'),
+        })}
+        isLoading={isLoading}
+        isTagLoading={isTagLoading}
+        slashedBreadcrumb={slashedBreadcrumb}
+        tagList={tagList}
+        onCancel={handleCancel}
+        onSave={onSave}
+      />
+    </div>
   );
 };
 

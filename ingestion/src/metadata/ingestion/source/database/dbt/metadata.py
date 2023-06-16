@@ -15,16 +15,13 @@ import traceback
 from enum import Enum
 from typing import Iterable, List, Optional, Union
 
-from metadata.generated.schema.api.classification.createClassification import (
-    CreateClassificationRequest,
-)
-from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataModel,
@@ -66,9 +63,10 @@ from metadata.ingestion.source.database.dbt.dbt_service import (
     DbtObjects,
     DbtServiceSource,
 )
-from metadata.utils import entity_link, fqn, tag_utils
+from metadata.utils import entity_link, fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
@@ -322,24 +320,24 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     )
             try:
                 # Create all the tags added
-                dbt_tag_labels = tag_utils.get_tag_labels(
-                    metadata=self.metadata,
-                    tags=dbt_tags_list,
-                    classification_name=self.tag_classification_name,
-                    include_tags=self.source_config.includeTags,
-                )
-                for tag_label in dbt_tag_labels or []:
-                    yield OMetaTagAndClassification(
-                        classification_request=CreateClassificationRequest(
-                            name=self.tag_classification_name,
-                            description="dbt classification",
-                        ),
-                        tag_request=CreateTagRequest(
-                            classification=self.tag_classification_name,
-                            name=tag_label.tagFQN.__root__.split(fqn.FQN_SEPARATOR)[1],
-                            description="dbt Tags",
-                        ),
+                dbt_tag_labels = [
+                    fqn.build(
+                        self.metadata,
+                        Tag,
+                        classification_name=self.tag_classification_name,
+                        tag_name=tag_name,
                     )
+                    for tag_name in dbt_tags_list
+                ]
+                yield from get_ometa_tag_and_classification(
+                    tags=[
+                        tag_label.split(fqn.FQN_SEPARATOR)[1]
+                        for tag_label in dbt_tag_labels
+                    ],
+                    classification_name=self.tag_classification_name,
+                    tag_description="dbt Tags",
+                    classification_desciption="dbt classification",
+                )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Unexpected exception creating DBT tags: {exc}")
@@ -417,7 +415,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
 
                     dbt_table_tags_list = None
                     if manifest_node.tags:
-                        dbt_table_tags_list = tag_utils.get_tag_labels(
+                        dbt_table_tags_list = get_tag_labels(
                             metadata=self.metadata,
                             tags=manifest_node.tags,
                             classification_name=self.tag_classification_name,
@@ -530,7 +528,18 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         schema_name=self.get_corrected_name(parent_node.schema_),
                         table_name=table_name,
                     )
-                    if parent_fqn:
+
+                    # check if the parent table exists in OM before adding it to the upstream list
+                    # TODO: Change to get_by_name once the postgres case sensitive calls is fixed
+                    parent_table_entity: Optional[
+                        Union[Table, List[Table]]
+                    ] = get_entity_from_es_result(
+                        entity_list=self.metadata.es_search_from_fqn(
+                            entity_type=Table, fqn_search_string=parent_fqn
+                        ),
+                        fetch_multiple_entities=False,
+                    )
+                    if parent_table_entity:
                         upstream_nodes.append(parent_fqn)
                 except Exception as exc:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
@@ -577,7 +586,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         ordinalPosition=catalog_column.index
                         if catalog_column
                         else None,
-                        tags=tag_utils.get_tag_labels(
+                        tags=get_tag_labels(
                             metadata=self.metadata,
                             tags=manifest_column.tags,
                             classification_name=self.tag_classification_name,
@@ -685,12 +694,17 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         )
         if table_entity:
             try:
+
+                service_name, database_name, schema_name, table_name = fqn.split(
+                    table_entity.fullyQualifiedName.__root__
+                )
+
                 data_model = data_model_link.datamodel
                 # Patch table descriptions from DBT
                 if data_model.description:
                     self.metadata.patch_description(
                         entity=Table,
-                        entity_id=table_entity.id,
+                        source=table_entity,
                         description=data_model.description.__root__,
                         force=self.source_config.dbtUpdateDescriptions,
                     )
@@ -699,15 +713,24 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 for column in data_model.columns:
                     if column.description:
                         self.metadata.patch_column_description(
-                            entity_id=table_entity.id,
-                            column_name=column.name.__root__,
+                            table=table_entity,
+                            column_fqn=fqn.build(
+                                self.metadata,
+                                entity_type=Column,
+                                service_name=service_name,
+                                database_name=database_name,
+                                schema_name=schema_name,
+                                table_name=table_name,
+                                column_name=column.name.__root__,
+                            ),
                             description=column.description.__root__,
                             force=self.source_config.dbtUpdateDescriptions,
                         )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Failed to parse the node {table_entity.fullyQualifiedName.__root__}to update dbt desctiption: {exc}"  # pylint: disable=line-too-long
+                    f"Failed to parse the node {table_entity.fullyQualifiedName.__root__} "
+                    f"to update dbt description: {exc}"
                 )
 
     def create_dbt_tests_suite(
@@ -894,7 +917,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         values = manifest_node.test_metadata.kwargs.get("values")
         dbt_test_values = ""
         if values:
-            dbt_test_values = ",".join(values)
+            dbt_test_values = ",".join(str(value) for value in values)
         test_case_param_values = [
             {"name": manifest_node.test_metadata.name, "value": dbt_test_values}
         ]

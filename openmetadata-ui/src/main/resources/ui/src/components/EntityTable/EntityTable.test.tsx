@@ -22,6 +22,7 @@ import EntityTableV1 from './EntityTable.component';
 
 const onEntityFieldSelect = jest.fn();
 const onThreadLinkSelect = jest.fn();
+const onUpdate = jest.fn();
 
 const mockTableConstraints = [
   {
@@ -114,6 +115,7 @@ const mockEntityTableProp = {
   tableConstraints: mockTableConstraints,
   onEntityFieldSelect,
   onThreadLinkSelect,
+  onUpdate,
 };
 
 const mockTagList = [

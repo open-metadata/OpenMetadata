@@ -15,7 +15,9 @@ RUN apt-get update \
     libffi-dev \
     libpq-dev \
     libsasl2-dev \
+    libsasl2-2 \
     libsasl2-modules \
+    libsasl2-modules-gssapi-mit \
     libssl-dev \
     libxml2 \
     libkrb5-dev \
@@ -66,6 +68,12 @@ RUN pip install --upgrade pip
 ARG INGESTION_DEPENDENCY="all"
 RUN pip install --upgrade "openmetadata-ingestion[airflow]==1.0.0.0.dev0"
 RUN pip install --upgrade "openmetadata-ingestion[${INGESTION_DEPENDENCY}]==1.0.0.0.dev0"
+
+# Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
+ARG TARGETPLATFORM
+RUN echo "Image built for $TARGETPLATFORM" > /opt/airflow/platform.log
+RUN if [ "$TARGETPLATFORM" != "linux/arm64" ]; then pip install "ibm-db-sa~=0.4"; fi;
+
 # Uninstalling psycopg2-binary and installing psycopg2 instead
 # because the psycopg2-binary generates a architecture specific error
 # while authrenticating connection with the airflow, psycopg2 solves this error

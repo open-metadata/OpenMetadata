@@ -7,7 +7,7 @@ In this section, we provide guides and references to use the Databricks connecto
 To learn more about the Databricks Connection Details (`hostPort`,`token`, `http_path`) information visit these [docs](https://docs.open-metadata.org/connectors/database/databricks/troubleshooting).
 
 $$note
-we have tested it out with Databricks version 11.3LTS runtime version. (runtime version must be 9 and above)
+We support Databricks runtime version 9 and above.
 $$
 
 ### Usage & Lineage
@@ -55,6 +55,11 @@ $$section
 The maximum amount of time (in seconds) to wait for a successful connection to the data source. If the connection attempt takes longer than this timeout period, an error will be returned.
 
 If your connection fails because your cluster has not had enough time to start, you can try updating this parameter with a bigger number.
+$$
+
+$$section
+### Use Unity Catalog $(id="useUnityCatalog")
+Enable this flag to extract the metadata and lineage information using databricks unity catalog instead of using legacy hive metastore. When you enable this flag make sure you have enabled the unity catalog on your instance.
 $$
 
 $$section

@@ -33,10 +33,10 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -45,9 +45,6 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public final class Entity {
   // Fully qualified name separator
   public static final String SEPARATOR = ".";
-
-  // Canonical entity name to corresponding EntityDAO map
-  private static final Map<String, EntityDAO<?>> DAO_MAP = new HashMap<>();
 
   // Canonical entity name to corresponding EntityRepository map
   private static final Map<String, EntityRepository<? extends EntityInterface>> ENTITY_REPOSITORY_MAP = new HashMap<>();
@@ -179,14 +176,18 @@ public final class Entity {
   private Entity() {}
 
   public static <T extends EntityInterface> void registerEntity(
-      Class<T> clazz, String entity, EntityDAO<T> dao, EntityRepository<T> entityRepository) {
-    DAO_MAP.put(entity, dao);
+      Class<T> clazz,
+      String entity,
+      EntityRepository<T> entityRepository,
+      List<MetadataOperation> entitySpecificOperations) {
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
     EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
     ENTITY_LIST.add(entity);
     Collections.sort(ENTITY_LIST);
 
+    // Set up entity operations for permissions
+    ResourceRegistry.addResource(entity, entitySpecificOperations, getEntityFields(clazz));
     LOG.info("Registering entity {} {}", clazz, entity);
   }
 
@@ -210,18 +211,19 @@ public final class Entity {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
     }
     include = repository.supportsSoftDelete ? Include.ALL : include;
-    return repository.dao.findEntityReferenceById(id, include);
+    return repository.getDao().findEntityReferenceById(id, include);
   }
 
-  public static EntityReference getEntityReferenceByName(@NonNull String entityType, String fqn, Include include) {
+  public static EntityReference getEntityReferenceByName(@NonNull String entityType, String fqn, Include include)
+      throws IOException {
     if (fqn == null) {
       return null;
     }
-    EntityDAO<?> dao = DAO_MAP.get(entityType);
-    if (dao == null) {
+    EntityRepository<? extends EntityInterface> repository = ENTITY_REPOSITORY_MAP.get(entityType);
+    if (repository == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
     }
-    return dao.findEntityReferenceByName(fqn, include);
+    return repository.getDao().findEntityReferenceByName(fqn, include);
   }
 
   public static EntityReference getOwner(@NonNull EntityReference reference) throws IOException {
@@ -313,8 +315,8 @@ public final class Entity {
     return entityRepository;
   }
 
-  public static <T extends EntityInterface> List<TagLabel> getEntityTags(String entityType, EntityInterface entity) {
-    EntityRepository<T> entityRepository = (EntityRepository<T>) getEntityRepository(entityType);
+  public static List<TagLabel> getEntityTags(String entityType, EntityInterface entity) {
+    EntityRepository<? extends EntityInterface> entityRepository = getEntityRepository(entityType);
     return listOrEmpty(entityRepository.getAllTags(entity));
   }
 
@@ -338,7 +340,7 @@ public final class Entity {
   }
 
   public static Class<? extends EntityInterface> getEntityClassFromType(String entityType) {
-    return EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.get(entityType);
+    return EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.get(entityType.toLowerCase(Locale.ROOT));
   }
 
   /**
@@ -347,12 +349,6 @@ public final class Entity {
   public static <T> List<String> getEntityFields(Class<T> clz) {
     JsonPropertyOrder propertyOrder = clz.getAnnotation(JsonPropertyOrder.class);
     return new ArrayList<>(Arrays.asList(propertyOrder.value()));
-  }
-
-  public static <T> List<String> getAllowedFields(Class<T> clz) {
-    String entityType = getEntityTypeFromClass(clz);
-    EntityRepository<?> repository = getEntityRepository(entityType);
-    return repository.getAllowedFields();
   }
 
   /** Class for getting validated entity list from a queryParam with list of entities. */

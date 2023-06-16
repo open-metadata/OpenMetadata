@@ -22,7 +22,6 @@ import {
   removeRecentSearchTerm,
 } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-
 import EntityListSkeleton from '../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import { DEFAULT_SKELETON_DATA_LENGTH } from '../Skeleton/SkeletonUtils/Skeleton.utils';
 
@@ -61,16 +60,16 @@ const RecentSearchedTermsAntd: FunctionComponent = () => {
           recentlySearchedTerms.map((item, index) => {
             return (
               <div
-                className="tw-flex tw-items-center tw-justify-between tw-group"
+                className="d-flex tw-items-center tw-justify-between tw-group"
                 data-testid={`Recently-Search-${item.term}`}
                 key={index}>
-                <div className="tw-flex">
+                <div className="d-flex">
                   <SVGIcons
                     alt="search"
                     className="tw-h-4 tw-w-4 tw-self-center"
                     icon={Icons.SEARCHV1}
                   />
-                  <div className="tw-flex tw-justify-between">
+                  <div className="d-flex tw-justify-between">
                     <Link
                       className="tw-font-medium"
                       to={getExplorePath({ search: item.term })}>
@@ -81,7 +80,7 @@ const RecentSearchedTermsAntd: FunctionComponent = () => {
                         {item.term.length > 20 ? (
                           <Popover
                             content={
-                              <div className="tw-flex tw-flex-nowrap">
+                              <div className="d-flex flex-nowrap">
                                 {item.term}
                               </div>
                             }

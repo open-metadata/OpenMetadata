@@ -52,7 +52,7 @@ import {
 } from '../constants/constants';
 import { AssetsType, EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { ServiceCategory } from '../enums/service.enum';
+import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Pipeline } from '../generated/entity/data/pipeline';
@@ -279,7 +279,7 @@ export const getEntityOverview = (
     }
 
     case ExplorePageTabs.PIPELINES: {
-      const { owner, tags, pipelineUrl, service, displayName } =
+      const { owner, tags, sourceUrl, service, displayName } =
         entityDetail as Pipeline;
       const tier = getTierFromTableTags(tags || []);
 
@@ -301,7 +301,7 @@ export const getEntityOverview = (
           )}`,
           dataTestId: 'pipeline-url-label',
           value: displayName || NO_DATA,
-          url: pipelineUrl,
+          url: sourceUrl,
           isLink: true,
           isExternal: true,
           visible: [
@@ -331,7 +331,7 @@ export const getEntityOverview = (
       return overview;
     }
     case ExplorePageTabs.DASHBOARDS: {
-      const { owner, tags, dashboardUrl, service, displayName } =
+      const { owner, tags, sourceUrl, service, displayName } =
         entityDetail as Dashboard;
       const tier = getTierFromTableTags(tags || []);
 
@@ -352,7 +352,7 @@ export const getEntityOverview = (
             'label.url-uppercase'
           )}`,
           value: displayName || NO_DATA,
-          url: dashboardUrl,
+          url: sourceUrl,
           isLink: true,
           isExternal: true,
           visible: [
@@ -800,7 +800,7 @@ export const getFrequentlyJoinedColumns = (
 
   return checkIfJoinsAvailable(columnName, joins) ? (
     <div className="m-t-sm" data-testid="frequently-joined-columns">
-      <span className="tw-text-grey-muted m-r-xss">{columnLabel}:</span>
+      <span className="text-grey-muted m-r-xss">{columnLabel}:</span>
       <span>
         {frequentlyJoinedWithColumns.slice(0, 3).map((columnJoin, index) => (
           <Fragment key={index}>
@@ -948,16 +948,17 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
   includeCurrent = false
 ) => {
   const { service } = entity;
-  const serviceType =
-    service?.type === 'objectStoreService'
-      ? ServiceCategory.STORAGE_SERVICES
-      : service?.type;
 
   return [
     {
       name: getEntityName(service),
       url: service?.name
-        ? getServiceDetailsPath(service?.name, serviceType)
+        ? getServiceDetailsPath(
+            service?.name,
+            ServiceCategoryPlural[
+              service?.type as keyof typeof ServiceCategoryPlural
+            ]
+          )
         : '',
     },
     ...(includeCurrent
@@ -972,7 +973,7 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
 };
 
 export const getEntityBreadcrumbs = (
-  entity: SearchedDataProps['data'][number]['_source'],
+  entity: SearchedDataProps['data'][number]['_source'] | DashboardDataModel,
   entityType?: EntityType,
   includeCurrent = false
 ) => {
@@ -983,6 +984,9 @@ export const getEntityBreadcrumbs = (
     case EntityType.GLOSSARY_TERM:
       // eslint-disable-next-line no-case-declarations
       const glossary = (entity as GlossaryTerm).glossary;
+      if (!glossary) {
+        return [];
+      }
       // eslint-disable-next-line no-case-declarations
       const fqnList = Fqn.split((entity as GlossaryTerm).fullyQualifiedName);
       // eslint-disable-next-line no-case-declarations
@@ -1017,6 +1021,7 @@ export const getEntityBreadcrumbs = (
     case EntityType.PIPELINE:
     case EntityType.MLMODEL:
     case EntityType.CONTAINER:
+    case EntityType.DASHBOARD_DATA_MODEL:
     default:
       return getBreadcrumbForEntitiesWithServiceOnly(
         entity as Topic,

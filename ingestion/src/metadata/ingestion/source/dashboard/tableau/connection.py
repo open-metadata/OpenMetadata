@@ -87,12 +87,13 @@ def test_connection(
             content_id=client.site_id,
             parameter_dict=TABLEAU_GET_VIEWS_PARAM_DICT,
         ),
+        "GetOwners": client.get_owners,
     }
 
     test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
-        service_fqn=service_connection.type.value,
+        service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
     )
 

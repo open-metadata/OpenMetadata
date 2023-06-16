@@ -54,6 +54,7 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -79,6 +80,7 @@ import org.openmetadata.service.util.ResultList;
 @Slf4j
 public class RoleResource extends EntityResource<Role, RoleRepository> {
   public static final String COLLECTION_PATH = "/v1/roles/";
+  public static final String FIELDS = "policies,teams,users";
 
   @Override
   public Role addHref(UriInfo uriInfo, Role role) {
@@ -93,8 +95,14 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("policies,teams,users", MetadataOperation.VIEW_BASIC);
+    return null;
+  }
+
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    List<Role> roles = dao.getEntitiesFromSeedData();
+    List<Role> roles = repository.getEntitiesFromSeedData();
     for (Role role : roles) {
       role.setFullyQualifiedName(role.getName());
       List<EntityReference> policies = role.getPolicies();
@@ -102,17 +110,14 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
         EntityReference ref = Entity.getEntityReferenceByName(Entity.POLICY, policy.getName(), Include.NON_DELETED);
         policy.setId(ref.getId());
       }
-      dao.initializeEntity(role);
+      repository.initializeEntity(role);
     }
     RoleCache.initialize();
   }
 
   public static class RoleList extends ResultList<Role> {
-    @SuppressWarnings("unused") /* Required for tests */
-    RoleList() {}
+    /* Required for serde */
   }
-
-  public static final String FIELDS = "policies,teams,users";
 
   @GET
   @Valid
@@ -164,9 +169,9 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
 
     ResultList<Role> roles;
     if (before != null) { // Reverse paging
-      roles = dao.listBefore(uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
+      roles = repository.listBefore(uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      roles = dao.listAfter(uriInfo, fields, filter, limitParam, after);
+      roles = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
     return addHref(uriInfo, roles);
   }
@@ -421,6 +426,6 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
 
   public static EntityReference getRole(String roleName) {
     RoleRepository roleRepository = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
-    return roleRepository.dao.findEntityReferenceByName(roleName);
+    return roleRepository.getDao().findEntityReferenceByName(roleName);
   }
 }

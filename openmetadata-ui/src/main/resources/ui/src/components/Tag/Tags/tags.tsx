@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
 import { Tag, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
@@ -35,14 +34,10 @@ const Tags: FunctionComponent<TagProps> = ({
   startWith,
   type = 'contained',
   showOnlyName = false,
-  removeTag,
-  isRemovable,
+
+  style,
 }: TagProps) => {
   const history = useHistory();
-
-  const getTagString = (tag: string) => {
-    return tag.startsWith('#') ? tag.slice(1) : tag;
-  };
 
   const isGlossaryTag = useMemo(
     () => tag.source === TagSource.Glossary,
@@ -91,21 +86,15 @@ const Tags: FunctionComponent<TagProps> = ({
     return (
       <Tag
         className={classNames('tag-container-style', type, className)}
-        closable={editable && isRemovable}
-        closeIcon={<CloseOutlined className="tw-text-primary" />}
         data-testid="tags"
         icon={startIcon}
+        style={style}
         onClick={() => {
           if (tag.source && startWith !== TAG_START_WITH.PLUS) {
             tag.source === TagSource.Glossary
               ? history.push(`${ROUTES.GLOSSARY}/${tag.tagFQN}`)
               : history.push(`${ROUTES.TAGS}/${tag.tagFQN.split('.')[0]}`);
           }
-        }}
-        onClose={(e: React.MouseEvent<HTMLElement, MouseEvent>) => {
-          e.preventDefault();
-          e.stopPropagation();
-          removeTag && removeTag(e, getTagString(tag.tagFQN));
         }}>
         <Typography.Paragraph
           className="m-0"

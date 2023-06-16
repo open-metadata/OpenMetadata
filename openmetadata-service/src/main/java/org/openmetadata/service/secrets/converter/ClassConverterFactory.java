@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.secrets.converter;
 
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import lombok.Getter;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
@@ -22,42 +20,47 @@ import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
-import org.openmetadata.schema.security.credentials.GCSCredentials;
+import org.openmetadata.schema.security.credentials.GCPCredentials;
+import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
+import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.storage.GcsConnection;
 
 /** Factory class to get a `ClassConverter` based on the service class. */
-public class ClassConverterFactory {
+public final class ClassConverterFactory {
+  private ClassConverterFactory() {
+    /* Final Class */
+  }
 
   @Getter private static final Map<Class<?>, ClassConverter> converterMap;
 
   static {
     converterMap =
-        Collections.unmodifiableMap(
-            new HashMap<>() {
-              {
-                put(AirflowConnection.class, new AirflowConnectionClassConverter());
-                put(BigQueryConnection.class, new BigQueryConnectionClassConverter());
-                put(DatalakeConnection.class, new DatalakeConnectionClassConverter());
-                put(DbtGCSConfig.class, new DbtGCSConfigClassConverter());
-                put(DbtPipeline.class, new DbtPipelineClassConverter());
-                put(GCSConfig.class, new GCSConfigClassConverter());
-                put(GCSCredentials.class, new GcsCredentialsClassConverter());
-                put(GcsConnection.class, new GcsConnectionClassConverter());
-                put(OpenMetadataConnection.class, new OpenMetadataConnectionClassConverter());
-                put(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter());
-                put(SupersetConnection.class, new SupersetConnectionClassConverter());
-                put(TableauConnection.class, new TableauConnectionClassConverter());
-                put(TestServiceConnectionRequest.class, new TestServiceConnectionRequestClassConverter());
-                put(Workflow.class, new WorkflowClassConverter());
-              }
-            });
+        Map.ofEntries(
+            Map.entry(AirflowConnection.class, new AirflowConnectionClassConverter()),
+            Map.entry(BigQueryConnection.class, new BigQueryConnectionClassConverter()),
+            Map.entry(DatalakeConnection.class, new DatalakeConnectionClassConverter()),
+            Map.entry(MysqlConnection.class, new MysqlConnectionClassConverter()),
+            Map.entry(PostgresConnection.class, new PostgresConnectionClassConverter()),
+            Map.entry(DbtGCSConfig.class, new DbtGCSConfigClassConverter()),
+            Map.entry(DbtPipeline.class, new DbtPipelineClassConverter()),
+            Map.entry(GCSConfig.class, new GCPConfigClassConverter()),
+            Map.entry(GCPCredentials.class, new GcpCredentialsClassConverter()),
+            Map.entry(GcsConnection.class, new GcpConnectionClassConverter()),
+            Map.entry(LookerConnection.class, new LookerConnectionClassConverter()),
+            Map.entry(OpenMetadataConnection.class, new OpenMetadataConnectionClassConverter()),
+            Map.entry(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter()),
+            Map.entry(SupersetConnection.class, new SupersetConnectionClassConverter()),
+            Map.entry(TableauConnection.class, new TableauConnectionClassConverter()),
+            Map.entry(TestServiceConnectionRequest.class, new TestServiceConnectionRequestClassConverter()),
+            Map.entry(Workflow.class, new WorkflowClassConverter()));
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {

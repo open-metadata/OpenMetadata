@@ -34,7 +34,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.dagster.metadata import DagsterSource
 
@@ -71,7 +76,7 @@ EXPECTED_CREATED_PIPELINES = [
         name="graph5164c131c3524a271e7ecce49766d50a479b5ff4",
         displayName="story_recommender_job",
         description=None,
-        pipelineUrl=None,
+        sourceUrl=None,
         concurrency=None,
         pipelineLocation=None,
         startDate=None,
@@ -81,7 +86,7 @@ EXPECTED_CREATED_PIPELINES = [
                 displayName="s3__recommender__recommender_model",
                 fullyQualifiedName=None,
                 description=None,
-                taskUrl=None,
+                sourceUrl=None,
                 downstreamTasks=["s3__recommender__user_story_matrix"],
                 taskType=None,
                 taskSQL=None,
@@ -94,7 +99,7 @@ EXPECTED_CREATED_PIPELINES = [
                 displayName="s3__recommender__user_story_matrix",
                 fullyQualifiedName=None,
                 description=None,
-                taskUrl=None,
+                sourceUrl=None,
                 downstreamTasks=["snowflake__recommender__comment_stories"],
                 taskType=None,
                 taskSQL=None,
@@ -107,7 +112,7 @@ EXPECTED_CREATED_PIPELINES = [
                 displayName="snowflake__recommender__comment_stories",
                 fullyQualifiedName=None,
                 description=None,
-                taskUrl=None,
+                sourceUrl=None,
                 downstreamTasks=[],
                 taskType=None,
                 taskSQL=None,
@@ -120,7 +125,7 @@ EXPECTED_CREATED_PIPELINES = [
                 displayName="snowflake__recommender__component_top_stories",
                 fullyQualifiedName=None,
                 description=None,
-                taskUrl=None,
+                sourceUrl=None,
                 downstreamTasks=[
                     "s3__recommender__recommender_model",
                     "s3__recommender__user_story_matrix",
@@ -136,7 +141,7 @@ EXPECTED_CREATED_PIPELINES = [
                 displayName="snowflake__recommender__user_top_recommended_stories",
                 fullyQualifiedName=None,
                 description=None,
-                taskUrl=None,
+                sourceUrl=None,
                 downstreamTasks=[
                     "s3__recommender__recommender_model",
                     "s3__recommender__user_story_matrix",
@@ -223,13 +228,13 @@ MOCK_PIPELINE = Pipeline(
     fullyQualifiedName="dagster_source.do_it_all_with_default_config",
     displayName="do_it_all_with_default_config",
     description="",
-    pipelineUrl=MOCK_CONNECTION_URI_PATH,
+    sourceUrl=MOCK_CONNECTION_URI_PATH,
     tasks=[
         Task(
             name="a58b1856-729c-493b-bc87-6d2269b43ec0",
             displayName="do_it_all_with_default_config",
             description="",
-            taskUrl="",
+            sourceUrl="",
         )
     ],
     service=EntityReference(
@@ -270,9 +275,16 @@ class DagsterUnitTest(TestCase):
         )
 
     @patch("metadata.ingestion.source.pipeline.dagster.metadata.DagsterSource.get_jobs")
-    def test_yield_pipeline(self, get_jobs):
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_yield_pipeline(self, get_tag_label, get_jobs):
         results = self.dagster.yield_pipeline(EXPECTED_DAGSTER_DETAILS)
         get_jobs.return_value = EXPECTED_DAGSTER_DETAILS
+        get_tag_label.return_value = TagLabel(
+            tagFQN="DagsterTags.hacker_new_repository",
+            labelType=LabelType.Automated.value,
+            state=State.Suggested.value,
+            source=TagSource.Classification.value,
+        )
         pipelines_list = []
         for result in results:
             pipelines_list.append(result)

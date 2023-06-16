@@ -64,8 +64,8 @@ export const getFormattedEntityData = (
       return (entityInfo as Chart[]).map((chart) => ({
         name: chart.name,
         title: (
-          <Link target="_blank" to={{ pathname: chart.chartUrl }}>
-            <div className="d-flex items-center m-b-xs">
+          <Link target="_blank" to={{ pathname: chart.sourceUrl }}>
+            <div className="d-flex items-center">
               <Text className="entity-title text-primary font-medium m-r-xss">
                 {getTitleName(chart)}
               </Text>
@@ -87,9 +87,11 @@ export const getFormattedEntityData = (
       return (entityInfo as Task[]).map((task) => ({
         name: task.name,
         title: (
-          <Link target="_blank" to={{ pathname: task.taskUrl }}>
-            <div className="d-flex items-center m-b-xs">
-              <Text className="entity-title text-primary font-medium m-r-xss">
+          <Link target="_blank" to={{ pathname: task.sourceUrl }}>
+            <div className="d-flex items-center">
+              <Text
+                className="entity-title text-primary font-medium m-r-xss"
+                ellipsis={{ tooltip: true }}>
                 {getTitleName(task)}
               </Text>
               <SVGIcons

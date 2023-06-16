@@ -44,9 +44,6 @@ from openmetadata_managed_apis.utils.parser import (
     parse_service_connection,
     parse_validation_err,
 )
-from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
-    build_secrets_manager_credentials,
-)
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -104,12 +101,6 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
     :param ingestion_pipeline: With the service ref
     :return: WorkflowSource
     """
-    secrets_manager = (
-        ingestion_pipeline.openMetadataServerConnection.secretsManagerProvider
-    )
-    ingestion_pipeline.openMetadataServerConnection.secretsManagerCredentials = (
-        build_secrets_manager_credentials(secrets_manager)
-    )
 
     try:
         metadata = OpenMetadata(config=ingestion_pipeline.openMetadataServerConnection)
@@ -122,19 +113,6 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
         )
 
     service_type = ingestion_pipeline.service.type
-
-    if service_type == "testSuite":
-        service = metadata.get_by_name(
-            entity=TestSuite, fqn=ingestion_pipeline.service.name
-        )  # check we are able to access OM server
-        if not service:
-            raise GetServiceException(service_type, ingestion_pipeline.service.name)
-
-        return WorkflowSource(
-            type=service_type,
-            serviceName=ingestion_pipeline.service.name,
-            sourceConfig=ingestion_pipeline.sourceConfig,
-        )
 
     entity_class = None
     try:

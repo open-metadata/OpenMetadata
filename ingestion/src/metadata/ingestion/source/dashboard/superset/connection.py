@@ -30,7 +30,7 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
     PostgresConnection,
 )
 from metadata.generated.schema.entity.utils.supersetApiConnection import (
-    SupersetAPIConnection,
+    SupersetApiConnection,
 )
 from metadata.ingestion.connections.test_connections import (
     test_connection_engine_step,
@@ -55,7 +55,7 @@ def get_connection(connection: SupersetConnection) -> SupersetAPIClient:
     """
     Create connection
     """
-    if isinstance(connection.connection, SupersetAPIConnection):
+    if isinstance(connection.connection, SupersetApiConnection):
         return SupersetAPIClient(connection)
     if isinstance(connection.connection, PostgresConnection):
         return pg_get_connection(connection=connection.connection)
@@ -89,6 +89,6 @@ def test_connection(
     test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
-        service_fqn=service_connection.type.value,
+        service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
     )

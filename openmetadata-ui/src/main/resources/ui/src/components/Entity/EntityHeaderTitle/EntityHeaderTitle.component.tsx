@@ -14,9 +14,11 @@ import { ExclamationCircleFilled } from '@ant-design/icons';
 import { Col, Row, Typography } from 'antd';
 import { ReactComponent as IconExternalLink } from 'assets/svg/external-link-grey.svg';
 import { ROUTES } from 'constants/constants';
+import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
+import { stringToHTML } from 'utils/StringsUtils';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
 
 const EntityHeaderTitle = ({
@@ -27,6 +29,7 @@ const EntityHeaderTitle = ({
   openEntityInNewPage,
   deleted = false,
   serviceName,
+  badge,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useLocation();
@@ -40,46 +43,49 @@ const EntityHeaderTitle = ({
     <Row
       align="middle"
       data-testid={`${serviceName}-${name}`}
-      gutter={8}
+      gutter={16}
       wrap={false}>
       <Col>{icon}</Col>
-      <Col>
-        <div>
+      <Col className={deleted || badge ? 'w-max-full-140' : 'w-max-full-45'}>
+        {/* If we do not have displayName name only be shown in the bold from the below code */}
+        {!isEmpty(displayName) ? (
           <Typography.Text
-            className="m-b-0 d-block tw-text-xs tw-text-grey-muted"
+            className="m-b-0 d-block text-grey-muted"
             data-testid="entity-header-name">
-            {name}
+            {stringToHTML(name)}
           </Typography.Text>
+        ) : null}
 
-          <Typography.Text
-            className="m-b-0 d-block entity-header-display-name text-lg font-bold"
-            data-testid="entity-header-display-name"
-            ellipsis={{ tooltip: true }}>
-            {displayName ?? name}
-            {openEntityInNewPage && (
-              <IconExternalLink
-                className="anticon vertical-baseline m-l-xss"
-                height={14}
-                width={14}
-              />
-            )}
-          </Typography.Text>
-        </div>
+        {/* It will render displayName fallback to name */}
+        <Typography.Text
+          className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
+          data-testid="entity-header-display-name"
+          ellipsis={{ tooltip: true }}>
+          {stringToHTML(displayName || name)}
+          {openEntityInNewPage && (
+            <IconExternalLink
+              className="anticon vertical-baseline m-l-xss"
+              height={14}
+              width={14}
+            />
+          )}
+        </Typography.Text>
       </Col>
       {deleted && (
-        <Col className="self-end text-xs">
+        <Col className="text-xs">
           <div className="deleted-badge-button" data-testid="deleted-badge">
             <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
             {t('label.deleted')}
           </div>
         </Col>
       )}
+      {badge && <Col>{badge}</Col>}
     </Row>
   );
 
   return link && !isTourRoute ? (
     <Link
-      className="tw-no-underline"
+      className="no-underline"
       data-testid="entity-link"
       target={openEntityInNewPage ? '_blank' : '_self'}
       to={link}>

@@ -6,7 +6,7 @@
   "description": "Dashboard Data Model entity definition. Data models are the schemas used to build dashboards, charts, or other data assets.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.DashboardDataModel",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface", "org.openmetadata.schema.ColumnsEntityInterface"],
   "definitions": {
     "dataModelType": {
       "javaType": "org.openmetadata.schema.type.DataModelType",
@@ -14,15 +14,16 @@
       "type": "string",
       "$comment": "Data Model types supported.",
       "enum": [
-        "TableauSheet",
+        "TableauDataModel",
         "SupersetDataModel",
         "MetabaseDataModel",
         "LookMlView",
-        "LookMlExplore"
+        "LookMlExplore",
+        "PowerBIDataModel"
       ],
       "javaEnums": [
         {
-          "name": "TableauSheet"
+          "name": "TableauDataModel"
         },
         {
           "name": "SupersetDataModel"
@@ -35,6 +36,9 @@
         },
         {
           "name": "LookMlExplore"
+        },
+        {
+          "name": "PowerBIDataModel"
         }
       ]
     }
@@ -100,7 +104,7 @@
     },
     "followers": {
       "description": "Followers of this dashboard.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     },
     "service": {
       "description": "Link to service where this data model is hosted in.",
@@ -128,7 +132,7 @@
     },
     "dataModels": {
       "description": "List of data models used by this data model.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     }
   },
   "required": [

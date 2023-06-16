@@ -17,6 +17,9 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import VersionButton from 'components/VersionButton/VersionButton.component';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined, toString } from 'lodash';
@@ -65,7 +68,6 @@ interface Props {
   extraInfo: Array<ExtraInfo>;
   tier: TagLabel | undefined;
   tags: Array<EntityTags>;
-  isTagEditable?: boolean;
   followersList: Array<EntityReference>;
   entityName: string;
   entityId?: string;
@@ -84,14 +86,18 @@ interface Props {
   updateTier?: (value: string) => void;
   currentOwner?: Dashboard['owner'];
   removeTier?: () => void;
-  onRestoreEntity?: () => void;
+  onRestoreEntity?: () => Promise<void>;
   isRecursiveDelete?: boolean;
   extraDropdownContent?: ItemType[];
   serviceType: string;
-  createAnnouncementPermission?: boolean;
+  permission?: OperationPermission;
+  displayName?: string;
+  onUpdateDisplayName?: (data: EntityName) => Promise<void>;
 }
 
 const EntityPageInfo = ({
+  permission,
+  displayName,
   titleLinks,
   isFollowing,
   deleted = false,
@@ -100,7 +106,6 @@ const EntityPageInfo = ({
   extraInfo,
   tier,
   tags,
-  isTagEditable = false,
   tagsHandler,
   followersList = [],
   entityName,
@@ -122,7 +127,7 @@ const EntityPageInfo = ({
   isRecursiveDelete = false,
   extraDropdownContent,
   serviceType,
-  createAnnouncementPermission,
+  onUpdateDisplayName,
 }: Props) => {
   const history = useHistory();
   const location = useLocation();
@@ -141,6 +146,10 @@ const EntityPageInfo = ({
   const isTourPage = useMemo(
     () => location.pathname.includes(ROUTES.TOUR),
     [location.pathname]
+  );
+  const isTagEditable = useMemo(
+    () => permission?.EditAll || permission?.EditTags,
+    [permission]
   );
 
   const handleRequestTags = () => {
@@ -191,16 +200,15 @@ const EntityPageInfo = ({
     return (
       <div
         className={classNames('tw-max-h-96 tw-overflow-y-auto', {
-          'tw-flex tw-justify-center tw-items-center tw-py-2':
-            list.length === 0,
+          'd-flex tw-justify-center tw-items-center tw-py-2': list.length === 0,
         })}>
         {list.length > 0 ? (
           <div
             className={classNames('tw-grid tw-gap-3', {
               'tw-grid-cols-2': list.length > 1,
             })}>
-            {list.slice(0, FOLLOWERS_VIEW_CAP).map((follower, index) => (
-              <div className="tw-flex" key={index}>
+            {list.slice(0, FOLLOWERS_VIEW_CAP).map((follower) => (
+              <div className="d-flex" key={follower.name}>
                 <ProfilePicture
                   displayName={follower?.displayName || follower?.name}
                   id={follower?.id || ''}
@@ -342,6 +350,16 @@ const EntityPageInfo = ({
     }
   };
 
+  const addButtonHandler = useCallback(() => {
+    if (isTagEditable) {
+      // Fetch tags,terms and Glossary only once
+      if (isEmpty(tagList)) {
+        fetchTags();
+      }
+      setIsEditable(true);
+    }
+  }, [isTagEditable, tagList, fetchTags, setIsEditable]);
+
   useAfterMount(() => {
     if (
       ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType) &&
@@ -356,15 +374,25 @@ const EntityPageInfo = ({
       className="w-full"
       data-testid="entity-page-info"
       direction="vertical">
-      <EntityHeader
-        breadcrumb={titleLinks}
-        entityData={{
-          displayName: entityName,
-          name: entityName,
-          deleted,
-        }}
-        entityType={(entityType as EntityType) ?? EntityType.TABLE}
-        extra={
+      <Row wrap={false}>
+        <Col flex="auto">
+          <EntityHeader
+            breadcrumb={titleLinks}
+            entityData={{
+              displayName,
+              name: entityName,
+              deleted,
+            }}
+            entityType={(entityType as EntityType) ?? EntityType.TABLE}
+            icon={
+              serviceType && (
+                <img className="h-8" src={serviceTypeLogo(serviceType)} />
+              )
+            }
+            serviceName={serviceType ?? ''}
+          />
+        </Col>
+        <Col className="d-flex justify-end item-start" flex="320px">
           <Space align="center" id="version-and-follow-section">
             {!isUndefined(version) && (
               <VersionButton
@@ -416,34 +444,37 @@ const EntityPageInfo = ({
                 allowSoftDelete={!deleted}
                 canDelete={canDelete}
                 deleted={deleted}
+                displayName={displayName}
+                editDisplayNamePermission={
+                  permission?.EditAll || permission?.EditDisplayName
+                }
                 entityFQN={entityFqn}
                 entityId={entityId}
                 entityName={entityName}
                 entityType={entityType}
                 extraDropdownContent={extraDropdownContent}
                 isRecursiveDelete={isRecursiveDelete}
-                onAnnouncementClick={() => setIsAnnouncementDrawer(true)}
+                onAnnouncementClick={
+                  permission?.EditAll
+                    ? () => setIsAnnouncementDrawer(true)
+                    : undefined
+                }
+                onEditDisplayName={onUpdateDisplayName}
                 onRestoreEntity={onRestoreEntity}
               />
             )}
           </Space>
-        }
-        icon={
-          serviceType && (
-            <img className="h-8" src={serviceTypeLogo(serviceType)} />
-          )
-        }
-        serviceName={serviceType ?? ''}
-      />
+        </Col>
+      </Row>
 
       <Space wrap className="justify-between w-full" size={16}>
         <Space direction="vertical">
           <Space wrap align="center" data-testid="extrainfo" size={4}>
             {extraInfo.map((info, index) => (
               <span
-                className="tw-flex tw-items-center"
+                className="d-flex tw-items-center"
                 data-testid={info.key || `info${index}`}
-                key={index}>
+                key={`${info.key}`}>
                 <EntitySummaryDetails
                   currentOwner={currentOwner}
                   data={info}
@@ -462,6 +493,12 @@ const EntityPageInfo = ({
             ))}
           </Space>
           <Row align="middle" data-testid="entity-tags" gutter={8}>
+            {deleted && (
+              <Col>
+                <TagsViewer sizeCap={-1} tags={tags} type="border" />
+              </Col>
+            )}
+
             {!deleted && (
               <>
                 <Col>
@@ -469,17 +506,9 @@ const EntityPageInfo = ({
                     align="center"
                     className="w-full h-full"
                     data-testid="tags-wrapper"
-                    size={8}
-                    onClick={() => {
-                      if (isTagEditable) {
-                        // Fetch tags and terms only once
-                        if (tagList.length === 0) {
-                          fetchTags();
-                        }
-                        setIsEditable(true);
-                      }
-                    }}>
+                    size={8}>
                     <TagsContainer
+                      showLimited
                       className="w-min-20"
                       dropDownHorzPosRight={false}
                       editable={isEditable}
@@ -489,9 +518,11 @@ const EntityPageInfo = ({
                       showEditTagButton={isTagEditable}
                       size="small"
                       tagList={tagList}
+                      onAddButtonClick={addButtonHandler}
                       onCancel={() => {
                         handleTagSelection();
                       }}
+                      onEditButtonClick={addButtonHandler}
                       onSelectionChange={(tags) => {
                         handleTagSelection(tags);
                       }}
@@ -522,7 +553,7 @@ const EntityPageInfo = ({
       />
       {isAnnouncementDrawerOpen && (
         <AnnouncementDrawer
-          createAnnouncementPermission={createAnnouncementPermission}
+          createPermission={permission?.EditAll}
           entityFQN={entityFqn || ''}
           entityName={entityName || ''}
           entityType={entityType || ''}

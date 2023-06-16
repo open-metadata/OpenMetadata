@@ -11,12 +11,6 @@
       "type": "string",
       "enum": ["Salesforce"],
       "default": "Salesforce"
-    },
-    "salesforceScheme": {
-      "description": "SQLAlchemy driver scheme options.",
-      "type": "string",
-      "enum": ["salesforce"],
-      "default": "salesforce"
     }
   },
   "properties": {
@@ -52,6 +46,18 @@
       "title": "Database Name",
       "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
       "type": "string"
+    },
+    "salesforceApiVersion": {
+      "title": "Salesforce API Version",
+      "description": "API version of the Salesforce instance",
+      "type": "string",
+      "default": "42.0"
+    },
+    "salesforceDomain": {
+      "title": "Salesforce Domain",
+      "description": "Domain of Salesforce instance",
+      "type": "string",
+      "default": "login"
     },
     "connectionOptions": {
       "title": "Connection Options",

@@ -38,6 +38,7 @@
         "EditTeams",
         "EditTier",
         "EditTests",
+        "EditUsage",
         "EditUsers"
       ]
     }

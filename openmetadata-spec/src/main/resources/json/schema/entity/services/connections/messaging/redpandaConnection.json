@@ -45,7 +45,8 @@
     "saslMechanism": {
       "title": "SASL Mechanism",
       "description": "sasl.mechanism Consumer Config property",
-      "type": "string"
+      "$ref": "saslMechanismType.json",
+      "default": "PLAIN"
     },
     "basicAuthUserInfo": {
       "title": "Basic Auth User Info",

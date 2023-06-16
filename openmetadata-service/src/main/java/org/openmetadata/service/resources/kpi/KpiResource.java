@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -40,6 +41,7 @@ import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.dataInsight.type.KpiResult;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -60,7 +62,6 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "kpi")
 public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   public static final String COLLECTION_PATH = "/v1/kpi";
-
   static final String FIELDS = "owner,dataInsightChart,kpiResult";
 
   @Override
@@ -75,18 +76,18 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
     super(Kpi.class, new KpiRepository(dao), authorizer);
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("dataInsightChart,kpiResult", MetadataOperation.VIEW_BASIC);
+    return null;
+  }
+
   public static class KpiList extends ResultList<Kpi> {
-    @SuppressWarnings("unused")
-    public KpiList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   public static class KpiResultList extends ResultList<KpiResult> {
-    @SuppressWarnings("unused")
-    public KpiResultList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
 
   @GET
@@ -309,7 +310,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
     // Check if this kpi exist
     try {
       // if a kpi exits it is an update call
-      dao.getByName(null, kpi.getName(), dao.getFields("id,name"));
+      repository.getByName(null, kpi.getName(), repository.getFields("id,name"));
     } catch (EntityNotFoundException ex) {
       // if the kpi doesn't exist , then it can get created so need to ensure one to one validation
       // TODO fix this
@@ -402,7 +403,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       @Parameter(description = "Name of the KPI", schema = @Schema(type = "string")) @PathParam("name") String name,
       @Valid KpiResult kpiResult)
       throws IOException {
-    return dao.addKpiResult(uriInfo, name, kpiResult).toResponse();
+    return repository.addKpiResult(uriInfo, name, kpiResult).toResponse();
   }
 
   @GET
@@ -440,7 +441,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
           @DefaultValue("DESC")
           CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy)
       throws IOException {
-    return dao.getKpiResults(name, startTs, endTs, orderBy);
+    return repository.getKpiResults(name, startTs, endTs, orderBy);
   }
 
   @GET
@@ -462,7 +463,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the KPI", schema = @Schema(type = "string")) @PathParam("name") String name)
       throws IOException {
-    return dao.getKpiResult(name);
+    return repository.getKpiResult(name);
   }
 
   @DELETE
@@ -484,7 +485,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       @Parameter(description = "Timestamp of the KPI result", schema = @Schema(type = "long")) @PathParam("timestamp")
           Long timestamp)
       throws IOException {
-    return dao.deleteKpiResult(name, timestamp).toResponse();
+    return repository.deleteKpiResult(name, timestamp).toResponse();
   }
 
   private Kpi getKpi(CreateKpiRequest create, String user) throws IOException {

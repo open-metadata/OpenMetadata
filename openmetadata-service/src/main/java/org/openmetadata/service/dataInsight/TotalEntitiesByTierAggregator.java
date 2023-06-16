@@ -45,7 +45,11 @@ public class TotalEntitiesByTierAggregator extends DataInsightAggregatorInterfac
         totalEntityCount = totalEntityCount + sumEntityCount.getValue();
       }
       for (TotalEntitiesByTier el : timestampData) {
-        el.withEntityCountFraction(el.getEntityCount() / totalEntityCount);
+        if (totalEntityCount != 0.0) {
+          el.withEntityCountFraction(el.getEntityCount() / totalEntityCount);
+        } else {
+          el.withEntityCountFraction(Double.NaN);
+        }
         data.add((el));
       }
     }

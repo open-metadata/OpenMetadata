@@ -77,7 +77,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
       <div className="tw-ml-9 tw-my-2">
         {Boolean(lastPost) && <div className="tw-filter-seperator" />}
         {postLength > 1 ? (
-          <div className="tw-flex tw-my-4">
+          <div className="d-flex tw-my-4">
             <FeedCardFooter
               isFooterVisible
               lastReplyTimeStamp={lastPost?.postTs}
@@ -186,13 +186,13 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                 ) : null}
               </div>
               {feed.task && (
-                <div className="tw-border-t tw-border-main tw-py-1 tw-flex">
-                  <span className="tw-text-grey-muted">
+                <div className="tw-border-t tw-border-main tw-py-1 d-flex">
+                  <span className="text-grey-muted">
                     {t('label.assignee-plural')}:{' '}
                   </span>
                   <AssigneeList
                     assignees={feed.task.assignees || []}
-                    className="tw-ml-0.5 tw-align-middle tw-inline-flex tw-flex-wrap"
+                    className="tw-ml-0.5 tw-align-middle tw-inline-flex flex-wrap"
                   />
                 </div>
               )}

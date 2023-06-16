@@ -22,6 +22,7 @@ import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -31,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Getter;
 import org.apache.commons.lang3.tuple.Triple;
@@ -40,13 +42,13 @@ import org.jdbi.v3.core.statement.StatementException;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindBeanList;
 import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
-import org.openmetadata.api.configuration.airflow.TaskNotificationConfiguration;
-import org.openmetadata.api.configuration.airflow.TestResultNotificationConfiguration;
+import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.analytics.ReportData;
@@ -267,7 +269,7 @@ public interface CollectionDAO {
   WorkflowDAO workflowDAO();
 
   @CreateSqlObject
-  DataModelDAO dataModelDAO();
+  DataModelDAO dashboardDataModelDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -384,7 +386,7 @@ public interface CollectionDAO {
 
     @Override
     default String getNameColumn() {
-      return "name";
+      return "fullyQualifiedName";
     }
   }
 
@@ -594,6 +596,16 @@ public interface CollectionDAO {
 
   @Getter
   @Builder
+  class EntityRelationshipObject {
+    private String fromId;
+    private String toId;
+    private String fromEntity;
+    private String toEntity;
+    private int relation;
+  }
+
+  @Getter
+  @Builder
   class ReportDataRow {
     private String rowNum;
     private ReportData reportData;
@@ -615,6 +627,25 @@ public interface CollectionDAO {
       insert(fromId.toString(), toId.toString(), fromEntity, toEntity, relation, json);
     }
 
+    default void bulkInsertToRelationship(
+        UUID fromId, List<UUID> toIds, String fromEntity, String toEntity, int relation) {
+
+      List<EntityRelationshipObject> insertToRelationship =
+          toIds.stream()
+              .map(
+                  testCase ->
+                      EntityRelationshipObject.builder()
+                          .fromId(fromId.toString())
+                          .toId(testCase.toString())
+                          .fromEntity(fromEntity)
+                          .toEntity(toEntity)
+                          .relation(relation)
+                          .build())
+              .collect(Collectors.toList());
+
+      bulkInsertTo(insertToRelationship);
+    }
+
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, json) "
@@ -634,6 +665,20 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation,
         @Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT IGNORE INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) VALUES <values>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) VALUES <values>"
+                + "ON CONFLICT DO NOTHING",
+        connectionType = POSTGRES)
+    void bulkInsertTo(
+        @BindBeanList(
+                value = "values",
+                propertyNames = {"fromId", "toId", "fromEntity", "toEntity", "relation"})
+            List<EntityRelationshipObject> values);
 
     //
     // Find to operations
@@ -1095,6 +1140,9 @@ public interface CollectionDAO {
         @BindList("teamNames") List<String> teamNames,
         @Bind("relation") int relation,
         @Define("condition") String condition);
+
+    @SqlQuery("select id from thread_entity where entityId = :entityId")
+    List<String> findByEntityId(@Bind("entityId") String entityId);
 
     class CountFieldMapper implements RowMapper<List<String>> {
       @Override
@@ -1742,7 +1790,7 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM tag_usage where tagFQN LIKE CONCAT(:tagFQN, '.%') AND source = :source")
     void deleteTagLabelsByPrefix(@Bind("source") int source, @Bind("tagFQN") String tagFQN);
 
-    @SqlUpdate("DELETE FROM tag_usage where targetFQN LIKE CONCAT(:targetFQN, '%')")
+    @SqlUpdate("DELETE FROM tag_usage where targetFQN = :targetFQN OR targetFQN LIKE CONCAT(:targetFQN, '.%')")
     void deleteTagLabelsByTargetPrefix(@Bind("targetFQN") String targetFQN);
 
     /** Update all the tagFQN starting with oldPrefix to start with newPrefix due to tag or glossary name change */
@@ -2680,6 +2728,14 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "fullyQualifiedName";
     }
+
+    default int countOfTestCases(List<UUID> testCaseIds) {
+      return countOfTestCases(
+          getTableName(), testCaseIds.stream().map(testCaseId -> testCaseId.toString()).collect(Collectors.toList()));
+    }
+
+    @SqlQuery("SELECT count(*) FROM <table> WHERE id IN (<testCaseIds>)")
+    int countOfTestCases(@Define("table") String table, @BindList("testCaseIds") List<String> testCaseIds);
   }
 
   interface WebAnalyticEventDAO extends EntityDAO<WebAnalyticEvent> {
@@ -2752,6 +2808,21 @@ public interface CollectionDAO {
         @Bind("json") String json,
         @Bind("timestamp") Long timestamp);
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE entity_extension_time_series set json = :json where entityFQN=:entityFQN and extension=:extension and timestamp=:timestamp and json -> '$.operation' = :operation",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE entity_extension_time_series set json = (:json :: jsonb) where entityFQN=:entityFQN and extension=:extension and timestamp=:timestamp and json #>>'{operation}' = :operation",
+        connectionType = POSTGRES)
+    void updateExtensionByOperation(
+        @Bind("entityFQN") String entityFQN,
+        @Bind("extension") String extension,
+        @Bind("json") String json,
+        @Bind("timestamp") Long timestamp,
+        @Bind("operation") String operation);
+
     @SqlQuery("SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension")
     String getExtension(@Bind("entityFQN") String entityId, @Bind("extension") String extension);
 
@@ -2795,10 +2866,30 @@ public interface CollectionDAO {
     String getExtensionAtTimestamp(
         @Bind("entityFQN") String entityFQN, @Bind("extension") String extension, @Bind("timestamp") long timestamp);
 
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension AND timestamp = :timestamp AND json -> '$.operation' = :operation",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension AND timestamp = :timestamp AND json #>>'{operation}' = :operation",
+        connectionType = POSTGRES)
+    String getExtensionAtTimestampWithOperation(
+        @Bind("entityFQN") String entityFQN,
+        @Bind("extension") String extension,
+        @Bind("timestamp") long timestamp,
+        @Bind("operation") String operation);
+
     @SqlQuery(
         "SELECT json FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension "
             + "ORDER BY timestamp DESC LIMIT 1")
     String getLatestExtension(@Bind("entityFQN") String entityFQN, @Bind("extension") String extension);
+
+    @SqlQuery(
+        "SELECT ranked.json FROM (SELECT json, ROW_NUMBER() OVER(PARTITION BY entityFQN ORDER BY timestamp DESC) AS row_num "
+            + "FROM entity_extension_time_series WHERE entityFQN IN (<entityFQNs>)) ranked WHERE ranked.row_num = 1")
+    List<String> getLatestExtensionByFQNs(
+        @BindList("entityFQNs") List<String> entityFQNs, @Bind("extension") String extension);
 
     @SqlQuery(
         "SELECT json FROM entity_extension_time_series WHERE extension = :extension "
@@ -2820,6 +2911,11 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM entity_extension_time_series WHERE entityFQN = :entityFQN")
     void deleteAll(@Bind("entityFQN") String entityFQN);
+
+    // This just saves the limit number of records, and remove all other with given extension
+    @SqlUpdate(
+        "DELETE FROM entity_extension_time_series WHERE extension = :extension AND entityFQN NOT IN(SELECT entityFQN FROM (select * from entity_extension_time_series WHERE extension = :extension ORDER BY timestamp DESC LIMIT :records) AS subquery)")
+    void deleteLastRecords(@Bind("extension") String extension, @Bind("records") int noOfRecord);
 
     @SqlUpdate(
         "DELETE FROM entity_extension_time_series WHERE entityFQN = :entityFQN AND extension = :extension AND timestamp = :timestamp")
@@ -3083,6 +3179,9 @@ public interface CollectionDAO {
                 + "VALUES (:configType, :json :: jsonb) ON CONFLICT (configType) DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
     void insertSettings(@Bind("configType") String configType, @Bind("json") String json);
+
+    @SqlUpdate(value = "DELETE from openmetadata_settings WHERE configType = :configType")
+    void delete(@Bind("configType") String configType);
   }
 
   class SettingsRowMapper implements RowMapper<Settings> {
@@ -3097,14 +3196,18 @@ public interface CollectionDAO {
       Object value;
       try {
         switch (configType) {
-          case TASK_NOTIFICATION_CONFIGURATION:
-            value = JsonUtils.readValue(json, TaskNotificationConfiguration.class);
-            break;
-          case TEST_RESULT_NOTIFICATION_CONFIGURATION:
-            value = JsonUtils.readValue(json, TestResultNotificationConfiguration.class);
-            break;
           case EMAIL_CONFIGURATION:
             value = JsonUtils.readValue(json, SmtpSettings.class);
+            break;
+          case CUSTOM_LOGO_CONFIGURATION:
+            value = JsonUtils.readValue(json, LogoConfiguration.class);
+            break;
+          case SLACK_APP_CONFIGURATION:
+            value = JsonUtils.readValue(json, String.class);
+            break;
+          case SLACK_BOT:
+          case SLACK_INSTALLER:
+            value = JsonUtils.readValue(json, new TypeReference<HashMap<String, Object>>() {});
             break;
           default:
             throw new IllegalArgumentException("Invalid Settings Type " + configType);

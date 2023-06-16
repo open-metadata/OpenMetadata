@@ -161,6 +161,7 @@ describe('Roles page should work properly', () => {
     cy.get('table').should('be.visible').should('contain', roleName);
     cy.get(`[data-row-key="${roleName}"]`)
       .find('[data-testid="plus-more-count"]')
+      .scrollIntoView()
       .should('be.visible')
       .click();
 
@@ -199,6 +200,7 @@ describe('Roles page should work properly', () => {
     // Edit description
     cy.get('[data-testid="role-name"]')
       .contains(roleName)
+      .scrollIntoView()
       .should('be.visible')
       .click();
     cy.get('[data-testid="edit-description"]').should('be.visible').click();
@@ -216,6 +218,7 @@ describe('Roles page should work properly', () => {
   it('Add new policy to created role', () => {
     cy.get('[data-testid="role-name"]')
       .contains(roleName)
+      .scrollIntoView()
       .should('be.visible')
       .click();
     // Asserting navigation
@@ -251,6 +254,7 @@ describe('Roles page should work properly', () => {
   it('Remove added policy from created role', () => {
     cy.get('[data-testid="role-name"]')
       .contains(roleName)
+      .scrollIntoView()
       .should('be.visible')
       .click();
     // Asserting navigation
@@ -272,6 +276,7 @@ describe('Roles page should work properly', () => {
 
     cy.get('[data-testid="role-name"]')
       .contains(roleName)
+      .scrollIntoView()
       .should('be.visible')
       .click();
 
@@ -308,6 +313,7 @@ describe('Roles page should work properly', () => {
 
   it('Delete created Role', () => {
     cy.get(`[data-testid="delete-action-${roleName}"]`)
+      .scrollIntoView()
       .should('be.visible')
       .click();
 

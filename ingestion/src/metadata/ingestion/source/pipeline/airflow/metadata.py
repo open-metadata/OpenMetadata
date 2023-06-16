@@ -309,11 +309,13 @@ class AirflowSource(PipelineServiceSource):
             Task(
                 name=task.task_id,
                 description=task.doc_md,
-                taskUrl=(
+                sourceUrl=(
                     f"{clean_uri(host_port)}/taskinstance/list/"
                     f"?flt1_dag_id_equals={dag.dag_id}&_flt_3_task_id={task.task_id}"
                 ),
-                downstreamTasks=list(task.downstream_task_ids),
+                downstreamTasks=list(task.downstream_task_ids)
+                if task.downstream_task_ids
+                else [],
                 startDate=task.start_date.isoformat() if task.start_date else None,
                 endDate=task.end_date.isoformat() if task.end_date else None,
             )
@@ -366,7 +368,7 @@ class AirflowSource(PipelineServiceSource):
             pipeline_request = CreatePipelineRequest(
                 name=pipeline_details.dag_id,
                 description=pipeline_details.description,
-                pipelineUrl=f"{clean_uri(self.service_connection.hostPort)}/tree?dag_id={pipeline_details.dag_id}",
+                sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/tree?dag_id={pipeline_details.dag_id}",
                 concurrency=pipeline_details.max_active_runs,
                 pipelineLocation=pipeline_details.fileloc,
                 startDate=pipeline_details.start_date.isoformat()
@@ -449,6 +451,11 @@ class AirflowSource(PipelineServiceSource):
         :param pipeline_details: SerializedDAG from airflow metadata DB
         :return: Lineage from inlets and outlets
         """
+
+        # If the context is not set because of an error upstream,
+        # we don't want to continue the processing
+        if not self.context.pipeline:
+            return
 
         lineage_details = LineageDetails(
             pipeline=EntityReference(

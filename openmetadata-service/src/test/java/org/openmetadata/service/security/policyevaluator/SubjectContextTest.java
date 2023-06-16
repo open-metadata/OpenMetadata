@@ -15,6 +15,7 @@ package org.openmetadata.service.security.policyevaluator;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.ArrayList;
@@ -24,7 +25,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
@@ -33,10 +33,6 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO.PolicyDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.RoleDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.TeamDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.UserDAO;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
@@ -70,11 +66,10 @@ public class SubjectContextTest {
 
   @BeforeAll
   public static void setup() {
-    Entity.registerEntity(User.class, Entity.USER, Mockito.mock(UserDAO.class), Mockito.mock(UserRepository.class));
-    Entity.registerEntity(Team.class, Entity.TEAM, Mockito.mock(TeamDAO.class), Mockito.mock(TeamRepository.class));
-    Entity.registerEntity(
-        Policy.class, Entity.POLICY, Mockito.mock(PolicyDAO.class), Mockito.mock(PolicyRepository.class));
-    Entity.registerEntity(Role.class, Entity.ROLE, Mockito.mock(RoleDAO.class), Mockito.mock(RoleRepository.class));
+    Entity.registerEntity(User.class, Entity.USER, mock(UserRepository.class), null);
+    Entity.registerEntity(Team.class, Entity.TEAM, mock(TeamRepository.class), null);
+    Entity.registerEntity(Policy.class, Entity.POLICY, mock(PolicyRepository.class), null);
+    Entity.registerEntity(Role.class, Entity.ROLE, mock(RoleRepository.class), null);
     PolicyCache.initialize();
     RoleCache.initialize();
     SubjectCache.initialize();
@@ -206,7 +201,7 @@ public class SubjectContextTest {
       String name = prefix + "_role_" + i;
       List<EntityReference> policies = toEntityReferences(getPolicies(name));
       Role role = new Role().withName(name).withId(UUID.randomUUID()).withPolicies(policies);
-      RoleCache.ROLE_CACHE.put(role.getId(), role);
+      RoleCache.ROLE_CACHE_WITH_ID.put(role.getId(), role);
       roles.add(role);
     }
     return roles;
@@ -273,7 +268,7 @@ public class SubjectContextTest {
             .withDefaultRoles(toEntityReferences(roles))
             .withPolicies(toEntityReferences(policies))
             .withParents(parentList);
-    SubjectCache.TEAM_CACHE.put(team.getId(), team);
+    SubjectCache.TEAM_CACHE_WITH_ID.put(team.getId(), team);
     return team;
   }
 

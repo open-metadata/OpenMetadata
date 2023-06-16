@@ -12,7 +12,7 @@
  */
 
 import { findByTestId, findByText, render } from '@testing-library/react';
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import DashboardVersion from './DashboardVersion.component';
 import { DashboardVersionProp } from './DashboardVersion.interface';
@@ -30,10 +30,6 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
 
 jest.mock('../common/description/Description', () => {
   return jest.fn().mockImplementation(() => <div>Description.component</div>);
-});
-
-jest.mock('../common/TabsPane/TabsPane', () => {
-  return jest.fn().mockImplementation(() => <div>TabsPane.component</div>);
 });
 
 jest.mock('../EntityVersionTimeLine/EntityVersionTimeLine', () => {
@@ -65,6 +61,14 @@ jest.mock('../../utils/EntityVersionUtils', () => ({
   getTagsDiff: jest.fn(),
 }));
 
+jest.mock('components/containers/PageLayoutV1', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ children }: { children: ReactNode }) => (
+      <div data-testid="PageLayoutV1">{children}</div>
+    ));
+});
+
 JSON.parse = jest.fn().mockReturnValue([]);
 
 describe('Test DashboardVersion page', () => {
@@ -90,7 +94,7 @@ describe('Test DashboardVersion page', () => {
       container,
       'EntityVersionTimeLine.component'
     );
-    const tabs = await findByText(container, 'TabsPane.component');
+    const tabs = await findByTestId(container, 'tabs');
     const description = await findByText(container, 'Description.component');
     const richTextEditorPreviewer = await findByText(
       container,
@@ -134,7 +138,7 @@ describe('Test DashboardVersion page', () => {
       container,
       'EntityVersionTimeLine.component'
     );
-    const tabs = await findByText(container, 'TabsPane.component');
+    const tabs = await findByTestId(container, 'tabs');
     const description = await findByText(container, 'Description.component');
     const richTextEditorPreviewer = await findByText(
       container,
@@ -176,7 +180,7 @@ describe('Test DashboardVersion page', () => {
       container,
       'EntityVersionTimeLine.component'
     );
-    const tabs = await findByText(container, 'TabsPane.component');
+    const tabs = await findByTestId(container, 'tabs');
     const description = await findByText(container, 'Description.component');
 
     expect(dashboardVersionContainer).toBeInTheDocument();

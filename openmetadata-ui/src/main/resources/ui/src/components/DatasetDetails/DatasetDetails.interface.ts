@@ -13,40 +13,29 @@
 
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
-import { Table, TableData } from '../../generated/entity/data/table';
+import { Table } from '../../generated/entity/data/table';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import {
   EntityFieldThreadCount,
   ThreadUpdatedFunc,
 } from '../../interface/feed.interface';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface DatasetDetailsProps {
   entityId?: string;
   tableDetails: Table;
-  datasetFQN: string;
   dataModel?: Table['dataModel'];
-  activeTab: number;
   tableProfile: Table['profile'];
-  sampleData: TableData;
-  slashedTableName: TitleBreadcrumbProps['titleLinks'];
   entityThread: Thread[];
   isTableProfileLoading?: boolean;
-  isSampleDataLoading?: boolean;
   isEntityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
   entityFieldTaskCount: EntityFieldThreadCount[];
   paging: Paging;
   createThread: (data: CreateThread) => void;
-  setActiveTabHandler: (value: number) => void;
   followTableHandler: () => void;
   unfollowTableHandler: () => void;
-  settingsUpdateHandler: (updatedTable: Table) => Promise<void>;
-  columnsUpdateHandler: (updatedTable: Table) => Promise<void>;
-  descriptionUpdateHandler: (updatedTable: Table) => Promise<void>;
-  tagUpdateHandler: (updatedTable: Table) => void;
   versionHandler: () => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler: (
@@ -59,6 +48,6 @@ export interface DatasetDetailsProps {
     feedType?: FeedFilter,
     threadType?: ThreadType
   ) => void;
-  handleExtensionUpdate: (updatedTable: Table) => Promise<void>;
   updateThreadHandler: ThreadUpdatedFunc;
+  onTableUpdate: (updatedTable: Table, key: keyof Table) => Promise<void>;
 }

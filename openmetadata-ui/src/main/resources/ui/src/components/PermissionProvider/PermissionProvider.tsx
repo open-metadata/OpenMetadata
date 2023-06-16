@@ -12,6 +12,7 @@
  */
 
 import { CookieStorage } from 'cookie-storage';
+import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
   createContext,
@@ -166,9 +167,21 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     }
   };
 
+  const resetPermissions = () => {
+    setEntitiesPermission({} as EntityPermissionMap);
+    setPermissions({} as UIPermission);
+    setResourcesPermission({} as UIPermission);
+  };
+
   useEffect(() => {
-    if (isProtectedRoute(location.pathname)) {
+    /**
+     * Only fetch permissions if current user is present
+     */
+    if (isProtectedRoute(location.pathname) && !isEmpty(currentUser)) {
       fetchLoggedInUserPermissions();
+    }
+    if (isEmpty(currentUser)) {
+      resetPermissions();
     }
   }, [currentUser]);
 

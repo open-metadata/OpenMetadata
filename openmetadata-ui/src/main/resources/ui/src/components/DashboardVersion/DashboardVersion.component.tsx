@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Space, Table } from 'antd';
+import { Card, Space, Table, Tabs } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import PageContainer from 'components/containers/PageContainer';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { EntityTabs } from 'enums/entity.enum';
 import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -41,7 +42,6 @@ import SVGIcons from '../../utils/SvgUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import TabsPane from '../common/TabsPane/TabsPane';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import { DashboardVersionProp } from './DashboardVersion.interface';
@@ -64,9 +64,8 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   );
   const tabs = [
     {
-      name: t('label.detail-plural'),
-      isProtected: false,
-      position: 1,
+      label: t('label.detail-plural'),
+      key: EntityTabs.SCHEMA,
     },
   ];
 
@@ -158,7 +157,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
       },
       {
         key: `${currentVersionData.serviceType} Url`,
-        value: (currentVersionData as Dashboard).dashboardUrl,
+        value: (currentVersionData as Dashboard).sourceUrl,
         placeholderText:
           currentVersionData.displayName ?? currentVersionData.name,
         isLink: true,
@@ -248,13 +247,16 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
           text ? (
             <RichTextEditorPreviewer markdown={text} />
           ) : (
-            <span className="tw-no-description">
-              {t('label.no-description')}
-            </span>
+            <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
       },
       {
         title: t('label.tag-plural'),
+        dataIndex: 'tags',
+        key: 'tags',
+      },
+      {
+        title: t('label.glossary-term-plural'),
         dataIndex: 'tags',
         key: 'tags',
       },
@@ -263,12 +265,11 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   );
 
   return (
-    <PageContainer>
-      <div
-        className={classNames(
-          'tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col tw-relative'
-        )}
-        data-testid="dashboard-version-container">
+    <PageLayoutV1
+      pageTitle={t('label.entity-detail-plural', {
+        entity: getEntityName(currentVersionData),
+      })}>
+      <div data-testid="dashboard-version-container">
         {isVersionLoading ? (
           <Loader />
         ) : (
@@ -278,9 +279,8 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
             <EntityPageInfo
               isVersionSelected
               deleted={deleted}
-              entityName={
-                currentVersionData.displayName ?? currentVersionData.name ?? ''
-              }
+              displayName={currentVersionData.displayName}
+              entityName={currentVersionData.name ?? ''}
               extraInfo={getExtraInfo()}
               followersList={[]}
               serviceType={currentVersionData.serviceType ?? ''}
@@ -290,9 +290,13 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               version={Number(version)}
               versionHandler={backHandler}
             />
-            <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow ">
-              <TabsPane activeTab={1} className="tw-flex-initial" tabs={tabs} />
-              <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
+            <div className="tw-mt-1 d-flex flex-col flex-grow ">
+              <Tabs
+                activeKey={EntityTabs.SCHEMA}
+                data-testid="tabs"
+                items={tabs}
+              />
+              <Card className="m-y-md">
                 <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
                   <div className="tw-col-span-full">
                     <Description
@@ -312,7 +316,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                     />
                   </div>
                 </div>
-              </div>
+              </Card>
             </div>
           </div>
         )}
@@ -325,7 +329,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
           onBack={backHandler}
         />
       </div>
-    </PageContainer>
+    </PageLayoutV1>
   );
 };
 

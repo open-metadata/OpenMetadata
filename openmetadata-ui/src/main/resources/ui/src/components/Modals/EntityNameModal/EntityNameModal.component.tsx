@@ -11,22 +11,19 @@
  *  limitations under the License.
  */
 import { Button, Form, Input, Modal, Typography } from 'antd';
-import { EntityReference } from 'generated/type/entityReference';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityNameModalProps } from './EntityNameModal.interface';
 
-interface Props {
-  visible: boolean;
-  onCancel: () => void;
-  onSave: (obj: { name: string; displayName: string }) => void;
-  entity: EntityReference;
-}
-
-const EntityNameModal: React.FC<Props> = ({
+const EntityNameModal: React.FC<EntityNameModalProps> = ({
   visible,
   entity,
   onCancel,
   onSave,
+  title,
+  // re-name will update actual name of the entity, it will impact across application
+  // By default its disabled, send allowRename true to get the functionality
+  allowRename = false,
 }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm<{ name: string; displayName: string }>();
@@ -65,13 +62,13 @@ const EntityNameModal: React.FC<Props> = ({
       open={visible}
       title={
         <Typography.Text strong data-testid="header">
-          {t('label.edit-glossary-name')}
+          {title}
         </Typography.Text>
       }
       onCancel={onCancel}>
       <Form form={form} layout="vertical" onFinish={handleSave}>
         <Form.Item
-          label={`${t('label.name')}:`}
+          label={t('label.name')}
           name="name"
           rules={[
             {
@@ -82,22 +79,13 @@ const EntityNameModal: React.FC<Props> = ({
             },
           ]}>
           <Input
+            disabled={!allowRename}
             placeholder={t('label.enter-entity-name', {
               entity: t('label.glossary'),
             })}
           />
         </Form.Item>
-        <Form.Item
-          label={`${t('label.display-name')}:`}
-          name="displayName"
-          rules={[
-            {
-              required: true,
-              message: `${t('label.field-required', {
-                field: t('label.name'),
-              })}`,
-            },
-          ]}>
+        <Form.Item label={t('label.display-name')} name="displayName">
           <Input placeholder={t('message.enter-display-name')} />
         </Form.Item>
       </Form>

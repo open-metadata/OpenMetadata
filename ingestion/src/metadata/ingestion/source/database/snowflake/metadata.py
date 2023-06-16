@@ -21,12 +21,12 @@ from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy.engine.reflection import Inspector
 from sqlparse.sql import Function, Identifier
 
-from metadata.generated.schema.api.classification.createClassification import (
-    CreateClassificationRequest,
-)
-from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import IntervalType, TablePartition
+from metadata.generated.schema.entity.data.table import (
+    IntervalType,
+    TablePartition,
+    TableType,
+)
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
@@ -65,6 +65,7 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
+from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 GEOMETRY = create_sqlalchemy_type("GEOMETRY")
@@ -292,19 +293,14 @@ class SnowflakeSource(CommonDbSourceService):
             for res in result:
                 row = list(res)
                 fqn_elements = [name for name in row[2:] if name]
-                yield OMetaTagAndClassification(
-                    fqn=fqn._build(  # pylint: disable=protected-access
+                yield from get_ometa_tag_and_classification(
+                    tag_fqn=fqn._build(  # pylint: disable=protected-access
                         self.context.database_service.name.__root__, *fqn_elements
                     ),
-                    classification_request=CreateClassificationRequest(
-                        name=row[0],
-                        description="SNOWFLAKE TAG NAME",
-                    ),
-                    tag_request=CreateTagRequest(
-                        classification=row[0],
-                        name=row[1],
-                        description="SNOWFLAKE TAG VALUE",
-                    ),
+                    tags=[row[1]],
+                    classification_name=row[0],
+                    tag_description="SNOWFLAKE TAG VALUE",
+                    classification_desciption="SNOWFLAKE TAG NAME",
                 )
 
     def query_table_names_and_types(
@@ -319,16 +315,21 @@ class SnowflakeSource(CommonDbSourceService):
         logic on how to handle table types, e.g., external, foreign,...
         """
 
-        if self.config.serviceConnection.__root__.config.includeTempTables:
-            return [
-                TableNameAndType(name=table_name)
-                for table_name in self.inspector.get_table_names(
-                    schema=schema_name, include_temp_tables="True"
-                )
-                or []
-            ]
-
-        return [
+        regular_tables = [
             TableNameAndType(name=table_name)
-            for table_name in self.inspector.get_table_names(schema=schema_name) or []
+            for table_name in self.inspector.get_table_names(
+                schema=schema_name,
+                include_temp_tables=self.service_connection.includeTempTables,
+            )
+            or []
         ]
+
+        external_tables = [
+            TableNameAndType(name=table_name, type_=TableType.External)
+            for table_name in self.inspector.get_table_names(
+                schema=schema_name, external_tables=True
+            )
+            or []
+        ]
+
+        return regular_tables + external_tables

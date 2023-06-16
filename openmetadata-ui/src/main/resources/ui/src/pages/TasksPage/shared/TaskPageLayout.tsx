@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import React, { FC, HTMLAttributes } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,11 +22,9 @@ const TaskPageLayout: FC<Props> = ({ children }) => {
   const { t } = useTranslation();
 
   return (
-    <PageContainerV1>
-      <PageLayoutV1 center pageTitle={t('label.task')}>
-        {children}
-      </PageLayoutV1>
-    </PageContainerV1>
+    <PageLayoutV1 center pageTitle={t('label.task')}>
+      {children}
+    </PageLayoutV1>
   );
 };
 

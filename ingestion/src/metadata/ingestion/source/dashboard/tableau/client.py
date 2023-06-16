@@ -11,8 +11,8 @@
 """
 Wrapper module of TableauServerConnection client
 """
-import json
-from typing import Any, Callable, Dict, List
+import traceback
+from typing import Any, Callable, Dict, List, Optional
 
 from cached_property import cached_property
 from tableau_api_lib import TableauServerConnection
@@ -25,14 +25,21 @@ from metadata.ingestion.source.dashboard.tableau import (
 from metadata.ingestion.source.dashboard.tableau.models import (
     TableauChart,
     TableauDashboard,
-    TableauSheets,
+    TableauDatasources,
+    TableauOwner,
 )
 from metadata.ingestion.source.dashboard.tableau.queries import (
-    TABLEAU_SHEET_QUERY_BY_ID,
+    TABLEAU_DATASOURCES_QUERY,
 )
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
+
+
+class TableauOwnersNotFound(Exception):
+    """
+    Raise when Owner information is not retrieved from the Tableau APIs
+    """
 
 
 class TableauClient:
@@ -70,6 +77,15 @@ class TableauClient:
     def query_views_for_site(self) -> Callable:
         return self._client.query_views_for_site
 
+    def get_owners(self) -> Optional[List[TableauOwner]]:
+        owners = [workbook.owner for workbook in self.get_workbooks()]
+        if len(owners) > 0:
+            return owners
+        raise TableauOwnersNotFound(
+            "Unable to fetch Dashboard Owners from tableau\n"
+            "Please check if the user has permissions to access the Owner information"
+        )
+
     def get_workbooks(self) -> List[TableauDashboard]:
         return [
             TableauDashboard(**workbook)
@@ -90,13 +106,25 @@ class TableauClient:
             )
         ]
 
-    def get_sheets(self, sheet_id: str) -> TableauSheets:
-        data_model_graphql_result = self._client.metadata_graphql_query(
-            query=TABLEAU_SHEET_QUERY_BY_ID.format(id=sheet_id)
-        )
-        return TableauSheets(
-            **json.loads(data_model_graphql_result.text).get("data", [])
-        )
+    def get_datasources(self):
+        try:
+            datasources_graphql_result = self._client.metadata_graphql_query(
+                query=TABLEAU_DATASOURCES_QUERY
+            )
+            if datasources_graphql_result:
+                resp = datasources_graphql_result.json()
+                if resp and resp.get("data"):
+                    return TableauDatasources(**resp.get("data"))
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                "\nSomething went wrong while connecting to Tableau Metadata APIs\n"
+                "Please check if the Tableau Metadata APIs are enabled for you Tableau instance\n"
+                "For more information on enabling the Tableau Metadata APIs follow the link below\n"
+                "https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html"
+                "#enable-the-tableau-metadata-api-for-tableau-server\n"
+            )
+        return TableauDatasources(embeddedDatasources=[])
 
     def sign_out(self) -> None:
         self._client.sign_out()

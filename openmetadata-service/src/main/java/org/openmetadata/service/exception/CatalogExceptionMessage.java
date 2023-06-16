@@ -13,12 +13,18 @@
 
 package org.openmetadata.service.exception;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.List;
 import java.util.UUID;
+import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.util.JsonUtils;
 
 public final class CatalogExceptionMessage {
   public static final String EMAIL_SENDING_ISSUE =
@@ -106,6 +112,10 @@ public final class CatalogExceptionMessage {
 
   public static String invalidColumnFQN(String fqn) {
     return String.format("Invalid fully qualified column name %s", fqn);
+  }
+
+  public static String invalidFieldName(String fieldType, String fieldName) {
+    return String.format("Invalid %s name %s", fieldType, fieldName);
   }
 
   public static String entityVersionNotFound(String entityType, UUID id, Double version) {
@@ -205,5 +215,19 @@ public final class CatalogExceptionMessage {
 
   public static String invalidGlossaryTermMove(String term, String newParent) {
     return String.format("Can't move Glossary term %s to its child Glossary term %s", term, newParent);
+  }
+
+  public static String eventPublisherFailedToPublish(
+      CreateEventSubscription.SubscriptionType type, ChangeEvent event, String message) throws JsonProcessingException {
+    return String.format(
+        "Failed to publish event %s to %s due to %s ", JsonUtils.pojoToJson(event), type.value(), message);
+  }
+
+  public static String invalidTaskField(EntityLink entityLink, TaskType taskType) {
+    return String.format("The Entity link with no field name - %s is not supported for %s task.", entityLink, taskType);
+  }
+
+  public static String invalidFieldForTask(String fieldName, TaskType type) {
+    return String.format("The field name %s is not supported for %s task.", fieldName, type);
   }
 }

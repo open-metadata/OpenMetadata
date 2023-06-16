@@ -34,6 +34,8 @@ export const SUCCESS_COLOR = '#008376';
 export const DE_ACTIVE_COLOR = '#6B7280';
 export const GRAPH_BACKGROUND_COLOR = '#f5f5f5';
 export const GRAYED_OUT_COLOR = '#CCCCCC';
+export const GREEN_COLOR = '#28A745';
+export const GREEN_COLOR_OPACITY_30 = '#28A74530';
 
 export const DEFAULT_CHART_OPACITY = 1;
 export const HOVER_CHART_OPACITY = 0.3;
@@ -171,6 +173,8 @@ export const visibleFilters = [
   'servicename',
 ];
 
+export const CHART_WIDGET_DAYS_DURATION = 14;
+
 export const ROUTES = {
   HOME: '/',
   CALLBACK: '/callback',
@@ -187,6 +191,7 @@ export const ROUTES = {
   SETTINGS: `/settings`,
   SETTINGS_WITH_TAB: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}`,
   SETTINGS_WITH_TAB_FQN: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_FQN}`,
+  SETTINGS_WITH_TAB_FQN_ACTION: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ACTION}`,
   SETTINGS_EDIT_EMAIL_CONFIG: `/settings/OpenMetadata/email/edit-email-configuration`,
   STORE: '/store',
   FEEDS: '/feeds',
@@ -290,6 +295,8 @@ export const ROUTES = {
 
   CONTAINER_DETAILS: `/container/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
   CONTAINER_DETAILS_WITH_TAB: `/container/${PLACEHOLDER_ROUTE_ENTITY_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+
+  SETTINGS_EDIT_CUSTOM_LOGO_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-logo-configuration`,
 };
 
 export const SOCKET_EVENTS = {

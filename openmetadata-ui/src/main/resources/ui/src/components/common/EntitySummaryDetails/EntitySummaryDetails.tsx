@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button as AntdButton, Space } from 'antd';
+import { Button as AntdButton, Button, Space } from 'antd';
 import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
@@ -26,7 +26,6 @@ import { TeamType } from '../../../generated/entity/teams/team';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTeamsUser } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
-import { Button } from '../../buttons/Button/Button';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import TeamTypeSelect from '../TeamTypeSelect/TeamTypeSelect.component';
 import TierCard from '../TierCard/TierCard';
@@ -132,8 +131,9 @@ const EntitySummaryDetails = ({
                     <ProfilePicture
                       displayName={userDetails.ownerName}
                       id={userDetails.id as string}
-                      name={userDetails.ownerName || ''}
-                      width="20"
+                      name={userDetails.ownerName ?? ''}
+                      type="circle"
+                      width="24"
                     />
                     <span>{userDetails.ownerName}</span>
                     <span className="tw-mr-1 tw-inline-block tw-text-gray-400">
@@ -147,8 +147,9 @@ const EntitySummaryDetails = ({
                   <ProfilePicture
                     displayName={displayVal}
                     id=""
-                    name={data.profileName || ''}
-                    width={data.avatarWidth || '20'}
+                    name={data.profileName ?? ''}
+                    type="circle"
+                    width={data.avatarWidth ?? '24'}
                   />
                 )}
               </>
@@ -171,16 +172,16 @@ const EntitySummaryDetails = ({
           !displayVal || displayVal === '--' ? (
             <>
               {t('label.no-entity', { entity: t('label.tier') })}
-              <TierCard
-                currentTier={tier?.tagFQN}
-                removeTier={removeTier}
-                updateTier={updateTier}>
-                <span data-testid={`edit-${data.key}-icon`}>
-                  {updateTier && !deleted ? (
+              {updateTier && !deleted ? (
+                <TierCard
+                  currentTier={tier?.tagFQN}
+                  removeTier={removeTier}
+                  updateTier={updateTier}>
+                  <span data-testid={`edit-${data.key}-icon`}>
                     <EditIcon className="tw-cursor-pointer" width={14} />
-                  ) : null}
-                </span>
-              </TierCard>
+                  </span>
+                </TierCard>
+              ) : null}
             </>
           ) : (
             <></>
@@ -296,11 +297,7 @@ const EntitySummaryDetails = ({
                 )}
                 data-testid="owner-name"
                 title={displayVal as string}>
-                <Button
-                  data-testid="owner-dropdown"
-                  size="custom"
-                  theme="primary"
-                  variant="text">
+                <Button data-testid="owner-dropdown" type="link">
                   {displayVal}
                 </Button>
               </span>
@@ -320,11 +317,11 @@ const EntitySummaryDetails = ({
                 currentTier={tier?.tagFQN}
                 removeTier={removeTier}
                 updateTier={updateTier}>
-                <span data-testid={`edit-${data.key}-icon`}>
-                  {updateTier && !deleted ? (
-                    <EditIcon className="tw-cursor-pointer" width={14} />
-                  ) : null}
-                </span>
+                {updateTier && !deleted ? (
+                  <span data-testid={`edit-${data.key}-icon`}>
+                    <EditIcon className="cursor-pointer" width={14} />
+                  </span>
+                ) : null}
               </TierCard>
             </Space>
           ) : isTeamType ? (
@@ -353,7 +350,7 @@ const EntitySummaryDetails = ({
                     disabled={isGroupType}
                     onClick={() => setShowTypeSelector(true)}>
                     {updateTeamType ? (
-                      <EditIcon className="tw-cursor-pointer" width={14} />
+                      <EditIcon className="cursor-pointer" width={14} />
                     ) : null}
                   </AntdButton>
                 </Tooltip>

@@ -93,7 +93,7 @@
     "chartType": {
       "$ref": "#/definitions/chartType"
     },
-    "chartUrl": {
+    "sourceUrl": {
       "description": "Chart URL suffix from its service.",
       "type": "string"
     },
@@ -107,7 +107,7 @@
     },
     "followers": {
       "description": "Followers of this chart.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     },
     "tags": {
       "description": "Tags for this chart.",
@@ -126,7 +126,7 @@
       "$ref": "../services/dashboardService.json#/definitions/dashboardServiceType"
     },
     "usageSummary": {
-      "description": "Latest usage information for this database.",
+      "description": "Latest usage information for this chart.",
       "$ref": "../../type/usageDetails.json",
       "default": null
     },

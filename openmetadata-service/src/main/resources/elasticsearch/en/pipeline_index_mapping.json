@@ -69,7 +69,13 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer"
+        "analyzer": "om_analyzer",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          }
+        }
       },
       "version": {
         "type": "float"
@@ -84,7 +90,7 @@
       "href": {
         "type": "text"
       },
-      "pipelineUrl": {
+      "sourceUrl": {
         "type": "text"
       },
       "tasks": {
@@ -111,7 +117,7 @@
             "type": "text",
             "analyzer": "om_analyzer"
           },
-          "taskUrl": {
+          "sourceUrl": {
             "type": "text"
           },
           "taskType": {

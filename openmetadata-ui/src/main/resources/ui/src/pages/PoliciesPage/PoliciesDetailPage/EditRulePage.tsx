@@ -15,6 +15,7 @@ import { Button, Card, Col, Form, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import Loader from 'components/Loader/Loader';
+import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import { compare } from 'fast-json-patch';
 import { trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -122,7 +123,24 @@ const EditRulePage = () => {
         handleBack();
       }
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (
+        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
+      ) {
+        showErrorToast(
+          t('server.entity-already-exist', {
+            entity: t('label.rule'),
+            entityPlural: t('label.rule-lowercase-plural'),
+            name: ruleData.name,
+          })
+        );
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: t('label.rule-lowercase'),
+          })
+        );
+      }
     }
   };
 
