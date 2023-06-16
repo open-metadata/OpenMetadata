@@ -51,6 +51,7 @@ from metadata.ingestion.source.pipeline.airflow.models import (
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.helpers import clean_uri, datetime_to_ts
+from metadata.utils.importer import import_from_module
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -249,6 +250,27 @@ class AirflowSource(PipelineServiceSource):
                 " Skipping status ingestion."
             )
 
+    def get_schedule_interval(self, pipeline_data) -> str:
+        """
+        Fetch Schedule Intervals from Airflow Dags
+        """
+        schedule_interval_val = pipeline_data.get("timetable", {}).get("__var", {})
+        if schedule_interval_val:
+            # Fetch Cron as String
+            return schedule_interval_val.get("expression", None)
+        # If the Schedule interval is a const value like @once, @yearly etc
+        # __type sends the module path, and once instantiated
+        try:
+            return import_from_module(
+                pipeline_data.get("timetable", {}).get("__type", {})
+            )().summary
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Couldn't fetch schedule interval for dag {pipeline_data.get('_dag_id')}"
+            )
+        return None
+
     def get_pipelines_list(self) -> Iterable[OMSerializedDagDetails]:
         """
         List all DAGs from the metadata db.
@@ -278,6 +300,7 @@ class AirflowSource(PipelineServiceSource):
                     description=data.get("_description", None),
                     start_date=data.get("start_date", None),
                     tasks=data.get("tasks", []),
+                    schedule_interval=self.get_schedule_interval(data),
                 )
                 if self.source_config.includeOwners:
                     dag.owners = (
@@ -382,6 +405,7 @@ class AirflowSource(PipelineServiceSource):
                 ),
                 service=self.context.pipeline_service.fullyQualifiedName.__root__,
                 owner=self.get_owner(pipeline_details.owners),
+                scheduleInterval=pipeline_details.schedule_interval,
             )
             yield pipeline_request
             self.register_record(pipeline_request=pipeline_request)
