@@ -32,6 +32,7 @@ from metadata.generated.schema.entity.services.connections.database.common.iamAu
 )
 from metadata.ingestion.connections.headers import inject_query_header_by_conn
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
+from metadata.utils.constants import BUILDER_PASSWORD_ATTR
 
 
 @connection_with_options_secrets
@@ -127,15 +128,16 @@ def _add_password(url: str, connection) -> str:
     Distinguishing between BasicAuth (Password) and IamAuth (AWSConfig)
     and adding to url.
     """
-    password_attr = "password"
-    password = getattr(connection, password_attr, None)
+    password = getattr(connection, BUILDER_PASSWORD_ATTR, None)
 
     if not password:
         password = SecretStr("")
 
         # Check if IamAuth exists - specific to Mysql and Postgres connection.
         if hasattr(connection, "authType"):
-            password = getattr(connection.authType, password_attr, SecretStr(""))
+            password = getattr(
+                connection.authType, BUILDER_PASSWORD_ATTR, SecretStr("")
+            )
             if isinstance(connection.authType, IamAuthConfigurationSource):
                 # if IAM based, fetch rds client and generate db auth token.
                 aws_client = AWSClient(
