@@ -141,7 +141,7 @@ public interface EntityDAO<T extends EntityInterface> {
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")
   boolean exists(@Define("table") String table, @Bind("id") String id);
 
-  @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE BINARY <nameColumn> = :fqn)")
+  @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE <nameColumn> = :fqn)")
   boolean existsByName(@Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("fqn") String fqn);
 
   @SqlUpdate("DELETE FROM <table> WHERE id = :id")
