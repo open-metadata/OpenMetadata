@@ -172,9 +172,9 @@ If you are running OpenMetadata in AWS, it is recommended to use [Amazon RDS](ht
 
 We support 
 
-- Amazon RDS (MySQL) engine version upto 8.0.29
+- Amazon RDS (MySQL) engine version 8 or greater
 - Amazon OpenSearch (ElasticSearch) engine version upto 7.1 or Amazon OpenSearch engine version upto 1.3
-- Amazon RDS (PostgreSQL) engine version upto 14.2-R1
+- Amazon RDS (PostgreSQL) engine version between 12 and 14.6
 
 For Production Systems, we recommend Amazon RDS to be in Multiple Availability Zones. For Amazon OpenSearch (or ElasticSearch) Service, we recommend Multiple Availability Zones with minimum 3 Master Nodes.
 

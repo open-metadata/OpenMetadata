@@ -2,24 +2,17 @@ package org.openmetadata.service.elasticsearch;
 
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import lombok.Builder;
-import lombok.Getter;
 import lombok.SneakyThrows;
-import lombok.extern.jackson.Jacksonized;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.IndexMappingLanguage;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -27,8 +20,6 @@ import org.openmetadata.service.search.SearchClient;
 
 @Slf4j
 public class ElasticSearchIndexDefinition {
-  public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
-  public static final String ELASTIC_SEARCH_ENTITY_FQN_STREAM = "eventPublisher:ElasticSearch:STREAM";
   private static final String MAPPINGS_KEY = "mappings";
   private static final String PROPERTIES_KEY = "properties";
   public static final String ENTITY_REPORT_DATA = "entityReportData";
@@ -82,6 +73,8 @@ public class ElasticSearchIndexDefinition {
     TAG_SEARCH_INDEX(Entity.TAG, "tag_search_index", "/elasticsearch/%s/tag_index_mapping.json"),
     ENTITY_REPORT_DATA_INDEX(
         ENTITY_REPORT_DATA, "entity_report_data_index", "/elasticsearch/entity_report_data_index.json"),
+    TEST_CASE_SEARCH_INDEX(
+        Entity.TEST_CASE, "test_case_search_index", "/elasticsearch/%s/test_case_index_mapping.json"),
     WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX(
         Entity.WEB_ANALYTIC_EVENT,
         "web_analytic_entity_view_report_data_index",
@@ -121,11 +114,12 @@ public class ElasticSearchIndexDefinition {
   }
 
   public static String getIndexMapping(ElasticSearchIndexType elasticSearchIndexType, String lang) throws IOException {
-    InputStream in =
+    try (InputStream in =
         ElasticSearchIndexDefinition.class.getResourceAsStream(
-            String.format(elasticSearchIndexType.indexMappingFile, lang.toLowerCase()));
-    assert in != null;
-    return new String(in.readAllBytes());
+            String.format(elasticSearchIndexType.indexMappingFile, lang.toLowerCase()))) {
+      assert in != null;
+      return new String(in.readAllBytes());
+    }
   }
 
   /**
@@ -176,6 +170,8 @@ public class ElasticSearchIndexDefinition {
       return ElasticSearchIndexType.CONTAINER_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.QUERY)) {
       return ElasticSearchIndexType.QUERY_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.TEST_SUITE) || type.equalsIgnoreCase(Entity.TEST_CASE)) {
+      return ElasticSearchIndexType.TEST_CASE_SEARCH_INDEX;
     }
     throw new EventPublisherException("Failed to find index doc for type " + type);
   }
@@ -189,54 +185,5 @@ public class ElasticSearchIndexDefinition {
       fields = INDEX_TO_MAPPING_FIELDS_MAP.get(getIndexMappingByEntityType(entityType));
     }
     return fields;
-  }
-}
-
-@JsonInclude(JsonInclude.Include.NON_NULL)
-@Jacksonized
-@Getter
-@Builder
-class ElasticSearchSuggest {
-  String input;
-  Integer weight;
-}
-
-@Getter
-@Builder
-class FlattenColumn {
-  String name;
-  String description;
-  List<TagLabel> tags;
-}
-
-@Getter
-@Builder
-class FlattenSchemaField {
-  String name;
-  String description;
-  List<TagLabel> tags;
-}
-
-class ParseTags {
-  TagLabel tierTag;
-  final List<TagLabel> tags;
-
-  ParseTags(List<TagLabel> tags) {
-    if (!tags.isEmpty()) {
-      List<TagLabel> tagsList = new ArrayList<>(tags);
-      for (TagLabel tag : tagsList) {
-        String tier = tag.getTagFQN().split("\\.")[0];
-        if (tier.equalsIgnoreCase("tier")) {
-          tierTag = tag;
-          break;
-        }
-      }
-      if (tierTag != null) {
-        tagsList.remove(tierTag);
-      }
-      this.tags = tagsList;
-    } else {
-      this.tags = tags;
-    }
   }
 }

@@ -70,8 +70,12 @@
       "$ref": "#/definitions/searchIndexMappingLanguage"
     },
     "searchType": {
-      "description": "Search type whether its ElasticSearch or OpenSearch",
+      "description": "This enum defines the search Type Elastic/Open Search.",
       "type": "string",
+      "enum": [
+        "ElasticSearch",
+        "OpenSearch"
+      ],
       "default": "ElasticSearch"
     }
   },

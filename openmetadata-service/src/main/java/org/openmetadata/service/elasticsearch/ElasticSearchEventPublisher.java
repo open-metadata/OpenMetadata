@@ -16,12 +16,11 @@
 package org.openmetadata.service.elasticsearch;
 
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
-import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ELASTIC_SEARCH_EXTENSION;
+import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
+import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_EXTENSION;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
@@ -49,12 +48,10 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class ElasticSearchEventPublisher extends AbstractEventPublisher {
+  private final SearchClient searchClient;
   private final CollectionDAO dao;
-  private SearchClient searchClient;
 
-  public ElasticSearchEventPublisher(ElasticSearchConfiguration esConfig, CollectionDAO dao)
-      throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, InstantiationException,
-          IllegalAccessException {
+  public ElasticSearchEventPublisher(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
     super(esConfig.getBatchSize());
     this.dao = dao;
     // needs Db connection
@@ -128,6 +125,12 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
           case Entity.CLASSIFICATION:
             searchClient.updateClassification(event);
             break;
+          case Entity.TEST_CASE:
+            searchClient.updateTestCase(event);
+            break;
+          case Entity.TEST_SUITE:
+            searchClient.updateTestSuite(event);
+            break;
           default:
             LOG.warn("Ignoring Entity Type {}", entityType);
         }
@@ -178,34 +181,8 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     LOG.info("Shutting down ElasticSearchEventPublisher");
   }
 
-  public void registerElasticSearchJobs() {
-    try {
-      dao.entityExtensionTimeSeriesDao().delete(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
-      long startTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
-      FailureDetails failureDetails = new FailureDetails().withLastFailedAt(0L);
-      EventPublisherJob streamJob =
-          new EventPublisherJob()
-              .withId(UUID.randomUUID())
-              .withName("Elastic Search Stream")
-              .withPublisherType(CreateEventPublisherJob.PublisherType.ELASTIC_SEARCH)
-              .withRunMode(CreateEventPublisherJob.RunMode.STREAM)
-              .withStatus(EventPublisherJob.Status.ACTIVE)
-              .withTimestamp(startTime)
-              .withStartedBy(ADMIN_USER_NAME)
-              .withStartTime(startTime)
-              .withFailure(new Failure().withSinkError(failureDetails));
-      dao.entityExtensionTimeSeriesDao()
-          .insert(
-              ELASTIC_SEARCH_ENTITY_FQN_STREAM,
-              ELASTIC_SEARCH_EXTENSION,
-              "eventPublisherJob",
-              JsonUtils.pojoToJson(streamJob));
-    } catch (Exception e) {
-      LOG.error("Failed to register Elastic Search Job");
-    }
-  }
-
-  public void updateElasticSearchFailureStatus(String context, EventPublisherJob.Status status, String failureMessage) {
+  private void updateElasticSearchFailureStatus(
+      String context, EventPublisherJob.Status status, String failureMessage) {
     try {
       long updateTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
       String recordString =
@@ -230,6 +207,33 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
               originalLastUpdate);
     } catch (Exception e) {
       LOG.error("Failed to Update Elastic Search Job Info");
+    }
+  }
+
+  private void registerElasticSearchJobs() {
+    try {
+      dao.entityExtensionTimeSeriesDao().delete(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
+      long startTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
+      FailureDetails failureDetails = new FailureDetails().withLastFailedAt(0L);
+      EventPublisherJob streamJob =
+          new EventPublisherJob()
+              .withId(UUID.randomUUID())
+              .withName("Elastic Search Stream")
+              .withPublisherType(CreateEventPublisherJob.PublisherType.ELASTIC_SEARCH)
+              .withRunMode(CreateEventPublisherJob.RunMode.STREAM)
+              .withStatus(EventPublisherJob.Status.ACTIVE)
+              .withTimestamp(startTime)
+              .withStartedBy(ADMIN_USER_NAME)
+              .withStartTime(startTime)
+              .withFailure(new Failure().withSinkError(failureDetails));
+      dao.entityExtensionTimeSeriesDao()
+          .insert(
+              ELASTIC_SEARCH_ENTITY_FQN_STREAM,
+              ELASTIC_SEARCH_EXTENSION,
+              "eventPublisherJob",
+              JsonUtils.pojoToJson(streamJob));
+    } catch (Exception e) {
+      LOG.error("Failed to register Elastic Search Job");
     }
   }
 }

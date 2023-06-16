@@ -22,12 +22,17 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.event import listen
 from sqlalchemy.pool import QueuePool
 
+from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
     ConnectionOptions,
 )
+from metadata.generated.schema.entity.services.connections.database.common.iamAuthConfig import (
+    IamAuthConfigurationSource,
+)
 from metadata.ingestion.connections.headers import inject_query_header_by_conn
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
+from metadata.utils.constants import BUILDER_PASSWORD_ATTR
 
 
 @connection_with_options_secrets
@@ -117,6 +122,40 @@ def init_empty_connection_options() -> ConnectionOptions:
     return ConnectionOptions(__root__={})
 
 
+def _add_password(url: str, connection) -> str:
+    """
+    A helper function that adds the password to the url if it exists.
+    Distinguishing between BasicAuth (Password) and IamAuth (AWSConfig)
+    and adding to url.
+    """
+    password = getattr(connection, BUILDER_PASSWORD_ATTR, None)
+
+    if not password:
+        password = SecretStr("")
+
+        # Check if IamAuth exists - specific to Mysql and Postgres connection.
+        if hasattr(connection, "authType"):
+            password = getattr(
+                connection.authType, BUILDER_PASSWORD_ATTR, SecretStr("")
+            )
+            if isinstance(connection.authType, IamAuthConfigurationSource):
+                # if IAM based, fetch rds client and generate db auth token.
+                aws_client = AWSClient(
+                    config=connection.authType.awsConfig
+                ).get_rds_client()
+                host, port = connection.hostPort.split(":")
+                password = SecretStr(
+                    aws_client.generate_db_auth_token(
+                        DBHostname=host,
+                        Port=port,
+                        DBUsername=connection.username,
+                        Region=connection.authType.awsConfig.awsRegion,
+                    )
+                )
+    url += f":{quote_plus(password.get_secret_value())}"
+    return url
+
+
 def get_connection_url_common(connection) -> str:
     """
     Common method for building the source connection urls
@@ -126,9 +165,7 @@ def get_connection_url_common(connection) -> str:
 
     if connection.username:
         url += f"{quote_plus(connection.username)}"
-        if not connection.password:
-            connection.password = SecretStr("")
-        url += f":{quote_plus(connection.password.get_secret_value())}"
+        url = _add_password(url, connection)
         url += "@"
 
     url += connection.hostPort

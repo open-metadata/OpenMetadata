@@ -99,7 +99,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 displayName=pipeline_details["settings"].get("name"),
                 description=pipeline_details["settings"].get("name"),
                 tasks=self.get_tasks(pipeline_details),
-                pipelineUrl="",
+                sourceUrl="",
                 service=self.context.pipeline_service.fullyQualifiedName.__root__,
             )
             yield pipeline_request
