@@ -412,8 +412,7 @@ const Appbar: React.FC = (): JSX.Element => {
   return (
     <>
       {isProtectedRoute(location.pathname) &&
-      (isAuthDisabled || isAuthenticated) &&
-      !isTourRoute(location.pathname) ? (
+      (isAuthDisabled || isAuthenticated) ? (
         <NavBar
           handleClear={handleClear}
           handleFeatureModal={handleFeatureModal}

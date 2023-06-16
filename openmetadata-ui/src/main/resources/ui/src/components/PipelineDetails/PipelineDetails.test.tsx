@@ -204,8 +204,7 @@ describe('Test PipelineDetails component', () => {
         wrapper: MemoryRouter,
       }
     );
-    const EntityPageInfo = await findByText(container, /EntityPageInfo/i);
-    const description = await findByText(container, /Description Component/i);
+
     const tasksTab = await findByText(container, 'label.task-plural');
     const activityFeedTab = await findByText(
       container,
@@ -222,8 +221,6 @@ describe('Test PipelineDetails component', () => {
       'table-tag-container'
     );
 
-    expect(EntityPageInfo).toBeInTheDocument();
-    expect(description).toBeInTheDocument();
     expect(tasksTab).toBeInTheDocument();
     expect(activityFeedTab).toBeInTheDocument();
     expect(lineageTab).toBeInTheDocument();

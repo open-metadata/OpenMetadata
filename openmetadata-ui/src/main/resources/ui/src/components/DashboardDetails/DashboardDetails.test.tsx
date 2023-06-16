@@ -194,8 +194,7 @@ describe('Test DashboardDetails component', () => {
         wrapper: MemoryRouter,
       }
     );
-    const EntityPageInfo = await findByText(container, /EntityPageInfo/i);
-    const description = await findByText(container, /Description Component/i);
+
     const tabs = await findByTestId(container, 'tabs');
     const detailsTab = await findByText(tabs, 'label.detail-plural');
     const activityFeedTab = await findByText(
@@ -208,8 +207,6 @@ describe('Test DashboardDetails component', () => {
       'table-tag-container'
     );
 
-    expect(EntityPageInfo).toBeInTheDocument();
-    expect(description).toBeInTheDocument();
     expect(tabs).toBeInTheDocument();
     expect(detailsTab).toBeInTheDocument();
     expect(activityFeedTab).toBeInTheDocument();
