@@ -533,10 +533,7 @@ const TableDetailsPageV1 = () => {
       },
       {
         label: (
-          <TabsLabel
-            id={EntityTabs.PROFILER}
-            name={t('label.profiler-amp-data-quality')}
-          />
+          <TabsLabel id={EntityTabs.PROFILER} name={t('label.data-quality')} />
         ),
         isHidden: !(
           tablePermissions.ViewAll ||

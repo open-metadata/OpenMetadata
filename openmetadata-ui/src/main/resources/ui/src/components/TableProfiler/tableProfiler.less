@@ -39,6 +39,18 @@
   .ant-table-thead .ant-table-cell:first-child {
     padding-left: 16px;
   }
+
+  .data-quality-left-panel,
+  .data-quality-content-panel {
+    height: calc(100vh - 236px);
+  }
+
+  .data-quality-left-panel {
+    border-right: @global-border;
+  }
+  .data-quality-content-panel {
+    overflow: scroll;
+  }
 }
 .include-columns-add-button.ant-btn-icon-only.ant-btn-sm {
   width: 18px;

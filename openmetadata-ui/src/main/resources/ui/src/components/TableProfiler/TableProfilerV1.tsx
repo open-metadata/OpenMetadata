@@ -13,7 +13,6 @@
 
 import {
   Button,
-  Card,
   Col,
   Form,
   Menu,
@@ -372,187 +371,181 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
   return (
     <Row
-      className="table-profiler-container h-full flex-grow m-y-md"
+      className="table-profiler-container h-full flex-grow"
       data-testid="table-profiler-container"
       gutter={[16, 16]}
       id="profilerDetails">
-      <Col span={4}>
-        <Card className="h-full dataset-left-panel">
-          <Menu
-            className="h-full p-x-0 custom-menu"
-            data-testid="profiler-tab-left-panel"
-            items={tabOptions}
-            mode="inline"
-            selectedKeys={[activeTab ?? TableProfilerTab.TABLE_PROFILE]}
-            onClick={handleTabChange}
-          />
-        </Card>
+      <Col className="p-t-sm data-quality-left-panel" span={4}>
+        <Menu
+          className="h-full p-x-0 custom-menu"
+          data-testid="profiler-tab-left-panel"
+          items={tabOptions}
+          mode="inline"
+          selectedKeys={[activeTab ?? TableProfilerTab.TABLE_PROFILE]}
+          onClick={handleTabChange}
+        />
       </Col>
-      <Col span={20}>
-        <Card>
-          <Space className="w-full h-min-full" direction="vertical">
-            <Row className="m-b-md">
-              <Col span={10}>
-                <PageHeader data={getPageHeader} />
-              </Col>
-              <Col span={14}>
-                <Space align="center" className="w-full justify-end">
-                  {isDataQuality && (
-                    <>
-                      <Form.Item
-                        className="m-0"
-                        label={t('label.deleted', {
-                          entity: t('label.test-plural'),
-                        })}>
-                        <Switch
-                          checked={deleted}
-                          onClick={handleDeletedTestCaseClick}
-                        />
-                      </Form.Item>
-                      <Form.Item className="m-0 w-40" label={t('label.type')}>
-                        <Select
-                          options={testCaseTypeOption}
-                          value={selectedTestType}
-                          onChange={handleTestCaseTypeChange}
-                        />
-                      </Form.Item>
-                      <Form.Item className="m-0 w-40" label={t('label.status')}>
-                        <Select
-                          options={testCaseStatusOption}
-                          value={selectedTestCaseStatus}
-                          onChange={handleTestCaseStatusChange}
-                        />
-                      </Form.Item>
-                    </>
-                  )}
+      <Col className="data-quality-content-panel" span={20}>
+        <Space className="w-full h-min-full p-sm" direction="vertical">
+          <Row className="m-b-md">
+            <Col span={10}>
+              <PageHeader data={getPageHeader} />
+            </Col>
+            <Col span={14}>
+              <Space align="center" className="w-full justify-end">
+                {isDataQuality && (
+                  <>
+                    <Form.Item
+                      className="m-0"
+                      label={t('label.deleted', {
+                        entity: t('label.test-plural'),
+                      })}>
+                      <Switch
+                        checked={deleted}
+                        onClick={handleDeletedTestCaseClick}
+                      />
+                    </Form.Item>
+                    <Form.Item className="m-0 w-40" label={t('label.type')}>
+                      <Select
+                        options={testCaseTypeOption}
+                        value={selectedTestType}
+                        onChange={handleTestCaseTypeChange}
+                      />
+                    </Form.Item>
+                    <Form.Item className="m-0 w-40" label={t('label.status')}>
+                      <Select
+                        options={testCaseStatusOption}
+                        value={selectedTestCaseStatus}
+                        onChange={handleTestCaseStatusChange}
+                      />
+                    </Form.Item>
+                  </>
+                )}
 
-                  {isTableProfile && (
-                    <DatePickerMenu
-                      showSelectedCustomRange
-                      handleDateRangeChange={handleDateRangeChange}
-                    />
-                  )}
+                {isTableProfile && (
+                  <DatePickerMenu
+                    showSelectedCustomRange
+                    handleDateRangeChange={handleDateRangeChange}
+                  />
+                )}
 
-                  <Link
-                    to={
-                      editTest
-                        ? getAddDataQualityTableTestPath(
-                            ProfilerDashboardType.TABLE,
-                            `${table?.fullyQualifiedName}`
-                          )
-                        : '#'
-                    }>
-                    <Tooltip
-                      title={
-                        !editTest && t('message.no-permission-for-action')
-                      }>
-                      <Button
-                        className="rounded-4"
-                        data-testid="profiler-add-table-test-btn"
-                        disabled={!editTest}
-                        type="primary">
-                        {t('label.add-entity', {
-                          entity: t('label.test'),
-                        })}
-                      </Button>
-                    </Tooltip>
-                  </Link>
-
+                <Link
+                  to={
+                    editTest
+                      ? getAddDataQualityTableTestPath(
+                          ProfilerDashboardType.TABLE,
+                          `${table?.fullyQualifiedName}`
+                        )
+                      : '#'
+                  }>
                   <Tooltip
-                    placement="topRight"
-                    title={
-                      editTest
-                        ? t('label.setting-plural')
-                        : t('message.no-permission-for-action')
-                    }>
+                    title={!editTest && t('message.no-permission-for-action')}>
                     <Button
-                      className="manage-dropdown-button"
-                      data-testid="profiler-setting-btn"
+                      className="rounded-4"
+                      data-testid="profiler-add-table-test-btn"
                       disabled={!editTest}
-                      type="primary"
-                      onClick={() => handleSettingModal(true)}>
-                      <SettingIcon className="text-primary self-center manage-dropdown-icon" />
+                      type="primary">
+                      {t('label.add-entity', {
+                        entity: t('label.test'),
+                      })}
                     </Button>
                   </Tooltip>
-                </Space>
-              </Col>
-            </Row>
+                </Link>
 
-            {isUndefined(profile) && (
-              <div
-                className="tw-border d-flex tw-items-center tw-border-warning tw-rounded tw-p-2 tw-mb-4"
-                data-testid="no-profiler-placeholder">
-                <NoDataIcon />
-                <p className="tw-mb-0 tw-ml-2">
-                  {t('message.no-profiler-message')}
-                  <Link
-                    className="tw-ml-1"
-                    target="_blank"
-                    to={{
-                      pathname:
-                        'https://docs.open-metadata.org/connectors/ingestion/workflows/profiler',
-                    }}>
-                    {`${t('label.here-lowercase')}.`}
-                  </Link>
+                <Tooltip
+                  placement="topRight"
+                  title={
+                    editTest
+                      ? t('label.setting-plural')
+                      : t('message.no-permission-for-action')
+                  }>
+                  <Button
+                    className="manage-dropdown-button"
+                    data-testid="profiler-setting-btn"
+                    disabled={!editTest}
+                    type="primary"
+                    onClick={() => handleSettingModal(true)}>
+                    <SettingIcon className="text-primary self-center manage-dropdown-icon" />
+                  </Button>
+                </Tooltip>
+              </Space>
+            </Col>
+          </Row>
+
+          {isUndefined(profile) && (
+            <div
+              className="tw-border d-flex tw-items-center tw-border-warning tw-rounded tw-p-2 tw-mb-4"
+              data-testid="no-profiler-placeholder">
+              <NoDataIcon />
+              <p className="tw-mb-0 tw-ml-2">
+                {t('message.no-profiler-message')}
+                <Link
+                  className="tw-ml-1"
+                  target="_blank"
+                  to={{
+                    pathname:
+                      'https://docs.open-metadata.org/connectors/ingestion/workflows/profiler',
+                  }}>
+                  {`${t('label.here-lowercase')}.`}
+                </Link>
+              </p>
+            </div>
+          )}
+
+          <Row className="rounded-4 border-1 p-md m-b-md">
+            {overallSummery.map((summery) => (
+              <Col
+                className="overall-summery-card"
+                data-testid={`header-card-${summery.title}`}
+                key={summery.title}
+                span={4}>
+                <p className="overall-summery-card-title font-medium text-grey-muted m-b-xss">
+                  {summery.title}
                 </p>
-              </div>
-            )}
+                <p
+                  className={classNames(
+                    'text-2xl font-semibold',
+                    summery.className
+                  )}>
+                  {summery.value}
+                </p>
+              </Col>
+            ))}
+          </Row>
 
-            <Row className="rounded-4 border-1 p-md m-b-md">
-              {overallSummery.map((summery) => (
-                <Col
-                  className="overall-summery-card"
-                  data-testid={`header-card-${summery.title}`}
-                  key={summery.title}
-                  span={4}>
-                  <p className="overall-summery-card-title font-medium text-grey-muted m-b-xss">
-                    {summery.title}
-                  </p>
-                  <p
-                    className={classNames(
-                      'text-2xl font-semibold',
-                      summery.className
-                    )}>
-                    {summery.value}
-                  </p>
-                </Col>
-              ))}
-            </Row>
+          {isColumnProfile && (
+            <ColumnProfileTable
+              columnTests={columnTests}
+              columns={columns.map((col) => ({
+                ...col,
+                key: col.name,
+              }))}
+              hasEditAccess={editTest}
+            />
+          )}
 
-            {isColumnProfile && (
-              <ColumnProfileTable
-                columnTests={columnTests}
-                columns={columns.map((col) => ({
-                  ...col,
-                  key: col.name,
-                }))}
-                hasEditAccess={editTest}
-              />
-            )}
+          {isDataQuality && (
+            <DataQualityTab
+              deletedTable={deleted}
+              isLoading={isTestCaseLoading}
+              testCases={getFilterTestCase()}
+              onTestUpdate={fetchAllTests}
+            />
+          )}
 
-            {isDataQuality && (
-              <DataQualityTab
-                deletedTable={deleted}
-                isLoading={isTestCaseLoading}
-                testCases={getFilterTestCase()}
-                onTestUpdate={fetchAllTests}
-              />
-            )}
+          {isTableProfile && (
+            <TableProfilerChart dateRangeObject={dateRangeObject} />
+          )}
 
-            {isTableProfile && (
-              <TableProfilerChart dateRangeObject={dateRangeObject} />
-            )}
-
-            {settingModalVisible && (
-              <ProfilerSettingsModal
-                columns={columns}
-                tableId={table?.id || ''}
-                visible={settingModalVisible}
-                onVisibilityChange={handleSettingModal}
-              />
-            )}
-          </Space>
-        </Card>
+          {settingModalVisible && (
+            <ProfilerSettingsModal
+              columns={columns}
+              tableId={table?.id || ''}
+              visible={settingModalVisible}
+              onVisibilityChange={handleSettingModal}
+            />
+          )}
+        </Space>
       </Col>
     </Row>
   );
