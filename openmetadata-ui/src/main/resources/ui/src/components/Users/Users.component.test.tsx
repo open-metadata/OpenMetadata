@@ -52,6 +52,17 @@ jest.mock('pages/teams/UserCard', () => {
   return jest.fn().mockReturnValue(<p>UserCard</p>);
 });
 
+jest.mock('components/searched-data/SearchedData', () => {
+  return jest.fn().mockReturnValue(<p>SearchedData</p>);
+});
+
+jest.mock(
+  'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component',
+  () => {
+    return jest.fn().mockReturnValue(<p>EntitySummaryPanel</p>);
+  }
+);
+
 jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
   return jest.fn().mockReturnValue(<p>FeedCards</p>);
 });
