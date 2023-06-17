@@ -20,6 +20,21 @@
     "containerFilterPattern": {
       "description": "Regex to only fetch containers that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "storageMetadataConfigSource": {
+      "mask": true,
+      "title": "Storage Metadata Configuration Source",
+      "oneOf": [
+        {
+          "$ref": "./storage/storageMetadataLocalConfig.json"
+        },
+        {
+          "$ref": "./storage/storageMetadataHttpConfig.json"
+        },
+        {
+          "$ref": "./storage/storageMetadataS3Config.json"
+        }
+      ]
     }
   },
   "additionalProperties": false

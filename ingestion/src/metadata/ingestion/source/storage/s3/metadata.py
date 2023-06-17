@@ -39,6 +39,9 @@ from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig
     MetadataEntry,
     StorageContainerConfig,
 )
+from metadata.generated.schema.metadataIngestion.storage.manifestMetadataConfig import (
+    ManifestMetadataConfig,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -92,51 +95,58 @@ class S3Source(StorageServiceSource):
         return cls(config, metadata_config)
 
     def get_containers(self) -> Iterable[S3ContainerDetails]:
+        global_manifest: Optional[ManifestMetadataConfig] = self.get_manifest_file()
         bucket_results = self.fetch_buckets()
 
         for bucket_response in bucket_results:
+            bucket_name = bucket_response.name
             try:
-
-                # We always try to generate the parent container (the bucket)
+                # We always generate the parent container (the bucket)
                 yield self._generate_unstructured_container(
                     bucket_response=bucket_response
                 )
-                self._bucket_cache[bucket_response.name] = self.context.container
-
-                metadata_config = self._load_metadata_file(
-                    bucket_name=bucket_response.name
+                self._bucket_cache[bucket_name] = self.context.container
+                parent_entity: EntityReference = EntityReference(
+                    id=self._bucket_cache[bucket_name].id.__root__, type="container"
                 )
-                if metadata_config:
-                    for metadata_entry in metadata_config.entries:
-                        logger.info(
-                            f"Extracting metadata from path {metadata_entry.dataPath.strip(S3_KEY_SEPARATOR)} "
-                            f"and generating structured container"
+                if global_manifest:
+                    manifest_entries_for_current_bucket = (
+                        self._manifest_entries_to_metadata_entries_by_bucket(
+                            bucket=bucket_name, manifest=global_manifest
                         )
-                        structured_container: Optional[
-                            S3ContainerDetails
-                        ] = self._generate_container_details(
+                    )
+                    # Check if we have entries in the manifest file belonging to this bucket
+                    if manifest_entries_for_current_bucket:
+                        # ingest all the relevant valid paths from it
+                        yield from self._generate_structured_containers(
                             bucket_response=bucket_response,
-                            metadata_entry=metadata_entry,
-                            parent=EntityReference(
-                                id=self._bucket_cache[bucket_response.name].id.__root__,
-                                type="container",
+                            entries=self._manifest_entries_to_metadata_entries_by_bucket(
+                                bucket=bucket_name, manifest=global_manifest
                             ),
+                            parent=parent_entity,
                         )
-                        if structured_container:
-                            yield structured_container
-
+                        # nothing else do to for the current bucket, skipping to the next
+                        continue
+                # If no global file, or no valid entries in the manifest, check for bucket level metadata file
+                metadata_config = self._load_metadata_file(bucket_name=bucket_name)
+                if metadata_config:
+                    yield from self._generate_structured_containers(
+                        bucket_response=bucket_response,
+                        entries=metadata_config.entries,
+                        parent=parent_entity,
+                    )
             except ValidationError as err:
                 error = f"Validation error while creating Container from bucket details - {err}"
                 logger.debug(traceback.format_exc())
                 logger.warning(error)
-                self.status.failed(bucket_response.name, error, traceback.format_exc())
+                self.status.failed(bucket_name, error, traceback.format_exc())
             except Exception as err:
                 error = (
                     f"Wild error while creating Container from bucket details - {err}"
                 )
                 logger.debug(traceback.format_exc())
                 logger.warning(error)
-                self.status.failed(bucket_response.name, error, traceback.format_exc())
+                self.status.failed(bucket_name, error, traceback.format_exc())
 
     def yield_create_container_requests(
         self, container_details: S3ContainerDetails
@@ -187,6 +197,30 @@ class S3Source(StorageServiceSource):
                     parent=parent,
                 )
         return None
+
+    def _generate_structured_containers(
+        self,
+        bucket_response: S3BucketResponse,
+        entries: List[MetadataEntry],
+        parent: Optional[EntityReference] = None,
+    ) -> List[S3ContainerDetails]:
+        result: List[S3ContainerDetails] = []
+        for metadata_entry in entries:
+            logger.info(
+                f"Extracting metadata from path {metadata_entry.dataPath.strip(S3_KEY_SEPARATOR)} "
+                f"and generating structured container"
+            )
+            structured_container: Optional[
+                S3ContainerDetails
+            ] = self._generate_container_details(
+                bucket_response=bucket_response,
+                metadata_entry=metadata_entry,
+                parent=parent,
+            )
+            if structured_container:
+                result.append(structured_container)
+
+        return result
 
     def _get_columns(
         self, bucket_name: str, sample_key: str, metadata_entry: MetadataEntry
@@ -325,6 +359,25 @@ class S3Source(StorageServiceSource):
             file_formats=[],  # TODO should we fetch some random files by extension here? Would it be valuable info?
             data_model=None,
         )
+
+    @staticmethod
+    def _manifest_entries_to_metadata_entries_by_bucket(
+        bucket: str, manifest: ManifestMetadataConfig
+    ) -> List[MetadataEntry]:
+        """
+        Convert manifest entries(which have an extra bucket property) to bucket-level metadata entries, filtered by
+        a given bucket
+        """
+        return [
+            MetadataEntry(
+                dataPath=entry.dataPath,
+                structureFormat=entry.structureFormat,
+                isPartitioned=entry.isPartitioned,
+                partitionColumns=entry.partitionColumns,
+            )
+            for entry in manifest.entries
+            if entry.bucketName == bucket
+        ]
 
     @staticmethod
     def _get_sample_file_prefix(metadata_entry: MetadataEntry) -> Optional[str]:

@@ -12,7 +12,7 @@
 Base class for ingesting Object Storage services
 """
 from abc import ABC, abstractmethod
-from typing import Any, Iterable
+from typing import Any, Iterable, Optional
 
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.entity.data.container import Container
@@ -22,6 +22,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.storageService import (
     StorageConnection,
     StorageService,
+)
+from metadata.generated.schema.metadataIngestion.storage.manifestMetadataConfig import (
+    ManifestMetadataConfig,
 )
 from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline import (
     StorageServiceMetadataPipeline,
@@ -41,6 +44,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.ingestion.source.storage.s3.connection import S3ObjectStoreClient
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.storage_metadata_config import get_manifest
 
 logger = ingestion_logger()
 
@@ -108,6 +112,11 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         # Flag the connection for the test connection
         self.connection_obj = self.connection
         self.test_connection()
+
+    def get_manifest_file(self) -> Optional[ManifestMetadataConfig]:
+        if self.source_config.storageMetadataConfigSource:
+            return get_manifest(self.source_config.storageMetadataConfigSource)
+        return None
 
     @abstractmethod
     def get_containers(self) -> Iterable[Any]:
