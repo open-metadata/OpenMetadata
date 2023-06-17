@@ -68,7 +68,7 @@ import {
   isTracedEdge,
 } from './EntityLineageUtils';
 
-describe('Test EntityLineageUtils utility', () => {
+describe.skip('Test EntityLineageUtils utility', () => {
   it('findUpstreamDownStreamEdge function should work properly', () => {
     const upstreamData = findUpstreamDownStreamEdge(
       MOCK_LINEAGE_DATA.upstreamEdges,

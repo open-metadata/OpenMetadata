@@ -33,6 +33,7 @@ import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { TaskOperation } from 'constants/Feeds.constants';
 import { TaskType } from 'generated/api/feed/createThread';
 import { TaskDetails, ThreadTaskStatus } from 'generated/entity/feed/thread';
+import { TagLabel } from 'generated/type/tagLabel';
 import { useAuth } from 'hooks/authHooks';
 import { isEmpty, isEqual, isUndefined, noop } from 'lodash';
 import DescriptionTask from 'pages/TasksPage/shared/DescriptionTask';
@@ -175,6 +176,25 @@ export const TaskTab = ({
     }
   };
 
+  const onEditAndSuggest = ({
+    description,
+    updatedTags,
+  }: {
+    description: string;
+    updatedTags: TagLabel[];
+  }) => {
+    if (isTaskTags) {
+      const tagsData = {
+        newValue: JSON.stringify(updatedTags) || '[]',
+      };
+
+      updateTaskData(tagsData as TaskDetails);
+    } else {
+      const data = { newValue: description };
+      updateTaskData(data as TaskDetails);
+    }
+  };
+
   /**
    *
    * @returns True if has access otherwise false
@@ -292,12 +312,7 @@ export const TaskTab = ({
             hasEditAccess={hasEditAccess()}
             isTaskActionEdit={false}
             task={taskDetails}
-            value={
-              form.getFieldValue('updateTags') ??
-              JSON.stringify(task.task?.suggestion) ??
-              '[]'
-            }
-            onChange={(newTags) => form.setFieldValue('updateTags', newTags)}
+            value={JSON.parse(taskDetails?.suggestion ?? '[]')}
           />
         )}
 
@@ -341,30 +356,65 @@ export const TaskTab = ({
           )}
         </Space>
       </Col>
-      <Modal open={showEditTaskModel} title={`Edit task #${taskDetails?.id}`}>
-        <Form>
+      <Modal
+        maskClosable
+        closable={false}
+        closeIcon={null}
+        open={showEditTaskModel}
+        title={`Edit task #${taskDetails?.id}`}
+        width={768}
+        onCancel={() => setShowEditTaskModel(false)}
+        onOk={() => form.submit()}>
+        <Form
+          form={form}
+          initialValues={{
+            updateTags: JSON.parse(taskDetails?.suggestion ?? '[]'),
+          }}
+          layout="vertical"
+          onFinish={onEditAndSuggest}>
           {isTaskTags ? (
-            <TagsTask
-              isTaskActionEdit
-              currentTags={getCurrentTags()}
-              hasEditAccess={hasEditAccess()}
-              task={taskDetails}
-              value={
-                form.getFieldValue('updateTags') ??
-                JSON.stringify(task.task?.suggestion) ??
-                '[]'
-              }
-              onChange={(newTags) => form.setFieldValue('updateTags', newTags)}
-            />
+            <Form.Item
+              data-testid="tags-label"
+              label={t('label.tag-plural')}
+              name="updateTags"
+              rules={[
+                {
+                  required: true,
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.tag-plural'),
+                  }),
+                },
+              ]}>
+              <TagsTask
+                isTaskActionEdit
+                currentTags={getCurrentTags()}
+                hasEditAccess={hasEditAccess()}
+                task={taskDetails}
+              />
+            </Form.Item>
           ) : (
-            <DescriptionTask
-              isTaskActionEdit
-              hasEditAccess={hasEditAccess()}
-              suggestion={task.task?.suggestion ?? ''}
-              taskDetail={task}
-              value={currentDescription()}
-              onChange={(value) => form.setFieldValue('description', value)}
-            />
+            <Form.Item
+              data-testid="tags-label"
+              label={t('label.description')}
+              name="description"
+              rules={[
+                {
+                  required: true,
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.description'),
+                  }),
+                },
+              ]}
+              valuePropName="suggestion">
+              <DescriptionTask
+                isTaskActionEdit
+                hasEditAccess={hasEditAccess()}
+                suggestion={task.task?.suggestion ?? ''}
+                taskDetail={task}
+                value={currentDescription()}
+                onChange={(value) => form.setFieldValue('description', value)}
+              />
+            </Form.Item>
           )}
         </Form>
       </Modal>

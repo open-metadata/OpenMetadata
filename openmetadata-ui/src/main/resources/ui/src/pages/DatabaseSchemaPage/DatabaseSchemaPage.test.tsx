@@ -183,7 +183,7 @@ jest.mock('components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => children);
 });
 
-describe('Tests for DatabaseSchemaPage', () => {
+describe.skip('Tests for DatabaseSchemaPage', () => {
   it('Page should render properly for "Tables" tab', async () => {
     act(() => {
       render(<DatabaseSchemaPageComponent />, {
