@@ -25,8 +25,11 @@ import {
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import { AxiosError } from 'axios';
-import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import InlineEdit from 'components/InlineEdit/InlineEdit.component';
+import SearchedData from 'components/searched-data/SearchedData';
+import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
 import { capitalize, isEmpty, isEqual, toLower } from 'lodash';
@@ -46,7 +49,6 @@ import { getRoles } from 'rest/rolesAPIV1';
 import { getEntityName } from 'utils/EntityUtils';
 import {
   getUserPath,
-  PAGE_SIZE,
   PAGE_SIZE_LARGE,
   TERM_ADMIN,
 } from '../../constants/constants';
@@ -78,8 +80,6 @@ import {
 } from '../ActivityFeed/ActivityFeedList/ActivityFeedList.util';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import Description from '../common/description/Description';
-import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../common/next-previous/NextPrevious';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import DropDownList from '../dropdown/DropDownList';
@@ -131,6 +131,10 @@ const Users = ({
   const isTaskType = isEqual(threadType, ThreadType.Task);
   const [isLoading, setIsLoading] = useState(false);
   const [isRolesLoading, setIsRolesLoading] = useState<boolean>(false);
+
+  const [showSummaryPanel, setShowSummaryPanel] = useState(false);
+  const [entityDetails, setEntityDetails] =
+    useState<SearchedDataProps['data'][number]['_source']>();
 
   const { authConfig } = useAuthContext();
   const { t } = useTranslation();
@@ -682,6 +686,32 @@ const Users = ({
     }
   };
 
+  const handleSummaryPanelDisplay = useCallback(
+    (details: SearchedDataProps['data'][number]['_source']) => {
+      setShowSummaryPanel(true);
+      setEntityDetails(details);
+    },
+    []
+  );
+
+  const handleClosePanel = () => {
+    setShowSummaryPanel(false);
+  };
+
+  useEffect(() => {
+    if ([UserPageTabs.FOLLOWING, UserPageTabs.MY_DATA].includes(tab)) {
+      const entityData =
+        tab === UserPageTabs.MY_DATA ? ownedEntities : followingEntities;
+
+      if (!isEmpty(entityData.data) && entityData.data[0]) {
+        handleSummaryPanelDisplay(entityData.data[0]?._source);
+      } else {
+        setShowSummaryPanel(false);
+        setEntityDetails(undefined);
+      }
+    }
+  }, [tab, ownedEntities, followingEntities]);
+
   useEffect(() => {
     fetchMoreFeed(isInView, paging, isFeedLoading);
   }, [isInView, paging, isFeedLoading]);
@@ -714,32 +744,34 @@ const Users = ({
         }
 
         return (
-          <div data-testid="table-container">
+          <PageLayoutV1
+            className="user-page-layout"
+            pageTitle={t('label.user')}
+            rightPanel={
+              showSummaryPanel &&
+              entityDetails && (
+                <EntitySummaryPanel
+                  entityDetails={{ details: entityDetails }}
+                  handleClosePanel={handleClosePanel}
+                />
+              )
+            }
+            rightPanelWidth={400}>
             {entityData.data.length ? (
-              <>
-                {entityData.data.map(({ _source, _id = '' }, index) => (
-                  <TableDataCardV2
-                    className="m-b-sm cursor-pointer"
-                    id={_id}
-                    key={index}
-                    source={_source}
-                  />
-                ))}
-                {entityData.total > PAGE_SIZE && entityData.data.length > 0 && (
-                  <NextPrevious
-                    isNumberBased
-                    currentPage={entityData.currPage}
-                    pageSize={PAGE_SIZE}
-                    paging={{} as Paging}
-                    pagingHandler={
-                      tab === UserPageTabs.MY_DATA
-                        ? onOwnedEntityPaginate
-                        : onFollowingEntityPaginate
-                    }
-                    totalCount={entityData.total}
-                  />
-                )}
-              </>
+              <SearchedData
+                currentPage={entityData.currPage}
+                data={entityData.data ?? []}
+                handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+                isFilterSelected={false}
+                isSummaryPanelVisible={showSummaryPanel}
+                selectedEntityId={entityDetails?.id || ''}
+                totalValue={entityData.total ?? 0}
+                onPaginationChange={
+                  tab === UserPageTabs.MY_DATA
+                    ? onOwnedEntityPaginate
+                    : onFollowingEntityPaginate
+                }
+              />
             ) : (
               <ErrorPlaceHolder>
                 <Typography.Paragraph>
@@ -753,7 +785,7 @@ const Users = ({
                 </Typography.Paragraph>
               </ErrorPlaceHolder>
             )}
-          </div>
+          </PageLayoutV1>
         );
       }
       case UserPageTabs.ACTIVITY:
@@ -834,6 +866,7 @@ const Users = ({
     feedData,
     isFeedLoading,
     elementRef,
+    entityDetails,
   ]);
 
   return (
@@ -841,14 +874,13 @@ const Users = ({
       className="tw-h-full"
       leftPanel={fetchLeftPanel()}
       pageTitle={t('label.user')}>
-      <div className="page-container">
-        <Tabs
-          activeKey={tab ?? UserPageTabs.ACTIVITY}
-          data-testid="tabs"
-          items={tabs}
-          onChange={activeTabHandler}
-        />
-      </div>
+      <Tabs
+        activeKey={tab ?? UserPageTabs.ACTIVITY}
+        className="user-page-tabs"
+        data-testid="tabs"
+        items={tabs}
+        onChange={activeTabHandler}
+      />
       <div>{tabDetails}</div>
     </PageLayoutV1>
   );
