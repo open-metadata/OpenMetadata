@@ -179,7 +179,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
             daoCollection
                 .entityExtensionTimeSeriesDao()
                 .getLatestExtensionByKey(
-                    RUN_ID_EXTENSION_KEY, pipelineStatus.getRunId(), ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
+                    RUN_ID_EXTENSION_KEY,
+                    pipelineStatus.getRunId(),
+                    ingestionPipeline.getFullyQualifiedName(),
+                    PIPELINE_STATUS_EXTENSION),
             PipelineStatus.class);
     if (storedPipelineStatus != null) {
       daoCollection
@@ -194,7 +197,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       daoCollection
           .entityExtensionTimeSeriesDao()
           .insert(
-              FullyQualifiedName.buildHash(ingestionPipeline.getFullyQualifiedName()), PIPELINE_STATUS_EXTENSION, PIPELINE_STATUS_JSON_SCHEMA, JsonUtils.pojoToJson(pipelineStatus));
+              FullyQualifiedName.buildHash(ingestionPipeline.getFullyQualifiedName()),
+              PIPELINE_STATUS_EXTENSION,
+              PIPELINE_STATUS_JSON_SCHEMA,
+              JsonUtils.pojoToJson(pipelineStatus));
     }
     ChangeDescription change =
         addPipelineStatusChangeDescription(ingestionPipeline.getVersion(), pipelineStatus, storedPipelineStatus);
