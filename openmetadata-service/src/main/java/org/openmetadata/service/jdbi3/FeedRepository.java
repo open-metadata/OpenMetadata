@@ -25,7 +25,6 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNC
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNCEMENT_OVERLAP;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReference;
-import static org.openmetadata.service.util.EntityUtil.populateEntityReferences;
 import static org.openmetadata.service.util.RestUtil.DELETED_TEAM_DISPLAY;
 import static org.openmetadata.service.util.RestUtil.DELETED_TEAM_NAME;
 import static org.openmetadata.service.util.RestUtil.DELETED_USER_DISPLAY;
@@ -72,6 +71,7 @@ import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.ResourceRegistry;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
@@ -80,7 +80,7 @@ import org.openmetadata.service.resources.feeds.FeedResource;
 import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
-import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -132,7 +132,6 @@ public class FeedRepository {
 
     if (thread.getType() == ThreadType.Task) {
       thread.withTask(thread.getTask().withId(getNextTaskId())); // Assign taskId for a task
-      populateAssignees(thread);
     } else if (thread.getType() == ThreadType.Announcement) {
       // Validate start and end time for announcement
       validateAnnouncement(thread.getAnnouncement());
@@ -174,6 +173,7 @@ public class FeedRepository {
 
     // Add mentions to field relationship table
     storeMentions(thread, thread.getMessage());
+    populateAssignees(thread);
     return thread;
   }
 
@@ -595,37 +595,39 @@ public class FeedRepository {
     return new PatchResponse<>(Status.OK, updatedHref, change);
   }
 
-  public void checkPermissionsForResolveTask(Thread thread, SecurityContext securityContext, Authorizer authorizer)
+  public void checkPermissionsForResolveTask(Thread thread, boolean closeTask, SecurityContext securityContext)
       throws IOException {
-    if (!thread.getType().equals(ThreadType.Task)) {
-      return; // Nothing to resolve
-    }
+    String userName = securityContext.getUserPrincipal().getName();
+    User user = SubjectCache.getInstance().getUser(userName);
     EntityLink about = EntityLink.parse(thread.getAbout());
     EntityReference aboutRef = EntityUtil.validateEntityLink(about);
-
-    // Get owner for the addressed to Entity
-    EntityReference owner = Entity.getOwner(aboutRef);
-
-    String userName = securityContext.getUserPrincipal().getName();
-    User loggedInUser = SubjectCache.getInstance().getUser(userName);
-    List<EntityReference> teams =
-        populateEntityReferences(
-            dao.relationshipDAO()
-                .findFrom(loggedInUser.getId().toString(), Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM),
-            Entity.TEAM);
-    List<String> teamNames = teams.stream().map(EntityReference::getName).collect(Collectors.toList());
-
-    // check if logged-in user satisfies any of the following
-    // - logged-in user or the teams they belong to were assigned the task
-    // - logged-in user or the teams they belong to, owns the entity that the task is about
-    List<EntityReference> assignees = thread.getTask().getAssignees();
-    if (assignees.stream().noneMatch(assignee -> assignee.getName().equals(userName))
-        && assignees.stream().noneMatch(assignee -> teamNames.contains(assignee.getName()))
-        && !owner.getName().equals(userName)
-        && !teamNames.contains(owner.getName())) {
-      // Only admins can close or resolve task other than the above-mentioned users
-      authorizer.authorizeAdmin(securityContext);
+    if (Boolean.TRUE.equals(user.getIsAdmin())) {
+      return; // Allow admin resolve/close task
     }
+
+    // Allow if user is an assignee of the resolve/close task
+    // Allow if user is the owner of the resource for which task is created to resolve/close task
+    // Allow if user created the task to close task (and not resolve task)
+    EntityReference owner = Entity.getOwner(aboutRef);
+    List<EntityReference> assignees = thread.getTask().getAssignees();
+    if (assignees.stream().anyMatch(assignee -> assignee.getName().equals(userName))
+        || owner.getName().equals(userName)
+        || closeTask && thread.getCreatedBy().equals(userName)) {
+      return;
+    }
+
+    // Allow if user belongs to a team that has task assigned to it
+    // Allow if user belongs to a team if owner of the resource against which task is created
+    List<EntityReference> teams = user.getTeams();
+    List<String> teamNames = teams.stream().map(EntityReference::getName).collect(Collectors.toList());
+    if (assignees.stream().anyMatch(assignee -> teamNames.contains(assignee.getName()))
+        && teamNames.contains(owner.getName())) {
+      return;
+    }
+
+    // Finally, operation is not allowed - throw exception
+    throw new AuthorizationException(
+        CatalogExceptionMessage.taskOperationNotAllowed(userName, closeTask ? "closeTask" : "resolveTask"));
   }
 
   private void validateAnnouncement(AnnouncementDetails announcementDetails) {
