@@ -13,10 +13,14 @@
 
 package org.openmetadata.service;
 
+import static java.lang.String.format;
+
 import io.dropwizard.jersey.jackson.JacksonFeature;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpHost;
 import org.elasticsearch.client.RestClient;
@@ -37,11 +41,6 @@ import org.openmetadata.service.security.policyevaluator.RoleCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
-
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.WebTarget;
-
-import static java.lang.String.format;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
