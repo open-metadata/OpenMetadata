@@ -324,6 +324,9 @@ export const DataAssetsHeader = ({
           </>
         );
 
+        returnData.breadcrumbs =
+          getBreadcrumbForEntitiesWithServiceOnly(mlModelDetail);
+
         break;
       case EntityType.CONTAINER:
         const containerDetails = dataAsset as Container;

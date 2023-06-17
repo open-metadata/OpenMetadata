@@ -405,7 +405,7 @@ describe('Glossary page should work properly', () => {
       .contains('Personal')
       .should('be.visible')
       .click();
-    cy.get('#right-panel').click();
+    cy.get('[data-testid="right-panel"]').click();
 
     cy.get('[data-testid="add-reviewers"]')
       .scrollIntoView()

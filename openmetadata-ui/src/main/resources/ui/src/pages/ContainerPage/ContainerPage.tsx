@@ -311,6 +311,8 @@ const ContainerPage = () => {
       getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsEditDescription(false);
     }
   };
   const handleUpdateDisplayName = async (data: EntityName) => {
