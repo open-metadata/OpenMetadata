@@ -37,11 +37,12 @@ import TableProfilerV1 from 'components/TableProfiler/TableProfilerV1';
 import TableQueries from 'components/TableQueries/TableQueries';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
+import { FQN_SEPARATOR_CHAR, WILD_CARD_CHAR } from 'constants/char.constants';
 import { getTableTabPath, getVersionPath, ROUTES } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { mockTablePermission } from 'constants/mockTourData.constants';
 import { EntityTabs, EntityType, FqnPart } from 'enums/entity.enum';
+import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
 import { CreateThread } from 'generated/api/feed/createThread';
 import { JoinedWith, Table } from 'generated/entity/data/table';
@@ -54,6 +55,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
+import { searchQuery } from 'rest/searchAPI';
 import {
   addFollower,
   getTableDetailsByFQN,
@@ -73,6 +75,7 @@ import { defaultFields } from 'utils/DatasetDetailsUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { createQueryFilter } from 'utils/Query/QueryUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoinedTables.component';
@@ -97,6 +100,7 @@ const TableDetailsPageV1 = () => {
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
+  const [queryCount, setQueryCount] = useState(0);
 
   const [loading, setLoading] = useState(true);
 
@@ -110,6 +114,27 @@ const TableDetailsPageV1 = () => {
       // Error here
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchQueryCount = async () => {
+    if (!tableDetails?.id) {
+      return;
+    }
+    try {
+      const response = await searchQuery({
+        query: WILD_CARD_CHAR,
+        pageNumber: 0,
+        pageSize: 0,
+        queryFilter: createQueryFilter([], tableDetails.id),
+        searchIndex: SearchIndex.QUERY,
+        includeDeleted: false,
+        trackTotalHits: true,
+        fetchSource: false,
+      });
+      setQueryCount(response.hits.total.value);
+    } catch (error) {
+      setQueryCount(0);
     }
   };
 
@@ -512,7 +537,7 @@ const TableDetailsPageV1 = () => {
       {
         label: (
           <TabsLabel
-            // count={queryCount}
+            count={queryCount}
             id={EntityTabs.TABLE_QUERIES}
             isActive={activeTab === EntityTabs.TABLE_QUERIES}
             name={t('label.query-plural')}
@@ -722,6 +747,12 @@ const TableDetailsPageV1 = () => {
     fetchTableDetails();
     getEntityFeedCount();
   }, [datasetFQN]);
+
+  useEffect(() => {
+    if (tableDetails) {
+      fetchQueryCount();
+    }
+  }, [tableDetails]);
 
   const onThreadPanelClose = () => {
     setThreadLink('');

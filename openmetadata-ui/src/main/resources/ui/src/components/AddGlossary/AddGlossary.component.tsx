@@ -79,7 +79,7 @@ const AddGlossary = ({
   };
 
   const rightPanel = (
-    <>
+    <div data-testid="right-panel">
       <Typography.Title level={5}>
         {t('label.configure-entity', {
           entity: t('label.glossary'),
@@ -88,7 +88,7 @@ const AddGlossary = ({
       <Typography.Text className="mb-5">
         {t('message.create-new-glossary-guide')}
       </Typography.Text>
-    </>
+    </div>
   );
 
   const formFields: FieldProp[] = [
