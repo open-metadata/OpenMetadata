@@ -154,8 +154,18 @@ public abstract class EntityCsv<T extends EntityInterface> {
     List<String> list = CsvUtil.fieldToStrings(owner);
     if (list.size() != 2) {
       importFailure(printer, invalidOwner(fieldNumber), csvRecord);
+      return null;
     }
     return getEntityReference(printer, csvRecord, fieldNumber, list.get(0), EntityInterfaceUtil.quoteName(list.get(1)));
+  }
+
+  /** Owner field is in entityName format */
+  public EntityReference getOwnerAsUser(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
+    String owner = csvRecord.get(fieldNumber);
+    if (nullOrEmpty(owner)) {
+      return null;
+    }
+    return getEntityReference(printer, csvRecord, fieldNumber, Entity.USER, EntityInterfaceUtil.quoteName(owner));
   }
 
   protected final Boolean getBoolean(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {

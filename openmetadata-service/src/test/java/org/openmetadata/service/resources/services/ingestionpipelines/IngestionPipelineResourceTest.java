@@ -74,6 +74,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
@@ -662,12 +663,11 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     // DELETE all status from the pipeline
     TestUtils.delete(getDeletePipelineStatus(ingestionPipeline.getId().toString()), ADMIN_AUTH_HEADERS);
     // We get no content back
-    pipelineStatus =
-        TestUtils.get(
-            getPipelineStatusByRunId(ingestionPipeline.getFullyQualifiedName(), runId),
-            PipelineStatus.class,
-            ADMIN_AUTH_HEADERS);
-    LOG.info("pipelineStatus");
+    Response response =
+        SecurityUtil.addHeaders(
+                getPipelineStatusByRunId(ingestionPipeline.getFullyQualifiedName(), runId), ADMIN_AUTH_HEADERS)
+            .get();
+    TestUtils.readResponse(response, PipelineStatus.class, Status.NO_CONTENT.getStatusCode());
   }
 
   private IngestionPipeline updateIngestionPipeline(CreateIngestionPipeline create, Map<String, String> authHeaders)

@@ -790,8 +790,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    PipelineStatus status = repository.getPipelineStatus(fqn, runId);
-    return status;
+    return repository.getPipelineStatus(fqn, runId);
   }
 
   @DELETE
