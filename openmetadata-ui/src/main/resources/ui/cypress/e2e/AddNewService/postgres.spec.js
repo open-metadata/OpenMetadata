@@ -214,7 +214,7 @@ describe('Postgres Ingestion', () => {
     // Validate queries count is greater than 1
     cy.get('[data-testid="table_queries"] [data-testid="filter-count"]')
       .invoke('text')
-      .should('be.greaterThan', 1);
+      .should('be', '1');
     // Validate schema contains frequently joined tables and columns
     cy.get('[data-testid="schema"]').should('be.visible').click();
     cy.get('[data-testid="related-tables-data"]').should('be.visible');

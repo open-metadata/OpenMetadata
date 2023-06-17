@@ -218,11 +218,11 @@ const TableDetailsPageV1 = () => {
     };
   }, [tableDetails, tableDetails?.tags]);
 
-  const { getEntityPermission } = usePermissionProvider();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const fetchResourcePermission = useCallback(async () => {
     try {
-      const tablePermission = await getEntityPermission(
+      const tablePermission = await getEntityPermissionByFqn(
         ResourceEntity.TABLE,
         tableDetails?.id ?? ''
       );
@@ -235,7 +235,7 @@ const TableDetailsPageV1 = () => {
         })
       );
     }
-  }, [tableDetails?.id, getEntityPermission, setTablePermissions]);
+  }, [tableDetails?.id, getEntityPermissionByFqn, setTablePermissions]);
 
   const getEntityFeedCount = () => {
     getFeedCounts(
