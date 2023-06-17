@@ -106,7 +106,9 @@ const ActivityFeedProvider = ({ children }: Props) => {
           feedFilterType === FeedFilter.ALL ? undefined : currentUser?.id;
 
         const { data } = await getAllFeeds(
-          getEntityFeedLink(entityType, fqn),
+          entityType !== EntityType.USER_NAME
+            ? getEntityFeedLink(entityType, fqn)
+            : undefined,
           after,
           type,
           feedFilterType,

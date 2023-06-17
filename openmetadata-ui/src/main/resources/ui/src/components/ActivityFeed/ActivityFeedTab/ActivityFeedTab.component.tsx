@@ -38,7 +38,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getFeedCount } from 'rest/feedsAPI';
 import { getCountBadge, getEntityDetailLink } from 'utils/CommonUtils';
-import { getEntityFeedLink } from 'utils/EntityUtils';
+import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from 'utils/EntityUtils';
 import { getEntityField } from 'utils/FeedUtils';
 import '../../Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -81,6 +81,20 @@ export const ActivityFeedTab = ({
     loading,
   } = useActivityFeedProvider();
 
+  const isUserEntity = useMemo(
+    () => entityType === EntityType.USER_NAME,
+    [entityType]
+  );
+
+  const entityTypeTask = useMemo(
+    () =>
+      selectedThread?.about?.split(ENTITY_LINK_SEPARATOR)?.[1] as Exclude<
+        EntityType,
+        EntityType.TABLE
+      >,
+    [selectedThread]
+  );
+
   const handleTabChange = (subTab: string) => {
     history.push(
       getEntityDetailLink(entityType, fqn, EntityTabs.ACTIVITY_FEED, subTab)
@@ -91,7 +105,7 @@ export const ActivityFeedTab = ({
   const fetchFeedsCount = () => {
     // To get conversation count
     getFeedCount(
-      getEntityFeedLink(entityType, fqn),
+      !isUserEntity ? getEntityFeedLink(entityType, fqn) : undefined,
       ThreadType.Conversation
     ).then((res) => {
       if (res) {
@@ -102,15 +116,16 @@ export const ActivityFeedTab = ({
     });
 
     // To get open tasks count
-    getFeedCount(getEntityFeedLink(entityType, fqn), ThreadType.Task).then(
-      (res) => {
-        if (res) {
-          setTasksCount(res.totalCount);
-        } else {
-          throw t('server.entity-feed-fetch-error');
-        }
+    getFeedCount(
+      !isUserEntity ? getEntityFeedLink(entityType, fqn) : undefined,
+      ThreadType.Task
+    ).then((res) => {
+      if (res) {
+        setTasksCount(res.totalCount);
+      } else {
+        throw t('server.entity-feed-fetch-error');
       }
-    );
+    });
   };
 
   useEffect(() => {
@@ -121,7 +136,12 @@ export const ActivityFeedTab = ({
     return {
       threadType:
         activeTab === 'tasks' ? ThreadType.Task : ThreadType.Conversation,
-      feedFilter: activeTab === 'mentions' ? FeedFilter.MENTIONS : undefined,
+      feedFilter:
+        activeTab === 'mentions'
+          ? FeedFilter.MENTIONS
+          : EntityType.USER_NAME === entityType
+          ? FeedFilter.OWNER
+          : undefined,
     };
   }, [activeTab]);
 
@@ -337,7 +357,7 @@ export const ActivityFeedTab = ({
               ) : (
                 <TaskTab
                   description={description}
-                  entityType={entityType}
+                  entityType={isUserEntity ? entityTypeTask : entityType}
                   owner={owner}
                   tags={tags}
                   task={selectedThread}

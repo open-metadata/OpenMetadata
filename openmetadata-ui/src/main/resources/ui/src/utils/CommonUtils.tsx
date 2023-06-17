@@ -968,6 +968,11 @@ export const getEntityDetailLink = (
       path = getDatabaseSchemaDetailsPath(fqn, tab, subTab);
 
       break;
+
+    case EntityType.USER_NAME:
+      path = getUserPath(fqn, tab, subTab);
+
+      break;
   }
 
   return path;

@@ -81,7 +81,7 @@ export const TaskTab = ({
 
   const isTaskClosed = isEqual(taskDetails?.status, ThreadTaskStatus.Closed);
   const [showEditTaskModel, setShowEditTaskModel] = useState(false);
-  const [comment, setCommnent] = useState('');
+  const [comment, setComment] = useState('');
 
   // get current user details
   const currentUser = useMemo(
@@ -328,7 +328,7 @@ export const TaskTab = ({
           ))}
         </div>
         {task.task?.status === ThreadTaskStatus.Open && (
-          <ActivityFeedEditor onSave={onSave} onTextChange={setCommnent} />
+          <ActivityFeedEditor onSave={onSave} onTextChange={setComment} />
         )}
 
         <Space

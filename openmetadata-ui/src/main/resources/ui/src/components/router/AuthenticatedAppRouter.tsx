@@ -476,6 +476,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route exact component={UserPage} path={ROUTES.USER_PROFILE} />
       <Route exact component={UserPage} path={ROUTES.USER_PROFILE_WITH_TAB} />
+      <Route
+        exact
+        component={UserPage}
+        path={ROUTES.USER_PROFILE_WITH_SUB_TAB}
+      />
+
       <Route exact component={MlModelPage} path={ROUTES.MLMODEL_DETAILS} />
       <Route
         exact

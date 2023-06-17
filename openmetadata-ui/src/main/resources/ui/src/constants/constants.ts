@@ -258,6 +258,8 @@ export const ROUTES = {
   CREATE_USER_WITH_BOT: `/create-user/${PLACEHOLDER_USER_BOT}`,
   USER_PROFILE: `/users/${PLACEHOLDER_USER_NAME}`,
   USER_PROFILE_WITH_TAB: `/users/${PLACEHOLDER_USER_NAME}/${PLACEHOLDER_ROUTE_TAB}`,
+  USER_PROFILE_WITH_SUB_TAB: `/users/${PLACEHOLDER_USER_NAME}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
+
   ROLES: '/roles',
   ADD_WEBHOOK: '/add-webhook/',
   ADD_WEBHOOK_WITH_TYPE: `/add-webhook/${PLACEHOLDER_WEBHOOK_TYPE}`,
@@ -671,12 +673,18 @@ export const getEditWebhookPath = (webhookName: string) => {
   return path;
 };
 
-export const getUserPath = (username: string, tab?: string) => {
+export const getUserPath = (username: string, tab?: string, subTab = 'all') => {
   let path = tab ? ROUTES.USER_PROFILE_WITH_TAB : ROUTES.USER_PROFILE;
-  path = path.replace(PLACEHOLDER_USER_NAME, username);
+
+  if (tab === EntityTabs.ACTIVITY_FEED) {
+    path = ROUTES.USER_PROFILE_WITH_SUB_TAB;
+    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
+  }
+
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
+  path = path.replace(PLACEHOLDER_USER_NAME, username);
 
   return path;
 };
