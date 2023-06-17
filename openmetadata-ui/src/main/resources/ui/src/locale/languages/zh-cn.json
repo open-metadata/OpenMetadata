@@ -134,6 +134,7 @@
     "column-lowercase": "column",
     "column-plural": "列",
     "column-profile": "Column Profile",
+    "comment": "Comment",
     "comment-lowercase": "评论",
     "completed": "已完成",
     "completed-entity": "已完成{{entity}}",
@@ -692,6 +693,7 @@
     "re-verify": "重新验证",
     "reaction-lowercase-plural": "表情回复",
     "read-type": "查看{{type}}",
+    "reason": "Reason",
     "receiver-plural": "接收者",
     "recent-announcement-plural": "Recent Announcements",
     "recent-run-plural": "最近运行",
@@ -1398,6 +1400,7 @@
     "would-like-to-start-adding-some": "想要从添加一些东西开始吗？",
     "write-your-announcement-lowercase": "编写您的公告",
     "write-your-description": "编写您的描述",
+    "write-your-text": "Write your {{text}}",
     "you-can-also-set-up-the-metadata-ingestion": "您还可以设置元数据提取作业"
   },
   "server": {

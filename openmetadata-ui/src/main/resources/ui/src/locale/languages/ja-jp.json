@@ -134,6 +134,7 @@
     "column-lowercase": "column",
     "column-plural": "カラム",
     "column-profile": "Column Profile",
+    "comment": "Comment",
     "comment-lowercase": "コメント",
     "completed": "完了",
     "completed-entity": "完了した{{entity}}",
@@ -692,6 +693,7 @@
     "re-verify": "再検証する",
     "reaction-lowercase-plural": "リアクションする",
     "read-type": "{{type}}を読む",
+    "reason": "Reason",
     "receiver-plural": "レシーバー",
     "recent-announcement-plural": "Recent Announcements",
     "recent-run-plural": "最近の実行",
@@ -1398,6 +1400,7 @@
     "would-like-to-start-adding-some": "Would like to start adding some?",
     "write-your-announcement-lowercase": "お知らせを書いてください",
     "write-your-description": "説明を書いてください",
+    "write-your-text": "Write your {{text}}",
     "you-can-also-set-up-the-metadata-ingestion": "メタデータの取り込みの設定もできます。"
   },
   "server": {
