@@ -28,6 +28,9 @@ from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceRequest,
 )
 from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -53,7 +56,7 @@ from metadata.generated.schema.entity.services.pipelineService import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -66,6 +69,7 @@ class OMetaLineageTest(TestCase):
 
     service_entity_id = None
 
+    # pylint: disable=line-too-long
     server_config = OpenMetadataConnection(
         hostPort="http://localhost:8585/api",
         authProvider="openmetadata",
@@ -83,7 +87,9 @@ class OMetaLineageTest(TestCase):
         connection=DatabaseConnection(
             config=MysqlConnection(
                 username="username",
-                password="password",
+                authType=BasicAuth(
+                    password="password",
+                ),
                 hostPort="http://localhost:1234",
             )
         ),
@@ -141,10 +147,10 @@ class OMetaLineageTest(TestCase):
         cls.pipeline_entity = cls.metadata.create_or_update(data=cls.pipeline)
 
         cls.create = AddLineageRequest(
-            description="test lineage",
             edge=EntitiesEdge(
                 fromEntity=EntityReference(id=cls.table_entity.id, type="table"),
                 toEntity=EntityReference(id=cls.pipeline_entity.id, type="pipeline"),
+                lineageDetails=LineageDetails(description="test lineage"),
             ),
         )
 

@@ -154,12 +154,12 @@ If you are planning on going to PROD, we recommend to validate below points:
 - Update the environment variables below for OpenMetadata-Ingestion Docker Compose backed systems to connect with Database. 
 ```
 # MySQL Environment Variables for ingestion service
-DB_HOST: '<DB_HOST_NAME>'
-DB_PORT: '<DB_PORT>'
-AIRFLOW_DB: '<AIRFLOW_DATABASE>'
-AIRFLOW_DB_SCHEME: '<AIRFLOW_DB_SCHEME>'
-DB_USER: '<AIRFLOW_DB_USER>'
-DB_PASSWORD: '<AIRFLOW_DB_PASSWORD>'
+AIRFLOW_DB_HOST='<DB_HOST_NAME>'
+AIRFLOW_DB_PORT='<DB_PORT>'
+AIRFLOW_DB='<AIRFLOW_DATABASE>'
+AIRFLOW_DB_SCHEME='<AIRFLOW_DB_SCHEME>'
+DB_USER='<AIRFLOW_DB_USER>'
+DB_PASSWORD='<AIRFLOW_DB_PASSWORD>'
 ```
 Once the environment variables values with the RDS are updated then provide this environment variable file as part of docker compose command.
 

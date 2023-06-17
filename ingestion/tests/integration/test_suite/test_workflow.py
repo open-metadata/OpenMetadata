@@ -23,7 +23,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.tests.testCase import TestCase
-from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -76,7 +75,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
                 hard_delete=True,
             )
         for test_suite_id in self.test_suite_ids:
-            self.metadata.delete(
+            self.metadata.delete_executable_test_suite(
                 entity=TestSuite,
                 entity_id=test_suite_id,
                 recursive=True,

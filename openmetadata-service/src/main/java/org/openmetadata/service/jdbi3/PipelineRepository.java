@@ -23,6 +23,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import javax.json.JsonPatch;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -34,8 +35,11 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
+import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -69,6 +73,33 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   @Override
   public String getFullyQualifiedNameHash(Pipeline pipeline) {
+    return FullyQualifiedName.buildHash(pipeline.getFullyQualifiedName());
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(Pipeline pipeline) {
+    if (entityLink.getFieldName().equals("tasks")) {
+      Pipeline pipeline = getByName(null, entityLink.getEntityFQN(), getFields("tasks,tags"), Include.ALL);
+      String oldJson = JsonUtils.pojoToJson(pipeline);
+      Task pipelineTask =
+          pipeline.getTasks().stream()
+              .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          CatalogExceptionMessage.invalidFieldName("task", entityLink.getArrayFieldName())));
+      if (EntityUtil.isDescriptionTask(task.getType())) {
+        pipelineTask.setDescription(newValue);
+      } else if (EntityUtil.isTagTask(task.getType())) {
+        List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
+        pipelineTask.setTags(tags);
+      }
+      String updatedEntityJson = JsonUtils.pojoToJson(pipeline);
+      JsonPatch patch = JsonUtils.getJsonPatch(oldJson, updatedEntityJson);
+      patch(null, pipeline.getId(), user, patch);
+      return;
+    }
     return FullyQualifiedName.buildHash(pipeline.getFullyQualifiedName());
   }
 
@@ -256,7 +287,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         .withName(task.getName())
         .withDisplayName(task.getDisplayName())
         .withFullyQualifiedName(task.getFullyQualifiedName())
-        .withTaskUrl(task.getTaskUrl())
+        .withSourceUrl(task.getSourceUrl())
         .withTaskType(task.getTaskType())
         .withDownstreamTasks(task.getDownstreamTasks())
         .withTaskSQL(task.getTaskSQL())
@@ -273,7 +304,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       updateTasks(original, updated);
-      recordChange("pipelineUrl", original.getPipelineUrl(), updated.getPipelineUrl());
+      recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("concurrency", original.getConcurrency(), updated.getConcurrency());
       recordChange("pipelineLocation", original.getPipelineLocation(), updated.getPipelineLocation());
     }

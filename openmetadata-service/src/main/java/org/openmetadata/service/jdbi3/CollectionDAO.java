@@ -666,7 +666,14 @@ public interface CollectionDAO {
         @Bind("relation") int relation,
         @Bind("json") String json);
 
-    @SqlUpdate("INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) VALUES <values>")
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT IGNORE INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) VALUES <values>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) VALUES <values>"
+                + "ON CONFLICT DO NOTHING",
+        connectionType = POSTGRES)
     void bulkInsertTo(
         @BindBeanList(
                 value = "values",
@@ -2902,6 +2909,12 @@ public interface CollectionDAO {
         "SELECT json FROM entity_extension_time_series WHERE entityFQNHash = :entityFQNHash AND extension = :extension "
             + "ORDER BY timestamp DESC LIMIT 1")
     String getLatestExtension(@Bind("entityFQNHash") String entityFQNHash, @Bind("extension") String extension);
+
+    @SqlQuery(
+        "SELECT ranked.json FROM (SELECT json, ROW_NUMBER() OVER(PARTITION BY entityFQN ORDER BY timestamp DESC) AS row_num "
+            + "FROM entity_extension_time_series WHERE entityFQN IN (<entityFQNs>)) ranked WHERE ranked.row_num = 1")
+    List<String> getLatestExtensionByFQNs(
+        @BindList("entityFQNs") List<String> entityFQNs, @Bind("extension") String extension);
 
     @SqlQuery(
         "SELECT json FROM entity_extension_time_series WHERE extension = :extension "

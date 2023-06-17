@@ -100,7 +100,8 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
 
         self._table = self._convert_table_to_orm_object(sqa_metadata)
 
-        self.session_factory = self._session_factory(service_connection_config)
+        self.engine = get_connection(service_connection_config)
+        self.session_factory = self._session_factory()
         self.session = self.session_factory()
         self.set_session_tag(self.session)
         self.set_catalog(self.session)
@@ -139,13 +140,11 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
 
         return kwargs
 
-    @staticmethod
-    def _session_factory(service_connection_config) -> scoped_session:
+    def _session_factory(self) -> scoped_session:
         """Create thread safe session that will be automatically
         garbage collected once the application thread ends
         """
-        engine = get_connection(service_connection_config)
-        return create_and_bind_thread_safe_session(engine)
+        return create_and_bind_thread_safe_session(self.engine)
 
     @staticmethod
     def _compute_static_metrics_wo_sum(
@@ -576,3 +575,8 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
             logger.warning(f"Unexpected exception computing metrics: {exc}")
             self.session.rollback()
             return None
+
+    def close(self):
+        """Clean up session"""
+        self.session.close()
+        self.engine.pool.dispose()

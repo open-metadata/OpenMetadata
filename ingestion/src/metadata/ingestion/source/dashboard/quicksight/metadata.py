@@ -133,7 +133,7 @@ class QuicksightSource(DashboardServiceSource):
         """
         dashboard_request = CreateDashboardRequest(
             name=dashboard_details["DashboardId"],
-            dashboardUrl=self.dashboard_url,
+            sourceUrl=self.dashboard_url,
             displayName=dashboard_details["Name"],
             description=dashboard_details["Version"].get("Description", ""),
             charts=[
@@ -181,7 +181,7 @@ class QuicksightSource(DashboardServiceSource):
                     displayName=chart["Name"],
                     description="",
                     chartType=ChartType.Other.value,
-                    chartUrl=self.dashboard_url,
+                    sourceUrl=self.dashboard_url,
                     service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
                 self.status.scanned(chart["Name"])

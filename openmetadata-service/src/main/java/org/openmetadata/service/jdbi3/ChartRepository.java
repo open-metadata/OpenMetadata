@@ -104,7 +104,7 @@ public class ChartRepository extends EntityRepository<Chart> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       recordChange("chartType", original.getChartType(), updated.getChartType());
-      recordChange("chartUrl", original.getChartUrl(), updated.getChartUrl());
+      recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
     }
   }
 }

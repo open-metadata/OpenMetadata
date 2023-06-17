@@ -526,4 +526,13 @@ public final class EntityUtil {
     }
     return input;
   }
+
+  public static boolean isDescriptionTask(TaskType taskType) {
+    return taskType == TaskType.RequestDescription || taskType == TaskType.UpdateDescription;
+  }
+
+  public static boolean isTagTask(TaskType taskType) {
+    return taskType == TaskType.RequestTag || taskType == TaskType.UpdateTag;
+  }
+
 }
