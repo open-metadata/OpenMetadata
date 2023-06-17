@@ -23,7 +23,6 @@ public class ReportDataRepository {
   @Transaction
   public Response addReportData(ReportData reportData) throws IOException {
     reportData.setId(UUID.randomUUID());
-
     daoCollection
         .entityExtensionTimeSeriesDao()
         .insert(

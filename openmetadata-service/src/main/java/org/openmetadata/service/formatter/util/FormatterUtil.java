@@ -269,6 +269,11 @@ public class FormatterUtil {
           .withEntityFullyQualifiedName(entityFQN);
     }
 
+    // PUT or PATCH operation didn't result in any change
+    if (changeType == null || RestUtil.ENTITY_NO_CHANGE.equals(changeType)) {
+      return null;
+    }
+
     // Handles Bulk Add test cases to a logical test suite
     if (changeType.equals(RestUtil.LOGICAL_TEST_CASES_ADDED)) {
       EntityInterface entityInterface = (EntityInterface) responseContext.getEntity();
@@ -278,11 +283,6 @@ public class FormatterUtil {
       return getChangeEvent(updateBy, EventType.ENTITY_UPDATED, entityType, entityInterface)
           .withEntity(entityInterface)
           .withEntityFullyQualifiedName(entityFQN);
-    }
-
-    // PUT or PATCH operation didn't result in any change
-    if (changeType == null || RestUtil.ENTITY_NO_CHANGE.equals(changeType)) {
-      return null;
     }
 
     // Entity was updated by either PUT .../entities or PATCH .../entities

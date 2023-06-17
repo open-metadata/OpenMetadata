@@ -213,7 +213,7 @@ public class TypeRepository extends EntityRepository<Type> {
           .fieldRelationshipDAO()
           .delete(
               FullyQualifiedName.buildHash(customPropertyFQN),
-              property.getPropertyType().getName(),
+              FullyQualifiedName.buildHash(property.getPropertyType().getName()),
               Entity.TYPE,
               Entity.TYPE,
               Relationship.HAS.ordinal());

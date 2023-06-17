@@ -2990,8 +2990,8 @@ public interface CollectionDAO {
         @Bind("endTs") long endTs,
         @Define("orderBy") OrderBy orderBy);
 
-    default void updateExtensionByKey(String key, String value, String entityFQNHash, String extension, String json) {
-
+    default void updateExtensionByKey(String key, String value, String entityFQN, String extension, String json) {
+      String entityFQNHash = FullyQualifiedName.buildHash(entityFQN);
       String mysqlCond = String.format("AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.%s')) = :value", key);
       String psqlCond = String.format("AND json->>'%s' = :value", key);
 
@@ -3006,11 +3006,10 @@ public interface CollectionDAO {
       return getExtensionByKeyInternal(value, entityFQNHash, extension, mysqlCond, psqlCond);
     }
 
-    default String getLatestExtensionByKey(String key, String value, String entityFQNHash, String extension) {
-
+    default String getLatestExtensionByKey(String key, String value, String entityFQN, String extension) {
+      String entityFQNHash = FullyQualifiedName.buildHash(entityFQN);
       String mysqlCond = String.format("AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.%s')) = :value", key);
       String psqlCond = String.format("AND json->>'%s' = :value", key);
-
       return getLatestExtensionByKeyInternal(value, entityFQNHash, extension, mysqlCond, psqlCond);
     }
 
