@@ -28,6 +28,7 @@ import {
 } from 'constants/constants';
 import { PROGRESS_BAR_COLOR } from 'constants/TestSuite.constant';
 import { EntityTabs } from 'enums/entity.enum';
+import { TestSummary } from 'generated/entity/data/table';
 import { TestCaseStatus } from 'generated/tests/testCase';
 import { TestSuite } from 'generated/tests/testSuite';
 import { EntityReference } from 'generated/type/entityReference';
@@ -121,15 +122,20 @@ export const TestSuites = () => {
       },
       {
         title: `${t('label.success')} %`,
-        dataIndex: 'success',
+        dataIndex: 'summary',
         key: 'success',
         width: 150,
-        render: () => (
-          <ProfilerProgressWidget
-            strokeColor={PROGRESS_BAR_COLOR}
-            value={0.2}
-          />
-        ),
+        render: (value: TestSummary) => {
+          const { success = 0, total = 0 } = value;
+          const percent = success / total;
+
+          return (
+            <ProfilerProgressWidget
+              strokeColor={PROGRESS_BAR_COLOR}
+              value={percent}
+            />
+          );
+        },
       },
       {
         title: t('label.owner'),
@@ -143,6 +149,7 @@ export const TestSuites = () => {
         dataIndex: 'lastRun',
         key: 'lastRun',
         width: 150,
+        // data not available from API
         render: () => 'May 09, 2023 10.36',
       },
       {
@@ -151,6 +158,7 @@ export const TestSuites = () => {
         key: 'lastResults',
         width: 200,
         render: () => (
+          // data not available from API
           <div className="m-t-xss">
             <LastRunGraph />
           </div>
@@ -175,7 +183,7 @@ export const TestSuites = () => {
     try {
       const result = await getListTestSuites({
         ...params,
-        fields: 'owner,tests',
+        fields: 'owner,summary',
         testSuiteType:
           tab === DataQualityPageTabs.TABLES
             ? TestSuiteType.executable
