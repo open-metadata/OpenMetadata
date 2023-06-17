@@ -36,6 +36,7 @@ import NextPrevious from 'components/common/next-previous/NextPrevious';
 import Searchbar from 'components/common/searchbar/Searchbar';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import TestSummary from 'components/ProfilerDashboard/component/TestSummary';
 import {
   getTableTabPath,
   INITIAL_PAGING_VALUE,
@@ -66,7 +67,10 @@ import { getNameFromFQN } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
-import { getEntityFqnFromEntityLink } from 'utils/TableUtils';
+import {
+  getEntityFqnFromEntityLink,
+  getTableExpandableConfig,
+} from 'utils/TableUtils';
 import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { DataQualitySearchParams } from '../DataQuality.interface';
@@ -141,7 +145,7 @@ export const TestCases = () => {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        width: 250,
+        width: 280,
         render: (_, record) => {
           const status = record.testCaseResult?.testCaseStatus;
 
@@ -153,7 +157,7 @@ export const TestCases = () => {
                 </div>
               </Tooltip>
 
-              <Typography.Paragraph className="m-0">
+              <Typography.Paragraph className="m-0" style={{ maxWidth: 280 }}>
                 {getEntityName(record)}
               </Typography.Paragraph>
             </Space>
@@ -433,12 +437,19 @@ export const TestCases = () => {
           columns={columns}
           data-testid="test-case-table"
           dataSource={testCase.data}
+          expandable={{
+            ...getTableExpandableConfig<TestCase>(),
+            expandRowByClick: true,
+            rowExpandable: () => true,
+            expandedRowRender: (recode) => <TestSummary data={recode} />,
+          }}
           loading={isLoading}
           locale={{
             emptyText: <FilterTablePlaceHolder />,
           }}
           pagination={false}
-          scroll={{ x: 1500 }}
+          rowKey="name"
+          scroll={{ x: 1300 }}
           size="small"
         />
       </Col>

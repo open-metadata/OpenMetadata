@@ -11,48 +11,74 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
+import { AxiosError } from 'axios';
 import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
-import React from 'react';
+import { TestSummary } from 'generated/tests/testSuite';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getTestCaseExecutionSummary } from 'rest/testAPI';
 import {} from 'utils/CommonUtils';
+import { showErrorToast } from 'utils/ToastUtils';
 
 export const SummaryPanel = () => {
   const { t } = useTranslation();
-  const total = 2000;
+
+  const [summary, setSummary] = useState<TestSummary>();
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchTestSummary = async () => {
+    setIsLoading(true);
+    try {
+      const response = await getTestCaseExecutionSummary();
+      setSummary(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTestSummary();
+  }, []);
 
   return (
     <Row wrap gutter={[16, 16]}>
       <Col flex="25%">
         <SummaryCard
           className="h-full"
+          isLoading={isLoading}
           showProgressBar={false}
           title={t('label.total-entity', { entity: t('label.test') })}
-          total={total}
-          value={2000}
+          total={summary?.total ?? 0}
+          value={summary?.total ?? 0}
         />
       </Col>
       <Col flex="25%">
         <SummaryCard
+          isLoading={isLoading}
           title={t('label.success')}
-          total={total}
+          total={summary?.total ?? 0}
           type="success"
-          value={1000}
+          value={summary?.success ?? 0}
         />
       </Col>
       <Col flex="25%">
         <SummaryCard
+          isLoading={isLoading}
           title={t('label.aborted')}
-          total={total}
+          total={summary?.total ?? 0}
           type="aborted"
-          value={500}
+          value={summary?.aborted ?? 0}
         />
       </Col>
       <Col flex="25%">
         <SummaryCard
+          isLoading={isLoading}
           title={t('label.failed')}
-          total={total}
+          total={summary?.total ?? 0}
           type="failed"
-          value={500}
+          value={summary?.aborted ?? 0}
         />
       </Col>
     </Row>

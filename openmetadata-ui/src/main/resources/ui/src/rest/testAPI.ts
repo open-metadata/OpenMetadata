@@ -22,7 +22,7 @@ import {
   TestDefinition,
   TestPlatform,
 } from '../generated/tests/testDefinition';
-import { TestSuite } from '../generated/tests/testSuite';
+import { TestSuite, TestSummary } from '../generated/tests/testSuite';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import APIClient from './index';
@@ -127,6 +127,14 @@ export const updateTestCaseById = async (id: string, data: Operation[]) => {
     `${testCaseUrl}/${id}`,
     data,
     configOptions
+  );
+
+  return response.data;
+};
+
+export const getTestCaseExecutionSummary = async () => {
+  const response = await APIClient.get<TestSummary>(
+    `${testCaseUrl}/executionSummary`
   );
 
   return response.data;

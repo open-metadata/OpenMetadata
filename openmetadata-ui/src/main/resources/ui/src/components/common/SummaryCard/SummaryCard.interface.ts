@@ -17,4 +17,5 @@ export interface SummaryCardProps {
   total: number;
   showProgressBar?: boolean;
   className?: string;
+  isLoading?: boolean;
 }

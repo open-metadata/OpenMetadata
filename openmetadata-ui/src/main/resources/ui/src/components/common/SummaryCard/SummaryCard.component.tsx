@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Progress, Space, Typography } from 'antd';
+import { Progress, Skeleton, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { isNumber } from 'lodash';
+import { isNumber, round } from 'lodash';
 import React, { useMemo } from 'react';
 import { formatNumberWithComma } from 'utils/CommonUtils';
 import './summary-card.style.less';
@@ -25,14 +25,23 @@ export const SummaryCard = ({
   total,
   showProgressBar = true,
   className,
+  isLoading = false,
 }: SummaryCardProps) => {
   const percent = useMemo(() => {
     if (isNumber(value)) {
-      return (value / total) * 100;
+      return round((value / total) * 100, 1);
     }
 
     return 0;
   }, [total, value]);
+
+  if (isLoading) {
+    return (
+      <div className={classNames('summary-card', className)}>
+        <Skeleton active loading />
+      </div>
+    );
+  }
 
   return (
     <Space className={classNames('summary-card', className)}>
@@ -44,6 +53,7 @@ export const SummaryCard = ({
           {isNumber(value) ? formatNumberWithComma(value) : value}
         </Typography.Paragraph>
       </div>
+
       {showProgressBar && (
         <Progress className={type} percent={percent} type="circle" width={65} />
       )}
