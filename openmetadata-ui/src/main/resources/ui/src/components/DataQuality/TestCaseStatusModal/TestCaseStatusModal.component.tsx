@@ -11,27 +11,123 @@
  *  limitations under the License.
  */
 import { Form, Modal, Select } from 'antd';
-import { TestCaseFailureStatus } from 'generated/tests/testCase';
-import React from 'react';
+import AppState from 'AppState';
+import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
+import {
+  TestCaseFailureReason,
+  TestCaseFailureStatus,
+  TestCaseFailureStatusType,
+} from 'generated/tests/testCase';
+import { startCase } from 'lodash';
+import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getCurrentUTCDateTimeStamp } from 'utils/TimeUtils';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 
 export const TestCaseStatusModal = ({
   open,
   data,
+  onSubmit,
+  onCancel,
 }: TestCaseStatusModalProps) => {
   const { t } = useTranslation();
+  const [form] = Form.useForm();
+  const markdownRef = useRef<EditorContentRef>();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const [description, setDescription] = useState<string | undefined>(
+    data?.testCaseFailureComment
+  );
+
+  const statusType = Form.useWatch('testCaseFailureStatusType', form);
+
+  const handleFormSubmit = (data: TestCaseFailureStatus) => {
+    const updatedData: TestCaseFailureStatus = {
+      ...data,
+      testCaseFailureComment: description,
+      updatedAt: getCurrentUTCDateTimeStamp(),
+      updatedBy: AppState.getCurrentUserDetails()?.fullyQualifiedName,
+    };
+    onSubmit(updatedData).finally(() => {
+      setIsLoading(false);
+    });
+  };
 
   return (
-    <Modal open={open} title={t('label.update')}>
-      <Form<TestCaseFailureStatus> initialValues={data} layout="vertical">
-        <Form.Item label={t('label.status')} name="testCaseFailureStatusType">
+    <Modal
+      closable={false}
+      okButtonProps={{
+        form: 'update-status-form',
+        htmlType: 'submit',
+        loading: isLoading,
+      }}
+      okText={t('label.submit')}
+      open={open}
+      title={t('label.update-entity', { entity: t('label.status') })}
+      width={750}
+      onCancel={onCancel}>
+      <Form<TestCaseFailureStatus>
+        form={form}
+        id="update-status-form"
+        initialValues={data}
+        layout="vertical"
+        onFinish={handleFormSubmit}>
+        <Form.Item
+          label={t('label.status')}
+          name="testCaseFailureStatusType"
+          rules={[
+            {
+              required: true,
+              message: t('label.field-required', {
+                field: t('label.status'),
+              }),
+            },
+          ]}>
           <Select
-            placeholder={t('label.select-entity', {
+            placeholder={t('label.please-select-entity', {
               entity: t('label.status'),
-            })}
-          />
+            })}>
+            {Object.values(TestCaseFailureStatusType).map((value) => (
+              <Select.Option key={value}>{value}</Select.Option>
+            ))}
+          </Select>
         </Form.Item>
+        {statusType === TestCaseFailureStatusType.Resolved && (
+          <>
+            <Form.Item
+              label={t('label.reason')}
+              name="testCaseFailureReason"
+              rules={[
+                {
+                  required: true,
+                  message: t('label.field-required', {
+                    field: t('label.reason'),
+                  }),
+                },
+              ]}>
+              <Select
+                placeholder={t('label.please-select-entity', {
+                  entity: t('label.reason'),
+                })}>
+                {Object.values(TestCaseFailureReason).map((value) => (
+                  <Select.Option key={value}>{startCase(value)}</Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item label={t('label.comment')} name="testCaseFailureComment">
+              <RichTextEditor
+                height="200px"
+                initialValue={description ?? ''}
+                placeHolder={t('message.write-your-text', {
+                  text: t('label.comment'),
+                })}
+                ref={markdownRef}
+                onTextChange={(value) => setDescription(value)}
+              />
+            </Form.Item>
+          </>
+        )}
       </Form>
     </Modal>
   );

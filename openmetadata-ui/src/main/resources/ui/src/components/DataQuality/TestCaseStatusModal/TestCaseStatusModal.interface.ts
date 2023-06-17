@@ -14,5 +14,7 @@ import { TestCaseFailureStatus } from 'generated/tests/testCase';
 
 export interface TestCaseStatusModalProps {
   open: boolean;
-  data: TestCaseFailureStatus;
+  data?: TestCaseFailureStatus;
+  onCancel: () => void;
+  onSubmit: (data: TestCaseFailureStatus) => Promise<void>;
 }

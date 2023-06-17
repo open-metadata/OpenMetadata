@@ -134,6 +134,7 @@
     "column-lowercase": "column",
     "column-plural": "Columns",
     "column-profile": "Column Profile",
+    "comment": "Comment",
     "comment-lowercase": "comment",
     "completed": "Completed",
     "completed-entity": "Completed {{entity}}",
@@ -692,6 +693,7 @@
     "re-verify": "Re verify",
     "reaction-lowercase-plural": "reactions",
     "read-type": "Read {{type}}",
+    "reason": "Reason",
     "receiver-plural": "Receivers",
     "recent-announcement-plural": "Recent Announcements",
     "recent-run-plural": "Recent Runs",
@@ -1398,6 +1400,7 @@
     "would-like-to-start-adding-some": "Would like to start adding some?",
     "write-your-announcement-lowercase": "write your announcement",
     "write-your-description": "Write your description",
+    "write-your-text": "Write your {{text}}",
     "you-can-also-set-up-the-metadata-ingestion": "You can also set up the metadata ingestion."
   },
   "server": {

@@ -223,3 +223,17 @@ export const restoreTestSuite = async (id: string) => {
 
   return response.data;
 };
+
+// Test Result
+
+export const putTestCaseResult = async (
+  testCaseFqn: string,
+  data: TestCaseResult
+) => {
+  const response = await APIClient.put<
+    TestCaseResult,
+    AxiosResponse<TestSuite>
+  >(`${testCaseUrl}/${testCaseFqn}/testCaseResult`, data);
+
+  return response.data;
+};

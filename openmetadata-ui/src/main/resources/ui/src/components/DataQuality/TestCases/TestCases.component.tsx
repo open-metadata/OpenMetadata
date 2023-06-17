@@ -51,13 +51,17 @@ import {
 } from 'generated/tests/testCase';
 import { Paging } from 'generated/type/paging';
 import { t } from 'i18next';
-import { isString, isUndefined } from 'lodash';
+import { isString } from 'lodash';
 import { PagingResponse } from 'Models';
 import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
-import { getListTestCase, ListTestCaseParams } from 'rest/testAPI';
+import {
+  getListTestCase,
+  ListTestCaseParams,
+  putTestCaseResult,
+} from 'rest/testAPI';
 import { getNameFromFQN } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
@@ -70,14 +74,16 @@ import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
 import { TestCaseStatusModal } from '../TestCaseStatusModal/TestCaseStatusModal.component';
 import './test-cases.style.less';
 
+type TestCaseAction = {
+  data: TestCase;
+  action: 'UPDATE' | 'DELETE' | 'UPDATE_STATUS';
+};
+
 export const TestCases = () => {
   const history = useHistory();
   const location = useLocation();
   const { tab } = useParams<{ tab: DataQualityPageTabs }>();
   const { permissions } = usePermissionProvider();
-
-  const [selectedTestCase, setSelectedTestCase] = useState<TestCase>();
-  const [editTestCase, setEditTestCase] = useState<TestCase>();
 
   const testCaseEditPermission = useMemo(() => {
     return checkPermission(
@@ -110,6 +116,7 @@ export const TestCases = () => {
     data: [],
     paging: { total: 0 },
   });
+  const [selectedTestCase, setSelectedTestCase] = useState<TestCaseAction>();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
 
@@ -263,7 +270,7 @@ export const TestCases = () => {
                   onClick={(e) => {
                     // preventing expand/collapse on click of edit button
                     e.stopPropagation();
-                    setEditTestCase(record);
+                    setSelectedTestCase({ data: record, action: 'UPDATE' });
                   }}
                 />
               </Tooltip>
@@ -284,7 +291,7 @@ export const TestCases = () => {
                   onClick={(e) => {
                     // preventing expand/collapse on click of delete button
                     e.stopPropagation();
-                    setSelectedTestCase(record);
+                    setSelectedTestCase({ data: record, action: 'DELETE' });
                   }}
                 />
               </Tooltip>
@@ -305,7 +312,10 @@ export const TestCases = () => {
                     onClick={(e) => {
                       // preventing expand/collapse on click of edit button
                       e.stopPropagation();
-                      setEditTestCase(record);
+                      setSelectedTestCase({
+                        data: record,
+                        action: 'UPDATE_STATUS',
+                      });
                     }}
                   />
                 </Tooltip>
@@ -317,7 +327,7 @@ export const TestCases = () => {
     ];
 
     return data;
-  }, [testCaseEditPermission, testCaseDeletePermission]);
+  }, [testCaseEditPermission, testCaseDeletePermission, testCase]);
 
   const handleSearchParam = (
     value: string | boolean,
@@ -326,6 +336,10 @@ export const TestCases = () => {
     history.push({
       search: QueryString.stringify({ ...params, [key]: value }),
     });
+  };
+
+  const handleCancel = () => {
+    setSelectedTestCase(undefined);
   };
 
   const fetchTestCases = async (params?: ListTestCaseParams) => {
@@ -340,6 +354,31 @@ export const TestCases = () => {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleStatusSubmit = async (data: TestCaseFailureStatus) => {
+    const updatedResult: TestCaseResult = {
+      ...selectedTestCase?.data?.testCaseResult,
+      testCaseFailureStatus: data,
+    };
+    const testCaseFqn = selectedTestCase?.data?.fullyQualifiedName ?? '';
+    try {
+      await putTestCaseResult(testCaseFqn, updatedResult);
+      setTestCase((prev) => {
+        const data = prev.data.map((test) => {
+          if (test.fullyQualifiedName === testCaseFqn) {
+            test.testCaseResult = updatedResult;
+          }
+
+          return test;
+        });
+
+        return { ...prev, data };
+      });
+      handleCancel();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -416,24 +455,27 @@ export const TestCases = () => {
       </Col>
       <Col span={24}>
         <EditTestCaseModal
-          testCase={editTestCase as TestCase}
-          visible={!isUndefined(editTestCase)}
-          onCancel={() => setEditTestCase(undefined)}
+          testCase={selectedTestCase?.data as TestCase}
+          visible={selectedTestCase?.action === 'UPDATE'}
+          onCancel={handleCancel}
           onUpdate={fetchTestCases}
         />
 
-        <TestCaseStatusModal data={{} as TestCaseFailureStatus} open={false} />
+        <TestCaseStatusModal
+          data={selectedTestCase?.data?.testCaseResult?.testCaseFailureStatus}
+          open={selectedTestCase?.action === 'UPDATE_STATUS'}
+          onCancel={handleCancel}
+          onSubmit={handleStatusSubmit}
+        />
 
         <DeleteWidgetModal
           afterDeleteAction={fetchTestCases}
           allowSoftDelete={false}
-          entityId={selectedTestCase?.id ?? ''}
-          entityName={selectedTestCase?.name ?? ''}
+          entityId={selectedTestCase?.data?.id ?? ''}
+          entityName={selectedTestCase?.data?.name ?? ''}
           entityType="testCase"
-          visible={!isUndefined(selectedTestCase)}
-          onCancel={() => {
-            setSelectedTestCase(undefined);
-          }}
+          visible={selectedTestCase?.action === 'DELETE'}
+          onCancel={handleCancel}
         />
       </Col>
     </Row>
