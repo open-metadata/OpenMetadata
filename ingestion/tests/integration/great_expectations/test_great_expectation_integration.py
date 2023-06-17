@@ -13,20 +13,20 @@
 Validate great expectation integration
 """
 
-import os
 import logging
+import os
 from datetime import datetime, timedelta
 from unittest import TestCase
 
-from sqlalchemy.orm import declarative_base
-from sqlalchemy import Column, DateTime, Integer, String, create_engine
 from great_expectations import DataContext
+from sqlalchemy import Column, DateTime, Integer, String, create_engine
+from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
@@ -36,8 +36,10 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 Base = declarative_base()
 
-START_TIMESTAMP = int((datetime.now() - timedelta(days=1)).timestamp())*1000
-TEST_CASE_FQN = "test_sqlite.default.main.users.name.expect_column_values_to_not_be_null"
+START_TIMESTAMP = int((datetime.now() - timedelta(days=1)).timestamp()) * 1000
+TEST_CASE_FQN = (
+    "test_sqlite.default.main.users.name.expect_column_values_to_not_be_null"
+)
 SQLLITE_SHARD = "file:cachedb?mode=memory&cache=shared&check_same_thread=False"
 LOGGER = logging.getLogger(__name__)
 
@@ -69,6 +71,7 @@ INGESTION_CONFIG = {
     },
 }
 
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
@@ -78,17 +81,23 @@ class User(Base):
     age = Column(Integer)
     signedup = Column(DateTime)
 
+
 class TestGreatExpectationIntegration(TestCase):
     """Test great expectation integration"""
-    engine = create_engine(f"sqlite+pysqlite:///{SQLLITE_SHARD}",)
+
+    engine = create_engine(
+        f"sqlite+pysqlite:///{SQLLITE_SHARD}",
+    )
     session = create_and_bind_session(engine)
     server_config = OpenMetadataConnection(
         hostPort=WORKFLOW_CONFIG["openMetadataServerConfig"]["hostPort"],
         authProvider=WORKFLOW_CONFIG["openMetadataServerConfig"]["authProvider"],
         securityConfig=OpenMetadataJWTClientConfig(
-            jwtToken=WORKFLOW_CONFIG["openMetadataServerConfig"]["securityConfig"]["jwtToken"]
+            jwtToken=WORKFLOW_CONFIG["openMetadataServerConfig"]["securityConfig"][
+                "jwtToken"
+            ]
         ),
-    ) # type: ignore
+    )  # type: ignore
     metadata = OpenMetadata(server_config)
 
     @classmethod
@@ -138,7 +147,6 @@ class TestGreatExpectationIntegration(TestCase):
         ingestion_workflow.print_status()
         ingestion_workflow.stop()
 
-
     @classmethod
     def tearDownClass(cls) -> None:
         """
@@ -160,7 +168,6 @@ class TestGreatExpectationIntegration(TestCase):
 
         User.__table__.drop(bind=cls.engine)
         cls.session.close()
-
 
     def test_great_expectation_integration(self):
         """
@@ -193,12 +200,11 @@ class TestGreatExpectationIntegration(TestCase):
                     "database_service_name": "test_sqlite",
                     "database_name": "default",
                     "schema_name": "main",
-                }
+                },
             }
         )
         # run the checkpoint
         checkpoint.run()
-
 
         table_entity = self.metadata.get_by_name(
             entity=Table,
@@ -212,7 +218,7 @@ class TestGreatExpectationIntegration(TestCase):
         test_case_results = self.metadata.get_test_case_results(
             test_case_fqn=TEST_CASE_FQN,
             start_ts=START_TIMESTAMP,
-            end_ts=int(datetime.now().timestamp())*1000,
+            end_ts=int(datetime.now().timestamp()) * 1000,
         )
 
         assert test_case_results

@@ -53,6 +53,7 @@ class FQNBuildingException(Exception):
     Raise for inconsistencies when building the FQN
     """
 
+
 class SplitTestCaseFqn(BaseModel):
     service: str
     database: str
@@ -443,7 +444,7 @@ def split_test_case_fqn(test_case_fqn: str) -> SplitTestCaseFqn:
             f"{test_case_fqn} does not appear to be a valid test_case fqn "
         )
     if len(details) != 6:
-        details.insert(4, None) # type: ignore
+        details.insert(4, None)  # type: ignore
 
     (  # pylint: disable=unbalanced-tuple-unpacking
         service,

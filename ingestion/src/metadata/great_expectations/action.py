@@ -27,10 +27,13 @@ from great_expectations.core.expectation_validation_result import (
 )
 from great_expectations.data_asset.data_asset import DataAsset
 from great_expectations.data_context.data_context import DataContext
+
 try:
     from great_expectations.data_context.types.resource_identifiers import (
-        ExpectationSuiteIdentifier,
         GeCloudIdentifier,  # type: ignore
+    )
+    from great_expectations.data_context.types.resource_identifiers import (
+        ExpectationSuiteIdentifier,
         ValidationResultIdentifier,
     )
 except ImportError:
@@ -45,20 +48,19 @@ from sqlalchemy.engine.base import Connection, Engine
 from sqlalchemy.engine.url import URL
 
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
-from metadata.utils.entity_link import get_entity_link
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
 )
-from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testDefinition import (
     EntityType,
     TestCaseParameterDefinition,
     TestPlatform,
 )
+from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.great_expectations.utils.ometa_config_handler import (
     create_jinja_environment,
     create_ometa_connection_obj,
@@ -66,6 +68,7 @@ from metadata.great_expectations.utils.ometa_config_handler import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
+from metadata.utils.entity_link import get_entity_link
 from metadata.utils.logger import great_expectations_logger
 
 logger = great_expectations_logger()
@@ -99,7 +102,6 @@ class OpenMetadataValidationAction(ValidationAction):
         self.config_file_path = config_file_path
         self.ometa_conn = self._create_ometa_connection()
 
-
     def _run(  # pylint: disable=arguments-renamed,unused-argument
         self,
         validation_result_suite: ExpectationSuiteValidationResult,
@@ -124,7 +126,9 @@ class OpenMetadataValidationAction(ValidationAction):
         check_point_spec = self._get_checkpoint_batch_spec(data_asset)
         execution_engine_url = self._get_execution_engine_url(data_asset)
         table_entity = self._get_table_entity(
-            execution_engine_url.database if not self.database_name else self.database_name,
+            execution_engine_url.database
+            if not self.database_name
+            else self.database_name,
             check_point_spec.get("schema_name", self.schema_name),
             check_point_spec.get("table_name"),
         )
@@ -156,7 +160,10 @@ class OpenMetadataValidationAction(ValidationAction):
         )
 
     def _get_table_entity(
-        self, database: Optional[str], schema_name: Optional[str], table_name: Optional[str]
+        self,
+        database: Optional[str],
+        schema_name: Optional[str],
+        table_name: Optional[str],
     ) -> Optional[Table]:
         """Return the table entity for the test. If service name is defined
         in GE checkpoint entity will be fetch using the FQN. If not provided
@@ -190,7 +197,9 @@ class OpenMetadataValidationAction(ValidationAction):
 
         table_entity = [
             entity
-            for entity in self.ometa_conn.list_entities(entity=Table, fields=["testSuite"]).entities
+            for entity in self.ometa_conn.list_entities(
+                entity=Table, fields=["testSuite"]
+            ).entities
             if f"{database}.{schema_name}.{table_name}"
             in entity.fullyQualifiedName.__root__
         ]
@@ -212,7 +221,7 @@ class OpenMetadataValidationAction(ValidationAction):
     def _check_or_create_test_suite(self, table_entity: Table) -> TestSuite:
         """Check if test suite already exists for a given table entity. If not
         create a new one.
-        
+
         Args:
             table_entity: table entity object
         Returns:
@@ -220,17 +229,20 @@ class OpenMetadataValidationAction(ValidationAction):
         """
 
         if table_entity.testSuite:
-            test_suite = self.ometa_conn.get_by_name(TestSuite, table_entity.testSuite.fullyQualifiedName.__root__)
+            test_suite = self.ometa_conn.get_by_name(
+                TestSuite, table_entity.testSuite.fullyQualifiedName.__root__
+            )
             test_suite = cast(TestSuite, test_suite)
             return test_suite
 
         create_test_suite = CreateTestSuiteRequest(
             name=f"{table_entity.fullyQualifiedName.__root__}.TestSuite",
             executableEntityReference=table_entity.fullyQualifiedName.__root__,
-        ) # type: ignore
-        test_suite = self.ometa_conn.create_or_update_executable_test_suite(create_test_suite)
+        )  # type: ignore
+        test_suite = self.ometa_conn.create_or_update_executable_test_suite(
+            create_test_suite
+        )
         return test_suite
-
 
     @staticmethod
     def _get_execution_engine_url(
@@ -261,7 +273,7 @@ class OpenMetadataValidationAction(ValidationAction):
 
         return OpenMetadata(create_ometa_connection_obj(rendered_config))
 
-    def _build_test_case_fqn(self, table_fqn: str, result: Dict, test_suite_name: str) -> str:
+    def _build_test_case_fqn(self, table_fqn: str, result: Dict) -> str:
         """build test case fqn from table entity and GE test results
 
         Args:
@@ -277,11 +289,10 @@ class OpenMetadataValidationAction(ValidationAction):
             schema_name=split_table_fqn[2],
             table_name=split_table_fqn[3],
             column_name=result["expectation_config"]["kwargs"].get("column"),
-            test_case_name=result['expectation_config']['expectation_type'],
+            test_case_name=result["expectation_config"]["expectation_type"],
         )
         fqn_ = cast(str, fqn_)
         return fqn_
-
 
     def _get_test_case_params_value(self, result: dict) -> List[TestCaseParameterValue]:
         """Build test case parameter value from GE test result"""
@@ -344,7 +355,9 @@ class OpenMetadataValidationAction(ValidationAction):
 
         return [test_result_value]
 
-    def _handle_test_case(self, result: Dict, table_entity: Table, test_suite: TestSuite):
+    def _handle_test_case(
+        self, result: Dict, table_entity: Table, test_suite: TestSuite
+    ):
         """Handle adding test to table entity based on the test case.
         Test Definitions will be created on the fly from the results of the
         great expectations run. We will then write the test case results to the
@@ -374,7 +387,6 @@ class OpenMetadataValidationAction(ValidationAction):
             test_case_fqn = self._build_test_case_fqn(
                 table_entity.fullyQualifiedName.__root__,
                 result,
-                test_suite.fullyQualifiedName.__root__,
             )
 
             test_case = self.ometa_conn.get_or_create_test_case(
