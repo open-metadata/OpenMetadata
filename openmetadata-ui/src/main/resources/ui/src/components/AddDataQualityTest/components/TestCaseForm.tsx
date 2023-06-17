@@ -56,7 +56,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   const [form] = Form.useForm();
   const markdownRef = useRef<EditorContentRef>();
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
-  const [selectedTestType] = useState<string | undefined>(
+  const [selectedTestType, setSelectedTestType] = useState<string | undefined>(
     initialValue?.testDefinition
   );
   const [testCases, setTestCases] = useState<TestCase[]>([]);
@@ -173,13 +173,13 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       // const testType = testDefinitions.find(
       //   (test) => test.fullyQualifiedName === value.testTypeId
       // );
-      // setSelectedTestType(value.testTypeId);
+      setSelectedTestType(value.testTypeId);
       // const testCount = testCases.filter((test) =>
       //   test.name.includes(
       //     `${getNameFromFQN(decodedEntityFQN)}_${testType?.name}`
       //   )
       // );
-      // // generating dynamic unique name based on entity_testCase_number
+      // generating dynamic unique name based on entity_testCase_number
       // const name = `${getNameFromFQN(decodedEntityFQN)}_${testType?.name}${
       //   testCount.length ? `_${testCount.length}` : ''
       // }`;
