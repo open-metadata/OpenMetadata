@@ -87,6 +87,8 @@ import org.opensearch.action.support.WriteRequest;
 import org.opensearch.action.support.master.AcknowledgedResponse;
 import org.opensearch.action.update.UpdateRequest;
 import org.opensearch.client.RequestOptions;
+import org.opensearch.client.RestClient;
+import org.opensearch.client.RestClientBuilder;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.indices.CreateIndexRequest;
 import org.opensearch.client.indices.CreateIndexResponse;
@@ -841,7 +843,7 @@ public class OpenSearchClientImpl implements SearchClient {
       throws IOException {
     UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, event.getEntityId().toString());
     ElasticSearchIndex index = ElasticSearchIndexFactory.buildIndex(entityType, event.getEntity());
-    updateRequest.doc(JsonUtils.pojoToJson(index.buildESDoc()), org.opensearch.common.xcontent.XContentType.JSON);
+    updateRequest.doc(JsonUtils.pojoToJson(index.buildESDoc()), XContentType.JSON);
     updateRequest.docAsUpsert(true);
     updateElasticSearch(updateRequest);
   }
@@ -1601,9 +1603,8 @@ public class OpenSearchClientImpl implements SearchClient {
 
   public static RestHighLevelClient createOpenSearchClient(ElasticSearchConfiguration esConfig) {
     try {
-      org.opensearch.client.RestClientBuilder restClientBuilder =
-          org.opensearch.client.RestClient.builder(
-              new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme()));
+      RestClientBuilder restClientBuilder =
+          RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme()));
       if (StringUtils.isNotEmpty(esConfig.getUsername()) && StringUtils.isNotEmpty(esConfig.getPassword())) {
         CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         credentialsProvider.setCredentials(
@@ -1623,7 +1624,7 @@ public class OpenSearchClientImpl implements SearchClient {
               requestConfigBuilder
                   .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                   .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
-      return new org.opensearch.client.RestHighLevelClient(restClientBuilder);
+      return new RestHighLevelClient(restClientBuilder);
     } catch (Exception e) {
       throw new OpenSearchException("Failed to create open search client ", e);
     }
