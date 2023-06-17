@@ -22,13 +22,12 @@ import {
   Row,
   Select,
   Space,
-  Switch,
   Tooltip,
 } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
-import { SwitchChangeEventHandler } from 'antd/lib/switch';
 import { AxiosError } from 'axios';
 import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
+import { SummaryPanel } from 'components/DataQuality/SummaryPannel/SummaryPanel.component';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import { mockDatasetData } from 'constants/mockTourData.constants';
@@ -54,7 +53,6 @@ import { ProfilerDashboardType } from '../../enums/table.enum';
 import { ProfileSampleType, Table } from '../../generated/entity/data/table';
 import { TestCase, TestCaseStatus } from '../../generated/tests/testCase';
 import { EntityType as TestType } from '../../generated/tests/testDefinition';
-import { Include } from '../../generated/type/include';
 import { updateTestResults } from '../../utils/DataQualityAndProfilerUtils';
 import { getAddDataQualityTableTestPath } from '../../utils/RouterUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
@@ -108,7 +106,6 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<string>('');
   const [selectedTestType, setSelectedTestType] = useState('');
-  const [deleted, setDeleted] = useState<boolean>(false);
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const [dateRangeObject, setDateRangeObject] =
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
@@ -279,7 +276,6 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
         entityLink: generateEntityLink(table?.fullyQualifiedName || ''),
         includeAllTests: true,
         limit: API_RES_MAX_SIZE,
-        include: deleted ? Include.Deleted : Include.NonDeleted,
         ...params,
       });
       const columnTestsCase: TestCase[] = [];
@@ -336,11 +332,6 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
         selectedTestCaseStatus === '' ||
         data.testCaseResult?.testCaseStatus === selectedTestCaseStatus
     );
-  };
-
-  const handleDeletedTestCaseClick: SwitchChangeEventHandler = (value) => {
-    setDeleted(value);
-    fetchAllTests({ include: value ? Include.Deleted : Include.NonDeleted });
   };
 
   const fetchLatestProfilerData = async () => {
@@ -400,16 +391,6 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
               <Space align="center" className="w-full justify-end">
                 {isDataQuality && (
                   <>
-                    <Form.Item
-                      className="m-0"
-                      label={t('label.deleted', {
-                        entity: t('label.test-plural'),
-                      })}>
-                      <Switch
-                        checked={deleted}
-                        onClick={handleDeletedTestCaseClick}
-                      />
-                    </Form.Item>
                     <Form.Item className="m-0 w-40" label={t('label.type')}>
                       <Select
                         options={testCaseTypeOption}
@@ -495,18 +476,20 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
             </div>
           )}
 
-          <Space>
-            {overallSummery.map((summery) => (
-              <SummaryCard
-                className={summery.className}
-                key={summery.title}
-                showProgressBar={false}
-                title={summery.title}
-                total={0}
-                value={summery.value}
-              />
-            ))}
-          </Space>
+          {!isDataQuality && (
+            <Space>
+              {overallSummery.map((summery) => (
+                <SummaryCard
+                  className={summery.className}
+                  key={summery.title}
+                  showProgressBar={false}
+                  title={summery.title}
+                  total={0}
+                  value={summery.value}
+                />
+              ))}
+            </Space>
+          )}
 
           {isColumnProfile && (
             <ColumnProfileTable
@@ -520,12 +503,18 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
           )}
 
           {isDataQuality && (
-            <DataQualityTab
-              deletedTable={deleted}
-              isLoading={isTestCaseLoading}
-              testCases={getFilterTestCase()}
-              onTestUpdate={fetchAllTests}
-            />
+            <Row gutter={[0, 16]}>
+              <Col span={24}>
+                <SummaryPanel />
+              </Col>
+              <Col span={24}>
+                <DataQualityTab
+                  isLoading={isTestCaseLoading}
+                  testCases={getFilterTestCase()}
+                  onTestUpdate={fetchAllTests}
+                />
+              </Col>
+            </Row>
           )}
 
           {isTableProfile && (
