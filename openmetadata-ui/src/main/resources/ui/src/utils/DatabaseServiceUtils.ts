@@ -30,6 +30,7 @@ import glueConnection from '../jsons/connectionSchemas/connections/database/glue
 import hiveConnection from '../jsons/connectionSchemas/connections/database/hiveConnection.json';
 import impalaConnection from '../jsons/connectionSchemas/connections/database/impalaConnection.json';
 import mariaDBConnection from '../jsons/connectionSchemas/connections/database/mariaDBConnection.json';
+import mongoDBConnection from '../jsons/connectionSchemas/connections/database/mongoDBConnection.json';
 import mssqlConnection from '../jsons/connectionSchemas/connections/database/mssqlConnection.json';
 import mysqlConnection from '../jsons/connectionSchemas/connections/database/mysqlConnection.json';
 import oracleConnection from '../jsons/connectionSchemas/connections/database/oracleConnection.json';
@@ -190,6 +191,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.SapHana: {
       schema = sapHanaConnection;
+
+      break;
+    }
+    case DatabaseServiceType.MongoDB: {
+      schema = mongoDBConnection;
 
       break;
     }

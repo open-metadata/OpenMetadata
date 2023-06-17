@@ -1045,7 +1045,7 @@ export const updateOwner = () => {
 export const mySqlConnectionInput = () => {
   cy.get('#root\\/username').type(Cypress.env('mysqlUsername'));
   checkServiceFieldSectionHighlighting('username');
-  cy.get('#root\\/password').type(Cypress.env('mysqlPassword'));
+  cy.get('#root\\/authType\\/password').type(Cypress.env('mysqlPassword'));
   checkServiceFieldSectionHighlighting('password');
   cy.get('#root\\/hostPort').type(Cypress.env('mysqlHostPort'));
   checkServiceFieldSectionHighlighting('hostPort');

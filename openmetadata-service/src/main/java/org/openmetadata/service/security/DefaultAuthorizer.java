@@ -21,6 +21,7 @@ import java.util.List;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -95,6 +96,13 @@ public class DefaultAuthorizer implements Authorizer {
   public boolean shouldMaskPasswords(SecurityContext securityContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     return !subjectContext.isBot();
+  }
+
+  /** In 1.2, evaluate policies here instead of just checking the subject */
+  @Override
+  public boolean authorizePII(SecurityContext securityContext, EntityReference owner) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    return subjectContext.isAdmin() || subjectContext.isBot() || subjectContext.isOwner(owner);
   }
 
   public static SubjectContext getSubjectContext(SecurityContext securityContext) {

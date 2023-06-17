@@ -541,7 +541,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return copy(new Pipeline(), create, user)
         .withService(getEntityReference(Entity.PIPELINE_SERVICE, create.getService()))
         .withTasks(create.getTasks())
-        .withPipelineUrl(create.getPipelineUrl())
+        .withSourceUrl(create.getSourceUrl())
         .withTags(create.getTags())
         .withConcurrency(create.getConcurrency())
         .withStartDate(create.getStartDate())
