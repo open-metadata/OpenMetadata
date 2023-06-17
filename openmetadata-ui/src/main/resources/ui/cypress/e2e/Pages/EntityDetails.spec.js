@@ -188,6 +188,8 @@ describe('Entity Details Page', () => {
       .first()
       .should('be.visible')
       .click();
+    // to close popup
+    cy.clickOutside();
 
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
 

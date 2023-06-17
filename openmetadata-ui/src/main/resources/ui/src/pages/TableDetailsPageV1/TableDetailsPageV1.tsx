@@ -40,7 +40,6 @@ import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
 import { FQN_SEPARATOR_CHAR, WILD_CARD_CHAR } from 'constants/char.constants';
 import { getTableTabPath, getVersionPath, ROUTES } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
-import { mockTablePermission } from 'constants/mockTourData.constants';
 import { EntityTabs, EntityType, FqnPart } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
@@ -237,17 +236,6 @@ const TableDetailsPageV1 = () => {
       );
     }
   }, [tableDetails?.id, getEntityPermission, setTablePermissions]);
-
-  useEffect(() => {
-    if (tableDetails?.id && !isTourPage) {
-      //   fetchQueryCount();
-      fetchResourcePermission();
-    }
-
-    if (isTourPage) {
-      setTablePermissions(mockTablePermission as OperationPermission);
-    }
-  }, [tableDetails?.id]);
 
   const getEntityFeedCount = () => {
     getFeedCounts(
@@ -751,6 +739,7 @@ const TableDetailsPageV1 = () => {
   useEffect(() => {
     if (tableDetails) {
       fetchQueryCount();
+      fetchResourcePermission();
     }
   }, [tableDetails]);
 
