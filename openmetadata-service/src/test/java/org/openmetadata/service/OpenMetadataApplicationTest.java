@@ -64,7 +64,6 @@ public abstract class OpenMetadataApplicationTest {
   public static void createApplication() throws Exception {
     String jdbcContainerClassName = System.getProperty("jdbcContainerClassName");
     String jdbcContainerImage = System.getProperty("jdbcContainerImage");
-    ;
     String elasticSearchContainerImage = System.getProperty("elasticSearchContainerClassName");
     if (CommonUtil.nullOrEmpty(jdbcContainerClassName)) {
       jdbcContainerClassName = JDBC_CONTAINER_CLASS_NAME;
@@ -148,7 +147,7 @@ public abstract class OpenMetadataApplicationTest {
     PolicyCache.cleanUp();
     RoleCache.cleanUp();
     TagLabelCache.cleanUp();
-    ELASTIC_SEARCH_CONTAINER.stop();
+    ELASTIC_SEARCH_CONTAINER.close();
   }
 
   public static Client getClient() {
