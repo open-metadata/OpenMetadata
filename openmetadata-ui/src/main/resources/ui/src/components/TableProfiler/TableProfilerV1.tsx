@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
+import { DownOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
+  Dropdown,
   Form,
   Menu,
   MenuProps,
@@ -227,6 +229,25 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     },
   ];
 
+  const handleAddTestClick = (type: ProfilerDashboardType) => {
+    history.push(
+      getAddDataQualityTableTestPath(type, `${table?.fullyQualifiedName}`)
+    );
+  };
+
+  const addButtonContent = [
+    {
+      label: t('label.table'),
+      key: '1',
+      onClick: () => handleAddTestClick(ProfilerDashboardType.TABLE),
+    },
+    {
+      label: t('label.column'),
+      key: '2',
+      onClick: () => handleAddTestClick(ProfilerDashboardType.COLUMN),
+    },
+  ];
+
   const updateActiveTab = (key: string) =>
     history.push({ search: Qs.stringify({ activeTab: key }) });
 
@@ -413,28 +434,26 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                   />
                 )}
 
-                <Link
-                  to={
-                    editTest
-                      ? getAddDataQualityTableTestPath(
-                          ProfilerDashboardType.TABLE,
-                          `${table?.fullyQualifiedName}`
-                        )
-                      : '#'
-                  }>
-                  <Tooltip
-                    title={!editTest && t('message.no-permission-for-action')}>
+                <Tooltip
+                  title={!editTest && t('message.no-permission-for-action')}>
+                  <Dropdown
+                    className="m-l-xs"
+                    menu={{
+                      items: addButtonContent,
+                    }}
+                    placement="bottomRight"
+                    trigger={['click']}>
                     <Button
-                      className="rounded-4"
                       data-testid="profiler-add-table-test-btn"
                       disabled={!editTest}
                       type="primary">
-                      {t('label.add-entity', {
-                        entity: t('label.test'),
-                      })}
+                      <Space>
+                        {t('label.add-entity', { entity: t('label.test') })}
+                        <DownOutlined />
+                      </Space>
                     </Button>
-                  </Tooltip>
-                </Link>
+                  </Dropdown>
+                </Tooltip>
 
                 <Tooltip
                   placement="topRight"

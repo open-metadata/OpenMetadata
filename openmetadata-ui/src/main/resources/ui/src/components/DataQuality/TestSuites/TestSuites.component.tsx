@@ -10,12 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Select, Space, Table } from 'antd';
+import { Button, Col, Row, Select, Space, Table, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
-import { LastRunGraph } from 'components/common/LastRunGraph/LastRunGraph.component';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import Searchbar from 'components/common/searchbar/Searchbar';
@@ -99,8 +98,6 @@ export const TestSuites = () => {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        fixed: true,
-        width: 250,
         render: (_, record) => {
           const path =
             tab === DataQualityPageTabs.TABLES
@@ -115,16 +112,14 @@ export const TestSuites = () => {
       },
       {
         title: t('label.test-plural'),
-        dataIndex: 'tests',
+        dataIndex: 'summary',
         key: 'tests',
-        width: 100,
-        render: (value: TestSuite['tests']) => value?.length,
+        render: (value: TestSummary) => value?.total ?? 0,
       },
       {
         title: `${t('label.success')} %`,
         dataIndex: 'summary',
         key: 'success',
-        width: 150,
         render: (value: TestSummary) => {
           const { success = 0, total = 0 } = value;
           const percent = success / total;
@@ -141,28 +136,7 @@ export const TestSuites = () => {
         title: t('label.owner'),
         dataIndex: 'owner',
         key: 'owner',
-        width: 150,
         render: (owner: EntityReference) => <OwnerLabel owner={owner} />,
-      },
-      {
-        title: t('label.last-run'),
-        dataIndex: 'lastRun',
-        key: 'lastRun',
-        width: 150,
-        // data not available from API
-        render: () => 'May 09, 2023 10.36',
-      },
-      {
-        title: t('label.result-plural'),
-        dataIndex: 'lastResults',
-        key: 'lastResults',
-        width: 200,
-        render: () => (
-          // data not available from API
-          <div className="m-t-xss">
-            <LastRunGraph />
-          </div>
-        ),
       },
     ];
 
@@ -225,13 +199,16 @@ export const TestSuites = () => {
           </Col>
           <Col>
             <Space size={12}>
-              <Select
-                className="w-32"
-                options={statusOption}
-                placeholder={t('label.status')}
-                value={status}
-                onChange={(value) => handleSearchParam(value, 'status')}
-              />
+              <Space>
+                <Typography.Text>{t('label.status')}</Typography.Text>
+                <Select
+                  className="w-32"
+                  options={statusOption}
+                  placeholder={t('label.status')}
+                  value={status}
+                  onChange={(value) => handleSearchParam(value, 'status')}
+                />
+              </Space>
               {tab === DataQualityPageTabs.TEST_SUITES && (
                 <Link to={ROUTES.ADD_TEST_SUITES}>
                   <Button type="primary">

@@ -35,10 +35,7 @@ import {
   TestDefinition,
   TestPlatform,
 } from '../../../generated/tests/testDefinition';
-import {
-  getNameFromFQN,
-  replaceAllSpacialCharWith_,
-} from '../../../utils/CommonUtils';
+import { replaceAllSpacialCharWith_ } from '../../../utils/CommonUtils';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -59,7 +56,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   const [form] = Form.useForm();
   const markdownRef = useRef<EditorContentRef>();
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
-  const [selectedTestType, setSelectedTestType] = useState<string | undefined>(
+  const [selectedTestType] = useState<string | undefined>(
     initialValue?.testDefinition
   );
   const [testCases, setTestCases] = useState<TestCase[]>([]);
@@ -173,22 +170,22 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
   const handleValueChange: FormProps['onValuesChange'] = (value) => {
     if (value.testTypeId) {
-      const testType = testDefinitions.find(
-        (test) => test.fullyQualifiedName === value.testTypeId
-      );
-      setSelectedTestType(value.testTypeId);
-      const testCount = testCases.filter((test) =>
-        test.name.includes(
-          `${getNameFromFQN(decodedEntityFQN)}_${testType?.name}`
-        )
-      );
-      // generating dynamic unique name based on entity_testCase_number
-      const name = `${getNameFromFQN(decodedEntityFQN)}_${testType?.name}${
-        testCount.length ? `_${testCount.length}` : ''
-      }`;
-      form.setFieldsValue({
-        testName: replaceAllSpacialCharWith_(name),
-      });
+      // const testType = testDefinitions.find(
+      //   (test) => test.fullyQualifiedName === value.testTypeId
+      // );
+      // setSelectedTestType(value.testTypeId);
+      // const testCount = testCases.filter((test) =>
+      //   test.name.includes(
+      //     `${getNameFromFQN(decodedEntityFQN)}_${testType?.name}`
+      //   )
+      // );
+      // // generating dynamic unique name based on entity_testCase_number
+      // const name = `${getNameFromFQN(decodedEntityFQN)}_${testType?.name}${
+      //   testCount.length ? `_${testCount.length}` : ''
+      // }`;
+      // form.setFieldsValue({
+      //   testName: replaceAllSpacialCharWith_(name),
+      // });
     }
   };
 
@@ -200,9 +197,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       fetchAllTestCases();
     }
     form.setFieldsValue({
-      testName: replaceAllSpacialCharWith_(
-        initialValue?.name ?? getNameFromFQN(decodedEntityFQN)
-      ),
+      testName: replaceAllSpacialCharWith_(initialValue?.name ?? ''),
       testTypeId: initialValue?.testDefinition,
       params: initialValue?.parameterValues?.length
         ? getParamsValue()
