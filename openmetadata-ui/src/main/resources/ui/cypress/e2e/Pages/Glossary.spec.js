@@ -255,6 +255,8 @@ const updateTags = (inTerm) => {
     .contains('Personal')
     .should('be.visible')
     .click();
+  // to close popup
+  cy.clickOutside();
 
   cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
   const container = inTerm
@@ -513,7 +515,7 @@ describe('Glossary page should work properly', () => {
 
     cy.get('[data-testid="remove-tags"]').should('be.visible').click();
     interceptURL('PATCH', '/api/v1/glossaries/*', 'updateGlossary');
-    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@updateGlossary', 200);
     cy.get('[data-testid="add-tag"]').should('be.visible');
   });
@@ -704,7 +706,7 @@ describe('Glossary page should work properly', () => {
     interceptURL('GET', '/api/v1/tags', 'tags');
     interceptURL('PATCH', '/api/v1/tables/*', 'saveTag');
 
-    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@saveTag', 400);
     toastNotification(
       `Tag labels ${glossary}.${term2} and ${glossary}.${term1} are mutually exclusive and can't be assigned together`
@@ -740,7 +742,7 @@ describe('Glossary page should work properly', () => {
       '[data-testid="tags-wrapper"] [data-testid="tag-container"]'
     ).contains(term4);
 
-    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@saveTag', 200);
     verifyResponseStatusCode('@countTag', 200);
     cy.get('[data-testid="entity-tags"]')

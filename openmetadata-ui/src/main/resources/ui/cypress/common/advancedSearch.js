@@ -341,6 +341,9 @@ export const addTag = (tag) => {
     .should('be.visible')
     .click();
 
+  // to close popup
+  cy.clickOutside();
+
   cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
 
   cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();

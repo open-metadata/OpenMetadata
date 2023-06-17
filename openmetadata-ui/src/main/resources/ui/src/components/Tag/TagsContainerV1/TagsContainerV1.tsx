@@ -40,20 +40,11 @@ import { isEmpty, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getAllTagsForOptions, getTagsHierarchy } from 'utils/TagsUtils';
-import TagsV1 from '../TagsV1/TagsV1.component';
-import TagsViewer from '../TagsViewer/tags-viewer';
-import {
-  GlossaryDetailsProps,
-  GlossaryTermDetailsProps,
-  TagDetailsProps,
-  TagsContainerV1Props,
-} from './TagsContainerV1.interface';
-
 import { useHistory } from 'react-router-dom';
 import { getGlossariesList, getGlossaryTerms } from 'rest/glossaryAPI';
 import { getEntityFeedLink } from 'utils/EntityUtils';
 import { getGlossaryTermHierarchy } from 'utils/GlossaryUtils';
+import { getAllTagsForOptions, getTagsHierarchy } from 'utils/TagsUtils';
 import {
   getRequestTagsPath,
   getUpdateTagsPath,
@@ -62,6 +53,14 @@ import {
 import { ReactComponent as IconCommentPlus } from '../../../assets/svg/add-chat.svg';
 import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
+import TagsV1 from '../TagsV1/TagsV1.component';
+import TagsViewer from '../TagsViewer/tags-viewer';
+import {
+  GlossaryDetailsProps,
+  GlossaryTermDetailsProps,
+  TagDetailsProps,
+  TagsContainerV1Props,
+} from './TagsContainerV1.interface';
 
 const TagsContainerV1 = ({
   editable,
@@ -213,7 +212,7 @@ const TagsContainerV1 = ({
   const addTagButton = useMemo(
     () =>
       showAddTagButton ? (
-        <span onClick={handleAddClick}>
+        <span data-testid="add-tag" onClick={handleAddClick}>
           <Tags
             className="tw-font-semibold tw-text-primary"
             startWith={TAG_START_WITH.PLUS}
@@ -425,7 +424,7 @@ const TagsContainerV1 = ({
       </div>
 
       {!isEditTags && (
-        <Space wrap align="center" size={4}>
+        <Space wrap align="center" data-testid="entity-tags" size={4}>
           {addTagButton}
           {renderTags}
         </Space>
