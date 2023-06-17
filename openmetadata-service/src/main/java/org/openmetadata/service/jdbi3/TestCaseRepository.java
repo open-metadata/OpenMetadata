@@ -308,12 +308,17 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   public TestSummary getTestSummary() throws IOException {
     List<TestCase> testCases = listAll(Fields.EMPTY_FIELDS, new ListFilter());
-    List<String> testCaseFQNs = testCases.stream().map(TestCase::getFullyQualifiedName).collect(Collectors.toList());
+    List<String> testCaseFQNHashes =
+        testCases.stream()
+            .map(testCase -> FullyQualifiedName.buildHash(testCase.getFullyQualifiedName()))
+            .collect(Collectors.toList());
 
-    if (testCaseFQNs.isEmpty()) return new TestSummary();
+    if (testCaseFQNHashes.isEmpty()) return new TestSummary();
 
     List<String> jsonList =
-        daoCollection.entityExtensionTimeSeriesDao().getLatestExtensionByFQNs(testCaseFQNs, TESTCASE_RESULT_EXTENSION);
+        daoCollection
+            .entityExtensionTimeSeriesDao()
+            .getLatestExtensionByFQNs(testCaseFQNHashes, TESTCASE_RESULT_EXTENSION);
 
     HashMap<String, Integer> testCaseSummary = new HashMap<>();
     for (String json : jsonList) {
@@ -326,7 +331,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
         .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
         .withSuccess(testCaseSummary.getOrDefault(TestCaseStatus.Success.toString(), 0))
-        .withTotal(testCaseFQNs.size());
+        .withTotal(testCaseFQNHashes.size());
   }
 
   @Override

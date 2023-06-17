@@ -98,7 +98,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   @Override
   public String getFullyQualifiedNameHash(DashboardDataModel dashboardDataModel) {
-	return FullyQualifiedName.buildHash(dashboardDataModel.getFullyQualifiedName());
+    return FullyQualifiedName.buildHash(dashboardDataModel.getFullyQualifiedName());
   }
 
   @Override

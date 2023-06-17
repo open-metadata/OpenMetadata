@@ -39,7 +39,7 @@ import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -77,7 +77,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public String getFullyQualifiedNameHash(Pipeline pipeline) {
+  public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user)
+      throws IOException {
     if (entityLink.getFieldName().equals("tasks")) {
       Pipeline pipeline = getByName(null, entityLink.getEntityFQN(), getFields("tasks,tags"), Include.ALL);
       String oldJson = JsonUtils.pojoToJson(pipeline);
@@ -100,7 +101,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       patch(null, pipeline.getId(), user, patch);
       return;
     }
-    return FullyQualifiedName.buildHash(pipeline.getFullyQualifiedName());
+    super.update(task, entityLink, newValue, user);
   }
 
   @Override

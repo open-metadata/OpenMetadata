@@ -115,14 +115,17 @@ SET pe.json = JSON_INSERT(
 UPDATE dbservice_entity
 SET json = JSON_INSERT(
     JSON_REMOVE(json, '$.connection.config.password'),
-    '$.connection.config.authType', 
-    JSON_OBJECT(), 
-    '$.connection.config.authType.password', 
+    '$.connection.config.authType',
+    JSON_OBJECT(),
+    '$.connection.config.authType.password',
     JSON_EXTRACT(json, '$.connection.config.password'))
 where serviceType in ('Postgres', 'Mysql');
+
+
+-- add fullyQualifiedName hash and remove existing columns
+
 -- update the OM system tables
 
-UPDATE dbservice_entity
 ALTER TABLE  field_relationship DROP KEY `PRIMARY`, ADD COLUMN fromFQNHash VARCHAR(256), ADD COLUMN toFQNHash VARCHAR(256),
 DROP INDEX from_index, DROP INDEX to_index, ADD INDEX from_fqnhash_index(fromFQNHash, relation), ADD INDEX to_fqnhash_index(toFQNHash, relation),
  ADD CONSTRAINT  `field_relationship_primary` PRIMARY KEY(fromFQNHash, toFQNHash, relation), MODIFY fromFQN VARCHAR(2096) NOT NULL,

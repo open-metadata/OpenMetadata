@@ -534,5 +534,4 @@ public final class EntityUtil {
   public static boolean isTagTask(TaskType taskType) {
     return taskType == TaskType.RequestTag || taskType == TaskType.UpdateTag;
   }
-
 }
