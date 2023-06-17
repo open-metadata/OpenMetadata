@@ -874,14 +874,16 @@ const Users = ({
       className="tw-h-full"
       leftPanel={fetchLeftPanel()}
       pageTitle={t('label.user')}>
-      <Tabs
-        activeKey={tab ?? UserPageTabs.ACTIVITY}
-        className="user-page-tabs"
-        data-testid="tabs"
-        items={tabs}
-        onChange={activeTabHandler}
-      />
-      <div>{tabDetails}</div>
+      <div data-testid="table-container">
+        <Tabs
+          activeKey={tab ?? UserPageTabs.ACTIVITY}
+          className="user-page-tabs"
+          data-testid="tabs"
+          items={tabs}
+          onChange={activeTabHandler}
+        />
+        <div>{tabDetails}</div>
+      </div>
     </PageLayoutV1>
   );
 };
