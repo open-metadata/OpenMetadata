@@ -12,16 +12,15 @@
 DBT source methods.
 """
 import traceback
+from datetime import datetime
 from enum import Enum
 from typing import Iterable, List, Optional, Union
-from datetime import datetime
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
-from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -39,11 +38,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.tests.basic import (
+    TestCaseFailureStatus,
+    TestCaseFailureStatusType,
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
-    TestCaseFailureStatus,
-    TestCaseFailureStatusType,
 )
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import (
@@ -51,9 +50,8 @@ from metadata.generated.schema.tests.testDefinition import (
     TestDefinition,
     TestPlatform,
 )
-from metadata.generated.schema.type.basic import Timestamp
 from metadata.generated.schema.tests.testSuite import TestSuite
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Timestamp
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
@@ -737,7 +735,6 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     f"to update dbt description: {exc}"
                 )
 
-
     def create_dbt_tests_definition(
         self, dbt_test: dict
     ) -> Iterable[CreateTestDefinitionRequest]:
@@ -782,9 +779,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         try:
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
-                logger.debug(
-                    f"Processing DBT Test Case for node: {manifest_node.name}"
-                )
+                logger.debug(f"Processing DBT Test Case for node: {manifest_node.name}")
                 entity_link_list = self.generate_entity_link(dbt_test)
                 for entity_link_str in entity_link_list:
                     test_suite = self._check_or_create_test_suite(entity_link_str)
@@ -808,6 +803,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 f"Failed to parse the node {manifest_node.name} to capture tests {err}"
             )
 
+    # pylint: disable=too-many-locals
     def add_dbt_test_result(self, dbt_test: dict):
         """
         After test cases has been processed, add the tests results info
@@ -822,7 +818,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 dbt_test_result = dbt_test.get(DbtCommonEnum.RESULTS.value)
                 test_case_status = TestCaseStatus.Aborted
                 test_result_value = 0
-                test_case_failure_status = TestCaseFailureStatus() # type: ignore
+                test_case_failure_status = TestCaseFailureStatus()  # type: ignore
                 if dbt_test_result.status.value in [
                     item.value for item in DbtTestSuccessEnum
                 ]:
@@ -837,7 +833,9 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         testCaseFailureStatusType=TestCaseFailureStatusType.New,
                         testCaseFailureReason=None,
                         testCaseFailureComment=None,
-                        updatedAt=Timestamp(__root__=int(datetime.utcnow().timestamp() * 1000)),
+                        updatedAt=Timestamp(
+                            __root__=int(datetime.utcnow().timestamp() * 1000)
+                        ),
                         updatedBy=None,
                     )
 
@@ -863,7 +861,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     ],
                     testCaseFailureStatus=test_case_failure_status,
                     sampleData=None,
-                    result=None
+                    result=None,
                 )
 
                 # Create the test case fqns and add the results
@@ -945,7 +943,9 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         logger.debug(f"Unable to get DBT compiled query for node - {mnode.name}")
         return None
 
-    def _check_or_create_test_suite(self, test_entity_link: str) -> Union[TestSuite, EntityReference]:
+    def _check_or_create_test_suite(
+        self, test_entity_link: str
+    ) -> Union[TestSuite, EntityReference]:
         """Check if test suite exists, if not create it
 
         Args:
@@ -956,7 +956,6 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         """
         table_fqn = entity_link.get_table_fqn(test_entity_link)
         return self.metadata.get_or_create_executable_test_suite(table_fqn)
-
 
     def close(self):
         self.metadata.close()

@@ -22,7 +22,6 @@ from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseReq
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
-from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
@@ -227,7 +226,6 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         for _, dbt_test in self.context.dbt_tests.items():
             yield dbt_test
-
 
     @abstractmethod
     def create_dbt_tests_definition(

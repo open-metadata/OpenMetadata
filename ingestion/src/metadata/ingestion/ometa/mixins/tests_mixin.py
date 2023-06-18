@@ -198,7 +198,9 @@ class OMetaTestsMixin:
         )
         return test_case
 
-    def get_or_create_executable_test_suite(self, entity_fqn: str) -> Union[EntityReference, TestSuite]:
+    def get_or_create_executable_test_suite(
+        self, entity_fqn: str
+    ) -> Union[EntityReference, TestSuite]:
         """Given an entity fqn, retrieve the link test suite if it exists or create a new one
 
         Args:
@@ -207,7 +209,9 @@ class OMetaTestsMixin:
         Returns:
             TestSuite:
         """
-        table_entity = self.get_by_name(entity=Table, fqn=entity_fqn, fields=["testSuite"])
+        table_entity = self.get_by_name(
+            entity=Table, fqn=entity_fqn, fields=["testSuite"]
+        )
         if not table_entity:
             raise RuntimeError(
                 f"Unable to find table {entity_fqn} in OpenMetadata. "
@@ -221,9 +225,7 @@ class OMetaTestsMixin:
             name=f"{table_entity.fullyQualifiedName.__root__}.TestSuite",
             executableEntityReference=table_entity.fullyQualifiedName.__root__,
         )  # type: ignore
-        test_suite = self.create_or_update_executable_test_suite(
-            create_test_suite
-        )
+        test_suite = self.create_or_update_executable_test_suite(create_test_suite)
         return test_suite
 
     def get_test_case_results(
