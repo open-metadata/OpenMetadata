@@ -53,7 +53,7 @@ public abstract class OpenMetadataApplicationTest {
 
   private static final String JDBC_CONTAINER_CLASS_NAME = "org.testcontainers.containers.MySQLContainer";
   private static final String JDBC_CONTAINER_IMAGE = "mysql:8";
-  private static final String ELASTIC_SEARCH_CONTAINER_IMAGE = "docker.elastic.co/elasticsearch/elasticsearch:7.10.2";
+  private static final String ELASTIC_SEARCH_CONTAINER_IMAGE = "docker.elastic.co/elasticsearch/elasticsearch:7.16.0";
 
   static {
     CollectionRegistry.addTestResource(webhookCallbackResource);
