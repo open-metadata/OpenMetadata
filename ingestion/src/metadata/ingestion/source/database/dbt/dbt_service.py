@@ -106,13 +106,8 @@ class DbtServiceTopology(ServiceTopology):
         producer="get_dbt_tests",
         stages=[
             NodeStage(
-                type_=CreateTestSuiteRequest,
-                processor="create_dbt_tests_suite",
-                ack_sink=False,
-            ),
-            NodeStage(
                 type_=CreateTestDefinitionRequest,
-                processor="create_dbt_tests_suite_definition",
+                processor="create_dbt_tests_definition",
                 ack_sink=False,
             ),
             NodeStage(
@@ -122,7 +117,7 @@ class DbtServiceTopology(ServiceTopology):
             ),
             NodeStage(
                 type_=TestCaseResult,
-                processor="update_dbt_test_result",
+                processor="add_dbt_test_result",
                 ack_sink=False,
                 nullable=True,
             ),
@@ -233,14 +228,9 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         for _, dbt_test in self.context.dbt_tests.items():
             yield dbt_test
 
-    @abstractmethod
-    def create_dbt_tests_suite(self, dbt_test: dict) -> CreateTestSuiteRequest:
-        """
-        Method to add the DBT tests suites
-        """
 
     @abstractmethod
-    def create_dbt_tests_suite_definition(
+    def create_dbt_tests_definition(
         self, dbt_test: dict
     ) -> CreateTestDefinitionRequest:
         """
@@ -254,7 +244,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def update_dbt_test_result(self, dbt_test: dict):
+    def add_dbt_test_result(self, dbt_test: dict):
         """
         After test cases has been processed, add the tests results info
         """
