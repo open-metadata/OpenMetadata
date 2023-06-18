@@ -503,7 +503,10 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         .withVotes(new Votes().withUpVotes(0).withDownVotes(0))
         .withUsers(
             getEntityReferences(
-                USER, create.getUsers().stream().map(EntityInterfaceUtil::quoteName).collect(Collectors.toList())))
+                USER,
+                create.getUsers() == null
+                    ? create.getUsers()
+                    : create.getUsers().stream().map(EntityInterfaceUtil::quoteName).collect(Collectors.toList())))
         .withQueryUsedIn(EntityUtil.populateEntityReferences(create.getQueryUsedIn()))
         .withQueryDate(create.getQueryDate());
   }
