@@ -84,11 +84,13 @@ class FullyQualifiedNameTest {
   }
 
   @Test
-  void test_getParent() {
-    assertEquals("a.b.c", FullyQualifiedName.getParent("a.b.c.d"));
-    assertEquals("a.b", FullyQualifiedName.getParent("a.b.c"));
-    assertEquals("a", FullyQualifiedName.getParent("a.b"));
-    assertNull(FullyQualifiedName.getParent("a"));
+  void test_getParentFQN() {
+    assertEquals("a.b.c", FullyQualifiedName.getParentFQN("a.b.c.d"));
+    assertEquals("\"a.b\"", FullyQualifiedName.getParentFQN("\"a.b\".c"));
+    assertEquals("a", FullyQualifiedName.getParentFQN("a.b"));
+    assertEquals("a", FullyQualifiedName.getParentFQN("a.\"b.c\""));
+    assertEquals("a.\"b.c\"", FullyQualifiedName.getParentFQN("a.\"b.c\".d"));
+    assertNull(FullyQualifiedName.getParentFQN("a"));
   }
 
   @Test
