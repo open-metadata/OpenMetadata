@@ -55,9 +55,13 @@ class BigqueryUnitTest(TestCase):
     @patch(
         "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
     )
-    def __init__(self, methodName, test_connection) -> None:
+    @patch(
+        "metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id"
+    )
+    def __init__(self, methodName, set_project_id, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
+        set_project_id.return_value = False
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_bq_config)
         self.bq_source = BigquerySource.create(
             mock_bq_config["source"],
