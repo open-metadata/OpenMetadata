@@ -487,8 +487,8 @@ public class SearchResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "jobId Id", schema = @Schema(type = "UUID")) @PathParam("jobId") UUID id)
       throws IOException {
-    // Only admins  can issue a reindex request
-    authorizer.authorizeAdmin(securityContext);
+    // Only admins or bot can issue a reindex request
+    authorizer.authorizeAdminOrBot(securityContext);
     return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getJob(id)).build();
   }
 
@@ -523,7 +523,8 @@ public class SearchResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateEventPublisherJob createRequest) {
-    authorizer.authorizeAdmin(securityContext);
+    // Only admins or bot can issue a reindex request
+    authorizer.authorizeAdminOrBot(securityContext);
     return Response.status(Response.Status.CREATED)
         .entity(
             ReIndexingHandler.getInstance()
