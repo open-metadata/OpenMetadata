@@ -262,6 +262,20 @@ export const DataAssetsHeader = ({
                 value={dashboardDetails.sourceUrl}
               />
             )}
+            {dashboardDetails.dashboardType && (
+              <ExtraInfoLabel
+                label={t('label.entity-type-plural', {
+                  entity: t('label.dashboard'),
+                })}
+                value={dashboardDetails.dashboardType}
+              />
+            )}
+            {dashboardDetails.project && (
+              <ExtraInfoLabel
+                label={t('label.project')}
+                value={dashboardDetails.project}
+              />
+            )}
           </>
         );
 
