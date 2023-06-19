@@ -227,12 +227,12 @@ MOCK_PIPELINE = Pipeline(
     name="do_it_all_with_default_config",
     fullyQualifiedName="dagster_source.do_it_all_with_default_config",
     displayName="do_it_all_with_default_config",
+    description="",
     sourceUrl=MOCK_CONNECTION_URI_PATH,
     tasks=[
         Task(
             name="a58b1856-729c-493b-bc87-6d2269b43ec0",
             displayName="do_it_all_with_default_config",
-            sourceUrl="",
         )
     ],
     service=EntityReference(

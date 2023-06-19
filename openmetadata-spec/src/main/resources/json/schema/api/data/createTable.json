@@ -76,7 +76,7 @@
     },
     "sourceUrl": {
       "description": "Source URL of table.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
     }
   },
   "required": ["name", "columns", "databaseSchema"],
