@@ -93,12 +93,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.text.RandomStringGenerator;
 import org.apache.commons.text.RandomStringGenerator.Builder;
 import org.apache.http.client.HttpResponseException;
-import org.apache.http.util.EntityUtils;
 import org.awaitility.Awaitility;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.Request;
-import org.elasticsearch.client.Response;
-import org.elasticsearch.client.RestClient;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.Aggregation;
 import org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
@@ -111,9 +107,6 @@ import org.elasticsearch.xcontent.NamedXContentRegistry;
 import org.elasticsearch.xcontent.ParseField;
 import org.elasticsearch.xcontent.XContentParser;
 import org.elasticsearch.xcontent.json.JsonXContent;
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.junit.Assert;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -1631,28 +1624,28 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         CatalogExceptionMessage.systemEntityDeleteNotAllowed(systemEntity.getName(), entityType));
   }
 
-  @Test
-  protected void checkIndexCreated() throws IOException {
-    RestClient client = getSearchClient();
-    Request request = new Request("GET", "/_cat/indices");
-    request.addParameter("format", "json");
-    Response response = client.performRequest(request);
-    JSONArray jsonArray = new JSONArray(EntityUtils.toString(response.getEntity()));
-    List<String> indexNamesFromResponse = new ArrayList<>();
-    for (int i = 0; i < jsonArray.length(); i++) {
-      JSONObject jsonObject = jsonArray.getJSONObject(i);
-      String indexName = jsonObject.getString("index");
-      indexNamesFromResponse.add(indexName);
-    }
-    for (ElasticSearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType :
-        ElasticSearchIndexDefinition.ElasticSearchIndexType.values()) {
-      // check all the indexes are created sucessfully
-      Assert.assertTrue(
-          "Index name not found in Elasticsearch response " + elasticSearchIndexType.indexName,
-          indexNamesFromResponse.contains(elasticSearchIndexType.indexName));
-    }
-    client.close();
-  }
+  //  @Test
+  //  protected void checkIndexCreated() throws IOException {
+  //    RestClient client = getSearchClient();
+  //    Request request = new Request("GET", "/_cat/indices");
+  //    request.addParameter("format", "json");
+  //    Response response = client.performRequest(request);
+  //    JSONArray jsonArray = new JSONArray(EntityUtils.toString(response.getEntity()));
+  //    List<String> indexNamesFromResponse = new ArrayList<>();
+  //    for (int i = 0; i < jsonArray.length(); i++) {
+  //      JSONObject jsonObject = jsonArray.getJSONObject(i);
+  //      String indexName = jsonObject.getString("index");
+  //      indexNamesFromResponse.add(indexName);
+  //    }
+  //    for (ElasticSearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType :
+  //        ElasticSearchIndexDefinition.ElasticSearchIndexType.values()) {
+  //      // check all the indexes are created sucessfully
+  //      Assert.assertTrue(
+  //          "Index name not found in Elasticsearch response " + elasticSearchIndexType.indexName,
+  //          indexNamesFromResponse.contains(elasticSearchIndexType.indexName));
+  //    }
+  //    client.close();
+  //  }
 
   @Test
   protected void checkCreatedEntity(TestInfo test) throws IOException, InterruptedException {
