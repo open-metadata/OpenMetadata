@@ -13,14 +13,10 @@
 
 package org.openmetadata.service;
 
-import static java.lang.String.format;
-
 import io.dropwizard.jersey.jackson.JacksonFeature;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpHost;
 import org.elasticsearch.client.RestClient;
@@ -41,6 +37,11 @@ import org.openmetadata.service.security.policyevaluator.RoleCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
+
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.WebTarget;
+
+import static java.lang.String.format;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -101,8 +102,12 @@ public abstract class OpenMetadataApplicationTest {
     flyway.clean();
     flyway.migrate();
 
-    ELASTIC_SEARCH_CONTAINER = new ElasticsearchContainer(elasticSearchContainerImage).withReuse(true);
-    ELASTIC_SEARCH_CONTAINER.start();
+    ELASTIC_SEARCH_CONTAINER = new ElasticsearchContainer(elasticSearchContainerImage);
+    if (!ELASTIC_SEARCH_CONTAINER.isRunning()) {
+      ELASTIC_SEARCH_CONTAINER.start();
+      ELASTIC_SEARCH_CONTAINER.withReuse(true);
+    }
+    //    ELASTIC_SEARCH_CONTAINER.start();
     //    ELASTIC_SEARCH_CONTAINER.withReuse(true);
     String[] parts = ELASTIC_SEARCH_CONTAINER.getHttpHostAddress().split(":");
     HOST = parts[0];
@@ -149,7 +154,6 @@ public abstract class OpenMetadataApplicationTest {
     PolicyCache.cleanUp();
     RoleCache.cleanUp();
     TagLabelCache.cleanUp();
-    ELASTIC_SEARCH_CONTAINER.stop();
   }
 
   public static Client getClient() {
