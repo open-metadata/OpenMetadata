@@ -54,22 +54,19 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   @Transaction
   public Response addWebAnalyticEventData(WebAnalyticEventData webAnalyticEventData) throws IOException {
     webAnalyticEventData.setEventId(UUID.randomUUID());
-    daoCollection
-        .entityExtensionTimeSeriesDao()
-        .insert(
-            webAnalyticEventData.getEventType().value(),
-            WEB_ANALYTICS_EVENT_DATA_EXTENSION,
-            "webAnalyticEventData",
-            JsonUtils.pojoToJson(webAnalyticEventData));
-
+    storeTimeSeries(
+        webAnalyticEventData.getEventType().value(),
+        WEB_ANALYTICS_EVENT_DATA_EXTENSION,
+        "webAnalyticEventData",
+        JsonUtils.pojoToJson(webAnalyticEventData),
+        webAnalyticEventData.getTimestamp(),
+        false);
     return Response.ok(webAnalyticEventData).build();
   }
 
   @Transaction
   public void deleteWebAnalyticEventData(WebAnalyticEventType name, Long timestamp) {
-    daoCollection
-        .entityExtensionTimeSeriesDao()
-        .deleteBeforeExclusive(name.value(), WEB_ANALYTICS_EVENT_DATA_EXTENSION, timestamp);
+    deleteExtensionBeforeTimestamp(name.value(), WEB_ANALYTICS_EVENT_DATA_EXTENSION, timestamp);
   }
 
   public ResultList<WebAnalyticEventData> getWebAnalyticEventData(String eventType, Long startTs, Long endTs)
@@ -77,9 +74,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
     List<WebAnalyticEventData> webAnalyticEventData;
     webAnalyticEventData =
         JsonUtils.readObjects(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .listBetweenTimestamps(eventType, WEB_ANALYTICS_EVENT_DATA_EXTENSION, startTs, endTs),
+            getResultsFromAndToTimestamps(eventType, WEB_ANALYTICS_EVENT_DATA_EXTENSION, startTs, endTs),
             WebAnalyticEventData.class);
 
     return new ResultList<>(

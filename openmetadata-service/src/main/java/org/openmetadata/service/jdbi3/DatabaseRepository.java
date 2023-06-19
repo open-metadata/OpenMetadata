@@ -48,6 +48,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
+  public String getFullyQualifiedNameHash(Database entity) {
+    return FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
+  }
+
+  @Override
   public void prepare(Database database) throws IOException {
     populateService(database);
   }

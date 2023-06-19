@@ -55,7 +55,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public void setFullyQualifiedName(Dashboard dashboard) {
-    dashboard.setFullyQualifiedName(FullyQualifiedName.add(dashboard.getService().getName(), dashboard.getName()));
+    dashboard.setFullyQualifiedName(
+        FullyQualifiedName.add(dashboard.getService().getFullyQualifiedName(), dashboard.getName()));
   }
 
   @Override

@@ -75,13 +75,11 @@ EXPECTED_FIVETRAN_DETAILS = FivetranPipelineDetails(
 EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
     name="wackiness_remote_aiding_pointless",
     displayName="test <> postgres_rds",
-    description="",
     sourceUrl="",
     tasks=[
         Task(
             name="wackiness_remote_aiding_pointless",
             displayName="test <> postgres_rds",
-            description="",
         )
     ],
     service=FullyQualifiedEntityName(__root__="fivetran_source"),
@@ -100,13 +98,11 @@ MOCK_PIPELINE = Pipeline(
     name="wackiness_remote_aiding_pointless",
     fullyQualifiedName="fivetran_source.wackiness_remote_aiding_pointless",
     displayName="test <> postgres_rds",
-    description="",
     sourceUrl="",
     tasks=[
         Task(
             name="wackiness_remote_aiding_pointless",
             displayName="test <> postgres_rds",
-            description="",
             sourceUrl="",
         )
     ],
