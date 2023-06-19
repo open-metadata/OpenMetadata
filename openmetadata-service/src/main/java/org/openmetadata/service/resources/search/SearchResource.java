@@ -20,6 +20,7 @@ import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
 import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ELASTIC_SEARCH_EXTENSION;
+import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.getIndexMappingSchema;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -28,8 +29,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import javax.validation.Valid;
@@ -492,6 +496,32 @@ public class SearchResource {
     // Only admins or bot can issue a reindex request
     authorizer.authorizeAdminOrBot(securityContext);
     return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getJob(id)).build();
+  }
+
+  @GET
+  @Path("/mappings")
+  @Operation(
+      operationId = "getSearchMappingSchema",
+      summary = "Get Search Mapping Schema",
+      description = "Get Search Mapping Schema",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Not found")
+      })
+  public Response getElasticSearchMappingSchema(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "List of Entities to get schema for") @QueryParam("entityType") String entityType) {
+    // Only admins or bot can issue a reindex request
+    authorizer.authorizeAdminOrBot(securityContext);
+    Set<String> entities;
+    if (entityType == null) {
+      entities = new HashSet<>();
+      entities.add("*");
+    } else {
+      entities = new HashSet<>(Arrays.asList(entityType.replace(" ", "").split(",")));
+    }
+    return Response.status(Response.Status.OK).entity(getIndexMappingSchema(entities)).build();
   }
 
   @GET
