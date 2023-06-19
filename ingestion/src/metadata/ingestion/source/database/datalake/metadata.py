@@ -59,12 +59,12 @@ from metadata.ingestion.source.database.datalake.models import (
     DatalakeTableSchemaWrapper,
 )
 from metadata.utils import fqn
+from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, DEFAULT_DATABASE
 from metadata.utils.datalake.datalake_utils import (
+    SupportedTypes,
     clean_dataframe,
     fetch_dataframe,
 )
-from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, DEFAULT_DATABASE
-from metadata.utils.datalake.datalake_utils import SupportedTypes, fetch_dataframe
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
