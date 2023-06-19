@@ -27,7 +27,7 @@ from metadata.generated.schema.metadataIngestion.storage.manifestMetadataConfig 
     ManifestMetadataConfig,
 )
 from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline import (
-    StorageServiceMetadataPipeline,
+    StorageServiceMetadataPipeline, NoMetadataConfigurationSource,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -114,7 +114,8 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         self.test_connection()
 
     def get_manifest_file(self) -> Optional[ManifestMetadataConfig]:
-        if self.source_config.storageMetadataConfigSource:
+        if self.source_config.storageMetadataConfigSource and not isinstance(
+                self.source_config.storageMetadataConfigSource, NoMetadataConfigurationSource):
             return get_manifest(self.source_config.storageMetadataConfigSource)
         return None
 
