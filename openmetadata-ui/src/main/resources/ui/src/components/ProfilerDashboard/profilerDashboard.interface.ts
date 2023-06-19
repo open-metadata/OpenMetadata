@@ -100,7 +100,6 @@ export interface DataQualityTabProps {
   testCases: TestCase[];
   onTestUpdate?: () => void;
   isLoading?: boolean;
-  deletedTable?: boolean;
   onTestCaseResultUpdate?: (data: TestCase) => void;
   pagingData?: {
     paging: Paging;

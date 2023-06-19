@@ -518,7 +518,6 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
         {activeTab === ProfilerDashboardTab.DATA_QUALITY && (
           <Col span={24}>
             <DataQualityTab
-              deletedTable={showDeletedTest}
               isLoading={isTestCaseLoading}
               testCases={getFilterTestCase()}
               onTestUpdate={handleTestUpdate}
