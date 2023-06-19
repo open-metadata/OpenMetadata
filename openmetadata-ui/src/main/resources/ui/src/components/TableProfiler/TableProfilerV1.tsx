@@ -418,7 +418,6 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                 <Tooltip
                   title={!editTest && t('message.no-permission-for-action')}>
                   <Dropdown
-                    className="m-l-xs"
                     menu={{
                       items: addButtonContent,
                     }}
