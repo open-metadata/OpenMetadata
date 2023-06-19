@@ -44,7 +44,7 @@ public interface Authorizer {
 
   void authorizeAdmin(SecurityContext securityContext);
 
-  boolean decryptSecret(SecurityContext securityContext);
+  void authorizeAdminOrBot(SecurityContext securityContext);
 
   boolean shouldMaskPasswords(SecurityContext securityContext);
 

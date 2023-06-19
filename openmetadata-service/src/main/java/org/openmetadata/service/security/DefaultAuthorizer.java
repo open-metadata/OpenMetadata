@@ -87,9 +87,12 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   @Override
-  public boolean decryptSecret(SecurityContext securityContext) {
+  public void authorizeAdminOrBot(SecurityContext securityContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    return subjectContext.isAdmin() || subjectContext.isBot();
+    if (subjectContext.isAdmin() || subjectContext.isBot()) {
+      return;
+    }
+    throw new AuthorizationException(notAdmin(securityContext.getUserPrincipal().getName()));
   }
 
   @Override
