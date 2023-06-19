@@ -20,6 +20,7 @@ import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TopicSchemaFields from 'components/TopicDetails/TopicSchema/TopicSchema';
 import { getVersionPathWithTab } from 'constants/constants';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
+import { EntityField } from 'constants/Feeds.constants';
 import { EntityInfo, EntityTabs, EntityType } from 'enums/entity.enum';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,7 +30,7 @@ import { ChangeDescription, Topic } from '../../generated/entity/data/topic';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
   getCommonExtraInfoForVersionDetails,
-  getEntityVersionDescription,
+  getEntityVersionByField,
   getEntityVersionTags,
   getUpdatedMessageSchema,
 } from '../../utils/EntityVersionUtils';
@@ -142,7 +143,19 @@ const TopicVersion: FC<TopicVersionProp> = ({
   }, [currentVersionData, changeDescription]);
 
   const description = useMemo(() => {
-    return getEntityVersionDescription(currentVersionData, changeDescription);
+    return getEntityVersionByField(
+      currentVersionData,
+      changeDescription,
+      EntityField.DESCRIPTION
+    );
+  }, [currentVersionData, changeDescription]);
+
+  const displayName = useMemo(() => {
+    return getEntityVersionByField(
+      currentVersionData,
+      changeDescription,
+      EntityField.DISPLAYNAME
+    );
   }, [currentVersionData, changeDescription]);
 
   return (
@@ -157,7 +170,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
           <EntityPageInfo
             isVersionSelected
             deleted={deleted}
-            displayName={currentVersionData.displayName}
+            displayName={displayName}
             entityName={currentVersionData.name ?? ''}
             extraInfo={extraInfo}
             followersList={[]}

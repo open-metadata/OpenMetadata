@@ -15,12 +15,13 @@ import DescriptionV1 from 'components/common/description/DescriptionV1';
 import GlossaryDetailsRightPanel from 'components/GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import TagsInput from 'components/TagsInput/TagsInput.component';
+import { EntityField } from 'constants/Feeds.constants';
 import { Glossary, TagLabel } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { ChangeDescription } from 'generated/entity/type';
 import React, { useMemo, useState } from 'react';
 import {
-  getEntityVersionDescription,
+  getEntityVersionByField,
   getEntityVersionTags,
 } from 'utils/EntityVersionUtils';
 import GlossaryTermReferences from './GlossaryTermReferences';
@@ -64,9 +65,10 @@ const GlossaryOverviewTab = ({
 
   const glossaryDescription = useMemo(() => {
     if (isVersionView) {
-      return getEntityVersionDescription(
+      return getEntityVersionByField(
         selectedData,
-        selectedData.changeDescription as ChangeDescription
+        selectedData.changeDescription as ChangeDescription,
+        EntityField.DESCRIPTION
       );
     } else {
       return selectedData.description;

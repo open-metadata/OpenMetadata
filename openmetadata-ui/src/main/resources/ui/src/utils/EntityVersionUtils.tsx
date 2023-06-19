@@ -159,16 +159,16 @@ export const getNormalDiffElement = (text: string) => {
   );
 };
 
-export const getDescriptionDiff = (
-  oldDescription: string,
-  newDescription: string,
-  latestDescription?: string
+export const getTextDiff = (
+  oldText: string,
+  newText: string,
+  latestText?: string
 ) => {
-  if (isEmpty(oldDescription) && isEmpty(newDescription)) {
-    return latestDescription || '';
+  if (isEmpty(oldText) && isEmpty(newText)) {
+    return latestText || '';
   }
 
-  const diffArr = diffWords(toString(oldDescription), toString(newDescription));
+  const diffArr = diffWords(toString(oldText), toString(newText));
 
   const result = diffArr.map((diff) => {
     if (diff.added) {
@@ -184,23 +184,16 @@ export const getDescriptionDiff = (
   return result.join('');
 };
 
-export const getEntityVersionDescription = (
+export const getEntityVersionByField = (
   currentVersionData: VersionData | Glossary,
-  changeDescription: ChangeDescription
+  changeDescription: ChangeDescription,
+  field: EntityField
 ) => {
-  const descriptionDiff = getDiffByFieldName(
-    EntityField.DESCRIPTION,
-    changeDescription,
-    true
-  );
-  const oldDescription = getChangedEntityOldValue(descriptionDiff);
-  const newDescription = getChangedEntityNewValue(descriptionDiff);
+  const fieldDiff = getDiffByFieldName(field, changeDescription, true);
+  const oldField = getChangedEntityOldValue(fieldDiff);
+  const newField = getChangedEntityNewValue(fieldDiff);
 
-  return getDescriptionDiff(
-    oldDescription ?? '',
-    newDescription,
-    currentVersionData.description
-  );
+  return getTextDiff(oldField ?? '', newField, currentVersionData.displayName);
 };
 
 export const getTagsDiff = (
@@ -210,7 +203,7 @@ export const getTagsDiff = (
   const tagDiff = diffArrays<TagLabel, TagLabel>(oldTagList, newTagList);
   const result = tagDiff
     .map((part: ArrayChange<TagLabel>) =>
-      (part.value as Array<TagLabel>).map((tag) => ({
+      part.value.map((tag) => ({
         ...tag,
         added: part.added,
         removed: part.removed,
@@ -391,7 +384,7 @@ export function getEntityDescriptionDiff<
   const formatEntityData = (arr: Array<A>) => {
     arr?.forEach((i) => {
       if (isEqual(i.name, changedEntityName)) {
-        i.description = getDescriptionDiff(
+        i.description = getTextDiff(
           oldDescription ?? '',
           newDescription ?? '',
           i.description
@@ -448,9 +441,9 @@ function getNewSchemaFromSchemaDiff(newField: Array<Field>) {
   return newField.map((field) => ({
     ...field,
     tags: field.tags?.map((tag) => ({ ...tag, removed: true })),
-    description: getDescriptionDiff(field.description ?? '', ''),
-    dataTypeDisplay: getDescriptionDiff(field.dataTypeDisplay ?? '', ''),
-    name: getDescriptionDiff(field.name, ''),
+    description: getTextDiff(field.description ?? '', ''),
+    dataTypeDisplay: getTextDiff(field.dataTypeDisplay ?? '', ''),
+    name: getTextDiff(field.name, ''),
   }));
 }
 
@@ -469,12 +462,9 @@ export function getSchemasDiff(
         arr?.forEach((i) => {
           if (isEqual(i.name, field.name)) {
             i.tags = field.tags?.map((tag) => ({ ...tag, added: true }));
-            i.description = getDescriptionDiff('', field.description ?? '');
-            i.dataTypeDisplay = getDescriptionDiff(
-              '',
-              field.dataTypeDisplay ?? ''
-            );
-            i.name = getDescriptionDiff('', field.name);
+            i.description = getTextDiff('', field.description ?? '');
+            i.dataTypeDisplay = getTextDiff('', field.dataTypeDisplay ?? '');
+            i.name = getTextDiff('', field.name);
           } else {
             formatSchemaFieldsData(i?.children as Array<Field>);
           }
@@ -647,9 +637,9 @@ function getNewColumnFromColDiff<A extends TableColumn | ContainerColumn>(
   return newCol.map((col) => ({
     ...col,
     tags: col.tags?.map((tag) => ({ ...tag, removed: true })),
-    description: getDescriptionDiff(col.description ?? '', ''),
-    dataTypeDisplay: getDescriptionDiff(col.dataTypeDisplay ?? '', ''),
-    name: getDescriptionDiff(col.name, ''),
+    description: getTextDiff(col.description ?? '', ''),
+    dataTypeDisplay: getTextDiff(col.dataTypeDisplay ?? '', ''),
+    name: getTextDiff(col.name, ''),
   }));
 }
 
@@ -665,12 +655,9 @@ export function getColumnsDiff<A extends TableColumn | ContainerColumn>(
         arr?.forEach((i) => {
           if (isEqual(i.name, col.name)) {
             i.tags = col.tags?.map((tag) => ({ ...tag, added: true }));
-            i.description = getDescriptionDiff('', col.description ?? '');
-            i.dataTypeDisplay = getDescriptionDiff(
-              '',
-              col.dataTypeDisplay ?? ''
-            );
-            i.name = getDescriptionDiff('', col.name);
+            i.description = getTextDiff('', col.description ?? '');
+            i.dataTypeDisplay = getTextDiff('', col.dataTypeDisplay ?? '');
+            i.name = getTextDiff('', col.name);
           } else {
             formatColumnData(i?.children as Array<A>);
           }
@@ -733,7 +720,7 @@ export const getUpdatedExtensionDiffFields = (
     ? {
         extensionObject: {
           ...extensionObj,
-          [changedFieldName]: getDescriptionDiff(oldValues, newValues),
+          [changedFieldName]: getTextDiff(oldValues, newValues),
         },
       }
     : { extensionObject: {} };

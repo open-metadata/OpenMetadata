@@ -17,12 +17,15 @@ import { EntityDetailsObjectInterface } from 'components/Explore/explore.interfa
 import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import { getGlossaryTermDetailsPath } from 'constants/constants';
+import { EntityField } from 'constants/Feeds.constants';
 import { myDataSearchIndex } from 'constants/Mydata.constants';
+import { ChangeDescription } from 'generated/entity/type';
 import { t } from 'i18next';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
 import { getCountBadge } from 'utils/CommonUtils';
+import { getEntityVersionByField } from 'utils/EntityVersionUtils';
 import { getGlossaryTermsVersionsPath } from 'utils/RouterUtils';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
@@ -189,6 +192,32 @@ const GlossaryTermsV1 = ({
     tab !== 'assets' && activeTabHandler('assets');
   };
 
+  const name = useMemo(
+    () =>
+      isVersionView
+        ? getEntityVersionByField(
+            glossaryTerm,
+            glossaryTerm.changeDescription as ChangeDescription,
+            EntityField.NAME
+          )
+        : glossaryTerm.name,
+
+    [glossaryTerm, isVersionView]
+  );
+
+  const displayName = useMemo(
+    () =>
+      isVersionView
+        ? getEntityVersionByField(
+            glossaryTerm,
+            glossaryTerm.changeDescription as ChangeDescription,
+            EntityField.DISPLAYNAME
+          )
+        : glossaryTerm.displayName,
+
+    [glossaryTerm, isVersionView]
+  );
+
   return (
     <>
       <Row data-testid="glossary-term" gutter={[0, 8]}>
@@ -197,7 +226,7 @@ const GlossaryTermsV1 = ({
             isGlossary={false}
             isVersionView={isVersionView}
             permissions={permissions}
-            selectedData={glossaryTerm}
+            selectedData={{ ...glossaryTerm, displayName, name }}
             onAddGlossaryTerm={onAddGlossaryTerm}
             onAssetAdd={() => setAssetModelVisible(true)}
             onDelete={handleGlossaryTermDelete}

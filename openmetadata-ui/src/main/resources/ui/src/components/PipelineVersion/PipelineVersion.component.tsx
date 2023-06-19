@@ -41,11 +41,11 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getCommonExtraInfoForVersionDetails,
-  getDescriptionDiff,
   getDiffByFieldName,
-  getEntityVersionDescription,
+  getEntityVersionByField,
   getEntityVersionTags,
   getTagsDiff,
+  getTextDiff,
 } from '../../utils/EntityVersionUtils';
 import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import SVGIcons from '../../utils/SvgUtils';
@@ -113,7 +113,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
     const formatColumnData = (arr: Pipeline['tasks']) => {
       arr?.forEach((i) => {
         if (isEqual(i.name, changedColName)) {
-          i.description = getDescriptionDiff(
+          i.description = getTextDiff(
             oldDescription,
             newDescription,
             i.description
@@ -171,9 +171,9 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         arr?.forEach((i) => {
           if (isEqual(i.name, col.name)) {
             i.tags = col.tags?.map((tag) => ({ ...tag, added: true }));
-            i.description = getDescriptionDiff('', col.description ?? '');
-            i.taskType = getDescriptionDiff('', col.taskType ?? '');
-            i.name = getDescriptionDiff('', col.name);
+            i.description = getTextDiff('', col.description ?? '');
+            i.taskType = getTextDiff('', col.taskType ?? '');
+            i.name = getTextDiff('', col.name);
           }
         });
       };
@@ -189,9 +189,9 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
     return newCol?.map((col) => ({
       ...col,
       tags: col.tags?.map((tag) => ({ ...tag, removed: true })),
-      description: getDescriptionDiff(col.description ?? '', ''),
-      taskType: getDescriptionDiff(col.taskType ?? '', ''),
-      name: getDescriptionDiff(col.name, ''),
+      description: getTextDiff(col.description ?? '', ''),
+      taskType: getTextDiff(col.taskType ?? '', ''),
+      name: getTextDiff(col.name, ''),
     }));
   };
 
@@ -341,7 +341,19 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   }, [currentVersionData, changeDescription]);
 
   const description = useMemo(() => {
-    return getEntityVersionDescription(currentVersionData, changeDescription);
+    return getEntityVersionByField(
+      currentVersionData,
+      changeDescription,
+      EntityField.DESCRIPTION
+    );
+  }, [currentVersionData, changeDescription]);
+
+  const displayName = useMemo(() => {
+    return getEntityVersionByField(
+      currentVersionData,
+      changeDescription,
+      EntityField.DISPLAYNAME
+    );
   }, [currentVersionData, changeDescription]);
 
   return (
@@ -356,7 +368,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           <EntityPageInfo
             isVersionSelected
             deleted={deleted}
-            displayName={currentVersionData.displayName}
+            displayName={displayName}
             entityName={
               currentVersionData.displayName ?? currentVersionData.name ?? ''
             }

@@ -41,11 +41,11 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getCommonExtraInfoForVersionDetails,
-  getDescriptionDiff,
   getDiffByFieldName,
-  getEntityVersionDescription,
+  getEntityVersionByField,
   getEntityVersionTags,
   getTagsDiff,
+  getTextDiff,
   removeDuplicateTags,
 } from '../../utils/EntityVersionUtils';
 import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
@@ -120,7 +120,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   ) => {
     colList?.forEach((i) => {
       if (isEqual(i.name, newDiff[0]?.name)) {
-        i.description = getDescriptionDiff(
+        i.description = getTextDiff(
           oldDiff[0]?.description ?? '',
           newDiff[0]?.description ?? ''
         );
@@ -209,7 +209,19 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   }, [currentVersionData, changeDescription]);
 
   const description = useMemo(() => {
-    return getEntityVersionDescription(currentVersionData, changeDescription);
+    return getEntityVersionByField(
+      currentVersionData,
+      changeDescription,
+      EntityField.DESCRIPTION
+    );
+  }, [currentVersionData, changeDescription]);
+
+  const displayName = useMemo(() => {
+    return getEntityVersionByField(
+      currentVersionData,
+      changeDescription,
+      EntityField.DISPLAYNAME
+    );
   }, [currentVersionData, changeDescription]);
 
   return (
@@ -224,7 +236,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
           <EntityPageInfo
             isVersionSelected
             deleted={deleted}
-            displayName={currentVersionData.displayName}
+            displayName={displayName}
             entityName={
               currentVersionData.displayName ?? currentVersionData.name ?? ''
             }

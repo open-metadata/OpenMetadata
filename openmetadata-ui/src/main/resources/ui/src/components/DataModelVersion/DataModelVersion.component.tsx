@@ -35,11 +35,11 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getCommonExtraInfoForVersionDetails,
-  getDescriptionDiff,
   getDiffByFieldName,
-  getEntityVersionDescription,
+  getEntityVersionByField,
   getEntityVersionTags,
   getTagsDiff,
+  getTextDiff,
 } from '../../utils/EntityVersionUtils';
 import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import Description from '../common/description/Description';
@@ -101,7 +101,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
     const formatColumnData = (arr: DashboardDataModel['columns']) => {
       arr?.forEach((i) => {
         if (isEqual(i.name, changedColName)) {
-          i.description = getDescriptionDiff(
+          i.description = getTextDiff(
             oldDescription ?? '',
             newDescription ?? '',
             i.description
@@ -163,12 +163,9 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
         arr?.forEach((i) => {
           if (isEqual(i.name, col.name)) {
             i.tags = col.tags?.map((tag) => ({ ...tag, added: true }));
-            i.description = getDescriptionDiff('', col.description ?? '');
-            i.dataTypeDisplay = getDescriptionDiff(
-              '',
-              col.dataTypeDisplay ?? ''
-            );
-            i.name = getDescriptionDiff('', col.name);
+            i.description = getTextDiff('', col.description ?? '');
+            i.dataTypeDisplay = getTextDiff('', col.dataTypeDisplay ?? '');
+            i.name = getTextDiff('', col.name);
           } else {
             formatColumnData(i?.children as DashboardDataModel['columns']);
           }
@@ -186,9 +183,9 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
     return newCol.map((col) => ({
       ...col,
       tags: col.tags?.map((tag) => ({ ...tag, removed: true })),
-      description: getDescriptionDiff(col.description ?? '', ''),
-      dataTypeDisplay: getDescriptionDiff(col.dataTypeDisplay ?? '', ''),
-      name: getDescriptionDiff(col.name, ''),
+      description: getTextDiff(col.description ?? '', ''),
+      dataTypeDisplay: getTextDiff(col.dataTypeDisplay ?? '', ''),
+      name: getTextDiff(col.name, ''),
     }));
   };
 
@@ -246,7 +243,19 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   }, [currentVersionData, changeDescription]);
 
   const description = useMemo(() => {
-    return getEntityVersionDescription(currentVersionData, changeDescription);
+    return getEntityVersionByField(
+      currentVersionData,
+      changeDescription,
+      EntityField.DESCRIPTION
+    );
+  }, [currentVersionData, changeDescription]);
+
+  const displayName = useMemo(() => {
+    return getEntityVersionByField(
+      currentVersionData,
+      changeDescription,
+      EntityField.DISPLAYNAME
+    );
   }, [currentVersionData, changeDescription]);
 
   return (
@@ -264,7 +273,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
             <EntityPageInfo
               isVersionSelected
               deleted={deleted}
-              displayName={currentVersionData.displayName}
+              displayName={displayName}
               entityName={currentVersionData.name ?? ''}
               extraInfo={extraInfo}
               followersList={[]}

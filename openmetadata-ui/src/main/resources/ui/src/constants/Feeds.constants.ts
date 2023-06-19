@@ -69,6 +69,8 @@ export enum EntityField {
   RELATEDTERMS = 'relatedTerms',
   REFERENCES = 'references',
   EXTENSION = 'extension',
+  DISPLAYNAME = 'displayName',
+  NAME = 'name',
 }
 
 export const ANNOUNCEMENT_BG = '#FFFDF8';

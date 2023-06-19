@@ -19,6 +19,7 @@ import { CustomPropertyProps } from 'components/common/CustomPropertyTable/Custo
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { getVersionPathWithTab } from 'constants/constants';
+import { EntityField } from 'constants/Feeds.constants';
 import { EntityInfo, EntityTabs, EntityType } from 'enums/entity.enum';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,7 +33,7 @@ import {
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
   getCommonExtraInfoForVersionDetails,
-  getEntityVersionDescription,
+  getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
 import SVGIcons from '../../utils/SvgUtils';
@@ -158,7 +159,19 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   }, [currentVersionData, changeDescription]);
 
   const description = useMemo(() => {
-    return getEntityVersionDescription(currentVersionData, changeDescription);
+    return getEntityVersionByField(
+      currentVersionData,
+      changeDescription,
+      EntityField.DESCRIPTION
+    );
+  }, [currentVersionData, changeDescription]);
+
+  const displayName = useMemo(() => {
+    return getEntityVersionByField(
+      currentVersionData,
+      changeDescription,
+      EntityField.DISPLAYNAME
+    );
   }, [currentVersionData, changeDescription]);
 
   return (
@@ -176,7 +189,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
             <EntityPageInfo
               isVersionSelected
               deleted={deleted}
-              displayName={currentVersionData.displayName}
+              displayName={displayName}
               entityName={currentVersionData.name ?? ''}
               extraInfo={extraInfo}
               followersList={[]}

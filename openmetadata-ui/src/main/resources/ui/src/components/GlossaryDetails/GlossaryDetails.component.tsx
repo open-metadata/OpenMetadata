@@ -16,10 +16,11 @@ import DescriptionV1 from 'components/common/description/DescriptionV1';
 import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import GlossaryDetailsRightPanel from 'components/GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
+import { EntityField } from 'constants/Feeds.constants';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { ChangeDescription } from 'generated/entity/type';
 import React, { useMemo, useState } from 'react';
-import { getEntityVersionDescription } from 'utils/EntityVersionUtils';
+import { getEntityVersionByField } from 'utils/EntityVersionUtils';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import './GlossaryDetails.style.less';
@@ -68,11 +69,38 @@ const GlossaryDetails = ({
   const description = useMemo(
     () =>
       isVersionView
-        ? getEntityVersionDescription(
+        ? getEntityVersionByField(
             glossary,
-            glossary.changeDescription as ChangeDescription
+            glossary.changeDescription as ChangeDescription,
+            EntityField.DESCRIPTION
           )
         : glossary.description,
+
+    [glossary, isVersionView]
+  );
+
+  const name = useMemo(
+    () =>
+      isVersionView
+        ? getEntityVersionByField(
+            glossary,
+            glossary.changeDescription as ChangeDescription,
+            EntityField.NAME
+          )
+        : glossary.name,
+
+    [glossary, isVersionView]
+  );
+
+  const displayName = useMemo(
+    () =>
+      isVersionView
+        ? getEntityVersionByField(
+            glossary,
+            glossary.changeDescription as ChangeDescription,
+            EntityField.DISPLAYNAME
+          )
+        : glossary.displayName,
 
     [glossary, isVersionView]
   );
@@ -87,7 +115,7 @@ const GlossaryDetails = ({
           isGlossary
           isVersionView={isVersionView}
           permissions={permissions}
-          selectedData={glossary}
+          selectedData={{ ...glossary, displayName, name }}
           onAddGlossaryTerm={onAddGlossaryTerm}
           onDelete={handleGlossaryDelete}
           onUpdate={updateGlossary}
