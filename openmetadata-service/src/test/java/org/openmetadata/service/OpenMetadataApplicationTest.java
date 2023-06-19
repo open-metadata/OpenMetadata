@@ -22,6 +22,9 @@ import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.HttpHost;
+import org.elasticsearch.client.Request;
+import org.elasticsearch.client.RestClient;
 import org.flywaydb.core.Flyway;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.HttpUrlConnectorProvider;
@@ -38,6 +41,7 @@ import org.openmetadata.service.security.policyevaluator.PolicyCache;
 import org.openmetadata.service.security.policyevaluator.RoleCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.testcontainers.containers.JdbcDatabaseContainer;
+import org.testcontainers.elasticsearch.ElasticsearchContainer;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -46,11 +50,14 @@ public abstract class OpenMetadataApplicationTest {
   public static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
   protected static final WebhookCallbackResource webhookCallbackResource = new WebhookCallbackResource();
   public static final String FERNET_KEY_1 = "ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ";
-  //  private static ElasticsearchContainer ELASTIC_SEARCH_CONTAINER;
+  private static ElasticsearchContainer ELASTIC_SEARCH_CONTAINER = null;
 
   private static final String JDBC_CONTAINER_CLASS_NAME = "org.testcontainers.containers.MySQLContainer";
   private static final String JDBC_CONTAINER_IMAGE = "mysql:8";
   private static final String ELASTIC_SEARCH_CONTAINER_IMAGE = "docker.elastic.co/elasticsearch/elasticsearch:7.16.0";
+
+  private static String HOST;
+  private static String PORT;
 
   static {
     CollectionRegistry.addTestResource(webhookCallbackResource);
@@ -95,13 +102,17 @@ public abstract class OpenMetadataApplicationTest {
     flyway.clean();
     flyway.migrate();
 
-    // Create the elasticsearch container.
-    //    ELASTIC_SEARCH_CONTAINER = new ElasticsearchContainer(elasticSearchContainerImage);
-    //    ELASTIC_SEARCH_CONTAINER.start();
-    //    ELASTIC_SEARCH_CONTAINER.withReuse(true);
-    //    String[] parts = ELASTIC_SEARCH_CONTAINER.getHttpHostAddress().split(":");
-    //    String host = parts[0];
-    //    String port = parts[1];
+    if (ELASTIC_SEARCH_CONTAINER == null) {
+      ELASTIC_SEARCH_CONTAINER = new ElasticsearchContainer(elasticSearchContainerImage);
+      ELASTIC_SEARCH_CONTAINER.start();
+      ELASTIC_SEARCH_CONTAINER.withReuse(true);
+      String[] parts = ELASTIC_SEARCH_CONTAINER.getHttpHostAddress().split(":");
+      HOST = parts[0];
+      PORT = parts[1];
+    } else {
+      System.out.println(
+          "cleanupElasticsearch" + getSearchClient().performRequest(new Request("POST", "_features/_reset")));
+    }
 
     APP =
         new DropwizardAppExtension<>(
@@ -112,20 +123,20 @@ public abstract class OpenMetadataApplicationTest {
             ConfigOverride.config("database.url", sqlContainer.getJdbcUrl()),
             ConfigOverride.config("database.user", sqlContainer.getUsername()),
             ConfigOverride.config("database.password", sqlContainer.getPassword()),
-            //            // Elastic search override
-            //            ConfigOverride.config("elasticsearch.host", host),
-            //            ConfigOverride.config("elasticsearch.port", port),
-            //            ConfigOverride.config("elasticsearch.scheme", "http"),
-            //            ConfigOverride.config("elasticsearch.username", ""),
-            //            ConfigOverride.config("elasticsearch.password", ""),
-            //            ConfigOverride.config("elasticsearch.truststorePath", ""),
-            //            ConfigOverride.config("elasticsearch.truststorePassword", ""),
-            //            ConfigOverride.config("elasticsearch.connectionTimeoutSecs", "5"),
-            //            ConfigOverride.config("elasticsearch.socketTimeoutSecs", "60"),
-            //            ConfigOverride.config("elasticsearch.keepAliveTimeoutSecs", "600"),
-            //            ConfigOverride.config("elasticsearch.batchSize", "10"),
-            //            ConfigOverride.config("elasticsearch.searchIndexMappingLanguage", "EN"),
-            //            ConfigOverride.config("elasticsearch.searchType", "ElasticSearch"),
+            // Elastic search override
+            ConfigOverride.config("elasticsearch.host", HOST),
+            ConfigOverride.config("elasticsearch.port", PORT),
+            ConfigOverride.config("elasticsearch.scheme", "http"),
+            ConfigOverride.config("elasticsearch.username", ""),
+            ConfigOverride.config("elasticsearch.password", ""),
+            ConfigOverride.config("elasticsearch.truststorePath", ""),
+            ConfigOverride.config("elasticsearch.truststorePassword", ""),
+            ConfigOverride.config("elasticsearch.connectionTimeoutSecs", "5"),
+            ConfigOverride.config("elasticsearch.socketTimeoutSecs", "60"),
+            ConfigOverride.config("elasticsearch.keepAliveTimeoutSecs", "600"),
+            ConfigOverride.config("elasticsearch.batchSize", "10"),
+            ConfigOverride.config("elasticsearch.searchIndexMappingLanguage", "EN"),
+            ConfigOverride.config("elasticsearch.searchType", "ElasticSearch"),
             // Migration overrides
             ConfigOverride.config("migrationConfiguration.path", migrationScripsLocation));
 
@@ -144,7 +155,7 @@ public abstract class OpenMetadataApplicationTest {
     PolicyCache.cleanUp();
     RoleCache.cleanUp();
     TagLabelCache.cleanUp();
-    //    ELASTIC_SEARCH_CONTAINER.stop();
+    ELASTIC_SEARCH_CONTAINER.stop();
   }
 
   public static Client getClient() {
@@ -156,14 +167,14 @@ public abstract class OpenMetadataApplicationTest {
         .build();
   }
 
-  //  public static RestClient getSearchClient() {
-  //    return RestClient.builder(HttpHost.create(ELASTIC_SEARCH_CONTAINER.getHttpHostAddress())).build();
-  //  }
-  //
-  //  public static org.opensearch.client.RestClient getOpenSearchClient() {
-  //    return org.opensearch.client.RestClient.builder(HttpHost.create(ELASTIC_SEARCH_CONTAINER.getHttpHostAddress()))
-  //        .build();
-  //  }
+  public static RestClient getSearchClient() {
+    return RestClient.builder(HttpHost.create(ELASTIC_SEARCH_CONTAINER.getHttpHostAddress())).build();
+  }
+
+  public static org.opensearch.client.RestClient getOpenSearchClient() {
+    return org.opensearch.client.RestClient.builder(HttpHost.create(ELASTIC_SEARCH_CONTAINER.getHttpHostAddress()))
+        .build();
+  }
 
   public static WebTarget getResource(String collection) {
     return getClient().target(format("http://localhost:%s/api/v1/%s", APP.getLocalPort(), collection));
