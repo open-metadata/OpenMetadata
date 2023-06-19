@@ -18,7 +18,7 @@ import { CustomPropertyProps } from 'components/common/CustomPropertyTable/Custo
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { getVersionPathWithTab } from 'constants/constants';
-import { cloneDeep, toString } from 'lodash';
+import { cloneDeep, isUndefined, toString } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -33,6 +33,7 @@ import {
 } from '../../generated/entity/data/table';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
+  getChangeColumnNameFromDiffValue,
   getColumnsDataWithVersionChanges,
   getCommonExtraInfoForVersionDetails,
   getEntityVersionDescription,
@@ -101,6 +102,22 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
     return getEntityVersionDescription(currentVersionData, changeDescription);
   }, [currentVersionData, changeDescription]);
 
+  const constraintUpdatedColumns = useMemo(() => {
+    const constraintDiff = changeDescription?.fieldsUpdated;
+    const changedColumnsList: string[] = [];
+
+    if (!isUndefined(constraintDiff)) {
+      constraintDiff.forEach((diff) => {
+        const columnName = getChangeColumnNameFromDiffValue(diff.name);
+        if (columnName) {
+          changedColumnsList.push(columnName);
+        }
+      });
+    }
+
+    return changedColumnsList;
+  }, [changeDescription]);
+
   return (
     <PageLayoutV1
       pageTitle={t('label.entity-detail-plural', {
@@ -147,8 +164,12 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
                           FQN_SEPARATOR_CHAR
                         )}
                         columns={columns}
+                        constraintUpdatedColumns={constraintUpdatedColumns}
                         joins={
                           (currentVersionData as Table).joins as ColumnJoins[]
+                        }
+                        tableConstraints={
+                          (currentVersionData as Table).tableConstraints
                         }
                       />
                     </div>

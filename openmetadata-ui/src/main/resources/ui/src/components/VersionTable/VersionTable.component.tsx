@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Table } from 'antd';
+import { Col, Row, Space, Table } from 'antd';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { NO_DATA_PLACEHOLDER } from 'constants/constants';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -22,13 +22,23 @@ import {
   getFrequentlyJoinedColumns,
   searchInColumns,
 } from '../../utils/EntityUtils';
-import { getTableExpandableConfig, makeData } from '../../utils/TableUtils';
+import {
+  getTableExpandableConfig,
+  makeData,
+  prepareConstraintIcon,
+} from '../../utils/TableUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import Searchbar from '../common/searchbar/Searchbar';
 import TagsViewer from '../Tag/TagsViewer/tags-viewer';
 import { VersionTableProps } from './VersionTable.interfaces';
 
-const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
+const VersionTable = ({
+  columnName,
+  columns,
+  joins,
+  tableConstraints,
+  constraintUpdatedColumns,
+}: VersionTableProps) => {
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const { t } = useTranslation();
 
@@ -45,10 +55,21 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
         accessor: 'name',
         ellipsis: true,
         width: 180,
-        render: (name: Column['name']) => (
-          <div className="d-inline-block">
+        render: (name: Column['name'], record: Column) => (
+          <Space
+            align="start"
+            className="w-max-90 vertical-align-inherit"
+            size={2}>
+            {prepareConstraintIcon(
+              name,
+              record.constraint,
+              tableConstraints,
+              undefined,
+              undefined,
+              constraintUpdatedColumns?.includes(name)
+            )}
             <RichTextEditorPreviewer markdown={name} />
-          </div>
+          </Space>
         ),
       },
       {
