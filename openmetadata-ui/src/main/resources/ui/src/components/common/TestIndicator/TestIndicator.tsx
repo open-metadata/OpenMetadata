@@ -26,9 +26,9 @@ const TestIndicator: React.FC<TestIndicatorProps> = ({ value, type }) => {
         type.toLowerCase()
       )}
       data-testid="test-status">
-      <span className="test-value" data-testid="test-value">
+      <div className="test-value" data-testid="test-value">
         {value}
-      </span>
+      </div>
     </Space>
   );
 };
