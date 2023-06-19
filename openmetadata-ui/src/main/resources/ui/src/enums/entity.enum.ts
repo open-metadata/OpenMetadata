@@ -96,6 +96,7 @@ export enum TabSpecificField {
   TABLE_CONSTRAINTS = 'tableConstraints',
   EXTENSION = 'extension',
   EXECUTIONS = 'executions',
+  TESTSUITE = 'testSuite',
 }
 
 export enum FqnPart {

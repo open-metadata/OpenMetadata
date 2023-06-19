@@ -558,7 +558,7 @@ const TableDetailsPageV1 = () => {
           <TableProfilerV1
             isTableDeleted={tableDetails?.deleted}
             permissions={tablePermissions}
-            tableFqn={tableDetails?.fullyQualifiedName || ''}
+            testSuite={tableDetails?.testSuite}
           />
         ),
       },

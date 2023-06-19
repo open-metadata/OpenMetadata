@@ -72,6 +72,7 @@ import './tableProfiler.less';
 const TableProfilerV1: FC<TableProfilerProps> = ({
   isTableDeleted,
   permissions,
+  testSuite,
 }) => {
   const { t } = useTranslation();
   const history = useHistory();
