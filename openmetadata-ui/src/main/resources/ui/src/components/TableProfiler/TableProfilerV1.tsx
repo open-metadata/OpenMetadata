@@ -58,6 +58,7 @@ import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import PageHeader from '../header/PageHeader.component';
 import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
+import ColumnPickerMenu from './Component/ColumnPickerMenu';
 import ColumnProfileTable from './Component/ColumnProfileTable';
 import ProfilerSettingsModal from './Component/ProfilerSettingsModal';
 import TableProfilerChart from './Component/TableProfilerChart';
@@ -247,6 +248,9 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const updateActiveTab = (key: string) =>
     history.push({ search: Qs.stringify({ activeTab: key }) });
 
+  const updateActiveColumnFqn = (key: string) =>
+    history.push({ search: Qs.stringify({ activeColumnFqn: key, activeTab }) });
+
   const handleTabChange: MenuProps['onClick'] = (value) => {
     updateActiveTab(value.key);
   };
@@ -428,6 +432,13 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                   <DatePickerMenu
                     showSelectedCustomRange
                     handleDateRangeChange={handleDateRangeChange}
+                  />
+                )}
+                {!isEmpty(activeColumnFqn) && (
+                  <ColumnPickerMenu
+                    activeColumnFqn={activeColumnFqn}
+                    columns={columns}
+                    handleChange={updateActiveColumnFqn}
                   />
                 )}
 
