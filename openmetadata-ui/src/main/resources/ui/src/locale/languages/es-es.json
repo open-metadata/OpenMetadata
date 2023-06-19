@@ -814,6 +814,7 @@
     "show": "Mostrar",
     "show-deleted": "Mostrar Eliminados",
     "show-deleted-entity": "Mostrar {{entity}} Eliminados",
+    "show-more-entity": "Show More {{entity}}",
     "show-or-hide-advanced-config": "{{showAdv}} Configuración Avanzada",
     "sign-in-with-sso": "Iniciar sesión con {{sso}}",
     "size": "Tamaño",

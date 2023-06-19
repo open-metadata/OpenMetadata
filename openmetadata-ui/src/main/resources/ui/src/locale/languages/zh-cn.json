@@ -814,6 +814,7 @@
     "show": "显示",
     "show-deleted": "显示已删除",
     "show-deleted-entity": "显示已删除{{entity}}",
+    "show-more-entity": "Show More {{entity}}",
     "show-or-hide-advanced-config": "{{showAdv}}高级配置",
     "sign-in-with-sso": "使用 {{sso}} 单点登录",
     "size": "大小",
