@@ -123,11 +123,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         dataIndex: 'name',
         key: 'name',
         width: 280,
-        render: (_, record) => {
+        render: (name: string, record) => {
           const status = record.testCaseResult?.testCaseStatus;
 
           return (
-            <Space>
+            <Space data-testid={name}>
               <Tooltip title={status}>
                 <div>
                   <StatusBox status={status?.toLocaleLowerCase()} />
@@ -148,7 +148,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         width: 250,
         render: (value) => {
           return (
-            <Typography.Paragraph>{getEntityName(value)}</Typography.Paragraph>
+            <Typography.Paragraph data-testid="test-suite-name">
+              {getEntityName(value)}
+            </Typography.Paragraph>
           );
         },
       },
@@ -207,7 +209,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             : '--',
       },
       {
-        title: 'Resolution',
+        title: t('label.resolution'),
         dataIndex: 'testCaseResult',
         key: 'resolution',
         width: 100,
