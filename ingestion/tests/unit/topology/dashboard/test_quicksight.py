@@ -54,7 +54,6 @@ MOCK_DASHBOARD = Dashboard(
     name="do_it_all_with_default_config",
     fullyQualifiedName="quicksight_source.do_it_all_with_default_config",
     displayName="do_it_all_with_default_config",
-    description="",
     service=EntityReference(
         id="85811038-099a-11ed-861d-0242ac120002", type="dashboardService"
     ),
@@ -102,7 +101,6 @@ MOCK_DASHBOARD_DETAILS = {
 EXPECTED_DASHBOARD = CreateDashboardRequest(
     name="552315335",
     displayName="New Dashboard",
-    description="",
     sourceUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
     charts=[],
     tags=None,
@@ -115,7 +113,6 @@ EXPECTED_DASHBOARDS = [
     CreateChartRequest(
         name="1108771657",
         displayName="Top Salespeople",
-        description="",
         chartType="Other",
         sourceUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
         tags=None,
@@ -125,7 +122,6 @@ EXPECTED_DASHBOARDS = [
     CreateChartRequest(
         name="1985861713",
         displayName="Milan Datasets",
-        description="",
         chartType="Other",
         sourceUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
         tags=None,
@@ -135,7 +131,6 @@ EXPECTED_DASHBOARDS = [
     CreateChartRequest(
         name="2025899139",
         displayName="Page Fans",
-        description="",
         chartType="Other",
         sourceUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
         tags=None,

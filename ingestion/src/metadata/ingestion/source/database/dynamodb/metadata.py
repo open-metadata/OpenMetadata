@@ -195,7 +195,6 @@ class DynamodbSource(DatabaseServiceSource):
             table_request = CreateTableRequest(
                 name=table_name,
                 tableType=table_type,
-                description="",
                 columns=columns,
                 tableConstraints=None,
                 databaseSchema=self.context.database_schema.fullyQualifiedName,
