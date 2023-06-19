@@ -78,14 +78,15 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const history = useHistory();
   const location = useLocation();
 
-  const { activeTab, activeColumnFqn } = useMemo(() => {
-    const param = location.search;
-    const searchData = Qs.parse(
-      param.startsWith('?') ? param.substring(1) : param
-    );
+  const { activeTab = TableProfilerTab.TABLE_PROFILE, activeColumnFqn } =
+    useMemo(() => {
+      const param = location.search;
+      const searchData = Qs.parse(
+        param.startsWith('?') ? param.substring(1) : param
+      );
 
-    return searchData as { activeTab: string; activeColumnFqn: string };
-  }, [location.search]);
+      return searchData as { activeTab: string; activeColumnFqn: string };
+    }, [location.search]);
   const isTourPage = useMemo(
     () => location.pathname.includes(ROUTES.TOUR),
     [location.pathname]
