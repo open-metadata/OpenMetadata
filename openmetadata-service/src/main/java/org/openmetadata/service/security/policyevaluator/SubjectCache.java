@@ -33,6 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -213,7 +214,7 @@ public class SubjectCache {
   static class UserLoader extends CacheLoader<String, SubjectContext> {
     @Override
     public SubjectContext load(@CheckForNull String userName) throws IOException {
-      User user = USER_REPOSITORY.getByName(null, userName, USER_FIELDS);
+      User user = USER_REPOSITORY.getByName(null, EntityInterfaceUtil.quoteName(userName), USER_FIELDS);
       LOG.info("Loaded user {}:{}", user.getName(), user.getId());
       return new SubjectContext(user);
     }

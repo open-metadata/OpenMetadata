@@ -143,7 +143,7 @@ public class TagLabelCache {
   /** Returns true if the parent of the tag label is mutually exclusive */
   public boolean mutuallyExclusive(TagLabel label) {
     String[] fqnParts = FullyQualifiedName.split(label.getTagFQN());
-    String parentFqn = FullyQualifiedName.getParent(fqnParts);
+    String parentFqn = FullyQualifiedName.getParentFQN(fqnParts);
     boolean rootParent = fqnParts.length == 2;
     if (label.getSource() == TagSource.CLASSIFICATION) {
       return rootParent

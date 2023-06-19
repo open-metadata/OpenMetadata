@@ -103,25 +103,15 @@ public class KpiRepository extends EntityRepository<Kpi> {
     // Validate the request content
     Kpi kpi = dao.findEntityByName(fqn);
 
-    KpiResult storedKpiResult =
-        JsonUtils.readValue(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .getExtensionAtTimestamp(kpi.getFullyQualifiedName(), KPI_RESULT_EXTENSION, kpiResult.getTimestamp()),
-            KpiResult.class);
-    if (storedKpiResult != null) {
-      daoCollection
-          .entityExtensionTimeSeriesDao()
-          .update(
-              kpi.getFullyQualifiedName(),
-              KPI_RESULT_EXTENSION,
-              JsonUtils.pojoToJson(kpiResult),
-              kpiResult.getTimestamp());
-    } else {
-      daoCollection
-          .entityExtensionTimeSeriesDao()
-          .insert(kpi.getFullyQualifiedName(), KPI_RESULT_EXTENSION, KPI_RESULT_FIELD, JsonUtils.pojoToJson(kpiResult));
-    }
+    String storedKpiResult =
+        getExtensionAtTimestamp(kpi.getFullyQualifiedName(), KPI_RESULT_EXTENSION, kpiResult.getTimestamp());
+    storeTimeSeries(
+        kpi.getFullyQualifiedName(),
+        KPI_RESULT_EXTENSION,
+        "kpiResult",
+        JsonUtils.pojoToJson(kpiResult),
+        kpiResult.getTimestamp(),
+        storedKpiResult != null);
     ChangeDescription change = addKpiResultChangeDescription(kpi.getVersion(), kpiResult, storedKpiResult);
     ChangeEvent changeEvent = getChangeEvent(withHref(uriInfo, kpi), change, entityType, kpi.getVersion());
 
@@ -133,11 +123,9 @@ public class KpiRepository extends EntityRepository<Kpi> {
     // Validate the request content
     Kpi kpi = dao.findEntityByName(fqn);
     KpiResult storedKpiResult =
-        JsonUtils.readValue(
-            daoCollection.entityExtensionTimeSeriesDao().getExtensionAtTimestamp(fqn, KPI_RESULT_EXTENSION, timestamp),
-            KpiResult.class);
+        JsonUtils.readValue(getExtensionAtTimestamp(fqn, KPI_RESULT_EXTENSION, timestamp), KpiResult.class);
     if (storedKpiResult != null) {
-      daoCollection.entityExtensionTimeSeriesDao().deleteAtTimestamp(fqn, KPI_RESULT_EXTENSION, timestamp);
+      deleteExtensionAtTimestamp(fqn, KPI_RESULT_EXTENSION, timestamp);
       kpi.setKpiResult(storedKpiResult);
       ChangeDescription change = deleteKpiChangeDescription(kpi.getVersion(), storedKpiResult);
       ChangeEvent changeEvent = getChangeEvent(kpi, change, entityType, kpi.getVersion());
@@ -175,8 +163,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
   }
 
   public KpiResult getKpiResult(String fqn) throws IOException {
-    return JsonUtils.readValue(
-        daoCollection.entityExtensionTimeSeriesDao().getLatestExtension(fqn, KPI_RESULT_EXTENSION), KpiResult.class);
+    return JsonUtils.readValue(getLatestExtensionFromTimeseries(fqn, KPI_RESULT_EXTENSION), KpiResult.class);
   }
 
   public ResultList<KpiResult> getKpiResults(
@@ -185,10 +172,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
     List<KpiResult> kpiResults;
     kpiResults =
         JsonUtils.readObjects(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .listBetweenTimestampsByOrder(fqn, KPI_RESULT_EXTENSION, startTs, endTs, orderBy),
-            KpiResult.class);
+            getResultsFromAndToTimestamps(fqn, KPI_RESULT_EXTENSION, startTs, endTs, orderBy), KpiResult.class);
     return new ResultList<>(kpiResults, String.valueOf(startTs), String.valueOf(endTs), kpiResults.size());
   }
 

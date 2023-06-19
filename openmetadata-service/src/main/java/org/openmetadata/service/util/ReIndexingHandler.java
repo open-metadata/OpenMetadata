@@ -115,7 +115,7 @@ public class ReIndexingHandler {
         // Create Entry in the DB
         dao.entityExtensionTimeSeriesDao()
             .insert(
-                jobData.getId().toString(),
+                EntityUtil.hash(jobData.getId().toString()),
                 REINDEXING_JOB_EXTENSION,
                 "eventPublisherJob",
                 JsonUtils.pojoToJson(jobData));
@@ -175,7 +175,8 @@ public class ReIndexingHandler {
     SearchIndexWorkflow job = REINDEXING_JOB_MAP.get(jobId);
     if (job == null) {
       String recordString =
-          dao.entityExtensionTimeSeriesDao().getLatestExtension(jobId.toString(), REINDEXING_JOB_EXTENSION);
+          dao.entityExtensionTimeSeriesDao()
+              .getLatestExtension(EntityUtil.hash(jobId.toString()), REINDEXING_JOB_EXTENSION);
       return JsonUtils.readValue(recordString, EventPublisherJob.class);
     }
     return REINDEXING_JOB_MAP.get(jobId).getJobData();

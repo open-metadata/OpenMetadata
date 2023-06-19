@@ -69,6 +69,7 @@ import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -82,6 +83,7 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
@@ -125,7 +127,7 @@ public class FeedRepository {
     thread.withEntityId(aboutEntity.getId()); // Add entity id to thread
     EntityReference entityOwner = aboutEntity.getOwner();
 
-    // Validate user creating the thread
+    // Validate user creating thread
     User createdByUser = SubjectCache.getInstance().getUser(thread.getCreatedBy());
 
     if (thread.getType() == ThreadType.Task) {
@@ -154,8 +156,10 @@ public class FeedRepository {
     // Add field relationship for data asset - Thread -- isAbout ---> entity/entityField
     dao.fieldRelationshipDAO()
         .insert(
-            thread.getId().toString(), // from FQN
-            about.getFullyQualifiedFieldValue(), // to FQN
+            FullyQualifiedName.buildHash(thread.getId().toString()), // from FQN
+            FullyQualifiedName.buildHash(about.getFullyQualifiedFieldValue()), // to FQN,
+            thread.getId().toString(),
+            about.getFullyQualifiedFieldValue(),
             Entity.THREAD, // From type
             about.getFullyQualifiedFieldType(), // to Type
             IS_ABOUT.ordinal(),
@@ -187,7 +191,7 @@ public class FeedRepository {
   public PatchResponse<Thread> closeTask(UriInfo uriInfo, Thread thread, String user, CloseTask closeTask)
       throws IOException {
     // Update the attributes
-    closeTask(thread, user, closeTask.getComment());
+    closeTask(thread, EntityInterfaceUtil.quoteName(user), closeTask.getComment());
     Thread updatedHref = FeedResource.addHref(uriInfo, thread);
     return new PatchResponse<>(Status.OK, updatedHref, RestUtil.ENTITY_UPDATED);
   }
@@ -281,6 +285,8 @@ public class FeedRepository {
             mention ->
                 dao.fieldRelationshipDAO()
                     .insert(
+                        FullyQualifiedName.buildHash(mention.getFullyQualifiedFieldValue()),
+                        FullyQualifiedName.buildHash(thread.getId().toString()),
                         mention.getFullyQualifiedFieldValue(),
                         thread.getId().toString(),
                         mention.getFullyQualifiedFieldType(),
@@ -344,13 +350,17 @@ public class FeedRepository {
     dao.relationshipDAO().deleteAll(id, Entity.THREAD);
 
     // Delete all the field relationships to other entities
-    dao.fieldRelationshipDAO().deleteAllByPrefix(id);
+    dao.fieldRelationshipDAO().deleteAllByPrefix(FullyQualifiedName.buildHash(id));
 
     // Finally, delete the entity
     dao.feedDAO().delete(id);
 
     LOG.info("{} deleted thread with id {}", deletedByUser, thread.getId());
     return new DeleteResponse<>(thread, RestUtil.ENTITY_DELETED);
+  }
+
+  public EntityReference getOwnerReference(String username) {
+    return dao.userDAO().findEntityByName(EntityInterfaceUtil.quoteName(username)).getEntityReference();
   }
 
   @Transaction
@@ -385,7 +395,7 @@ public class FeedRepository {
         result =
             dao.feedDAO()
                 .listCountByEntityLink(
-                    entityLink.getFullyQualifiedFieldValue(),
+                    FullyQualifiedName.buildHash(entityLink.getFullyQualifiedFieldValue()),
                     Entity.THREAD,
                     entityLink.getFullyQualifiedFieldType(),
                     IS_ABOUT.ordinal(),
@@ -437,15 +447,17 @@ public class FeedRepository {
           total = filteredThreads.getTotalCount();
         } else {
           // Only data assets are added as about
-          String userName = userId != null ? SubjectCache.getInstance().getUserById(userId).getName() : null;
-          List<String> teamNames = getTeamNames(userId);
-          List<String> jsons;
-          jsons =
+          User user = userId != null ? SubjectCache.getInstance().getUserById(userId) : null;
+          List<String> teamNameHash = getTeamNames(user);
+          String userNameHash = getUserNameHash(user);
+          List<String> jsons =
               dao.feedDAO()
-                  .listThreadsByEntityLink(filter, entityLink, limit + 1, IS_ABOUT.ordinal(), userName, teamNames);
+                  .listThreadsByEntityLink(
+                      filter, entityLink, limit + 1, IS_ABOUT.ordinal(), userNameHash, teamNameHash);
           threads = JsonUtils.readObjects(jsons, Thread.class);
           total =
-              dao.feedDAO().listCountThreadsByEntityLink(filter, entityLink, IS_ABOUT.ordinal(), userName, teamNames);
+              dao.feedDAO()
+                  .listCountThreadsByEntityLink(filter, entityLink, IS_ABOUT.ordinal(), userNameHash, teamNameHash);
         }
       } else {
         // userId filter present
@@ -501,7 +513,15 @@ public class FeedRepository {
     // Multiple reactions by the same user on same thread or post is handled by
     // field relationship table constraint (primary key)
     dao.fieldRelationshipDAO()
-        .insert(user, thread.getId().toString(), Entity.USER, Entity.THREAD, Relationship.REACTED_TO.ordinal(), null);
+        .insert(
+            FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(user)),
+            FullyQualifiedName.buildHash(thread.getId().toString()),
+            user,
+            thread.getId().toString(),
+            Entity.USER,
+            Entity.THREAD,
+            Relationship.REACTED_TO.ordinal(),
+            null);
   }
 
   @Transaction
@@ -818,6 +838,27 @@ public class FeedRepository {
     return new FilteredThreads(threads, totalCount);
   }
 
+  /** Returns the threads where the user or the team they belong to were mentioned by other users with @mention. */
+  private FilteredThreads getThreadsByMentions(FeedFilter filter, String userId, int limit) throws IOException {
+
+    User user = SubjectCache.getInstance().getUserById(userId);
+    String userNameHash = getUserNameHash(user);
+    // Return the threads where the user or team was mentioned
+    List<String> teamNamesHash = getTeamNames(user);
+
+    // Return the threads where the user or team was mentioned
+    List<String> jsons =
+        dao.feedDAO()
+            .listThreadsByMentions(
+                userNameHash, teamNamesHash, limit, Relationship.MENTIONED_IN.ordinal(), filter.getCondition());
+    List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
+    int totalCount =
+        dao.feedDAO()
+            .listCountThreadsByMentions(
+                userNameHash, teamNamesHash, Relationship.MENTIONED_IN.ordinal(), filter.getCondition(false));
+    return new FilteredThreads(threads, totalCount);
+  }
+
   /** Get a list of team ids that the given user is a part of. */
   private List<String> getTeamIds(String userId) {
     List<String> teamIds = null;
@@ -826,40 +867,6 @@ public class FeedRepository {
       teamIds = listOrEmpty(user.getTeams()).stream().map(ref -> ref.getId().toString()).collect(Collectors.toList());
     }
     return nullOrEmpty(teamIds) ? List.of(StringUtils.EMPTY) : teamIds;
-  }
-
-  /** Get a list of team names that the given user is a part of. */
-  private List<String> getTeamNames(String userId) {
-    List<String> teamNames = null;
-    if (userId != null) {
-      User user = SubjectCache.getInstance().getUserById(userId);
-      teamNames = listOrEmpty(user.getTeams()).stream().map(EntityReference::getName).collect(Collectors.toList());
-    }
-    return nullOrEmpty(teamNames) ? List.of(StringUtils.EMPTY) : teamNames;
-  }
-
-  /** Returns the threads where the user or the team they belong to were mentioned by other users with @mention. */
-  private FilteredThreads getThreadsByMentions(FeedFilter filter, String userId, int limit) throws IOException {
-    List<EntityReference> teams =
-        populateEntityReferences(
-            dao.relationshipDAO().findFrom(userId, Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM), Entity.TEAM);
-    List<String> teamNames = teams.stream().map(EntityReference::getName).collect(Collectors.toList());
-    if (teamNames.isEmpty()) {
-      teamNames = List.of(StringUtils.EMPTY);
-    }
-    User user = dao.userDAO().findEntityById(UUID.fromString(userId));
-
-    // Return the threads where the user or team was mentioned
-    List<String> jsons =
-        dao.feedDAO()
-            .listThreadsByMentions(
-                user.getName(), teamNames, limit, Relationship.MENTIONED_IN.ordinal(), filter.getCondition());
-    List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
-    int totalCount =
-        dao.feedDAO()
-            .listCountThreadsByMentions(
-                user.getName(), teamNames, Relationship.MENTIONED_IN.ordinal(), filter.getCondition(false));
-    return new FilteredThreads(threads, totalCount);
   }
 
   /** Returns the threads that are associated with the entities followed by the user. */
@@ -872,6 +879,28 @@ public class FeedRepository {
     int totalCount =
         dao.feedDAO().listCountThreadsByFollows(userId, teamIds, Relationship.FOLLOWS.ordinal(), filter.getCondition());
     return new FilteredThreads(threads, totalCount);
+  }
+
+  /** Get a list of team names that the given user is a part of. */
+  private List<String> getTeamNames(User user) {
+    List<String> teamNames = null;
+    if (user != null) {
+      teamNames =
+          listOrEmpty(user.getTeams()).stream()
+              .map(
+                  x -> {
+                    return FullyQualifiedName.buildHash(x.getFullyQualifiedName());
+                  })
+              .collect(Collectors.toList());
+    }
+    return nullOrEmpty(teamNames) ? List.of(StringUtils.EMPTY) : teamNames;
+  }
+
+  private String getUserNameHash(User user) {
+    if (user != null) {
+      return FullyQualifiedName.buildHash(user.getFullyQualifiedName());
+    }
+    return null;
   }
 
   public static class FilteredThreads {
