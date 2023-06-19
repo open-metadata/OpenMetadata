@@ -43,6 +43,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -535,5 +536,12 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       testSuite.setExecutableEntityReference(entityReference);
     }
     return testSuite;
+  }
+
+  @Override
+  public TestSuite getByNameInternal(
+      UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include)
+      throws IOException {
+    return super.getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
   }
 }
