@@ -23,7 +23,6 @@ import javax.ws.rs.client.Client;
 import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpHost;
-import org.elasticsearch.client.Request;
 import org.elasticsearch.client.RestClient;
 import org.flywaydb.core.Flyway;
 import org.glassfish.jersey.client.ClientProperties;
@@ -50,7 +49,7 @@ public abstract class OpenMetadataApplicationTest {
   public static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
   protected static final WebhookCallbackResource webhookCallbackResource = new WebhookCallbackResource();
   public static final String FERNET_KEY_1 = "ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ";
-  private static ElasticsearchContainer ELASTIC_SEARCH_CONTAINER = null;
+  private static ElasticsearchContainer ELASTIC_SEARCH_CONTAINER;
 
   private static final String JDBC_CONTAINER_CLASS_NAME = "org.testcontainers.containers.MySQLContainer";
   private static final String JDBC_CONTAINER_IMAGE = "mysql:8";
@@ -102,17 +101,12 @@ public abstract class OpenMetadataApplicationTest {
     flyway.clean();
     flyway.migrate();
 
-    if (ELASTIC_SEARCH_CONTAINER == null) {
-      ELASTIC_SEARCH_CONTAINER = new ElasticsearchContainer(elasticSearchContainerImage);
-      ELASTIC_SEARCH_CONTAINER.start();
-      ELASTIC_SEARCH_CONTAINER.withReuse(true);
-      String[] parts = ELASTIC_SEARCH_CONTAINER.getHttpHostAddress().split(":");
-      HOST = parts[0];
-      PORT = parts[1];
-    } else {
-      System.out.println(
-          "cleanupElasticsearch" + getSearchClient().performRequest(new Request("POST", "_features/_reset")));
-    }
+    ELASTIC_SEARCH_CONTAINER = new ElasticsearchContainer(elasticSearchContainerImage).withReuse(true);
+    ELASTIC_SEARCH_CONTAINER.start();
+    //    ELASTIC_SEARCH_CONTAINER.withReuse(true);
+    String[] parts = ELASTIC_SEARCH_CONTAINER.getHttpHostAddress().split(":");
+    HOST = parts[0];
+    PORT = parts[1];
 
     APP =
         new DropwizardAppExtension<>(
