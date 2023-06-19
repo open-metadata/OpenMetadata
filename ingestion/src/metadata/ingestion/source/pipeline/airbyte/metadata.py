@@ -90,7 +90,6 @@ class AirbyteSource(PipelineServiceSource):
             Task(
                 name=connection["connectionId"],
                 displayName=connection["name"],
-                description="",
                 sourceUrl=f"{connection_url}/status",
             )
         ]
@@ -111,7 +110,6 @@ class AirbyteSource(PipelineServiceSource):
         pipeline_request = CreatePipelineRequest(
             name=pipeline_details.connection.get("connectionId"),
             displayName=pipeline_details.connection.get("name"),
-            description="",
             sourceUrl=connection_url,
             tasks=self.get_connections_jobs(
                 pipeline_details.connection, connection_url
