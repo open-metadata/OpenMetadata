@@ -649,7 +649,10 @@ const PipelineDetails = ({
                 </Col>
               </Row>
             </Col>
-            <Col className="entity-tag-right-panel-container" flex="320px">
+            <Col
+              className="entity-tag-right-panel-container"
+              data-testid="entity-right-panel"
+              flex="320px">
               <TagsContainerV1
                 editable={
                   pipelinePermissions.EditAll || pipelinePermissions.EditTags
