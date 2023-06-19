@@ -244,7 +244,7 @@ describe('Entity Details Page', () => {
     verifyResponseStatusCode('@removeOwner', 200);
 
     // Check if user exist
-    cy.get('[data-testid="entity-summary-details"]')
+    cy.get('[data-testid="owner-link"]')
       .first()
       .scrollIntoView()
       .should('exist')
