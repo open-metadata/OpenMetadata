@@ -230,3 +230,8 @@ class ProfilerProtocol(ABC):
     def fetch_sample_data(self, table) -> TableData:
         """run profiler metrics"""
         raise NotImplementedError
+
+    @abstractmethod
+    def close(self):
+        """Clean up profiler interface"""
+        raise NotImplementedError
