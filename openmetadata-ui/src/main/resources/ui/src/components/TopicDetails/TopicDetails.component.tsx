@@ -337,7 +337,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         children: (
           <ActivityFeedProvider>
             <ActivityFeedTab
-              entityName={entityName}
               entityType={EntityType.TOPIC}
               fqn={topicDetails?.fullyQualifiedName ?? ''}
               onFeedUpdate={() => Promise.resolve()}

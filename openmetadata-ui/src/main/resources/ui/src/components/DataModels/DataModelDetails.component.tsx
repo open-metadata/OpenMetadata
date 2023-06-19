@@ -231,7 +231,6 @@ const DataModelDetails = ({
         children: (
           <ActivityFeedProvider>
             <ActivityFeedTab
-              entityName={entityName}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
               fqn={dataModelData?.fullyQualifiedName ?? ''}
               onFeedUpdate={() => Promise.resolve()}

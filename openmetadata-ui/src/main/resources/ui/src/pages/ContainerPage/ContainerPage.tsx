@@ -649,7 +649,6 @@ const ContainerPage = () => {
         children: (
           <ActivityFeedProvider>
             <ActivityFeedTab
-              entityName={entityName}
               entityType={EntityType.CONTAINER}
               fqn={containerName}
               onFeedUpdate={() => Promise.resolve()}

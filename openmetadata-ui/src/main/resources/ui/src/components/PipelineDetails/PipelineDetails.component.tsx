@@ -681,7 +681,6 @@ const PipelineDetails = ({
         children: (
           <ActivityFeedProvider>
             <ActivityFeedTab
-              entityName={entityName}
               entityType={EntityType.PIPELINE}
               fqn={pipelineDetails?.fullyQualifiedName ?? ''}
               onFeedUpdate={() => Promise.resolve()}
