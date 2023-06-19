@@ -444,12 +444,10 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                       : t('message.no-permission-for-action')
                   }>
                   <Button
-                    className="manage-dropdown-button"
                     data-testid="profiler-setting-btn"
                     disabled={!editTest}
-                    type="primary"
                     onClick={() => handleSettingModal(true)}>
-                    <SettingIcon className="text-primary self-center manage-dropdown-icon" />
+                    <SettingIcon className="self-center" />
                   </Button>
                 </Tooltip>
               </Space>
