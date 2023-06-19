@@ -8,6 +8,7 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ENTITY_TO_MAPPING_SCHEMA_MAP;
 import static org.openmetadata.service.search.IndexUtil.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 
@@ -174,8 +175,10 @@ public class ElasticSearchClientImpl implements SearchClient {
       GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
       gRequest.local(false);
       boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
+      String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType, lang);
+      ENTITY_TO_MAPPING_SCHEMA_MAP.put(
+          elasticSearchIndexType.entityType, JsonUtils.getMap(JsonUtils.readJson(elasticSearchIndexMapping)));
       if (!exists) {
-        String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType, lang);
         CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
         request.source(elasticSearchIndexMapping, XContentType.JSON);
         CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
@@ -199,6 +202,8 @@ public class ElasticSearchClientImpl implements SearchClient {
       gRequest.local(false);
       boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
       String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType, lang);
+      ENTITY_TO_MAPPING_SCHEMA_MAP.put(
+          elasticSearchIndexType.entityType, JsonUtils.getMap(JsonUtils.readJson(elasticSearchIndexMapping)));
       if (exists) {
         PutMappingRequest request = new PutMappingRequest(elasticSearchIndexType.indexName);
         request.source(elasticSearchIndexMapping, XContentType.JSON);

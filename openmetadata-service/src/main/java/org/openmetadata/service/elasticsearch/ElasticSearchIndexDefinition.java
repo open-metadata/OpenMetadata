@@ -28,6 +28,7 @@ public class ElasticSearchIndexDefinition {
   private final CollectionDAO dao;
   final EnumMap<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes =
       new EnumMap<>(ElasticSearchIndexType.class);
+  public static final Map<String, Object> ENTITY_TO_MAPPING_SCHEMA_MAP = new HashMap<>();
 
   protected static final Map<String, String> ENTITY_TYPE_TO_INDEX_MAP;
   private static final Map<ElasticSearchIndexType, Set<String>> INDEX_TO_MAPPING_FIELDS_MAP =
@@ -185,5 +186,14 @@ public class ElasticSearchIndexDefinition {
       fields = INDEX_TO_MAPPING_FIELDS_MAP.get(getIndexMappingByEntityType(entityType));
     }
     return fields;
+  }
+
+  public static Map<String, Object> getIndexMappingSchema(Set<String> entities) {
+    if (entities.contains("*")) {
+      return ENTITY_TO_MAPPING_SCHEMA_MAP;
+    }
+    Map<String, Object> result = new HashMap<>();
+    entities.forEach((entityType) -> result.put(entityType, ENTITY_TO_MAPPING_SCHEMA_MAP.get(entityType)));
+    return result;
   }
 }
