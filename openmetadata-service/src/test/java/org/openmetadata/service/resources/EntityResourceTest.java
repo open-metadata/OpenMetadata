@@ -1633,37 +1633,39 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   protected void checkIndexCreated() throws IOException {
-    RestClient client = getSearchClient();
-    Request request = new Request("GET", "/_cat/indices");
-    request.addParameter("format", "json");
-    Response response = client.performRequest(request);
-    JSONArray jsonArray = new JSONArray(EntityUtils.toString(response.getEntity()));
-    List<String> indexNamesFromResponse = new ArrayList<>();
-    for (int i = 0; i < jsonArray.length(); i++) {
-      JSONObject jsonObject = jsonArray.getJSONObject(i);
-      String indexName = jsonObject.getString("index");
-      indexNamesFromResponse.add(indexName);
+    if (RUN_ELASTIC_SEARCH_TESTCASES) {
+      RestClient client = getSearchClient();
+      Request request = new Request("GET", "/_cat/indices");
+      request.addParameter("format", "json");
+      Response response = client.performRequest(request);
+      JSONArray jsonArray = new JSONArray(EntityUtils.toString(response.getEntity()));
+      List<String> indexNamesFromResponse = new ArrayList<>();
+      for (int i = 0; i < jsonArray.length(); i++) {
+        JSONObject jsonObject = jsonArray.getJSONObject(i);
+        String indexName = jsonObject.getString("index");
+        indexNamesFromResponse.add(indexName);
+      }
+      for (ElasticSearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType :
+          ElasticSearchIndexDefinition.ElasticSearchIndexType.values()) {
+        // check all the indexes are created sucessfully
+        Assert.assertTrue(
+            "Index name not found in Elasticsearch response " + elasticSearchIndexType.indexName,
+            indexNamesFromResponse.contains(elasticSearchIndexType.indexName));
+      }
+      client.close();
     }
-    for (ElasticSearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType :
-        ElasticSearchIndexDefinition.ElasticSearchIndexType.values()) {
-      // check all the indexes are created sucessfully
-      Assert.assertTrue(
-          "Index name not found in Elasticsearch response " + elasticSearchIndexType.indexName,
-          indexNamesFromResponse.contains(elasticSearchIndexType.indexName));
-    }
-    client.close();
   }
 
   @Test
   protected void checkCreatedEntity(TestInfo test) throws IOException, InterruptedException {
-    if (supportsSearchIndex) {
+    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
       // create entity
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
       EntityReference entityReference = getEntityReference(entity);
       String indexName = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
       Thread.sleep(2000L);
       SearchResponse response = getResponseFormSearch(indexName);
-      List<String> entityIds = new ArrayList();
+      List<String> entityIds = new ArrayList<>();
       SearchHit[] hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
         Map<String, Object> sourceAsMap = hit.getSourceAsMap();
@@ -1676,14 +1678,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   protected void checkDeletedEntity(TestInfo test) throws HttpResponseException, InterruptedException {
-    if (supportsSearchIndex) {
+    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
       // create entity
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
       EntityReference entityReference = getEntityReference(entity);
       String indexName = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
       Thread.sleep(2000L);
       SearchResponse response = getResponseFormSearch(indexName);
-      List<String> entityIds = new ArrayList();
+      List<String> entityIds = new ArrayList<>();
       SearchHit[] hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
         Map<String, Object> sourceAsMap = hit.getSourceAsMap();
@@ -1710,7 +1712,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   protected void updateDescriptionAndCheckInSearch(TestInfo test) throws IOException, InterruptedException {
-    if (supportsSearchIndex) {
+    if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
       EntityReference entityReference = getEntityReference(entity);
       String indexName = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
@@ -1736,7 +1738,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   protected void deleteTagAndCheckRelationshipsInSearch(TestInfo test)
       throws HttpResponseException, JsonProcessingException, InterruptedException {
-    if (supportsTags && supportsSearchIndex) {
+    if (supportsTags && supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
       // create an entity
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
       EntityReference entityReference = getEntityReference(entity);
