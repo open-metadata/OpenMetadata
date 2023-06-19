@@ -422,7 +422,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         children: (
           <ActivityFeedProvider>
             <ActivityFeedTab
-              entityName={mlModelDetail.name}
               entityType={EntityType.MLMODEL}
               fqn={mlModelDetail?.fullyQualifiedName ?? ''}
               onFeedUpdate={() => Promise.resolve()}

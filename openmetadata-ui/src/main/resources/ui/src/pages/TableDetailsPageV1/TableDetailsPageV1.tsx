@@ -492,7 +492,6 @@ const TableDetailsPageV1 = () => {
             <ActivityFeedTab
               columns={tableDetails?.columns}
               description={tableDetails?.description}
-              entityName={entityName}
               entityType={EntityType.TABLE}
               fqn={tableDetails?.fullyQualifiedName ?? ''}
               owner={tableDetails?.owner}

@@ -675,7 +675,6 @@ const DashboardDetails = ({
         children: (
           <ActivityFeedProvider>
             <ActivityFeedTab
-              entityName={entityName}
               entityType={EntityType.DASHBOARD}
               fqn={dashboardDetails?.fullyQualifiedName ?? ''}
               onFeedUpdate={() => Promise.resolve()}
