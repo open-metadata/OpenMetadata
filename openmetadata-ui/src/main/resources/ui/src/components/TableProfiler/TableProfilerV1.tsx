@@ -27,7 +27,6 @@ import {
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
-import { SummaryPanel } from 'components/DataQuality/SummaryPannel/SummaryPanel.component';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import { mockDatasetData } from 'constants/mockTourData.constants';
@@ -58,11 +57,11 @@ import { getAddDataQualityTableTestPath } from '../../utils/RouterUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import PageHeader from '../header/PageHeader.component';
-import DataQualityTab from '../ProfilerDashboard/component/DataQualityTab';
 import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnProfileTable from './Component/ColumnProfileTable';
 import ProfilerSettingsModal from './Component/ProfilerSettingsModal';
 import TableProfilerChart from './Component/TableProfilerChart';
+import { QualityTab } from './QualityTab/QualityTab.component';
 import {
   OverallTableSummeryType,
   TableProfilerProps,
@@ -261,6 +260,23 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
       );
     }
   }, []);
+
+  const handleResultUpdate = (testCase: TestCase) => {
+    setTableTests((prev) => {
+      const tests = prev.tests.map((test) => {
+        if (test.fullyQualifiedName === testCase.fullyQualifiedName) {
+          return testCase;
+        }
+
+        return test;
+      });
+
+      return {
+        ...prev,
+        tests,
+      };
+    });
+  };
 
   const handleDateRangeChange = (value: DateRangeObject) => {
     if (!isEqual(value, dateRangeObject)) {
@@ -503,18 +519,12 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
           )}
 
           {isDataQuality && (
-            <Row gutter={[0, 16]}>
-              <Col span={24}>
-                <SummaryPanel />
-              </Col>
-              <Col span={24}>
-                <DataQualityTab
-                  isLoading={isTestCaseLoading}
-                  testCases={getFilterTestCase()}
-                  onTestUpdate={fetchAllTests}
-                />
-              </Col>
-            </Row>
+            <QualityTab
+              isLoading={isTestCaseLoading}
+              testCases={getFilterTestCase()}
+              onTestCaseResultUpdate={handleResultUpdate}
+              onTestUpdate={fetchAllTests}
+            />
           )}
 
           {isTableProfile && (
