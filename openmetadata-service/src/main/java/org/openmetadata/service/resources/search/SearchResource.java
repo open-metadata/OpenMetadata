@@ -54,6 +54,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ReIndexingHandler;
 
@@ -312,7 +313,8 @@ public class SearchResource {
     String jobRecord;
     jobRecord =
         dao.entityExtensionTimeSeriesDao()
-            .getLatestExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
+            .getLatestExtension(
+                FullyQualifiedName.buildHash(ELASTIC_SEARCH_ENTITY_FQN_STREAM), ELASTIC_SEARCH_EXTENSION);
     if (jobRecord != null) {
       return Response.status(Response.Status.OK)
           .entity(JsonUtils.readValue(jobRecord, EventPublisherJob.class))
@@ -336,8 +338,8 @@ public class SearchResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "jobId Id", schema = @Schema(type = "UUID")) @PathParam("jobId") UUID id)
       throws IOException {
-    // Only admins  can issue a reindex request
-    authorizer.authorizeAdmin(securityContext);
+    // Only admins or bot can issue a reindex request
+    authorizer.authorizeAdminOrBot(securityContext);
     return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getJob(id)).build();
   }
 
@@ -372,7 +374,8 @@ public class SearchResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateEventPublisherJob createRequest) {
-    authorizer.authorizeAdmin(securityContext);
+    // Only admins or bot can issue a reindex request
+    authorizer.authorizeAdminOrBot(securityContext);
     return Response.status(Response.Status.CREATED)
         .entity(
             ReIndexingHandler.getInstance()
