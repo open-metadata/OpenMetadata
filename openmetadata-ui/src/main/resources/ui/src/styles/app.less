@@ -13,8 +13,6 @@
 
 // common css utils file
 @import url('./variables.less');
-@primary-light: rgb(244, 240, 253);
-@primary-hover-light: rgba(219, 209, 249);
 @trigger-btn-hover-bg: #efefef;
 
 // Global css
@@ -211,16 +209,19 @@ a[href].link-text-grey,
   background: @body-bg-color;
 }
 .bg-primary-lite {
-  background: @primary-light;
+  background: @primary-color-hover;
 }
 .bg-primary {
   background: @primary-color;
 }
 .bg-primary-hover-lite {
-  background-color: @primary-hover-light;
+  background-color: @primary-color-hover;
 }
 .bg-grey {
   background-color: @border-color;
+}
+.bg-grey-1 {
+  background-color: @grey-1;
 }
 .bg-white {
   background-color: @white;
@@ -228,7 +229,7 @@ a[href].link-text-grey,
 
 .activeCategory {
   border-left: 2px solid @primary-color;
-  background: @primary-light;
+  background: @primary-color-hover;
   padding-left: 10px;
   font-weight: 600;
 }

@@ -29,6 +29,7 @@ import {
 
 export const PRIMERY_COLOR = '#0968da';
 export const SECONDARY_COLOR = '#B02AAC';
+export const INFO_COLOR = '#2196f3';
 export const LITE_GRAY_COLOR = '#DBE0EB';
 export const TEXT_BODY_COLOR = '#37352F';
 export const SUCCESS_COLOR = '#008376';
@@ -37,6 +38,7 @@ export const GRAPH_BACKGROUND_COLOR = '#f5f5f5';
 export const GRAYED_OUT_COLOR = '#CCCCCC';
 export const GREEN_COLOR = '#28A745';
 export const GREEN_COLOR_OPACITY_30 = '#28A74530';
+export const BORDER_COLOR = '#0000001a';
 
 export const DEFAULT_CHART_OPACITY = 1;
 export const HOVER_CHART_OPACITY = 0.3;

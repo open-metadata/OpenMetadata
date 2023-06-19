@@ -372,7 +372,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         key: EntityTabs.LINEAGE,
         children: (
           <Card
-            className="card-body-full m-md w-auto h-70vh"
+            className="card-body-full w-auto h-70vh border-none"
             data-testid="lineage-details"
             id="lineageDetails">
             <EntityLineageComponent

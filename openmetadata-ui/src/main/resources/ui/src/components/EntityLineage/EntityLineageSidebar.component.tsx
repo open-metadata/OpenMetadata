@@ -17,9 +17,10 @@ import { PRIMERY_COLOR } from 'constants/constants';
 import { capitalize, isEmpty, uniqueId } from 'lodash';
 import React, { FC, HTMLAttributes } from 'react';
 import { Node } from 'reactflow';
+import { getEntityIcon } from 'utils/TableUtils';
 import { ReactComponent as DragIconDotted } from '../../assets/svg/dots-six-bold.svg';
 import { entityData } from '../../constants/Lineage.constants';
-import SVGIcons from '../../utils/SvgUtils';
+import './entity-lineage-sidebar.less';
 
 interface SidebarProps extends HTMLAttributes<HTMLDivElement> {
   show: boolean;
@@ -41,7 +42,7 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
     <div className="d-flex flex-col tw-mb-5 tw-items-center">
       <div
         className={classNames(
-          'tw-border tw-p-2 tw-border-main d-flex tw-justify-between tw-w-16 tw-rounded tw-shadow-lg tw-bg-body-hover',
+          'sidebar-icon-container flex-center tw-border tw-p-2 tw-border-main d-flex tw-justify-between tw-w-16 tw-rounded tw-bg-body-hover',
           {
             'cursor-not-allowed tw-opacity-50': !draggable,
           }
@@ -54,9 +55,9 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
             e.preventDefault();
             e.stopPropagation();
           }}>
-          <SVGIcons alt={type} icon={`${type}-grey`} width="14" />
+          {getEntityIcon(type || '')}
         </span>
-        <span>
+        <span className="d-flex">
           <Icon
             className="drag-icon"
             component={DragIconDotted}

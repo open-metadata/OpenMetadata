@@ -50,8 +50,8 @@ const EmptyPlaceholder = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="d-flex items-center flex-col p-sm">
-      <KPIIcon width={100} />
+    <div className="d-flex items-center flex-col p-t-sm">
+      <KPIIcon width={80} />
       <div className="m-t-xs text-center">
         <Typography.Paragraph style={{ marginBottom: '0' }}>
           {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {

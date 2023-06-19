@@ -267,7 +267,7 @@ const CustomControls: FC<ControlProps> = ({
             {!deleted && (
               <ControlButton
                 className={classNames(
-                  'custom-control-edit-button h-8 w-8 rounded-full p-x-xss tw-shadow-lg',
+                  'custom-control-edit-button h-8 w-8 rounded-full p-x-xss',
                   {
                     'bg-primary': !isEditMode,
                     'bg-primary-hover-lite': isEditMode,

@@ -567,7 +567,7 @@ const TableDetailsPageV1 = () => {
         key: EntityTabs.LINEAGE,
         children: (
           <Card
-            className="card-body-full m-md w-auto h-70vh"
+            className="card-body-full w-auto h-70vh border-none"
             id="lineageDetails">
             <EntityLineageComponent
               deleted={tableDetails?.deleted}
