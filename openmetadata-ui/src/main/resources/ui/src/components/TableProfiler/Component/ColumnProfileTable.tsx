@@ -11,20 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Table, Tooltip, Typography } from 'antd';
+import { Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import {
-  NO_DATA_PLACEHOLDER,
-  PRIMERY_COLOR,
-  SECONDARY_COLOR,
-  SUCCESS_COLOR,
-} from '../../../constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
   DEFAULT_TEST_VALUE,
   INITIAL_TEST_RESULT_SUMMARY,
@@ -33,12 +27,8 @@ import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { ColumnProfile } from '../../../generated/entity/data/table';
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
-import {
-  getAddDataQualityTableTestPath,
-  getProfilerDashboardWithFqnPath,
-} from '../../../utils/RouterUtils';
+import { getProfilerDashboardWithFqnPath } from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import Searchbar from '../../common/searchbar/Searchbar';
 import TestIndicator from '../../common/TestIndicator/TestIndicator';
 import { ProfilerDashboardTab } from '../../ProfilerDashboard/profilerDashboard.interface';
@@ -51,7 +41,6 @@ import ProfilerProgressWidget from './ProfilerProgressWidget';
 
 const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
   columnTests,
-  hasEditAccess,
   columns = [],
 }) => {
   const { t } = useTranslation();
@@ -104,7 +93,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         render: (profile: ColumnProfile) => {
           return (
             <ProfilerProgressWidget
-              strokeColor={PRIMERY_COLOR}
+              strokeColor="#351b8e"
               value={profile?.nullProportion || 0}
             />
           );
@@ -120,7 +109,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         width: 200,
         render: (profile: ColumnProfile) => (
           <ProfilerProgressWidget
-            strokeColor={SECONDARY_COLOR}
+            strokeColor="#7147e8"
             value={profile?.uniqueProportion || 0}
           />
         ),
@@ -135,7 +124,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         width: 200,
         render: (profile: ColumnProfile) => (
           <ProfilerProgressWidget
-            strokeColor={SUCCESS_COLOR}
+            strokeColor="#4E8B9C"
             value={profile?.distinctProportion || 0}
           />
         ),
@@ -201,41 +190,6 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
             <Typography.Text> {NO_DATA_PLACEHOLDER} </Typography.Text>
           );
         },
-      },
-      {
-        title: t('label.action-plural'),
-        dataIndex: 'actions',
-        key: 'actions',
-        fixed: 'right',
-        render: (_, record) => (
-          <Tooltip
-            placement="left"
-            title={
-              hasEditAccess
-                ? t('label.add-entity', { entity: t('label.test') })
-                : NO_PERMISSION_FOR_ACTION
-            }>
-            <Link
-              to={getAddDataQualityTableTestPath(
-                ProfilerDashboardType.COLUMN,
-                record.fullyQualifiedName || ''
-              )}>
-              <Button
-                className="flex-center"
-                data-testid={`add-test-${record.name}`}
-                disabled={!hasEditAccess}
-                icon={
-                  <SVGIcons
-                    alt="add test"
-                    className="tw-h-4"
-                    icon={Icons.ADD_TEST}
-                  />
-                }
-                type="link"
-              />
-            </Link>
-          </Tooltip>
-        ),
       },
     ];
   }, [columns, columnTestSummary]);
