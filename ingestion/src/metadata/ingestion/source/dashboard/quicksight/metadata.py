@@ -135,7 +135,7 @@ class QuicksightSource(DashboardServiceSource):
             name=dashboard_details["DashboardId"],
             sourceUrl=self.dashboard_url,
             displayName=dashboard_details["Name"],
-            description=dashboard_details["Version"].get("Description", ""),
+            description=dashboard_details["Version"].get("Description"),
             charts=[
                 fqn.build(
                     self.metadata,
