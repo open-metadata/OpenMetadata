@@ -341,4 +341,3 @@ class OMetaServiceTest(TestCase):
 
         parse_workflow_config_gracefully(config)
         assert workflow_config.source.type == "mysql"
-
