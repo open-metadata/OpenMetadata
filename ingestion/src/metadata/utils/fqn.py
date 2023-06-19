@@ -14,14 +14,13 @@ Filter information has been taken from the
 ES indexes definitions
 """
 import re
-from collections import namedtuple
 from typing import Dict, List, Optional, Type, TypeVar, Union
 
 from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
 from antlr4.InputStream import InputStream
 from antlr4.tree.Tree import ParseTreeWalker
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from metadata.antlr.split_listener import FqnSplitListener
 from metadata.generated.antlr.FqnLexer import FqnLexer
@@ -53,6 +52,15 @@ class FQNBuildingException(Exception):
     """
     Raise for inconsistencies when building the FQN
     """
+
+
+class SplitTestCaseFqn(BaseModel):
+    service: str
+    database: str
+    schema_: str = Field(alias="schema")
+    table: str
+    column: Optional[str]
+    test_case: Optional[str]
 
 
 def split(s: str) -> List[str]:  # pylint: disable=invalid-name
@@ -421,7 +429,7 @@ def split_table_name(table_name: str) -> Dict[str, Optional[str]]:
     return {"database": database, "database_schema": database_schema, "table": table}
 
 
-def split_test_case_fqn(test_case_fqn: str) -> Dict[str, Optional[str]]:
+def split_test_case_fqn(test_case_fqn: str) -> SplitTestCaseFqn:
     """given a test case fqn split each element
 
     Args:
@@ -430,16 +438,13 @@ def split_test_case_fqn(test_case_fqn: str) -> Dict[str, Optional[str]]:
     Returns:
         Dict[str, Optional[str]]:
     """
-    SplitTestCaseFqn = namedtuple(
-        "SplitTestCaseFqn", "service database schema table column test_case"
-    )
     details = split(test_case_fqn)
     if len(details) < 5:
         raise ValueError(
             f"{test_case_fqn} does not appear to be a valid test_case fqn "
         )
     if len(details) != 6:
-        details.insert(4, None)
+        details.insert(4, None)  # type: ignore
 
     (  # pylint: disable=unbalanced-tuple-unpacking
         service,
@@ -450,7 +455,14 @@ def split_test_case_fqn(test_case_fqn: str) -> Dict[str, Optional[str]]:
         test_case,
     ) = details
 
-    return SplitTestCaseFqn(service, database, schema, table, column, test_case)
+    return SplitTestCaseFqn(
+        service=service,
+        database=database,
+        schema=schema,
+        table=table,
+        column=column,
+        test_case=test_case,
+    )
 
 
 def build_es_fqn_search_string(

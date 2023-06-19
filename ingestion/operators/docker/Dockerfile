@@ -1,10 +1,12 @@
-FROM python:3.9-buster
+FROM python:3.9-bullseye
+
+RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
+RUN curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
 
 # Install Dependencies (listed in alphabetical order)
 RUN apt-get update \
     && apt-get install -y alien \
     build-essential \
-    ca-certificates \
     default-libmysqlclient-dev \
     freetds-bin \
     freetds-dev \
@@ -14,6 +16,7 @@ RUN apt-get update \
     libevent-dev \
     libffi-dev \
     libpq-dev \
+    librdkafka-dev \
     libsasl2-dev \
     libsasl2-2 \
     libsasl2-modules \
@@ -29,23 +32,18 @@ RUN apt-get update \
     unixodbc \
     unixodbc-dev \
     unzip \
-    wget --no-install-recommends
+    wget --no-install-recommends \
+    # Accept MSSQL ODBC License
+    && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Prep to install msodbcsql18
-RUN apt-get update && \
-    apt-get install -y apt-transport-https && \
-    curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
-    curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
-    apt-get update && \
-    ACCEPT_EULA=Y apt-get install msodbcsql18 unixodbc-dev -y
-
-# Prep to install confluent-kafka https://github.com/confluentinc/confluent-kafka-python/issues/1326
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends git g++ make && \
-    cd /tmp && git clone https://github.com/edenhill/librdkafka.git && \
-    cd librdkafka && git checkout tags/v1.9.0 && \
-    ./configure && make && make install && \
-    cd ../ && rm -rf librdkafka
+# Add updated postgres/redshift dependencies based on libq
+RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+RUN echo "deb https://apt.postgresql.org/pub/repos/apt/ buster-pgdg main" > /etc/apt/sources.list.d/pgdg.list; \
+    apt-get update; \
+    apt-get install --no-install-recommends -y libpq-dev postgresql-client postgresql-common postgresql postgresql-contrib; \
+    apt-get autoremove -yqq --purge; \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
  then \
@@ -58,6 +56,21 @@ RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
 
 ENV LD_LIBRARY_PATH=/instantclient
 
+# Security patches for base image
+# monitor no fixed version for
+#    https://security.snyk.io/vuln/SNYK-DEBIAN11-LIBTASN16-3061097
+#    https://security.snyk.io/vuln/SNYK-DEBIAN11-MARIADB105-2940589
+#    https://security.snyk.io/vuln/SNYK-DEBIAN11-BIND9-3027852
+#    https://security.snyk.io/vuln/SNYK-DEBIAN11-EXPAT-3023031 we are already installed the latest
+RUN echo "deb http://deb.debian.org/debian bullseye-backports main" > /etc/apt/sources.list.d/backports.list
+RUN apt-get update \
+    && apt-get install -t bullseye-backports -y \
+    curl \
+    libpcre2-8-0 \
+    postgresql-common \
+    expat \
+    bind9
+
 WORKDIR ingestion/
 
 # Required for Airflow DockerOperator, as we need to run the workflows from a `python main.py` command in the container.
@@ -66,13 +79,16 @@ COPY ingestion/operators/docker/*.py .
 RUN pip install --upgrade pip
 
 ARG INGESTION_DEPENDENCY="all"
-RUN pip install --upgrade "openmetadata-ingestion[airflow]==1.0.0.0.dev0"
-RUN pip install --upgrade "openmetadata-ingestion[${INGESTION_DEPENDENCY}]==1.0.0.0.dev0"
+RUN pip install --upgrade pip
+RUN pip install "openmetadata-ingestion[airflow]~=1.0.4"
+RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=1.0.4"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
-ARG TARGETPLATFORM
-RUN echo "Image built for $TARGETPLATFORM" > /opt/airflow/platform.log
-RUN if [ "$TARGETPLATFORM" != "linux/arm64" ]; then pip install "ibm-db-sa~=0.4"; fi;
+RUN echo "Image built for $(uname -m)"
+RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
+    then \
+    pip install "ibm-db-sa~=0.4"; \
+    fi
 
 # Uninstalling psycopg2-binary and installing psycopg2 instead
 # because the psycopg2-binary generates a architecture specific error

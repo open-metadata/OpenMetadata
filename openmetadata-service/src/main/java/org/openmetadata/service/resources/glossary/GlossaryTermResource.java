@@ -25,6 +25,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -53,6 +54,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -448,7 +450,12 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         .withParent(getEntityReference(Entity.GLOSSARY_TERM, create.getParent()))
         .withRelatedTerms(getEntityReferences(Entity.GLOSSARY_TERM, create.getRelatedTerms()))
         .withReferences(create.getReferences())
-        .withReviewers(getEntityReferences(Entity.USER, create.getReviewers()))
+        .withReviewers(
+            getEntityReferences(
+                Entity.USER,
+                create.getReviewers() == null
+                    ? create.getReviewers()
+                    : create.getReviewers().stream().map(EntityInterfaceUtil::quoteName).collect(Collectors.toList())))
         .withTags(create.getTags())
         .withProvider(create.getProvider())
         .withMutuallyExclusive(create.getMutuallyExclusive());

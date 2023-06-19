@@ -64,7 +64,7 @@ test_suite_config = {
             "testCases": [
                 {
                     "name": "my_test_case",
-                    "testDefinitionName": "TableColumnCountToBeBetween",
+                    "testDefinitionName": "tableColumnCountToBeBetween",
                     "parameterValues": [
                         {"name": "minColValue", "value": 1},
                         {"name": "maxColValue", "value": 5},
@@ -72,7 +72,7 @@ test_suite_config = {
                 },
                 {
                     "name": "table_column_name_to_exists",
-                    "testDefinitionName": "TableColumnNameToExist",
+                    "testDefinitionName": "tableColumnNameToExist",
                     "parameterValues": [{"name": "columnName", "value": "id"}],
                 },
             ],

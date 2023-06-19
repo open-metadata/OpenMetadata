@@ -52,6 +52,22 @@ public class FullyQualifiedName {
     return String.join(Entity.SEPARATOR, list);
   }
 
+  public static String buildHash(String... strings) {
+    List<String> list = new ArrayList<>();
+    for (String string : strings) {
+      list.add(EntityUtil.hash(quoteName(string)));
+    }
+    return String.join(Entity.SEPARATOR, list);
+  }
+
+  public static String buildHash(String fullyQualifiedName) {
+    if (fullyQualifiedName != null && !fullyQualifiedName.isEmpty()) {
+      String[] split = split(fullyQualifiedName);
+      return buildHash(split);
+    }
+    return fullyQualifiedName;
+  }
+
   public static String[] split(String string) {
     SplitListener listener = new SplitListener();
     walk(string, listener);
@@ -68,20 +84,21 @@ public class FullyQualifiedName {
     walker.walk(listener, fqn);
   }
 
-  public static String getParent(String fqn) {
+  public static String getParentFQN(String fqn) {
     // Split fqn of format a.b.c.d and return the parent a.b.c
     String[] split = split(fqn);
-    return getParent(split);
+    return getParentFQN(split);
   }
 
-  public static String getParent(String... fqnParts) {
+  public static String getParentFQN(String... fqnParts) {
     // Fqn parts a b c d are given from fqn a.b.c.d
     if (fqnParts.length <= 1) {
       return null;
     }
     if (fqnParts.length == 2) {
-      return unquoteName(fqnParts[0]); // The root name is not quoted and only the unquoted name is returned
+      return fqnParts[0];
     }
+
     String parent = build(fqnParts[0]);
     for (int i = 1; i < fqnParts.length - 1; i++) {
       parent = add(parent, fqnParts[i]);
