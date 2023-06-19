@@ -212,7 +212,7 @@ const TagsContainerV1 = ({
   const addTagButton = useMemo(
     () =>
       showAddTagButton ? (
-        <span data-testid="add-tag" onClick={handleAddClick}>
+        <span onClick={handleAddClick}>
           <Tags
             className="tw-font-semibold tw-text-primary"
             startWith={TAG_START_WITH.PLUS}
@@ -307,6 +307,13 @@ const TagsContainerV1 = ({
                     : t('label.select-field', {
                         field: t('label.tag-plural'),
                       })
+                }
+                removeIcon={
+                  <CloseOutlined
+                    data-testid="remove-tags"
+                    height={8}
+                    width={8}
+                  />
                 }
                 showCheckedStrategy={TreeSelect.SHOW_ALL}
                 treeData={getTreeData}
