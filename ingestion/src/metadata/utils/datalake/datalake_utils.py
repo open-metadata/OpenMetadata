@@ -20,6 +20,7 @@ from enum import Enum
 from metadata.ingestion.source.database.datalake.models import (
     DatalakeTableSchemaWrapper,
 )
+from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR
 from metadata.utils.datalake.avro_dispatch import read_avro_dispatch
 from metadata.utils.datalake.csv_tsv_dispatch import (
     read_csv_dispatch,
