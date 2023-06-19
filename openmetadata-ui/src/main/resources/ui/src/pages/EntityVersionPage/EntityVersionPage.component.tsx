@@ -70,7 +70,7 @@ import {
   getDataModelDetailsPath,
   getMlModelDetailsPath,
   getPipelineDetailsPath,
-  getTableDetailsPath,
+  getTableTabPath,
   getTopicDetailsPath,
   getVersionPath,
   getVersionPathWithTab,
@@ -118,10 +118,8 @@ const EntityVersionPage: FunctionComponent = () => {
     {} as VersionData
   );
 
-  const { entityType, version, entityFQN } = useParams() as Record<
-    string,
-    string
-  >;
+  const { entityType, version, entityFQN } =
+    useParams<{ entityType: string; version: string; entityFQN: string }>();
 
   const [isLoading, setIsloading] = useState<boolean>(false);
   const [versionList, setVersionList] = useState<EntityHistory>(
@@ -135,7 +133,7 @@ const EntityVersionPage: FunctionComponent = () => {
   const backHandler = () => {
     switch (entityType) {
       case EntityType.TABLE:
-        history.push(getTableDetailsPath(entityFQN, tab));
+        history.push(getTableTabPath(entityFQN, tab));
 
         break;
 
@@ -175,11 +173,9 @@ const EntityVersionPage: FunctionComponent = () => {
 
   const versionHandler = (v = version) => {
     if (tab) {
-      history.push(
-        getVersionPathWithTab(entityType, entityFQN, v as string, tab)
-      );
+      history.push(getVersionPathWithTab(entityType, entityFQN, v, tab));
     } else {
-      history.push(getVersionPath(entityType, entityFQN, v as string));
+      history.push(getVersionPath(entityType, entityFQN, v));
     }
   };
 
