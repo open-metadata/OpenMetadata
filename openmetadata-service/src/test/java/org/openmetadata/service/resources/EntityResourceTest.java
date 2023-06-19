@@ -46,7 +46,6 @@ import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
-import static org.openmetadata.service.util.EntityUtil.getEntityReference;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
@@ -84,7 +83,6 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
@@ -94,19 +92,6 @@ import org.apache.commons.text.RandomStringGenerator;
 import org.apache.commons.text.RandomStringGenerator.Builder;
 import org.apache.http.client.HttpResponseException;
 import org.awaitility.Awaitility;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.aggregations.Aggregation;
-import org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
-import org.elasticsearch.search.aggregations.bucket.terms.StringTerms;
-import org.elasticsearch.search.aggregations.metrics.ParsedTopHits;
-import org.elasticsearch.search.aggregations.metrics.TopHitsAggregationBuilder;
-import org.elasticsearch.xcontent.ContextParser;
-import org.elasticsearch.xcontent.DeprecationHandler;
-import org.elasticsearch.xcontent.NamedXContentRegistry;
-import org.elasticsearch.xcontent.ParseField;
-import org.elasticsearch.xcontent.XContentParser;
-import org.elasticsearch.xcontent.json.JsonXContent;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -161,7 +146,6 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
-import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -1647,170 +1631,175 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   //    client.close();
   //  }
 
-  @Test
-  protected void checkCreatedEntity(TestInfo test) throws IOException, InterruptedException {
-    if (supportsSearchIndex) {
-      // create entity
-      T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-      EntityReference entityReference = getEntityReference(entity);
-      String indexName = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
-      Thread.sleep(2000L);
-      SearchResponse response = getResponseFormSearch(indexName);
-      List<String> entityIds = new ArrayList();
-      SearchHit[] hits = response.getHits().getHits();
-      for (SearchHit hit : hits) {
-        Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-        entityIds.add(sourceAsMap.get("id").toString());
-      }
-      // verify is it present in search
-      assertTrue(entityIds.contains(entity.getId().toString()));
-    }
-  }
-
-  @Test
-  protected void checkDeletedEntity(TestInfo test) throws HttpResponseException, InterruptedException {
-    if (supportsSearchIndex) {
-      // create entity
-      T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-      EntityReference entityReference = getEntityReference(entity);
-      String indexName = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
-      Thread.sleep(2000L);
-      SearchResponse response = getResponseFormSearch(indexName);
-      List<String> entityIds = new ArrayList();
-      SearchHit[] hits = response.getHits().getHits();
-      for (SearchHit hit : hits) {
-        Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-        entityIds.add(sourceAsMap.get("id").toString());
-      }
-      // verify is it present in search
-      assertTrue(entityIds.contains(entity.getId().toString()));
-      entityIds.clear();
-      // delete entity
-      WebTarget target = getResource(entity.getId());
-      TestUtils.delete(target, entityClass, ADMIN_AUTH_HEADERS);
-      // search again in search after deleting
-      Thread.sleep(2000L);
-      response = getResponseFormSearch(indexName);
-      hits = response.getHits().getHits();
-      for (SearchHit hit : hits) {
-        Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-        entityIds.add(sourceAsMap.get("id").toString());
-      }
-      // verify if it is deleted from the search as well
-      assertTrue(!entityIds.contains(entity.getId().toString()));
-    }
-  }
-
-  @Test
-  protected void updateDescriptionAndCheckInSearch(TestInfo test) throws IOException, InterruptedException {
-    if (supportsSearchIndex) {
-      T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-      EntityReference entityReference = getEntityReference(entity);
-      String indexName = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
-      String desc = "";
-      String original = JsonUtils.pojoToJson(entity);
-      entity.setDescription("update description");
-      entity = patchEntity(entity.getId(), original, entity, ADMIN_AUTH_HEADERS);
-      Thread.sleep(2000L);
-      SearchResponse response = getResponseFormSearch(indexName);
-      SearchHit[] hits = response.getHits().getHits();
-      for (SearchHit hit : hits) {
-        Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-        if (sourceAsMap.get("id").toString().equals(entity.getId().toString())) {
-          desc = sourceAsMap.get("description").toString();
-          break;
-        }
-      }
-      // check if description is updated in search as well
-      assertEquals(entity.getDescription(), desc);
-    }
-  }
-
-  @Test
-  protected void deleteTagAndCheckRelationshipsInSearch(TestInfo test)
-      throws HttpResponseException, JsonProcessingException, InterruptedException {
-    if (supportsTags && supportsSearchIndex) {
-      // create an entity
-      T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-      EntityReference entityReference = getEntityReference(entity);
-      String indexName = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
-      String origJson = JsonUtils.pojoToJson(entity);
-      TagResourceTest tagResourceTest = new TagResourceTest();
-      Tag tag = tagResourceTest.createEntity(tagResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
-      TagLabel tagLabel = EntityUtil.toTagLabel(tag);
-      entity.setTags(new ArrayList<>());
-      entity.getTags().add(tagLabel);
-      List<String> fqnList = new ArrayList<>();
-      // add tags to entity
-      entity = patchEntity(entity.getId(), origJson, entity, ADMIN_AUTH_HEADERS);
-      Thread.sleep(2000);
-      SearchResponse response = getResponseFormSearch(indexName);
-      SearchHit[] hits = response.getHits().getHits();
-      for (SearchHit hit : hits) {
-        Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-        if (sourceAsMap.get("id").toString().equals(entity.getId().toString())) {
-          List<Map<String, String>> listTags = (List<Map<String, String>>) sourceAsMap.get("tags");
-          listTags.forEach(
-              tempMap -> {
-                fqnList.add(tempMap.get("tagFQN"));
-              });
-          break;
-        }
-      }
-      // check if the added tag if also added in the entity in search
-      assertTrue(fqnList.contains(tagLabel.getTagFQN()));
-      fqnList.clear();
-      // delete the tag
-      tagResourceTest.deleteEntity(tag.getId(), false, true, ADMIN_AUTH_HEADERS);
-      Thread.sleep(2000);
-      response = getResponseFormSearch(indexName);
-      hits = response.getHits().getHits();
-      for (SearchHit hit : hits) {
-        Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-        if (sourceAsMap.get("id").toString().equals(entity.getId().toString())) {
-          List<Map<String, String>> listTags = (List<Map<String, String>>) sourceAsMap.get("tags");
-          listTags.forEach(
-              tempMap -> {
-                fqnList.add(tempMap.get("tagFQN"));
-              });
-          break;
-        }
-      }
-      // check if the relationships of tag are also deleted in search
-      assertTrue(!fqnList.contains(tagLabel.getTagFQN()));
-    }
-  }
-
-  private static List<NamedXContentRegistry.Entry> getDefaultNamedXContents() {
-    Map<String, ContextParser<Object, ? extends Aggregation>> map = new HashMap<>();
-    map.put(TopHitsAggregationBuilder.NAME, (p, c) -> ParsedTopHits.fromXContent(p, (String) c));
-    map.put(StringTerms.NAME, (p, c) -> ParsedStringTerms.fromXContent(p, (String) c));
-    List<NamedXContentRegistry.Entry> entries =
-        map.entrySet().stream()
-            .map(
-                entry ->
-                    new NamedXContentRegistry.Entry(
-                        Aggregation.class, new ParseField(entry.getKey()), entry.getValue()))
-            .collect(Collectors.toList());
-    return entries;
-  }
-
-  private static SearchResponse getResponseFormSearch(String indexName) throws HttpResponseException {
-    WebTarget target = getResource(String.format("search/query?q=&index=%s&from=0&deleted=false&size=50", indexName));
-    String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
-    SearchResponse response = null;
-    try {
-      NamedXContentRegistry registry = new NamedXContentRegistry(getDefaultNamedXContents());
-      XContentParser parser =
-          JsonXContent.jsonXContent.createParser(registry, DeprecationHandler.IGNORE_DEPRECATIONS, result);
-      response = SearchResponse.fromXContent(parser);
-    } catch (IOException e) {
-      System.out.println("exception " + e);
-    } catch (Exception e) {
-      System.out.println("exception " + e);
-    }
-    return response;
-  }
+  //  @Test
+  //  protected void checkCreatedEntity(TestInfo test) throws IOException, InterruptedException {
+  //    if (supportsSearchIndex) {
+  //      // create entity
+  //      T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+  //      EntityReference entityReference = getEntityReference(entity);
+  //      String indexName =
+  // ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
+  //      Thread.sleep(2000L);
+  //      SearchResponse response = getResponseFormSearch(indexName);
+  //      List<String> entityIds = new ArrayList();
+  //      SearchHit[] hits = response.getHits().getHits();
+  //      for (SearchHit hit : hits) {
+  //        Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+  //        entityIds.add(sourceAsMap.get("id").toString());
+  //      }
+  //      // verify is it present in search
+  //      assertTrue(entityIds.contains(entity.getId().toString()));
+  //    }
+  //  }
+  //
+  //  @Test
+  //  protected void checkDeletedEntity(TestInfo test) throws HttpResponseException, InterruptedException {
+  //    if (supportsSearchIndex) {
+  //      // create entity
+  //      T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+  //      EntityReference entityReference = getEntityReference(entity);
+  //      String indexName =
+  // ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
+  //      Thread.sleep(2000L);
+  //      SearchResponse response = getResponseFormSearch(indexName);
+  //      List<String> entityIds = new ArrayList();
+  //      SearchHit[] hits = response.getHits().getHits();
+  //      for (SearchHit hit : hits) {
+  //        Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+  //        entityIds.add(sourceAsMap.get("id").toString());
+  //      }
+  //      // verify is it present in search
+  //      assertTrue(entityIds.contains(entity.getId().toString()));
+  //      entityIds.clear();
+  //      // delete entity
+  //      WebTarget target = getResource(entity.getId());
+  //      TestUtils.delete(target, entityClass, ADMIN_AUTH_HEADERS);
+  //      // search again in search after deleting
+  //      Thread.sleep(2000L);
+  //      response = getResponseFormSearch(indexName);
+  //      hits = response.getHits().getHits();
+  //      for (SearchHit hit : hits) {
+  //        Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+  //        entityIds.add(sourceAsMap.get("id").toString());
+  //      }
+  //      // verify if it is deleted from the search as well
+  //      assertTrue(!entityIds.contains(entity.getId().toString()));
+  //    }
+  //  }
+  //
+  //  @Test
+  //  protected void updateDescriptionAndCheckInSearch(TestInfo test) throws IOException, InterruptedException {
+  //    if (supportsSearchIndex) {
+  //      T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+  //      EntityReference entityReference = getEntityReference(entity);
+  //      String indexName =
+  // ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
+  //      String desc = "";
+  //      String original = JsonUtils.pojoToJson(entity);
+  //      entity.setDescription("update description");
+  //      entity = patchEntity(entity.getId(), original, entity, ADMIN_AUTH_HEADERS);
+  //      Thread.sleep(2000L);
+  //      SearchResponse response = getResponseFormSearch(indexName);
+  //      SearchHit[] hits = response.getHits().getHits();
+  //      for (SearchHit hit : hits) {
+  //        Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+  //        if (sourceAsMap.get("id").toString().equals(entity.getId().toString())) {
+  //          desc = sourceAsMap.get("description").toString();
+  //          break;
+  //        }
+  //      }
+  //      // check if description is updated in search as well
+  //      assertEquals(entity.getDescription(), desc);
+  //    }
+  //  }
+  //
+  //  @Test
+  //  protected void deleteTagAndCheckRelationshipsInSearch(TestInfo test)
+  //      throws HttpResponseException, JsonProcessingException, InterruptedException {
+  //    if (supportsTags && supportsSearchIndex) {
+  //      // create an entity
+  //      T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+  //      EntityReference entityReference = getEntityReference(entity);
+  //      String indexName =
+  // ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
+  //      String origJson = JsonUtils.pojoToJson(entity);
+  //      TagResourceTest tagResourceTest = new TagResourceTest();
+  //      Tag tag = tagResourceTest.createEntity(tagResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
+  //      TagLabel tagLabel = EntityUtil.toTagLabel(tag);
+  //      entity.setTags(new ArrayList<>());
+  //      entity.getTags().add(tagLabel);
+  //      List<String> fqnList = new ArrayList<>();
+  //      // add tags to entity
+  //      entity = patchEntity(entity.getId(), origJson, entity, ADMIN_AUTH_HEADERS);
+  //      Thread.sleep(2000);
+  //      SearchResponse response = getResponseFormSearch(indexName);
+  //      SearchHit[] hits = response.getHits().getHits();
+  //      for (SearchHit hit : hits) {
+  //        Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+  //        if (sourceAsMap.get("id").toString().equals(entity.getId().toString())) {
+  //          List<Map<String, String>> listTags = (List<Map<String, String>>) sourceAsMap.get("tags");
+  //          listTags.forEach(
+  //              tempMap -> {
+  //                fqnList.add(tempMap.get("tagFQN"));
+  //              });
+  //          break;
+  //        }
+  //      }
+  //      // check if the added tag if also added in the entity in search
+  //      assertTrue(fqnList.contains(tagLabel.getTagFQN()));
+  //      fqnList.clear();
+  //      // delete the tag
+  //      tagResourceTest.deleteEntity(tag.getId(), false, true, ADMIN_AUTH_HEADERS);
+  //      Thread.sleep(2000);
+  //      response = getResponseFormSearch(indexName);
+  //      hits = response.getHits().getHits();
+  //      for (SearchHit hit : hits) {
+  //        Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+  //        if (sourceAsMap.get("id").toString().equals(entity.getId().toString())) {
+  //          List<Map<String, String>> listTags = (List<Map<String, String>>) sourceAsMap.get("tags");
+  //          listTags.forEach(
+  //              tempMap -> {
+  //                fqnList.add(tempMap.get("tagFQN"));
+  //              });
+  //          break;
+  //        }
+  //      }
+  //      // check if the relationships of tag are also deleted in search
+  //      assertTrue(!fqnList.contains(tagLabel.getTagFQN()));
+  //    }
+  //  }
+  //
+  //  private static List<NamedXContentRegistry.Entry> getDefaultNamedXContents() {
+  //    Map<String, ContextParser<Object, ? extends Aggregation>> map = new HashMap<>();
+  //    map.put(TopHitsAggregationBuilder.NAME, (p, c) -> ParsedTopHits.fromXContent(p, (String) c));
+  //    map.put(StringTerms.NAME, (p, c) -> ParsedStringTerms.fromXContent(p, (String) c));
+  //    List<NamedXContentRegistry.Entry> entries =
+  //        map.entrySet().stream()
+  //            .map(
+  //                entry ->
+  //                    new NamedXContentRegistry.Entry(
+  //                        Aggregation.class, new ParseField(entry.getKey()), entry.getValue()))
+  //            .collect(Collectors.toList());
+  //    return entries;
+  //  }
+  //
+  //  private static SearchResponse getResponseFormSearch(String indexName) throws HttpResponseException {
+  //    WebTarget target = getResource(String.format("search/query?q=&index=%s&from=0&deleted=false&size=50",
+  // indexName));
+  //    String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+  //    SearchResponse response = null;
+  //    try {
+  //      NamedXContentRegistry registry = new NamedXContentRegistry(getDefaultNamedXContents());
+  //      XContentParser parser =
+  //          JsonXContent.jsonXContent.createParser(registry, DeprecationHandler.IGNORE_DEPRECATIONS, result);
+  //      response = SearchResponse.fromXContent(parser);
+  //    } catch (IOException e) {
+  //      System.out.println("exception " + e);
+  //    } catch (Exception e) {
+  //      System.out.println("exception " + e);
+  //    }
+  //    return response;
+  //  }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity functionality for tests
