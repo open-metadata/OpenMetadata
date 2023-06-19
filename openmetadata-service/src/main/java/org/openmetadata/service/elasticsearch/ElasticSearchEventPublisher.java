@@ -102,6 +102,7 @@ import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.events.EventResource.EventList;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -810,7 +811,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
               .withFailure(new Failure().withSinkError(failureDetails));
       dao.entityExtensionTimeSeriesDao()
           .insert(
-              ELASTIC_SEARCH_ENTITY_FQN_STREAM,
+              EntityUtil.hash(ELASTIC_SEARCH_ENTITY_FQN_STREAM),
               ELASTIC_SEARCH_EXTENSION,
               "eventPublisherJob",
               JsonUtils.pojoToJson(streamJob));
@@ -823,7 +824,8 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     try {
       long updateTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
       String recordString =
-          dao.entityExtensionTimeSeriesDao().getExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
+          dao.entityExtensionTimeSeriesDao()
+              .getExtension(EntityUtil.hash(ELASTIC_SEARCH_ENTITY_FQN_STREAM), ELASTIC_SEARCH_EXTENSION);
       EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
       long originalLastUpdate = lastRecord.getTimestamp();
       lastRecord.setStatus(status);
@@ -838,7 +840,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
       dao.entityExtensionTimeSeriesDao()
           .update(
-              ELASTIC_SEARCH_ENTITY_FQN_STREAM,
+              EntityUtil.hash(ELASTIC_SEARCH_ENTITY_FQN_STREAM),
               ELASTIC_SEARCH_EXTENSION,
               JsonUtils.pojoToJson(lastRecord),
               originalLastUpdate);

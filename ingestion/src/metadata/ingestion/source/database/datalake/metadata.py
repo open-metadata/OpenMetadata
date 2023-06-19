@@ -392,7 +392,6 @@ class DatalakeSource(DatabaseServiceSource):
                 table_request = CreateTableRequest(
                     name=table_name,
                     tableType=table_type,
-                    description="",
                     columns=columns,
                     tableConstraints=table_constraints if table_constraints else None,
                     databaseSchema=self.context.database_schema.fullyQualifiedName,
