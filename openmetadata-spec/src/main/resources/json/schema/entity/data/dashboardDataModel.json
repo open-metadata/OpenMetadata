@@ -135,7 +135,7 @@
       "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     },
     "project": {
-      "description": "Name of the project / workspace / collection in which the dashboard is contained",
+      "description": "Name of the project / workspace / collection in which the dataModel is contained",
       "type": "string"
     }
   },
