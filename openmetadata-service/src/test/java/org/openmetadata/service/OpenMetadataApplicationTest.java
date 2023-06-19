@@ -104,7 +104,7 @@ public abstract class OpenMetadataApplicationTest {
     if (ELASTIC_SEARCH_CONTAINER == null) {
       ELASTIC_SEARCH_CONTAINER = new ElasticsearchContainer(elasticSearchContainerImage);
       ELASTIC_SEARCH_CONTAINER.start();
-      ELASTIC_SEARCH_CONTAINER.withReuse(true);
+      //      ELASTIC_SEARCH_CONTAINER.withReuse(true);
       String[] parts = ELASTIC_SEARCH_CONTAINER.getHttpHostAddress().split(":");
       HOST = parts[0];
       PORT = parts[1];
