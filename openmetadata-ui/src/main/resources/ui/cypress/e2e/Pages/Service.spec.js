@@ -148,7 +148,7 @@ describe('Services page should work properly', () => {
     verifyResponseStatusCode('@removeOwner', 200);
 
     // Check if Owner exist
-    cy.get('[data-testid="entity-summary-details"]')
+    cy.get('[data-testid="owner-link"]')
       .scrollIntoView()
       .should('exist')
       .contains('No Owner');

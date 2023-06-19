@@ -463,7 +463,7 @@ export const DataAssetsHeader = ({
                       }>
                       <Button
                         className="flex-center p-0"
-                        data-testid="edit-owner"
+                        data-testid="edit-tier"
                         disabled={
                           !(permissions.EditAll || permissions.EditTags)
                         }

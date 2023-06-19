@@ -24,11 +24,12 @@ import './recently-viewed.less';
 
 const RecentlyViewed: FunctionComponent = () => {
   const { t } = useTranslation();
-  const recentlyViewedData = getRecentlyViewedData();
+
   const [data, setData] = useState<Array<EntityReference>>([]);
   const [isLoading, setIsloading] = useState<boolean>(false);
 
   const prepareData = () => {
+    const recentlyViewedData = getRecentlyViewedData();
     if (recentlyViewedData.length) {
       setIsloading(true);
       const formattedData = recentlyViewedData
@@ -64,9 +65,7 @@ const RecentlyViewed: FunctionComponent = () => {
                 return (
                   <div
                     className="right-panel-list-item flex items-center justify-between"
-                    data-testid={`Recently Viewed-${getEntityName(
-                      item as unknown as EntityReference
-                    )}`}
+                    data-testid={`Recently Viewed-${getEntityName(item)}`}
                     key={index}>
                     <div className=" flex items-center">
                       <Link
@@ -89,7 +88,7 @@ const RecentlyViewed: FunctionComponent = () => {
                           <Typography.Text
                             className="w-72 text-left text-xs"
                             ellipsis={{ tooltip: true }}>
-                            {getEntityName(item as unknown as EntityReference)}
+                            {getEntityName(item)}
                           </Typography.Text>
                         </Button>
                       </Link>

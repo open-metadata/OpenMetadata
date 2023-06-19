@@ -60,11 +60,14 @@ export const OwnerLabel = ({
       {displayName ? (
         <Typography.Link
           className="font-normal text-xs"
+          data-testid="owner-link"
           style={{ fontSize: '12px' }}>
           {displayName}
         </Typography.Link>
       ) : (
-        <Typography.Text className="font-medium text-xs">
+        <Typography.Text
+          className="font-medium text-xs"
+          data-testid="owner-link">
           {t('label.no-entity', { entity: t('label.owner') })}
         </Typography.Text>
       )}
