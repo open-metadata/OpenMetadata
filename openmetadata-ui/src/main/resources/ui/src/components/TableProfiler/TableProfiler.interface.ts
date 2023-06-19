@@ -52,6 +52,7 @@ export interface ColumnProfileTableProps {
   columns: Column[];
   hasEditAccess: boolean;
   columnTests: TestCase[];
+  dateRangeObject: DateRangeObject;
 }
 
 export interface ProfilerProgressWidgetProps {

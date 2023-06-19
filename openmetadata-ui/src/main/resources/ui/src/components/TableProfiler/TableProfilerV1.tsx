@@ -30,7 +30,7 @@ import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import { mockDatasetData } from 'constants/mockTourData.constants';
-import { isEqual, isUndefined, map } from 'lodash';
+import { isEmpty, isEqual, isUndefined, map } from 'lodash';
 import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -72,19 +72,18 @@ import './tableProfiler.less';
 const TableProfilerV1: FC<TableProfilerProps> = ({
   isTableDeleted,
   permissions,
-  testSuite,
 }) => {
   const { t } = useTranslation();
   const history = useHistory();
   const location = useLocation();
 
-  const { activeTab } = useMemo(() => {
+  const { activeTab, activeColumnFqn } = useMemo(() => {
     const param = location.search;
     const searchData = Qs.parse(
       param.startsWith('?') ? param.substring(1) : param
     );
 
-    return searchData as { activeTab: string };
+    return searchData as { activeTab: string; activeColumnFqn: string };
   }, [location.search]);
   const isTourPage = useMemo(
     () => location.pathname.includes(ROUTES.TOUR),
@@ -425,7 +424,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                   </>
                 )}
 
-                {isTableProfile && (
+                {(isTableProfile || !isEmpty(activeColumnFqn)) && (
                   <DatePickerMenu
                     showSelectedCustomRange
                     handleDateRangeChange={handleDateRangeChange}
@@ -512,6 +511,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                 ...col,
                 key: col.name,
               }))}
+              dateRangeObject={dateRangeObject}
               hasEditAccess={editTest}
             />
           )}
