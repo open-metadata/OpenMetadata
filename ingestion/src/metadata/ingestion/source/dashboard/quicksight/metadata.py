@@ -179,7 +179,6 @@ class QuicksightSource(DashboardServiceSource):
                 yield CreateChartRequest(
                     name=chart["SheetId"],
                     displayName=chart["Name"],
-                    description="",
                     chartType=ChartType.Other.value,
                     sourceUrl=self.dashboard_url,
                     service=self.context.dashboard_service.fullyQualifiedName.__root__,
