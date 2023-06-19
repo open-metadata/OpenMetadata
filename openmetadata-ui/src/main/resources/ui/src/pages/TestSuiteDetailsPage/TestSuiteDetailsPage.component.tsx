@@ -150,16 +150,14 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const afterSubmitAction = (deletedTest = false) => {
-    fetchTestCases({
-      include: deletedTest ? Include.Deleted : Include.NonDeleted,
-    });
+  const afterSubmitAction = () => {
+    fetchTestCases();
   };
 
   const fetchTestSuiteByName = async () => {
     try {
       const response = await getTestSuiteByName(testSuiteFQN, {
-        fields: 'owner',
+        fields: 'owner,tests',
         include: Include.All,
       });
       setSlashedBreadCrumb([
@@ -370,9 +368,11 @@ const TestSuiteDetailsPage = () => {
         </Col>
         <Col span={24}>
           <AddTestCaseModal
-            existingTest={testCaseResult}
+            existingTest={testSuite?.tests ?? []}
             open={isTestCaseModalOpen}
+            testSuiteId={testSuite?.id ?? ''}
             onCancel={() => setIsTestCaseModalOpen(false)}
+            onSubmit={afterSubmitAction}
           />
         </Col>
       </Row>

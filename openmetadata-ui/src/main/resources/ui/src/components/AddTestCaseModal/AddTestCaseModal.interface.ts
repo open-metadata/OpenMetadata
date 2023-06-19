@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TestCase } from 'generated/tests/testCase';
+import { EntityReference } from 'generated/tests/testCase';
 
 export interface AddTestCaseModalProps {
   open: boolean;
   onCancel: () => void;
-  existingTest: TestCase[];
+  onSubmit: () => void;
+  existingTest: EntityReference[];
+  testSuiteId: string;
 }

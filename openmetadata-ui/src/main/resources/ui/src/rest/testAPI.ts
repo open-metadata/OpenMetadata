@@ -64,6 +64,11 @@ export type ListTestCaseResultsParams = Omit<
   endTs?: number;
 };
 
+export type AddTestCaseToLogicalTestSuiteType = {
+  testCaseIds: string[];
+  testSuiteId: string;
+};
+
 const testCaseUrl = '/dataQuality/testCases';
 const testSuiteUrl = '/dataQuality/testSuites';
 const testDefinitionUrl = '/dataQuality/testDefinitions';
@@ -136,6 +141,17 @@ export const getTestCaseExecutionSummary = async () => {
   const response = await APIClient.get<TestSummary>(
     `${testCaseUrl}/executionSummary`
   );
+
+  return response.data;
+};
+
+export const addTestCaseToLogicalTestSuite = async (
+  data: AddTestCaseToLogicalTestSuiteType
+) => {
+  const response = await APIClient.put<
+    AddTestCaseToLogicalTestSuiteType,
+    AxiosResponse<TestSuite>
+  >(`${testCaseUrl}/logicalTestCases`, data);
 
   return response.data;
 };
