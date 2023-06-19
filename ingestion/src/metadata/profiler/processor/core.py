@@ -594,3 +594,7 @@ class Profiler(Generic[TMetric]):
     @property
     def column_results(self):
         return self._column_results
+
+    def close(self):
+        """clean up profiler after processing"""
+        self.profiler_interface.close()
