@@ -23,6 +23,9 @@ from sqlalchemy.engine import Engine
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.entity.data.chart import Chart, ChartType
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -110,7 +113,9 @@ MOCK_SUPERSET_DB_CONFIG = {
                 "connection": {
                     "type": "Postgres",
                     "username": "superset",
-                    "password": "superset",
+                    "authType": {
+                        "password": "superset",
+                    },
                     "hostPort": "localhost:5432",
                     "database": "superset",
                 },
@@ -147,7 +152,9 @@ MOCK_DB_MYSQL_SERVICE_1 = DatabaseService(
     name="test_mysql",
     connection=DatabaseConnection(
         config=MysqlConnection(
-            username="user", password="pass", hostPort="localhost:3306"
+            username="user",
+            authType=BasicAuth(password="pass"),
+            hostPort="localhost:3306",
         )
     ),
     serviceType=DatabaseServiceType.Mysql,
@@ -160,7 +167,7 @@ MOCK_DB_MYSQL_SERVICE_2 = DatabaseService(
     connection=DatabaseConnection(
         config=MysqlConnection(
             username="user",
-            password="pass",
+            authType=BasicAuth(password="pass"),
             hostPort="localhost:3306",
             databaseName="DUMMY_DB",
         )
@@ -175,7 +182,7 @@ MOCK_DB_POSTGRES_SERVICE = DatabaseService(
     connection=DatabaseConnection(
         config=PostgresConnection(
             username="user",
-            password="pass",
+            authType=BasicAuth(password="pass"),
             hostPort="localhost:5432",
             database="postgres",
         )
@@ -198,7 +205,7 @@ EXPECTED_DASH = CreateDashboardRequest(
     name=14,
     displayName="My DASH",
     description="",
-    dashboardUrl="https://my-superset.com/superset/dashboard/14/",
+    sourceUrl="https://my-superset.com/superset/dashboard/14/",
     charts=[chart.fullyQualifiedName for chart in EXPECTED_CHATRT_ENTITY],
     service=EXPECTED_DASH_SERVICE.fullyQualifiedName,
 )
@@ -208,7 +215,7 @@ EXPECTED_CHART = CreateChartRequest(
     displayName="% Rural",
     description="TEST DESCRIPTION",
     chartType=ChartType.Other.value,
-    chartUrl="https://my-superset.com/explore/?slice_id=37",
+    sourceUrl="https://my-superset.com/explore/?slice_id=37",
     service=EXPECTED_DASH_SERVICE.fullyQualifiedName,
 )
 
@@ -282,7 +289,9 @@ class SupersetUnitTest(TestCase):
                 "config": {
                     "type": "Mysql",
                     "username": "openmetadata_user",
-                    "password": "openmetadata_password",
+                    "authType": {
+                        "password": "openmetadata_password",
+                    },
                     "hostPort": "localhost:3306",
                     "databaseSchema": "openmetadata_db",
                 }

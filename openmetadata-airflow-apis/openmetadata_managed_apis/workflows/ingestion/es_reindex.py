@@ -17,9 +17,6 @@ from openmetadata_managed_apis.workflows.ingestion.common import (
     build_dag,
     metadata_ingestion_workflow,
 )
-from openmetadata_managed_apis.workflows.ingestion.elasticsearch_sink import (
-    build_elasticsearch_sink,
-)
 
 from metadata.generated.schema.entity.services.connections.metadata.metadataESConnection import (
     MetadataESConnection,
@@ -39,11 +36,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    SourceConfig,
-    WorkflowConfig,
-)
-from metadata.generated.schema.type.basic import ComponentConfig
+from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -67,16 +60,14 @@ def build_es_reindex_workflow_config(
             "Could not retrieve the OpenMetadata service! This should not happen."
         )
 
-    sink = build_elasticsearch_sink(
-        openmetadata_service.connection.config, ingestion_pipeline
-    )
+    sink = Sink(type="metadata-rest", config={})
 
     workflow_config = OpenMetadataWorkflowConfig(
         source=WorkflowSource(
             type="metadata_elasticsearch",
             serviceName=ingestion_pipeline.service.fullyQualifiedName,
             serviceConnection=MetadataConnection(config=MetadataESConnection()),
-            sourceConfig=SourceConfig(),
+            sourceConfig=ingestion_pipeline.sourceConfig,
         ),
         sink=sink,
         workflowConfig=WorkflowConfig(

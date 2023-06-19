@@ -178,17 +178,17 @@ public class SubscriptionUtil {
       String entityType) {
     Set<String> receiverList = new HashSet<>();
     // Send to Admins
-    if (action.getSendToAdmins()) {
+    if (Boolean.TRUE.equals(action.getSendToAdmins())) {
       receiverList.addAll(getAdminsData(type));
     }
 
     // Send To Owners
-    if (action.getSendToOwners()) {
+    if (Boolean.TRUE.equals(action.getSendToOwners())) {
       receiverList.addAll(getOwnerOrFollowers(type, daoCollection, entityId, entityType, Relationship.OWNS));
     }
 
     // Send To Followers
-    if (action.getSendToFollowers()) {
+    if (Boolean.TRUE.equals(action.getSendToFollowers())) {
       receiverList.addAll(getOwnerOrFollowers(type, daoCollection, entityId, entityType, Relationship.FOLLOWS));
     }
 

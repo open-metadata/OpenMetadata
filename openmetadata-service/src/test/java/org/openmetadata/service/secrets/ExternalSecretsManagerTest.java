@@ -41,6 +41,7 @@ import org.openmetadata.schema.security.secrets.Parameters;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
@@ -67,20 +68,20 @@ public abstract class ExternalSecretsManagerTest {
   @Test
   void testEncryptDecryptDatabaseServiceConnectionConfig() {
     String password = "openmetadata-test";
-    MysqlConnection expectedConnection = new MysqlConnection().withPassword(password);
-    Map<String, String> mysqlConnection = Map.of("password", password);
+    MysqlConnection expectedConnection = new MysqlConnection().withAuthType(new basicAuth().withPassword(password));
+    Map<String, Map<String, String>> mysqlConnection = Map.of("authType", Map.of("password", password));
 
     // Ensure encrypted service connection config encrypts the password
     MysqlConnection actualConnection =
         (MysqlConnection)
             secretsManager.encryptServiceConnectionConfig(mysqlConnection, Mysql.value(), "test", ServiceType.DATABASE);
-    assertNotEquals(password, actualConnection.getPassword());
+    assertNotEquals(password, JsonUtils.convertValue(actualConnection.getAuthType(), basicAuth.class).getPassword());
 
     // Decrypt the encrypted password and validate
     actualConnection =
         (MysqlConnection)
             secretsManager.decryptServiceConnectionConfig(mysqlConnection, Mysql.value(), ServiceType.DATABASE);
-    assertEquals(password, actualConnection.getPassword());
+    assertEquals(password, JsonUtils.convertValue(actualConnection.getAuthType(), basicAuth.class).getPassword());
     assertEquals(expectedConnection, actualConnection);
   }
 
@@ -145,7 +146,8 @@ public abstract class ExternalSecretsManagerTest {
     String secretKey = "secret:/openmetadata/serverconnection/securityconfig/secretkey";
     OpenMetadataConnection connection =
         new OpenMetadataConnection().withSecurityConfig(new GoogleSSOClientConfig().withSecretKey(secretKey));
-    DatabaseConnection dbConnection = new DatabaseConnection().withConfig(new MysqlConnection().withPassword(password));
+    DatabaseConnection dbConnection =
+        new DatabaseConnection().withConfig(new MysqlConnection().withAuthType(new basicAuth().withPassword(password)));
     TestServiceConnectionRequest testRequest =
         new TestServiceConnectionRequest()
             .withConnection(dbConnection)
@@ -169,7 +171,8 @@ public abstract class ExternalSecretsManagerTest {
 
   @Test
   void testExceptionConnection() {
-    Map<String, String> mysqlConnection = Map.of("password", "openmetadata-test", "username1", "openmetadata-test");
+    Map<String, Object> mysqlConnection =
+        Map.of("username1", "openmetadata-test", "authType", Map.of("password", "openmetadata-test"));
     InvalidServiceConnectionException thrown =
         Assertions.assertThrows(
             InvalidServiceConnectionException.class,
@@ -209,8 +212,12 @@ public abstract class ExternalSecretsManagerTest {
   }
 
   private String getPassword(Workflow workflow) {
-    return ((MysqlConnection)
-            ((DatabaseConnection) ((TestServiceConnectionRequest) workflow.getRequest()).getConnection()).getConfig())
+    return JsonUtils.convertValue(
+            ((MysqlConnection)
+                    ((DatabaseConnection) ((TestServiceConnectionRequest) workflow.getRequest()).getConnection())
+                        .getConfig())
+                .getAuthType(),
+            basicAuth.class)
         .getPassword();
   }
 

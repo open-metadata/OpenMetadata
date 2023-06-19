@@ -105,7 +105,6 @@ class DatabaseServiceTopology(ServiceTopology):
             )
         ],
         children=["databaseSchema"],
-        post_process=["mark_tables_as_deleted"],
     )
     databaseSchema = TopologyNode(
         producer="get_database_schema_names",
@@ -126,6 +125,7 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["table"],
+        post_process=["mark_tables_as_deleted"],
     )
     table = TopologyNode(
         producer="get_tables_name_and_type",

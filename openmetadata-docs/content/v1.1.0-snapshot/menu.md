@@ -393,6 +393,12 @@ site_menu:
     url: /connectors/database/vertica/cli
   - category: Connectors / Database / Vertica / Troubleshooting
     url: /connectors/database/vertica/troubleshooting
+  - category: Connectors / Database / MongoDB
+    url: /connectors/database/mongodb
+  - category: Connectors / Database / MongoDB / Airflow
+    url: /connectors/database/mongodb/airflow
+  - category: Connectors / Database / MongoDB / CLI
+    url: /connectors/database/mongodb/cli
   - category: Connectors / Dashboard
     url: /connectors/dashboard
 
@@ -422,8 +428,6 @@ site_menu:
     url: /connectors/dashboard/mode/cli
   - category: Connectors / Dashboard / PowerBI
     url: /connectors/dashboard/powerbi
-  - category: Connectors / Dashboard / PowerBI / PowerBI Account Setup
-    url: /connectors/dashboard/powerbi/powerbi-account-setup
   - category: Connectors / Dashboard / PowerBI / Airflow
     url: /connectors/dashboard/powerbi/airflow
   - category: Connectors / Dashboard / PowerBI / CLI

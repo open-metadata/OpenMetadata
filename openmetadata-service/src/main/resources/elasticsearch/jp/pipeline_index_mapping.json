@@ -93,7 +93,7 @@
       "href": {
         "type": "text"
       },
-      "pipelineUrl": {
+      "sourceUrl": {
         "type": "text"
       },
       "tasks": {
@@ -121,7 +121,7 @@
             "type": "text",
             "analyzer": "om_analyzer_jp"
           },
-          "taskUrl": {
+          "sourceUrl": {
             "type": "text"
           },
           "taskType": {

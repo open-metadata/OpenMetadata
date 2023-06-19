@@ -174,7 +174,7 @@ class RedashSource(DashboardServiceSource):
                     for chart in self.context.charts
                 ],
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
-                dashboardUrl=self.get_dashboard_url(dashboard_details),
+                sourceUrl=self.get_dashboard_url(dashboard_details),
                 tags=get_tag_labels(
                     metadata=self.metadata,
                     tags=dashboard_details.get("tags"),
@@ -270,7 +270,7 @@ class RedashSource(DashboardServiceSource):
                         visualization["type"] if visualization else ""
                     ),
                     service=self.context.dashboard_service.fullyQualifiedName.__root__,
-                    chartUrl=self.get_dashboard_url(dashboard_details),
+                    sourceUrl=self.get_dashboard_url(dashboard_details),
                     description=visualization["description"] if visualization else "",
                 )
                 self.status.scanned(f"Chart: {chart_display_name}")
