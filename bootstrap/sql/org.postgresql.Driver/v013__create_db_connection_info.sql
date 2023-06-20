@@ -170,13 +170,13 @@ ALTER TABLE user_entity DROP CONSTRAINT user_entity_name_key, ADD COLUMN nameHas
 ALTER TABLE bot_entity DROP CONSTRAINT bot_entity_name_key, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
 ALTER TABLE glossary_entity DROP CONSTRAINT glossary_entity_name_key, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
 
--- Rename sourceUrl in pipeline_entity from DatabricksPipeline & Fivetran
+-- Remove sourceUrl in pipeline_entity from DatabricksPipeline & Fivetran
 UPDATE pipeline_entity
 SET json = json::jsonb #- '{sourceUrl}'
 where json #> '{serviceType}' in ('"DatabricksPipeline"','"Fivetran"');
 
 
--- Rename sourceUrl in dashboard_entity from Mode
+-- Remove sourceUrl in dashboard_entity from Mode
 UPDATE dashboard_entity
 SET json = json::jsonb #- '{sourceUrl}'
 where json #> '{serviceType}' in ('"Mode"');
