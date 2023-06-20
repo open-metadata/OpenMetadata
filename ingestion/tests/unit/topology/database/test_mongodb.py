@@ -120,7 +120,6 @@ MOCK_CREATE_TABLE = [
     CreateTableRequest(
         name="random_table",
         tableType=TableType.Regular,
-        description="",
         columns=[
             Column(
                 name="name",

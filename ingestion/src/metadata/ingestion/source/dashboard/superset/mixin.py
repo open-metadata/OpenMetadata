@@ -37,7 +37,6 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
-from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -112,25 +111,6 @@ class SupersetSourceMixin(DashboardServiceSource):
                 if key.startswith("CHART-") and value.get("meta", {}).get("chartId")
             ]
         return []
-
-    def _get_database_name_for_lineage(
-        self, db_service_entity: DatabaseService, default_db_name: str
-    ) -> Optional[str]:
-        # If the database service supports multiple db or
-        # database service connection details are not available
-        # then pick the database name available from api response
-        if db_service_entity.connection is None or hasattr(
-            db_service_entity.connection.config, "supportsDatabase"
-        ):
-            return default_db_name
-
-        # otherwise if it is an single db source then use "databaseName"
-        # and if databaseName field is not available or is empty then use
-        # "default" as database name
-        return (
-            db_service_entity.connection.config.__dict__.get("databaseName")
-            or DEFAULT_DATABASE
-        )
 
     def yield_dashboard_lineage_details(
         self, dashboard_details: dict, db_service_name: str

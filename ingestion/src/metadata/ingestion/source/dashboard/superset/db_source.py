@@ -35,7 +35,11 @@ from metadata.ingestion.source.dashboard.superset.queries import (
     FETCH_DASHBOARDS,
 )
 from metadata.utils import fqn
-from metadata.utils.helpers import clean_uri, get_standard_chart_type
+from metadata.utils.helpers import (
+    clean_uri,
+    get_database_name_for_lineage,
+    get_standard_chart_type,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -77,7 +81,6 @@ class SupersetDBSource(SupersetSourceMixin):
         dashboard_request = CreateDashboardRequest(
             name=dashboard_details["id"],
             displayName=dashboard_details["dashboard_title"],
-            description="",
             sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/superset/dashboard/{dashboard_details['id']}/",
             charts=[
                 fqn.build(
@@ -130,7 +133,7 @@ class SupersetDBSource(SupersetSourceMixin):
         if sqa_str:
             sqa_url = make_url(sqa_str)
             default_db_name = sqa_url.database if sqa_url else None
-        return self._get_database_name_for_lineage(db_service_entity, default_db_name)
+        return get_database_name_for_lineage(db_service_entity, default_db_name)
 
     def _get_datasource_fqn(
         self, chart_json: dict, db_service_entity: DatabaseService
