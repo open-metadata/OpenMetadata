@@ -327,6 +327,8 @@ class LookerSource(DashboardServiceSource):
                     serviceType=DashboardServiceType.Looker.value,
                     columns=get_columns_from_model(model),
                     sql=self._get_explore_sql(model),
+                    # In Looker, you need to create Explores and Views within a Project
+                    project=model.project_name,
                 )
                 yield explore_datamodel
                 self.status.scanned(f"Data Model Scanned: {model.name}")
@@ -419,6 +421,8 @@ class LookerSource(DashboardServiceSource):
                     serviceType=DashboardServiceType.Looker.value,
                     columns=get_columns_from_model(view),
                     sql=project_parser.parsed_files.get(Includes(view.source_file)),
+                    # In Looker, you need to create Explores and Views within a Project
+                    project=explore.project_name,
                 )
                 self.status.scanned(f"Data Model Scanned: {view.name}")
 
@@ -538,11 +542,27 @@ class LookerSource(DashboardServiceSource):
                 )
                 for chart in self.context.charts
             ],
+            # Dashboards are created from the UI directly. They are not linked to a project
+            # like LookML assets, but rather just organised in folders.
+            project=self._get_dashboard_project(dashboard_details),
             sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/dashboards/{dashboard_details.id}",
             service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
         yield dashboard_request
         self.register_record(dashboard_request=dashboard_request)
+
+    @staticmethod
+    def _get_dashboard_project(dashboard_details: LookerDashboard) -> Optional[str]:
+        """
+        Get dashboard project if the folder is informed
+        """
+        try:
+            return dashboard_details.folder.name
+        except Exception as exc:
+            logger.debug(
+                f"Cannot get folder name from dashboard [{dashboard_details.title}] - [{exc}]"
+            )
+            return None
 
     @staticmethod
     def _clean_table_name(table_name: str) -> str:

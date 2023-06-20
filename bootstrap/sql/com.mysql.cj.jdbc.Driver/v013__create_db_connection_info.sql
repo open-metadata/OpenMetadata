@@ -209,3 +209,15 @@ ALTER TABLE team_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NU
 ALTER TABLE user_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
 ALTER TABLE bot_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
 ALTER TABLE glossary_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
+
+-- Remove sourceUrl in pipeline_entity from DatabricksPipeline & Fivetran
+UPDATE pipeline_entity
+SET json = JSON_REMOVE(json, '$.sourceUrl')
+WHERE JSON_EXTRACT(json, '$.serviceType') in ('DatabricksPipeline','Fivetran');
+
+
+-- Remove sourceUrl in dashboard_entity from Mode
+UPDATE dashboard_entity 
+SET json = JSON_REMOVE(json, '$.sourceUrl')
+WHERE JSON_EXTRACT(json, '$.serviceType') in ('Mode');
+

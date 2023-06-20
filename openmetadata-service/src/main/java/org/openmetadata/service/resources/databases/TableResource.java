@@ -953,6 +953,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return validateNewTable(
             copy(new Table(), create, user)
                 .withColumns(create.getColumns())
+                .withSourceUrl(create.getSourceUrl())
                 .withTableConstraints(create.getTableConstraints())
                 .withTablePartition(create.getTablePartition())
                 .withTableType(create.getTableType())

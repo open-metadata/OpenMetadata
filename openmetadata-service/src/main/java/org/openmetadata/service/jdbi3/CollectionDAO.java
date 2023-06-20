@@ -2832,21 +2832,21 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlUpdate(
         value =
-            "UPDATE entity_extension_time_series set json = :json where entityFQN=:entityFQN and extension=:extension and timestamp=:timestamp and json -> '$.operation' = :operation",
+            "UPDATE entity_extension_time_series set json = :json where entityFQNHash=:entityFQNHash and extension=:extension and timestamp=:timestamp and json -> '$.operation' = :operation",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "UPDATE entity_extension_time_series set json = (:json :: jsonb) where entityFQN=:entityFQN and extension=:extension and timestamp=:timestamp and json #>>'{operation}' = :operation",
+            "UPDATE entity_extension_time_series set json = (:json :: jsonb) where entityFQNHash=:entityFQNHash and extension=:extension and timestamp=:timestamp and json #>>'{operation}' = :operation",
         connectionType = POSTGRES)
     void updateExtensionByOperation(
-        @Bind("entityFQN") String entityFQN,
+        @Bind("entityFQNHash") String entityFQNHash,
         @Bind("extension") String extension,
         @Bind("json") String json,
         @Bind("timestamp") Long timestamp,
         @Bind("operation") String operation);
 
     @SqlQuery(
-        "SELECT json FROM entity_extension_time_series WHERE entityFQNHash = :entityFQN AND extension = :extension")
+        "SELECT json FROM entity_extension_time_series WHERE entityFQNHash = :entityFQNHash AND extension = :extension")
     String getExtension(@Bind("entityFQNHash") String entityId, @Bind("extension") String extension);
 
     @SqlQuery("SELECT count(*) FROM entity_extension_time_series WHERE EntityFQNHash = :entityFQNHash")
@@ -2855,13 +2855,13 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "WITH data AS (SELECT ROW_NUMBER() OVER(ORDER BY timestamp ASC) AS row_num, json "
-                + "FROM entity_extension_time_series WHERE EntityFQNHash = :entityFQNHash) "
+                + "FROM entity_extension_time_series WHERE entityFQNHash = :entityFQNHash) "
                 + "SELECT row_num, json FROM data WHERE row_num < :before LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "WITH data AS (SELECT ROW_NUMBER() OVER(ORDER BY timestamp ASC) AS row_num, json "
-                + "FROM entity_extension_time_series WHERE EntityFQNHash = :entityFQNHash) "
+                + "FROM entity_extension_time_series WHERE entityFQNHash = :entityFQNHash) "
                 + "SELECT row_num, json FROM data WHERE row_num < (:before :: integer) LIMIT :limit",
         connectionType = POSTGRES)
     @RegisterRowMapper(ReportDataMapper.class)
@@ -2871,13 +2871,13 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "WITH data AS (SELECT ROW_NUMBER() OVER(ORDER BY timestamp ASC) AS row_num, json "
-                + "FROM entity_extension_time_series WHERE EntityFQNHash = :entityFQNHash) "
+                + "FROM entity_extension_time_series WHERE entityFQNHash = :entityFQNHash) "
                 + "SELECT row_num, json FROM data WHERE row_num > :after LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "WITH data AS (SELECT ROW_NUMBER() OVER(ORDER BY timestamp ASC) AS row_num, json "
-                + "FROM entity_extension_time_series WHERE EntityFQNHash = :entityFQNHash) "
+                + "FROM entity_extension_time_series WHERE entityFQNHash = :entityFQNHash) "
                 + "SELECT row_num, json FROM data WHERE row_num > (:after :: integer) LIMIT :limit",
         connectionType = POSTGRES)
     @RegisterRowMapper(ReportDataMapper.class)
@@ -2912,9 +2912,9 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT ranked.json FROM (SELECT json, ROW_NUMBER() OVER(PARTITION BY entityFQNHash ORDER BY timestamp DESC) AS row_num "
-            + "FROM entity_extension_time_series WHERE entityFQNHash IN (<entityFQNs>)) ranked WHERE ranked.row_num = 1")
+            + "FROM entity_extension_time_series WHERE entityFQNHash IN (<entityFQNHashes>)) ranked WHERE ranked.row_num = 1")
     List<String> getLatestExtensionByFQNs(
-        @BindList("entityFQNs") List<String> entityFQNs, @Bind("extension") String extension);
+        @BindList("entityFQNHashes") List<String> entityFQNHashes, @Bind("extension") String extension);
 
     @SqlQuery(
         "SELECT json FROM entity_extension_time_series WHERE extension = :extension "
@@ -2940,7 +2940,7 @@ public interface CollectionDAO {
 
     // This just saves the limit number of records, and remove all other with given extension
     @SqlUpdate(
-        "DELETE FROM entity_extension_time_series WHERE extension = :extension AND entityFQNHash NOT IN(SELECT entityFQN FROM (select * from entity_extension_time_series WHERE extension = :extension ORDER BY timestamp DESC LIMIT :records) AS subquery)")
+        "DELETE FROM entity_extension_time_series WHERE extension = :extension AND entityFQNHash NOT IN(SELECT entityFQNHash FROM (select * from entity_extension_time_series WHERE extension = :extension ORDER BY timestamp DESC LIMIT :records) AS subquery)")
     void deleteLastRecords(@Bind("extension") String extension, @Bind("records") int noOfRecord);
 
     @SqlUpdate(
