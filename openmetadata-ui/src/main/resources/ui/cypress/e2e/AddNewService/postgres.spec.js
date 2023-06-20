@@ -53,7 +53,7 @@ describe('Postgres Ingestion', () => {
         .scrollIntoView()
         .type(Cypress.env('postgresUsername'));
       checkServiceFieldSectionHighlighting('username');
-      cy.get('#root\\/password')
+      cy.get('#root\\/authType\\/password')
         .scrollIntoView()
         .type(Cypress.env('postgresPassword'));
       checkServiceFieldSectionHighlighting('password');

@@ -4,6 +4,29 @@
   "title": "Basic",
   "description": "This schema defines basic types that are used by other test schemas.",
   "definitions": {
+    "testSummary": {
+      "description": "Schema to capture test case execution summary.",
+      "javaType": "org.openmetadata.schema.tests.type.TestSummary",
+      "type": "object",
+      "properties": {
+        "success": {
+          "description": "Number of test cases that passed.",
+          "type": "integer"
+        },
+        "failed": {
+          "description": "Number of test cases that failed.",
+          "type": "integer"
+        },
+        "aborted": {
+          "description": "Number of test cases that aborted.",
+          "type": "integer"
+        },
+        "total": {
+          "description": "Total number of test cases.",
+          "type": "integer"
+        }
+      }
+    },
     "testResultValue": {
       "description": "Schema to capture test case result values.",
       "javaType": "org.openmetadata.schema.tests.type.TestResultValue",

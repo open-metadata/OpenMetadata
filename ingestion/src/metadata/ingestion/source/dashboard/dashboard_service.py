@@ -65,6 +65,12 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+LINEAGE_MAP = {
+    Dashboard: "dashboard",
+    Table: "table",
+    DashboardDataModel: "dashboardDataModel",
+}
+
 
 class DashboardUsage(BaseModel):
     """
@@ -391,22 +397,18 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     @staticmethod
     def _get_add_lineage_request(
         to_entity: Union[Dashboard, DashboardDataModel],
-        from_entity: Union[Table, DashboardDataModel],
+        from_entity: Union[Table, DashboardDataModel, Dashboard],
     ) -> Optional[AddLineageRequest]:
         if from_entity and to_entity:
             return AddLineageRequest(
                 edge=EntitiesEdge(
                     fromEntity=EntityReference(
                         id=from_entity.id.__root__,
-                        type="table"
-                        if isinstance(from_entity, Table)
-                        else "dashboardDataModel",
+                        type=LINEAGE_MAP[type(from_entity)],
                     ),
                     toEntity=EntityReference(
                         id=to_entity.id.__root__,
-                        type="dashboard"
-                        if isinstance(to_entity, Dashboard)
-                        else "dashboardDataModel",
+                        type=LINEAGE_MAP[type(to_entity)],
                     ),
                 )
             )

@@ -7,7 +7,9 @@
         "type": "Mysql",
         "username": "openmetadata_user",
         "database":"openmetadata_db",
-        "password": "openmetadata_password",
+        "authType":{
+          "password": "openmetadata_password"
+          },
         "hostPort": "localhost:3306",
         "connectionOptions": {},
         "connectionArguments": {}

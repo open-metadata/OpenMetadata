@@ -61,10 +61,16 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public void setFullyQualifiedName(MlModel mlModel) {
-    mlModel.setFullyQualifiedName(FullyQualifiedName.add(mlModel.getService().getName(), mlModel.getName()));
+    mlModel.setFullyQualifiedName(
+        FullyQualifiedName.add(mlModel.getService().getFullyQualifiedName(), mlModel.getName()));
     if (!nullOrEmpty(mlModel.getMlFeatures())) {
       setMlFeatureFQN(mlModel.getFullyQualifiedName(), mlModel.getMlFeatures());
     }
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(MlModel mlModel) {
+    return FullyQualifiedName.buildHash(mlModel.getFullyQualifiedName());
   }
 
   @Override

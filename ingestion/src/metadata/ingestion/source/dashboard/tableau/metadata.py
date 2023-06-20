@@ -35,6 +35,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -54,7 +55,11 @@ from metadata.ingestion.source.dashboard.tableau.models import (
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
-from metadata.utils.helpers import clean_uri, get_standard_chart_type
+from metadata.utils.helpers import (
+    clean_uri,
+    get_database_name_for_lineage,
+    get_standard_chart_type,
+)
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
@@ -191,7 +196,6 @@ class TableauSource(DashboardServiceSource):
                     data_model_request = CreateDashboardDataModelRequest(
                         name=data_model.id,
                         displayName=data_model.name,
-                        description="",
                         service=self.context.dashboard_service.fullyQualifiedName.__root__,
                         dataModelType=DataModelType.TableauDataModel.value,
                         serviceType=DashboardServiceType.Tableau.value,
@@ -228,6 +232,7 @@ class TableauSource(DashboardServiceSource):
                 name=dashboard_details.id,
                 displayName=dashboard_details.name,
                 description=dashboard_details.description,
+                project=dashboard_details.project.name,
                 charts=[
                     fqn.build(
                         self.metadata,
@@ -252,7 +257,7 @@ class TableauSource(DashboardServiceSource):
                     classification_name=TABLEAU_TAG_CATEGORY,
                     include_tags=self.source_config.includeTags,
                 ),
-                dashboardUrl=dashboard_details.webpageUrl,
+                sourceUrl=dashboard_details.webpageUrl,
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
             )
             yield dashboard_request
@@ -305,12 +310,15 @@ class TableauSource(DashboardServiceSource):
         Returns:
             Lineage request between Data Models and Database table
         """
+        db_service_entity = self.metadata.get_by_name(
+            entity=DatabaseService, fqn=db_service_name
+        )
         for datamodel in dashboard_details.dataModels or []:
             try:
                 data_model_entity = self._get_datamodel(datamodel=datamodel)
                 if data_model_entity:
                     for table in datamodel.upstreamTables or []:
-                        om_table = self._get_database_table(db_service_name, table)
+                        om_table = self._get_database_table(db_service_entity, table)
                         if om_table:
                             yield self._get_add_lineage_request(
                                 to_entity=data_model_entity, from_entity=om_table
@@ -350,7 +358,7 @@ class TableauSource(DashboardServiceSource):
                     name=chart.id,
                     displayName=chart.name,
                     chartType=get_standard_chart_type(chart.sheetType),
-                    chartUrl=chart_url,
+                    sourceUrl=chart_url,
                     tags=get_tag_labels(
                         metadata=self.metadata,
                         tags=[tag.label for tag in chart.tags],
@@ -374,7 +382,7 @@ class TableauSource(DashboardServiceSource):
             logger.debug(f"Error closing connection - {err}")
 
     def _get_database_table(
-        self, db_service_name: str, table: UpstreamTable
+        self, db_service_entity: DatabaseService, table: UpstreamTable
     ) -> Optional[Table]:
         """
         Get the table entity for lineage
@@ -386,6 +394,7 @@ class TableauSource(DashboardServiceSource):
             if table.database and table.database.name
             else database_schema_table.get("database")
         )
+        database_name = get_database_name_for_lineage(db_service_entity, database_name)
         schema_name = (
             table.schema_
             if table.schema_
@@ -395,7 +404,7 @@ class TableauSource(DashboardServiceSource):
         table_fqn = fqn.build(
             self.metadata,
             entity_type=Table,
-            service_name=db_service_name,
+            service_name=db_service_entity.name.__root__,
             schema_name=schema_name,
             table_name=table_name,
             database_name=database_name,

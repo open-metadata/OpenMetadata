@@ -22,6 +22,8 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.JsonUtils;
 
 public final class CatalogExceptionMessage {
@@ -112,6 +114,10 @@ public final class CatalogExceptionMessage {
     return String.format("Invalid fully qualified column name %s", fqn);
   }
 
+  public static String invalidFieldName(String fieldType, String fieldName) {
+    return String.format("Invalid %s name %s", fieldType, fieldName);
+  }
+
   public static String entityVersionNotFound(String entityType, UUID id, Double version) {
     return String.format("%s instance for %s and version %s not found", entityType, id, version);
   }
@@ -142,6 +148,10 @@ public final class CatalogExceptionMessage {
   }
 
   public static String permissionNotAllowed(String user, List<MetadataOperation> operations) {
+    return String.format("Principal: CatalogPrincipal{name='%s'} operations %s not allowed", user, operations);
+  }
+
+  public static String taskOperationNotAllowed(String user, String operations) {
     return String.format("Principal: CatalogPrincipal{name='%s'} operations %s not allowed", user, operations);
   }
 
@@ -215,5 +225,13 @@ public final class CatalogExceptionMessage {
       CreateEventSubscription.SubscriptionType type, ChangeEvent event, String message) throws JsonProcessingException {
     return String.format(
         "Failed to publish event %s to %s due to %s ", JsonUtils.pojoToJson(event), type.value(), message);
+  }
+
+  public static String invalidTaskField(EntityLink entityLink, TaskType taskType) {
+    return String.format("The Entity link with no field name - %s is not supported for %s task.", entityLink, taskType);
+  }
+
+  public static String invalidFieldForTask(String fieldName, TaskType type) {
+    return String.format("The field name %s is not supported for %s task.", fieldName, type);
   }
 }
