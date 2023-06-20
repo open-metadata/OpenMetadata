@@ -95,7 +95,7 @@
     },
     "sourceUrl": {
       "description": "Chart URL suffix from its service.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "href": {
       "description": "Link to the resource corresponding to this entity.",

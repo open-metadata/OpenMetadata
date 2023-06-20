@@ -441,6 +441,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
         .withDataModelType(create.getDataModelType())
         .withServiceType(create.getServiceType())
         .withColumns(create.getColumns())
+        .withProject(create.getProject())
         .withTags(create.getTags());
   }
 }
