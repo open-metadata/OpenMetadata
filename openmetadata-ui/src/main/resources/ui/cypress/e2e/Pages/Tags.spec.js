@@ -125,7 +125,7 @@ describe('Tags page should work', () => {
   it('Required Details should be available', () => {
     cy.get('[data-testid="add-classification"]').should('be.visible');
     cy.get('[data-testid="add-new-tag-button"]').should('be.visible');
-    cy.get('[data-testid="delete-classification-or-tag"]').should('be.visible');
+    cy.get('[data-testid="manage-button"]').should('be.visible');
     cy.get('[data-testid="description"]').should('be.visible');
     cy.get('[data-testid="table"]').should('be.visible');
 
@@ -393,7 +393,6 @@ describe('Tags page should work', () => {
       .should('have.class', 'activeCategory');
 
     verifyResponseStatusCode('@permissions', 200);
-    verifyResponseStatusCode('@getTagList', 200);
 
     cy.get('[data-testid="usage-count"]').should('be.visible').as('count');
     cy.get('@count')
@@ -461,7 +460,7 @@ describe('Tags page should work', () => {
       .should('have.class', 'activeCategory');
 
     verifyResponseStatusCode('@permissions', 200);
-    verifyResponseStatusCode('@getTagList', 200);
+
     cy.get('[data-testid="table"]')
       .should('be.visible')
       .should('contain', NEW_TAG.renamedName);
@@ -499,12 +498,20 @@ describe('Tags page should work', () => {
       .parent()
       .should('have.class', 'activeCategory');
 
-    cy.get('[data-testid="delete-classification-or-tag"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="manage-button"]').should('be.visible').click();
+
+    cy.get('[data-testid="delete-button"]').should('be.visible').click();
 
     cy.wait(5000); // adding manual wait to open modal, as it depends on click not an api.
-    permanentDeleteModal(NEW_CLASSIFICATION.displayName);
+    cy.get('[data-testid="hard-delete-option"]').should('be.visible').click();
+    cy.get('[data-testid="confirmation-text-input"]')
+      .should('be.visible')
+      .type(DELETE_TERM);
+
+    cy.get('[data-testid="confirm-button"]')
+      .should('be.visible')
+      .should('not.disabled')
+      .click();
 
     verifyResponseStatusCode('@deletTagClassification', 200);
     cy.get('[data-testid="data-summary-container"]')

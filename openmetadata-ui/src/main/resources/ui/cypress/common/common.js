@@ -1127,6 +1127,11 @@ export const addTeam = (TEAM_DETAILS, index) => {
 
 export const retryIngestionRun = () => {
   interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
+  interceptURL(
+    'GET',
+    '/api/v1/services/ingestionPipelines/*/pipelineStatus/*',
+    'pipelineStatus'
+  );
   let timer = BASE_WAIT_TIME;
   let retryCount = 0;
   const testIngestionsTab = () => {
@@ -1144,11 +1149,6 @@ export const retryIngestionRun = () => {
   const checkSuccessState = () => {
     testIngestionsTab();
     retryCount++;
-    cy.get('body').then(($body) => {
-      if ($body.find('.ant-skeleton-input').length) {
-        cy.wait(1000);
-      }
-    });
 
     // the latest run should be success
     cy.get('[data-testid="pipeline-status"]').then(($ingestionStatus) => {
@@ -1158,6 +1158,7 @@ export const retryIngestionRun = () => {
         timer *= 2;
         cy.reload();
         verifyResponseStatusCode('@serviceDetails', 200);
+        verifyResponseStatusCode('@pipelineStatus', 200);
         checkSuccessState();
       } else {
         cy.get('[data-testid="pipeline-status"]').should(

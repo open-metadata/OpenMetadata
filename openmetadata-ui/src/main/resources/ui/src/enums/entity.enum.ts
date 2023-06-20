@@ -14,6 +14,7 @@
 export enum EntityType {
   TABLE = 'table',
   TOPIC = 'topic',
+  CLASSIFICATION = 'classification',
   DASHBOARD = 'dashboard',
   PIPELINE = 'pipeline',
   DATABASE = 'database',
