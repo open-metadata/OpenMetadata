@@ -123,7 +123,13 @@ public class FeedRepository {
   public Thread create(Thread thread) throws IOException {
     // Validate about data entity is valid and get the owner for that entity
     EntityLink about = EntityLink.parse(thread.getAbout());
-    EntityInterface aboutEntity = Entity.getEntity(about, "owner", ALL);
+    EntityRepository<?> repository = Entity.getEntityRepository(about.getEntityType());
+    String field = "owner";
+    if (!repository.supportsOwner) {
+      field = "id";
+    }
+    EntityInterface aboutEntity = Entity.getEntity(about, field, ALL);
+    ;
     thread.withEntityId(aboutEntity.getId()); // Add entity id to thread
     EntityReference entityOwner = aboutEntity.getOwner();
 
