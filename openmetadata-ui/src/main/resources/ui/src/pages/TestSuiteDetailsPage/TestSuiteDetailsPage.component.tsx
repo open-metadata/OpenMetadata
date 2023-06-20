@@ -362,6 +362,7 @@ const TestSuiteDetailsPage = () => {
               paging: testCasesPaging,
               onPagingClick: handleTestCasePaging,
             }}
+            removeFromTestSuite={{ testSuite: testSuite as TestSuite }}
             testCases={testCaseResult}
             onTestUpdate={afterSubmitAction}
           />

@@ -13,7 +13,7 @@
 
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { camelCase, isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -126,8 +126,8 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       name: `${updatedName}_${PipelineType.TestSuite}`,
       pipelineType: PipelineType.TestSuite,
       service: {
-        id: table?.service?.id ?? '',
-        type: table?.service?.type ?? '',
+        id: testSuite.id || '',
+        type: camelCase(PipelineType.TestSuite),
       },
       sourceConfig: {
         config: {

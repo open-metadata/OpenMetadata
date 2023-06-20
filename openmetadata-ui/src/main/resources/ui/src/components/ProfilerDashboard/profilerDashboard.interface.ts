@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { TestSuite } from 'generated/tests/testSuite';
 import { Paging } from 'generated/type/paging';
 import { CurveType } from 'recharts/types/shape/Curve';
 import { ListTestCaseParams } from 'rest/testAPI';
@@ -105,6 +106,9 @@ export interface DataQualityTabProps {
     paging: Paging;
     currentPage: number;
     onPagingClick: (cursorValue: string | number, activePage?: number) => void;
+  };
+  removeFromTestSuite?: {
+    testSuite: TestSuite;
   };
 }
 
