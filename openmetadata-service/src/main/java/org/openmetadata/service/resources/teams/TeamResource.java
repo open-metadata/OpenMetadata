@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -433,7 +434,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           boolean hardDelete,
       @Parameter(description = "Name of the team", schema = @Schema(type = "string")) @PathParam("name") String name)
       throws IOException {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), false, hardDelete);
   }
 
   @PUT
@@ -526,5 +527,12 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         .withChildren(EntityUtil.toEntityReferences(ct.getChildren(), Entity.TEAM))
         .withPolicies(EntityUtil.toEntityReferences(ct.getPolicies(), Entity.POLICY))
         .withEmail(ct.getEmail());
+  }
+
+  @Override
+  public Team getByNameInternal(
+      UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include)
+      throws IOException {
+    return super.getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
   }
 }

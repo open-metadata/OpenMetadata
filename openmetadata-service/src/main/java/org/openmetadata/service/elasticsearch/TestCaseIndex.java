@@ -20,7 +20,11 @@ public class TestCaseIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    return JsonUtils.getMap(testCase);
+    Map<String, Object> doc = JsonUtils.getMap(testCase);
+    if (doc.containsKey("testSuite")) {
+      doc.remove("testSuite"); // we won't update testSuite on testCase update
+    }
+    return doc;
   }
 
   public Map<String, Object> buildESDocForCreate() throws IOException {
@@ -29,7 +33,7 @@ public class TestCaseIndex implements ElasticSearchIndex {
     List<TestSuite> testSuiteArray = new ArrayList<>();
     testSuiteArray.add(testSuite);
     Map<String, Object> doc = JsonUtils.getMap(testCase);
-    doc.put("testSuite", testSuiteArray);
+    doc.put("testSuite", testSuiteArray); // add the executable test suite on creation
     return doc;
   }
 
