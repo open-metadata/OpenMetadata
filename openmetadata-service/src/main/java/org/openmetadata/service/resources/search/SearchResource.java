@@ -146,7 +146,7 @@ public class SearchResource {
           String sortFieldParam,
       @Parameter(description = "Sort order asc for ascending or desc for descending, " + "defaults to desc")
           @DefaultValue("desc")
-          @QueryParam("sort_orderEs")
+          @QueryParam("sort_order")
           SortOrder sortOrderEs,
       @Parameter(description = "Sort order asc for ascending or desc for descending, " + "defaults to desc")
           @DefaultValue("desc")
