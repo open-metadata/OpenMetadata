@@ -164,7 +164,6 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: t('label.test-plural'),
         dataIndex: 'testCount',
         key: 'Tests',
-        fixed: 'right',
         render: (_, record) => (
           <Link
             data-testid={`${record.name}-test-count`}
@@ -183,7 +182,6 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         dataIndex: 'dataQualityTest',
         key: 'dataQualityTest',
         width: 120,
-        fixed: 'right',
         render: (_, record) => {
           const summary =
             columnTestSummary?.[
