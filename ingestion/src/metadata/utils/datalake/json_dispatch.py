@@ -29,8 +29,8 @@ from metadata.generated.schema.entity.services.connections.database.datalake.gcs
 from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
     S3Config,
 )
-from metadata.utils.constants import UTF_8
-from metadata.utils.datalake.datalake_utils import DatalakeFileFormatException
+from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, UTF_8
+from metadata.utils.datalake.common import DatalakeFileFormatException
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -57,10 +57,7 @@ def read_from_json(
     # pylint: disable=import-outside-toplevel
     from pandas import json_normalize
 
-    from metadata.utils.datalake.datalake_utils import (
-        COMPLEX_COLUMN_SEPARATOR,
-        dataframe_to_chunks,
-    )
+    from metadata.utils.datalake.common import dataframe_to_chunks
 
     json_text = _get_json_text(key, json_text, decode)
     try:

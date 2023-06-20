@@ -7,12 +7,7 @@ source:
       hostPort: http://localhost:8080
       numberOfStatus: 10
       connection:
-        type: Mysql
-        username: airflow_user
-        authType:
-          password: airflow_pass
-        databaseSchema: airflow_db
-        hostPort: localhost:3306
+        type: Backend
   sourceConfig:
     config:
       type: PipelineMetadata
