@@ -628,7 +628,7 @@ const ServicePage: FunctionComponent = () => {
 
     return (
       <Typography.Text>
-        {pipeline.scheduleInterval || NO_DATA_PLACEHOLDER}
+        {pipeline.scheduleInterval ?? NO_DATA_PLACEHOLDER}
       </Typography.Text>
     );
   }
