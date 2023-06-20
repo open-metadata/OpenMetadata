@@ -802,6 +802,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     ElasticSearchIndex index = ElasticSearchIndexFactory.buildIndex(entityType, event.getEntity());
     updateRequest.doc(JsonUtils.pojoToJson(index.buildESDoc()), XContentType.JSON);
     updateRequest.docAsUpsert(true);
+    updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
     updateElasticSearch(updateRequest);
   }
 
