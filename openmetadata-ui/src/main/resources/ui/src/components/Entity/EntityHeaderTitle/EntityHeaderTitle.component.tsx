@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { ExclamationCircleFilled } from '@ant-design/icons';
-import { Col, Row, Typography } from 'antd';
+import { Badge, Col, Row, Typography } from 'antd';
 import { ReactComponent as IconExternalLink } from 'assets/svg/external-link-grey.svg';
 import { ROUTES } from 'constants/constants';
 import { isEmpty } from 'lodash';
@@ -65,11 +65,6 @@ const EntityHeaderTitle = ({
           data-testid="entity-header-display-name"
           ellipsis={{ tooltip: true }}>
           {stringToHTML(displayName || name)}
-          {isDisabled && (
-            <Typography.Text className="text-grey-muted text-sm font-normal font-italic m-l-xs">
-              {`(${t('label.disabled')})`}
-            </Typography.Text>
-          )}
           {openEntityInNewPage && (
             <IconExternalLink
               className="anticon vertical-baseline m-l-xss"
@@ -79,6 +74,13 @@ const EntityHeaderTitle = ({
           )}
         </Typography.Text>
       </Col>
+      {isDisabled && (
+        <Badge
+          className="m-l-xs badge-grey"
+          count={t('label.disabled')}
+          data-testid="disabled"
+        />
+      )}
       {deleted && (
         <Col className="text-xs">
           <div className="deleted-badge-button" data-testid="deleted-badge">

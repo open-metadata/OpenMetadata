@@ -12,6 +12,7 @@
  */
 
 import {
+  Badge,
   Button,
   Col,
   Row,
@@ -674,13 +675,16 @@ const TagsPage = () => {
                   data-testid="tag-name"
                   ellipsis={{ rows: 1, tooltip: true }}>
                   {getEntityName(category)}
+                  {category.disabled && (
+                    <Badge
+                      className="m-l-xs badge-grey"
+                      count={t('label.disabled')}
+                      data-testid="disabled"
+                      size="small"
+                    />
+                  )}
                 </Typography.Paragraph>
 
-                {category.disabled && (
-                  <Typography.Text className="text-grey-muted text-sm font-normal font-italic m-l-xs">
-                    {`(${t('label.disabled')})`}
-                  </Typography.Text>
-                )}
                 {getCountBadge(
                   category.termCount,
                   'self-center m-l-auto',
@@ -744,9 +748,11 @@ const TagsPage = () => {
             <Space>
               <Typography.Text>{record.name}</Typography.Text>
               {record.disabled ? (
-                <Typography.Text className="text-grey-muted text-sm font-normal font-italic">{`(${t(
-                  'label.disabled'
-                )})`}</Typography.Text>
+                <Badge
+                  className="m-l-xs badge-grey"
+                  count={t('label.disabled')}
+                  data-testid="disabled"
+                />
               ) : null}
             </Space>
           ),
