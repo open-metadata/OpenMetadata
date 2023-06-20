@@ -93,7 +93,7 @@ class OMetaESTest(TestCase):
             )
             if not res:
                 tries += 1
-                time.sleep(1)
+                time.sleep(3)
 
     @classmethod
     def setUpClass(cls) -> None:
