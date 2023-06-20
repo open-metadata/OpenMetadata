@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from 'antd';
+import { Card, Space, Typography } from 'antd';
+import { ReactComponent as IconCollateSupport } from 'assets/svg/ic-collate-support.svg';
 import { AIRFLOW_DOCS } from 'constants/docs.constants';
 import { PIPELINE_SERVICE_PLATFORM } from 'constants/Services.constant';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
@@ -51,9 +52,14 @@ const ErrorPlaceHolderIngestion = () => {
               </p>
             </>
           ) : (
-            <>
+            <Space
+              align="center"
+              className="justify-center w-full"
+              direction="vertical"
+              size={16}>
+              <IconCollateSupport />
               <Typography>{t('message.pipeline-scheduler-message')}</Typography>
-            </>
+            </Space>
           )}
         </Card>
       </div>
