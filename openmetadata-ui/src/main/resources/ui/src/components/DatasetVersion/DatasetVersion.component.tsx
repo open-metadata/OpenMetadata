@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Tabs } from 'antd';
+import { Card, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
@@ -131,6 +131,66 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
     return changedColumnsList;
   }, [changeDescription]);
 
+  const tabItems: TabsProps['items'] = useMemo(
+    () => [
+      {
+        key: EntityTabs.SCHEMA,
+        label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
+        children: (
+          <Card className="m-y-md">
+            <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
+              <div className="tw-col-span-full">
+                <Description isReadOnly description={description} />
+              </div>
+
+              <div className="tw-col-span-full">
+                <VersionTable
+                  columnName={getPartialNameFromTableFQN(
+                    datasetFQN,
+                    [FqnPart.Column],
+                    FQN_SEPARATOR_CHAR
+                  )}
+                  columns={columns}
+                  constraintUpdatedColumns={constraintUpdatedColumns}
+                  joins={(currentVersionData as Table).joins as ColumnJoins[]}
+                  tableConstraints={
+                    (currentVersionData as Table).tableConstraints
+                  }
+                />
+              </div>
+            </div>
+          </Card>
+        ),
+      },
+      {
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        children: (
+          <CustomPropertyTable
+            isVersionView
+            entityDetails={
+              currentVersionData as CustomPropertyProps['entityDetails']
+            }
+            entityType={EntityType.TABLE}
+            hasEditAccess={false}
+          />
+        ),
+      },
+    ],
+    [
+      description,
+      datasetFQN,
+      columns,
+      constraintUpdatedColumns,
+      currentVersionData,
+    ]
+  );
+
   return (
     <PageLayoutV1
       pageTitle={t('label.entity-detail-plural', {
@@ -157,56 +217,9 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
           <div className="tw-mt-1 d-flex flex-col flex-grow ">
             <Tabs
               defaultActiveKey={tab ?? EntityTabs.SCHEMA}
-              onChange={handleTabChange}>
-              <Tabs.TabPane
-                key={EntityTabs.SCHEMA}
-                tab={
-                  <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />
-                }>
-                <Card className="m-y-md">
-                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                    <div className="tw-col-span-full">
-                      <Description isReadOnly description={description} />
-                    </div>
-
-                    <div className="tw-col-span-full">
-                      <VersionTable
-                        columnName={getPartialNameFromTableFQN(
-                          datasetFQN,
-                          [FqnPart.Column],
-                          FQN_SEPARATOR_CHAR
-                        )}
-                        columns={columns}
-                        constraintUpdatedColumns={constraintUpdatedColumns}
-                        joins={
-                          (currentVersionData as Table).joins as ColumnJoins[]
-                        }
-                        tableConstraints={
-                          (currentVersionData as Table).tableConstraints
-                        }
-                      />
-                    </div>
-                  </div>
-                </Card>
-              </Tabs.TabPane>
-              <Tabs.TabPane
-                key={EntityTabs.CUSTOM_PROPERTIES}
-                tab={
-                  <TabsLabel
-                    id={EntityTabs.CUSTOM_PROPERTIES}
-                    name={t('label.custom-property-plural')}
-                  />
-                }>
-                <CustomPropertyTable
-                  isVersionView
-                  entityDetails={
-                    currentVersionData as CustomPropertyProps['entityDetails']
-                  }
-                  entityType={EntityType.TABLE}
-                  hasEditAccess={false}
-                />
-              </Tabs.TabPane>
-            </Tabs>
+              items={tabItems}
+              onChange={handleTabChange}
+            />
           </div>
         </div>
       )}

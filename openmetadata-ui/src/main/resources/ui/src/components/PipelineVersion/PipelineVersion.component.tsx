@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Table, Tabs } from 'antd';
+import { Card, Space, Table, Tabs, TabsProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
@@ -357,6 +357,58 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
     );
   }, [currentVersionData, changeDescription]);
 
+  const tabItems: TabsProps['items'] = useMemo(
+    () => [
+      {
+        key: EntityTabs.TASKS,
+        label: (
+          <TabsLabel id={EntityTabs.TASKS} name={t('label.task-plural')} />
+        ),
+        children: (
+          <Card className="m-y-md">
+            <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
+              <div className="tw-col-span-full">
+                <Description isReadOnly description={description} />
+              </div>
+              <div className="m-y-md tw-col-span-full">
+                <Table
+                  bordered
+                  columns={tableColumn}
+                  data-testid="schema-table"
+                  dataSource={pipelineVersionTableData}
+                  pagination={false}
+                  rowKey="name"
+                  scroll={TABLE_SCROLL_VALUE}
+                  size="small"
+                />
+              </div>
+            </div>
+          </Card>
+        ),
+      },
+      {
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        children: (
+          <CustomPropertyTable
+            isVersionView
+            entityDetails={
+              currentVersionData as CustomPropertyProps['entityDetails']
+            }
+            entityType={EntityType.PIPELINE}
+            hasEditAccess={false}
+          />
+        ),
+      },
+    ],
+    [description, tableColumn, pipelineVersionTableData, currentVersionData]
+  );
+
   return (
     <PageLayoutV1
       pageTitle={t('label.entity-detail-plural', {
@@ -385,53 +437,9 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           <div className="tw-mt-1 d-flex flex-col flex-grow ">
             <Tabs
               defaultActiveKey={tab ?? EntityTabs.TASKS}
-              onChange={handleTabChange}>
-              <Tabs.TabPane
-                key={EntityTabs.TASKS}
-                tab={
-                  <TabsLabel
-                    id={EntityTabs.TASKS}
-                    name={t('label.task-plural')}
-                  />
-                }>
-                <Card className="m-y-md">
-                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                    <div className="tw-col-span-full">
-                      <Description isReadOnly description={description} />
-                    </div>
-                    <div className="m-y-md tw-col-span-full">
-                      <Table
-                        bordered
-                        columns={tableColumn}
-                        data-testid="schema-table"
-                        dataSource={pipelineVersionTableData}
-                        pagination={false}
-                        rowKey="name"
-                        scroll={TABLE_SCROLL_VALUE}
-                        size="small"
-                      />
-                    </div>
-                  </div>
-                </Card>
-              </Tabs.TabPane>
-              <Tabs.TabPane
-                key={EntityTabs.CUSTOM_PROPERTIES}
-                tab={
-                  <TabsLabel
-                    id={EntityTabs.CUSTOM_PROPERTIES}
-                    name={t('label.custom-property-plural')}
-                  />
-                }>
-                <CustomPropertyTable
-                  isVersionView
-                  entityDetails={
-                    currentVersionData as CustomPropertyProps['entityDetails']
-                  }
-                  entityType={EntityType.PIPELINE}
-                  hasEditAccess={false}
-                />
-              </Tabs.TabPane>
-            </Tabs>
+              items={tabItems}
+              onChange={handleTabChange}
+            />
           </div>
         </div>
       )}

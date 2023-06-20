@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Card, Tabs } from 'antd';
+import { Card, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import VersionTable from 'components/VersionTable/VersionTable.component';
 import { EntityTabs, FqnPart } from 'enums/entity.enum';
 import {
@@ -40,6 +41,7 @@ import {
   getEntityVersionTags,
   getTagsDiff,
   getTextDiff,
+  isEndsWithField,
 } from '../../utils/EntityVersionUtils';
 import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import Description from '../common/description/Description';
@@ -65,12 +67,6 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
-  const tabs = [
-    {
-      label: t('label.model'),
-      key: EntityTabs.MODEL,
-    },
-  ];
 
   const getChangeColName = (name: string | undefined) => {
     const nameArr = name?.split(FQN_SEPARATOR_CHAR);
@@ -82,9 +78,6 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
     }
   };
 
-  const isEndsWithField = (name: string | undefined, checkWith: string) => {
-    return name?.endsWith(checkWith);
-  };
   const extraInfo = useMemo(
     () => getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
     [changeDescription, owner, tier]
@@ -189,7 +182,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
     }));
   };
 
-  const updatedColumns = (): DashboardDataModel['columns'] => {
+  const columns: DashboardDataModel['columns'] = useMemo(() => {
     const colList = cloneDeep(
       (currentVersionData as DashboardDataModel).columns || []
     );
@@ -198,18 +191,25 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
       changeDescription
     );
     const changedColName = getChangeColName(getChangedEntityName(columnsDiff));
+    const colNameWithoutQuotes = changedColName?.replaceAll(/(^")|("$)/g, '');
 
     if (
       isEndsWithField(
-        getChangedEntityName(columnsDiff),
-        EntityField.DESCRIPTION
+        EntityField.DESCRIPTION,
+        getChangedEntityName(columnsDiff)
       )
     ) {
-      handleColumnDescriptionChangeDiff(colList, columnsDiff, changedColName);
+      handleColumnDescriptionChangeDiff(
+        colList,
+        columnsDiff,
+        colNameWithoutQuotes
+      );
 
       return colList;
-    } else if (isEndsWithField(getChangedEntityName(columnsDiff), 'tags')) {
-      handleColumnTagChangeDiff(colList, columnsDiff, changedColName);
+    } else if (
+      isEndsWithField(EntityField.TAGS, getChangedEntityName(columnsDiff))
+    ) {
+      handleColumnTagChangeDiff(colList, columnsDiff, colNameWithoutQuotes);
 
       return colList;
     } else {
@@ -230,7 +230,12 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
 
       return [...newColumns, ...colList];
     }
-  };
+  }, [
+    currentVersionData,
+    changeDescription,
+    getChangeColName,
+    handleColumnDescriptionChangeDiff,
+  ]);
 
   useEffect(() => {
     setChangeDescription(
@@ -257,6 +262,36 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
       EntityField.DISPLAYNAME
     );
   }, [currentVersionData, changeDescription]);
+
+  const tabItems: TabsProps['items'] = useMemo(
+    () => [
+      {
+        key: EntityTabs.MODEL,
+        label: <TabsLabel id={EntityTabs.MODEL} name={t('label.model')} />,
+        children: (
+          <Card className="m-y-md">
+            <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
+              <div className="tw-col-span-full">
+                <Description isReadOnly description={description} />
+              </div>
+              <div className="tw-col-span-full">
+                <VersionTable
+                  columnName={getPartialNameFromTableFQN(
+                    dataModelFQN,
+                    [FqnPart.Column],
+                    FQN_SEPARATOR_CHAR
+                  )}
+                  columns={columns}
+                  joins={[]}
+                />
+              </div>
+            </div>
+          </Card>
+        ),
+      },
+    ],
+    [description, dataModelFQN, columns]
+  );
 
   return (
     <PageLayoutV1
@@ -285,25 +320,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
               versionHandler={backHandler}
             />
             <div className="tw-mt-1 d-flex flex-col flex-grow ">
-              <Tabs activeKey={EntityTabs.MODEL} items={tabs} />
-              <Card className="m-y-md">
-                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                  <div className="tw-col-span-full">
-                    <Description isReadOnly description={description} />
-                  </div>
-                  <div className="tw-col-span-full">
-                    <VersionTable
-                      columnName={getPartialNameFromTableFQN(
-                        dataModelFQN,
-                        [FqnPart.Column],
-                        FQN_SEPARATOR_CHAR
-                      )}
-                      columns={updatedColumns()}
-                      joins={[]}
-                    />
-                  </div>
-                </div>
-              </Card>
+              <Tabs activeKey={EntityTabs.MODEL} items={tabItems} />
             </div>
           </div>
         )}

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Table, Tabs } from 'antd';
+import { Card, Space, Table, Tabs, TabsProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
@@ -174,6 +174,57 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
     );
   }, [currentVersionData, changeDescription]);
 
+  const tabItems: TabsProps['items'] = useMemo(
+    () => [
+      {
+        key: EntityTabs.DETAILS,
+        label: (
+          <TabsLabel id={EntityTabs.DETAILS} name={t('label.detail-plural')} />
+        ),
+        children: (
+          <Card className="m-y-md">
+            <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
+              <div className="tw-col-span-full">
+                <Description isReadOnly description={description} />
+              </div>
+              <div className="m-y-md tw-col-span-full">
+                <Table
+                  bordered
+                  columns={tableColumn}
+                  data-testid="schema-table"
+                  dataSource={(currentVersionData as Dashboard)?.charts}
+                  pagination={false}
+                  rowKey="id"
+                  size="small"
+                />
+              </div>
+            </div>
+          </Card>
+        ),
+      },
+      {
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        children: (
+          <CustomPropertyTable
+            isVersionView
+            entityDetails={
+              currentVersionData as CustomPropertyProps['entityDetails']
+            }
+            entityType={EntityType.DASHBOARD}
+            hasEditAccess={false}
+          />
+        ),
+      },
+    ],
+    [description, tableColumn, currentVersionData]
+  );
+
   return (
     <PageLayoutV1
       pageTitle={t('label.entity-detail-plural', {
@@ -204,52 +255,9 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               <Tabs
                 data-testid="tabs"
                 defaultActiveKey={tab ?? EntityTabs.DETAILS}
-                onChange={handleTabChange}>
-                <Tabs.TabPane
-                  key={EntityTabs.DETAILS}
-                  tab={
-                    <TabsLabel
-                      id={EntityTabs.DETAILS}
-                      name={t('label.detail-plural')}
-                    />
-                  }>
-                  <Card className="m-y-md">
-                    <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                      <div className="tw-col-span-full">
-                        <Description isReadOnly description={description} />
-                      </div>
-                      <div className="m-y-md tw-col-span-full">
-                        <Table
-                          bordered
-                          columns={tableColumn}
-                          data-testid="schema-table"
-                          dataSource={(currentVersionData as Dashboard)?.charts}
-                          pagination={false}
-                          rowKey="id"
-                          size="small"
-                        />
-                      </div>
-                    </div>
-                  </Card>
-                </Tabs.TabPane>
-                <Tabs.TabPane
-                  key={EntityTabs.CUSTOM_PROPERTIES}
-                  tab={
-                    <TabsLabel
-                      id={EntityTabs.CUSTOM_PROPERTIES}
-                      name={t('label.custom-property-plural')}
-                    />
-                  }>
-                  <CustomPropertyTable
-                    isVersionView
-                    entityDetails={
-                      currentVersionData as CustomPropertyProps['entityDetails']
-                    }
-                    entityType={EntityType.DASHBOARD}
-                    hasEditAccess={false}
-                  />
-                </Tabs.TabPane>
-              </Tabs>
+                items={tabItems}
+                onChange={handleTabChange}
+              />
             </div>
           </div>
         )}
