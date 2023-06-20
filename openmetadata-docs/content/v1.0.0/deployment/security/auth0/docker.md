@@ -12,47 +12,23 @@ To enable security for the Docker deployment, follow the next steps:
 Create an `openmetadata_auth0.env` file and add the following contents as an example. Use the information
 generated when setting up the account.
 
-### 1.1 Before 0.12.1
+- Update `AUTHORIZER_ADMIN_PRINCIPALS` to add login names of the admin users in  section as shown below. Make sure you configure the name from email, example: xyz@helloworld.com, initialAdmins username will be ```xyz``
+- Update the `principalDomain` to your company domain name.  Example from above, principalDomain should be ```helloworld.com```
 
-```shell
-# OpenMetadata Server Authentication Configuration
-AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
-AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter
-AUTHORIZER_ADMIN_PRINCIPALS=[admin]  # Your `name` from name@domain.com
-AUTHORIZER_INGESTION_PRINCIPALS=[ingestion-bot]
-AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
+{% note noteType="Warning" %}
 
-AUTHENTICATION_PROVIDER=auth0
-AUTHENTICATION_PUBLIC_KEYS=[{Domain}/.well-known/jwks.json] # Update with your Domain
-AUTHENTICATION_AUTHORITY={Domain} # Update with your Domain
-AUTHENTICATION_CLIENT_ID={Client ID} # Update with your Client ID
-AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
+It is important to leave the publicKeys configuration to have both Auth0 public keys URL and OpenMetadata public keys URL. 
 
-# Airflow Configuration
-AIRFLOW_AUTH_PROVIDER=auth0
-OM_AUTH_AIRFLOW_AUTH0_CLIENT_ID={Client ID} # Update with your Client ID
-OM_AUTH_AIRFLOW_AUTH0_CLIENT_SECRET={Client Secret} # Update with your Client Secret
-OM_AUTH_AIRFLOW_AUTH0_DOMAIN_URL={Domain} # Update with your Domain
-```
+1. Auth0 Public Keys are used to authenticate User's login
+2. OpenMetadata JWT keys are used to authenticate Bot's login
+3. Important to update the URLs documented in below configuration. The below config reflects a setup where all dependencies are hosted in a single host. Example openmetadata:8585 might not be the same domain you may be using in your installation.
+4. OpenMetadata ships default public/private key, These must be changed in your production deployment to avoid any security issues.
 
-### 1.2 After 0.12.1
+For more details, follow [Enabling JWT Authenticaiton](deployment/security/enable-jwt-tokens)
 
-```shell
-# OpenMetadata Server Authentication Configuration
-AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
-AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter
-AUTHORIZER_ADMIN_PRINCIPALS=[admin]  # Your `name` from name@domain.com
-AUTHORIZER_INGESTION_PRINCIPALS=[ingestion-bot]
-AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
+{% /note %}
 
-AUTHENTICATION_PROVIDER=auth0
-AUTHENTICATION_PUBLIC_KEYS=[{Domain}/.well-known/jwks.json] # Update with your Domain
-AUTHENTICATION_AUTHORITY={Domain} # Update with your Domain
-AUTHENTICATION_CLIENT_ID={Client ID} # Update with your Client ID
-AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
-```
 
-### 1.3 After 0.13.0
 
 ```shell
 # OpenMetadata Server Authentication Configuration
@@ -62,14 +38,15 @@ AUTHORIZER_ADMIN_PRINCIPALS=[admin]  # Your `name` from name@domain.com
 AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
 
 AUTHENTICATION_PROVIDER=auth0
-AUTHENTICATION_PUBLIC_KEYS=[{Domain}/.well-known/jwks.json] # Update with your Domain
+AUTHENTICATION_PUBLIC_KEYS=[{Domain}/.well-known/jwks.json, http://localhost:8585/api/v1/system/config/jwks] # Update with your Domain
 AUTHENTICATION_AUTHORITY={Domain} # Update with your Domain
 AUTHENTICATION_CLIENT_ID={Client ID} # Update with your Client ID
 AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
 ```
 
-**Note:** Follow [this](/how-to-guides/feature-configurations/bots) guide to configure the `ingestion-bot` credentials for
-ingesting data from Airflow.
+{% note noteType="Tip" %}
+ Follow [this guide](/how-to-guides/feature-configurations/bots) to configure the `ingestion-bot` credentials for ingesting data using Connectors.
+{% /note %}
 
 ## 2. Start Docker
 

@@ -126,7 +126,7 @@ class StorageUnitTest(TestCase):
                 "config": {
                     "type": "Mysql",
                     "username": "openmetadata_user",
-                    "password": "openmetadata_password",
+                    "authType": {"password": "openmetadata_password"},
                     "hostPort": "localhost:3306",
                     "databaseSchema": "openmetadata_db",
                 }

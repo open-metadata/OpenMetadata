@@ -168,7 +168,7 @@ class OMetaTestSuiteTest(TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
-        cls.metadata.delete(
+        cls.metadata.delete_executable_test_suite(
             entity=TestSuite,
             entity_id=cls.test_suite.id,
             recursive=True,

@@ -22,6 +22,7 @@ import 'reactflow/dist/style.css';
 import 'tailwindcss/tailwind.css';
 import './antd-master.less';
 import './app.less';
+import './components/badge.less';
 import './components/code-mirror.less';
 import './components/drawer.less';
 import './components/glossary.less';

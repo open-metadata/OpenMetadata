@@ -34,12 +34,14 @@ import {
   ScheduleInfo,
   TriggerType,
 } from 'generated/events/eventSubscription';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { isEmpty, map } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { createAlert, getAlertsFromId, updateAlert } from 'rest/alertsAPI';
 import { StyledCard } from 'utils/Alerts/AlertsUtil';
+import { getField } from 'utils/formUtils';
 import { getSettingPath } from 'utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import './add-data-insight-report-alert.less';
@@ -125,6 +127,21 @@ const AddDataInsightReportAlert = () => {
     }
   }, [alertId]);
 
+  const enabledField: FieldProp = {
+    label: t('label.enabled'),
+    id: 'root/enabled',
+    name: 'enabled',
+    required: false,
+    type: FieldTypes.SWITCH,
+    formItemLayout: 'horizontal',
+    props: {
+      'data-testid': 'enabled-switch',
+    },
+    formItemProps: {
+      labelCol: { span: 24 },
+    },
+  };
+
   return (
     <Row gutter={[16, 16]}>
       <Col span={24}>
@@ -145,7 +162,7 @@ const AddDataInsightReportAlert = () => {
           className="data-insight-report-alert-form"
           form={form}
           onFinish={handleSave}>
-          <Card loading={loading}>
+          <Card className="w-full" loading={loading}>
             <Form.Item
               label={t('label.name')}
               labelCol={{ span: 24 }}
@@ -166,7 +183,7 @@ const AddDataInsightReportAlert = () => {
                 initialValue=""
               />
             </Form.Item>
-
+            {getField(enabledField)}
             <Form.Item>
               <Row gutter={[16, 16]}>
                 <Col span={12}>

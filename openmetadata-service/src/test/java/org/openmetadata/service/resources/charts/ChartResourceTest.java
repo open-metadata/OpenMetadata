@@ -90,21 +90,21 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     CreateChart request =
         createRequest(test)
             .withService(METABASE_REFERENCE.getName())
-            .withChartUrl(null)
+            .withSourceUrl(null)
             .withDescription(null)
             .withChartType(null);
     Chart chart = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Set url, description and chart type.
     ChangeDescription change = getChangeDescription(chart.getVersion());
-    chart.withChartType(type1).withChartUrl("url1").withDescription("desc1");
+    chart.withChartType(type1).withSourceUrl("url1").withDescription("desc1");
     fieldAdded(change, "description", "desc1");
     fieldAdded(change, "chartType", type1);
-    fieldAdded(change, "chartUrl", "url1");
+    fieldAdded(change, "sourceUrl", "url1");
 
     chart =
         updateAndCheckEntity(
-            request.withDescription("desc1").withChartType(type1).withChartUrl("url1"),
+            request.withDescription("desc1").withChartType(type1).withSourceUrl("url1"),
             OK,
             ADMIN_AUTH_HEADERS,
             UpdateType.MINOR_UPDATE,
@@ -112,14 +112,14 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
 
     // Update description, chartType and chart url and verify update
     change = getChangeDescription(chart.getVersion());
-    chart.withChartType(type2).withChartUrl("url2").withDescription("desc2");
+    chart.withChartType(type2).withSourceUrl("url2").withDescription("desc2");
 
     fieldUpdated(change, "description", "desc1", "desc2");
     fieldUpdated(change, "chartType", type1, type2);
-    fieldUpdated(change, "chartUrl", "url1", "url2");
+    fieldUpdated(change, "sourceUrl", "url1", "url2");
 
     updateAndCheckEntity(
-        request.withDescription("desc2").withChartType(type2).withChartUrl("url2"),
+        request.withDescription("desc2").withChartType(type2).withSourceUrl("url2"),
         OK,
         ADMIN_AUTH_HEADERS,
         UpdateType.MINOR_UPDATE,
@@ -135,7 +135,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     CreateChart request =
         createRequest(test)
             .withService(METABASE_REFERENCE.getName())
-            .withChartUrl(null)
+            .withSourceUrl(null)
             .withDescription(null)
             .withChartType(null);
     Chart chart = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
@@ -143,10 +143,10 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
 
     // Set url, description and chart type.
     ChangeDescription change = getChangeDescription(chart.getVersion());
-    chart.withChartType(type1).withChartUrl("url1").withDescription("desc1");
+    chart.withChartType(type1).withSourceUrl("url1").withDescription("desc1");
     fieldAdded(change, "description", "desc1");
     fieldAdded(change, "chartType", type1);
-    fieldAdded(change, "chartUrl", "url1");
+    fieldAdded(change, "sourceUrl", "url1");
 
     chart = patchEntityAndCheck(chart, originalJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
@@ -155,9 +155,9 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     change = getChangeDescription(chart.getVersion());
     fieldUpdated(change, "description", "desc1", "desc2");
     fieldUpdated(change, "chartType", type1, type2);
-    fieldUpdated(change, "chartUrl", "url1", "url2");
+    fieldUpdated(change, "sourceUrl", "url1", "url2");
 
-    chart.withChartType(type2).withChartUrl("url2").withDescription("desc2");
+    chart.withChartType(type2).withSourceUrl("url2").withDescription("desc2");
     patchEntityAndCheck(chart, originalJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
 
@@ -203,14 +203,14 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     assertNotNull(chart.getServiceType());
     assertReference(createRequest.getService(), chart.getService());
     assertEquals(createRequest.getChartType(), chart.getChartType());
-    assertEquals(createRequest.getChartUrl(), chart.getChartUrl());
+    assertEquals(createRequest.getSourceUrl(), chart.getSourceUrl());
   }
 
   @Override
   public void compareEntities(Chart expected, Chart patched, Map<String, String> authHeaders) {
     assertReference(expected.getService(), patched.getService());
     assertEquals(expected.getChartType(), patched.getChartType());
-    assertEquals(expected.getChartUrl(), patched.getChartUrl());
+    assertEquals(expected.getSourceUrl(), patched.getSourceUrl());
   }
 
   @Override

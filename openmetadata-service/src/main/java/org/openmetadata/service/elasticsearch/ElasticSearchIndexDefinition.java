@@ -40,6 +40,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -55,6 +56,7 @@ public class ElasticSearchIndexDefinition {
   private final CollectionDAO dao;
   final EnumMap<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes =
       new EnumMap<>(ElasticSearchIndexType.class);
+  private static final Map<String, Object> ENTITY_TO_MAPPING_SCHEMA_MAP = new HashMap<>();
 
   protected static final Map<String, String> ENTITY_TYPE_TO_INDEX_MAP;
   private static final Map<ElasticSearchIndexType, Set<String>> INDEX_TO_MAPPING_FIELDS_MAP =
@@ -99,6 +101,8 @@ public class ElasticSearchIndexDefinition {
     TAG_SEARCH_INDEX(Entity.TAG, "tag_search_index", "/elasticsearch/%s/tag_index_mapping.json"),
     ENTITY_REPORT_DATA_INDEX(
         ENTITY_REPORT_DATA, "entity_report_data_index", "/elasticsearch/entity_report_data_index.json"),
+    TEST_CASE_SEARCH_INDEX(
+        Entity.TEST_CASE, "test_case_search_index", "/elasticsearch/%s/test_case_index_mapping.json"),
     WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX(
         Entity.WEB_ANALYTIC_EVENT,
         "web_analytic_entity_view_report_data_index",
@@ -142,8 +146,10 @@ public class ElasticSearchIndexDefinition {
       GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
       gRequest.local(false);
       boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
+      String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType, lang);
+      ENTITY_TO_MAPPING_SCHEMA_MAP.put(
+          elasticSearchIndexType.entityType, JsonUtils.getMap(JsonUtils.readJson(elasticSearchIndexMapping)));
       if (!exists) {
-        String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType, lang);
         CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
         request.source(elasticSearchIndexMapping, XContentType.JSON);
         CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
@@ -171,6 +177,8 @@ public class ElasticSearchIndexDefinition {
       gRequest.local(false);
       boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
       String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType, lang);
+      ENTITY_TO_MAPPING_SCHEMA_MAP.put(
+          elasticSearchIndexType.entityType, JsonUtils.getMap(JsonUtils.readJson(elasticSearchIndexMapping)));
       if (exists) {
         PutMappingRequest request = new PutMappingRequest(elasticSearchIndexType.indexName);
         request.source(elasticSearchIndexMapping, XContentType.JSON);
@@ -270,6 +278,8 @@ public class ElasticSearchIndexDefinition {
       return ElasticSearchIndexType.CONTAINER_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.QUERY)) {
       return ElasticSearchIndexType.QUERY_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.TEST_SUITE) || type.equalsIgnoreCase(Entity.TEST_CASE)) {
+      return ElasticSearchIndexType.TEST_CASE_SEARCH_INDEX;
     }
     throw new EventPublisherException("Failed to find index doc for type " + type);
   }
@@ -289,7 +299,8 @@ public class ElasticSearchIndexDefinition {
     try {
       long updateTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
       String recordString =
-          dao.entityExtensionTimeSeriesDao().getExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
+          dao.entityExtensionTimeSeriesDao()
+              .getExtension(EntityUtil.hash(ELASTIC_SEARCH_ENTITY_FQN_STREAM), ELASTIC_SEARCH_EXTENSION);
       EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
       long originalLastUpdate = lastRecord.getTimestamp();
       lastRecord.setStatus(Status.ACTIVE_WITH_ERROR);
@@ -304,13 +315,22 @@ public class ElasticSearchIndexDefinition {
 
       dao.entityExtensionTimeSeriesDao()
           .update(
-              ELASTIC_SEARCH_ENTITY_FQN_STREAM,
+              EntityUtil.hash(ELASTIC_SEARCH_ENTITY_FQN_STREAM),
               ELASTIC_SEARCH_EXTENSION,
               JsonUtils.pojoToJson(lastRecord),
               originalLastUpdate);
     } catch (Exception e) {
       LOG.error("Failed to Update Elastic Search Job Info");
     }
+  }
+
+  public static Map<String, Object> getIndexMappingSchema(Set<String> entities) {
+    if (entities.contains("*")) {
+      return ENTITY_TO_MAPPING_SCHEMA_MAP;
+    }
+    Map<String, Object> result = new HashMap<>();
+    entities.forEach((entityType) -> result.put(entityType, ENTITY_TO_MAPPING_SCHEMA_MAP.get(entityType)));
+    return result;
   }
 }
 

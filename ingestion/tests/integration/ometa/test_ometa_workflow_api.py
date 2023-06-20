@@ -26,6 +26,9 @@ from metadata.generated.schema.entity.automations.workflow import (
     WorkflowStatus,
     WorkflowType,
 )
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
     MySQLType,
@@ -88,7 +91,9 @@ class OMetaWorkflowTest(TestCase):
                 connection=DatabaseConnection(
                     config=MysqlConnection(
                         username="username",
-                        password="password",
+                        authType=BasicAuth(
+                            password="password",
+                        ),
                         hostPort="http://localhost:1234",
                     )
                 ),
@@ -108,7 +113,9 @@ class OMetaWorkflowTest(TestCase):
                 connection=DatabaseConnection(
                     config=MysqlConnection(
                         username="username",
-                        password="password",
+                        authType=BasicAuth(
+                            password="password",
+                        ),
                         hostPort="http://localhost:1234",
                     )
                 ),
@@ -156,7 +163,8 @@ class OMetaWorkflowTest(TestCase):
 
         # The ingestion-bot should see the password
         self.assertEqual(
-            res.request.connection.config.password.get_secret_value(), "password"
+            res.request.connection.config.authType.password.get_secret_value(),
+            "password",
         )
 
     def test_get_id(self):

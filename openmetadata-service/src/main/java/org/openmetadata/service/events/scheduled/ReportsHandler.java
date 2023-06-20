@@ -79,10 +79,14 @@ public class ReportsHandler {
 
   public void addDataReportConfig(EventSubscription dataReport) {
     try {
-      JobDetail jobDetail = jobBuilder(dataReport);
-      Trigger trigger = trigger(dataReport.getTrigger());
-      reportScheduler.scheduleJob(jobDetail, trigger);
-      reportJobKeyMap.put(dataReport.getId(), jobDetail);
+      if (Boolean.TRUE.equals(dataReport.getEnabled())) {
+        JobDetail jobDetail = jobBuilder(dataReport);
+        Trigger trigger = trigger(dataReport.getTrigger());
+        reportScheduler.scheduleJob(jobDetail, trigger);
+        reportJobKeyMap.put(dataReport.getId(), jobDetail);
+      } else {
+        LOG.info("[Data Insight Report Job] Job Not Scheduled since it is disabled");
+      }
     } catch (Exception ex) {
       LOG.error("Failed in setting up job Scheduler for Data Reporting", ex);
     }
