@@ -96,7 +96,9 @@ export const ExtraInfoLink = ({
   <>
     <Divider className="self-center m-x-sm" type="vertical" />
     <div className="d-flex items-center text-xs">
-      <span className="text-grey-muted m-r-xss">{`${label}: `}</span>
+      {!isEmpty(label) && (
+        <span className="text-grey-muted m-r-xss">{`${label}: `}</span>
+      )}
       <Typography.Link href={href} style={{ fontSize: '12px' }}>
         {value}{' '}
       </Typography.Link>
