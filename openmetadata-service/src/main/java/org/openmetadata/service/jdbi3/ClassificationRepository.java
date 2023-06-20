@@ -72,13 +72,14 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   private int getTermCount(Classification category) {
-    ListFilter filter =
-        new ListFilter(Include.NON_DELETED).addQueryParam("parent", FullyQualifiedName.build(category.getName()));
+    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("parent", category.getName());
     return daoCollection.tagDAO().listCount(filter);
   }
 
   private Integer getUsageCount(Classification classification) {
-    return daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), classification.getName());
+    return daoCollection
+        .tagUsageDAO()
+        .getTagCount(TagSource.CLASSIFICATION.ordinal(), FullyQualifiedName.buildHash(classification.getName()));
   }
 
   @Transaction

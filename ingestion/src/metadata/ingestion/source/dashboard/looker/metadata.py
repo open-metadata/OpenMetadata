@@ -538,7 +538,7 @@ class LookerSource(DashboardServiceSource):
                 )
                 for chart in self.context.charts
             ],
-            dashboardUrl=f"{clean_uri(self.service_connection.hostPort)}/dashboards/{dashboard_details.id}",
+            sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/dashboards/{dashboard_details.id}",
             service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
         yield dashboard_request
@@ -704,7 +704,7 @@ class LookerSource(DashboardServiceSource):
                     displayName=chart.title or chart.id,
                     description=self.build_chart_description(chart) or None,
                     chartType=get_standard_chart_type(chart.type).value,
-                    chartUrl=f"{clean_uri(self.service_connection.hostPort)}/dashboard_elements/{chart.id}",
+                    sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/dashboard_elements/{chart.id}",
                     service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
                 self.status.scanned(chart.id)

@@ -91,11 +91,9 @@ class ModeSource(DashboardServiceSource):
         """
         dashboard_request = CreateDashboardRequest(
             name=dashboard_details.get(client.TOKEN),
-            dashboardUrl=dashboard_details[client.LINKS][client.SHARE][client.HREF],
+            sourceUrl=dashboard_details[client.LINKS][client.SHARE][client.HREF],
             displayName=dashboard_details.get(client.NAME),
-            description=dashboard_details.get(client.DESCRIPTION)
-            if dashboard_details.get(client.DESCRIPTION)
-            else "",
+            description=dashboard_details.get(client.DESCRIPTION),
             charts=[
                 fqn.build(
                     self.metadata,
@@ -199,9 +197,8 @@ class ModeSource(DashboardServiceSource):
                     yield CreateChartRequest(
                         name=chart.get(client.TOKEN),
                         displayName=chart_name,
-                        description="",
                         chartType=ChartType.Other,
-                        chartUrl=chart[client.LINKS]["report_viz_web"][client.HREF],
+                        sourceUrl=chart[client.LINKS]["report_viz_web"][client.HREF],
                         service=self.context.dashboard_service.fullyQualifiedName.__root__,
                     )
                     self.status.scanned(chart_name)

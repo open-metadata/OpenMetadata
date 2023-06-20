@@ -18,7 +18,8 @@ TEN_MIN = 10 * 60
 UTF_8 = "utf-8"
 CHUNKSIZE = 200000
 DEFAULT_DATABASE = "default"
-
+BUILDER_PASSWORD_ATTR = "password"
+COMPLEX_COLUMN_SEPARATOR = "_##"
 
 ES_SOURCE_TO_ES_OBJ_ARGS = {
     "caCerts": "ca_certs",

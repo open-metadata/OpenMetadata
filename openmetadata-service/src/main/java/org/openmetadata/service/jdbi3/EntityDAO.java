@@ -46,42 +46,75 @@ public interface EntityDAO<T extends EntityInterface> {
 
   Class<T> getEntityClass();
 
-  String getNameColumn();
+  default String getNameColumn() {
+    return "name";
+  }
+
+  default String getNameHashColumn() {
+    return "nameHash";
+  };
 
   default boolean supportsSoftDelete() {
     return true;
   }
 
   /** Common queries for all entities implemented here. Do not override. */
-  @ConnectionAwareSqlUpdate(value = "INSERT INTO <table> (json) VALUES (:json)", connectionType = MYSQL)
-  @ConnectionAwareSqlUpdate(value = "INSERT INTO <table> (json) VALUES (:json :: jsonb)", connectionType = POSTGRES)
-  void insert(@Define("table") String table, @Bind("json") String json);
-
-  @ConnectionAwareSqlUpdate(value = "UPDATE <table> SET  json = :json WHERE id = :id", connectionType = MYSQL)
   @ConnectionAwareSqlUpdate(
-      value = "UPDATE <table> SET  json = (:json :: jsonb) WHERE id = :id",
+      value = "INSERT INTO <table> (<nameHashColumn>, json) VALUES (:nameHashColumnValue, :json)",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value = "INSERT INTO <table> (<nameHashColumn>, json) VALUES (:nameHashColumnValue, :json :: jsonb)",
       connectionType = POSTGRES)
-  void update(@Define("table") String table, @Bind("id") String id, @Bind("json") String json);
+  void insert(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @Bind("nameHashColumnValue") String nameHashColumnValue,
+      @Bind("json") String json);
+
+  @ConnectionAwareSqlUpdate(
+      value = "UPDATE <table> SET  json = :json, <nameHashColumn> = :nameHashColumnValue WHERE id = :id",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value = "UPDATE <table> SET  json = (:json :: jsonb), <nameHashColumn> = :nameHashColumnValue WHERE id = :id",
+      connectionType = POSTGRES)
+  void update(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @Bind("nameHashColumnValue") String nameHashColumnValue,
+      @Bind("id") String id,
+      @Bind("json") String json);
 
   default void updateFqn(String oldPrefix, String newPrefix) {
     LOG.info("Updating FQN for {} from {} to {}", getTableName(), oldPrefix, newPrefix);
-    if (!getNameColumn().equals("fullyQualifiedName")) {
+    if (!getNameHashColumn().equals("fqnHash")) {
       return;
     }
     String mySqlUpdate =
         String.format(
             "UPDATE %s SET json = "
-                + "JSON_REPLACE(json, '$.fullyQualifiedName', REGEXP_REPLACE(fullyQualifiedName, '^%s\\.', '%s.')) "
-                + "WHERE fullyQualifiedName LIKE '%s.%%'",
-            getTableName(), escape(oldPrefix), escapeApostrophe(newPrefix), escape(oldPrefix));
+                + "JSON_REPLACE(json, '$.fullyQualifiedName', REGEXP_REPLACE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')), '^%s\\.', '%s.')) "
+                + ", fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
+                + "WHERE fqnHash LIKE '%s.%%'",
+            getTableName(),
+            escape(oldPrefix),
+            escapeApostrophe(newPrefix),
+            FullyQualifiedName.buildHash(oldPrefix),
+            FullyQualifiedName.buildHash(newPrefix),
+            FullyQualifiedName.buildHash(oldPrefix));
 
     String postgresUpdate =
         String.format(
             "UPDATE %s SET json = "
                 + "REPLACE(json::text, '\"fullyQualifiedName\": \"%s.', "
                 + "'\"fullyQualifiedName\": \"%s.')::jsonb "
-                + "WHERE fullyQualifiedName LIKE '%s.%%'",
-            getTableName(), escapeApostrophe(oldPrefix), escapeApostrophe(newPrefix), escape(oldPrefix));
+                + ", fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
+                + "WHERE fqnHash LIKE '%s.%%'",
+            getTableName(),
+            escapeApostrophe(oldPrefix),
+            escapeApostrophe(newPrefix),
+            FullyQualifiedName.buildHash(oldPrefix),
+            FullyQualifiedName.buildHash(newPrefix),
+            FullyQualifiedName.buildHash(oldPrefix));
     updateFqnInternal(mySqlUpdate, postgresUpdate);
   }
 
@@ -141,23 +174,29 @@ public interface EntityDAO<T extends EntityInterface> {
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")
   boolean exists(@Define("table") String table, @Bind("id") String id);
 
-  @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE <nameColumn> = :fqn)")
-  boolean existsByName(@Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("fqn") String fqn);
+  @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE <nameColumnHash> = :fqnHash)")
+  boolean existsByName(
+      @Define("table") String table, @Define("nameColumnHash") String nameColumnHash, @Bind("fqnHash") String fqnHash);
 
   @SqlUpdate("DELETE FROM <table> WHERE id = :id")
   int delete(@Define("table") String table, @Bind("id") String id);
 
   /** Default methods that interfaces with implementation. Don't override */
-  default void insert(EntityInterface entity) throws JsonProcessingException {
-    insert(getTableName(), JsonUtils.pojoToJson(entity));
+  default void insert(EntityInterface entity, String fqnHash) throws JsonProcessingException {
+    insert(getTableName(), getNameHashColumn(), fqnHash, JsonUtils.pojoToJson(entity));
   }
 
-  default void update(UUID id, String json) {
-    update(getTableName(), id.toString(), json);
+  default void update(UUID id, String fqnHash, String json) {
+    update(getTableName(), getNameHashColumn(), fqnHash, id.toString(), json);
   }
 
   default void update(EntityInterface entity) throws JsonProcessingException {
-    update(getTableName(), entity.getId().toString(), JsonUtils.pojoToJson(entity));
+    update(
+        getTableName(),
+        getNameHashColumn(),
+        FullyQualifiedName.buildHash(entity.getFullyQualifiedName()),
+        entity.getId().toString(),
+        JsonUtils.pojoToJson(entity));
   }
 
   default String getCondition(Include include) {
@@ -188,7 +227,8 @@ public interface EntityDAO<T extends EntityInterface> {
 
   @SneakyThrows
   default T findEntityByName(String fqn, Include include) {
-    return jsonToEntity(findByName(getTableName(), getNameColumn(), fqn, getCondition(include)), fqn);
+    return jsonToEntity(
+        findByName(getTableName(), getNameHashColumn(), FullyQualifiedName.buildHash(fqn), getCondition(include)), fqn);
   }
 
   default T jsonToEntity(String json, String identity) throws IOException {
@@ -226,15 +266,15 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   default String findJsonByFqn(String fqn, Include include) {
-    return findByName(getTableName(), getNameColumn(), fqn, getCondition(include));
+    return findByName(getTableName(), getNameHashColumn(), FullyQualifiedName.buildHash(fqn), getCondition(include));
   }
 
   default int listCount(ListFilter filter) {
-    return listCount(getTableName(), getNameColumn(), filter.getCondition());
+    return listCount(getTableName(), getNameHashColumn(), filter.getCondition());
   }
 
   default int listTotalCount() {
-    return listTotalCount(getTableName(), getNameColumn());
+    return listTotalCount(getTableName(), getNameHashColumn());
   }
 
   default List<String> listBefore(ListFilter filter, int limit, String before) {
@@ -250,7 +290,7 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   default List<String> listAfter(ListFilter filter, int limit, int offset) {
-    return listAfter(getTableName(), getNameColumn(), filter.getCondition(), limit, offset);
+    return listAfter(getTableName(), getNameHashColumn(), filter.getCondition(), limit, offset);
   }
 
   default void exists(UUID id) {
@@ -261,7 +301,7 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   default void existsByName(String fqn) {
-    if (!existsByName(getTableName(), getNameColumn(), fqn)) {
+    if (!existsByName(getTableName(), getNameHashColumn(), FullyQualifiedName.buildHash(fqn))) {
       String entityType = Entity.getEntityTypeFromClass(getEntityClass());
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, fqn));
     }

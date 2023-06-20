@@ -721,7 +721,7 @@ class SampleDataSource(
                     displayName=chart["displayName"],
                     description=chart["description"],
                     chartType=get_standard_chart_type(chart["chartType"]),
-                    chartUrl=chart["chartUrl"],
+                    sourceUrl=chart["sourceUrl"],
                     service=self.looker_service.fullyQualifiedName,
                 )
                 self.status.scanned(f"Chart Scanned: {chart_ev.name.__root__}")
@@ -736,7 +736,7 @@ class SampleDataSource(
                     name=dashboard["name"],
                     displayName=dashboard["displayName"],
                     description=dashboard["description"],
-                    dashboardUrl=dashboard["dashboardUrl"],
+                    sourceUrl=dashboard["sourceUrl"],
                     charts=dashboard["charts"],
                     dataModels=dashboard.get("dataModels", None),
                     service=self.looker_service.fullyQualifiedName,
@@ -803,7 +803,7 @@ class SampleDataSource(
                     displayName=chart["displayName"],
                     description=chart["description"],
                     chartType=get_standard_chart_type(chart["chartType"]),
-                    chartUrl=chart["chartUrl"],
+                    sourceUrl=chart["sourceUrl"],
                     service=self.dashboard_service.fullyQualifiedName,
                 )
                 self.status.scanned(f"Chart Scanned: {chart_ev.name.__root__}")
@@ -841,7 +841,7 @@ class SampleDataSource(
                 name=dashboard["name"],
                 displayName=dashboard["displayName"],
                 description=dashboard["description"],
-                dashboardUrl=dashboard["dashboardUrl"],
+                sourceUrl=dashboard["sourceUrl"],
                 charts=dashboard["charts"],
                 dataModels=dashboard.get("dataModels", None),
                 service=self.dashboard_service.fullyQualifiedName,
@@ -855,7 +855,7 @@ class SampleDataSource(
                 name=pipeline["name"],
                 displayName=pipeline["displayName"],
                 description=pipeline["description"],
-                pipelineUrl=pipeline["pipelineUrl"],
+                sourceUrl=pipeline["sourceUrl"],
                 tasks=pipeline["tasks"],
                 service=self.pipeline_service.fullyQualifiedName,
             )

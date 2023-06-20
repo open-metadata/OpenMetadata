@@ -86,6 +86,11 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
+  public String getFullyQualifiedNameHash(Tag tag) {
+    return FullyQualifiedName.buildHash(tag.getFullyQualifiedName());
+  }
+
+  @Override
   public EntityRepository<Tag>.EntityUpdater getUpdater(Tag original, Tag updated, Operation operation) {
     return new TagUpdater(original, updated, operation);
   }
@@ -104,7 +109,9 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   private Integer getUsageCount(Tag tag) {
-    return daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), tag.getFullyQualifiedName());
+    return daoCollection
+        .tagUsageDAO()
+        .getTagCount(TagSource.CLASSIFICATION.ordinal(), FullyQualifiedName.buildHash(tag.getFullyQualifiedName()));
   }
 
   private List<EntityReference> getChildren(Tag entity) throws IOException {

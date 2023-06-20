@@ -21,6 +21,9 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -69,7 +72,9 @@ class OMetaDatabaseTest(TestCase):
         connection=DatabaseConnection(
             config=MysqlConnection(
                 username="username",
-                password="password",
+                authType=BasicAuth(
+                    password="password",
+                ),
                 hostPort="http://localhost:1234",
             )
         ),
