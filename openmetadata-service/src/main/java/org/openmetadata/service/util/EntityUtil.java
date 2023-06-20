@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 
 import java.io.IOException;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -30,7 +31,9 @@ import javax.ws.rs.WebApplicationException;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.binary.Hex;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
@@ -513,6 +516,15 @@ public final class EntityUtil {
         throw new IllegalArgumentException("Profile sample value must be between 0 and 100");
       }
     }
+  }
+
+  @SneakyThrows
+  public static String hash(String input) {
+    if (input != null) {
+      byte[] checksum = MessageDigest.getInstance("MD5").digest(input.getBytes());
+      return Hex.encodeHexString(checksum);
+    }
+    return input;
   }
 
   public static boolean isDescriptionTask(TaskType taskType) {

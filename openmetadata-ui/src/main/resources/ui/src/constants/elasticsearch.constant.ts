@@ -79,6 +79,7 @@ export const ELASTIC_SEARCH_INITIAL_VALUES = {
   batchSize: 100,
   recreateIndex: true,
   searchIndexMappingLanguage: SearchIndexMappingLanguage.En,
+  recreateIndexPipeline: false,
 };
 
 export const RECREATE_INDEX_OPTIONS = [

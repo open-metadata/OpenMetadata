@@ -266,10 +266,11 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         """
         Main logic for the profiler workflow
         """
+        profiler_runner: Profiler = profiler_source.get_profiler_runner(
+            entity, self.profiler_config
+        )
+
         try:
-            profiler_runner: Profiler = profiler_source.get_profiler_runner(
-                entity, self.profiler_config
-            )
             profile: ProfilerResponse = profiler_runner.process(
                 self.source_config.generateSampleData,
                 self.source_config.processPiiSensitive,
@@ -280,17 +281,12 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             logger.debug(traceback.format_exc())
             logger.error(error)
             self.source_status.failed(name, error, traceback.format_exc())
-            try:
-                # if we fail to instantiate a profiler_interface, we won't have a profiler_interface variable
-                # we'll also catch scenarios where we don't have an interface set
-                self.source_status.fail_all(
-                    profiler_source.interface.processor_status.failures
-                )
-                self.source_status.records.extend(
-                    profiler_source.interface.processor_status.records
-                )
-            except (UnboundLocalError, AttributeError):
-                pass
+            self.source_status.fail_all(
+                profiler_source.interface.processor_status.failures
+            )
+            self.source_status.records.extend(
+                profiler_source.interface.processor_status.records
+            )
         else:
             # at this point we know we have an interface variable since we the `try` block above didn't raise
             self.source_status.fail_all(profiler_source.interface.processor_status.failures)  # type: ignore
@@ -298,6 +294,8 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 profiler_source.interface.processor_status.records  # type: ignore
             )
             return profile
+        finally:
+            profiler_runner.close()
 
         return None
 

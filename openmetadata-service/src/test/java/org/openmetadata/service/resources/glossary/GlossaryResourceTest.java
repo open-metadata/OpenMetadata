@@ -421,14 +421,14 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     String fields = "";
     entity =
         byName
-            ? getEntityByName(entity.getName(), fields, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(entity.getOwner(), entity.getTags());
 
     fields = "owner,tags";
     entity =
         byName
-            ? getEntityByName(entity.getName(), fields, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
     // Checks for other owner, tags, and followers is done in the base class
     return entity;
@@ -530,5 +530,12 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
       assertTagPrefixAbsent(table.getTags(), previousTermFqn);
       assertTagPrefixAbsent(table.getColumns().get(0).getTags(), previousTermFqn);
     }
+  }
+
+  private static String quoteName(String name) {
+    if (name != null && !name.contains("\"")) {
+      return name.contains(".") ? "\\\"" + name + "\\\"" : name;
+    }
+    return name;
   }
 }
