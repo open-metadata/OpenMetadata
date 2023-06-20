@@ -382,6 +382,12 @@ class CommonDbSourceService(
                 tags=self.get_tag_labels(
                     table_name=table_name
                 ),  # Pick tags from context info, if any
+                sourceUrl=self.get_source_url(
+                    table_name=table_name,
+                    schema_name=schema_name,
+                    database_name=self.context.database.name.__root__,
+                    table_type=table_type,
+                ),
             )
 
             is_partitioned, partition_details = self.get_table_partition_details(
@@ -516,3 +522,14 @@ class CommonDbSourceService(
 
     def yield_table_tag(self) -> Iterable[OMetaTagAndClassification]:
         pass
+
+    def get_source_url(
+        self,
+        database_name: str,
+        schema_name: str,
+        table_name: str,
+        table_type: TableType,
+    ) -> Optional[str]:
+        """
+        By default the source url is not supported for
+        """

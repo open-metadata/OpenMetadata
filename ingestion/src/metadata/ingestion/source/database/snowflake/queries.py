@@ -131,3 +131,7 @@ SELECT /* sqlalchemy:_get_schema_columns */
     WHERE ic.table_schema=:table_schema
     ORDER BY ic.ordinal_position
 """
+
+SNOWFLAKE_GET_CURRENT_REGION = "SELECT CURRENT_REGION() AS region"
+
+SNOWFLAKE_GET_CURRENT_ACCOUNT = "SELECT CURRENT_ACCOUNT() AS account"
