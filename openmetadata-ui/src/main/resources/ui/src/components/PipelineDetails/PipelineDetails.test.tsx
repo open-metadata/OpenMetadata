@@ -148,10 +148,6 @@ jest.mock('../FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
 
-jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
-  return jest.fn().mockReturnValue(<p>ActivityFeedList</p>);
-});
-
 jest.mock('../EntityLineage/EntityLineage.component', () => {
   return jest
     .fn()

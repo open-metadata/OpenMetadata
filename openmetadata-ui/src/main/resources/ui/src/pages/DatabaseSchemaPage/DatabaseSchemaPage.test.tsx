@@ -102,14 +102,6 @@ jest.mock(
       ))
 );
 
-jest.mock('components/ActivityFeed/ActivityFeedList/ActivityFeedList', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="ActivityFeedList">ActivityFeedList</div>
-    ))
-);
-
 jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: jest
