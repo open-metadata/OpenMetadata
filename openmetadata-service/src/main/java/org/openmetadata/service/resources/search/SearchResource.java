@@ -46,10 +46,8 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.search.sort.SortOrder;
 import org.elasticsearch.search.suggest.Suggest;
 import org.openmetadata.schema.api.CreateEventPublisherJob;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.elasticsearch.ElasticSearchRequest;
@@ -147,11 +145,7 @@ public class SearchResource {
       @Parameter(description = "Sort order asc for ascending or desc for descending, " + "defaults to desc")
           @DefaultValue("desc")
           @QueryParam("sort_order")
-          SortOrder sortOrderEs,
-      @Parameter(description = "Sort order asc for ascending or desc for descending, " + "defaults to desc")
-          @DefaultValue("desc")
-          @QueryParam("sort_orderOs")
-          org.opensearch.search.sort.SortOrder sortOrderOs,
+          String sortOrder,
       @Parameter(description = "Track Total Hits") @DefaultValue("false") @QueryParam("track_total_hits")
           boolean trackTotalHits,
       @Parameter(
@@ -173,12 +167,7 @@ public class SearchResource {
     if (nullOrEmpty(query)) {
       query = "*";
     }
-    Object sortOrder;
-    if (searchClient.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPEN_SEARCH)) {
-      sortOrder = sortOrderOs;
-    } else {
-      sortOrder = sortOrderEs;
-    }
+
     ElasticSearchRequest request =
         new ElasticSearchRequest.ElasticSearchRequestBuilder(query, size, index)
             .from(from)
