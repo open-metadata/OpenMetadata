@@ -250,7 +250,7 @@ class AirflowSource(PipelineServiceSource):
                 " Skipping status ingestion."
             )
 
-    def get_schedule_interval(self, pipeline_data) -> str:
+    def get_schedule_interval(self, pipeline_data) -> Optional[str]:
         """
         Fetch Schedule Intervals from Airflow Dags
         """
@@ -269,7 +269,7 @@ class AirflowSource(PipelineServiceSource):
             logger.warning(
                 f"Couldn't fetch schedule interval for dag {pipeline_data.get('_dag_id')}"
             )
-        return None
+        return ""
 
     def get_pipelines_list(self) -> Iterable[OMSerializedDagDetails]:
         """
