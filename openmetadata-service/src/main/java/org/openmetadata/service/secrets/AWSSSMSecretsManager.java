@@ -19,7 +19,6 @@ import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ssm.SsmClient;
-import software.amazon.awssdk.services.ssm.model.DeleteParameterRequest;
 import software.amazon.awssdk.services.ssm.model.GetParameterRequest;
 import software.amazon.awssdk.services.ssm.model.ParameterType;
 import software.amazon.awssdk.services.ssm.model.PutParameterRequest;
@@ -71,12 +70,6 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
   public String getSecret(String secretName) {
     GetParameterRequest parameterRequest = GetParameterRequest.builder().name(secretName).withDecryption(true).build();
     return ssmClient.getParameter(parameterRequest).parameter().value();
-  }
-
-  @Override
-  protected void deleteSecretInternal(String secretName) {
-    DeleteParameterRequest deleteParameterRequest = DeleteParameterRequest.builder().name(secretName).build();
-    this.ssmClient.deleteParameter(deleteParameterRequest);
   }
 
   public static AWSSSMSecretsManager getInstance(SecretsManagerConfiguration config, String clusterPrefix) {
