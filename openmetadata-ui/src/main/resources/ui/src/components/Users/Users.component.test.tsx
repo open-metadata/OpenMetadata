@@ -40,16 +40,12 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('rest/rolesAPIV1.ts', () => ({
+jest.mock('rest/rolesAPIV1', () => ({
   getRoles: jest.fn().mockImplementation(() => Promise.resolve(mockUserRole)),
 }));
 
 jest.mock('../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
-});
-
-jest.mock('pages/teams/UserCard', () => {
-  return jest.fn().mockReturnValue(<p>UserCard</p>);
 });
 
 jest.mock('components/searched-data/SearchedData', () => {
@@ -63,9 +59,21 @@ jest.mock(
   }
 );
 
-jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
-  return jest.fn().mockReturnValue(<p>FeedCards</p>);
-});
+jest.mock(
+  'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
+  () => {
+    return jest.fn().mockImplementation(({ children }) => <>{children}</>);
+  }
+);
+
+jest.mock(
+  'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
+  () => ({
+    ActivityFeedTab: jest
+      .fn()
+      .mockImplementation(() => <>ActivityFeedTabTest</>),
+  })
+);
 
 jest.mock('rest/teamsAPI', () => ({
   getTeams: jest.fn().mockImplementation(() => Promise.resolve(mockTeamsData)),
@@ -222,20 +230,6 @@ describe('Test User Component', () => {
     const deletedTeam = screen.queryByTestId('Customer_Support');
 
     expect(deletedTeam).not.toBeInTheDocument();
-  });
-
-  it('Should create an observer if IntersectionObserver is available', async () => {
-    mockParams.tab = UserPageTabs.ACTIVITY;
-    const { container } = render(
-      <Users userData={mockUserData} {...mockProp} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const obServerElement = await findByTestId(container, 'observer-element');
-
-    expect(obServerElement).toBeInTheDocument();
   });
 
   it('Should check if cards are rendered', async () => {

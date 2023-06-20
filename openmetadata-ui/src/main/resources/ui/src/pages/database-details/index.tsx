@@ -530,26 +530,22 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const handleUpdateTier = useCallback(
     (newTier?: string) => {
-      if (newTier) {
-        const tierTag = newTier
-          ? [
-              ...getTagsWithoutTier(database?.tags ?? []),
-              {
-                tagFQN: newTier,
-                labelType: LabelType.Manual,
-                state: State.Confirmed,
-              },
-            ]
-          : database?.tags;
-        const updatedTableDetails = {
-          ...database,
-          tags: tierTag,
-        };
+      const tierTag = newTier
+        ? [
+            ...getTagsWithoutTier(database?.tags ?? []),
+            {
+              tagFQN: newTier,
+              labelType: LabelType.Manual,
+              state: State.Confirmed,
+            },
+          ]
+        : getTagsWithoutTier(database?.tags ?? []);
+      const updatedTableDetails = {
+        ...database,
+        tags: tierTag,
+      };
 
-        return settingsUpdateHandler(updatedTableDetails as Database);
-      }
-
-      return;
+      return settingsUpdateHandler(updatedTableDetails as Database);
     },
     [settingsUpdateHandler, database, tier]
   );

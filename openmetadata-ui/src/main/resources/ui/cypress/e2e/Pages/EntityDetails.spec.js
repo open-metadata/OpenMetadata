@@ -144,7 +144,7 @@ describe('Entity Details Page', () => {
         expect(text).equal('admin');
       });
 
-    cy.get('[data-testid="edit-Tier-icon"]')
+    cy.get('[data-testid="edit-tier"]')
       .scrollIntoView()
       .should('exist')
       .should('be.visible')
@@ -156,7 +156,7 @@ describe('Entity Details Page', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="tier-dropdown"]')
+    cy.get('[data-testid="Tier"]')
       .invoke('text')
       .then((text) => {
         expect(text).equal('Tier1');
@@ -250,7 +250,7 @@ describe('Entity Details Page', () => {
       .should('exist')
       .contains('No Owner');
 
-    cy.get('[data-testid="edit-Tier-icon"]')
+    cy.get('[data-testid="edit-tier"]')
       .scrollIntoView()
       .should('exist')
       .should('be.visible')

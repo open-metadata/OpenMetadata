@@ -119,7 +119,7 @@ const TableQueryRightPanel = ({
                       width="20"
                     />
                     <Link
-                      data-testid="owner-name"
+                      data-testid="owner-link"
                       to={getUserPath(query.owner.name ?? '')}>
                       {getEntityName(query.owner)}
                     </Link>

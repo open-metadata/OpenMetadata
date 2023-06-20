@@ -446,11 +446,11 @@ export const DataAssetsHeader = ({
                 <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
                   <Space>
                     {tier ? (
-                      <span className="font-medium text-xs">
+                      <span className="font-medium text-xs" data-testid="Tier">
                         {tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1]}
                       </span>
                     ) : (
-                      <span className="font-medium text-xs">
+                      <span className="font-medium text-xs" data-testid="Tier">
                         {t('label.no-entity', {
                           entity: t('label.tier'),
                         })}

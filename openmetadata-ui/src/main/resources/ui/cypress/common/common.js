@@ -514,7 +514,7 @@ export const editOwnerforCreatedService = (
 
   verifyResponseStatusCode('@searchOwner', 200);
 
-  cy.get('[data-testid="owner-name"]')
+  cy.get('[data-testid="owner-link"]')
     .invoke('text')
     .then((text) => {
       expect(text).equal(ADMIN);

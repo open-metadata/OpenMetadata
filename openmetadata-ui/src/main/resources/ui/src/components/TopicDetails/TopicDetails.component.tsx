@@ -228,26 +228,22 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   );
 
   const onTierUpdate = (newTier?: string) => {
-    if (newTier) {
-      const tierTag: Topic['tags'] = newTier
-        ? [
-            ...getTagsWithoutTier(topicDetails.tags as Array<EntityTags>),
-            {
-              tagFQN: newTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-          ]
-        : topicDetails.tags;
-      const updatedTopicDetails = {
-        ...topicDetails,
-        tags: tierTag,
-      };
+    const tierTag: Topic['tags'] = newTier
+      ? [
+          ...getTagsWithoutTier(topicDetails.tags as Array<EntityTags>),
+          {
+            tagFQN: newTier,
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+          },
+        ]
+      : getTagsWithoutTier(topicDetails.tags ?? []);
+    const updatedTopicDetails = {
+      ...topicDetails,
+      tags: tierTag,
+    };
 
-      return onTopicUpdate(updatedTopicDetails, 'tags');
-    } else {
-      return Promise.reject();
-    }
+    return onTopicUpdate(updatedTopicDetails, 'tags');
   };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {

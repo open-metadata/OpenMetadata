@@ -175,24 +175,22 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   );
 
   const onTierUpdate = async (newTier?: string) => {
-    if (newTier) {
-      const tierTag: Mlmodel['tags'] = newTier
-        ? [
-            ...mlModelTags,
-            {
-              tagFQN: newTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-          ]
-        : mlModelDetail.tags;
-      const updatedMlModelDetails = {
-        ...mlModelDetail,
-        tags: tierTag,
-      };
+    const tierTag: Mlmodel['tags'] = newTier
+      ? [
+          ...mlModelTags,
+          {
+            tagFQN: newTier,
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+          },
+        ]
+      : getTagsWithoutTier(mlModelDetail.tags ?? []);
+    const updatedMlModelDetails = {
+      ...mlModelDetail,
+      tags: tierTag,
+    };
 
-      await settingsUpdateHandler(updatedMlModelDetails);
-    }
+    await settingsUpdateHandler(updatedMlModelDetails);
   };
 
   const handleUpdateDisplayName = async (data: EntityName) => {
