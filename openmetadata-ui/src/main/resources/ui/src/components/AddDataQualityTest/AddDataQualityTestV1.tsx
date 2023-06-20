@@ -194,7 +194,6 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
             <div className="m-t-md">
               {addIngestion ? (
                 <TestSuiteIngestion
-                  table={table}
                   testSuite={testSuiteData as TestSuite}
                   onCancel={() => setAddIngestion(false)}
                 />

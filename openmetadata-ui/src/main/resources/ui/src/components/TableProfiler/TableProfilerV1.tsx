@@ -71,6 +71,7 @@ import {
 import './tableProfiler.less';
 
 const TableProfilerV1: FC<TableProfilerProps> = ({
+  testSuite,
   isTableDeleted,
   permissions,
 }) => {
@@ -532,6 +533,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
             <QualityTab
               isLoading={isTestCaseLoading}
               testCases={getFilterTestCase()}
+              testSuite={testSuite}
               onTestCaseResultUpdate={handleResultUpdate}
               onTestUpdate={fetchAllTests}
             />
