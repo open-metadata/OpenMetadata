@@ -39,6 +39,10 @@ export const COMMON_DROPDOWN_ITEMS = [
     key: 'tags.tagFQN',
   },
   {
+    label: t('label.tier'),
+    key: 'tier.tagFQN',
+  },
+  {
     label: t('label.service'),
     key: 'service.name',
   },
@@ -95,6 +99,14 @@ export const GLOSSARY_DROPDOWN_ITEMS = [
   {
     label: t('label.owner'),
     key: 'owner.displayName',
+  },
+  {
+    label: t('label.tag'),
+    key: 'tags.tagFQN',
+  },
+  {
+    label: t('label.glossary-plural'),
+    key: 'glossary.name.keyword',
   },
 ];
 
