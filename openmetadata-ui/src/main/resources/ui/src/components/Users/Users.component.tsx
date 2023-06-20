@@ -59,7 +59,6 @@ import {
 } from '../../utils/ProfilerUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import { filterListTasks } from '../ActivityFeed/ActivityFeedList/ActivityFeedList.util';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import Description from '../common/description/Description';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
@@ -744,7 +743,6 @@ const Users = ({
     ownedEntities,
     isUserEntitiesLoading,
     userPageFilterList,
-    filterListTasks,
     entityDetails,
   ]);
 
