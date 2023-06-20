@@ -14,6 +14,7 @@
 package org.openmetadata.service.formatter.decorators;
 
 import java.util.LinkedList;
+import org.apache.commons.lang3.StringUtils;
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
 import org.openmetadata.schema.type.ChangeEvent;
 
@@ -44,6 +45,7 @@ public interface MessageDecorator<T> {
 
   default String getPlaintextDiff(String oldValue, String newValue) {
     // create a configured DiffRowGenerator
+    oldValue = oldValue == null ? StringUtils.EMPTY : oldValue;
     String addMarker = this.httpAddMarker();
     String removeMarker = this.httpRemoveMarker();
 

@@ -101,11 +101,9 @@ public abstract class ExternalSecretsManagerTest {
     // Encrypt private key and ensure it is indeed encrypted
     secretsManager.encryptAuthenticationMechanism("bot", actualAuthMechanism);
     assertNotEquals(privateKey, getPrivateKey(actualAuthMechanism));
-    System.out.println("XXX privateKey encrypted is " + getPrivateKey(actualAuthMechanism));
 
     // Decrypt private key and ensure it is decrypted
     secretsManager.decryptAuthenticationMechanism("bot", actualAuthMechanism);
-    System.out.println("XXX privateKey decrypted is " + getPrivateKey(actualAuthMechanism));
     assertEquals(privateKey, getPrivateKey(actualAuthMechanism));
   }
 
@@ -130,12 +128,10 @@ public abstract class ExternalSecretsManagerTest {
 
     // Encrypt the pipeline and make sure it is secret key encrypted
     secretsManager.encryptIngestionPipeline(actualIngestionPipeline);
-    System.out.println("XXX encrypted aws secret access key is " + getAwsSecretAccessKey(actualIngestionPipeline));
     assertNotEquals(secretKey, getAwsSecretAccessKey(actualIngestionPipeline));
 
     // Decrypt the pipeline and make sure the secret key is decrypted
     secretsManager.decryptIngestionPipeline(actualIngestionPipeline);
-    System.out.println("XXX decrypted aws secret access key is " + getAwsSecretAccessKey(actualIngestionPipeline));
     assertEquals(secretKey, getAwsSecretAccessKey(actualIngestionPipeline));
     assertEquals(expectedIngestionPipeline, actualIngestionPipeline);
   }

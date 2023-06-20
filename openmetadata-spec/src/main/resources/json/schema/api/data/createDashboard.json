@@ -24,7 +24,7 @@
     },
     "sourceUrl": {
       "description": "Dashboard URL suffix from its service.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "project": {
       "description": "Name of the project / workspace / collection in which the dashboard is contained",
