@@ -689,7 +689,7 @@ const DashboardDetails = ({
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <Card className="card-body-full m-md w-auto h-70vh">
+          <Card className="lineage-card card-body-full w-auto border-none">
             <EntityLineageComponent
               entityType={EntityType.DASHBOARD}
               hasEditAccess={

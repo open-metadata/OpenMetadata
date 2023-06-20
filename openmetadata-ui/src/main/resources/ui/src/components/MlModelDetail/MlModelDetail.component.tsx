@@ -449,7 +449,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         key: EntityTabs.LINEAGE,
         children: (
           <Card
-            className="card-body-full m-md w-auto h-70vh"
+            className="lineage-card card-body-full w-auto border-none"
             data-testid="lineage-details">
             <EntityLineageComponent
               entityType={EntityType.MLMODEL}

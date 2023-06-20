@@ -711,7 +711,7 @@ const PipelineDetails = ({
         key: EntityTabs.LINEAGE,
         children: (
           <Card
-            className="card-body-full w-auto h-70vh border-none"
+            className="lineage-card card-body-full w-auto border-none"
             data-testid="lineage-details"
             id="lineageDetails">
             <EntityLineageComponent

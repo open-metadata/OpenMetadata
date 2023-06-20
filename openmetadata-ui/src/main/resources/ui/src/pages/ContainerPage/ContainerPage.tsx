@@ -681,7 +681,7 @@ const ContainerPage = () => {
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <Card className="card-body-full m-md w-auto h-70vh">
+          <Card className="lineage-card card-body-full m-md w-auto">
             <EntityLineageComponent
               addLineageHandler={handleAddLineage}
               deleted={deleted}
