@@ -11,23 +11,26 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Space, Typography } from 'antd';
+import { Button, Card, Col, Form, Row, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import RightPanel from 'components/AddDataQualityTest/components/RightPanel';
-import {
-  getRightPanelForAddTestSuitePage,
-  INGESTION_DATA,
-} from 'components/AddDataQualityTest/rightPanelData';
-import TestSuiteIngestion from 'components/AddDataQualityTest/TestSuiteIngestion';
+import { getRightPanelForAddTestSuitePage } from 'components/AddDataQualityTest/rightPanelData';
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import SuccessScreen from 'components/common/success-screen/SuccessScreen';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import IngestionStepper from 'components/IngestionStepper/IngestionStepper.component';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
-import React, { useCallback, useState } from 'react';
+import { PAGE_SIZE_LARGE } from 'constants/constants';
+import { TestCase } from 'generated/tests/testCase';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { createTestSuites } from 'rest/testAPI';
+import {
+  addTestCaseToLogicalTestSuite,
+  createTestSuites,
+  getListTestCase,
+} from 'rest/testAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { getTestSuitePath } from 'utils/RouterUtils';
 import {
   STEPS_FOR_ADD_TEST_SUITE,
@@ -39,30 +42,42 @@ import { TestSuite } from '../../generated/tests/testSuite';
 import { getCurrentUserId } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import AddTestSuiteForm from './AddTestSuiteForm';
-import { TestSuiteFormDataProps } from './testSuite.interface';
 
 const TestSuiteStepper = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [testSuiteResponse, setTestSuiteResponse] = useState<TestSuite>();
-
-  const [addIngestion, setAddIngestion] = useState<boolean>(false);
+  const [testCases, setTestCases] = useState<TestCase[]>([]);
+  const [selectedTestCase, setSelectedTestCase] = useState<string[]>([]);
 
   const handleViewTestSuiteClick = () => {
     history.push(getTestSuitePath(testSuiteResponse?.fullyQualifiedName || ''));
   };
 
-  const onSubmitTestSuite = async (data: TestSuiteFormDataProps) => {
+  const handleTestSuitNextClick = (data: TestSuite) => {
+    setTestSuiteResponse(data);
+    setActiveServiceStep(2);
+  };
+
+  const onSubmit = async (data: { testCase: string[] }) => {
     try {
       const owner = {
         id: getCurrentUserId(),
         type: OwnerType.USER,
       };
 
-      const response = await createTestSuites({ ...data, owner });
+      const response = await createTestSuites({
+        name: testSuiteResponse?.name ?? '',
+        description: testSuiteResponse?.description,
+        owner,
+      });
       setTestSuiteResponse(response);
-      setActiveServiceStep(2);
+      await addTestCaseToLogicalTestSuite({
+        testCaseIds: data.testCase,
+        testSuiteId: response.id ?? '',
+      });
+      setActiveServiceStep(3);
     } catch (error) {
       if (
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
@@ -71,7 +86,7 @@ const TestSuiteStepper = () => {
           t('server.entity-already-exist', {
             entity: t('label.test-suite'),
             entityPlural: t('label.test-suite-lowercase-plural'),
-            name: data.name,
+            name: testSuiteResponse?.name,
           })
         );
       } else {
@@ -85,22 +100,80 @@ const TestSuiteStepper = () => {
     }
   };
 
+  const fetchTestCases = async () => {
+    try {
+      const response = await getListTestCase({ limit: PAGE_SIZE_LARGE });
+      setTestCases(response.data);
+    } catch (error) {
+      setTestCases([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchTestCases();
+  }, []);
+
+  const selectTestCase = useMemo(() => {
+    return (
+      <Form
+        data-testid="test-case-form"
+        initialValues={{ testCase: selectedTestCase }}
+        layout="vertical"
+        name="selectTestCase"
+        onFinish={onSubmit}
+        onValuesChange={({ testCase }) => setSelectedTestCase(testCase)}>
+        <Form.Item label={t('label.test-case-plural')} name="testCase">
+          <Select
+            mode="multiple"
+            placeholder={t('label.please-select-entity', {
+              entity: t('label.test-case-plural'),
+            })}>
+            {testCases.map((test) => (
+              <Select.Option key={test.id}>{getEntityName(test)}</Select.Option>
+            ))}
+          </Select>
+        </Form.Item>
+        <Form.Item noStyle>
+          <Space className="w-full justify-end" size={16}>
+            <Button
+              data-testid="back-button"
+              onClick={() => setActiveServiceStep(1)}>
+              {t('label.back')}
+            </Button>
+            <Button
+              data-testid="submit-button"
+              htmlType="submit"
+              type="primary">
+              {t('label.submit')}
+            </Button>
+          </Space>
+        </Form.Item>
+      </Form>
+    );
+  }, [testCases, selectedTestCase, testSuiteResponse]);
+
   const RenderSelectedTab = useCallback(() => {
     if (activeServiceStep === 2) {
+      return selectTestCase;
+    } else if (activeServiceStep === 3) {
       return (
         <SuccessScreen
-          showIngestionButton
-          handleIngestionClick={() => setAddIngestion(true)}
           handleViewServiceClick={handleViewTestSuiteClick}
           name={testSuiteResponse?.name || ''}
+          showIngestionButton={false}
           state={FormSubmitType.ADD}
           viewServiceText="View Test Suite"
         />
       );
     }
 
-    return <AddTestSuiteForm onSubmit={onSubmitTestSuite} />;
-  }, [activeServiceStep]);
+    return (
+      <AddTestSuiteForm
+        testSuite={testSuiteResponse}
+        onSubmit={handleTestSuitNextClick}
+      />
+    );
+  }, [activeServiceStep, testSuiteResponse, handleTestSuitNextClick]);
 
   return (
     <ResizablePanels
@@ -111,34 +184,27 @@ const TestSuiteStepper = () => {
             data-testid="test-suite-stepper-container">
             <TitleBreadcrumb titleLinks={TEST_SUITE_STEPPER_BREADCRUMB} />
             <Space className="m-t-md" direction="vertical" size="middle">
-              {addIngestion ? (
-                <TestSuiteIngestion
-                  testSuite={testSuiteResponse as TestSuite}
-                  onCancel={() => setAddIngestion(false)}
-                />
-              ) : (
-                <Card className="p-sm">
-                  <Row gutter={[16, 16]}>
-                    <Col span={24}>
-                      <Typography.Title
-                        className="heading"
-                        data-testid="header"
-                        level={5}>
-                        {t('label.add-entity', {
-                          entity: t('label.test-suite'),
-                        })}
-                      </Typography.Title>
-                    </Col>
-                    <Col span={24}>
-                      <IngestionStepper
-                        activeStep={activeServiceStep}
-                        steps={STEPS_FOR_ADD_TEST_SUITE}
-                      />
-                    </Col>
-                    <Col span={24}>{RenderSelectedTab()}</Col>
-                  </Row>
-                </Card>
-              )}
+              <Card className="p-sm">
+                <Row gutter={[16, 16]}>
+                  <Col span={24}>
+                    <Typography.Title
+                      className="heading"
+                      data-testid="header"
+                      level={5}>
+                      {t('label.add-entity', {
+                        entity: t('label.test-suite'),
+                      })}
+                    </Typography.Title>
+                  </Col>
+                  <Col span={24}>
+                    <IngestionStepper
+                      activeStep={activeServiceStep}
+                      steps={STEPS_FOR_ADD_TEST_SUITE}
+                    />
+                  </Col>
+                  <Col span={24}>{RenderSelectedTab()}</Col>
+                </Row>
+              </Card>
             </Space>
           </div>
         ),
@@ -151,14 +217,10 @@ const TestSuiteStepper = () => {
       secondPanel={{
         children: (
           <RightPanel
-            data={
-              addIngestion
-                ? INGESTION_DATA
-                : getRightPanelForAddTestSuitePage(
-                    activeServiceStep,
-                    testSuiteResponse?.name || ''
-                  )
-            }
+            data={getRightPanelForAddTestSuitePage(
+              activeServiceStep,
+              testSuiteResponse?.name || ''
+            )}
           />
         ),
         className: 'p-md service-doc-panel',

@@ -121,8 +121,8 @@ export const TestSuites = () => {
         dataIndex: 'summary',
         key: 'success',
         render: (value: TestSummary) => {
-          const { success = 0, total = 0 } = value;
-          const percent = success / total;
+          const percent =
+            value.total && value.success ? value.success / value.total : 0;
 
           return (
             <ProfilerProgressWidget
