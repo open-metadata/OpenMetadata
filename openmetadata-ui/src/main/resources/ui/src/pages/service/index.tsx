@@ -70,6 +70,7 @@ import { getEntityName } from 'utils/EntityUtils';
 import {
   getServiceDetailsPath,
   getTeamAndUserDetailsPath,
+  NO_DATA_PLACEHOLDER,
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
@@ -622,6 +623,16 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
+  function getOptionalPipelineScheduleInterval(record: ServicePageData): any {
+    const pipeline = record as Pipeline;
+
+    return (
+      <Typography.Text>
+        {pipeline.scheduleInterval || NO_DATA_PLACEHOLDER}
+      </Typography.Text>
+    );
+  }
+
   const getOptionalTableCells = (data: ServicePageData) => {
     switch (serviceCategory) {
       case ServiceCategory.DATABASE_SERVICES: {
@@ -1006,6 +1017,17 @@ const ServicePage: FunctionComponent = () => {
             </span>
           ),
       },
+      ...(ServiceCategory.PIPELINE_SERVICES === serviceCategory
+        ? [
+            {
+              title: t('label.schedule-interval'),
+              dataIndex: 'scheduleInterval',
+              key: 'scheduleInterval',
+              render: (_: any, record: ServicePageData) =>
+                getOptionalPipelineScheduleInterval(record),
+            },
+          ]
+        : []),
       {
         title: t('label.owner'),
         dataIndex: 'owner',
