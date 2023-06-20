@@ -97,7 +97,6 @@ class FivetranSource(PipelineServiceSource):
         pipeline_request = CreatePipelineRequest(
             name=pipeline_details.pipeline_name,
             displayName=pipeline_details.pipeline_display_name,
-            sourceUrl="",
             tasks=self.get_connections_jobs(pipeline_details),
             service=self.context.pipeline_service.fullyQualifiedName.__root__,
         )
