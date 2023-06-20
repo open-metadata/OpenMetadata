@@ -251,10 +251,12 @@ class BigquerySource(CommonDbSourceService):
             query_result = [result.schema_description for result in query_resp.result()]
             return query_result[0]
         except IndexError:
-            logger.warning(f"No dataset description found for {schema_name}")
+            logger.debug(f"No dataset description found for {schema_name}")
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch {err}")
+            logger.debug(
+                f"Failed to fetch dataset description for [{schema_name}]: {err}"
+            )
         return ""
 
     def yield_database_schema(
@@ -428,3 +430,18 @@ class BigquerySource(CommonDbSourceService):
         if self.temp_credentials:
             os.unlink(self.temp_credentials)
         os.environ.pop("GOOGLE_CLOUD_PROJECT", "")
+
+    def get_source_url(
+        self,
+        database_name: str,
+        schema_name: str,
+        table_name: str,
+        table_type: TableType,
+    ) -> Optional[str]:
+        """
+        Method to get the source url for bigquery
+        """
+        return (
+            f"https://console.cloud.google.com/bigquery?project={database_name}"
+            f"&ws=!1m5!1m4!4m3!1s{database_name}!2s{schema_name}!3s{table_name}"
+        )
