@@ -27,10 +27,6 @@ const GlobalSettingPage = withSuspenseFallback(
   React.lazy(() => import('pages/GlobalSettingPage/GlobalSettingPage'))
 );
 
-const ProfilerDashboardPage = withSuspenseFallback(
-  React.lazy(() => import('pages/ProfilerDashboardPage/ProfilerDashboardPage'))
-);
-
 const MyDataPageV1 = withSuspenseFallback(
   React.lazy(() => import('pages/MyDataPage/MyDataPageV1.component'))
 );
@@ -499,16 +495,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={AddDataQualityTestPage}
         path={ROUTES.ADD_DATA_QUALITY_TEST_CASE}
-      />
-      <Route
-        exact
-        component={ProfilerDashboardPage}
-        path={ROUTES.PROFILER_DASHBOARD}
-      />
-      <Route
-        exact
-        component={ProfilerDashboardPage}
-        path={ROUTES.PROFILER_DASHBOARD_WITH_TAB}
       />
       <Route exact component={AddGlossaryPage} path={ROUTES.ADD_GLOSSARY} />
       <AdminProtectedRoute
