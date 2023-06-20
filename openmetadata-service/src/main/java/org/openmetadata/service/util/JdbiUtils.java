@@ -24,7 +24,7 @@ public final class JdbiUtils {
     DataSourceFactory dataSourceFactory = config.getDataSourceFactory();
 
     // Check auth provider
-    checkAuthenticationProvider(config, dataSourceFactory);
+    checkJdbiAuthenticationProvider(config, dataSourceFactory);
 
     // Build
     Jdbi jdbi = new JdbiFactory().build(environment, dataSourceFactory, "database");
@@ -36,12 +36,13 @@ public final class JdbiUtils {
     return jdbi;
   }
 
-  private static void checkAuthenticationProvider(
+  private static void checkJdbiAuthenticationProvider(
       OpenMetadataApplicationConfig config, DataSourceFactory dataSourceFactory) {
     // Check auth provider
     if (config.getAwsConfiguration() != null && config.getAwsConfiguration().getEnableIamDatabaseAuthentication()) {
-      // Parse jdbc url
-      URI uri = URI.create(dataSourceFactory.getUrl().substring(5));
+      // Parse jdbc url without jdbc:// prefix
+      String urlWithoutJdbcPrefix = dataSourceFactory.getUrl().substring(5);
+      URI uri = URI.create(urlWithoutJdbcPrefix);
       String region = config.getAwsConfiguration().getRegion();
 
       // Set password

@@ -38,9 +38,7 @@ public final class AWSUtils {
             .build();
 
     // Log it
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Generate AWS database auth token with TokenRequest: {}", request);
-    }
+    LOG.debug("Generate AWS database auth token with TokenRequest: {}", request);
 
     // Return token
     return RdsUtilities.builder().region(Region.of(region)).build().generateAuthenticationToken(request);

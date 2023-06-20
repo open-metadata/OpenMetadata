@@ -47,7 +47,7 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @Valid
   private DataSourceFactory dataSourceFactory;
 
-  @JsonProperty("aws")
+  @JsonProperty(value = "aws", required = false)
   private AWSConfiguration awsConfiguration;
 
   @JsonProperty("swagger")
