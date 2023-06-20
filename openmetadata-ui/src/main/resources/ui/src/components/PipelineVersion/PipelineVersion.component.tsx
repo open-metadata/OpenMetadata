@@ -20,6 +20,7 @@ import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { getVersionPathWithTab } from 'constants/constants';
+import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { EntityInfo, EntityTabs, EntityType } from 'enums/entity.enum';
 import { t } from 'i18next';
 import { EntityDiffProps } from 'interface/EntityVersion.interface';
@@ -406,7 +407,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
                         dataSource={pipelineVersionTableData}
                         pagination={false}
                         rowKey="name"
-                        scroll={{ x: 1200 }}
+                        scroll={TABLE_SCROLL_VALUE}
                         size="small"
                       />
                     </div>

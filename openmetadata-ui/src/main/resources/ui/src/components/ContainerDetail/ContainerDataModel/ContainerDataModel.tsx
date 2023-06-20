@@ -17,6 +17,7 @@ import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlac
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TableTags from 'components/TableTags/TableTags.component';
+import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { Column, TagLabel } from 'generated/entity/data/container';
 import { TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, isEmpty, isUndefined, map, toLower } from 'lodash';
@@ -297,7 +298,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         }}
         pagination={false}
         rowKey="name"
-        scroll={{ x: 1200 }}
+        scroll={TABLE_SCROLL_VALUE}
         size="small"
       />
       {editContainerColumnDescription && (

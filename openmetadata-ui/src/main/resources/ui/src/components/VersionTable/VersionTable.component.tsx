@@ -14,6 +14,7 @@
 import { Col, Row, Space, Table } from 'antd';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { NO_DATA_PLACEHOLDER } from 'constants/constants';
+import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
@@ -181,7 +182,7 @@ const VersionTable = ({
           }}
           pagination={false}
           rowKey="name"
-          scroll={{ x: 1200 }}
+          scroll={TABLE_SCROLL_VALUE}
           size="small"
         />
       </Col>

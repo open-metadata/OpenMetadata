@@ -28,6 +28,7 @@ import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import TableTags from 'components/TableTags/TableTags.component';
+import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { CSMode } from 'enums/codemirror.enum';
 import { TagLabel, TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, isEmpty, isUndefined, map } from 'lodash';
@@ -345,7 +346,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
                 }}
                 pagination={false}
                 rowKey="name"
-                scroll={{ x: 1200 }}
+                scroll={TABLE_SCROLL_VALUE}
                 size="small"
               />
             )}

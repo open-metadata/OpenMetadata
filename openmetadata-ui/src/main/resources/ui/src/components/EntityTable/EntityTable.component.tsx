@@ -16,6 +16,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import TableTags from 'components/TableTags/TableTags.component';
+import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { LabelType, State, TagSource } from 'generated/type/schema';
 import {
   cloneDeep,
@@ -636,7 +637,7 @@ const EntityTable = ({
         }}
         pagination={false}
         rowKey="id"
-        scroll={{ x: 1200 }}
+        scroll={TABLE_SCROLL_VALUE}
         size="small"
       />
       {editColumn && (
