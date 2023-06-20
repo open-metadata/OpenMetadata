@@ -582,14 +582,21 @@ const TableDetailsPageV1 = () => {
           </Card>
         ),
       },
-      {
-        label: (
-          <TabsLabel id={EntityTabs.DBT} name={t('label.dbt-lowercase')} />
-        ),
-        // isHidden: !(dataModel?.sql ?? dataModel?.rawSql),
-        key: EntityTabs.DBT,
-        children: <DbtTab dataModel={tableDetails?.dataModel} />,
-      },
+      ...(tableDetails?.dataModel
+        ? [
+            {
+              label: (
+                <TabsLabel
+                  id={EntityTabs.DBT}
+                  name={t('label.dbt-lowercase')}
+                />
+              ),
+              // isHidden: !(dataModel?.sql ?? dataModel?.rawSql),
+              key: EntityTabs.DBT,
+              children: <DbtTab dataModel={tableDetails?.dataModel} />,
+            },
+          ]
+        : []),
       {
         label: (
           <TabsLabel

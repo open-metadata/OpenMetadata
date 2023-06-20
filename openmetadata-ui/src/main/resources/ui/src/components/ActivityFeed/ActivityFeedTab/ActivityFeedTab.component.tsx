@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Menu, Typography } from 'antd';
+import AppState from 'AppState';
 import classNames from 'classnames';
 import Loader from 'components/Loader/Loader';
 import { TaskTab } from 'components/Task/TaskTab/TaskTab.component';
@@ -36,7 +37,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getFeedCount } from 'rest/feedsAPI';
+import { getAllFeeds, getFeedCount } from 'rest/feedsAPI';
 import { getCountBadge, getEntityDetailLink } from 'utils/CommonUtils';
 import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from 'utils/EntityUtils';
 import { getEntityField } from 'utils/FeedUtils';
@@ -72,6 +73,11 @@ export const ActivityFeedTab = ({
   const [allCount, setAllCount] = useState(0);
   const [tasksCount, setTasksCount] = useState(0);
 
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
+
   const {
     postFeed,
     selectedThread,
@@ -79,6 +85,7 @@ export const ActivityFeedTab = ({
     entityThread,
     getFeedData,
     loading,
+    entityPaging,
   } = useActivityFeedProvider();
 
   const isUserEntity = useMemo(
@@ -103,34 +110,80 @@ export const ActivityFeedTab = ({
   };
 
   const fetchFeedsCount = () => {
-    // To get conversation count
-    getFeedCount(
-      !isUserEntity ? getEntityFeedLink(entityType, fqn) : undefined,
-      ThreadType.Conversation
-    ).then((res) => {
-      if (res) {
-        setAllCount(res.totalCount);
-      } else {
-        throw t('server.entity-feed-fetch-error');
-      }
-    });
+    if (!isUserEntity) {
+      // To get conversation count
+      getFeedCount(
+        getEntityFeedLink(entityType, fqn),
+        ThreadType.Conversation
+      ).then((res) => {
+        if (res) {
+          setAllCount(res.totalCount);
+        } else {
+          throw t('server.entity-feed-fetch-error');
+        }
+      });
 
-    // To get open tasks count
-    getFeedCount(
-      !isUserEntity ? getEntityFeedLink(entityType, fqn) : undefined,
-      ThreadType.Task
-    ).then((res) => {
-      if (res) {
-        setTasksCount(res.totalCount);
-      } else {
-        throw t('server.entity-feed-fetch-error');
+      // To get open tasks count
+      getFeedCount(getEntityFeedLink(entityType, fqn), ThreadType.Task).then(
+        (res) => {
+          if (res) {
+            setTasksCount(res.totalCount);
+          } else {
+            throw t('server.entity-feed-fetch-error');
+          }
+        }
+      );
+    } else {
+      if (activeTab !== ActivityFeedTabs.TASKS) {
+        // count for task on userProfile page
+        getAllFeeds(
+          undefined,
+          undefined,
+          ThreadType.Task,
+          FeedFilter.OWNER,
+          undefined,
+          currentUser?.id
+        ).then((res) => {
+          if (res) {
+            setTasksCount(res.paging.total);
+          } else {
+            throw t('server.entity-feed-fetch-error');
+          }
+        });
       }
-    });
+
+      if (activeTab !== ActivityFeedTabs.ALL) {
+        // count for all on userProfile page
+        getAllFeeds(
+          undefined,
+          undefined,
+          ThreadType.Conversation,
+          FeedFilter.OWNER,
+          undefined,
+          currentUser?.id
+        ).then((res) => {
+          if (res) {
+            setAllCount(res.paging.total);
+          } else {
+            throw t('server.entity-feed-fetch-error');
+          }
+        });
+      }
+    }
   };
 
   useEffect(() => {
     fetchFeedsCount();
   }, []);
+
+  useEffect(() => {
+    if (isUserEntity && activeTab === ActivityFeedTabs.ALL && !allCount) {
+      setAllCount(entityPaging.total);
+    }
+    if (isUserEntity && activeTab === ActivityFeedTabs.TASKS && !tasksCount) {
+      setTasksCount(entityPaging.total);
+    }
+  });
 
   const { feedFilter, threadType } = useMemo(() => {
     return {
