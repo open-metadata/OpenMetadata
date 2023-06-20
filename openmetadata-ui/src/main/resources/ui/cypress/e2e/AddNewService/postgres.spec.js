@@ -53,7 +53,7 @@ describe('Postgres Ingestion', () => {
         .scrollIntoView()
         .type(Cypress.env('postgresUsername'));
       checkServiceFieldSectionHighlighting('username');
-      cy.get('#root\\/password')
+      cy.get('#root\\/authType\\/password')
         .scrollIntoView()
         .type(Cypress.env('postgresPassword'));
       checkServiceFieldSectionHighlighting('password');
@@ -75,7 +75,7 @@ describe('Postgres Ingestion', () => {
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .scrollIntoView()
         .should('be.visible')
-        .type(filterPattern);
+        .type(`${filterPattern}{enter}`);
     };
 
     testServiceCreationAndIngestion({

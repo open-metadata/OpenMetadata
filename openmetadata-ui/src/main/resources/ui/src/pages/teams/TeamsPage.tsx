@@ -20,7 +20,8 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
-import TeamDetailsV1 from 'components/TeamDetails/TeamDetailsV1';
+import TeamDetailsV1 from 'components/Team/TeamDetails/TeamDetailsV1';
+import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
@@ -265,12 +266,24 @@ const TeamsPage = () => {
         handleAddTeam(false);
       }
     } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('message.entity-creation-error', {
-          entity: t('label.team'),
-        })
-      );
+      if (
+        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
+      ) {
+        showErrorToast(
+          t('server.entity-already-exist', {
+            entity: t('label.team'),
+            entityPlural: t('label.team-plural-lowercase'),
+            name: data.name,
+          })
+        );
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          t('server.create-entity-error', {
+            entity: t('label.team-lowercase'),
+          })
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -425,7 +438,7 @@ const TeamsPage = () => {
       patchTeamDetail(selectedTeam.id, jsonPatch)
         .then((res) => {
           if (res) {
-            fetchTeamByFqn(res.name);
+            fetchTeamByFqn(res.name, false);
           } else {
             throw t('server.unexpected-response');
           }
@@ -483,8 +496,8 @@ const TeamsPage = () => {
     history.push(getSettingPath(getTeamsWithFqnPath(TeamType.Organization)));
   };
 
-  const handleShowDeletedTeam = (checked: boolean) => {
-    setShowDeletedTeam(checked);
+  const toggleShowDeletedTeam = () => {
+    setShowDeletedTeam((pre) => !pre);
   };
 
   const fetchAssets = () => {
@@ -591,7 +604,7 @@ const TeamsPage = () => {
           updateTeamHandler={updateTeamHandler}
           onAssetsPaginate={handleAssetsPaginate}
           onDescriptionUpdate={onDescriptionUpdate}
-          onShowDeletedTeamChange={handleShowDeletedTeam}
+          onShowDeletedTeamChange={toggleShowDeletedTeam}
           onTeamExpand={fetchAllTeams}
         />
       )}

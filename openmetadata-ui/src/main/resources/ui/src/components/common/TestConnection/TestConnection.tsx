@@ -23,7 +23,7 @@ import {
   WorkflowType,
 } from 'generated/entity/automations/workflow';
 import { TestConnectionStep } from 'generated/entity/services/connections/testConnectionDefinition';
-import { toNumber } from 'lodash';
+import { isEmpty, toNumber } from 'lodash';
 import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -132,7 +132,10 @@ const TestConnection: FC<TestConnectionProps> = ({
 
   const fetchConnectionDefinition = async () => {
     try {
-      const response = await getTestConnectionDefinitionByName(connectionType);
+      // Test Connection FQN is built as <connectionType>.testConnectionDefinition. E.g., Mysql.testConnectionDefinition
+      const response = await getTestConnectionDefinitionByName(
+        `${connectionType}.testConnectionDefinition`
+      );
 
       setTestConnectionStep(response.steps);
       setDialogOpen(true);
@@ -166,9 +169,12 @@ const TestConnection: FC<TestConnectionProps> = ({
   };
 
   const handleDeleteWorkflow = async (workflowId: string) => {
+    if (isEmpty(workflowId)) {
+      return;
+    }
+
     try {
-      const response = await deleteWorkflowById(workflowId, true);
-      setCurrentWorkflow(response);
+      await deleteWorkflowById(workflowId, true);
     } catch (error) {
       // do not throw error for this API
     }
@@ -214,6 +220,9 @@ const TestConnection: FC<TestConnectionProps> = ({
         setTestStatus(StatusType.Failed);
         setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
         setIsTestingConnection(false);
+
+        // delete the workflow if workflow is not triggered successfully
+        await handleDeleteWorkflow(response.id);
 
         return;
       }
@@ -298,6 +307,12 @@ const TestConnection: FC<TestConnectionProps> = ({
       setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
       setTestStatus(StatusType.Failed);
       showErrorToast(error as AxiosError);
+
+      // delete the workflow if there is an exception
+      const workflowId = currentWorkflowRef.current?.id;
+      if (workflowId) {
+        await handleDeleteWorkflow(workflowId);
+      }
     }
   };
 
@@ -316,6 +331,18 @@ const TestConnection: FC<TestConnectionProps> = ({
   useEffect(() => {
     currentWorkflowRef.current = currentWorkflow; // update ref with latest value of currentWorkflow state variable
   }, [currentWorkflow]);
+
+  useEffect(() => {
+    return () => {
+      /**
+       * if workflow is present then delete the workflow when component unmount
+       */
+      const workflowId = currentWorkflowRef.current?.id;
+      if (workflowId) {
+        handleDeleteWorkflow(workflowId);
+      }
+    };
+  }, []);
 
   // rendering
 

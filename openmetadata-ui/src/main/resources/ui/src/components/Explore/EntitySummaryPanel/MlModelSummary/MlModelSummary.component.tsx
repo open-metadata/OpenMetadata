@@ -70,7 +70,7 @@ function MlModelSummary({
       <>
         <Row className="m-md" gutter={[0, 4]}>
           <Col span={24}>
-            <Row>
+            <Row gutter={[0, 4]}>
               {entityInfo.map((info) => {
                 const isOwner = info.name === t('label.owner');
 
@@ -133,10 +133,10 @@ function MlModelSummary({
           </>
         ) : null}
 
-        <Row className="m-md" gutter={[0, 16]}>
+        <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-base text-grey-muted"
+              className="text-grey-muted"
               data-testid="features-header">
               {t('label.feature-plural')}
             </Typography.Text>

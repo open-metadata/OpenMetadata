@@ -393,6 +393,12 @@ site_menu:
     url: /connectors/database/vertica/cli
   - category: Connectors / Database / Vertica / Troubleshooting
     url: /connectors/database/vertica/troubleshooting
+  - category: Connectors / Database / MongoDB
+    url: /connectors/database/mongodb
+  - category: Connectors / Database / MongoDB / Airflow
+    url: /connectors/database/mongodb/airflow
+  - category: Connectors / Database / MongoDB / CLI
+    url: /connectors/database/mongodb/cli
   - category: Connectors / Dashboard
     url: /connectors/dashboard
 
@@ -422,8 +428,6 @@ site_menu:
     url: /connectors/dashboard/mode/cli
   - category: Connectors / Dashboard / PowerBI
     url: /connectors/dashboard/powerbi
-  - category: Connectors / Dashboard / PowerBI / PowerBI Account Setup
-    url: /connectors/dashboard/powerbi/powerbi-account-setup
   - category: Connectors / Dashboard / PowerBI / Airflow
     url: /connectors/dashboard/powerbi/airflow
   - category: Connectors / Dashboard / PowerBI / CLI
@@ -484,7 +488,7 @@ site_menu:
   - category: Connectors / Pipeline / Airflow / CLI
     url: /connectors/pipeline/airflow/cli
   - category: Connectors / Pipeline / Airflow / GCS Composer
-    url: /connectors/pipeline/airflow/gcs
+    url: /connectors/pipeline/airflow/gcp
   - category: Connectors / Pipeline / Airflow / Lineage Backend
     url: /connectors/pipeline/airflow/lineage-backend
   - category: Connectors / Pipeline / Airflow / Lineage Operator
@@ -613,6 +617,8 @@ site_menu:
     url: /connectors/ingestion/workflows/dbt/ingest-dbt-cli
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Owner
     url: /connectors/ingestion/workflows/dbt/ingest-dbt-owner
+  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Descriptions
+    url: /connectors/ingestion/workflows/dbt/ingest-dbt-descriptions
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Tags
     url: /connectors/ingestion/workflows/dbt/ingest-dbt-tags
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Lineage
@@ -1053,7 +1059,7 @@ site_menu:
   - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / AWSCredentials
     url: /main-concepts/metadata-standard/schemas/security/credentials/awscredentials
   - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / GcsCredentials
-    url: /main-concepts/metadata-standard/schemas/security/credentials/gcscredentials
+    url: /main-concepts/metadata-standard/schemas/security/credentials/gcpcredentials
   - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials
     url: /main-concepts/metadata-standard/schemas/security/credentials
   - category: Main Concepts / Metadata Standard / Schemas / Security

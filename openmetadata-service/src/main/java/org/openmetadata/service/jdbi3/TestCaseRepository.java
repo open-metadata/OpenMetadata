@@ -3,11 +3,19 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
+import static org.openmetadata.service.util.RestUtil.ENTITY_NO_CHANGE;
+import static org.openmetadata.service.util.RestUtil.ENTITY_UPDATED;
+import static org.openmetadata.service.util.RestUtil.LOGICAL_TEST_CASES_ADDED;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -18,6 +26,8 @@ import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -25,10 +35,12 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
@@ -43,26 +55,57 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
 
   public TestCaseRepository(CollectionDAO dao) {
-    super(COLLECTION_PATH, TEST_CASE, TestCase.class, dao.testCaseDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS, null);
+    super(COLLECTION_PATH, TEST_CASE, TestCase.class, dao.testCaseDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
   }
 
   @Override
-  public TestCase setFields(TestCase test, EntityUtil.Fields fields) throws IOException {
+  public TestCase setFields(TestCase test, Fields fields) throws IOException {
     test.setTestSuite(fields.contains(TEST_SUITE_FIELD) ? getTestSuite(test) : null);
     test.setTestDefinition(fields.contains("testDefinition") ? getTestDefinition(test) : null);
     return test.withTestCaseResult(fields.contains(TEST_CASE_RESULT_FIELD) ? getTestCaseResult(test) : null);
   }
 
+  public RestUtil.PatchResponse<TestCaseResult> patchTestCaseResults(
+      String fqn, Long timestamp, UriInfo uriInfo, String user, JsonPatch patch) throws IOException {
+    String change = ENTITY_NO_CHANGE;
+    TestCaseResult original =
+        JsonUtils.readValue(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .getExtensionAtTimestamp(FullyQualifiedName.buildHash(fqn), TESTCASE_RESULT_EXTENSION, timestamp),
+            TestCaseResult.class);
+
+    TestCaseResult updated = JsonUtils.applyPatch(original, patch, TestCaseResult.class);
+
+    if (!Objects.equals(original.getTestCaseFailureStatus(), updated.getTestCaseFailureStatus())) {
+      updated.getTestCaseFailureStatus().setUpdatedBy(user);
+      updated.getTestCaseFailureStatus().setUpdatedAt(System.currentTimeMillis());
+      daoCollection
+          .entityExtensionTimeSeriesDao()
+          .update(
+              FullyQualifiedName.buildHash(fqn), TESTCASE_RESULT_EXTENSION, JsonUtils.pojoToJson(updated), timestamp);
+      change = ENTITY_UPDATED;
+    }
+    return new RestUtil.PatchResponse<>(Response.Status.OK, updated, change);
+  }
+
   @Override
   public void setFullyQualifiedName(TestCase test) {
-    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(test.getEntityLink());
-    test.setFullyQualifiedName(FullyQualifiedName.add(entityLink.getFullyQualifiedFieldValue(), test.getName()));
+    EntityLink entityLink = EntityLink.parse(test.getEntityLink());
+    test.setFullyQualifiedName(
+        FullyQualifiedName.add(
+            entityLink.getFullyQualifiedFieldValue(), EntityInterfaceUtil.quoteName(test.getName())));
     test.setEntityFQN(entityLink.getFullyQualifiedFieldValue());
   }
 
   @Override
+  public String getFullyQualifiedNameHash(TestCase test) {
+    return FullyQualifiedName.buildHash(test.getFullyQualifiedName());
+  }
+
+  @Override
   public void prepare(TestCase test) throws IOException {
-    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(test.getEntityLink());
+    EntityLink entityLink = EntityLink.parse(test.getEntityLink());
     EntityUtil.validateEntityLink(entityLink);
 
     // validate test definition and test suite
@@ -119,13 +162,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  public void storeRelationships(TestCase test) {
-    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(test.getEntityLink());
-    EntityReference tableRef = EntityUtil.validateEntityLink(entityLink);
+  public void storeRelationships(TestCase test) throws IOException {
+    EntityLink entityLink = EntityLink.parse(test.getEntityLink());
+    EntityUtil.validateEntityLink(entityLink);
     // Add relationship from testSuite to test
     addRelationship(test.getTestSuite().getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
-    // Add relationship from entity to test
-    addRelationship(tableRef.getId(), test.getId(), tableRef.getType(), TEST_CASE, Relationship.CONTAINS);
     // Add relationship from test definition to test
     addRelationship(
         test.getTestDefinition().getId(), test.getId(), TEST_DEFINITION, TEST_CASE, Relationship.APPLIED_TO);
@@ -139,31 +180,19 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // Validate the request content
     TestCase testCase = dao.findEntityByName(fqn);
 
-    TestCaseResult storedTestCaseResult =
-        JsonUtils.readValue(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .getExtensionAtTimestamp(
-                    testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION, testCaseResult.getTimestamp()),
-            TestCaseResult.class);
-    if (storedTestCaseResult != null) {
-      daoCollection
-          .entityExtensionTimeSeriesDao()
-          .update(
-              testCase.getFullyQualifiedName(),
-              TESTCASE_RESULT_EXTENSION,
-              JsonUtils.pojoToJson(testCaseResult),
-              testCaseResult.getTimestamp());
-    } else {
-      daoCollection
-          .entityExtensionTimeSeriesDao()
-          .insert(
-              testCase.getFullyQualifiedName(),
-              TESTCASE_RESULT_EXTENSION,
-              TEST_CASE_RESULT_FIELD,
-              JsonUtils.pojoToJson(testCaseResult));
-    }
-    setFieldsInternal(testCase, new EntityUtil.Fields(allowedFields, TEST_SUITE_FIELD));
+    String storedTestCaseResult =
+        getExtensionAtTimestamp(
+            testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION, testCaseResult.getTimestamp());
+
+    storeTimeSeries(
+        testCase.getFullyQualifiedName(),
+        TESTCASE_RESULT_EXTENSION,
+        "testCaseResult",
+        JsonUtils.pojoToJson(testCaseResult),
+        testCaseResult.getTimestamp(),
+        storedTestCaseResult != null);
+
+    setFieldsInternal(testCase, new EntityUtil.Fields(allowedFields, "testSuite"));
     ChangeDescription change =
         addTestCaseChangeDescription(testCase.getVersion(), testCaseResult, storedTestCaseResult);
     ChangeEvent changeEvent =
@@ -177,13 +206,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // Validate the request content
     TestCase testCase = dao.findEntityByName(fqn);
     TestCaseResult storedTestCaseResult =
-        JsonUtils.readValue(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .getExtensionAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp),
-            TestCaseResult.class);
+        JsonUtils.readValue(getExtensionAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp), TestCaseResult.class);
+
     if (storedTestCaseResult != null) {
-      daoCollection.entityExtensionTimeSeriesDao().deleteAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp);
+      deleteExtensionAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp);
       testCase.setTestCaseResult(storedTestCaseResult);
       ChangeDescription change = deleteTestCaseChangeDescription(testCase.getVersion(), storedTestCaseResult);
       ChangeEvent changeEvent = getChangeEvent(updatedBy, testCase, change, entityType, testCase.getVersion());
@@ -225,9 +251,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   private TestCaseResult getTestCaseResult(TestCase testCase) throws IOException {
     return JsonUtils.readValue(
-        daoCollection
-            .entityExtensionTimeSeriesDao()
-            .getLatestExtension(testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION),
+        getLatestExtensionFromTimeseries(testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION),
         TestCaseResult.class);
   }
 
@@ -235,12 +259,79 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     List<TestCaseResult> testCaseResults;
     testCaseResults =
         JsonUtils.readObjects(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .listBetweenTimestamps(fqn, TESTCASE_RESULT_EXTENSION, startTs, endTs),
-            TestCaseResult.class);
-
+            getResultsFromAndToTimestamps(fqn, TESTCASE_RESULT_EXTENSION, startTs, endTs), TestCaseResult.class);
     return new ResultList<>(testCaseResults, String.valueOf(startTs), String.valueOf(endTs), testCaseResults.size());
+  }
+
+  public int getTestCaseCount(List<UUID> testCaseIds) {
+    return daoCollection.testCaseDAO().countOfTestCases(testCaseIds);
+  }
+
+  public void isTestSuiteExecutable(String testSuiteFqn) throws IOException {
+    TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, testSuiteFqn, null, null);
+    if (!testSuite.getExecutable()) {
+      throw new IllegalArgumentException(
+          "Test suite "
+              + testSuite.getName()
+              + " is not executable. Cannot create test cases for non-executable test suites.");
+    }
+  }
+
+  public RestUtil.PutResponse<TestSuite> addTestCasesToLogicalTestSuite(TestSuite testSuite, List<UUID> testCaseIds)
+      throws IOException {
+    bulkAddToRelationship(testSuite.getId(), testCaseIds, TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+    List<EntityReference> testCasesEntityReferences = new ArrayList<>();
+    for (UUID testCaseId : testCaseIds) {
+      TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "", Include.ALL);
+      testCasesEntityReferences.add(
+          new EntityReference()
+              .withId(testCase.getId())
+              .withName(testCase.getName())
+              .withFullyQualifiedName(testCase.getFullyQualifiedName())
+              .withDescription(testCase.getDescription())
+              .withDisplayName(testCase.getDisplayName())
+              .withHref(testCase.getHref())
+              .withDeleted(testCase.getDeleted()));
+    }
+    testSuite.setTests(testCasesEntityReferences);
+    return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASES_ADDED);
+  }
+
+  public RestUtil.DeleteResponse<TestCase> deleteTestCaseFromLogicalTestSuite(UUID testSuiteId, UUID testCaseId)
+      throws IOException {
+    TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, null, null);
+    deleteRelationship(testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS);
+    EntityReference entityReference = Entity.getEntityReferenceById(TEST_SUITE, testSuiteId, Include.ALL);
+    testCase.setTestSuite(entityReference);
+    return new RestUtil.DeleteResponse<>(testCase, RestUtil.ENTITY_DELETED);
+  }
+
+  public TestSummary getTestSummary() throws IOException {
+    List<TestCase> testCases = listAll(Fields.EMPTY_FIELDS, new ListFilter());
+    List<String> testCaseFQNHashes =
+        testCases.stream()
+            .map(testCase -> FullyQualifiedName.buildHash(testCase.getFullyQualifiedName()))
+            .collect(Collectors.toList());
+
+    if (testCaseFQNHashes.isEmpty()) return new TestSummary();
+
+    List<String> jsonList =
+        daoCollection
+            .entityExtensionTimeSeriesDao()
+            .getLatestExtensionByFQNs(testCaseFQNHashes, TESTCASE_RESULT_EXTENSION);
+
+    HashMap<String, Integer> testCaseSummary = new HashMap<>();
+    for (String json : jsonList) {
+      TestCaseResult testCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
+      String status = testCaseResult.getTestCaseStatus().toString();
+      testCaseSummary.put(status, testCaseSummary.getOrDefault(status, 0) + 1);
+    }
+
+    return new TestSummary()
+        .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
+        .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
+        .withSuccess(testCaseSummary.getOrDefault(TestCaseStatus.Success.toString(), 0))
+        .withTotal(testCaseFQNHashes.size());
   }
 
   @Override
@@ -255,10 +346,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      MessageParser.EntityLink origEntityLink = MessageParser.EntityLink.parse(original.getEntityLink());
+      EntityLink origEntityLink = EntityLink.parse(original.getEntityLink());
       EntityReference origTableRef = EntityUtil.validateEntityLink(origEntityLink);
 
-      MessageParser.EntityLink updatedEntityLink = MessageParser.EntityLink.parse(updated.getEntityLink());
+      EntityLink updatedEntityLink = EntityLink.parse(updated.getEntityLink());
       EntityReference updatedTableRef = EntityUtil.validateEntityLink(updatedEntityLink);
 
       updateFromRelationship(

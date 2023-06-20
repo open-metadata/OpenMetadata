@@ -129,10 +129,11 @@ export const handleIngestionRetry = (
 
     if (retryCount !== 0) {
       cy.wait('@allPermissions').then(() => {
-        verifyResponseStatusCode('@serviceDetails', 200);
-        verifyResponseStatusCode('@ingestionPipelines', 200);
-        verifyResponseStatusCode('@pipelineStatuses', 200, {
-          responseTimeout: 50000,
+        cy.wait('@serviceDetails').then(() => {
+          verifyResponseStatusCode('@ingestionPipelines', 200);
+          verifyResponseStatusCode('@pipelineStatuses', 200, {
+            responseTimeout: 50000,
+          });
         });
       });
     }
@@ -473,7 +474,11 @@ export const editOwnerforCreatedService = (
     '/api/v1/system/config/pipeline-service-client',
     'airflow'
   );
-  interceptURL('GET', '/api/v1/databases?service=*&fields=*', 'database');
+  interceptURL(
+    'GET',
+    `/api/v1/*?service=${service_Name}&fields=*`,
+    'assetsDetail'
+  );
   // click on created service
   cy.get(`[data-testid="service-name-${service_Name}"]`)
     .should('exist')
@@ -483,9 +488,9 @@ export const editOwnerforCreatedService = (
   verifyResponseStatusCode('@getSelectedService', 200);
   verifyResponseStatusCode('@waitForIngestion', 200);
   verifyResponseStatusCode('@airflow', 200);
-  if (isDatabaseService(service_type)) {
-    verifyResponseStatusCode('@database', 200);
-  }
+
+  verifyResponseStatusCode('@assetsDetail', 200);
+
   interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'waitForUsers');
 
   // Click on edit owner button
@@ -894,6 +899,14 @@ export const addCustomPropertiesForEntity = (
     CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
   );
 
+  // should allow name in another languages
+  cy.get('[data-testid="name"]')
+    .should('be.visible')
+    .clear()
+    .type('汝らヴェディア');
+  // should not throw the validation error
+  cy.get('#name_help').should('not.exist');
+
   cy.get('[data-testid="name"]')
     .should('be.visible')
     .clear()
@@ -1032,7 +1045,7 @@ export const updateOwner = () => {
 export const mySqlConnectionInput = () => {
   cy.get('#root\\/username').type(Cypress.env('mysqlUsername'));
   checkServiceFieldSectionHighlighting('username');
-  cy.get('#root\\/password').type(Cypress.env('mysqlPassword'));
+  cy.get('#root\\/authType\\/password').type(Cypress.env('mysqlPassword'));
   checkServiceFieldSectionHighlighting('password');
   cy.get('#root\\/hostPort').type(Cypress.env('mysqlHostPort'));
   checkServiceFieldSectionHighlighting('hostPort');

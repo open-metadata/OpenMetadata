@@ -20,6 +20,7 @@ import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
 import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ELASTIC_SEARCH_EXTENSION;
+import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.getIndexMappingSchema;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -28,8 +29,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import javax.validation.Valid;
@@ -88,6 +92,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ReIndexingHandler;
 
@@ -257,6 +262,9 @@ public class SearchResource {
         break;
       case "query_search_index":
         searchSourceBuilder = buildQuerySearchBuilder(query, from, size);
+        break;
+      case "test_case_search_index":
+        searchSourceBuilder = buildTestCaseSearch(query, from, size);
         break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(query, from, size);
@@ -460,7 +468,8 @@ public class SearchResource {
     String jobRecord;
     jobRecord =
         dao.entityExtensionTimeSeriesDao()
-            .getLatestExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
+            .getLatestExtension(
+                FullyQualifiedName.buildHash(ELASTIC_SEARCH_ENTITY_FQN_STREAM), ELASTIC_SEARCH_EXTENSION);
     if (jobRecord != null) {
       return Response.status(Response.Status.OK)
           .entity(JsonUtils.readValue(jobRecord, EventPublisherJob.class))
@@ -484,9 +493,35 @@ public class SearchResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "jobId Id", schema = @Schema(type = "UUID")) @PathParam("jobId") UUID id)
       throws IOException {
-    // Only admins  can issue a reindex request
-    authorizer.authorizeAdmin(securityContext);
+    // Only admins or bot can issue a reindex request
+    authorizer.authorizeAdminOrBot(securityContext);
     return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getJob(id)).build();
+  }
+
+  @GET
+  @Path("/mappings")
+  @Operation(
+      operationId = "getSearchMappingSchema",
+      summary = "Get Search Mapping Schema",
+      description = "Get Search Mapping Schema",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Not found")
+      })
+  public Response getElasticSearchMappingSchema(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "List of Entities to get schema for") @QueryParam("entityType") String entityType) {
+    // Only admins or bot can issue a reindex request
+    authorizer.authorizeAdminOrBot(securityContext);
+    Set<String> entities;
+    if (entityType == null) {
+      entities = new HashSet<>();
+      entities.add("*");
+    } else {
+      entities = new HashSet<>(Arrays.asList(entityType.replace(" ", "").split(",")));
+    }
+    return Response.status(Response.Status.OK).entity(getIndexMappingSchema(entities)).build();
   }
 
   @GET
@@ -494,7 +529,6 @@ public class SearchResource {
   @Operation(
       operationId = "getAllReindexBatchJobs",
       summary = "Get all reindex batch jobs",
-      tags = "search",
       description = "Get all reindex batch jobs",
       responses = {
         @ApiResponse(responseCode = "200", description = "Success"),
@@ -521,7 +555,8 @@ public class SearchResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateEventPublisherJob createRequest) {
-    authorizer.authorizeAdmin(securityContext);
+    // Only admins or bot can issue a reindex request
+    authorizer.authorizeAdminOrBot(securityContext);
     return Response.status(Response.Status.CREATED)
         .entity(
             ReIndexingHandler.getInstance()
@@ -902,6 +937,39 @@ public class SearchResource {
     hb.field(highlightTagDisplayName);
     hb.field(highlightDescription);
     hb.field(highlightTagName);
+    hb.preTags(PRE_TAG);
+    hb.postTags(POST_TAG);
+
+    return searchBuilder(queryBuilder, hb, from, size);
+  }
+
+  private SearchSourceBuilder buildTestCaseSearch(String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .field(FIELD_NAME, 10.0f)
+            .field(DESCRIPTION, 3.0f)
+            .field("testSuite.fullyQualifiedName", 10.0f)
+            .field("testSuite.name", 10.0f)
+            .field("testSuite.description", 3.0f)
+            .field("entityLink", 3.0f)
+            .field("entityFQN", 10.0f)
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
+
+    HighlightBuilder.Field highlightTestCaseDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
+    highlightTestCaseDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightTestCaseName = new HighlightBuilder.Field(FIELD_NAME);
+    highlightTestCaseName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightTestSuiteName = new HighlightBuilder.Field("testSuite.name");
+    highlightTestSuiteName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightTestSuiteDescription = new HighlightBuilder.Field("testSuite.description");
+    highlightTestSuiteDescription.highlighterType(UNIFIED);
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightTestCaseDescription);
+    hb.field(highlightTestCaseName);
+    hb.field(highlightTestSuiteName);
+    hb.field(highlightTestSuiteDescription);
+
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
 

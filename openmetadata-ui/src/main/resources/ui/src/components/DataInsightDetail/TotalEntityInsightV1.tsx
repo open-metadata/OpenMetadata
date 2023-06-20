@@ -96,7 +96,7 @@ const TotalEntityInsightV1: FC<Props> = ({ selectedDays }) => {
       {data.length ? (
         <Row>
           <Col span={14}>
-            <Typography.Text>
+            <Typography.Text className="font-medium">
               {t('label.data-insight-total-entity-summary')}
             </Typography.Text>
             <div className="p-t-lg">
@@ -131,7 +131,7 @@ const TotalEntityInsightV1: FC<Props> = ({ selectedDays }) => {
               <Col className="p-b-sm" span={24}>
                 <div className="d-flex justify-between">
                   <div className="d-flex flex-col">
-                    <Typography.Text>
+                    <Typography.Text className="font-medium">
                       {t('label.total-entity', {
                         entity: t('label.asset-plural'),
                       })}
@@ -197,7 +197,7 @@ const TotalEntityInsightV1: FC<Props> = ({ selectedDays }) => {
       ) : (
         <Row>
           <Col span={14}>
-            <Typography.Text>
+            <Typography.Text className="font-medium">
               {t('label.data-insight-total-entity-summary')}
             </Typography.Text>
           </Col>

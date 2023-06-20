@@ -17,16 +17,16 @@ from typing import List
 from metadata.generated.schema.entity.services.connections.pipeline.splineConnection import (
     SplineConnection,
 )
-from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.pipeline.spline.models import (
     ExecutionDetail,
     ExecutionEvents,
 )
 from metadata.utils.constants import AUTHORIZATION_HEADER, NO_ACCESS_TOKEN
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-from metadata.utils.helpers import clean_uri
 
 
 class SplineClient:
@@ -34,7 +34,6 @@ class SplineClient:
     Wrapper on top of Spline REST API
     """
 
-    # pylint: disable=too-many-arguments
     def __init__(self, config: SplineConnection):
         self.config = config
         client_config: ClientConfig = ClientConfig(

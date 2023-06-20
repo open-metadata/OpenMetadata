@@ -12,6 +12,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.service.Entity;
 
 @Slf4j
@@ -42,9 +43,12 @@ public class ElasticSearchIndexFactory {
         return new QueryIndex((Query) entity);
       case Entity.CONTAINER:
         return new ContainerIndex((Container) entity);
+      case Entity.TEST_CASE:
+      case Entity.TEST_SUITE:
+        return new TestCaseIndex((TestCase) entity);
       default:
         LOG.warn("Ignoring Entity Type {}", entityType);
     }
-    return null;
+    throw new IllegalArgumentException(String.format("Entity Type [%s] is not valid for Index Factory", entityType));
   }
 }

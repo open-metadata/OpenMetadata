@@ -23,21 +23,6 @@ After the API call, you will get a response like this.
 {
   "id": "7f0b032f-cdc8-4573-abb0-22165dcd8e07",
   "name": "table",
-  "customProperties": [
-    {
-      "name": "tableSize",
-      "description": "Property for tracking the tableSize.",
-      "propertyType": {
-        "id": "7531f881-c37c-4e39-9154-4bdf0802e05e",
-        "type": "type",
-        "name": "string",
-        "fullyQualifiedName": "string",
-        "description": "\"A String type.\"",
-        "displayName": "string",
-        "href": "http://localhost:8585/api/v1/metadata/types/7531f881-c37c-4e39-9154-4bdf0802e05e"
-      }
-    }
-  ]
 }
 ```
 

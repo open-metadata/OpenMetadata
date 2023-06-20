@@ -1,5 +1,8 @@
 package org.openmetadata.service.resources.services.metadata;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -82,32 +85,32 @@ public class MetadataServiceResource
   public static final String FIELDS = "pipelines,owner,tags";
 
   @Override
-  public void initialize(OpenMetadataApplicationConfig config) {
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     registerMetadataServices(config);
   }
 
-  private void registerMetadataServices(OpenMetadataApplicationConfig config) {
-    try {
+  private void registerMetadataServices(OpenMetadataApplicationConfig config) throws IOException {
+    List<MetadataService> servicesList =
+        repository.getEntitiesFromSeedData(".*json/data/metadataService/OpenmetadataService.json$");
+    if (!nullOrEmpty(servicesList)) {
+      MetadataService openMetadataService = servicesList.get(0);
+      openMetadataService.setId(UUID.randomUUID());
+      openMetadataService.setUpdatedBy(ADMIN_USER_NAME);
+      openMetadataService.setUpdatedAt(System.currentTimeMillis());
       if (config.getElasticSearchConfiguration() != null) {
         OpenMetadataConnection openMetadataServerConnection =
             new OpenMetadataConnectionBuilder(config)
                 .build()
                 .withElasticsSearch(getElasticSearchConnectionSink(config.getElasticSearchConfiguration()));
         MetadataConnection metadataConnection = new MetadataConnection().withConfig(openMetadataServerConnection);
-        List<MetadataService> servicesList = dao.getEntitiesFromSeedData(".*json/data/metadataService/.*\\.json$");
-        if (servicesList.size() == 1) {
-          MetadataService service = servicesList.get(0);
-          service.setConnection(metadataConnection);
-          dao.setFullyQualifiedName(service);
-          dao.initializeEntity(service);
-        } else {
-          throw new IOException("Only one Openmetadata Service can be initialized from the Data.");
-        }
+        openMetadataService.setConnection(metadataConnection);
       } else {
         LOG.error("[MetadataService] Missing Elastic Search Config.");
       }
-    } catch (Exception ex) {
-      LOG.error("[MetadataService] Error in creating Metadata Services.", ex);
+      repository.setFullyQualifiedName(openMetadataService);
+      repository.createOrUpdate(null, openMetadataService);
+    } else {
+      throw new IOException("Failed to initialize OpenMetadata Service.");
     }
   }
 
@@ -123,11 +126,14 @@ public class MetadataServiceResource
     super(MetadataService.class, new MetadataServiceRepository(dao), authorizer, ServiceType.METADATA);
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
+    return null;
+  }
+
   public static class MetadataServiceList extends ResultList<MetadataService> {
-    @SuppressWarnings("unused") /* Required for tests */
-    public MetadataServiceList() {
-      /* unused */
-    }
+    /* Required for serde */
   }
 
   @GET
@@ -174,9 +180,9 @@ public class MetadataServiceResource
 
     ListFilter filter = new ListFilter(include);
     if (before != null) {
-      metadataServices = dao.listBefore(uriInfo, fields, filter, limitParam, before);
+      metadataServices = repository.listBefore(uriInfo, fields, filter, limitParam, before);
     } else {
-      metadataServices = dao.listAfter(uriInfo, fields, filter, limitParam, after);
+      metadataServices = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
     return addHref(uriInfo, decryptOrNullify(securityContext, metadataServices));
   }
@@ -271,7 +277,7 @@ public class MetadataServiceResource
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    MetadataService service = dao.addTestConnectionResult(id, testConnectionResult);
+    MetadataService service = repository.addTestConnectionResult(id, testConnectionResult);
     return decryptOrNullify(securityContext, service);
   }
 

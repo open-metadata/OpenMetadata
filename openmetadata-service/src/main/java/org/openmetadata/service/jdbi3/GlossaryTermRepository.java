@@ -63,8 +63,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         dao.glossaryTermDAO(),
         dao,
         PATCH_FIELDS,
-        UPDATE_FIELDS,
-        null);
+        UPDATE_FIELDS);
   }
 
   @Override
@@ -78,7 +77,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private Integer getUsageCount(GlossaryTerm term) {
-    return daoCollection.tagUsageDAO().getTagCount(TagSource.GLOSSARY.ordinal(), term.getFullyQualifiedName());
+    return daoCollection
+        .tagUsageDAO()
+        .getTagCount(TagSource.GLOSSARY.ordinal(), FullyQualifiedName.buildHash(term.getFullyQualifiedName()));
   }
 
   private EntityReference getParent(GlossaryTerm entity) throws IOException {
@@ -185,6 +186,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
   }
 
+  @Override
+  public String getFullyQualifiedNameHash(GlossaryTerm entity) {
+    return FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
+  }
+
   protected EntityReference getGlossary(GlossaryTerm term) throws IOException {
     return getFromEntityRef(term.getId(), Relationship.CONTAINS, GLOSSARY, true);
   }
@@ -201,7 +207,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   protected void postDelete(GlossaryTerm entity) {
     // Cleanup all the tag labels using this glossary term
-    daoCollection.tagUsageDAO().deleteTagLabels(TagSource.GLOSSARY.ordinal(), entity.getFullyQualifiedName());
+    daoCollection
+        .tagUsageDAO()
+        .deleteTagLabels(TagSource.GLOSSARY.ordinal(), FullyQualifiedName.buildHash(entity.getFullyQualifiedName()));
   }
 
   private void addGlossaryRelationship(GlossaryTerm term) {

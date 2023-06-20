@@ -174,14 +174,17 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Create terms t1 and a term t12 under t1 in the glossary without reviewers and owner
     CreateGlossaryTerm create =
-        new CreateGlossaryTerm().withGlossary(glossary.getName()).withDescription("description");
+        new CreateGlossaryTerm().withGlossary(glossary.getFullyQualifiedName()).withDescription("description");
     GlossaryTerm t1 = createEntity(create.withName("t1"), ADMIN_AUTH_HEADERS);
     assertEntityReferences(glossary.getReviewers(), t1.getReviewers()); // Reviewers are inherited
     assertReference(glossary.getOwner(), t1.getOwner()); // Owner is inherited
 
     GlossaryTerm t12 =
         createEntity(
-            create.withName("t12").withGlossary(glossary.getName()).withParent(t1.getFullyQualifiedName()),
+            create
+                .withName("t12")
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withParent(t1.getFullyQualifiedName()),
             ADMIN_AUTH_HEADERS);
     assertEntityReferences(glossary.getReviewers(), t12.getReviewers()); // Reviewers are inherited
     assertReference(glossary.getOwner(), t12.getOwner()); // Owner is inherited
@@ -296,7 +299,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     Glossary g1 = createGlossary(test, null, null);
 
     // Create glossary term t1 in glossary g1
-    CreateGlossaryTerm create = createRequest("t1", "", "", null).withGlossary(g1.getName());
+    CreateGlossaryTerm create = createRequest("t1", "", "", null).withGlossary(g1.getFullyQualifiedName());
     GlossaryTerm t1 = createEntity(create, ADMIN_AUTH_HEADERS);
     TagLabel t1Label = EntityUtil.toTagLabel(t1);
 
@@ -369,7 +372,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       Glossary glossary, GlossaryTerm parent, String termName, List<EntityReference> reviewers) throws IOException {
     CreateGlossaryTerm createGlossaryTerm =
         createRequest(termName, "", "", null)
-            .withGlossary(glossary.getName())
+            .withGlossary(getFqn(glossary))
             .withParent(getFqn(parent))
             .withReviewers(getFqns(reviewers));
     return createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
@@ -399,7 +402,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         .withSynonyms(List.of("syn1", "syn2", "syn3"))
         .withGlossary(GLOSSARY1.getName())
         .withRelatedTerms(Arrays.asList(getFqn(GLOSSARY1_TERM1), getFqn(GLOSSARY2_TERM1)))
-        .withReviewers(List.of(USER1_REF.getName()));
+        .withReviewers(List.of(USER1_REF.getFullyQualifiedName()));
   }
 
   @Override

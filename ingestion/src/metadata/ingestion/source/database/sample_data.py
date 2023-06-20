@@ -92,6 +92,7 @@ from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.tests_data import (
+    OMetaLogicalTestSuiteSample,
     OMetaTestCaseResultsSample,
     OMetaTestCaseSample,
     OMetaTestSuiteSample,
@@ -446,6 +447,14 @@ class SampleDataSource(
             )
         )
 
+        self.logical_test_suites = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/tests/logicalTestSuites.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Create class instance"""
@@ -479,6 +488,7 @@ class SampleDataSource(
         yield from self.ingest_test_suite()
         yield from self.ingest_test_case()
         yield from self.ingest_test_case_results()
+        yield from self.ingest_logical_test_suite()
 
     def ingest_teams(self):
         """
@@ -711,7 +721,7 @@ class SampleDataSource(
                     displayName=chart["displayName"],
                     description=chart["description"],
                     chartType=get_standard_chart_type(chart["chartType"]),
-                    chartUrl=chart["chartUrl"],
+                    sourceUrl=chart["sourceUrl"],
                     service=self.looker_service.fullyQualifiedName,
                 )
                 self.status.scanned(f"Chart Scanned: {chart_ev.name.__root__}")
@@ -726,7 +736,7 @@ class SampleDataSource(
                     name=dashboard["name"],
                     displayName=dashboard["displayName"],
                     description=dashboard["description"],
-                    dashboardUrl=dashboard["dashboardUrl"],
+                    sourceUrl=dashboard["sourceUrl"],
                     charts=dashboard["charts"],
                     dataModels=dashboard.get("dataModels", None),
                     service=self.looker_service.fullyQualifiedName,
@@ -793,7 +803,7 @@ class SampleDataSource(
                     displayName=chart["displayName"],
                     description=chart["description"],
                     chartType=get_standard_chart_type(chart["chartType"]),
-                    chartUrl=chart["chartUrl"],
+                    sourceUrl=chart["sourceUrl"],
                     service=self.dashboard_service.fullyQualifiedName,
                 )
                 self.status.scanned(f"Chart Scanned: {chart_ev.name.__root__}")
@@ -831,7 +841,7 @@ class SampleDataSource(
                 name=dashboard["name"],
                 displayName=dashboard["displayName"],
                 description=dashboard["description"],
-                dashboardUrl=dashboard["dashboardUrl"],
+                sourceUrl=dashboard["sourceUrl"],
                 charts=dashboard["charts"],
                 dataModels=dashboard.get("dataModels", None),
                 service=self.dashboard_service.fullyQualifiedName,
@@ -845,7 +855,7 @@ class SampleDataSource(
                 name=pipeline["name"],
                 displayName=pipeline["displayName"],
                 description=pipeline["description"],
-                pipelineUrl=pipeline["pipelineUrl"],
+                sourceUrl=pipeline["sourceUrl"],
                 tasks=pipeline["tasks"],
                 service=self.pipeline_service.fullyQualifiedName,
             )
@@ -1088,7 +1098,29 @@ class SampleDataSource(
                 test_suite=CreateTestSuiteRequest(
                     name=test_suite["testSuiteName"],
                     description=test_suite["testSuiteDescription"],
+                    executableEntityReference=test_suite["executableEntityReference"],
                 )
+            )
+
+    def ingest_logical_test_suite(self) -> Iterable[OMetaLogicalTestSuiteSample]:
+        """Iterate over all the logical testSuite and testCase and ingest them"""
+        for logical_test_suite in self.logical_test_suites["tests"]:
+            test_suite = CreateTestSuiteRequest(
+                name=logical_test_suite["testSuiteName"],
+                description=logical_test_suite["testSuiteDescription"],
+            )  # type: ignore
+            test_cases: List[TestCase] = []
+            for test_case in logical_test_suite["testCases"]:
+                test_case = self.metadata.get_by_name(
+                    entity=TestCase,
+                    fqn=test_case["fqn"],
+                    fields=["testSuite", "testDefinition"],
+                )
+                if test_case:
+                    test_cases.append(test_case)
+
+            yield OMetaLogicalTestSuiteSample(
+                test_suite=test_suite, test_cases=test_cases
             )
 
     def ingest_test_case(self) -> Iterable[OMetaTestCaseSample]:

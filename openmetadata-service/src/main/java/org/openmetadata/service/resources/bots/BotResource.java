@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -92,7 +93,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load system bots
-    List<Bot> bots = dao.getEntitiesFromSeedData();
+    List<Bot> bots = repository.getEntitiesFromSeedData();
     String domain = SecurityUtil.getDomain(config);
     for (Bot bot : bots) {
       String userName = bot.getBotUser().getName();
@@ -103,7 +104,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       user.setRoles(getRoleForBot(bot.getName()));
       user = UserUtil.addOrUpdateBotUser(user, config);
       bot.withBotUser(user.getEntityReference());
-      dao.initializeEntity(bot);
+      repository.initializeEntity(bot);
     }
   }
 
@@ -111,13 +112,15 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   protected void upgrade() throws IOException {
     // This should be deleted once 0.13 is deprecated
     // For all the existing bots, add ingestion bot role
-    ResultList<Bot> bots = dao.listAfter(null, Fields.EMPTY_FIELDS, new ListFilter(Include.NON_DELETED), 1000, null);
+    ResultList<Bot> bots =
+        repository.listAfter(null, Fields.EMPTY_FIELDS, new ListFilter(Include.NON_DELETED), 1000, null);
     EntityReference ingestionBotRole = RoleResource.getRole(Entity.INGESTION_BOT_ROLE);
     for (Bot bot : bots.getData()) {
       User botUser = Entity.getEntity(bot.getBotUser(), "roles", Include.NON_DELETED);
       if (botUser.getRoles() == null) {
         botUser.setRoles(List.of(ingestionBotRole));
-        dao.addRelationship(botUser.getId(), ingestionBotRole.getId(), Entity.USER, Entity.ROLE, Relationship.HAS);
+        repository.addRelationship(
+            botUser.getId(), ingestionBotRole.getId(), Entity.USER, Entity.ROLE, Relationship.HAS);
       }
     }
   }
@@ -129,10 +132,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   }
 
   public static class BotList extends ResultList<Bot> {
-    @SuppressWarnings("unused")
-    public BotList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
 
   @GET
@@ -212,7 +212,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getByNameInternal(uriInfo, securityContext, name, "", include);
+    return getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), "", include);
   }
 
   @GET
@@ -365,7 +365,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           boolean hardDelete,
       @Parameter(description = "Name of the bot", schema = @Schema(type = "string")) @PathParam("name") String name)
       throws IOException {
-    return deleteByName(uriInfo, securityContext, name, true, hardDelete);
+    return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), true, hardDelete);
   }
 
   @PUT
@@ -388,7 +388,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
 
   private Bot getBot(CreateBot create, String user) throws IOException {
     return copy(new Bot(), create, user)
-        .withBotUser(getEntityReference(Entity.USER, create.getBotUser()))
+        .withBotUser(getEntityReference(Entity.USER, EntityInterfaceUtil.quoteName(create.getBotUser())))
         .withProvider(create.getProvider())
         .withFullyQualifiedName(create.getName());
   }
@@ -404,12 +404,12 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   }
 
   private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(User user) {
-    return dao.findFrom(user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
+    return repository.findFrom(user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
   }
 
   private Bot getBot(SecurityContext securityContext, CreateBot create) throws IOException {
     Bot bot = getBot(create, securityContext.getUserPrincipal().getName());
-    Bot originalBot = retrieveBot(bot.getName());
+    Bot originalBot = retrieveBot(EntityInterfaceUtil.quoteName(bot.getName()));
     User botUser = retrieveUser(bot);
     if (botUser != null && !Boolean.TRUE.equals(botUser.getIsBot())) {
       throw new IllegalArgumentException(String.format("User [%s] is not a bot user", botUser.getName()));
@@ -417,7 +417,8 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     if (userHasRelationshipWithAnyBot(botUser, originalBot)) {
       List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(botUser);
       bot =
-          dao.get(null, userBotRelationship.stream().findFirst().orElseThrow().getId(), EntityUtil.Fields.EMPTY_FIELDS);
+          repository.get(
+              null, userBotRelationship.stream().findFirst().orElseThrow().getId(), EntityUtil.Fields.EMPTY_FIELDS);
       throw new IllegalArgumentException(CatalogExceptionMessage.userAlreadyBot(botUser.getName(), bot.getName()));
     }
     // TODO: review this flow on https://github.com/open-metadata/OpenMetadata/issues/8321
@@ -430,7 +431,11 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   private User retrieveUser(Bot bot) {
     // TODO fix this code - don't depend on exception
     try {
-      return Entity.getEntity(bot.getBotUser(), "", Include.NON_DELETED);
+      return Entity.getEntityByName(
+          Entity.USER,
+          EntityInterfaceUtil.quoteName(bot.getBotUser().getFullyQualifiedName()),
+          "",
+          Include.NON_DELETED);
     } catch (Exception exception) {
       return null;
     }
@@ -439,7 +444,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   private Bot retrieveBot(String botName) {
     // TODO fix this code - don't depend on exception
     try {
-      return dao.getByName(null, botName, EntityUtil.Fields.EMPTY_FIELDS);
+      return repository.getByName(null, botName, EntityUtil.Fields.EMPTY_FIELDS);
     } catch (Exception e) {
       return null;
     }

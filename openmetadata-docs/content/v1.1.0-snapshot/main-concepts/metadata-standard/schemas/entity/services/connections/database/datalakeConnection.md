@@ -20,7 +20,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 
 - **`datalakeType`** *(string)*: Service type. Must be one of: `['Datalake']`. Default: `Datalake`.
 - **`GCSConfig`**: DataLake Catalog and Manifest files in GCS storage. We will search for catalog.json and manifest.json.
-  - **`securityConfig`**: Refer to *../../../../security/credentials/gcsCredentials.json*.
+  - **`securityConfig`**: Refer to *../../../../security/credentials/gcpCredentials.json*.
 - **`S3Config`**: DataLake Catalog and Manifest files in S3 bucket. We will search for catalog.json and manifest.json.
   - **`securityConfig`**: Refer to *../../../../security/credentials/awsCredentials.json*.
 

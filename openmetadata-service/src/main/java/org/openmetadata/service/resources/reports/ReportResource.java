@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.reports;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -39,6 +41,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.ReportRepository;
@@ -59,9 +62,16 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "reports")
 public class ReportResource extends EntityResource<Report, ReportRepository> {
   public static final String COLLECTION_PATH = "/v1/reports/";
+  static final String FIELDS = "owner,usageSummary";
 
   public ReportResource(CollectionDAO dao, Authorizer authorizer) {
     super(Report.class, new ReportRepository(dao), authorizer);
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
+    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
   }
 
   @Override
@@ -70,12 +80,8 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
   }
 
   public static class ReportList extends ResultList<Report> {
-    public ReportList(List<Report> data) {
-      super(data);
-    }
+    /* Required for serde */
   }
-
-  static final String FIELDS = "owner,usageSummary";
 
   @GET
   @Operation(
@@ -98,7 +104,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
       throws IOException {
     Fields fields = getFields(fieldsParam);
     ListFilter filter = new ListFilter();
-    return dao.listAfter(uriInfo, fields, filter, 10000, null);
+    return repository.listAfter(uriInfo, fields, filter, 10000, null);
   }
 
   @GET

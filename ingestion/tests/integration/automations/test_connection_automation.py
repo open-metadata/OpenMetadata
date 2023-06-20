@@ -28,6 +28,9 @@ from metadata.generated.schema.entity.automations.workflow import (
     WorkflowType,
 )
 from metadata.generated.schema.entity.data.pipeline import StatusType
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
     MySQLType,
@@ -45,7 +48,7 @@ from metadata.ingestion.source.connections import get_connection, get_test_conne
 
 SERVICE_CONNECTION = MysqlConnection(
     username="openmetadata_user",
-    password="openmetadata_password",
+    authType=BasicAuth(password="openmetadata_password"),
     hostPort="localhost:3306",
 )
 

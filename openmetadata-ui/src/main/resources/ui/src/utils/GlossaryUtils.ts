@@ -13,8 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { ModifiedGlossaryTerm } from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
-import { GlossaryCSVRecord } from 'components/Glossary/ImportGlossary/ImportGlossary.interface';
-import { isEmpty, isUndefined, omit } from 'lodash';
+import { isUndefined, omit } from 'lodash';
 import { ListGlossaryTermsParams } from 'rest/glossaryAPI';
 import { searchData } from 'rest/miscAPI';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
@@ -87,26 +86,6 @@ export const getEntityReferenceFromGlossaryTerm = (
     displayName: glossaryTerm.displayName,
     name: glossaryTerm.name,
   };
-};
-
-export const parseCSV = (csvData: string[][]) => {
-  const recordList: GlossaryCSVRecord[] = [];
-
-  if (!isEmpty(csvData)) {
-    const headers = csvData[0];
-
-    csvData.slice(1).forEach((line) => {
-      const record: GlossaryCSVRecord = {} as GlossaryCSVRecord;
-
-      headers.forEach((header, index) => {
-        record[header as keyof GlossaryCSVRecord] = line[index];
-      });
-
-      recordList.push(record);
-    });
-  }
-
-  return recordList;
 };
 
 // calculate root level glossary term
