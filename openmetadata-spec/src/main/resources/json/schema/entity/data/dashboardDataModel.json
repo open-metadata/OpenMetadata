@@ -133,6 +133,10 @@
     "dataModels": {
       "description": "List of data models used by this data model.",
       "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+    },
+    "project": {
+      "description": "Name of the project / workspace / collection in which the dataModel is contained",
+      "type": "string"
     }
   },
   "required": [
