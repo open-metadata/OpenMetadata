@@ -151,6 +151,11 @@
       "description": "State of an action over API.",
       "type" : "string",
       "enum" : ["success", "failure", "aborted", "partialSuccess"]
+    },
+    "sourceUrl" : {
+      "description": "Source Url of the respective entity.",
+      "type" : "string",
+      "format": "url"
     }
   }
 }
