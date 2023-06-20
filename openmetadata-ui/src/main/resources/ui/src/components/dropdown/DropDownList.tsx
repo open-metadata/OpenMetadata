@@ -151,7 +151,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
         aria-disabled={item.disabled as boolean}
         className={classNames(
           'text-body d-flex items-center px-4 py-2 text-sm hover:tw-bg-body-hover',
-          !isNil(value) && item.value === value ? 'tw-bg-primary-lite' : null,
+          !isNil(value) && item.value === value ? 'bg-primary-lite' : null,
           {
             'opacity-60 cursor-not-allowed': item.disabled,
             'cursor-pointer': !item.disabled,

@@ -233,7 +233,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
               <span className="tw-py-1.5 tw-px-2 tw-rounded-l tw-bg-tag ">
                 {info.key}
               </span>
-              <span className="tw-py-1.5 tw-px-2 tw-bg-primary-lite tw-font-normal tw-rounded-r">
+              <span className="tw-py-1.5 tw-px-2 bg-primary-lite tw-font-normal tw-rounded-r">
                 {info.value}
               </span>
             </div>
