@@ -13,6 +13,7 @@
 
 import {
   Button,
+  Card,
   Form,
   Input,
   Radio,
@@ -27,16 +28,11 @@ import { isUndefined, trim } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { checkEmailInUse, generateRandomPwd } from 'rest/auth-API';
-import {
-  getBotsPagePath,
-  getUsersPagePath,
-  VALIDATION_MESSAGES,
-} from '../../constants/constants';
+import { VALIDATION_MESSAGES } from '../../constants/constants';
 import {
   passwordRegex,
   validEmailRegEx,
 } from '../../constants/regex.constants';
-import { PageLayoutType } from '../../enums/layout.enum';
 import { AuthTypes } from '../../enums/signin.enum';
 import { CreatePasswordGenerator } from '../../enums/user.enum';
 import {
@@ -58,8 +54,6 @@ import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
-import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
-import PageLayout from '../containers/PageLayout';
 import DropDown from '../dropdown/DropDown';
 import { DropDownListItem } from '../dropdown/types';
 import Loader from '../Loader/Loader';
@@ -109,23 +103,6 @@ const CreateUser = ({
       authConfig?.provider === AuthTypes.BASIC ||
       authConfig?.provider === AuthTypes.LDAP,
     [authConfig]
-  );
-
-  const slashedBreadcrumbList = useMemo(
-    () => [
-      {
-        name: forceBot ? t('label.bot-plural') : t('label.user-plural'),
-        url: forceBot ? getBotsPagePath() : getUsersPagePath(),
-      },
-      {
-        name: `${t('label.create')} ${
-          forceBot ? t('label.bot') : t('label.user')
-        }`,
-        url: '',
-        activeTitle: true,
-      },
-    ],
-    [forceBot]
   );
 
   const jwtOption = getJWTOption();
@@ -702,84 +679,110 @@ const CreateUser = ({
   }, []);
 
   return (
-    <PageLayout
-      classes="tw-max-w-full-hd tw-h-full tw-pt-4"
-      header={<TitleBreadcrumb titleLinks={slashedBreadcrumbList} />}
-      layout={PageLayoutType['2ColRTL']}
-      pageTitle={t('label.create-entity', { entity: t('label.user') })}>
-      <div className="tw-form-container">
-        <h6 className="tw-heading tw-text-base">
-          {t('label.create-entity', {
-            entity: forceBot ? t('label.bot') : t('label.user'),
-          })}
-        </h6>
-        <Form
-          form={form}
-          id="create-user-bot-form"
-          layout="vertical"
-          validateMessages={VALIDATION_MESSAGES}
-          onFinish={handleSave}>
-          <Form.Item
-            label={t('label.email')}
-            name="email"
-            rules={[
-              {
-                pattern: validEmailRegEx,
-                required: true,
-                type: 'email',
-                message: t('message.field-text-is-invalid', {
-                  fieldText: t('label.email'),
-                }),
+    <Card className="p-xs">
+      <h6 className="tw-heading tw-text-base">
+        {t('label.create-entity', {
+          entity: forceBot ? t('label.bot') : t('label.user'),
+        })}
+      </h6>
+      <Form
+        form={form}
+        id="create-user-bot-form"
+        layout="vertical"
+        validateMessages={VALIDATION_MESSAGES}
+        onFinish={handleSave}>
+        <Form.Item
+          label={t('label.email')}
+          name="email"
+          rules={[
+            {
+              pattern: validEmailRegEx,
+              required: true,
+              type: 'email',
+              message: t('message.field-text-is-invalid', {
+                fieldText: t('label.email'),
+              }),
+            },
+            {
+              type: 'email',
+              required: true,
+              validator: async (_, value) => {
+                if (validEmailRegEx.test(value) && !forceBot) {
+                  const isEmailAlreadyExists = await checkEmailInUse(value);
+                  if (isEmailAlreadyExists) {
+                    return Promise.reject(
+                      t('message.entity-already-exists', {
+                        entity: value,
+                      })
+                    );
+                  }
+
+                  return Promise.resolve();
+                }
               },
-              {
-                type: 'email',
-                required: true,
-                validator: async (_, value) => {
-                  if (validEmailRegEx.test(value) && !forceBot) {
-                    const isEmailAlreadyExists = await checkEmailInUse(value);
-                    if (isEmailAlreadyExists) {
+            },
+          ]}>
+          <Input
+            data-testid="email"
+            name="email"
+            placeholder={t('label.email')}
+            value={email}
+            onChange={handleOnChange}
+          />
+        </Form.Item>
+        <Form.Item label={t('label.display-name')} name="displayName">
+          <Input
+            data-testid="displayName"
+            name="displayName"
+            placeholder={t('label.display-name')}
+            value={displayName}
+            onChange={handleOnChange}
+          />
+        </Form.Item>
+        {forceBot && (
+          <>
+            <Form.Item
+              label={t('label.auth-mechanism')}
+              name="auth-mechanism"
+              rules={[
+                {
+                  required: true,
+                  validator: () => {
+                    if (!authMechanism) {
                       return Promise.reject(
-                        t('message.entity-already-exists', {
-                          entity: value,
+                        t('label.field-required', {
+                          field: t('label.auth-mechanism'),
                         })
                       );
                     }
 
                     return Promise.resolve();
-                  }
+                  },
                 },
-              },
-            ]}>
-            <Input
-              data-testid="email"
-              name="email"
-              placeholder={t('label.email')}
-              value={email}
-              onChange={handleOnChange}
-            />
-          </Form.Item>
-          <Form.Item label={t('label.display-name')} name="displayName">
-            <Input
-              data-testid="displayName"
-              name="displayName"
-              placeholder={t('label.display-name')}
-              value={displayName}
-              onChange={handleOnChange}
-            />
-          </Form.Item>
-          {forceBot && (
-            <>
+              ]}>
+              <Select
+                className="w-full"
+                data-testid="auth-mechanism"
+                defaultValue={authMechanism}
+                placeholder={t('label.select-field', {
+                  field: t('label.auth-mechanism'),
+                })}
+                onChange={(value) => setAuthMechanism(value)}>
+                <Option key={jwtOption.value}>{jwtOption.label}</Option>
+              </Select>
+            </Form.Item>
+            {authMechanism === AuthType.Jwt && (
               <Form.Item
-                label={t('label.auth-mechanism')}
-                name="auth-mechanism"
+                label={t('label.token-expiration')}
+                name="token-expiration"
                 rules={[
                   {
                     required: true,
                     validator: () => {
-                      if (!authMechanism) {
+                      if (!tokenExpiry) {
                         return Promise.reject(
                           t('label.field-required', {
-                            field: t('label.auth-mechanism'),
+                            field: t('label.token-expiration'),
                           })
                         );
                       }
@@ -790,223 +793,191 @@ const CreateUser = ({
                 ]}>
                 <Select
                   className="w-full"
-                  data-testid="auth-mechanism"
-                  defaultValue={authMechanism}
-                  placeholder={t('label.select-field', {
-                    field: t('label.auth-mechanism'),
-                  })}
-                  onChange={(value) => setAuthMechanism(value)}>
-                  <Option key={jwtOption.value}>{jwtOption.label}</Option>
+                  data-testid="token-expiry"
+                  defaultValue={tokenExpiry}
+                  placeholder={t('message.select-token-expiration')}
+                  onChange={(value) => setTokenExpiry(value)}>
+                  {getJWTTokenExpiryOptions().map((option) => (
+                    <Option key={option.value}>{option.label}</Option>
+                  ))}
                 </Select>
               </Form.Item>
-              {authMechanism === AuthType.Jwt && (
-                <Form.Item
-                  label={t('label.token-expiration')}
-                  name="token-expiration"
-                  rules={[
-                    {
-                      required: true,
-                      validator: () => {
-                        if (!tokenExpiry) {
-                          return Promise.reject(
-                            t('label.field-required', {
-                              field: t('label.token-expiration'),
-                            })
-                          );
-                        }
+            )}
+            {authMechanism === AuthType.Sso && <>{getSSOConfig()}</>}
+          </>
+        )}
+        <Form.Item label={t('label.description')} name="description">
+          <RichTextEditor initialValue={description} ref={markdownRef} />
+        </Form.Item>
 
-                        return Promise.resolve();
-                      },
-                    },
-                  ]}>
-                  <Select
-                    className="w-full"
-                    data-testid="token-expiry"
-                    defaultValue={tokenExpiry}
-                    placeholder={t('message.select-token-expiration')}
-                    onChange={(value) => setTokenExpiry(value)}>
-                    {getJWTTokenExpiryOptions().map((option) => (
-                      <Option key={option.value}>{option.label}</Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              )}
-              {authMechanism === AuthType.Sso && <>{getSSOConfig()}</>}
-            </>
-          )}
-          <Form.Item label={t('label.description')} name="description">
-            <RichTextEditor initialValue={description} ref={markdownRef} />
-          </Form.Item>
+        {!forceBot && (
+          <>
+            {isAuthProviderBasic && (
+              <>
+                <Radio.Group
+                  name="passwordGenerator"
+                  value={passwordGenerator}
+                  onChange={handleOnChange}>
+                  <Radio value={CreatePasswordGenerator.AutomaticGenerate}>
+                    {t('label.automatically-generate')}
+                  </Radio>
+                  <Radio value={CreatePasswordGenerator.CreatePassword}>
+                    {t('label.password-type', {
+                      type: t('label.create'),
+                    })}
+                  </Radio>
+                </Radio.Group>
 
-          {!forceBot && (
-            <>
-              {isAuthProviderBasic && (
-                <>
-                  <Radio.Group
-                    name="passwordGenerator"
-                    value={passwordGenerator}
-                    onChange={handleOnChange}>
-                    <Radio value={CreatePasswordGenerator.AutomaticGenerate}>
-                      {t('label.automatically-generate')}
-                    </Radio>
-                    <Radio value={CreatePasswordGenerator.CreatePassword}>
-                      {t('label.password-type', {
-                        type: t('label.create'),
-                      })}
-                    </Radio>
-                  </Radio.Group>
-
-                  {passwordGenerator ===
-                  CreatePasswordGenerator.CreatePassword ? (
-                    <div className="m-t-sm">
-                      <Form.Item
-                        label={t('label.password')}
+                {passwordGenerator ===
+                CreatePasswordGenerator.CreatePassword ? (
+                  <div className="m-t-sm">
+                    <Form.Item
+                      label={t('label.password')}
+                      name="password"
+                      rules={[
+                        {
+                          required: true,
+                        },
+                        {
+                          pattern: passwordRegex,
+                          message: t('message.password-error-message'),
+                        },
+                      ]}>
+                      <Input.Password
+                        autoComplete="off"
                         name="password"
-                        rules={[
-                          {
-                            required: true,
-                          },
-                          {
-                            pattern: passwordRegex,
-                            message: t('message.password-error-message'),
-                          },
-                        ]}>
-                        <Input.Password
-                          autoComplete="off"
-                          name="password"
-                          placeholder={t('label.password-type', {
-                            type: t('label.enter'),
-                          })}
-                          value={password}
-                          onChange={handleOnChange}
-                        />
-                      </Form.Item>
+                        placeholder={t('label.password-type', {
+                          type: t('label.enter'),
+                        })}
+                        value={password}
+                        onChange={handleOnChange}
+                      />
+                    </Form.Item>
 
-                      <Form.Item
-                        label={t('label.password-type', {
+                    <Form.Item
+                      label={t('label.password-type', {
+                        type: t('label.confirm'),
+                      })}
+                      name="confirmPassword"
+                      rules={[
+                        {
+                          validator: (_, value) => {
+                            if (value !== password) {
+                              return Promise.reject(
+                                t('label.password-not-match')
+                              );
+                            }
+
+                            return Promise.resolve();
+                          },
+                        },
+                      ]}>
+                      <Input.Password
+                        autoComplete="off"
+                        name="confirmPassword"
+                        placeholder={t('label.password-type', {
                           type: t('label.confirm'),
                         })}
-                        name="confirmPassword"
-                        rules={[
-                          {
-                            validator: (_, value) => {
-                              if (value !== password) {
-                                return Promise.reject(
-                                  t('label.password-not-match')
-                                );
-                              }
-
-                              return Promise.resolve();
-                            },
-                          },
-                        ]}>
-                        <Input.Password
-                          autoComplete="off"
-                          name="confirmPassword"
-                          placeholder={t('label.password-type', {
-                            type: t('label.confirm'),
-                          })}
-                          value={confirmPassword}
-                          onChange={handleOnChange}
-                        />
-                      </Form.Item>
-                    </div>
-                  ) : (
-                    <div className="m-t-sm">
-                      <Form.Item
-                        label={t('label.password-type', {
-                          type: t('label.generate'),
-                        })}
-                        name="generatedPassword"
-                        rules={[
-                          {
-                            required: true,
-                          },
-                        ]}>
-                        <Input.Password
-                          readOnly
-                          addonAfter={
-                            <div className="flex-center w-16">
-                              <div
-                                className="w-8 h-7 flex-center cursor-pointer"
-                                data-testid="password-generator"
-                                onClick={generateRandomPassword}>
-                                {isPasswordGenerating ? (
-                                  <Loader size="small" type="default" />
-                                ) : (
-                                  <SVGIcons
-                                    alt={t('label.generate')}
-                                    icon={Icons.SYNC}
-                                    width="16"
-                                  />
-                                )}
-                              </div>
-
-                              <div className="w-8 h-7 flex-center">
-                                <CopyToClipboardButton
-                                  copyText={generatedPassword}
+                        value={confirmPassword}
+                        onChange={handleOnChange}
+                      />
+                    </Form.Item>
+                  </div>
+                ) : (
+                  <div className="m-t-sm">
+                    <Form.Item
+                      label={t('label.password-type', {
+                        type: t('label.generate'),
+                      })}
+                      name="generatedPassword"
+                      rules={[
+                        {
+                          required: true,
+                        },
+                      ]}>
+                      <Input.Password
+                        readOnly
+                        addonAfter={
+                          <div className="flex-center w-16">
+                            <div
+                              className="w-8 h-7 flex-center cursor-pointer"
+                              data-testid="password-generator"
+                              onClick={generateRandomPassword}>
+                              {isPasswordGenerating ? (
+                                <Loader size="small" type="default" />
+                              ) : (
+                                <SVGIcons
+                                  alt={t('label.generate')}
+                                  icon={Icons.SYNC}
+                                  width="16"
                                 />
-                              </div>
+                              )}
                             </div>
-                          }
-                          autoComplete="off"
-                          name="generatedPassword"
-                          value={generatedPassword}
-                        />
-                      </Form.Item>
-                    </div>
-                  )}
-                </>
-              )}
-              <Form.Item label={t('label.team-plural')} name="teams">
-                <TeamsSelectable onSelectionChange={setSelectedTeams} />
-              </Form.Item>
-              <Form.Item label={t('label.role-plural')} name="roles">
-                <DropDown
-                  className={classNames('tw-bg-white', {
-                    'tw-bg-gray-100 tw-cursor-not-allowed': roles.length === 0,
-                  })}
-                  dataTestId="roles-dropdown"
-                  dropDownList={getDropdownOptions(roles) as DropDownListItem[]}
-                  label={t('label.role-plural')}
-                  selectedItems={selectedRoles as Array<string>}
-                  type="checkbox"
-                  onSelect={(_e, value) => selectedRolesHandler(value)}
+
+                            <div className="w-8 h-7 flex-center">
+                              <CopyToClipboardButton
+                                copyText={generatedPassword}
+                              />
+                            </div>
+                          </div>
+                        }
+                        autoComplete="off"
+                        name="generatedPassword"
+                        value={generatedPassword}
+                      />
+                    </Form.Item>
+                  </div>
+                )}
+              </>
+            )}
+            <Form.Item label={t('label.team-plural')} name="teams">
+              <TeamsSelectable onSelectionChange={setSelectedTeams} />
+            </Form.Item>
+            <Form.Item label={t('label.role-plural')} name="roles">
+              <DropDown
+                className={classNames('bg-white', {
+                  'tw-bg-gray-100 cursor-not-allowed': roles.length === 0,
+                })}
+                dataTestId="roles-dropdown"
+                dropDownList={getDropdownOptions(roles) as DropDownListItem[]}
+                label={t('label.role-plural')}
+                selectedItems={selectedRoles as Array<string>}
+                type="checkbox"
+                onSelect={(_e, value) => selectedRolesHandler(value)}
+              />
+            </Form.Item>
+
+            <Form.Item>
+              <Space>
+                <span> {t('label.admin')}</span>
+                <Switch
+                  checked={isAdmin}
+                  data-testid="admin"
+                  onChange={() => {
+                    setIsAdmin((prev) => !prev);
+                    setIsBot(false);
+                  }}
                 />
-              </Form.Item>
+              </Space>
+            </Form.Item>
+          </>
+        )}
 
-              <Form.Item>
-                <Space>
-                  <span> {t('label.admin')}</span>
-                  <Switch
-                    checked={isAdmin}
-                    data-testid="admin"
-                    onChange={() => {
-                      setIsAdmin((prev) => !prev);
-                      setIsBot(false);
-                    }}
-                  />
-                </Space>
-              </Form.Item>
-            </>
-          )}
-
-          <Space className="w-full tw-justify-end" size={4}>
-            <Button data-testid="cancel-user" type="link" onClick={onCancel}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              data-testid="save-user"
-              form="create-user-bot-form"
-              htmlType="submit"
-              loading={isLoading}
-              type="primary">
-              {t('label.create')}
-            </Button>
-          </Space>
-        </Form>
-      </div>
-    </PageLayout>
+        <Space className="w-full tw-justify-end" size={4}>
+          <Button data-testid="cancel-user" type="link" onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            data-testid="save-user"
+            form="create-user-bot-form"
+            htmlType="submit"
+            loading={isLoading}
+            type="primary">
+            {t('label.create')}
+          </Button>
+        </Space>
+      </Form>
+    </Card>
   );
 };
 

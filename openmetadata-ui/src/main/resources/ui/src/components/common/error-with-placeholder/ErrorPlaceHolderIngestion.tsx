@@ -11,33 +11,56 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
+import { Card, Space, Typography } from 'antd';
+import { ReactComponent as IconCollateSupport } from 'assets/svg/ic-collate-support.svg';
 import { AIRFLOW_DOCS } from 'constants/docs.constants';
+import { PIPELINE_SERVICE_PLATFORM } from 'constants/Services.constant';
+import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { t } from 'i18next';
 import React from 'react';
 import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
 
 const ErrorPlaceHolderIngestion = () => {
+  const { platform } = useAirflowStatus();
+
+  const isAirflowPlatform = platform === PIPELINE_SERVICE_PLATFORM;
+
   const airflowSetupGuide = () => {
     return (
       <div className="tw-mb-5" data-testid="error-steps">
         <Card className="d-flex flex-col tw-justify-between tw-p-5 tw-w-4/5 tw-mx-auto">
           <AirflowMessageBanner className="m-b-xs" />
-          <div>
-            <h6 className="tw-text-base tw-text-grey-body tw-font-medium">
-              {t('message.manage-airflow-api-failed')}
-            </h6>
+          {isAirflowPlatform ? (
+            <>
+              <div>
+                <h6 className="tw-text-base tw-text-grey-body tw-font-medium">
+                  {t('message.manage-airflow-api-failed')}
+                </h6>
 
-            <p className="tw-text-grey-body tw-text-sm tw-mb-5">
-              {t('message.airflow-guide-message')}
-            </p>
-          </div>
+                <p className="tw-text-grey-body tw-text-sm tw-mb-5">
+                  {t('message.airflow-guide-message')}
+                </p>
+              </div>
 
-          <p>
-            <a href={AIRFLOW_DOCS} rel="noopener noreferrer" target="_blank">
-              {`${t('label.install-airflow-api')} >>`}
-            </a>
-          </p>
+              <p>
+                <a
+                  href={AIRFLOW_DOCS}
+                  rel="noopener noreferrer"
+                  target="_blank">
+                  {`${t('label.install-airflow-api')} >>`}
+                </a>
+              </p>
+            </>
+          ) : (
+            <Space
+              align="center"
+              className="justify-center w-full"
+              direction="vertical"
+              size={16}>
+              <IconCollateSupport />
+              <Typography>{t('message.pipeline-scheduler-message')}</Typography>
+            </Space>
+          )}
         </Card>
       </div>
     );

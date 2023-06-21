@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+@import url('../styles/variables.less');
+
 .ant-tree-switcher {
   display: flex;
   justify-content: center;
@@ -35,7 +37,7 @@
 .ant-tree.ant-tree-directory .ant-tree-treenode-selected:hover::before,
 .ant-tree.ant-tree-directory .ant-tree-treenode-selected::before {
   background: #f4f0fd;
-  border-left: 2px solid rgb(113, 71, 232);
+  border-left: 2px solid @primary-color;
 }
 
 .ant-tree.ant-tree-directory .ant-tree-treenode::before {
@@ -43,7 +45,7 @@
 }
 
 .ant-tree-node-selected .ant-tree-title {
-  color: rgb(113, 71, 232);
+  color: @primary-color;
   font-weight: 700;
 }
 

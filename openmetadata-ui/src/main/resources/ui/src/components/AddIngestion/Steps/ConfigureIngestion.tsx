@@ -245,7 +245,25 @@ const ConfigureIngestion = ({
       },
     },
   ];
-
+  const includeOwnersField: FieldProp = {
+    name: 'includeOwners',
+    label: t('label.include-owner'),
+    type: FieldTypes.SWITCH,
+    required: false,
+    props: {
+      checked: includeOwners,
+      onChange: handleIncludeOwners,
+      'data-testid': 'toggle-button-enabled-override-owner',
+    },
+    id: 'root/includeOwners',
+    hasSeparator: true,
+    helperText: t('message.include-owner'),
+    formItemLayout: 'horizontal',
+    formItemProps: {
+      initialValue: includeOwners,
+      valuePropName: 'checked',
+    },
+  };
   const databaseServiceFilterPatternFields: FieldProp[] = [
     {
       name: 'databaseFilterPattern',
@@ -595,25 +613,7 @@ const ConfigureIngestion = ({
     },
     dbServiceNamesField,
     loggerLevelField,
-    {
-      name: 'includeOwners',
-      label: t('label.include-owner'),
-      type: FieldTypes.SWITCH,
-      required: false,
-      props: {
-        checked: includeOwners,
-        onChange: handleIncludeOwners,
-        'data-testid': 'toggle-button-enabled-override-owner',
-      },
-      id: 'root/includeOwners',
-      hasSeparator: true,
-      helperText: t('message.include-owner'),
-      formItemLayout: 'horizontal',
-      formItemProps: {
-        initialValue: includeOwners,
-        valuePropName: 'checked',
-      },
-    },
+    includeOwnersField,
     includeTagsField,
     includeDataModelsField,
     {
@@ -731,6 +731,7 @@ const ConfigureIngestion = ({
       },
     },
     loggerLevelField,
+    includeOwnersField,
     includeTagsField,
     {
       name: 'markDeletedPipelines',

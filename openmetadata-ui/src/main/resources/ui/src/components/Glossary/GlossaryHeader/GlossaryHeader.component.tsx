@@ -10,15 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Row, Space, Tooltip } from 'antd';
+import Icon, { DownOutlined } from '@ant-design/icons';
+import { Button, Col, Dropdown, Row, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconFolder } from 'assets/svg/folder.svg';
 import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
 import { ReactComponent as IconFlatDoc } from 'assets/svg/ic-flat-doc.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
+import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
+import classNames from 'classnames';
 import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
@@ -26,7 +28,6 @@ import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.compon
 import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import VersionButton from 'components/VersionButton/VersionButton.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { EntityAction, EntityType } from 'enums/entity.enum';
@@ -174,7 +175,7 @@ const GlossaryHeader = ({
             label: (
               <ManageButtonItemLabel
                 description={t('message.import-entity-help', {
-                  entity: t('label.glossary-terms-lowercase'),
+                  entity: t('label.glossary-term-lowercase'),
                 })}
                 icon={<ImportIcon width="20px" />}
                 id="import-button"
@@ -344,12 +345,19 @@ const GlossaryHeader = ({
             <div>
               {createButtons}
               {selectedData && selectedData.version && (
-                <VersionButton
-                  className="m-l-xs tw-px-1.5"
-                  selected={Boolean(version)}
-                  version={toString(selectedData.version)}
-                  onClick={handleVersionClick}
-                />
+                <Button
+                  className={classNames('m-l-xs', {
+                    'text-primary border-primary': version,
+                  })}
+                  icon={<Icon component={VersionIcon} />}
+                  onClick={handleVersionClick}>
+                  <Typography.Text
+                    className={classNames('m-l-xs', {
+                      'text-primary': version,
+                    })}>
+                    {toString(selectedData.version)}
+                  </Typography.Text>
+                </Button>
               )}
 
               <Dropdown

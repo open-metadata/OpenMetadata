@@ -201,7 +201,7 @@ const MlModelFeaturesList = ({
 
                     <Col className="m-b-xs" span={24}>
                       <Row gutter={8} wrap={false}>
-                        <Col flex="120px">
+                        <Col flex="130px">
                           <Typography.Text className="text-grey-muted">
                             {`${t('label.glossary-term-plural')} :`}
                           </Typography.Text>
@@ -229,7 +229,7 @@ const MlModelFeaturesList = ({
 
                     <Col span={24}>
                       <Row gutter={8} wrap={false}>
-                        <Col flex="120px">
+                        <Col flex="130px">
                           <Typography.Text className="text-grey-muted">
                             {`${t('label.tag-plural')} :`}
                           </Typography.Text>
@@ -256,7 +256,7 @@ const MlModelFeaturesList = ({
 
                     <Col className="m-t-xs" span={24}>
                       <Row gutter={8} wrap={false}>
-                        <Col flex="120px">
+                        <Col flex="130px">
                           <Typography.Text className="text-grey-muted">
                             {`${t('label.description')} :`}
                           </Typography.Text>

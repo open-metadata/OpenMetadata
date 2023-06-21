@@ -144,6 +144,20 @@ export const AdvanceSearchProvider = ({
     setSQLQuery('');
   }, []);
 
+  // Reset all filters, quick filter and query filter
+  const handleResetAllFilters = useCallback(() => {
+    setQueryFilter(undefined);
+    setSQLQuery('');
+    history.push({
+      pathname: location.pathname,
+      search: Qs.stringify({
+        quickFilter: undefined,
+        queryFilter: undefined,
+        page: 1,
+      }),
+    });
+  }, [history, location.pathname]);
+
   useEffect(() => {
     if (jsonTree) {
       const tree = QbUtils.checkTree(QbUtils.loadTree(jsonTree), config);
@@ -182,6 +196,7 @@ export const AdvanceSearchProvider = ({
         treeInternal,
         config,
         onReset: handleReset,
+        onResetAllFilters: handleResetAllFilters,
       }}>
       {loading ? <Loader /> : children}
       <AdvancedSearchModal

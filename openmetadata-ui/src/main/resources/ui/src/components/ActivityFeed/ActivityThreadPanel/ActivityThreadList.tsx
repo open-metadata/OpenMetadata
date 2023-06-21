@@ -68,7 +68,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
         return (
           <div data-testid={`thread${i}`} key={i}>
             <FeedListSeparator
-              className="tw-relative tw-mt-1 tw-mb-3.5"
+              className="relative m-t-xss m-b-sm"
               relativeDay={d}
             />
             {updatedThreads

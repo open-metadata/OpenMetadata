@@ -23,9 +23,11 @@ import {
   EntityWithServices,
 } from 'components/Explore/explore.interface';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
+import {
+  SearchedDataProps,
+  SourceType,
+} from 'components/searched-data/SearchedData.interface';
 import { ExplorePageTabs } from 'enums/Explore.enum';
-import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
@@ -38,6 +40,7 @@ import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  getContainerDetailPath,
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
@@ -71,7 +74,6 @@ import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
-import { getContainerDetailPath } from './ContainerDetailUtils';
 import Fqn from './Fqn';
 import { getGlossaryPath } from './RouterUtils';
 import {
@@ -457,7 +459,7 @@ export const getEntityOverview = (
 
       const overview = [
         {
-          name: i18next.t('label.number-of-object'),
+          name: i18next.t('label.object-plural'),
           value: numberOfObjects,
           isLink: false,
           visible,
@@ -935,8 +937,11 @@ export const getBreadcrumbForTable = (
     ...(includeCurrent
       ? [
           {
-            name: getEntityName(entity),
-            url: '#',
+            name: entity.name,
+            url: getEntityLinkFromType(
+              entity.fullyQualifiedName ?? '',
+              (entity as SourceType).entityType as EntityType
+            ),
           },
         ]
       : []),
@@ -964,8 +969,11 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
     ...(includeCurrent
       ? [
           {
-            name: getEntityName(entity),
-            url: '#',
+            name: entity.name,
+            url: getEntityLinkFromType(
+              entity.fullyQualifiedName ?? '',
+              (entity as SourceType).entityType as EntityType
+            ),
           },
         ]
       : []),
@@ -1009,10 +1017,8 @@ export const getEntityBreadcrumbs = (
     case EntityType.TAG:
       return [
         {
-          name: getEntityName((entity as Tag).classification),
-          url: getTagsDetailsPath(
-            (entity as Tag).classification?.fullyQualifiedName ?? ''
-          ),
+          name: entity.name,
+          url: getTagsDetailsPath(entity?.fullyQualifiedName ?? ''),
         },
       ];
 

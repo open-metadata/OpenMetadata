@@ -108,7 +108,7 @@ describe('DataQualityTab test', () => {
     const tableRows = await screen.findAllByRole('row');
 
     expect(tableRows).toHaveLength(6);
-    expect(await screen.findByTestId('data-quality-table')).toBeVisible();
+    expect(await screen.findByTestId('test-case-table')).toBeVisible();
   });
 
   it('Table header should be visible', async () => {
@@ -118,12 +118,9 @@ describe('DataQualityTab test', () => {
     const tableRows = await screen.findAllByRole('row');
     const header = tableRows[0];
 
-    expect(
-      await findByText(header, 'label.last-run-result')
-    ).toBeInTheDocument();
+    expect(await findByText(header, 'label.resolution')).toBeInTheDocument();
     expect(await findByText(header, 'label.last-run')).toBeInTheDocument();
     expect(await findByText(header, 'label.name')).toBeInTheDocument();
-    expect(await findByText(header, 'label.description')).toBeInTheDocument();
     expect(await findByText(header, 'label.test-suite')).toBeInTheDocument();
     expect(await findByText(header, 'label.table')).toBeInTheDocument();
     expect(await findByText(header, 'label.column')).toBeInTheDocument();
@@ -138,14 +135,10 @@ describe('DataQualityTab test', () => {
     const tableRows = await screen.findAllByRole('row');
     const firstRow = tableRows[1];
 
-    const testCaseStatus = await findByTestId(firstRow, 'test-case-status');
     const testName = await findByTestId(firstRow, firstRowData.name);
-    const testSuite = await findByTestId(firstRow, 'test-suite-link');
+    const testSuite = await findByTestId(firstRow, 'test-suite-name');
     const tableLink = await findByTestId(firstRow, 'table-link');
-    const description = await findByText(
-      firstRow,
-      firstRowData.description || '--'
-    );
+
     const columnName = await findByText(firstRow, 'last_name');
     const editButton = await findByTestId(
       firstRow,
@@ -156,12 +149,7 @@ describe('DataQualityTab test', () => {
       `delete-${firstRowData.name}`
     );
 
-    expect(testCaseStatus).toBeInTheDocument();
-    expect(testCaseStatus.textContent).toEqual(
-      firstRowData.testCaseResult?.testCaseStatus
-    );
     expect(testName).toBeInTheDocument();
-    expect(description).toBeInTheDocument();
     expect(testSuite).toBeInTheDocument();
     expect(testSuite.textContent).toEqual(firstRowData.testSuite.name);
     expect(tableLink).toBeInTheDocument();

@@ -108,7 +108,7 @@ const ForgotPassword = () => {
               </div>
             </Col>
           )}
-          <Divider className="w-min-0 mt-8 mb-12 justify-center align-start p-x-xs">
+          <Divider className="w-min-0 mt-8 mb-12 justify-center items-start p-x-xs">
             <Typography.Text className="text-sm" type="secondary">
               {t('label.or-lowercase')}
             </Typography.Text>

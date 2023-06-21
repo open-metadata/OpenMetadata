@@ -13,6 +13,7 @@
 
 import { Badge, Button, Col, Row, Select, Space } from 'antd';
 import classNames from 'classnames';
+import { PRIMERY_COLOR } from 'constants/constants';
 import { DatabaseServiceType } from 'generated/entity/data/database';
 import { PipelineServiceType } from 'generated/entity/services/pipelineService';
 import { startCase } from 'lodash';
@@ -141,7 +142,7 @@ const SelectServiceType = ({
                   ) ? (
                     <Badge
                       className="service-beta-tag"
-                      color="#7147E8"
+                      color={PRIMERY_COLOR}
                       count={t('label.beta')}
                     />
                   ) : null}
