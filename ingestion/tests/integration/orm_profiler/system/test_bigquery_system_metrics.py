@@ -23,17 +23,17 @@ How to use this test
    We will need to perform at least one `DELETE`, `INSERT`, `UPDATE` on any table from the schema.
    query example:
         ```
-        INSERT INTO `modified-leaf-330420`.dbt_jaffle.Person  VALUES
+        INSERT INTO dbt_jaffle.Person  VALUES
         ('John', 'Doe', 'II'),
         ('Jane', 'Doe', 'II'),
         ('Jeff', 'Doe', 'II')
 
-        UPDATE `modified-leaf-330420`.dbt_jaffle.Person SET add = 'IV' WHERE first_name = 'John';
+        UPDATE dbt_jaffle.Person SET add = 'IV' WHERE first_name = 'John';
 
-        MERGE INTO `modified-leaf-330420`.dbt_jaffle.Person NT USING (SELECT 'Jeff' AS first_name, 'Doe' AS last_name, NULL AS add) N ON NT.first_name = N.first_name
+        MERGE INTO dbt_jaffle.Person NT USING (SELECT 'Jeff' AS first_name, 'Doe' AS last_name, NULL AS add) N ON NT.first_name = N.first_name
         WHEN MATCHED THEN UPDATE SET NT.first_name = N.first_name;
 
-        DELETE FROM `modified-leaf-330420`.dbt_jaffle.Person WHERE first_name = 'John';
+        DELETE FROM dbt_jaffle.Person WHERE first_name = 'John';
         ```
 4. Once you have performed the above steps, run the test with the following command:
    `python -m pytest tests/integration/orm_profiler/system/test_bigquery_system_metrics.py` from the ingestion directory.
@@ -66,7 +66,7 @@ TESTS_ROOT_DIR = pathlib.Path(__file__).parent.parent.parent.parent
 BIGQUERY_CONFIG_FILE = "cli_e2e/database/bigquery/bigquery.yaml"
 FULL_CONFIG_PATH = pathlib.Path(TESTS_ROOT_DIR, BIGQUERY_CONFIG_FILE)
 DATABASE_FILTER = {
-    "includes": "modified-leaf-330420",
+    "includes": os.environ["E2E_BQ_PROJECT_ID"],
     "excludes": None,
 }
 SCHEMA_FILTER = {
