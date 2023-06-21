@@ -24,6 +24,7 @@ interface UseAirflowStatusProps {
   isAirflowAvailable: boolean;
   error: AxiosError | undefined;
   reason: AirflowResponse['reason'];
+  platform: AirflowResponse['platform'];
   fetchAirflowStatus: () => Promise<void>;
 }
 
@@ -32,6 +33,7 @@ export const useAirflowStatus = (): UseAirflowStatusProps => {
   const [isAirflowAvailable, setIsAirflowAvailable] = useState<boolean>(false);
   const [error, setError] = useState<AxiosError>();
   const [reason, setReason] = useState<AirflowResponse['reason']>();
+  const [platform, setPlatform] = useState<AirflowResponse['platform']>();
 
   const fetchAirflowStatus = async () => {
     setIsLoading(true);
@@ -39,6 +41,7 @@ export const useAirflowStatus = (): UseAirflowStatusProps => {
       const response = await getAirflowStatus();
       setIsAirflowAvailable(response.status === AirflowStatus.HEALTHY);
       setReason(response.reason);
+      setPlatform(response.platform);
     } catch (error) {
       setError(error as AxiosError);
       setIsAirflowAvailable(false);
@@ -57,5 +60,6 @@ export const useAirflowStatus = (): UseAirflowStatusProps => {
     error,
     fetchAirflowStatus,
     reason,
+    platform,
   };
 };

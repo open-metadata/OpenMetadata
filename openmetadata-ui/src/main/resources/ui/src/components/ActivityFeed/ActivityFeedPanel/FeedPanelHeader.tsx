@@ -20,6 +20,7 @@ import {
   getFeedPanelHeaderText,
 } from '../../../utils/FeedUtils';
 import { FeedPanelHeaderProp } from './ActivityFeedPanel.interface';
+
 const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   onCancel,
   entityField,
@@ -28,12 +29,13 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   onShowNewConversation,
   threadType,
   entityFQN = '',
+  hideCloseIcon = false,
 }) => {
   const { t } = useTranslation();
 
   return (
     <header className={className}>
-      <div className="d-flex tw-justify-between tw-py-3">
+      <div className="d-flex justify-between p-y-md">
         <p data-testid="header-title">
           <span data-testid="header-noun">
             {noun ? noun : getFeedPanelHeaderText(threadType)}{' '}
@@ -62,24 +64,25 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
               />
             </Tooltip>
           ) : null}
-          <svg
-            className="tw-w-5 tw-h-5 tw-ml-2 tw-cursor-pointer tw-self-center"
-            data-testid="closeDrawer"
-            fill="none"
-            stroke="#6B7280"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-            onClick={onCancel}>
-            <path
-              d="M6 18L18 6M6 6l12 12"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-            />
-          </svg>
+          {hideCloseIcon ? null : (
+            <svg
+              className="tw-w-5 tw-h-5 tw-ml-2 tw-cursor-pointer tw-self-center"
+              data-testid="closeDrawer"
+              fill="none"
+              stroke="#6B7280"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+              onClick={onCancel}>
+              <path
+                d="M6 18L18 6M6 6l12 12"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+              />
+            </svg>
+          )}
         </div>
       </div>
-      <hr className="tw--mx-4" data-testid="bottom-separator" />
     </header>
   );
 };

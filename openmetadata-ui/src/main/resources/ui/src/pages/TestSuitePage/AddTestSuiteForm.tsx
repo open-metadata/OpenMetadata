@@ -115,7 +115,7 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
         <Space className="w-full justify-end" size={16}>
           <Button
             data-testid="cancel-button"
-            onClick={() => history.push(ROUTES.TEST_SUITES)}>
+            onClick={() => history.push(ROUTES.DATA_QUALITY)}>
             {t('label.cancel')}
           </Button>
           <Button data-testid="submit-button" htmlType="submit" type="primary">

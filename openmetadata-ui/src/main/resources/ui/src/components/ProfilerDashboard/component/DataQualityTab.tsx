@@ -11,55 +11,65 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
-import { Button, Row, Space, Table, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
-import { isEmpty, isUndefined } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import { ReactComponent as IconCheckMark } from 'assets/svg/ic-check-mark.svg';
+import { AxiosError } from 'axios';
+import classNames from 'classnames';
+import EditTestCaseModal from 'components/AddDataQualityTest/EditTestCaseModal';
+import AppBadge from 'components/common/Badge/Badge.component';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import { StatusBox } from 'components/common/LastRunGraph/LastRunGraph.component';
+import NextPrevious from 'components/common/next-previous/NextPrevious';
+import { TestCaseStatusModal } from 'components/DataQuality/TestCaseStatusModal/TestCaseStatusModal.component';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { TestCaseStatus } from 'generated/configuration/testResultNotificationConfiguration';
 import { Operation } from 'generated/entity/policies/policy';
+import { isUndefined } from 'lodash';
+import { putTestCaseResult } from 'rest/testAPI';
 import { checkPermission } from 'utils/PermissionsUtils';
-import {
-  getTableTabPath,
-  NO_DATA_PLACEHOLDER,
-} from '../../../constants/constants';
+import { showErrorToast } from 'utils/ToastUtils';
+import { getTableTabPath, PAGE_SIZE } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
-import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
+import {
+  TestCase,
+  TestCaseFailureStatus,
+  TestCaseResult,
+} from '../../../generated/tests/testCase';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
-import { getTestSuitePath } from '../../../utils/RouterUtils';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
 import {
   getEntityFqnFromEntityLink,
   getTableExpandableConfig,
-  getTestResultBadgeIcon,
 } from '../../../utils/TableUtils';
 import { getFormattedDateFromSeconds } from '../../../utils/TimeUtils';
-import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import Loader from '../../Loader/Loader';
-import { DataQualityTabProps } from '../profilerDashboard.interface';
+import {
+  DataQualityTabProps,
+  TestCaseAction,
+} from '../profilerDashboard.interface';
 import './DataQualityTab.style.less';
 import TestSummary from './TestSummary';
 
 const DataQualityTab: React.FC<DataQualityTabProps> = ({
   isLoading = false,
   testCases,
-  deletedTable = false,
+  pagingData,
   onTestUpdate,
+  onTestCaseResultUpdate,
 }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const [selectedTestCase, setSelectedTestCase] = useState<TestCase>();
-  const [editTestCase, setEditTestCase] = useState<TestCase>();
+  const [selectedTestCase, setSelectedTestCase] = useState<TestCaseAction>();
 
   const testCaseEditPermission = useMemo(() => {
     return checkPermission(
@@ -77,73 +87,70 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     );
   }, [permissions]);
 
-  const columns: ColumnsType<TestCase> = useMemo(
-    () => [
-      {
-        title: t('label.last-run-result'),
-        dataIndex: 'testCaseResult',
-        key: 'testCaseResult',
-        width: 130,
-        render: (result: TestCaseResult) => (
-          <Space size={8}>
-            {result?.testCaseStatus && (
-              <Icon
-                alt="result"
-                component={getTestResultBadgeIcon(result.testCaseStatus)}
-                style={{ fontSize: '16px' }}
-              />
-            )}
-            <Typography.Text data-testid="test-case-status">
-              {result?.testCaseStatus || '--'}
-            </Typography.Text>
-          </Space>
-        ),
-      },
-      {
-        title: t('label.last-run'),
-        dataIndex: 'testCaseResult',
-        key: 'lastRun',
-        width: 120,
-        render: (result: TestCaseResult) =>
-          result?.timestamp
-            ? getFormattedDateFromSeconds(result.timestamp)
-            : '--',
-      },
+  const handleCancel = () => {
+    setSelectedTestCase(undefined);
+  };
+
+  const handleStatusSubmit = async (data: TestCaseFailureStatus) => {
+    if (selectedTestCase?.data) {
+      const updatedResult: TestCaseResult = {
+        ...selectedTestCase.data?.testCaseResult,
+        testCaseFailureStatus: data,
+      };
+      const testCaseFqn = selectedTestCase.data?.fullyQualifiedName ?? '';
+      try {
+        await putTestCaseResult(testCaseFqn, updatedResult);
+
+        onTestCaseResultUpdate &&
+          onTestCaseResultUpdate({
+            ...selectedTestCase.data,
+            testCaseResult: updatedResult,
+          });
+
+        handleCancel();
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }
+
+    return;
+  };
+
+  const columns = useMemo(() => {
+    const data: ColumnsType<TestCase> = [
       {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        width: 320,
-        render: (name: string, record) => (
-          <Typography.Text className="break-word" data-testid={name}>
-            {getEntityName(record)}
-          </Typography.Text>
-        ),
-      },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        width: 350,
-        render: (text) =>
-          !isEmpty(text) ? (
-            <RichTextEditorPreviewer markdown={text} />
-          ) : (
-            NO_DATA_PLACEHOLDER
-          ),
+        width: 280,
+        render: (name: string, record) => {
+          const status = record.testCaseResult?.testCaseStatus;
+
+          return (
+            <Space data-testid={name}>
+              <Tooltip title={status}>
+                <div>
+                  <StatusBox status={status?.toLocaleLowerCase()} />
+                </div>
+              </Tooltip>
+
+              <Typography.Paragraph className="m-0" style={{ maxWidth: 280 }}>
+                {getEntityName(record)}
+              </Typography.Paragraph>
+            </Space>
+          );
+        },
       },
       {
         title: t('label.test-suite'),
         dataIndex: 'testSuite',
         key: 'testSuite',
+        width: 250,
         render: (value) => {
           return (
-            <Link
-              data-testid="test-suite-link"
-              to={getTestSuitePath(value?.fullyQualifiedName || '')}
-              onClick={(e) => e.stopPropagation()}>
+            <Typography.Paragraph data-testid="test-suite-name">
               {getEntityName(value)}
-            </Link>
+            </Typography.Paragraph>
           );
         },
       },
@@ -151,6 +158,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.table'),
         dataIndex: 'entityLink',
         key: 'table',
+        width: 150,
         render: (entityLink) => {
           const tableFqn = getEntityFqnFromEntityLink(entityLink);
           const name = getNameFromFQN(tableFqn);
@@ -169,6 +177,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.column'),
         dataIndex: 'entityLink',
         key: 'column',
+        width: 150,
         render: (entityLink) => {
           const isColumn = entityLink.includes('::columns::');
 
@@ -187,36 +196,69 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         },
       },
       {
+        title: t('label.last-run'),
+        dataIndex: 'testCaseResult',
+        key: 'lastRun',
+        width: 150,
+        render: (result: TestCaseResult) =>
+          result?.timestamp
+            ? getFormattedDateFromSeconds(
+                result.timestamp,
+                'MMM dd, yyyy HH:mm'
+              )
+            : '--',
+      },
+      {
+        title: t('label.resolution'),
+        dataIndex: 'testCaseResult',
+        key: 'resolution',
+        width: 100,
+        render: (value: TestCaseResult) => {
+          const label = value?.testCaseFailureStatus?.testCaseFailureStatusType;
+
+          return label ? (
+            <AppBadge
+              className={classNames('resolution', label.toLocaleLowerCase())}
+              label={label}
+            />
+          ) : (
+            '--'
+          );
+        },
+      },
+      {
         title: t('label.action-plural'),
         dataIndex: 'actions',
         key: 'actions',
         width: 100,
         fixed: 'right',
         render: (_, record) => {
+          const status = record.testCaseResult?.testCaseStatus;
+
           return (
             <Row align="middle">
-              {!deletedTable && (
-                <Tooltip
-                  placement="bottomRight"
-                  title={
-                    testCaseEditPermission
-                      ? t('label.edit')
-                      : NO_PERMISSION_FOR_ACTION
-                  }>
-                  <Button
-                    className="flex-center"
-                    data-testid={`edit-${record.name}`}
-                    disabled={!testCaseEditPermission}
-                    icon={<IconEdit width={16} />}
-                    type="text"
-                    onClick={(e) => {
-                      // preventing expand/collapse on click of edit button
-                      e.stopPropagation();
-                      setEditTestCase(record);
-                    }}
-                  />
-                </Tooltip>
-              )}
+              <Tooltip
+                placement="bottomRight"
+                title={
+                  testCaseEditPermission
+                    ? t('label.edit')
+                    : NO_PERMISSION_FOR_ACTION
+                }>
+                <Button
+                  className="flex-center"
+                  data-testid={`edit-${record.name}`}
+                  disabled={!testCaseEditPermission}
+                  icon={<IconEdit width={14} />}
+                  size="small"
+                  type="text"
+                  onClick={(e) => {
+                    // preventing expand/collapse on click of edit button
+                    e.stopPropagation();
+                    setSelectedTestCase({ data: record, action: 'UPDATE' });
+                  }}
+                />
+              </Tooltip>
+
               <Tooltip
                 placement="bottomLeft"
                 title={
@@ -228,69 +270,116 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   className="flex-center"
                   data-testid={`delete-${record.name}`}
                   disabled={!testCaseDeletePermission}
-                  icon={<IconDelete width={16} />}
+                  icon={<IconDelete width={14} />}
+                  size="small"
                   type="text"
                   onClick={(e) => {
                     // preventing expand/collapse on click of delete button
                     e.stopPropagation();
-                    setSelectedTestCase(record);
+                    setSelectedTestCase({ data: record, action: 'DELETE' });
                   }}
                 />
               </Tooltip>
+              {status === TestCaseStatus.Failed && (
+                <Tooltip
+                  placement="bottomRight"
+                  title={
+                    testCaseEditPermission
+                      ? t('label.edit-entity', { entity: t('label.status') })
+                      : NO_PERMISSION_FOR_ACTION
+                  }>
+                  <Button
+                    className="flex-center"
+                    data-testid={`update-status-${record.name}`}
+                    disabled={!testCaseEditPermission}
+                    icon={<IconCheckMark height={16} width={16} />}
+                    size="small"
+                    type="text"
+                    onClick={(e) => {
+                      // preventing expand/collapse on click of edit button
+                      e.stopPropagation();
+                      setSelectedTestCase({
+                        data: record,
+                        action: 'UPDATE_STATUS',
+                      });
+                    }}
+                  />
+                </Tooltip>
+              )}
             </Row>
           );
         },
       },
-    ],
-    [testCaseEditPermission, testCaseDeletePermission, deletedTable]
-  );
+    ];
 
-  if (isEmpty(testCases)) {
-    return <ErrorPlaceHolder className="mt-0-important" />;
-  }
+    return data;
+  }, [testCaseEditPermission, testCaseDeletePermission, testCases]);
 
   return (
-    <>
-      <Table
-        bordered
-        className="test-case-summary-table table-shadow no-scrollbar"
-        columns={columns}
-        data-testid="data-quality-table"
-        dataSource={testCases.map((test) => ({ ...test, key: test.name }))}
-        expandable={{
-          ...getTableExpandableConfig<TestCase>(),
-          expandRowByClick: true,
-          rowExpandable: () => true,
-          expandedRowRender: (recode) => <TestSummary data={recode} />,
-        }}
-        loading={{
-          indicator: <Loader size="small" />,
-          spinning: isLoading,
-        }}
-        pagination={false}
-        rowKey="id"
-        scroll={{ x: 1600 }}
-        size="small"
-      />
-      <EditTestCaseModal
-        testCase={editTestCase as TestCase}
-        visible={!isUndefined(editTestCase)}
-        onCancel={() => setEditTestCase(undefined)}
-        onUpdate={onTestUpdate}
-      />
+    <Row gutter={16}>
+      <Col span={24}>
+        <Table
+          bordered
+          className="test-case-table-container"
+          columns={columns}
+          data-testid="test-case-table"
+          dataSource={testCases}
+          expandable={{
+            ...getTableExpandableConfig<TestCase>(),
+            expandRowByClick: true,
+            rowExpandable: () => true,
+            expandedRowRender: (recode) => <TestSummary data={recode} />,
+          }}
+          loading={{
+            indicator: <Loader size="small" />,
+            spinning: isLoading,
+          }}
+          locale={{
+            emptyText: <FilterTablePlaceHolder />,
+          }}
+          pagination={false}
+          rowKey="name"
+          scroll={{ x: 1300 }}
+          size="small"
+        />
+      </Col>
+      <Col span={24}>
+        {!isUndefined(pagingData) && pagingData.paging.total > PAGE_SIZE && (
+          <NextPrevious
+            currentPage={pagingData.currentPage}
+            pageSize={PAGE_SIZE}
+            paging={pagingData.paging}
+            pagingHandler={pagingData.onPagingClick}
+            totalCount={pagingData.paging.total}
+          />
+        )}
+      </Col>
+      <Col>
+        <EditTestCaseModal
+          testCase={selectedTestCase?.data as TestCase}
+          visible={selectedTestCase?.action === 'UPDATE'}
+          onCancel={handleCancel}
+          onUpdate={onTestUpdate}
+        />
 
-      <DeleteWidgetModal
-        afterDeleteAction={onTestUpdate}
-        allowSoftDelete={!deletedTable}
-        entityId={selectedTestCase?.id || ''}
-        entityName={selectedTestCase?.name || ''}
-        entityType="testCase"
-        visible={!isUndefined(selectedTestCase)}
-        onCancel={() => {
-          setSelectedTestCase(undefined);
-        }}
-      />
-    </>
+        <TestCaseStatusModal
+          data={selectedTestCase?.data?.testCaseResult?.testCaseFailureStatus}
+          open={selectedTestCase?.action === 'UPDATE_STATUS'}
+          onCancel={handleCancel}
+          onSubmit={handleStatusSubmit}
+        />
+
+        <DeleteWidgetModal
+          afterDeleteAction={onTestUpdate}
+          allowSoftDelete={false}
+          entityId={selectedTestCase?.data?.id ?? ''}
+          entityName={selectedTestCase?.data?.name ?? ''}
+          entityType="testCase"
+          visible={selectedTestCase?.action === 'DELETE'}
+          onCancel={handleCancel}
+        />
+      </Col>
+    </Row>
   );
 };
 

@@ -298,6 +298,7 @@ class PowerbiSource(DashboardServiceSource):
                 dataModelType=DataModelType.PowerBIDataModel.value,
                 serviceType=DashboardServiceType.PowerBI.value,
                 columns=self._get_column_info(dataset),
+                project=self._fetch_dataset_workspace(dataset_id=dataset.id),
             )
             yield data_model_request
             self.status.scanned(f"Data Model Scanned: {data_model_request.displayName}")
@@ -604,15 +605,16 @@ class PowerbiSource(DashboardServiceSource):
         Method to search the dataset using id in the workspace dict
         """
         if dataset_id:
-            dataset_data = next(
-                (
-                    dataset
-                    for dataset in self.context.workspace.datasets or []
-                    if dataset.id == dataset_id
-                ),
-                None,
-            )
-            return dataset_data
+            for workspace in self.workspace_data or []:
+                dataset_data = next(
+                    (
+                        dataset
+                        for dataset in workspace.datasets or []
+                        if dataset.id == dataset_id
+                    ),
+                    None,
+                )
+                return dataset_data
         return None
 
     def _fetch_report_from_workspace(
@@ -622,13 +624,29 @@ class PowerbiSource(DashboardServiceSource):
         Method to search the report using id in the workspace dict
         """
         if report_id:
-            report_data = next(
-                (
-                    report
-                    for report in self.context.workspace.reports or []
-                    if report.id == report_id
-                ),
-                None,
+            for workspace in self.workspace_data or []:
+                report_data = next(
+                    (
+                        report
+                        for report in workspace.reports or []
+                        if report.id == report_id
+                    ),
+                    None,
+                )
+                return report_data
+        return None
+
+    def _fetch_dataset_workspace(self, dataset_id: Optional[str]) -> Optional[str]:
+        """
+        Method to search the workspace name in which the dataset in contained
+        """
+        if dataset_id:
+            workspace_names = (
+                workspace.name
+                for workspace in self.workspace_data
+                for dataset in workspace.datasets
+                if dataset.id == dataset_id
             )
-            return report_data
+            return next(iter(workspace_names), None)
+
         return None

@@ -30,18 +30,14 @@
   font-weight: 600;
 }
 
-.custom-node-header-normal {
-  background-color: @body-bg-color;
-  border: 1px solid @border-color;
-}
 .custom-node-header-tracing {
-  background: rgba(176, 42, 172, 0.1);
-  border: 1px solid @secondary-color;
+  border-color: @primary-color;
+  .react-flow__handle {
+    border-color: @primary-color;
+  }
 }
 .custom-node-header-active {
-  background: @secondary-color;
-  border: 1px solid @secondary-color;
-  color: @white;
+  border-color: @primary-color;
 }
 
 .custom-node-column-lineage {
@@ -64,10 +60,11 @@
   }
 }
 .custom-node-column-lineage-normal {
-  border: 1px solid @border-color;
-}
-.custom-node-column-lineage-active {
-  border: 1px solid rgba(176, 42, 172, 0.6);
+  border-bottom: 1px solid @border-color;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
 }
 
 .custom-edge-pipeline-button {

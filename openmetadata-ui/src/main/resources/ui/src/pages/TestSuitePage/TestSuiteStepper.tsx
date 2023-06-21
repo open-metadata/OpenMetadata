@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Typography } from 'antd';
+import { Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import RightPanel from 'components/AddDataQualityTest/components/RightPanel';
 import {
@@ -19,15 +19,16 @@ import {
   INGESTION_DATA,
 } from 'components/AddDataQualityTest/rightPanelData';
 import TestSuiteIngestion from 'components/AddDataQualityTest/TestSuiteIngestion';
+import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import SuccessScreen from 'components/common/success-screen/SuccessScreen';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import IngestionStepper from 'components/IngestionStepper/IngestionStepper.component';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { createTestSuites } from 'rest/testAPI';
+import { getTestSuitePath } from 'utils/RouterUtils';
 import {
   STEPS_FOR_ADD_TEST_SUITE,
   TEST_SUITE_STEPPER_BREADCRUMB,
@@ -36,7 +37,6 @@ import { FormSubmitType } from '../../enums/form.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { getCurrentUserId } from '../../utils/CommonUtils';
-import { getTestSuitePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import AddTestSuiteForm from './AddTestSuiteForm';
 import { TestSuiteFormDataProps } from './testSuite.interface';
@@ -103,38 +103,53 @@ const TestSuiteStepper = () => {
   }, [activeServiceStep]);
 
   return (
-    <div data-testid="test-suite-stepper-container">
-      <PageLayoutV1 center pageTitle={t('label.test-suite')}>
-        <Space direction="vertical" size="middle">
-          <TitleBreadcrumb titleLinks={TEST_SUITE_STEPPER_BREADCRUMB} />
-          {addIngestion ? (
-            <TestSuiteIngestion
-              testSuite={testSuiteResponse as TestSuite}
-              onCancel={() => setAddIngestion(false)}
-            />
-          ) : (
-            <Row className="tw-form-container" gutter={[16, 16]}>
-              <Col span={24}>
-                <Typography.Title
-                  className="heading"
-                  data-testid="header"
-                  level={5}>
-                  {t('label.add-entity', {
-                    entity: t('label.test-suite'),
-                  })}
-                </Typography.Title>
-              </Col>
-              <Col span={24}>
-                <IngestionStepper
-                  activeStep={activeServiceStep}
-                  steps={STEPS_FOR_ADD_TEST_SUITE}
+    <ResizablePanels
+      firstPanel={{
+        children: (
+          <div
+            className="max-width-md w-9/10 service-form-container"
+            data-testid="test-suite-stepper-container">
+            <TitleBreadcrumb titleLinks={TEST_SUITE_STEPPER_BREADCRUMB} />
+            <Space className="m-t-md" direction="vertical" size="middle">
+              {addIngestion ? (
+                <TestSuiteIngestion
+                  testSuite={testSuiteResponse as TestSuite}
+                  onCancel={() => setAddIngestion(false)}
                 />
-              </Col>
-              <Col span={24}>{RenderSelectedTab()}</Col>
-            </Row>
-          )}
-        </Space>
-        <div className="m-t-xlg p-l-lg w-max-400" data-testid="right-panel">
+              ) : (
+                <Card className="p-sm">
+                  <Row gutter={[16, 16]}>
+                    <Col span={24}>
+                      <Typography.Title
+                        className="heading"
+                        data-testid="header"
+                        level={5}>
+                        {t('label.add-entity', {
+                          entity: t('label.test-suite'),
+                        })}
+                      </Typography.Title>
+                    </Col>
+                    <Col span={24}>
+                      <IngestionStepper
+                        activeStep={activeServiceStep}
+                        steps={STEPS_FOR_ADD_TEST_SUITE}
+                      />
+                    </Col>
+                    <Col span={24}>{RenderSelectedTab()}</Col>
+                  </Row>
+                </Card>
+              )}
+            </Space>
+          </div>
+        ),
+        minWidth: 700,
+        flex: 0.7,
+      }}
+      pageTitle={t('label.add-entity', {
+        entity: t('label.test-suite'),
+      })}
+      secondPanel={{
+        children: (
           <RightPanel
             data={
               addIngestion
@@ -145,9 +160,16 @@ const TestSuiteStepper = () => {
                   )
             }
           />
-        </div>
-      </PageLayoutV1>
-    </div>
+        ),
+        className: 'p-md service-doc-panel',
+        minWidth: 60,
+        overlay: {
+          displayThreshold: 200,
+          header: t('label.setup-guide'),
+          rotation: 'counter-clockwise',
+        },
+      }}
+    />
   );
 };
 

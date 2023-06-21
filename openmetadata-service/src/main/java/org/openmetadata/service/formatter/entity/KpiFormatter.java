@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.formatter.entity;
 
+import static org.openmetadata.service.formatter.util.FormatterUtil.transformMessage;
+
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.dataInsight.type.KpiResult;
 import org.openmetadata.schema.dataInsight.type.KpiTarget;
@@ -21,6 +23,7 @@ import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 
 public class KpiFormatter implements EntityFormatter {
+  private static final String KPI_RESULT_FIELD = "kpiResult";
 
   @Override
   public String format(
@@ -28,6 +31,14 @@ public class KpiFormatter implements EntityFormatter {
       FieldChange fieldChange,
       EntityInterface entity,
       FormatterUtil.CHANGE_TYPE changeType) {
+    if (KPI_RESULT_FIELD.equals(fieldChange.getName())) {
+      return transformKpiResult(messageFormatter, fieldChange, entity);
+    }
+    return transformMessage(messageFormatter, fieldChange, entity, changeType);
+  }
+
+  private String transformKpiResult(
+      MessageDecorator<?> messageFormatter, FieldChange fieldChange, EntityInterface entity) {
     String kpiName = entity.getName();
     KpiResult result = (KpiResult) fieldChange.getNewValue();
     if (result != null) {

@@ -260,7 +260,9 @@ const EntityInfoDrawer = ({
               className={classNames('flex items-center text-base', {
                 'entity-info-header-link': !isMainNode,
               })}>
-              <span className="m-r-xs">{getEntityIcon(selectedNode.type)}</span>
+              <span className="m-r-xs w-4">
+                {getEntityIcon(selectedNode.type)}
+              </span>
               {getHeaderLabel(
                 selectedNode.displayName ?? selectedNode.name,
                 selectedNode.fqn,
@@ -271,7 +273,7 @@ const EntityInfoDrawer = ({
           </Col>
         </Row>
       }>
-      {summaryComponent}
+      <div className="m-t-md">{summaryComponent}</div>
     </Drawer>
   );
 };

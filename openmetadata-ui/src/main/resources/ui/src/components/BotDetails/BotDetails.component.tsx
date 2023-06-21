@@ -13,6 +13,7 @@
 
 import { Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { toLower } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -40,7 +41,6 @@ import Description from '../common/description/Description';
 import InheritedRolesCard from '../common/InheritedRolesCard/InheritedRolesCard.component';
 import RolesCard from '../common/RolesCard/RolesCard.component';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
-import PageLayout from '../containers/PageLayout';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import AuthMechanism from './AuthMechanism';
 import AuthMechanismForm from './AuthMechanismForm';
@@ -191,7 +191,7 @@ const BotDetails: FC<BotsDetailProps> = ({
 
   const fetchLeftPanel = () => {
     return (
-      <Row gutter={[16, 16]}>
+      <Row className="p-xs" gutter={[16, 16]}>
         <Col span={24}>
           <Card className="page-layout-v1-left-panel mt-2">
             <div data-testid="left-panel">
@@ -258,11 +258,25 @@ const BotDetails: FC<BotsDetailProps> = ({
   }, [botUserData]);
 
   return (
-    <PageLayout
-      classes="tw-h-full tw-px-4"
-      header={
+    <PageLayoutV1
+      leftPanel={fetchLeftPanel()}
+      pageTitle={t('label.bot-detail')}
+      rightPanel={
+        <div
+          className="p-md bg-white w-full h-full mt-2 border-left"
+          data-testid="right-panel">
+          <div className="d-flex flex-col">
+            <Typography.Text className="mb-2 text-lg">
+              {t('label.token-security')}
+            </Typography.Text>
+            <Typography.Text className="mb-2">
+              {t('message.token-security-description')}
+            </Typography.Text>
+          </div>
+        </div>
+      }>
+      <div className="p-sm p-x-md">
         <TitleBreadcrumb
-          className="tw-px-6"
           titleLinks={[
             {
               name: 'Bots',
@@ -274,60 +288,44 @@ const BotDetails: FC<BotsDetailProps> = ({
             { name: botData.name || '', url: '', activeTitle: true },
           ]}
         />
-      }
-      leftPanel={fetchLeftPanel()}
-      pageTitle={t('label.bot-detail')}
-      rightPanel={
-        <Card className="page-layout-v1-left-panel mt-2">
-          <div data-testid="right-panel">
-            <div className="d-flex flex-col">
-              <Typography.Text className="mb-2 text-lg">
-                {t('label.token-security')}
-              </Typography.Text>
-              <Typography.Text className="mb-2">
-                {t('message.token-security-description')}
-              </Typography.Text>
-            </div>
-          </div>
+        <Card
+          className="page-layout-v1-left-panel mt-2 m-t-md"
+          data-testid="center-panel">
+          {authenticationMechanism ? (
+            <>
+              {isAuthMechanismEdit ? (
+                <AuthMechanismForm
+                  authenticationMechanism={authenticationMechanism}
+                  botData={botData}
+                  botUser={botUserData}
+                  isUpdating={isUpdating}
+                  onCancel={() => setIsAuthMechanismEdit(false)}
+                  onEmailChange={onEmailChange}
+                  onSave={handleAuthMechanismUpdate}
+                />
+              ) : (
+                <AuthMechanism
+                  authenticationMechanism={authenticationMechanism}
+                  botUser={botUserData}
+                  hasPermission={editAllPermission}
+                  onEdit={handleAuthMechanismEdit}
+                  onTokenRevoke={() => setIsRevokingToken(true)}
+                />
+              )}
+            </>
+          ) : (
+            <AuthMechanismForm
+              authenticationMechanism={{} as AuthenticationMechanism}
+              botData={botData}
+              botUser={botUserData}
+              isUpdating={isUpdating}
+              onCancel={() => setIsAuthMechanismEdit(false)}
+              onEmailChange={onEmailChange}
+              onSave={handleAuthMechanismUpdate}
+            />
+          )}
         </Card>
-      }>
-      <Card
-        className="page-layout-v1-left-panel mt-2"
-        data-testid="center-panel">
-        {authenticationMechanism ? (
-          <>
-            {isAuthMechanismEdit ? (
-              <AuthMechanismForm
-                authenticationMechanism={authenticationMechanism}
-                botData={botData}
-                botUser={botUserData}
-                isUpdating={isUpdating}
-                onCancel={() => setIsAuthMechanismEdit(false)}
-                onEmailChange={onEmailChange}
-                onSave={handleAuthMechanismUpdate}
-              />
-            ) : (
-              <AuthMechanism
-                authenticationMechanism={authenticationMechanism}
-                botUser={botUserData}
-                hasPermission={editAllPermission}
-                onEdit={handleAuthMechanismEdit}
-                onTokenRevoke={() => setIsRevokingToken(true)}
-              />
-            )}
-          </>
-        ) : (
-          <AuthMechanismForm
-            authenticationMechanism={{} as AuthenticationMechanism}
-            botData={botData}
-            botUser={botUserData}
-            isUpdating={isUpdating}
-            onCancel={() => setIsAuthMechanismEdit(false)}
-            onEmailChange={onEmailChange}
-            onSave={handleAuthMechanismUpdate}
-          />
-        )}
-      </Card>
+      </div>
       <ConfirmationModal
         bodyText={t('message.are-you-sure-to-revoke-access')}
         cancelText={t('label.cancel')}
@@ -341,7 +339,7 @@ const BotDetails: FC<BotsDetailProps> = ({
           handleAuthMechanismEdit();
         }}
       />
-    </PageLayout>
+    </PageLayoutV1>
   );
 };
 

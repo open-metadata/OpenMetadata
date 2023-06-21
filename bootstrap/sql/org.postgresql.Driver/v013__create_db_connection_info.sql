@@ -84,6 +84,9 @@ jsonb_build_object('password',json#>'{connection,config,password}')
 WHERE serviceType IN ('Postgres', 'Mysql')
   and json#>'{connection,config,password}' is not null;
 
+-- Clean old test connections
+TRUNCATE automations_workflow;
+
 DROP INDEX field_relationship_from_index, field_relationship_to_index;
 ALTER TABLE field_relationship DROP CONSTRAINT field_relationship_pkey, ADD COLUMN fromFQNHash VARCHAR(256), ADD COLUMN toFQNHash VARCHAR(256),
      ADD CONSTRAINT  field_relationship_pkey PRIMARY KEY(fromFQNHash, toFQNHash, relation),
@@ -169,3 +172,14 @@ ALTER TABLE team_entity DROP CONSTRAINT team_entity_name_key, ADD COLUMN nameHas
 ALTER TABLE user_entity DROP CONSTRAINT user_entity_name_key, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
 ALTER TABLE bot_entity DROP CONSTRAINT bot_entity_name_key, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
 ALTER TABLE glossary_entity DROP CONSTRAINT glossary_entity_name_key, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
+
+-- Remove sourceUrl in pipeline_entity from DatabricksPipeline & Fivetran
+UPDATE pipeline_entity
+SET json = json::jsonb #- '{sourceUrl}'
+where json #> '{serviceType}' in ('"DatabricksPipeline"','"Fivetran"');
+
+
+-- Remove sourceUrl in dashboard_entity from Mode
+UPDATE dashboard_entity
+SET json = json::jsonb #- '{sourceUrl}'
+where json #> '{serviceType}' in ('"Mode"');

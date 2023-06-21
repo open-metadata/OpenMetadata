@@ -265,7 +265,7 @@ public class FeedResource {
       @Valid ResolveTask resolveTask)
       throws IOException {
     Thread task = dao.getTask(Integer.parseInt(id));
-    dao.checkPermissionsForResolveTask(task, securityContext, authorizer);
+    dao.checkPermissionsForResolveTask(task, false, securityContext);
     return dao.resolveTask(uriInfo, task, securityContext.getUserPrincipal().getName(), resolveTask).toResponse();
   }
 
@@ -289,7 +289,7 @@ public class FeedResource {
       @Valid CloseTask closeTask)
       throws IOException {
     Thread task = dao.getTask(Integer.parseInt(id));
-    dao.checkPermissionsForResolveTask(task, securityContext, authorizer);
+    dao.checkPermissionsForResolveTask(task, true, securityContext);
     return dao.closeTask(uriInfo, task, securityContext.getUserPrincipal().getName(), closeTask).toResponse();
   }
 

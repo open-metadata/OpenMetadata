@@ -12,7 +12,7 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Select, Tooltip, Typography } from 'antd';
+import { Button, Select, Space, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import TagButton from 'components/TagButton/TagButton.component';
 import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from 'constants/constants';
@@ -118,19 +118,8 @@ const GlossaryTermSynonyms = ({
       {isViewMode ? (
         getSynonyms()
       ) : (
-        <div className="d-flex items-center gap-2">
-          <Select
-            className="glossary-select"
-            id="synonyms-select"
-            mode="tags"
-            open={false}
-            placeholder={t('label.add-entity', {
-              entity: t('label.synonym-plural'),
-            })}
-            value={synonyms}
-            onChange={(value) => setSynonyms(value)}
-          />
-          <>
+        <>
+          <Space className="justify-end w-full m-b-xs" size={8}>
             <Button
               className="w-6 p-x-05"
               data-testid="cancel-synonym-btn"
@@ -146,8 +135,20 @@ const GlossaryTermSynonyms = ({
               type="primary"
               onClick={() => handleSynonymsSave(synonyms)}
             />
-          </>
-        </div>
+          </Space>
+
+          <Select
+            className="glossary-select w-full"
+            id="synonyms-select"
+            mode="tags"
+            open={false}
+            placeholder={t('label.add-entity', {
+              entity: t('label.synonym-plural'),
+            })}
+            value={synonyms}
+            onChange={(value) => setSynonyms(value)}
+          />
+        </>
       )}
     </div>
   );

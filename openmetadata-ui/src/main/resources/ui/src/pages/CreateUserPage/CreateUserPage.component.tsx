@@ -12,17 +12,24 @@
  */
 
 import { AxiosError } from 'axios';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import CreateUserComponent from 'components/CreateUser/CreateUser.component';
 import _ from 'lodash';
 import { observer } from 'mobx-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { createBotWithPut } from 'rest/botsAPI';
 import { getRoles } from 'rest/rolesAPIV1';
 import { createUser, createUserWithPut, getBotByName } from 'rest/userAPI';
 import { getIsErrorMatch } from 'utils/CommonUtils';
-import { ERROR_MESSAGE, PAGE_SIZE_LARGE } from '../../constants/constants';
+import {
+  ERROR_MESSAGE,
+  getBotsPagePath,
+  getUsersPagePath,
+  PAGE_SIZE_LARGE,
+} from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -163,16 +170,37 @@ const CreateUserPage = () => {
     fetchRoles();
   }, []);
 
+  const slashedBreadcrumbList = useMemo(
+    () => [
+      {
+        name: bot ? t('label.bot-plural') : t('label.user-plural'),
+        url: bot ? getBotsPagePath() : getUsersPagePath(),
+      },
+      {
+        name: `${t('label.create')} ${bot ? t('label.bot') : t('label.user')}`,
+        url: '',
+        activeTitle: true,
+      },
+    ],
+    [bot]
+  );
+
   return (
-    <div className="self-center">
-      <CreateUserComponent
-        forceBot={Boolean(bot)}
-        isLoading={isLoading}
-        roles={roles}
-        onCancel={handleCancel}
-        onSave={handleAddUserSave}
-      />
-    </div>
+    <PageLayoutV1
+      pageTitle={t('label.create-entity', { entity: t('label.user') })}>
+      <div className="max-width-md w-9/10 service-form-container">
+        <TitleBreadcrumb titleLinks={slashedBreadcrumbList} />
+        <div className="m-t-md">
+          <CreateUserComponent
+            forceBot={Boolean(bot)}
+            isLoading={isLoading}
+            roles={roles}
+            onCancel={handleCancel}
+            onSave={handleAddUserSave}
+          />
+        </div>
+      </div>
+    </PageLayoutV1>
   );
 };
 

@@ -122,13 +122,13 @@ jest.mock('./AuthMechanismForm', () =>
     )
 );
 
-jest.mock('../containers/PageLayout', () =>
+jest.mock('../containers/PageLayoutV1', () =>
   jest
     .fn()
     .mockImplementation(({ children, leftPanel, rightPanel, header }) => (
       <div>
-        {header}
         <div>{leftPanel}</div>
+        {header}
         {children}
         <div>{rightPanel}</div>
       </div>
