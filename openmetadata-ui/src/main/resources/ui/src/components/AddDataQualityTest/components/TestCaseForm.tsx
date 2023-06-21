@@ -20,7 +20,10 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getListTestCase, getListTestDefinitions } from 'rest/testAPI';
 import { getEntityName } from 'utils/EntityUtils';
-import { API_RES_MAX_SIZE } from '../../../constants/constants';
+import {
+  API_RES_MAX_SIZE,
+  PAGE_SIZE_LARGE,
+} from '../../../constants/constants';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
 import {
   TestCase,
@@ -32,10 +35,7 @@ import {
   TestDefinition,
   TestPlatform,
 } from '../../../generated/tests/testDefinition';
-import {
-  getNameFromFQN,
-  replaceAllSpacialCharWith_,
-} from '../../../utils/CommonUtils';
+import { replaceAllSpacialCharWith_ } from '../../../utils/CommonUtils';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -83,7 +83,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     try {
       const { data } = await getListTestCase({
         fields: 'testDefinition',
-        limit: API_RES_MAX_SIZE,
+        limit: PAGE_SIZE_LARGE,
         entityLink: generateEntityLink(decodedEntityFQN, isColumnFqn),
       });
 
@@ -170,22 +170,22 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
   const handleValueChange: FormProps['onValuesChange'] = (value) => {
     if (value.testTypeId) {
-      const testType = testDefinitions.find(
-        (test) => test.fullyQualifiedName === value.testTypeId
-      );
+      // const testType = testDefinitions.find(
+      //   (test) => test.fullyQualifiedName === value.testTypeId
+      // );
       setSelectedTestType(value.testTypeId);
-      const testCount = testCases.filter((test) =>
-        test.name.includes(
-          `${getNameFromFQN(decodedEntityFQN)}_${testType?.name}`
-        )
-      );
+      // const testCount = testCases.filter((test) =>
+      //   test.name.includes(
+      //     `${getNameFromFQN(decodedEntityFQN)}_${testType?.name}`
+      //   )
+      // );
       // generating dynamic unique name based on entity_testCase_number
-      const name = `${getNameFromFQN(decodedEntityFQN)}_${testType?.name}${
-        testCount.length ? `_${testCount.length}` : ''
-      }`;
-      form.setFieldsValue({
-        testName: replaceAllSpacialCharWith_(name),
-      });
+      // const name = `${getNameFromFQN(decodedEntityFQN)}_${testType?.name}${
+      //   testCount.length ? `_${testCount.length}` : ''
+      // }`;
+      // form.setFieldsValue({
+      //   testName: replaceAllSpacialCharWith_(name),
+      // });
     }
   };
 
@@ -197,9 +197,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       fetchAllTestCases();
     }
     form.setFieldsValue({
-      testName: replaceAllSpacialCharWith_(
-        initialValue?.name ?? getNameFromFQN(decodedEntityFQN)
-      ),
+      testName: replaceAllSpacialCharWith_(initialValue?.name ?? ''),
       testTypeId: initialValue?.testDefinition,
       params: initialValue?.parameterValues?.length
         ? getParamsValue()
@@ -215,8 +213,30 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       preserve={false}
       onFinish={handleFormSubmit}
       onValuesChange={handleValueChange}>
+      {isColumnFqn && (
+        <Form.Item
+          label={t('label.column')}
+          name="column"
+          rules={[
+            {
+              required: true,
+              message: `${t('label.field-required', {
+                field: t('label.column'),
+              })}`,
+            },
+          ]}>
+          <Select
+            placeholder={t('label.please-select-entity', {
+              entity: t('label.column-lowercase'),
+            })}>
+            {table.columns.map((column) => (
+              <Select.Option key={column.name}>{column.name}</Select.Option>
+            ))}
+          </Select>
+        </Form.Item>
+      )}
       <Form.Item
-        label={`${t('label.name')}:`}
+        label={t('label.name')}
         name="testName"
         rules={[
           {
@@ -244,7 +264,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         <Input placeholder={t('message.enter-test-case-name')} />
       </Form.Item>
       <Form.Item
-        label={`${t('label.test-type')}`}
+        label={t('label.test-type')}
         name="testTypeId"
         rules={[
           {
@@ -265,7 +285,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
       {GenerateParamsField()}
 
-      <Form.Item label={`${t('label.description')}`} name="description">
+      <Form.Item label={t('label.description')} name="description">
         <RichTextEditor
           initialValue={initialValue?.description || ''}
           ref={markdownRef}

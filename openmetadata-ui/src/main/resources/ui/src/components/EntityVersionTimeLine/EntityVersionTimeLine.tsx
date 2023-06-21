@@ -188,7 +188,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
           </svg>
         </div>
       </header>
-      <hr className="tw-mt-3 tw-border-primary-hover-lite" />
+      <hr className="tw-mt-3" />
 
       <div className="tw-my-2 tw-pb-9">{getVersionList()}</div>
     </div>

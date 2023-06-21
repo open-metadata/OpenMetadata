@@ -13,27 +13,38 @@
 import { Layout } from 'antd';
 import { Content, Header } from 'antd/lib/layout/layout';
 import Sider from 'antd/lib/layout/Sider';
+import AppState from 'AppState';
 import Appbar from 'components/app-bar/Appbar';
 import LeftSidebar from 'components/MyData/LeftSidebar/LeftSidebar.component';
 import AuthenticatedAppRouter from 'components/router/AuthenticatedAppRouter';
+import { ROUTES } from 'constants/constants';
+import { isEmpty } from 'lodash';
+import SignupPage from 'pages/signup';
 import React from 'react';
+import { Redirect, Route, Switch } from 'react-router-dom';
 import './app-container.less';
 
 const AppContainer = () => {
   return (
-    <Layout className="app-container">
-      <Header className="p-x-0">
-        <Appbar />
-      </Header>
-      <Layout hasSider>
-        <Sider className="left-sidebar-col" width={60}>
-          <LeftSidebar />
-        </Sider>
-        <Content>
-          <AuthenticatedAppRouter />
-        </Content>
+    <Switch>
+      <Route exact component={SignupPage} path={ROUTES.SIGNUP}>
+        {!isEmpty(AppState.userDetails) && <Redirect to={ROUTES.HOME} />}
+      </Route>
+
+      <Layout className="app-container">
+        <Header className="p-x-0">
+          <Appbar />
+        </Header>
+        <Layout hasSider>
+          <Sider className="left-sidebar-col" width={60}>
+            <LeftSidebar />
+          </Sider>
+          <Content>
+            <AuthenticatedAppRouter />
+          </Content>
+        </Layout>
       </Layout>
-    </Layout>
+    </Switch>
   );
 };
 

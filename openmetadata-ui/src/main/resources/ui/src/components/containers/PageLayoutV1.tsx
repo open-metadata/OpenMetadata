@@ -35,8 +35,7 @@ interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
 }
 
 export const pageContainerStyles: CSSProperties = {
-  height: '100%',
-  padding: '1rem 0.5rem',
+  padding: 0,
   marginTop: 0,
   marginBottom: 0,
   marginLeft: 0,
@@ -70,15 +69,22 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   return (
     <Fragment>
       <DocumentTitle title={pageTitle} />
-      {header && <div className="m-t-md p-x-md">{header}</div>}
+      {header && (
+        <div
+          className={classNames({
+            'header-center': center,
+            'm-t-md p-x-md': !center,
+          })}>
+          {header}
+        </div>
+      )}
       <Row
-        className={className}
+        className={classNames(className, 'bg-white')}
         data-testid="page-layout-v1"
-        gutter={[16, 16]}
         style={pageContainerStyles}>
         {leftPanel && (
           <Col
-            className="page-layout-leftpanel page-layout-v1-vertical-scroll"
+            className="page-layout-leftpanel"
             flex={leftPanelWidth + 'px'}
             id="left-panelV1">
             {leftPanel}
@@ -86,7 +92,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         )}
         <Col
           className={classNames(
-            'page-layout-v1-center page-layout-v1-vertical-scroll',
+            'page-layout-v1-center p-t-sm page-layout-v1-vertical-scroll',
             {
               'flex justify-center': center,
             }

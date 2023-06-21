@@ -37,4 +37,5 @@ export interface BasicEntityInfo {
 export interface SummaryListProps {
   formattedEntityData: BasicEntityInfo[];
   entityType?: SummaryEntityType;
+  emptyPlaceholderText?: string;
 }

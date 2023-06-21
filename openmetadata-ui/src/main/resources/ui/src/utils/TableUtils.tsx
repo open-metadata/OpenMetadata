@@ -41,6 +41,7 @@ import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
+  getContainerDetailPath,
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
@@ -71,7 +72,6 @@ import {
   getTableFQNFromColumnFQN,
   sortTagsCaseInsensitive,
 } from './CommonUtils';
-import { getContainerDetailPath } from './ContainerDetailUtils';
 import { getGlossaryPath, getSettingPath } from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import { ordinalize } from './StringsUtils';
@@ -276,15 +276,15 @@ export const getEntityLink = (
 export const getServiceIcon = (source: SourceType) => {
   if (source.entityType === EntityType.GLOSSARY_TERM) {
     return (
-      <IconFlatFolder className="h-9" style={{ color: DE_ACTIVE_COLOR }} />
+      <IconFlatFolder className="h-7" style={{ color: DE_ACTIVE_COLOR }} />
     );
   } else if (source.entityType === EntityType.TAG) {
-    return <IconTag className="h-9" style={{ color: DE_ACTIVE_COLOR }} />;
+    return <IconTag className="h-7" style={{ color: DE_ACTIVE_COLOR }} />;
   } else {
     return (
       <img
         alt="service-icon"
-        className="inline h-9"
+        className="inline h-7"
         src={serviceTypeLogo(source.serviceType || '')}
       />
     );

@@ -16,6 +16,7 @@ import DescriptionV1 from 'components/common/description/DescriptionV1';
 import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import GlossaryDetailsRightPanel from 'components/GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
+import { EntityType } from 'enums/entity.enum';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import React, { useState } from 'react';
 import { Glossary } from '../../generated/entity/data/glossary';
@@ -85,6 +86,7 @@ const GlossaryDetails = ({
                 wrapInCard
                 description={glossary?.description || ''}
                 entityName={glossary?.displayName ?? glossary?.name}
+                entityType={EntityType.GLOSSARY}
                 hasEditAccess={
                   permissions.EditDescription || permissions.EditAll
                 }

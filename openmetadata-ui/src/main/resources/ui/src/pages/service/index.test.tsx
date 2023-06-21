@@ -188,7 +188,7 @@ jest.mock('../../utils/ServiceUtils', () => ({
   getServicePageTabs: jest.fn().mockImplementation(() => mockTabs),
 }));
 
-jest.mock('components/common/description/Description', () => {
+jest.mock('components/common/description/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<div>Description_component</div>);
 });
 
@@ -358,7 +358,7 @@ describe('Test ServicePage Component', () => {
     });
 
     const ingestionContainer = await screen.findByText(
-      'message.airflow-guide-message'
+      'message.pipeline-scheduler-message'
     );
 
     expect(ingestionContainer).toBeInTheDocument();

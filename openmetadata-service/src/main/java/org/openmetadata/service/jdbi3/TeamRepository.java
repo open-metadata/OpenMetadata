@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
 import static org.openmetadata.csv.CsvUtil.addField;
+import static org.openmetadata.csv.CsvUtil.addUserOwner;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.BUSINESS_UNIT;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DEPARTMENT;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DIVISION;
@@ -49,10 +50,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
-import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
@@ -64,6 +65,7 @@ import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
@@ -102,6 +104,11 @@ public class TeamRepository extends EntityRepository<Team> {
     team.setChildrenCount(fields.contains("childrenCount") ? getChildrenCount(team) : null);
     team.setUserCount(fields.contains("userCount") ? getUserCount(team.getId()) : null);
     return team;
+  }
+
+  @Override
+  public Team getByName(UriInfo uriInfo, String name, Fields fields) throws IOException {
+    return super.getByName(uriInfo, EntityInterfaceUtil.quoteName(name), fields);
   }
 
   @Override
@@ -558,7 +565,7 @@ public class TeamRepository extends EntityRepository<Team> {
       }
 
       // Field 6 - Owner
-      importedTeam.setOwner(getEntityReference(printer, csvRecord, 5, Entity.USER));
+      importedTeam.setOwner(getOwnerAsUser(printer, csvRecord, 5));
       if (!processRecord) {
         return null;
       }
@@ -585,7 +592,7 @@ public class TeamRepository extends EntityRepository<Team> {
       addField(recordList, entity.getDescription());
       addField(recordList, entity.getTeamType().value());
       addEntityReferences(recordList, entity.getParents());
-      CsvUtil.addEntityReference(recordList, entity.getOwner());
+      addUserOwner(recordList, entity.getOwner());
       addField(recordList, entity.getIsJoinable());
       addEntityReferences(recordList, entity.getDefaultRoles());
       addEntityReferences(recordList, entity.getPolicies());
@@ -593,7 +600,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     private void getParents(CSVPrinter printer, CSVRecord csvRecord, Team importedTeam) throws IOException {
-      List<EntityReference> parentRefs = getEntityReferences(printer, csvRecord, 4, Entity.TEAM);
+      List<EntityReference> parentRefs = getUserOrTeamEntityReferences(printer, csvRecord, 4, Entity.TEAM);
 
       // Validate team being created is under the hierarchy of the team for which CSV is being imported to
       for (EntityReference parentRef : listOrEmpty(parentRefs)) {

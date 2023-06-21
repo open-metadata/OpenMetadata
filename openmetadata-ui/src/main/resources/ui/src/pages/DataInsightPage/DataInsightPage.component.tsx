@@ -277,9 +277,12 @@ const DataInsightPage = () => {
     <PageLayoutV1
       leftPanel={<DataInsightLeftPanel />}
       pageTitle={t('label.data-insight')}>
-      <Row data-testid="data-insight-container" gutter={[16, 16]}>
+      <Row
+        className="page-container"
+        data-testid="data-insight-container"
+        gutter={[16, 16]}>
         <Col span={24}>
-          <Space className="w-full justify-between item-start">
+          <Space className="w-full justify-between items-start">
             <div data-testid="data-insight-header">
               <Typography.Title level={5}>
                 {t('label.data-insight-plural')}

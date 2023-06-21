@@ -12,57 +12,27 @@
  */
 
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { FeedFilter } from 'enums/mydata.enum';
-import { CreateThread, ThreadType } from 'generated/api/feed/createThread';
+import { CreateThread } from 'generated/api/feed/createThread';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Column } from 'generated/entity/data/table';
-import { Thread } from 'generated/entity/feed/thread';
-import { Paging } from 'generated/type/paging';
-import {
-  EntityFieldThreadCount,
-  ThreadUpdatedFunc,
-} from 'interface/feed.interface';
+import { EntityReference } from 'generated/entity/type';
+import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { EntityTags } from 'Models';
 
 export interface DataModelDetailsProps {
-  isEntityThreadLoading: boolean;
-
-  paging: Paging;
   entityFieldThreadCount: EntityFieldThreadCount[];
-  entityFieldTaskCount: EntityFieldThreadCount[];
-  entityThread: Thread[];
   feedCount: number;
-  dataModelData?: DashboardDataModel;
-  dashboardDataModelFQN: string;
-  postFeedHandler: (value: string, id: string) => void;
+  dataModelData: DashboardDataModel;
   dataModelPermissions: OperationPermission;
   createThread: (data: CreateThread) => void;
-  deletePostHandler: (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ) => void;
-  updateThreadHandler: ThreadUpdatedFunc;
-  handleFollowDataModel: () => void;
-  handleRemoveTier: () => void;
-  fetchFeedHandler: (
-    after?: string,
-    feedType?: FeedFilter,
-    threadType?: ThreadType
-  ) => void;
-  handleUpdateTags: (selectedTags?: Array<EntityTags>) => void;
-  handleUpdateOwner: (updatedOwner?: DashboardDataModel['owner']) => void;
-  handleUpdateTier: (updatedTier?: string) => void;
-  activeTab: string;
-  handleTabChange: (tabValue: string) => void;
+  handleFollowDataModel: () => Promise<void>;
+  handleUpdateTags: (selectedTags?: EntityTags[]) => void;
+  handleUpdateOwner: (owner?: EntityReference) => Promise<void>;
+  handleUpdateTier: (tier?: string) => Promise<void>;
   handleUpdateDescription: (value: string) => Promise<void>;
-  handleUpdateDataModel: (updatedDataModel: Column[]) => Promise<void>;
+  handleColumnUpdateDataModel: (updatedDataModel: Column[]) => Promise<void>;
   onUpdateDataModel: (
     updatedDataModel: DashboardDataModel,
     key: keyof DashboardDataModel
   ) => Promise<void>;
-  handleFeedFilterChange: (
-    feedType: FeedFilter,
-    threadType?: ThreadType
-  ) => void;
 }

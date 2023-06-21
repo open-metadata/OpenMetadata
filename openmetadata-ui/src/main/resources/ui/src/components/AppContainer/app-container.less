@@ -12,6 +12,8 @@
  */
 
 @import url('../../styles/variables.less');
+@import (reference) '~antd/dist/antd.less';
+
 .app-container {
   min-height: 100vh !important;
   background-color: white;
@@ -26,6 +28,7 @@
     justify-content: space-between;
     .appbar-search {
       min-width: 380px;
+      width: calc(100vw - 800px);
     }
     .navbar-items {
       display: flex;
@@ -40,6 +43,7 @@
       border-radius: 0 !important;
       border-top: 0;
       background-color: @white;
+      padding-bottom: @padding-lg;
     }
   }
   .ant-layout-content {
