@@ -13,7 +13,6 @@ DBT source methods.
 """
 import traceback
 from datetime import datetime
-from enum import Enum
 from typing import Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -60,6 +59,17 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DataModelLink
+from metadata.ingestion.source.database.dbt.constants import (
+    NONE_KEYWORDS_LIST,
+    REQUIRED_CATALOG_KEYS,
+    REQUIRED_MANIFEST_KEYS,
+    CompiledQueriesEnum,
+    DbtCommonEnum,
+    DbtTestFailureEnum,
+    DbtTestSuccessEnum,
+    RawQueriesEnum,
+    SkipResourceTypeEnum,
+)
 from metadata.ingestion.source.database.dbt.dbt_service import (
     DbtFiles,
     DbtObjects,
@@ -71,75 +81,6 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
-
-# Based on https://schemas.getdbt.com/dbt/manifest/v7/index.html
-REQUIRED_MANIFEST_KEYS = ["name", "schema", "resource_type"]
-
-# Based on https://schemas.getdbt.com/dbt/catalog/v1.json
-REQUIRED_CATALOG_KEYS = ["name", "type", "index"]
-
-NONE_KEYWORDS_LIST = ["none", "null"]
-
-
-class SkipResourceTypeEnum(Enum):
-    """
-    Enum for nodes to be skipped
-    """
-
-    ANALYSIS = "analysis"
-    TEST = "test"
-
-
-class CompiledQueriesEnum(Enum):
-    """
-    Enum for Compiled Queries
-    """
-
-    COMPILED_CODE = "compiled_code"
-    COMPILED_SQL = "compiled_sql"
-
-
-class RawQueriesEnum(Enum):
-    """
-    Enum for Raw Queries
-    """
-
-    RAW_CODE = "raw_code"
-    RAW_SQL = "raw_sql"
-
-
-class DbtTestSuccessEnum(Enum):
-    """
-    Enum for success messages of dbt tests
-    """
-
-    SUCCESS = "success"
-    PASS = "pass"
-
-
-class DbtTestFailureEnum(Enum):
-    """
-    Enum for failure message of dbt tests
-    """
-
-    FAILURE = "failure"
-    FAIL = "fail"
-
-
-class DbtCommonEnum(Enum):
-    """
-    Common enum for dbt
-    """
-
-    OWNER = "owner"
-    NODES = "nodes"
-    SOURCES = "sources"
-    RESOURCETYPE = "resource_type"
-    MANIFEST_NODE = "manifest_node"
-    UPSTREAM = "upstream"
-    RESULTS = "results"
-    TEST_SUITE_NAME = "test_suite_name"
-    DBT_TEST_SUITE = "DBT_TEST_SUITE"
 
 
 class InvalidServiceException(Exception):
@@ -363,6 +304,68 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
             None,
         )
 
+    def _create_data_model_link(
+        self, model_name, manifest_node, catalog_node, manifest_entities
+    ):
+        dbt_compiled_query = self.get_dbt_compiled_query(manifest_node)
+        dbt_raw_query = self.get_dbt_raw_query(manifest_node)
+        dbt_table_tags_list = None
+        if manifest_node.tags:
+            dbt_table_tags_list = get_tag_labels(
+                metadata=self.metadata,
+                tags=manifest_node.tags,
+                classification_name=self.tag_classification_name,
+                include_tags=self.source_config.includeTags,
+            )
+
+        # Get the table entity from ES
+        # TODO: Change to get_by_name once the postgres case sensitive calls is fixed
+        table_fqn = fqn.build(
+            self.metadata,
+            entity_type=Table,
+            service_name=self.config.serviceName,
+            database_name=self.get_corrected_name(manifest_node.database),
+            schema_name=self.get_corrected_name(manifest_node.schema_),
+            table_name=model_name,
+        )
+        table_entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
+            entity_list=self.metadata.es_search_from_fqn(
+                entity_type=Table, fqn_search_string=table_fqn
+            ),
+            fetch_multiple_entities=False,
+        )
+
+        if table_entity:
+            data_model_link = DataModelLink(
+                table_entity=table_entity,
+                datamodel=DataModel(
+                    modelType=ModelType.DBT,
+                    description=manifest_node.description
+                    if manifest_node.description
+                    else None,
+                    path=self.get_data_model_path(manifest_node=manifest_node),
+                    rawSql=dbt_raw_query if dbt_raw_query else "",
+                    sql=dbt_compiled_query if dbt_compiled_query else "",
+                    columns=self.parse_data_model_columns(manifest_node, catalog_node),
+                    upstream=self.parse_upstream_nodes(
+                        manifest_entities, manifest_node
+                    ),
+                    owner=self.get_dbt_owner(
+                        manifest_node=manifest_node,
+                        catalog_node=catalog_node,
+                    ),
+                    tags=dbt_table_tags_list,
+                ),
+            )
+            yield data_model_link
+            self.context.data_model_links.append(data_model_link)
+        else:
+            logger.warning(
+                f"Unable to find the table '{table_fqn}' in OpenMetadata"
+                f"Please check if the table exists and is ingested in OpenMetadata"
+                f"Also name, database, schema of the manifest node matches with the table present in OpenMetadata"
+            )
+
     def yield_data_models(self, dbt_objects: DbtObjects) -> Iterable[DataModelLink]:
         """
         Yield the data models
@@ -415,71 +418,23 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     if dbt_objects.dbt_catalog:
                         catalog_node = catalog_entities.get(key)
 
-                    dbt_table_tags_list = None
-                    if manifest_node.tags:
-                        dbt_table_tags_list = get_tag_labels(
-                            metadata=self.metadata,
-                            tags=manifest_node.tags,
-                            classification_name=self.tag_classification_name,
-                            include_tags=self.source_config.includeTags,
-                        )
-
-                    dbt_compiled_query = self.get_dbt_compiled_query(manifest_node)
-                    dbt_raw_query = self.get_dbt_raw_query(manifest_node)
-
-                    # Get the table entity from ES
-                    # TODO: Change to get_by_name once the postgres case sensitive calls is fixed
-                    table_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=self.config.serviceName,
+                    filter_model = self.is_filtered(
                         database_name=self.get_corrected_name(manifest_node.database),
                         schema_name=self.get_corrected_name(manifest_node.schema_),
                         table_name=model_name,
                     )
-                    table_entity: Optional[
-                        Union[Table, List[Table]]
-                    ] = get_entity_from_es_result(
-                        entity_list=self.metadata.es_search_from_fqn(
-                            entity_type=Table, fqn_search_string=table_fqn
-                        ),
-                        fetch_multiple_entities=False,
-                    )
 
-                    if table_entity:
-                        data_model_link = DataModelLink(
-                            table_entity=table_entity,
-                            datamodel=DataModel(
-                                modelType=ModelType.DBT,
-                                description=manifest_node.description
-                                if manifest_node.description
-                                else None,
-                                path=self.get_data_model_path(
-                                    manifest_node=manifest_node
-                                ),
-                                rawSql=dbt_raw_query if dbt_raw_query else "",
-                                sql=dbt_compiled_query if dbt_compiled_query else "",
-                                columns=self.parse_data_model_columns(
-                                    manifest_node, catalog_node
-                                ),
-                                upstream=self.parse_upstream_nodes(
-                                    manifest_entities, manifest_node
-                                ),
-                                owner=self.get_dbt_owner(
-                                    manifest_node=manifest_node,
-                                    catalog_node=catalog_node,
-                                ),
-                                tags=dbt_table_tags_list,
-                            ),
-                        )
-                        yield data_model_link
-                        self.context.data_model_links.append(data_model_link)
-                    else:
-                        logger.warning(
-                            f"Unable to find the table '{table_fqn}' in OpenMetadata"
-                            f"Please check if the table exists and is ingested in OpenMetadata"
-                            f"Also name, database, schema of the manifest node matches with the table present in OpenMetadata"  # pylint: disable=line-too-long
-                        )
+                    if filter_model.is_filtered:
+                        self.status.filter(filter_model.model_fqn, filter_model.message)
+                        continue
+
+                    yield from self._create_data_model_link(
+                        model_name=model_name,
+                        manifest_entities=manifest_entities,
+                        manifest_node=manifest_node,
+                        catalog_node=catalog_node,
+                    ) or []
+
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     logger.warning(
@@ -530,6 +485,14 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         schema_name=self.get_corrected_name(parent_node.schema_),
                         table_name=table_name,
                     )
+                    filter_model = self.is_filtered(
+                        database_name=self.get_corrected_name(parent_node.database),
+                        schema_name=self.get_corrected_name(parent_node.schema_),
+                        table_name=table_name,
+                    )
+
+                    if filter_model.is_filtered:
+                        continue
 
                     # check if the parent table exists in OM before adding it to the upstream list
                     # TODO: Change to get_by_name once the postgres case sensitive calls is fixed
