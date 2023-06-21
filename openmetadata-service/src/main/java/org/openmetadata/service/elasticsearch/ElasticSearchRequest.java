@@ -14,7 +14,7 @@ public class ElasticSearchRequest {
   private final boolean deleted;
   private final String index;
   private final String fieldName;
-  private final Object sortOrder;
+  private final String sortOrder;
   private final List<String> includeSourceFields;
 
   private ElasticSearchRequest(ElasticSearchRequestBuilder builder) {
@@ -79,7 +79,7 @@ public class ElasticSearchRequest {
     return fieldName;
   }
 
-  public Object getSortOrder() {
+  public String getSortOrder() {
     return sortOrder;
   }
 
@@ -101,7 +101,7 @@ public class ElasticSearchRequest {
     private boolean trackTotalHits;
     private String sortFieldParam;
     private boolean deleted;
-    private Object sortOrder;
+    private String sortOrder;
     private List<String> includeSourceFields;
 
     public ElasticSearchRequestBuilder(String query, int size, String index) {
@@ -145,7 +145,7 @@ public class ElasticSearchRequest {
       return this;
     }
 
-    public ElasticSearchRequestBuilder sortOrder(Object sortOrder) {
+    public ElasticSearchRequestBuilder sortOrder(String sortOrder) {
       this.sortOrder = sortOrder;
       return this;
     }

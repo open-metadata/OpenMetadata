@@ -316,7 +316,7 @@ public class ElasticSearchClientImpl implements SearchClient {
             .must(QueryBuilders.termQuery("deleted", request.deleted())));
 
     if (!nullOrEmpty(request.getSortFieldParam())) {
-      searchSourceBuilder.sort(request.getSortFieldParam(), (SortOrder) request.getSortOrder());
+      searchSourceBuilder.sort(request.getSortFieldParam(), SortOrder.fromString(request.getSortOrder()));
     }
 
     /* for performance reasons ElasticSearch doesn't provide accurate hits
@@ -737,15 +737,17 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder addAggregation(SearchSourceBuilder builder) {
     builder
         .aggregation(
-            AggregationBuilders.terms("serviceType")
-                .field("serviceType")
+            AggregationBuilders.terms("serviceType.keyword")
+                .field("serviceType.keyword")
                 .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
         .aggregation(
             AggregationBuilders.terms("service.name.keyword")
                 .field("service.name.keyword")
                 .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
         .aggregation(
-            AggregationBuilders.terms("entityType").field("entityType").size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
+            AggregationBuilders.terms("entityType.keyword")
+                .field("entityType.keyword")
+                .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"));
 
     return builder;
@@ -800,6 +802,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     ElasticSearchIndex index = ElasticSearchIndexFactory.buildIndex(entityType, event.getEntity());
     updateRequest.doc(JsonUtils.pojoToJson(index.buildESDoc()), XContentType.JSON);
     updateRequest.docAsUpsert(true);
+    updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
     updateElasticSearch(updateRequest);
   }
 

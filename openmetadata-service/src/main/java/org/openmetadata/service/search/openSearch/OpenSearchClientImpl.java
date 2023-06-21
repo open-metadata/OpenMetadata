@@ -316,7 +316,7 @@ public class OpenSearchClientImpl implements SearchClient {
             .must(QueryBuilders.termQuery("deleted", request.deleted())));
 
     if (!nullOrEmpty(request.getSortFieldParam())) {
-      searchSourceBuilder.sort(request.getSortFieldParam(), (SortOrder) request.getSortOrder());
+      searchSourceBuilder.sort(request.getSortFieldParam(), SortOrder.fromString(request.getSortOrder()));
     }
 
     /* for performance reasons ElasticSearch doesn't provide accurate hits
