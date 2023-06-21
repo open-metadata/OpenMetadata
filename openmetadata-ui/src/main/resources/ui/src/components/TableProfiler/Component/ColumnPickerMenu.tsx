@@ -37,7 +37,7 @@ const ColumnPickerMenu: FC<ColumnPickerMenuProps> = ({
         <Space>
           {getEntityName(column)}
 
-          <Typography.Text className="text-xs text-grey-muted">{`(${column.dataTypeDisplay})`}</Typography.Text>
+          <Typography.Text className="text-xs text-grey-muted">{`(${column.dataType})`}</Typography.Text>
         </Space>
       ),
       key: column.fullyQualifiedName || '',

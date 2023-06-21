@@ -27,10 +27,21 @@ import {
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
+import { SummaryCardProps } from 'components/common/SummaryCard/SummaryCard.interface';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import { mockDatasetData } from 'constants/mockTourData.constants';
-import { isEmpty, isEqual, isUndefined, map } from 'lodash';
+import { Column } from 'generated/entity/data/container';
+import {
+  filter,
+  find,
+  groupBy,
+  isEmpty,
+  isEqual,
+  isUndefined,
+  map,
+  toLower,
+} from 'lodash';
 import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -60,6 +71,7 @@ import PageHeader from '../header/PageHeader.component';
 import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnPickerMenu from './Component/ColumnPickerMenu';
 import ColumnProfileTable from './Component/ColumnProfileTable';
+import ColumnSummary from './Component/ColumnSummary';
 import ProfilerSettingsModal from './Component/ProfilerSettingsModal';
 import TableProfilerChart from './Component/TableProfilerChart';
 import { QualityTab } from './QualityTab/QualityTab.component';
@@ -111,6 +123,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const [dateRangeObject, setDateRangeObject] =
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
+
   const isColumnProfile = activeTab === TableProfilerTab.COLUMN_PROFILE;
   const isDataQuality = activeTab === TableProfilerTab.DATA_QUALITY;
   const isTableProfile = activeTab === TableProfilerTab.TABLE_PROFILE;
@@ -369,6 +382,29 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     }
   };
 
+  const selectedColumn = useMemo(() => {
+    return find(
+      columns,
+      (column: Column) => column.fullyQualifiedName === activeColumnFqn
+    );
+  }, [columns, activeColumnFqn]);
+
+  const selectedColumnTestsObj = useMemo(() => {
+    const temp = filter(
+      columnTests,
+      (test: TestCase) => test.entityFQN === activeColumnFqn
+    );
+
+    const statusDict = {
+      [TestCaseStatus.Success]: [],
+      [TestCaseStatus.Aborted]: [],
+      [TestCaseStatus.Failed]: [],
+      ...groupBy(temp, 'testCaseResult.testCaseStatus'),
+    };
+
+    return { statusDict, totalTests: temp.length };
+  }, [activeColumnFqn, columnTests]);
+
   useEffect(() => {
     if (!isUndefined(table) && viewTest && !isTourPage) {
       fetchAllTests();
@@ -502,20 +538,42 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
             </div>
           )}
 
-          {!isDataQuality && (
-            <Space>
-              {overallSummery.map((summery) => (
-                <SummaryCard
-                  className={summery.className}
-                  key={summery.title}
-                  showProgressBar={false}
-                  title={summery.title}
-                  total={0}
-                  value={summery.value}
-                />
-              ))}
-            </Space>
-          )}
+          <Row gutter={[16, 16]}>
+            {!isUndefined(selectedColumn) && (
+              <Col span={10}>
+                <ColumnSummary column={selectedColumn} />
+              </Col>
+            )}
+            {!isDataQuality && (
+              <Col span={selectedColumn ? 14 : 24}>
+                <Row wrap gutter={[16, 16]}>
+                  {overallSummery.map((summery) => (
+                    <Col key={summery.title}>
+                      <SummaryCard
+                        className={summery.className}
+                        showProgressBar={false}
+                        title={summery.title}
+                        total={0}
+                        value={summery.value}
+                      />
+                    </Col>
+                  ))}
+                  {!isEmpty(activeColumnFqn) &&
+                    map(selectedColumnTestsObj.statusDict, (data, key) => (
+                      <Col key={key}>
+                        <SummaryCard
+                          showProgressBar
+                          title={key}
+                          total={selectedColumnTestsObj.totalTests}
+                          type={toLower(key) as SummaryCardProps['type']}
+                          value={data.length}
+                        />
+                      </Col>
+                    ))}
+                </Row>
+              </Col>
+            )}
+          </Row>
 
           {isColumnProfile && (
             <ColumnProfileTable
