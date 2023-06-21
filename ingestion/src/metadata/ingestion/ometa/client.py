@@ -14,8 +14,7 @@ Python API REST wrapper and helpers
 import datetime
 import time
 import traceback
-from copy import deepcopy
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union
 
 import requests
 from requests.exceptions import HTTPError
