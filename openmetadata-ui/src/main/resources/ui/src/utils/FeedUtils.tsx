@@ -65,7 +65,7 @@ import { showErrorToast } from './ToastUtils';
 export const getEntityType = (entityLink: string) => {
   const match = EntityRegEx.exec(entityLink);
 
-  return match?.[1];
+  return match?.[1] as EntityType;
 };
 export const getEntityFQN = (entityLink: string) => {
   const match = EntityRegEx.exec(entityLink);
