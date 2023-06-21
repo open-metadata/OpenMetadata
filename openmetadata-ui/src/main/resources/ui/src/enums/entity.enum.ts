@@ -12,9 +12,9 @@
  */
 
 export enum EntityType {
-  DATASET = 'dataset',
   TABLE = 'table',
   TOPIC = 'topic',
+  CLASSIFICATION = 'classification',
   DASHBOARD = 'dashboard',
   PIPELINE = 'pipeline',
   DATABASE = 'database',
@@ -45,6 +45,7 @@ export enum EntityType {
   TAG = 'tag',
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
   SUBSCRIPTION = 'subscription',
+  USER_NAME = 'username',
 }
 
 export enum AssetsType {
@@ -96,6 +97,7 @@ export enum TabSpecificField {
   TABLE_CONSTRAINTS = 'tableConstraints',
   EXTENSION = 'extension',
   EXECUTIONS = 'executions',
+  TESTSUITE = 'testSuite',
 }
 
 export enum FqnPart {
@@ -152,6 +154,7 @@ export enum EntityTabs {
   DATA_Model = 'data-model',
   INGESTIONS = 'ingestions',
   CONNECTION = 'connection',
+  SQL = 'sql',
 }
 
 export enum EntityAction {

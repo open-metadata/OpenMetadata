@@ -29,7 +29,7 @@ interface TagsTaskProps {
   isTaskActionEdit: boolean;
   hasEditAccess: boolean;
   currentTags: TagLabel[];
-  value: TagLabel[];
+  value?: TagLabel[];
   onChange?: (newTags: TagLabel[]) => void;
 }
 

@@ -67,7 +67,7 @@ export const NAVBAR_DETAILS = {
   },
   quality: {
     testid: '[data-testid="appbar-item-data-quality"]',
-    url: `${BASE_URL}/test-suites`,
+    url: `${BASE_URL}/data-quality`,
   },
   insights: {
     testid: '[data-testid="appbar-item-data-insight"]',

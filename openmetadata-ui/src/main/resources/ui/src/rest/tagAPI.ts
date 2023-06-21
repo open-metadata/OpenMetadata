@@ -126,7 +126,11 @@ export const patchTag = async (id: string, data: Operation[]) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
-  const response = await APIClient.patch(`/tags/${id}`, data, configOptions);
+  const response = await APIClient.patch<Operation[], AxiosResponse<Tag>>(
+    `/tags/${id}`,
+    data,
+    configOptions
+  );
 
   return response.data;
 };

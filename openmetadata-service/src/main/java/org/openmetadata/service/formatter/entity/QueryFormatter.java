@@ -24,19 +24,18 @@ import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 
 public class QueryFormatter implements EntityFormatter {
+  private static final String QUERY_USED_IN_FIELD = "queryUsedIn";
+
   @Override
   public String format(
       MessageDecorator<?> messageFormatter,
       FieldChange fieldChange,
       EntityInterface entity,
       FormatterUtil.CHANGE_TYPE changeType) {
-    String newVal = getFieldValue(fieldChange.getNewValue(), entity, messageFormatter);
-    String oldVal = getFieldValue(fieldChange.getOldValue(), entity, messageFormatter);
-    return transformMessage(
-        messageFormatter,
-        new FieldChange().withNewValue(newVal).withOldValue(oldVal).withName("queryUsedIn"),
-        entity,
-        changeType);
+    if (QUERY_USED_IN_FIELD.equals(fieldChange.getName())) {
+      return transformQueryUsedIn(messageFormatter, fieldChange, entity, changeType);
+    }
+    return transformMessage(messageFormatter, fieldChange, entity, changeType);
   }
 
   private static String getFieldValue(Object fieldValue, EntityInterface entity, MessageDecorator<?> messageFormatter) {
@@ -55,5 +54,19 @@ public class QueryFormatter implements EntityFormatter {
       i++;
     }
     return field.toString();
+  }
+
+  private String transformQueryUsedIn(
+      MessageDecorator<?> messageFormatter,
+      FieldChange fieldChange,
+      EntityInterface entity,
+      FormatterUtil.CHANGE_TYPE changeType) {
+    String newVal = getFieldValue(fieldChange.getNewValue(), entity, messageFormatter);
+    String oldVal = getFieldValue(fieldChange.getOldValue(), entity, messageFormatter);
+    return transformMessage(
+        messageFormatter,
+        new FieldChange().withNewValue(newVal).withOldValue(oldVal).withName(QUERY_USED_IN_FIELD),
+        entity,
+        changeType);
   }
 }

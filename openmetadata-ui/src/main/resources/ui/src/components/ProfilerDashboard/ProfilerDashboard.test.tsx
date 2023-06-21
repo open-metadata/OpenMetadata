@@ -59,7 +59,7 @@ jest.mock('react-router-dom', () => {
   };
 });
 
-jest.mock('../containers/PageLayout', () => {
+jest.mock('../containers/PageLayoutV1', () => {
   return jest
     .fn()
     .mockImplementation(({ children }) => (

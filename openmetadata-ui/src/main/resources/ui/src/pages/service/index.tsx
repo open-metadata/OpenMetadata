@@ -15,7 +15,7 @@ import { Button, Col, Row, Space, Tabs, Tooltip, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import AirflowMessageBanner from 'components/common/AirflowMessageBanner/AirflowMessageBanner';
-import Description from 'components/common/description/Description';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
 import EntitySummaryDetails from 'components/common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -1046,7 +1046,7 @@ const ServicePage: FunctionComponent = () => {
         <div data-testid="table-container">
           <Table
             bordered
-            className="mt-4 table-shadow"
+            className="mt-4"
             columns={tableColumn}
             components={tableComponent}
             data-testid="service-children-table"
@@ -1101,7 +1101,7 @@ const ServicePage: FunctionComponent = () => {
             entity: getEntityName(serviceDetails),
           })}>
           {servicePermission.ViewAll || servicePermission.ViewBasic ? (
-            <Row data-testid="service-page">
+            <Row className="page-container" data-testid="service-page">
               {serviceDetails && (
                 <Row className="w-full m-b-xs" wrap={false}>
                   <Col flex="auto">
@@ -1163,11 +1163,11 @@ const ServicePage: FunctionComponent = () => {
                 </Space>
               </Col>
               <Col data-testid="description-container" span={24}>
-                <Description
+                <DescriptionV1
                   description={description || ''}
                   entityFqn={serviceFQN}
                   entityName={serviceFQN}
-                  entityType={serviceCategory.slice(0, -1)}
+                  entityType={serviceCategory.slice(0, -1) as EntityType}
                   hasEditAccess={
                     servicePermission.EditAll ||
                     servicePermission.EditDescription

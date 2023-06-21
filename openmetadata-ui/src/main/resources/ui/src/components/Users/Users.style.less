@@ -11,10 +11,30 @@
  *  limitations under the License.
  */
 
+@import url('../../styles/variables.less');
+
 .roles-container {
   display: flex;
   justify-content: space-between;
   margin-bottom: 1rem;
   flex-direction: column;
   align-items: flex-start;
+}
+
+.user-page-tabs {
+  .ant-tabs-nav {
+    margin: 0 !important;
+    padding: 0 20px;
+  }
+}
+
+.user-page-layout {
+  .page-layout-rightpanel {
+    padding-right: 0 !important;
+    background-color: @white;
+    border: 1px solid @border-color;
+    border-radius: 0;
+    padding-left: 0 !important;
+    border-top: 0;
+  }
 }

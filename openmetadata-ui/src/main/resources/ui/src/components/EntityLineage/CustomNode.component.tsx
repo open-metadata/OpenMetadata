@@ -162,7 +162,7 @@ const CustomNode = (props: NodeProps) => {
                         'custom-node-column-container',
                         isColumnTraced
                           ? 'custom-node-header-tracing'
-                          : 'custom-node-column-lineage-normal tw-bg-white'
+                          : 'custom-node-column-lineage-normal bg-white'
                       )}
                       data-testid="column"
                       key={index}

@@ -48,6 +48,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   selectedEntityId,
   handleSummaryPanelDisplay,
   filter,
+  currentPage,
 }) => {
   const searchResultCards = useMemo(() => {
     return data.map(({ _source: table, highlight }, index) => {
@@ -93,7 +94,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
         : [];
 
       return (
-        <div className="m-b-md" key={index}>
+        <div className="m-b-md" key={`tabledatacard${index}`}>
           <ExploreSearchCard
             className={classNames(
               table.id === selectedEntityId && isSummaryPanelVisible
@@ -103,6 +104,8 @@ const SearchedData: React.FC<SearchedDataProps> = ({
             handleSummaryPanelDisplay={handleSummaryPanelDisplay}
             id={`tabledatacard${index}`}
             matches={matches}
+            showNameHeader={false}
+            showTags={false}
             source={{ ...table, name, description: tDesc, displayName }}
           />
         </div>
@@ -157,7 +160,11 @@ const SearchedData: React.FC<SearchedDataProps> = ({
                       <Pagination
                         hideOnSinglePage
                         className="text-center"
-                        current={isNumber(Number(page)) ? Number(page) : 1}
+                        current={
+                          isNumber(Number(page ?? currentPage))
+                            ? Number(page ?? currentPage)
+                            : 1
+                        }
                         pageSize={
                           size && isNumber(Number(size))
                             ? Number(size)

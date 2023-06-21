@@ -26,5 +26,7 @@ export interface ExploreSearchCardProps {
   ) => void;
   checked?: boolean;
   showCheckboxes?: boolean;
+  showTags?: boolean;
+  showNameHeader?: boolean;
   openEntityInNewPage?: boolean;
 }

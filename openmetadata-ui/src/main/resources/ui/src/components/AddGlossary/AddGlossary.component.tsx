@@ -12,10 +12,12 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Form, Space, Typography } from 'antd';
+import { Button, Card, Form, Space, Typography } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
+import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import { UserTag } from 'components/common/UserTag/UserTag.component';
 import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { EntityReference } from 'generated/type/entityLineage';
 import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
@@ -24,11 +26,9 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
 import { generateFormFields, getField } from 'utils/formUtils';
-import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { getCurrentUserId } from '../../utils/CommonUtils';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
-import PageLayout from '../containers/PageLayout';
 import { AddGlossaryProps } from './AddGlossary.interface';
 
 const AddGlossary = ({
@@ -79,7 +79,7 @@ const AddGlossary = ({
   };
 
   const rightPanel = (
-    <>
+    <div data-testid="right-panel">
       <Typography.Title level={5}>
         {t('label.configure-entity', {
           entity: t('label.glossary'),
@@ -88,7 +88,7 @@ const AddGlossary = ({
       <Typography.Text className="mb-5">
         {t('message.create-new-glossary-guide')}
       </Typography.Text>
-    </>
+    </div>
   );
 
   const formFields: FieldProp[] = [
@@ -215,76 +215,94 @@ const AddGlossary = ({
   };
 
   return (
-    <PageLayout
-      classes="tw-max-w-full-hd tw-h-full tw-pt-4"
-      header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
-      layout={PageLayoutType['2ColRTL']}
-      pageTitle={t('label.add-entity', { entity: t('label.glossary') })}
-      rightPanel={rightPanel}>
-      <div className="tw-form-container glossary-form">
-        <Typography.Title data-testid="form-heading" level={5}>
-          {header}
-        </Typography.Title>
-        <div className="tw-pb-3" data-testid="add-glossary">
-          <Form form={form} layout="vertical" onFinish={handleSave}>
-            {generateFormFields(formFields)}
-            <div className="m-t-xss">
-              {getField(ownerField)}
-              {selectedOwner && (
-                <div className="tw-my-2" data-testid="owner-container">
-                  <UserTag
-                    id={selectedOwner.id}
-                    name={getEntityName(selectedOwner)}
-                    size={UserTagSize.small}
-                  />
-                </div>
-              )}
-            </div>
-            <div className="m-t-xss">
-              {getField(reviewersField)}
-              {Boolean(reviewersList.length) && (
-                <Space
-                  wrap
-                  className="tw-my-2"
-                  data-testid="reviewers-container"
-                  size={[8, 8]}>
-                  {reviewersList.map((d, index) => (
-                    <UserTag
-                      id={d.id}
-                      key={index}
-                      name={getEntityName(d)}
-                      size={UserTagSize.small}
-                    />
-                  ))}
-                </Space>
-              )}
-            </div>
-            <Form.Item>
-              <Space
-                className="w-full justify-end"
-                data-testid="cta-buttons"
-                size={16}>
-                <Button
-                  data-testid="cancel-glossary"
-                  type="link"
-                  onClick={onCancel}>
-                  {t('label.cancel')}
-                </Button>
-                <Button
-                  data-testid="save-glossary"
-                  disabled={!allowAccess}
-                  htmlType="submit"
-                  loading={isLoading}
-                  type="primary">
-                  {t('label.save')}
-                </Button>
-              </Space>
-            </Form.Item>
-          </Form>
-        </div>
-      </div>
-    </PageLayout>
+    <ResizablePanels
+      firstPanel={{
+        children: (
+          <div className="max-width-md w-9/10 service-form-container">
+            <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
+            <Card className="p-sm m-t-md glossary-form">
+              <Typography.Title data-testid="form-heading" level={5}>
+                {header}
+              </Typography.Title>
+              <div data-testid="add-glossary">
+                <Form form={form} layout="vertical" onFinish={handleSave}>
+                  {generateFormFields(formFields)}
+                  <div className="m-t-xss">
+                    {getField(ownerField)}
+                    {selectedOwner && (
+                      <div className="m-y-xs" data-testid="owner-container">
+                        <UserTag
+                          id={selectedOwner.id}
+                          name={getEntityName(selectedOwner)}
+                          size={UserTagSize.small}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="m-t-xss">
+                    {getField(reviewersField)}
+                    {Boolean(reviewersList.length) && (
+                      <Space
+                        wrap
+                        className="m-y-xs"
+                        data-testid="reviewers-container"
+                        size={[8, 8]}>
+                        {reviewersList.map((d, index) => (
+                          <UserTag
+                            id={d.id}
+                            key={index}
+                            name={getEntityName(d)}
+                            size={UserTagSize.small}
+                          />
+                        ))}
+                      </Space>
+                    )}
+                  </div>
+                  <Form.Item>
+                    <Space
+                      className="w-full justify-end"
+                      data-testid="cta-buttons"
+                      size={16}>
+                      <Button
+                        data-testid="cancel-glossary"
+                        type="link"
+                        onClick={onCancel}>
+                        {t('label.cancel')}
+                      </Button>
+                      <Button
+                        data-testid="save-glossary"
+                        disabled={!allowAccess}
+                        htmlType="submit"
+                        loading={isLoading}
+                        type="primary">
+                        {t('label.save')}
+                      </Button>
+                    </Space>
+                  </Form.Item>
+                </Form>
+              </div>
+            </Card>
+          </div>
+        ),
+        minWidth: 700,
+        flex: 0.7,
+      }}
+      pageTitle={t('label.add-entity', {
+        entity: t('label.glossary'),
+      })}
+      secondPanel={{
+        children: rightPanel,
+        className: 'p-md service-doc-panel',
+        minWidth: 60,
+        overlay: {
+          displayThreshold: 200,
+          header: t('label.setup-guide'),
+          rotation: 'counter-clockwise',
+        },
+      }}
+    />
   );
 };
 
 export default AddGlossary;
+PageLayoutV1;

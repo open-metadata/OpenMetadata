@@ -27,11 +27,6 @@ import IconCommentPlus from '../assets/svg/add-chat.svg';
 import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
 import IconAdmin from '../assets/svg/admin.svg';
 import IconAllActivity from '../assets/svg/all-activity.svg';
-import IconAnnouncementsBasicPrimary from '../assets/svg/announcements-basic-primary.svg';
-import IconAnnouncementsBlack from '../assets/svg/announcements-black.svg';
-import IconAnnouncementsPrimary from '../assets/svg/announcements-primary.svg';
-import IconAnnouncementsYellow from '../assets/svg/announcements-yellow.svg';
-import IconAnnouncements from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
 import IconArrowDownLight from '../assets/svg/arrow-down-light.svg';
 import IconArrowDownPrimary from '../assets/svg/arrow-down-primary.svg';
@@ -73,8 +68,6 @@ import IconEditPrimary from '../assets/svg/edit-primary.svg';
 import IconError from '../assets/svg/error.svg';
 import IconExitFullScreen from '../assets/svg/exit-full-screen.svg';
 import IconExternalLinkGrey from '../assets/svg/external-link-grey.svg';
-import IconExternalLinkWhite from '../assets/svg/external-link-white.svg';
-import IconExternalLink from '../assets/svg/external-link.svg';
 import IconFailBadge from '../assets/svg/fail-badge.svg';
 import IconFilterPrimary from '../assets/svg/filter-primary.svg';
 import IconFitView from '../assets/svg/fitview.svg';
@@ -296,8 +289,6 @@ export const Icons = {
   CONFIG: 'icon-config',
   SLACK: 'slack',
   SLACK_GREY: 'slack-grey',
-  EXTERNAL_LINK: 'external-link',
-  EXTERNAL_LINK_WHITE: 'external-link-white',
   EXTERNAL_LINK_GREY: 'external-link-grey',
   PROFILER: 'icon-profiler',
   PIPELINE: 'pipeline',
@@ -341,11 +332,6 @@ export const Icons = {
   ARROW_RIGHT_PRIMARY: 'icon-arrow-right-primary',
   ARROW_DOWN_PRIMARY: 'icon-arrow-down-primary',
   ARROW_RIGHT: 'icon-arrow-right',
-  ANNOUNCEMENT: 'icon-announcement',
-  ANNOUNCEMENT_BLACK: 'icon-announcement-black',
-  ANNOUNCEMENT_PRIMARY: 'icon-announcement-primary',
-  ANNOUNCEMENT_YELLOW: 'icon-announcement-yellow',
-  ANNOUNCEMENT_BASIC_PRIMARY: 'icon-announcement-basic-primary',
   CHEVRON_DOWN: 'icon-chevron-down',
   ICON_UP: 'icon-up',
   ICON_DOWN: 'icon-down',
@@ -752,14 +738,6 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconSlackGrey;
 
       break;
-    case Icons.EXTERNAL_LINK:
-      IconComponent = IconExternalLink;
-
-      break;
-    case Icons.EXTERNAL_LINK_WHITE:
-      IconComponent = IconExternalLinkWhite;
-
-      break;
     case Icons.EXTERNAL_LINK_GREY:
       IconComponent = IconExternalLinkGrey;
 
@@ -928,26 +906,6 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       break;
     case Icons.ARROW_RIGHT_PRIMARY:
       IconComponent = IconArrowRightPrimary;
-
-      break;
-    case Icons.ANNOUNCEMENT:
-      IconComponent = IconAnnouncements;
-
-      break;
-    case Icons.ANNOUNCEMENT_YELLOW:
-      IconComponent = IconAnnouncementsYellow;
-
-      break;
-    case Icons.ANNOUNCEMENT_BLACK:
-      IconComponent = IconAnnouncementsBlack;
-
-      break;
-    case Icons.ANNOUNCEMENT_PRIMARY:
-      IconComponent = IconAnnouncementsPrimary;
-
-      break;
-    case Icons.ANNOUNCEMENT_BASIC_PRIMARY:
-      IconComponent = IconAnnouncementsBasicPrimary;
 
       break;
     case Icons.REQUEST:
