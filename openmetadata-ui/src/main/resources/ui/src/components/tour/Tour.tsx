@@ -12,6 +12,7 @@
  */
 
 import ReactTutorial, { TourSteps } from '@deuex-solutions/react-tour';
+import { PRIMERY_COLOR } from 'constants/constants';
 import { observer } from 'mobx-react';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -35,7 +36,7 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
           disableKeyboardNavigation
           showCloseButton
           showNumber
-          accentColor="#7147E8"
+          accentColor={PRIMERY_COLOR}
           inViewThreshold={200}
           lastStepNextButton={
             <button

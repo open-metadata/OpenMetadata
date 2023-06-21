@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Alert, Divider, Typography } from 'antd';
+import { Alert, Typography } from 'antd';
 import AppState from 'AppState';
 import { ReactComponent as AnnouncementIcon } from 'assets/svg/announcements-v1.svg';
 import FeedCardBodyV1 from 'components/ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
@@ -56,8 +56,8 @@ const RightSidebar = ({
     <>
       {announcements.length > 0 && (
         <>
-          <div className="right-panel-heading p-md p-b-xss">
-            <Typography.Paragraph className="m-b-sm">
+          <div className="p-md p-b-xss">
+            <Typography.Paragraph className="right-panel-heading m-b-sm">
               {t('label.recent-announcement-plural')}
             </Typography.Paragraph>
             <div className="announcement-container-list">
@@ -100,7 +100,7 @@ const RightSidebar = ({
             </div>
           </div>
 
-          <Divider className="m-0" />
+          {/* <Divider className="m-0" /> */}
         </>
       )}
 
@@ -130,7 +130,7 @@ const RightSidebar = ({
           testIDText="Following data"
         />
       </div>
-      <Divider className="m-0" />
+      {/* <Divider className="m-0" /> */}
       <div className="p-md" data-testid="recently-viewed-container">
         <RecentlyViewed />
       </div>

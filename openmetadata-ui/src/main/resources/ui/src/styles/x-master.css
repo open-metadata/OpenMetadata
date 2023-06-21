@@ -20,15 +20,6 @@ body {
   font-family: 'Poppins', sans-serif;
   font-feature-settings: normal !important;
 }
-a {
-  color: #2eaadc;
-  text-decoration: none;
-}
-a:hover,
-a:focus {
-  color: #2eaadc;
-  text-decoration: none;
-}
 
 p {
   margin-bottom: 0px;
@@ -168,10 +159,7 @@ pre {
   color: #37352f;
   box-shadow: none;
 }
-.search-grey {
-  width: calc(100vw - 800px);
-  background: #f8f9fa;
-}
+
 .search-grey::placeholder {
   color: #6b7280;
 }
@@ -712,7 +700,7 @@ body .profiler-graph .recharts-active-dot circle {
   background-color: #6b7280;
 }
 .leaf-node.core .react-flow__handle {
-  background-color: #7147e8;
+  background-color: #0968da;
 }
 .react-flow__edge {
   pointer-events: all;
@@ -720,16 +708,7 @@ body .profiler-graph .recharts-active-dot circle {
 }
 
 .react-flow__edge.selected .react-flow__edge-path {
-  stroke: #7147e8;
-}
-
-.react-flow__node-default,
-.react-flow__node-group,
-.react-flow__node-input,
-.react-flow__node-output {
-  padding: 0 !important;
-  border: 0 !important;
-  border-radius: 0px !important;
+  stroke: #0968da;
 }
 
 .react-flow__attribution > a {
@@ -938,7 +917,7 @@ code {
 
 .ant-btn-text:hover span {
   text-decoration: underline;
-  color: #7147e8;
+  color: #0968da;
   background-color: transparent;
 }
 
@@ -972,54 +951,16 @@ code {
 .ant-card-extra {
   padding: 0px;
 }
-/* 
-*/
-/* Reaction CSS Start */
-.ant-btn-add-reactions:hover,
-.ant-btn-add-reactions:focus {
-  color: #7147e8;
-  border-color: #7147e8;
-}
 
-.ant-btn-reaction,
-.ant-btn-popover-reaction {
-  height: auto;
-  padding: 0 8px;
-  font-size: 16px;
-  font-weight: 500;
-  background-color: transparent;
-}
-
-.ant-btn-popover-reaction:hover {
-  background-color: #7147e860;
-}
-
-.ant-btn-reaction:hover,
-.ant-btn-isReacted {
-  color: #7147e8;
-  border-color: #7147e8;
-}
-
-.ant-btn-isReacted:hover {
-  color: #7147e8;
-  border-color: #7147e880;
-}
-
-.ant-btn-popover-isReacted,
-.ant-btn-popover-isReacted:hover {
-  background-color: #7147e860;
-}
-
-/* Reaction CSS End */
 .ant-advaced-field-select {
-  color: #7147e8;
+  color: #0968da;
   min-width: 130px;
 }
 .ant-suggestion-dropdown {
   min-width: 200px !important;
 }
 .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
-  background-color: #dbd1f9;
+  background-color: #e6f4ff;
 }
 
 @media only screen and (max-width: 1440px) {
@@ -1042,28 +983,28 @@ code {
 /* Antd custom button CSS */
 .ant-btn-link-custom,
 .ant-btn-link-custom:hover {
-  color: #7147e8;
+  color: #0968da;
 }
 .ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
 .ant-btn-primary-custom {
-  background: #7147e8;
+  background: #0968da;
   color: #ffffff;
-  border-color: #7147e8;
+  border-color: #0968da;
 }
 
 .ant-dropdown-button.ant-btn-primary-dropdown
   > .ant-btn-primary.ant-btn-icon-only {
-  background: #7147e8;
+  background: #0968da;
   color: #ffffff;
-  border-color: #7147e8;
+  border-color: #0968da;
   border-left-color: #ffffff;
 }
 .ant-btn-primary-custom:hover,
 .ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
 .ant-btn-primary-custom span:hover {
-  background: #7147e8;
+  background: #0968da;
   color: #ffffff;
-  border-color: #7147e8;
+  border-color: #0968da;
   text-decoration: none;
 }
 
@@ -1078,10 +1019,10 @@ code {
   outline: none;
 }
 .ant-select-custom:not(.ant-select-disabled):hover .ant-select-selector {
-  border-color: #7147e8;
+  border-color: #0968da;
 }
 .ant-select-focused {
-  border-color: #7147e8;
+  border-color: #0968da;
   outline: none;
 }
 
@@ -1115,13 +1056,13 @@ code {
   > .ant-tabs-nav-wrap
   > .ant-tabs-nav-list
   > .ant-tabs-tab:hover {
-  color: #7147e8;
+  color: #0968da;
 }
 .ant-tabs-custom-threadpanel > .ant-tabs-nav > .ant-tabs-nav-wrap {
   padding: 0px 16px;
 }
 .ant-tabs-ink-bar {
-  background: #7147e8;
+  background: #0968da;
 }
 /* Description tabs CSS */
 
@@ -1129,8 +1070,7 @@ code {
 
 .ant-layout-sider-task-detail {
   background: #ffffff;
-  border: 1px solid #dde3ea;
-  box-shadow: -1px 3px 6px rgba(0, 0, 0, 0.06);
+  border-left: 1px solid #0000001a;
   padding: 16px;
   padding-top: 0px;
   overflow-y: auto;
@@ -1215,7 +1155,7 @@ div.ant-typography-ellipsis-custom {
 }
 
 .ant-dropdown-menu-item-selected {
-  color: #7147e8;
+  color: #0968da;
   background-color: #7147e825;
 }
 
@@ -1225,7 +1165,7 @@ div.ant-typography-ellipsis-custom {
 
 /* antd switch css */
 .ant-switch-checked {
-  background: #7147e8;
+  background: #0968da;
 }
 /* antd switch css */
 

@@ -13,7 +13,6 @@
 
 import { Card, Tabs } from 'antd';
 import classNames from 'classnames';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import VersionTable from 'components/VersionTable/VersionTable.component';
 import { EntityTabs, FqnPart } from 'enums/entity.enum';
 import {
@@ -27,7 +26,6 @@ import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getPartialNameFromTableFQN } from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { OwnerType } from '../../enums/user.enum';
@@ -385,10 +383,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   }, [currentVersionData]);
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(currentVersionData),
-      })}>
+    <>
       <div data-testid="data-model-version-container">
         {isVersionLoading ? (
           <Loader />
@@ -445,7 +440,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
           onBack={backHandler}
         />
       </div>
-    </PageLayoutV1>
+    </>
   );
 };
 

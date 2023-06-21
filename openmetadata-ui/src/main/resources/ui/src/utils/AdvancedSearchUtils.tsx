@@ -29,6 +29,7 @@ import {
 import { isArray, isEmpty, isUndefined } from 'lodash';
 import React from 'react';
 import { RenderSettings } from 'react-awesome-query-builder';
+import { getCountBadge } from 'utils/CommonUtils';
 import {
   ALL_DROPDOWN_ITEMS,
   COMMON_DROPDOWN_ITEMS,
@@ -183,35 +184,45 @@ export const getSearchDropdownLabels = (
   showProfilePicture = false
 ): MenuProps['items'] => {
   if (isArray(optionsArray)) {
-    return optionsArray.map((option) => ({
+    const sortedOptions = optionsArray.sort(
+      (a, b) => (b.count ?? 0) - (a.count ?? 0)
+    );
+
+    return sortedOptions.map((option) => ({
       key: option.key,
       label: (
-        <Space
-          align="center"
-          className="m-x-sm"
-          data-testid={option.key}
-          size={8}>
-          <Checkbox checked={checked} data-testid={`${option.key}-checkbox`} />
-          {showProfilePicture && (
-            <ProfilePicture
-              displayName={option.label}
-              id={option.key || ''}
-              name={option.label || ''}
-              textClass="text-xs"
-              width="18"
+        <div className="d-flex justify-between">
+          <Space
+            align="center"
+            className="m-x-sm"
+            data-testid={option.key}
+            size={8}>
+            <Checkbox
+              checked={checked}
+              data-testid={`${option.key}-checkbox`}
             />
-          )}
-          <Typography.Text
-            ellipsis
-            className="dropdown-option-label"
-            title={option.label}>
-            <span
-              dangerouslySetInnerHTML={{
-                __html: getSearchLabel(option.label, searchKey),
-              }}
-            />
-          </Typography.Text>
-        </Space>
+            {showProfilePicture && (
+              <ProfilePicture
+                displayName={option.label}
+                id={option.key || ''}
+                name={option.label || ''}
+                textClass="text-xs"
+                width="18"
+              />
+            )}
+            <Typography.Text
+              ellipsis
+              className="dropdown-option-label"
+              title={option.label}>
+              <span
+                dangerouslySetInnerHTML={{
+                  __html: getSearchLabel(option.label, searchKey),
+                }}
+              />
+            </Typography.Text>
+          </Space>
+          {getCountBadge(option.count, 'm-r-sm', false)}
+        </div>
       ),
     }));
   } else {

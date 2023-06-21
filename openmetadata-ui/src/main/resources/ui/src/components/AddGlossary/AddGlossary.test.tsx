@@ -15,10 +15,6 @@ import { fireEvent, getByTestId, render } from '@testing-library/react';
 import React, { forwardRef } from 'react';
 import AddGlossary from './AddGlossary.component';
 
-jest.mock('../containers/PageLayout', () =>
-  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
-);
-
 jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
   jest.fn().mockReturnValue(<p>Sidebar</p>)
 );
@@ -47,6 +43,15 @@ jest.mock('../common/rich-text-editor/RichTextEditor', () => {
 jest.mock('rest/glossaryAPI', () => ({
   addGlossaries: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
+
+jest.mock('components/common/ResizablePanels/ResizablePanels', () =>
+  jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <>
+      <div>{firstPanel.children}</div>
+      <div>{secondPanel.children}</div>
+    </>
+  ))
+);
 
 const mockOnCancel = jest.fn();
 const mockOnSave = jest.fn();

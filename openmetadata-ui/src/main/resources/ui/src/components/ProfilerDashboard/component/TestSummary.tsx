@@ -181,7 +181,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
 
     return results.length ? (
       <ResponsiveContainer
-        className="tw-bg-white"
+        className="bg-white"
         id={`${data.name}_graph`}
         minHeight={400}>
         <LineChart

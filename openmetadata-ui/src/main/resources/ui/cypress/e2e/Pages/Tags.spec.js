@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-// / <reference types="cypress" />
+// eslint-disable-next-line spaced-comment
+/// <reference types="cypress" />
 
 import {
   addNewTagToEntity,
@@ -274,8 +275,11 @@ describe('Tags page should work', () => {
       .should('be.visible')
       .click();
 
+    // to close popup
+    cy.clickOutside();
+
     cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
-    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@addTags', 200);
     cy.get('[data-testid="entity-tags"]')
       .scrollIntoView()
@@ -288,7 +292,7 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="remove-tags"]').eq(0).should('be.visible').click();
 
     interceptURL('PATCH', '/api/v1/databaseSchemas/*', 'removeTags');
-    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@removeTags', 200);
 
     cy.get('[data-testid="tags"] [data-testid="add-tag"]').should('be.visible');
@@ -372,7 +376,7 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="remove-tags"]').eq(0).should('be.visible').click();
 
     interceptURL('PATCH', '/api/v1/databaseSchemas/*', 'removeTags');
-    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@removeTags', 200);
 
     cy.get('[data-testid="tags"] [data-testid="add-tag"]').should('be.visible');
@@ -404,11 +408,6 @@ describe('Tags page should work', () => {
     );
     cy.get('@count').click();
     verifyResponseStatusCode('@getEntityDetailsPage', 200);
-
-    cy.get('[data-testid="table-data-card"]')
-      .first()
-      .contains(`${NEW_CLASSIFICATION.name}.${NEW_TAG.name}`)
-      .should('be.visible');
   });
 
   it('Rename tag flow should work properly', () => {

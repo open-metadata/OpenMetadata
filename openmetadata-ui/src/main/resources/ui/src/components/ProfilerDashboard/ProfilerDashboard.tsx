@@ -239,16 +239,6 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     [table, table.owner]
   );
 
-  const handleTierRemove = () => {
-    if (table) {
-      const updatedTableDetails = {
-        ...table,
-        tags: undefined,
-      };
-      onTableChange(updatedTableDetails);
-    }
-  };
-
   const handleTierUpdate = (newTier?: string) => {
     if (newTier) {
       const tierTag: Table['tags'] = newTier
@@ -421,7 +411,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
 
   return (
     <PageLayoutV1 pageTitle={t('label.profiler')}>
-      <Row gutter={[16, 16]}>
+      <Row className="page-container" gutter={[16, 16]}>
         <Col span={24}>
           <EntityPageInfo
             currentOwner={table.owner}
@@ -437,11 +427,6 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             followersList={follower}
             isFollowing={isFollowing}
             permission={tablePermissions}
-            removeTier={
-              tablePermissions.EditAll || tablePermissions.EditTier
-                ? handleTierRemove
-                : undefined
-            }
             serviceType={table.serviceType ?? ''}
             tags={getTagsWithoutTier(table.tags || [])}
             tagsHandler={handleTagUpdate}
@@ -533,7 +518,6 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
         {activeTab === ProfilerDashboardTab.DATA_QUALITY && (
           <Col span={24}>
             <DataQualityTab
-              deletedTable={showDeletedTest}
               isLoading={isTestCaseLoading}
               testCases={getFilterTestCase()}
               onTestUpdate={handleTestUpdate}

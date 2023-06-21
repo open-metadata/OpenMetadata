@@ -159,9 +159,9 @@ export const EntityListWithV1: FunctionComponent<AntdEntityListProp> = ({
       dataLength={entityList.length !== 0 ? entityList.length : 5}
       loading={Boolean(loading)}>
       <>
-        <Row className="m-b-sm" justify="space-between">
+        <Row className="m-b-xs" justify="space-between">
           <Col>
-            <Typography.Text className="right-panel-heading m-b-sm">
+            <Typography.Text className="right-panel-heading">
               {headerTextLabel}
             </Typography.Text>
           </Col>
@@ -187,7 +187,7 @@ export const EntityListWithV1: FunctionComponent<AntdEntityListProp> = ({
                           item.fullyQualifiedName ?? ''
                         )}>
                         <Button
-                          className="entity-button d-flex p-xss"
+                          className="entity-button flex-center p-xss"
                           icon={
                             <div className="entity-button-icon m-r-xs">
                               {getEntityIcon(item.type || '')}
@@ -198,7 +198,7 @@ export const EntityListWithV1: FunctionComponent<AntdEntityListProp> = ({
                           )}
                           type="text">
                           <Typography.Text
-                            className="w-72 text-left font-thin"
+                            className="w-72 text-left text-xs"
                             ellipsis={{ tooltip: true }}>
                             {getEntityName(item as unknown as EntityReference)}
                           </Typography.Text>
