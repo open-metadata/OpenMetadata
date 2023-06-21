@@ -21,6 +21,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
@@ -50,13 +51,17 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   private TestSummary getTestSummary(TestSuite entity) throws IOException {
     List<EntityReference> testCases = getTestCases(entity);
     HashMap<String, Integer> testCaseSummary = new HashMap<>();
-    List<String> testCaseFQNs =
-        testCases.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.toList());
+    List<String> testCaseFQNHashes =
+        testCases.stream()
+            .map(ts -> FullyQualifiedName.buildHash(ts.getFullyQualifiedName()))
+            .collect(Collectors.toList());
 
-    if (testCaseFQNs.isEmpty()) return new TestSummary();
+    if (testCaseFQNHashes.isEmpty()) return new TestSummary();
 
     List<String> jsonList =
-        daoCollection.entityExtensionTimeSeriesDao().getLatestExtensionByFQNs(testCaseFQNs, TESTCASE_RESULT_EXTENSION);
+        daoCollection
+            .entityExtensionTimeSeriesDao()
+            .getLatestExtensionByFQNs(testCaseFQNHashes, TESTCASE_RESULT_EXTENSION);
 
     for (String json : jsonList) {
       TestCaseResult testCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
@@ -67,7 +72,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
         .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
         .withSuccess(testCaseSummary.getOrDefault(TestCaseStatus.Success.toString(), 0))
-        .withTotal(testCaseFQNs.size());
+        .withTotal(jsonList.size());
   }
 
   @Override

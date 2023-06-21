@@ -306,12 +306,20 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.DeleteResponse<>(testCase, RestUtil.ENTITY_DELETED);
   }
 
-  public TestSummary getTestSummary() throws IOException {
-    List<TestCase> testCases = listAll(Fields.EMPTY_FIELDS, new ListFilter());
+  public TestSummary getTestSummary(UUID testSuiteId) throws IOException {
+    List<String> testCaseFQNs;
+    if (testSuiteId == null) {
+      List<TestCase> testCases = listAll(Fields.EMPTY_FIELDS, new ListFilter());
+      testCaseFQNs = testCases.stream().map(TestCase::getFullyQualifiedName).collect(Collectors.toList());
+    } else {
+      List<CollectionDAO.EntityRelationshipRecord> testCases =
+          findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+      List<EntityReference> testCasesEntityReferences = EntityUtil.getEntityReferences(testCases);
+      testCaseFQNs =
+          testCasesEntityReferences.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.toList());
+    }
     List<String> testCaseFQNHashes =
-        testCases.stream()
-            .map(testCase -> FullyQualifiedName.buildHash(testCase.getFullyQualifiedName()))
-            .collect(Collectors.toList());
+        testCaseFQNs.stream().map(fqn -> FullyQualifiedName.buildHash(fqn)).collect(Collectors.toList());
 
     if (testCaseFQNHashes.isEmpty()) return new TestSummary();
 
@@ -331,7 +339,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
         .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
         .withSuccess(testCaseSummary.getOrDefault(TestCaseStatus.Success.toString(), 0))
-        .withTotal(testCaseFQNHashes.size());
+        .withTotal(jsonList.size());
   }
 
   @Override
