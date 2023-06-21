@@ -26,7 +26,6 @@ import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
-import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -318,28 +317,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       testCaseFQNs =
           testCasesEntityReferences.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.toList());
     }
-    List<String> testCaseFQNHashes =
-        testCaseFQNs.stream().map(fqn -> FullyQualifiedName.buildHash(fqn)).collect(Collectors.toList());
 
-    if (testCaseFQNHashes.isEmpty()) return new TestSummary();
-
-    List<String> jsonList =
-        daoCollection
-            .entityExtensionTimeSeriesDao()
-            .getLatestExtensionByFQNs(testCaseFQNHashes, TESTCASE_RESULT_EXTENSION);
-
-    HashMap<String, Integer> testCaseSummary = new HashMap<>();
-    for (String json : jsonList) {
-      TestCaseResult testCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
-      String status = testCaseResult.getTestCaseStatus().toString();
-      testCaseSummary.put(status, testCaseSummary.getOrDefault(status, 0) + 1);
-    }
-
-    return new TestSummary()
-        .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
-        .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
-        .withSuccess(testCaseSummary.getOrDefault(TestCaseStatus.Success.toString(), 0))
-        .withTotal(jsonList.size());
+    return EntityUtil.getTestCaseExecutionSummary(
+        daoCollection.entityExtensionTimeSeriesDao(), testCaseFQNs, TESTCASE_RESULT_EXTENSION);
   }
 
   @Override
