@@ -16,10 +16,10 @@ import Searchbar from 'components/common/searchbar/Searchbar';
 import DataQualityTab from 'components/ProfilerDashboard/component/DataQualityTab';
 import { INITIAL_PAGING_VALUE, PAGE_SIZE } from 'constants/constants';
 import { SearchIndex } from 'enums/search.enum';
-import { TestCase } from 'generated/tests/testCase';
+import { TestCase, TestCaseStatus } from 'generated/tests/testCase';
 import { Paging } from 'generated/type/paging';
 import { SearchHitBody } from 'interface/search.interface';
-import { isString } from 'lodash';
+import { isString, sortBy } from 'lodash';
 import { PagingResponse } from 'Models';
 import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import QueryString from 'qs';
@@ -55,6 +55,24 @@ export const TestCases = () => {
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
+
+  const sortedData = useMemo(
+    () =>
+      sortBy(testCase.data, (test) => {
+        switch (test.testCaseResult?.testCaseStatus) {
+          case TestCaseStatus.Failed:
+            return 0;
+          case TestCaseStatus.Aborted:
+            return 1;
+          case TestCaseStatus.Success:
+            return 2;
+
+          default:
+            return 3;
+        }
+      }),
+    [testCase]
+  );
 
   const handleSearchParam = (
     value: string | boolean,
@@ -164,7 +182,7 @@ export const TestCases = () => {
             onPagingClick: handlePagingClick,
             isNumberBased: Boolean(searchValue),
           }}
-          testCases={testCase.data}
+          testCases={sortedData}
           onTestCaseResultUpdate={handleStatusSubmit}
         />
       </Col>

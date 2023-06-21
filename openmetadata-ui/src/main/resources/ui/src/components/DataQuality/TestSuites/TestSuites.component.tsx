@@ -17,6 +17,7 @@ import FilterTablePlaceHolder from 'components/common/error-with-placeholder/Fil
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import Searchbar from 'components/common/searchbar/Searchbar';
+import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from 'components/TableProfiler/Component/ProfilerProgressWidget';
 import {
   getTableTabPath,
@@ -84,10 +85,15 @@ export const TestSuites = () => {
         render: (_, record) => {
           const path =
             tab === DataQualityPageTabs.TABLES
-              ? getTableTabPath(
-                  record.executableEntityReference?.fullyQualifiedName ?? '',
-                  EntityTabs.PROFILER
-                )
+              ? {
+                  pathname: getTableTabPath(
+                    record.executableEntityReference?.fullyQualifiedName ?? '',
+                    EntityTabs.PROFILER
+                  ),
+                  search: QueryString.stringify({
+                    activeTab: TableProfilerTab.DATA_QUALITY,
+                  }),
+                }
               : getTestSuitePath(record.fullyQualifiedName ?? record.name);
 
           return <Link to={path}>{getEntityName(record)}</Link>;
