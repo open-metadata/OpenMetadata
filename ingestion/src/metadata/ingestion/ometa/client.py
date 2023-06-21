@@ -184,8 +184,6 @@ class REST:
             "verify": self._verify,
         }
 
-        masked_opts = self._mask_authorization_headers(opts)
-
         method_key = "params" if method.upper() == "GET" else "data"
         opts[method_key] = data
 
@@ -193,8 +191,6 @@ class REST:
         retry = total_retries
         while retry >= 0:
             try:
-                logger.debug("URL %s, method %s", url, method)
-                logger.debug("Data %s", masked_opts)
                 return self._one_request(method, url, opts, retry)
             except RetryException:
                 retry_wait = self._retry_wait * (total_retries - retry + 1)
@@ -338,12 +334,3 @@ class REST:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-
-    def _mask_authorization_headers(self, opts: Dict[str, Any]) -> Dict[str, Any]:
-        if opts and opts.get("headers"):
-            if self.config.auth_header and opts["headers"][self.config.auth_header]:
-                masked_opts = deepcopy(opts)
-                if self.config.auth_header and opts["headers"][self.config.auth_header]:
-                    masked_opts["headers"][self.config.auth_header] = "********"
-                return masked_opts
-        return opts
