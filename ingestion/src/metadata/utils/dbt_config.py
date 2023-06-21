@@ -334,34 +334,50 @@ def _(config: DbtAzureConfig):
         )
 
         azure_client = BlobServiceClient(
-            f"https://{config.securityConfig.accountName}.blob.core.windows.net/",
+            f"https://{config.dbtSecurityConfig.accountName}.blob.core.windows.net/",
             credential=ClientSecretCredential(
-                config.securityConfig.tenantId,
-                config.securityConfig.clientId,
-                config.securityConfig.clientSecret.get_secret_value(),
+                config.dbtSecurityConfig.tenantId,
+                config.dbtSecurityConfig.clientId,
+                config.dbtSecurityConfig.clientSecret.get_secret_value(),
             ),
         )
 
         if not bucket_name:
-            containers = azure_client.list_containers()
+            container_dicts = azure_client.list_containers()
+            containers = [
+                azure_client.get_container_client(container["name"])
+                for container in container_dicts
+            ]
         else:
             container_client = azure_client.get_container_client(bucket_name)
             containers = [container_client]
-        for container in containers:
+        for container_client in containers:
             if prefix:
-                blob_list = container.list_blobs(name_starts_with=prefix)
+                blob_list = container_client.list_blobs(name_starts_with=prefix)
             else:
-                blob_list = container.list_blobs()
+                blob_list = container_client.list_blobs()
             for blob in blob_list:
                 if DBT_MANIFEST_FILE_NAME in blob.name:
                     logger.debug(f"{DBT_MANIFEST_FILE_NAME} found")
-                    dbt_manifest = blob.download_blob().readall().decode("utf-8")
+                    dbt_manifest = (
+                        container_client.download_blob(blob.name)
+                        .readall()
+                        .decode("utf-8")
+                    )
                 if DBT_CATALOG_FILE_NAME in blob.name:
                     logger.debug(f"{DBT_CATALOG_FILE_NAME} found")
-                    dbt_catalog = blob.download_blob().readall().decode("utf-8")
+                    dbt_catalog = (
+                        container_client.download_blob(blob.name)
+                        .readall()
+                        .decode("utf-8")
+                    )
                 if DBT_RUN_RESULTS_FILE_NAME in blob.name:
                     logger.debug(f"{DBT_RUN_RESULTS_FILE_NAME} found")
-                    dbt_run_results = blob.download_blob().readall().decode("utf-8")
+                    dbt_run_results = (
+                        container_client.download_blob(blob.name)
+                        .readall()
+                        .decode("utf-8")
+                    )
         if not dbt_manifest:
             raise DBTConfigException("Manifest file not found in Azure")
         return DbtFiles(

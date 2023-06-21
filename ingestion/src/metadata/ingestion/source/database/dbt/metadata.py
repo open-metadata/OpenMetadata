@@ -285,7 +285,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         self, dbt_objects: DbtObjects
     ) -> Iterable[OMetaTagAndClassification]:
         """
-        Create and yeild tags from DBT
+        Create and yield tags from DBT
         """
         if (
             self.source_config.dbtConfigSource

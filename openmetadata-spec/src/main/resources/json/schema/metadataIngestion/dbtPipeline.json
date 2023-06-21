@@ -36,6 +36,9 @@
         },
         {
           "$ref": "./dbtconfig/dbtGCSConfig.json"
+        },
+        {
+          "$ref": "./dbtconfig/dbtAzureConfig.json"
         }
       ]
     },
