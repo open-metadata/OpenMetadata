@@ -12,7 +12,7 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Select, Spin, Tooltip, Typography } from 'antd';
+import { Button, Select, Space, Spin, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconFlatDoc } from 'assets/svg/ic-flat-doc.svg';
 import TagButton from 'components/TagButton/TagButton.component';
@@ -136,7 +136,7 @@ const RelatedTerms = ({
   }, [glossaryTerm]);
 
   return (
-    <div className="flex flex-col gap-3" data-testid="related-term-container">
+    <div className="flex flex-col" data-testid="related-term-container">
       <div className="d-flex items-center">
         <Typography.Text className="right-panel-label">
           {t('label.related-term-plural')}
@@ -197,24 +197,8 @@ const RelatedTerms = ({
           )}
         </div>
       ) : (
-        <div className="d-flex items-center gap-2">
-          <Select
-            className="glossary-select"
-            filterOption={false}
-            mode="multiple"
-            notFoundContent={isLoading ? <Spin size="small" /> : null}
-            options={formatOptions(options)}
-            placeholder={t('label.add-entity', {
-              entity: t('label.related-term-plural'),
-            })}
-            value={selectedOption}
-            onChange={(_, data) => {
-              setSelectedOption(data as EntityReference[]);
-            }}
-            onFocus={() => suggestionSearch()}
-            onSearch={debounceOnSearch}
-          />
-          <>
+        <>
+          <Space className="justify-end w-full m-b-xs" size={8}>
             <Button
               className="w-6 p-x-05"
               data-testid="cancel-related-term-btn"
@@ -230,8 +214,24 @@ const RelatedTerms = ({
               type="primary"
               onClick={() => handleRelatedTermsSave(selectedOption)}
             />
-          </>
-        </div>
+          </Space>
+          <Select
+            className="glossary-select w-full"
+            filterOption={false}
+            mode="multiple"
+            notFoundContent={isLoading ? <Spin size="small" /> : null}
+            options={formatOptions(options)}
+            placeholder={t('label.add-entity', {
+              entity: t('label.related-term-plural'),
+            })}
+            value={selectedOption}
+            onChange={(_, data) => {
+              setSelectedOption(data as EntityReference[]);
+            }}
+            onFocus={() => suggestionSearch()}
+            onSearch={debounceOnSearch}
+          />
+        </>
       )}
     </div>
   );

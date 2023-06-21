@@ -12,18 +12,20 @@
  */
 
 import { Col, Divider, Row, Space, Typography } from 'antd';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { TagLabel } from 'generated/type/tagLabel';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getTagValue } from 'utils/CommonUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from 'utils/EntityUtils';
-import SVGIcons from 'utils/SvgUtils';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { Pipeline } from '../../../../generated/entity/data/pipeline';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
@@ -63,7 +65,7 @@ function PipelineSummary({
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
       <>
-        <Row className="m-md" gutter={[0, 4]}>
+        <Row className="m-md m-t-0" gutter={[0, 4]}>
           <Col span={24}>
             <Row gutter={[0, 4]}>
               {entityInfo.map((info) => {
@@ -93,18 +95,15 @@ function PipelineSummary({
                         {info.isLink ? (
                           <Space align="start">
                             <Typography.Link
-                              className="d-flex items-center"
+                              className="d-flex"
                               data-testid="pipeline-link-name"
                               href={info.url}
                               target={info.isExternal ? '_blank' : '_self'}>
                               {info.value}
                               {info.isExternal ? (
-                                <SVGIcons
-                                  alt="external-link"
+                                <IconExternalLink
                                   className="m-l-xss"
-                                  height="14px"
-                                  icon="external-link"
-                                  width="14px"
+                                  width={12}
                                 />
                               ) : null}
                             </Typography.Link>
@@ -135,12 +134,41 @@ function PipelineSummary({
             />
             <Divider className="m-y-xs" />
           </>
-        ) : null}
+        ) : (
+          <>
+            <Row className="m-md" gutter={[0, 8]}>
+              <Col span={24}>
+                <Typography.Text
+                  className="summary-panel-section-title"
+                  data-testid="profiler-header">
+                  {t('label.tag-plural')}
+                </Typography.Text>
+              </Col>
+
+              <Col className="flex-grow" span={24}>
+                {entityDetails.tags && entityDetails.tags.length > 0 ? (
+                  <TagsViewer
+                    sizeCap={2}
+                    tags={(entityDetails.tags || []).map((tag) =>
+                      getTagValue(tag)
+                    )}
+                    type="border"
+                  />
+                ) : (
+                  <Typography.Text className="text-grey-body">
+                    {t('label.no-tags-added')}
+                  </Typography.Text>
+                )}
+              </Col>
+            </Row>
+            <Divider className="m-y-xs" />
+          </>
+        )}
 
         <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-grey-muted"
+              className="summary-panel-section-title"
               data-testid="tasks-header">
               {t('label.task-plural')}
             </Typography.Text>

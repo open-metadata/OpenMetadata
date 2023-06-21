@@ -143,13 +143,11 @@ describe('Test SearchedData Component', () => {
 
     expect(searchedDataContainer).toHaveLength(3);
 
-    const headerName = getAllByTestId(container, 'entity-header-name');
     const headerDisplayName = getAllByTestId(
       container,
       'entity-header-display-name'
     );
 
-    expect(headerName[0].querySelector('span')).toHaveClass('text-highlighter');
     expect(headerDisplayName[0].querySelector('span')).toHaveClass(
       'text-highlighter'
     );

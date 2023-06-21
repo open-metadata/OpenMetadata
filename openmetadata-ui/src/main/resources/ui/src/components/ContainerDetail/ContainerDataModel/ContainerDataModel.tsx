@@ -213,6 +213,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         dataIndex: 'description',
         key: 'description',
         accessor: 'description',
+        width: 350,
         render: renderContainerColumnDescription,
       },
       {
@@ -295,6 +296,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         }}
         pagination={false}
         rowKey="name"
+        scroll={{ x: 1200 }}
         size="small"
       />
       {editContainerColumnDescription && (

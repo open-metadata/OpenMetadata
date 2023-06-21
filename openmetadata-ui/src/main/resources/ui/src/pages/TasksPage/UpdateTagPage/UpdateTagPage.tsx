@@ -14,8 +14,10 @@
 import { Button, Card, Form, FormProps, Input, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
+import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { capitalize, isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
@@ -23,10 +25,11 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
+import { getEntityDetailLink } from 'utils/CommonUtils';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
   CreateThread,
   TaskType,
@@ -45,14 +48,11 @@ import {
   fetchOptions,
   getBreadCrumbList,
   getColumnObject,
-  getTaskDetailPath,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
 import { TagsTabs } from '../shared/TagsTabs';
-import TaskPageLayout from '../shared/TaskPageLayout';
 import '../TaskPage.style.less';
-import { cardStyles } from '../TaskPage.styles';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const UpdateTag = () => {
@@ -165,13 +165,20 @@ const UpdateTag = () => {
       type: ThreadType.Task,
     };
     postThread(data)
-      .then((res) => {
+      .then(() => {
         showSuccessToast(
           t('server.create-entity-success', {
             entity: t('label.task'),
           })
         );
-        history.push(getTaskDetailPath(res.task?.id.toString() ?? ''));
+        history.push(
+          getEntityDetailLink(
+            entityType as EntityType,
+            entityFQN,
+            EntityTabs.ACTIVITY_FEED,
+            ActivityFeedTabs.TASKS
+          )
+        );
       })
       .catch((err: AxiosError) => showErrorToast(err));
   };
@@ -211,7 +218,7 @@ const UpdateTag = () => {
   }, [entityData, columnObject]);
 
   return (
-    <TaskPageLayout>
+    <PageLayoutV1 center pageTitle={t('label.task')}>
       <Space className="w-full" direction="vertical" size="middle">
         <TitleBreadcrumb
           titleLinks={[
@@ -228,7 +235,6 @@ const UpdateTag = () => {
         <Card
           className="m-t-0 request-tags"
           key="update-tags"
-          style={{ ...cardStyles }}
           title={t('label.create-entity', {
             entity: t('label.task'),
           })}>
@@ -238,6 +244,7 @@ const UpdateTag = () => {
               label={`${t('label.title')}:`}
               name="title">
               <Input
+                disabled
                 placeholder={t('label.task-entity', {
                   entity: t('label.title'),
                 })}
@@ -348,7 +355,7 @@ const UpdateTag = () => {
 
         {getColumnDetails()}
       </div>
-    </TaskPageLayout>
+    </PageLayoutV1>
   );
 };
 

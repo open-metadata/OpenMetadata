@@ -15,7 +15,6 @@ import { Card, Col, Divider, Row, Space, Tabs, Typography } from 'antd';
 import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import SourceList from 'components/MlModelDetail/SourceList.component';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { EntityTabs } from 'enums/entity.enum';
@@ -24,7 +23,6 @@ import { cloneDeep, isEqual, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEntityName } from 'utils/EntityUtils';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
@@ -332,10 +330,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   }, [currentVersionData]);
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(currentVersionData),
-      })}>
+    <>
       {isVersionLoading ? (
         <Loader />
       ) : (
@@ -503,7 +498,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
         versionList={versionList}
         onBack={backHandler}
       />
-    </PageLayoutV1>
+    </>
   );
 };
 

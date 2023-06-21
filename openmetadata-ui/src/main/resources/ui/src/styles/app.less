@@ -13,8 +13,6 @@
 
 // common css utils file
 @import url('./variables.less');
-@primary-light: rgb(244, 240, 253);
-@primary-hover-light: rgba(219, 209, 249);
 @trigger-btn-hover-bg: #efefef;
 
 // Global css
@@ -23,7 +21,7 @@
 }
 
 .card-shadow {
-  box-shadow: @card-shadow;
+  box-shadow: @box-shadow-base;
 }
 
 .shadow-none {
@@ -41,6 +39,10 @@
   border-radius: @border-radius-base;
   color: @error-color;
   background-color: @error-light-color;
+}
+
+.page-container {
+  padding: 4px 16px 16px;
 }
 
 .show-more,
@@ -82,11 +84,6 @@ a[href].link-text-grey,
   color: @text-grey-muted;
 }
 
-// Left and Right Panel shadow color
-.panel-shadow-color {
-  box-shadow: @panels-shadow-color;
-}
-
 // text color
 .text-primary {
   color: @primary-color;
@@ -108,6 +105,9 @@ a[href].link-text-grey,
 }
 .text-grey-body {
   color: @text-color-secondary;
+}
+.text-link-color {
+  color: @link-color;
 }
 .text-gray-400 {
   color: #9ca3af;
@@ -209,16 +209,19 @@ a[href].link-text-grey,
   background: @body-bg-color;
 }
 .bg-primary-lite {
-  background: @primary-light;
+  background: @primary-color-hover;
 }
 .bg-primary {
   background: @primary-color;
 }
 .bg-primary-hover-lite {
-  background-color: @primary-hover-light;
+  background-color: @primary-color-hover;
 }
 .bg-grey {
   background-color: @border-color;
+}
+.bg-grey-1 {
+  background-color: @grey-1;
 }
 .bg-white {
   background-color: @white;
@@ -226,7 +229,7 @@ a[href].link-text-grey,
 
 .activeCategory {
   border-left: 2px solid @primary-color;
-  background: @primary-light;
+  background: @primary-color-hover;
   padding-left: 10px;
   font-weight: 600;
 }
@@ -398,6 +401,11 @@ a[href].link-text-grey,
   text-decoration: none !important;
 }
 
+// lineage
+.lineage-card {
+  height: calc(100vh - 240px);
+}
+
 // Multiple label in a field with required
 
 .multiple-label-field label {
@@ -439,4 +447,21 @@ a[href].link-text-grey,
 /* Tabs */
 .ant-tabs-top > .ant-tabs-nav::before {
   border-color: @border-color;
+}
+
+// Entity Details Page css
+.entity-details-page-tabs {
+  .ant-tabs-nav {
+    margin: 0 !important;
+    padding: 0 20px;
+  }
+}
+.entity-tag-right-panel-container {
+  border-left: @global-border;
+  margin-left: 20px;
+  padding: 12px 8px 0 8px;
+}
+
+.global-border-radius {
+  border-radius: 10px;
 }

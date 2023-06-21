@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { Space, Switch, Typography } from 'antd';
+import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import { SearchIndex } from 'enums/search.enum';
 import { isEqual, isUndefined, uniqWith } from 'lodash';
 import React, { FC, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   getAdvancedFieldDefaultOptions,
   getAdvancedFieldOptions,
@@ -38,13 +37,9 @@ import { ExploreQuickFiltersProps } from './ExploreQuickFilters.interface';
 
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   fields,
-  onAdvanceSearch,
   index,
   onFieldValueSelect,
-  showDeleted,
-  onChangeShowDeleted,
 }) => {
-  const { t } = useTranslation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
   const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
 
@@ -59,6 +54,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     const optionsArray = buckets.map((option) => ({
       key: option.key,
       label: option.key,
+      count: option.doc_count ?? 0,
     }));
 
     setOptions(uniqWith(optionsArray, isEqual));
@@ -151,7 +147,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   };
 
   return (
-    <Space wrap className="explore-quick-filters-container" size={[4, 16]}>
+    <Space wrap className="explore-quick-filters-container" size={[4, 0]}>
       {fields.map((field) => (
         <SearchDropdown
           highlight
@@ -168,25 +164,6 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           onSearch={getFilterOptions}
         />
       ))}
-
-      <span>
-        <Switch
-          checked={showDeleted}
-          data-testid="show-deleted"
-          onChange={onChangeShowDeleted}
-        />
-        <Typography.Text className="p-l-xs">
-          {t('label.show-deleted')}
-        </Typography.Text>
-      </span>
-      <span
-        className="text-primary self-center cursor-pointer p-l-xs"
-        data-testid="advance-search-button"
-        onClick={onAdvanceSearch}>
-        {t('label.advanced-entity', {
-          entity: t('label.search'),
-        })}
-      </span>
     </Space>
   );
 };

@@ -1,0 +1,431 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { Menu, Typography } from 'antd';
+import AppState from 'AppState';
+import classNames from 'classnames';
+import Loader from 'components/Loader/Loader';
+import { TaskTab } from 'components/Task/TaskTab/TaskTab.component';
+import { pagingObject } from 'constants/constants';
+import { observerOptions } from 'constants/Mydata.constants';
+import { EntityTabs, EntityType } from 'enums/entity.enum';
+import { FeedFilter } from 'enums/mydata.enum';
+import {
+  Thread,
+  ThreadTaskStatus,
+  ThreadType,
+} from 'generated/entity/feed/thread';
+import { Paging } from 'generated/type/paging';
+import { useElementInView } from 'hooks/useElementInView';
+import { noop } from 'lodash';
+import {
+  default as React,
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
+import { getAllFeeds, getFeedCount } from 'rest/feedsAPI';
+import { getCountBadge, getEntityDetailLink } from 'utils/CommonUtils';
+import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from 'utils/EntityUtils';
+import { getEntityField } from 'utils/FeedUtils';
+import '../../Widgets/FeedsWidget/feeds-widget.less';
+import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
+import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component';
+import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
+import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
+import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
+import './activity-feed-tab.less';
+import {
+  ActivityFeedTabProps,
+  ActivityFeedTabs,
+} from './ActivityFeedTab.interface';
+import { ReactComponent as CheckIcon } from '/assets/svg/ic-check.svg';
+import { ReactComponent as TaskIcon } from '/assets/svg/ic-task.svg';
+
+export const ActivityFeedTab = ({
+  fqn,
+  owner,
+  tags,
+  description,
+  columns,
+  entityType,
+}: ActivityFeedTabProps) => {
+  const [paging] = useState<Paging>(pagingObject);
+  const history = useHistory();
+  const { t } = useTranslation();
+  const [elementRef, isInView] = useElementInView(observerOptions);
+  const { subTab: activeTab = 'all' } =
+    useParams<{ subTab: ActivityFeedTabs }>();
+  const [taskFilter, setTaskFilter] = useState<'open' | 'close'>('open');
+  const [allCount, setAllCount] = useState(0);
+  const [tasksCount, setTasksCount] = useState(0);
+
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
+
+  const {
+    postFeed,
+    selectedThread,
+    setActiveThread,
+    entityThread,
+    getFeedData,
+    loading,
+    entityPaging,
+  } = useActivityFeedProvider();
+
+  const isUserEntity = useMemo(
+    () => entityType === EntityType.USER_NAME,
+    [entityType]
+  );
+
+  const entityTypeTask = useMemo(
+    () =>
+      selectedThread?.about?.split(ENTITY_LINK_SEPARATOR)?.[1] as Exclude<
+        EntityType,
+        EntityType.TABLE
+      >,
+    [selectedThread]
+  );
+
+  const handleTabChange = (subTab: string) => {
+    history.push(
+      getEntityDetailLink(entityType, fqn, EntityTabs.ACTIVITY_FEED, subTab)
+    );
+    setActiveThread();
+  };
+
+  const fetchFeedsCount = () => {
+    if (!isUserEntity) {
+      // To get conversation count
+      getFeedCount(
+        getEntityFeedLink(entityType, fqn),
+        ThreadType.Conversation
+      ).then((res) => {
+        if (res) {
+          setAllCount(res.totalCount);
+        } else {
+          throw t('server.entity-feed-fetch-error');
+        }
+      });
+
+      // To get open tasks count
+      getFeedCount(getEntityFeedLink(entityType, fqn), ThreadType.Task).then(
+        (res) => {
+          if (res) {
+            setTasksCount(res.totalCount);
+          } else {
+            throw t('server.entity-feed-fetch-error');
+          }
+        }
+      );
+    } else {
+      if (activeTab !== ActivityFeedTabs.TASKS) {
+        // count for task on userProfile page
+        getAllFeeds(
+          undefined,
+          undefined,
+          ThreadType.Task,
+          FeedFilter.OWNER,
+          undefined,
+          currentUser?.id
+        ).then((res) => {
+          if (res) {
+            setTasksCount(res.paging.total);
+          } else {
+            throw t('server.entity-feed-fetch-error');
+          }
+        });
+      }
+
+      if (activeTab !== ActivityFeedTabs.ALL) {
+        // count for all on userProfile page
+        getAllFeeds(
+          undefined,
+          undefined,
+          ThreadType.Conversation,
+          FeedFilter.OWNER,
+          undefined,
+          currentUser?.id
+        ).then((res) => {
+          if (res) {
+            setAllCount(res.paging.total);
+          } else {
+            throw t('server.entity-feed-fetch-error');
+          }
+        });
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchFeedsCount();
+  }, []);
+
+  useEffect(() => {
+    if (isUserEntity && activeTab === ActivityFeedTabs.ALL && !allCount) {
+      setAllCount(entityPaging.total);
+    }
+    if (isUserEntity && activeTab === ActivityFeedTabs.TASKS && !tasksCount) {
+      setTasksCount(entityPaging.total);
+    }
+  });
+
+  const { feedFilter, threadType } = useMemo(() => {
+    return {
+      threadType:
+        activeTab === 'tasks' ? ThreadType.Task : ThreadType.Conversation,
+      feedFilter:
+        activeTab === 'mentions'
+          ? FeedFilter.MENTIONS
+          : EntityType.USER_NAME === entityType
+          ? FeedFilter.OWNER
+          : undefined,
+    };
+  }, [activeTab]);
+
+  const handleFeedFetchFromFeedList = useCallback(
+    (after?: string) => {
+      getFeedData(feedFilter, after, threadType, entityType, fqn);
+    },
+    [threadType, feedFilter]
+  );
+
+  useEffect(() => {
+    getFeedData(feedFilter, undefined, threadType, entityType, fqn);
+  }, [feedFilter, threadType]);
+
+  const handleFeedClick = useCallback(
+    (feed: Thread) => {
+      setActiveThread(feed);
+    },
+    [setActiveThread]
+  );
+
+  const fetchMoreThread = (
+    isElementInView: boolean,
+    pagingObj: Paging,
+    isLoading: boolean
+  ) => {
+    if (isElementInView && pagingObj?.after && !isLoading) {
+      handleFeedFetchFromFeedList(pagingObj.after);
+    }
+  };
+
+  useEffect(() => {
+    fetchMoreThread(isInView, paging, loading);
+  }, [paging, loading, isInView]);
+
+  const loader = useMemo(() => (loading ? <Loader /> : null), [loading]);
+
+  const onSave = (message: string) => {
+    postFeed(message, selectedThread?.id ?? '').catch(() => {
+      // ignore since error is displayed in toast in the parent promise.
+      // Added block for sonar code smell
+    });
+  };
+
+  const entityField = selectedThread
+    ? getEntityField(selectedThread.about)
+    : '';
+
+  const threads = useMemo(() => {
+    if (activeTab === ActivityFeedTabs.TASKS) {
+      return entityThread.filter(
+        (thread) =>
+          taskFilter === 'open'
+            ? thread.task?.status === ThreadTaskStatus.Open
+            : thread.task?.status === ThreadTaskStatus.Closed,
+        []
+      );
+    }
+
+    return entityThread;
+  }, [activeTab, entityThread, taskFilter]);
+
+  const [openTasks, closedTasks] = useMemo(() => {
+    if (activeTab === ActivityFeedTabs.TASKS) {
+      return entityThread.reduce(
+        (acc, curr) => {
+          if (curr.task?.status === ThreadTaskStatus.Open) {
+            acc[0] = acc[0] + 1;
+          } else {
+            acc[1] = acc[1] + 1;
+          }
+
+          return acc;
+        },
+        [0, 0]
+      );
+    }
+
+    return [0, 0];
+  }, [entityThread, activeTab]);
+
+  return (
+    <div className="d-flex">
+      <Menu
+        className="custom-menu w-72 p-t-sm"
+        data-testid="global-setting-left-panel"
+        items={[
+          {
+            label: (
+              <div className="d-flex justify-between">
+                <span>{t('label.all')}</span>
+                <span>{getCountBadge(allCount)}</span>
+              </div>
+            ),
+            key: 'all',
+          },
+          {
+            label: (
+              <div className="d-flex justify-between">
+                <span>{t('label.mention-plural')}</span>
+              </div>
+            ),
+            key: 'mentions',
+          },
+          {
+            label: (
+              <div className="d-flex justify-between">
+                <span>{t('label.task-plural')}</span>
+                <span>{getCountBadge(tasksCount)}</span>
+              </div>
+            ),
+            key: 'tasks',
+          },
+        ]}
+        mode="inline"
+        selectedKeys={[activeTab]}
+        style={{
+          flex: '0 0 250px',
+          borderRight: '1px solid rgba(0, 0, 0, 0.1)',
+        }}
+        onClick={(info) => handleTabChange(info.key)}
+      />
+
+      <div
+        style={{
+          flex: '0 0 calc(50% - 125px)',
+          height: 'calc(100vh - 236px)',
+          overflowY: 'scroll',
+        }}>
+        {activeTab === ActivityFeedTabs.TASKS && (
+          <div
+            className="d-flex gap-4 p-sm p-x-lg"
+            style={{ backgroundColor: '#F8F8F8' }}>
+            <Typography.Text
+              className={classNames(
+                'cursor-pointer p-l-xss d-flex items-center',
+                {
+                  'font-medium': taskFilter === 'open',
+                }
+              )}
+              onClick={() => {
+                setTaskFilter('open');
+                setActiveThread();
+              }}>
+              {' '}
+              <TaskIcon className="m-r-xss" width={14} /> {openTasks}{' '}
+              {t('label.open')}
+            </Typography.Text>
+            <Typography.Text
+              className={classNames('cursor-pointer d-flex items-center', {
+                'font-medium': taskFilter === 'close',
+              })}
+              onClick={() => {
+                setTaskFilter('close');
+                setActiveThread();
+              }}>
+              {' '}
+              <CheckIcon className="m-r-xss" width={14} /> {closedTasks}{' '}
+              {t('label.close')}
+            </Typography.Text>
+          </div>
+        )}
+        <ActivityFeedListV1
+          hidePopover
+          activeFeedId={selectedThread?.id}
+          feedList={threads}
+          isLoading={loading}
+          showThread={false}
+          onFeedClick={handleFeedClick}
+        />
+      </div>
+      <div
+        style={{
+          flex: '0 0 calc(50% - 125px)',
+          borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
+          height: 'calc(100vh - 236px)',
+          overflowY: 'scroll',
+        }}>
+        {loading && loader}
+        {selectedThread &&
+          !loading &&
+          (activeTab !== ActivityFeedTabs.TASKS ? (
+            <div id="feed-panel">
+              <div className="feed-explore-heading">
+                <FeedPanelHeader
+                  hideCloseIcon
+                  className="p-x-md"
+                  entityFQN={fqn}
+                  entityField={entityField as string}
+                  threadType={selectedThread?.type ?? ThreadType.Conversation}
+                  onCancel={noop}
+                />
+              </div>
+              <FeedPanelBodyV1
+                isOpenInDrawer
+                showThread
+                feed={selectedThread}
+                hidePopover={false}
+              />
+              <ActivityFeedEditor className="m-md" onSave={onSave} />
+            </div>
+          ) : (
+            <div id="task-panel">
+              {entityType === EntityType.TABLE ? (
+                <TaskTab
+                  columns={columns}
+                  description={description}
+                  entityType={EntityType.TABLE}
+                  owner={owner}
+                  tags={tags}
+                  task={selectedThread}
+                />
+              ) : (
+                <TaskTab
+                  description={description}
+                  entityType={isUserEntity ? entityTypeTask : entityType}
+                  owner={owner}
+                  tags={tags}
+                  task={selectedThread}
+                />
+              )}
+            </div>
+          ))}
+      </div>
+      <div
+        className="w-full"
+        data-testid="observer-element"
+        id="observer-element"
+        ref={elementRef as RefObject<HTMLDivElement>}
+      />
+      {loader}
+    </div>
+  );
+};

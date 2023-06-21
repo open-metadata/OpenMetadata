@@ -17,6 +17,10 @@ import { ReactComponent as DeleteIcon } from 'assets/svg/ic-delete.svg';
 import { AxiosError } from 'axios';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
+import {
+  HierarchyTagsProps,
+  TagDetailsProps,
+} from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getExplorePath } from 'constants/constants';
 import { delimiterRegex } from 'constants/regex.constants';
@@ -304,4 +308,58 @@ export const getUsageCountLink = (tagFQN: string) => {
       },
     },
   });
+};
+
+export const getTagsHierarchy = (
+  tags: TagDetailsProps['options']
+): HierarchyTagsProps[] => {
+  const filteredTags = tags.filter(
+    (tag) => !tag.fqn?.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+  );
+
+  let hierarchyTags: HierarchyTagsProps[] = [];
+
+  filteredTags.forEach((tags) => {
+    const haveParent = hierarchyTags.find(
+      (h) => h.title === tags?.classification?.name
+    );
+
+    if (haveParent) {
+      hierarchyTags = hierarchyTags.map((h) => {
+        if (h.title === tags?.classification?.name) {
+          return {
+            ...h,
+            children: [
+              ...h.children,
+              {
+                title: tags.name,
+                value: tags.fqn,
+                key: tags.fqn,
+                selectable: true,
+              },
+            ],
+          };
+        } else {
+          return h;
+        }
+      });
+    } else {
+      hierarchyTags.push({
+        title: tags.classification?.name ?? '',
+        value: tags.classification?.name ?? '',
+        children: [
+          {
+            title: tags.name,
+            value: tags.fqn,
+            key: tags.fqn,
+            selectable: true,
+          },
+        ],
+        key: tags.classification?.name ?? '',
+        selectable: false,
+      });
+    }
+  });
+
+  return hierarchyTags;
 };

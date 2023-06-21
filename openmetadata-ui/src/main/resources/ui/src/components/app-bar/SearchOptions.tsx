@@ -58,7 +58,7 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
             aria-orientation="vertical"
             className="tw-origin-top-right tw-absolute tw-z-10
           tw-w-full tw-mt-1 tw-rounded-md tw-shadow-lg 
-        tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
+        bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
             role="menu">
             <div className="py-1" role="none">
               <Link

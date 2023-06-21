@@ -111,7 +111,7 @@ const SuccessScreen = ({
         <div
           className="tw-border tw-border-main tw-rounded tw-shadow tw-mt-7 tw-p-3"
           data-testid="airflow-status-msg">
-          <div className="d-flex tw-justify-between tw-item-center">
+          <div className="d-flex tw-justify-between items-center">
             <div className="d-flex tw-mt-0.5">
               <div className="flex-none tw-mr-2">{getAirflowStatusIcon()}</div>
               <h6 className="tw-text-base tw-font-medium tw-mb-0.5">

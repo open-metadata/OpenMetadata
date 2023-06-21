@@ -45,8 +45,12 @@
   }
 }
 .page-layout-leftpanel {
-  padding: 0 !important;
-  height: 100%;
+  padding: 0 0 24px 0 !important;
+  border-right: 1px solid @border-color;
+  overflow: auto;
+  height: calc(100vh - 64px);
+  background-color: @white;
+  overflow-x: hidden;
 }
 
 .left-panel-item {
@@ -58,23 +62,13 @@
 .left-panel-item.active,
 .left-panel-item:hover {
   background-color: @left-nav-item-background;
-  .left-panel-label {
-    color: @text-color;
-    text-decoration: none;
-  }
-
-  svg {
-    color: @primary-color-hover;
-  }
-}
-
-.left-panel-item.active,
-.left-panel-item:hover {
-  background-color: @left-nav-item-background;
   color: @text-color;
 
   svg {
-    color: @primary-color-hover;
+    color: @primary-color;
+  }
+  .left-panel-label {
+    color: @text-color;
   }
 }
 
@@ -83,6 +77,17 @@
   .ant-menu-item {
     height: auto !important;
     padding: 8px 0 0 !important;
+  }
+  .ant-menu-item:hover,
+  .ant-menu-item-selected {
+    background-color: @left-nav-item-background;
+    color: @text-color;
+    svg {
+      color: @primary-color;
+    }
+    .left-panel-label {
+      color: @text-color;
+    }
   }
   .ant-menu-vertical {
     min-width: 100px !important;

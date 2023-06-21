@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+@import url('../../styles/variables.less');
+
 @succesColor: #28a745;
 @failedColor: #cb2431;
 @abortedColor: #efae2f;
 @grayColor: #dde3ea;
-@primary-color: #7147e8;
-@primary-color-lite: #7147e833;
 
 .table-profiler-container {
   .overall-summery-card:not(:first-child) {
@@ -37,6 +37,18 @@
   .ant-table-row .ant-table-cell:first-child,
   .ant-table-thead .ant-table-cell:first-child {
     padding-left: 16px;
+  }
+
+  .data-quality-left-panel,
+  .data-quality-content-panel {
+    height: calc(100vh - 236px);
+  }
+
+  .data-quality-left-panel {
+    border-right: @global-border;
+  }
+  .data-quality-content-panel {
+    overflow: scroll;
   }
 }
 .include-columns-add-button.ant-btn-icon-only.ant-btn-sm {
