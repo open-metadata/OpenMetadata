@@ -14,16 +14,28 @@
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
+import SingleColumnProfile from 'components/TableProfiler/Component/SingleColumnProfile';
+import TableProfilerChart from 'components/TableProfiler/Component/TableProfilerChart';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
-import { default as React, useCallback, useMemo, useState } from 'react';
+import Qs from 'qs';
+import {
+  default as React,
+  Fragment,
+  useCallback,
+  useMemo,
+  useState,
+} from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { createExecutableTestSuite, createTestCase } from 'rest/testAPI';
 import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
 import { getTableTabPath } from '../../constants/constants';
-import { STEPS_FOR_ADD_TEST_CASE } from '../../constants/profiler.constant';
+import {
+  DEFAULT_RANGE_DATA,
+  STEPS_FOR_ADD_TEST_CASE,
+} from '../../constants/profiler.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
@@ -47,6 +59,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 }: AddDataQualityTestProps) => {
   const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
+  const isTableFqn = dashboardType === ProfilerDashboardType.TABLE;
   const history = useHistory();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [testCaseData, setTestCaseData] = useState<CreateTestCase>();
@@ -185,6 +198,46 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
     );
   }, [activeServiceStep, testCaseRes]);
 
+  const { activeColumnFqn } = useMemo(() => {
+    const param = location.search;
+    const searchData = Qs.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return searchData as { activeColumnFqn: string };
+  }, [location.search]);
+
+  const secondPanel = (
+    <Fragment>
+      <RightPanel
+        data={
+          addIngestion
+            ? INGESTION_DATA
+            : addTestSuiteRightPanel(
+                activeServiceStep,
+                isUndefined(table.testSuite),
+                {
+                  testCase: testCaseData?.name || '',
+                  testSuite: testSuiteData?.name || '',
+                }
+              )
+        }
+      />
+      {isTableFqn && (
+        <TableProfilerChart
+          dateRangeObject={DEFAULT_RANGE_DATA}
+          entityFqn={entityTypeFQN}
+        />
+      )}
+      {isColumnFqn && (
+        <SingleColumnProfile
+          activeColumnFqn={activeColumnFqn}
+          dateRangeObject={DEFAULT_RANGE_DATA}
+        />
+      )}
+    </Fragment>
+  );
+
   return (
     <ResizablePanels
       firstPanel={{
@@ -223,28 +276,13 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
           </div>
         ),
         minWidth: 700,
-        flex: 0.7,
+        flex: 0.6,
       }}
       pageTitle={t('label.add-entity', {
         entity: t('label.data-quality-test'),
       })}
       secondPanel={{
-        children: (
-          <RightPanel
-            data={
-              addIngestion
-                ? INGESTION_DATA
-                : addTestSuiteRightPanel(
-                    activeServiceStep,
-                    isUndefined(table.testSuite),
-                    {
-                      testCase: testCaseData?.name || '',
-                      testSuite: testSuiteData?.name || '',
-                    }
-                  )
-            }
-          />
-        ),
+        children: secondPanel,
         className: 'p-md service-doc-panel',
         minWidth: 60,
         overlay: {

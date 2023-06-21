@@ -17,8 +17,9 @@ import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { t } from 'i18next';
 import { isEmpty, snakeCase } from 'lodash';
+import Qs from 'qs';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { getListTestCase, getListTestDefinitions } from 'rest/testAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
@@ -48,6 +49,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   onCancel,
   table,
 }) => {
+  const history = useHistory();
   const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
   const decodedEntityFQN = getDecodedFqn(entityTypeFQN);
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
@@ -189,6 +191,16 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
   useEffect(() => {
     fetchAllTestDefinitions();
+    const selectedColumn = table.columns.find(
+      (column) => column.name === columnName
+    );
+    if (selectedColumn) {
+      history.push({
+        search: Qs.stringify({
+          activeColumnFqn: selectedColumn?.fullyQualifiedName,
+        }),
+      });
+    }
   }, [columnName]);
 
   useEffect(() => {
