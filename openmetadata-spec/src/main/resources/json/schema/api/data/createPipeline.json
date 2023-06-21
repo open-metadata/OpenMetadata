@@ -22,7 +22,7 @@
     },
     "sourceUrl": {
       "description": "Pipeline URL suffix to visit/manage. This URL points to respective pipeline service UI",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "concurrency": {
       "description": "Concurrency of the Pipeline",

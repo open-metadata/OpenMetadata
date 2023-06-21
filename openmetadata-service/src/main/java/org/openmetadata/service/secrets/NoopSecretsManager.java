@@ -32,4 +32,8 @@ public class NoopSecretsManager extends SecretsManager {
   protected String storeValue(String fieldName, String value, String secretId, boolean store) {
     return value;
   }
+
+  // Nothing to delete on the Noop SM. We only delete on External SM
+  @Override
+  protected void deleteSecretInternal(String secretName) {}
 }

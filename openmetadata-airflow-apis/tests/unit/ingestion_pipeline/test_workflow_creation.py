@@ -322,7 +322,7 @@ class OMetaServiceTest(TestCase):
             sourceConfig=SourceConfig(
                 config=TestSuitePipeline(
                     type="TestSuite",
-                    entityFullyQualifiedName="service.database.schema.table",
+                    entityFullyQualifiedName=self.service.name.__root__,
                 )
             ),
             openMetadataServerConnection=self.server_config,
@@ -330,9 +330,9 @@ class OMetaServiceTest(TestCase):
                 startDate="2022-06-10T15:06:47+00:00",
             ),
             service=EntityReference(
-                id=self.service.id,
-                type="databaseService",
-                name=self.service.name.__root__,
+                id=uuid.uuid4(),
+                type="testSuite",
+                name="test_test_suite_workflow",
             ),
         )
 
@@ -340,3 +340,4 @@ class OMetaServiceTest(TestCase):
         config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 
         parse_workflow_config_gracefully(config)
+        assert workflow_config.source.type == "mysql"

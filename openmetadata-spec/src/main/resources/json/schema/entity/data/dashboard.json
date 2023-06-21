@@ -69,7 +69,7 @@
     },
     "sourceUrl": {
       "description": "Dashboard URL suffix from its service.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "charts": {
       "description": "All the charts included in this Dashboard.",

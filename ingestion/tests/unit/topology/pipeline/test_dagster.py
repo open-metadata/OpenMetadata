@@ -233,8 +233,6 @@ MOCK_PIPELINE = Pipeline(
         Task(
             name="a58b1856-729c-493b-bc87-6d2269b43ec0",
             displayName="do_it_all_with_default_config",
-            description="",
-            sourceUrl="",
         )
     ],
     service=EntityReference(

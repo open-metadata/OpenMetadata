@@ -56,6 +56,7 @@ public class ElasticSearchIndexDefinition {
   private final CollectionDAO dao;
   final EnumMap<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes =
       new EnumMap<>(ElasticSearchIndexType.class);
+  private static final Map<String, Object> ENTITY_TO_MAPPING_SCHEMA_MAP = new HashMap<>();
 
   protected static final Map<String, String> ENTITY_TYPE_TO_INDEX_MAP;
   private static final Map<ElasticSearchIndexType, Set<String>> INDEX_TO_MAPPING_FIELDS_MAP =
@@ -145,8 +146,10 @@ public class ElasticSearchIndexDefinition {
       GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
       gRequest.local(false);
       boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
+      String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType, lang);
+      ENTITY_TO_MAPPING_SCHEMA_MAP.put(
+          elasticSearchIndexType.entityType, JsonUtils.getMap(JsonUtils.readJson(elasticSearchIndexMapping)));
       if (!exists) {
-        String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType, lang);
         CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
         request.source(elasticSearchIndexMapping, XContentType.JSON);
         CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
@@ -174,6 +177,8 @@ public class ElasticSearchIndexDefinition {
       gRequest.local(false);
       boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
       String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType, lang);
+      ENTITY_TO_MAPPING_SCHEMA_MAP.put(
+          elasticSearchIndexType.entityType, JsonUtils.getMap(JsonUtils.readJson(elasticSearchIndexMapping)));
       if (exists) {
         PutMappingRequest request = new PutMappingRequest(elasticSearchIndexType.indexName);
         request.source(elasticSearchIndexMapping, XContentType.JSON);
@@ -317,6 +322,15 @@ public class ElasticSearchIndexDefinition {
     } catch (Exception e) {
       LOG.error("Failed to Update Elastic Search Job Info");
     }
+  }
+
+  public static Map<String, Object> getIndexMappingSchema(Set<String> entities) {
+    if (entities.contains("*")) {
+      return ENTITY_TO_MAPPING_SCHEMA_MAP;
+    }
+    Map<String, Object> result = new HashMap<>();
+    entities.forEach((entityType) -> result.put(entityType, ENTITY_TO_MAPPING_SCHEMA_MAP.get(entityType)));
+    return result;
   }
 }
 

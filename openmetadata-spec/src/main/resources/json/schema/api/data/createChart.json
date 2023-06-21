@@ -24,7 +24,7 @@
     },
     "sourceUrl": {
       "description": "Chart URL suffix from its service.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "tags": {
       "description": "Tags for this chart",

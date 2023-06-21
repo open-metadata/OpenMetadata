@@ -1002,6 +1002,10 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "sourceUrl": {
+      "description": "Source URL of table.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
     }
   },
   "required": [

@@ -22,7 +22,11 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
 from metadata.utils import fqn
-from metadata.utils.helpers import clean_uri, get_standard_chart_type
+from metadata.utils.helpers import (
+    clean_uri,
+    get_database_name_for_lineage,
+    get_standard_chart_type,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -70,7 +74,6 @@ class SupersetAPISource(SupersetSourceMixin):
         dashboard_request = CreateDashboardRequest(
             name=dashboard_details["id"],
             displayName=dashboard_details["dashboard_title"],
-            description="",
             sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{dashboard_details['url']}",
             charts=[
                 fqn.build(
@@ -131,7 +134,7 @@ class SupersetAPISource(SupersetSourceMixin):
                     else None
                 )
 
-                database_name = self._get_database_name_for_lineage(
+                database_name = get_database_name_for_lineage(
                     db_service_entity, default_database_name
                 )
 
