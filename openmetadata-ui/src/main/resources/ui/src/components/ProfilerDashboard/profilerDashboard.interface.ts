@@ -106,6 +106,7 @@ export interface DataQualityTabProps {
     paging: Paging;
     currentPage: number;
     onPagingClick: (cursorValue: string | number, activePage?: number) => void;
+    isNumberBased?: boolean;
   };
   removeFromTestSuite?: {
     testSuite: TestSuite;

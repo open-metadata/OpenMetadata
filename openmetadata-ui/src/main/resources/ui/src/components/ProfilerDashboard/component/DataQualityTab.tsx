@@ -389,6 +389,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         {!isUndefined(pagingData) && pagingData.paging.total > PAGE_SIZE && (
           <NextPrevious
             currentPage={pagingData.currentPage}
+            isNumberBased={pagingData.isNumberBased}
             pageSize={PAGE_SIZE}
             paging={pagingData.paging}
             pagingHandler={pagingData.onPagingClick}
