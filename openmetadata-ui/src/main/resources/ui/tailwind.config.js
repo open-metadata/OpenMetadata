@@ -18,7 +18,7 @@ const primary = '#0968da';
 const primaryII = '#8D6AF1';
 const primaryHover = '#5523E0';
 const primaryActive = '#450DE2';
-const primaryHoverLite = '#DBD1F9';
+const primaryHoverLite = '#e6f4ff';
 const secondary = '#B02AAC';
 const secondaryBG = '#B02AAC40';
 

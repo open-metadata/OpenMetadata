@@ -28,7 +28,11 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
     S3Config,
 )
 from metadata.utils.constants import CHUNKSIZE
-from metadata.utils.datalake.datalake_utils import DatalakeFileFormatException
+from metadata.utils.datalake.common import (
+    AZURE_PATH,
+    DatalakeFileFormatException,
+    return_azure_storage_options,
+)
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -74,11 +78,6 @@ def _(_: S3Config, key: str, bucket_name: str, client, **kwargs):
 
 @read_csv_dispatch.register
 def _(config_source: AzureConfig, key: str, bucket_name: str, **kwargs):
-    from metadata.utils.datalake.datalake_utils import (
-        AZURE_PATH,
-        return_azure_storage_options,
-    )
-
     storage_options = return_azure_storage_options(config_source)
     path = AZURE_PATH.format(
         bucket_name=bucket_name,
@@ -109,10 +108,6 @@ def _(_: S3Config, key: str, bucket_name: str, client, **kwargs):
 
 @read_tsv_dispatch.register
 def _(config_source: AzureConfig, key: str, bucket_name: str, **kwargs):
-    from metadata.utils.datalake.datalake_utils import (
-        AZURE_PATH,
-        return_azure_storage_options,
-    )
 
     storage_options = return_azure_storage_options(config_source)
 

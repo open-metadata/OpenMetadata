@@ -23,6 +23,7 @@ import {
   Thread,
   ThreadType,
 } from 'generated/entity/feed/thread';
+import { Paging } from 'generated/type/paging';
 import { isEqual } from 'lodash';
 import React, {
   createContext,
@@ -59,6 +60,7 @@ export const ActivityFeedContext = createContext(
 const ActivityFeedProvider = ({ children }: Props) => {
   const { t } = useTranslation();
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
+  const [entityPaging, setEntityPaging] = useState<Paging>({} as Paging);
   const [focusReplyEditor, setFocusReplyEditor] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [isDrawerLoading, setIsDrawerLoading] = useState(false);
@@ -105,7 +107,7 @@ const ActivityFeedProvider = ({ children }: Props) => {
         const userId =
           feedFilterType === FeedFilter.ALL ? undefined : currentUser?.id;
 
-        const { data } = await getAllFeeds(
+        const { data, paging } = await getAllFeeds(
           entityType !== EntityType.USER_NAME
             ? getEntityFeedLink(entityType, fqn)
             : undefined,
@@ -116,6 +118,7 @@ const ActivityFeedProvider = ({ children }: Props) => {
           userId
         );
         setEntityThread([...data]);
+        setEntityPaging(paging);
 
         setLoading(false);
 
@@ -356,6 +359,7 @@ const ActivityFeedProvider = ({ children }: Props) => {
       hideDrawer,
       updateEditorFocus,
       setActiveThread,
+      entityPaging,
     };
   }, [
     entityThread,
@@ -374,6 +378,7 @@ const ActivityFeedProvider = ({ children }: Props) => {
     hideDrawer,
     updateEditorFocus,
     setActiveThread,
+    entityPaging,
   ]);
 
   return (

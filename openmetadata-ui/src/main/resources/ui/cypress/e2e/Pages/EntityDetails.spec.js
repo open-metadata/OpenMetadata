@@ -144,19 +144,13 @@ describe('Entity Details Page', () => {
         expect(text).equal('admin');
       });
 
-    cy.get('[data-testid="edit-Tier-icon"]')
-      .scrollIntoView()
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="edit-tier"]').scrollIntoView().click();
 
-    cy.get('[data-testid="select-tier-button"]')
-      .first()
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="select-tier-button"]').first().click();
 
-    cy.get('[data-testid="tier-dropdown"]')
+    cy.clickOutside();
+
+    cy.get('[data-testid="Tier"]')
       .invoke('text')
       .then((text) => {
         expect(text).equal('Tier1');
@@ -228,18 +222,13 @@ describe('Entity Details Page', () => {
 
     verifyResponseStatusCode('@waitForUsers', 200);
 
-    cy.get('.user-team-select-popover')
-      .contains('Users')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('.user-team-select-popover').contains('Users').click();
 
     interceptURL('PATCH', `/api/v1/*/*`, 'removeOwner');
     // Removing the user
-    cy.get('[data-testid="remove-owner"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="remove-owner"]').click();
+
+    cy.clickOutside();
 
     verifyResponseStatusCode('@removeOwner', 200);
 
@@ -247,14 +236,9 @@ describe('Entity Details Page', () => {
     cy.get('[data-testid="owner-link"]')
       .first()
       .scrollIntoView()
-      .should('exist')
       .contains('No Owner');
 
-    cy.get('[data-testid="edit-Tier-icon"]')
-      .scrollIntoView()
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="edit-tier"]').scrollIntoView().click();
 
     cy.get('[data-testid="remove-tier"]')
       .should('exist')

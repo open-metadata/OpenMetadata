@@ -365,13 +365,7 @@ export const TaskTab = ({
         width={768}
         onCancel={() => setShowEditTaskModel(false)}
         onOk={() => form.submit()}>
-        <Form
-          form={form}
-          initialValues={{
-            updateTags: JSON.parse(taskDetails?.suggestion ?? '[]'),
-          }}
-          layout="vertical"
-          onFinish={onEditAndSuggest}>
+        <Form form={form} layout="vertical" onFinish={onEditAndSuggest}>
           {isTaskTags ? (
             <Form.Item
               data-testid="tags-label"

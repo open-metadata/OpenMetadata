@@ -67,9 +67,9 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
 const LineageNodeLabelV1 = ({ node }: { node: EntityReference }) => {
   return (
     <div className="d-flex w-72">
-      <p className="flex items-center m-0 p-md">
+      <div className="flex items-center m-0 p-md">
         <EntityLabel node={node} />
-      </p>
+      </div>
     </div>
   );
 };

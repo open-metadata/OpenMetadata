@@ -20,6 +20,7 @@ import {
   Thread,
   ThreadType,
 } from 'generated/entity/feed/thread';
+import { Paging } from 'generated/type/paging';
 
 export interface ActivityFeedProviderContextType {
   loading: boolean;
@@ -28,6 +29,7 @@ export interface ActivityFeedProviderContextType {
   selectedThread: Thread | undefined;
   isDrawerOpen: boolean;
   focusReplyEditor: boolean;
+  entityPaging: Paging;
   setActiveThread: (thread?: Thread) => void;
   deleteFeed: (
     threadId: string,

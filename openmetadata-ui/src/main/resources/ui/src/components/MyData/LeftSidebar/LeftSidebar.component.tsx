@@ -188,6 +188,7 @@ const LeftSidebar = () => {
         <Col className="left-panel-item p-md" span={24}>
           <div
             className="d-flex flex-col items-center cursor-pointer"
+            data-testid="appbar-item-logout"
             onClick={() => onLogoutHandler()}>
             <LogoutIcon className="m-0" width={30} />
             <Typography.Text className="left-panel-label">

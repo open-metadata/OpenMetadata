@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-@background: #e3f2fd30;
-@border: #2196f3;
+@import url('../../../../styles/variables.less');
 
 .announcement-card {
   width: 340px;
-  background: @background;
-  border: 1px solid @border;
+  background: @announcement-background;
+  border: 1px solid @announcement-border;
   border-radius: 8px;
   box-shadow: none;
   cursor: pointer;
@@ -26,7 +25,7 @@
   }
 
   .announcement-icon {
-    color: @border;
+    color: @announcement-border;
     margin: 2px 0 0;
   }
   .announcement-title {

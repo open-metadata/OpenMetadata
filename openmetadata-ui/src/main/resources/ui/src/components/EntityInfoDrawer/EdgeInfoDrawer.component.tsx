@@ -108,6 +108,7 @@ const EdgeInfoDrawer = ({
     <Drawer
       destroyOnClose
       bodyStyle={{ padding: 16 }}
+      className="entity-panel-container"
       closable={false}
       extra={<CloseOutlined onClick={onClose} />}
       getContainer={false}
@@ -119,7 +120,7 @@ const EdgeInfoDrawer = ({
       {isLoading ? (
         <Loader />
       ) : (
-        <Row className="entity-panel-container" gutter={[8, 8]}>
+        <Row gutter={[8, 8]}>
           {edgeData &&
             Object.values(edgeData).map(
               (data) =>

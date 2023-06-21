@@ -960,7 +960,7 @@ code {
   min-width: 200px !important;
 }
 .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
-  background-color: #dbd1f9;
+  background-color: #e6f4ff;
 }
 
 @media only screen and (max-width: 1440px) {

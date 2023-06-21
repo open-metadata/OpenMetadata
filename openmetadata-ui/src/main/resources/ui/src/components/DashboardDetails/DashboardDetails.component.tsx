@@ -285,23 +285,21 @@ const DashboardDetails = ({
   );
 
   const onTierUpdate = async (newTier?: string) => {
-    if (newTier) {
-      const tierTag: Dashboard['tags'] = newTier
-        ? [
-            ...getTagsWithoutTier(dashboardDetails.tags as Array<EntityTags>),
-            {
-              tagFQN: newTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-          ]
-        : dashboardDetails.tags;
-      const updatedDashboard = {
-        ...dashboardDetails,
-        tags: tierTag,
-      };
-      await onDashboardUpdate(updatedDashboard, 'tags');
-    }
+    const tierTag: Dashboard['tags'] = newTier
+      ? [
+          ...getTagsWithoutTier(dashboardDetails.tags as Array<EntityTags>),
+          {
+            tagFQN: newTier,
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+          },
+        ]
+      : getTagsWithoutTier(dashboardDetails.tags ?? []);
+    const updatedDashboard = {
+      ...dashboardDetails,
+      tags: tierTag,
+    };
+    await onDashboardUpdate(updatedDashboard, 'tags');
   };
 
   const onUpdateDisplayName = async (data: EntityName) => {
@@ -689,7 +687,7 @@ const DashboardDetails = ({
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <Card className="card-body-full m-md w-auto h-70vh">
+          <Card className="lineage-card card-body-full w-auto border-none">
             <EntityLineageComponent
               entityType={EntityType.DASHBOARD}
               hasEditAccess={

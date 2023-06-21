@@ -27,11 +27,6 @@ import IconCommentPlus from '../assets/svg/add-chat.svg';
 import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
 import IconAdmin from '../assets/svg/admin.svg';
 import IconAllActivity from '../assets/svg/all-activity.svg';
-import IconAnnouncementsBasicPrimary from '../assets/svg/announcements-basic-primary.svg';
-import IconAnnouncementsBlack from '../assets/svg/announcements-black.svg';
-import IconAnnouncementsPrimary from '../assets/svg/announcements-primary.svg';
-import IconAnnouncementsYellow from '../assets/svg/announcements-yellow.svg';
-import IconAnnouncements from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
 import IconArrowDownLight from '../assets/svg/arrow-down-light.svg';
 import IconArrowDownPrimary from '../assets/svg/arrow-down-primary.svg';
@@ -337,11 +332,6 @@ export const Icons = {
   ARROW_RIGHT_PRIMARY: 'icon-arrow-right-primary',
   ARROW_DOWN_PRIMARY: 'icon-arrow-down-primary',
   ARROW_RIGHT: 'icon-arrow-right',
-  ANNOUNCEMENT: 'icon-announcement',
-  ANNOUNCEMENT_BLACK: 'icon-announcement-black',
-  ANNOUNCEMENT_PRIMARY: 'icon-announcement-primary',
-  ANNOUNCEMENT_YELLOW: 'icon-announcement-yellow',
-  ANNOUNCEMENT_BASIC_PRIMARY: 'icon-announcement-basic-primary',
   CHEVRON_DOWN: 'icon-chevron-down',
   ICON_UP: 'icon-up',
   ICON_DOWN: 'icon-down',
@@ -916,26 +906,6 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       break;
     case Icons.ARROW_RIGHT_PRIMARY:
       IconComponent = IconArrowRightPrimary;
-
-      break;
-    case Icons.ANNOUNCEMENT:
-      IconComponent = IconAnnouncements;
-
-      break;
-    case Icons.ANNOUNCEMENT_YELLOW:
-      IconComponent = IconAnnouncementsYellow;
-
-      break;
-    case Icons.ANNOUNCEMENT_BLACK:
-      IconComponent = IconAnnouncementsBlack;
-
-      break;
-    case Icons.ANNOUNCEMENT_PRIMARY:
-      IconComponent = IconAnnouncementsPrimary;
-
-      break;
-    case Icons.ANNOUNCEMENT_BASIC_PRIMARY:
-      IconComponent = IconAnnouncementsBasicPrimary;
 
       break;
     case Icons.REQUEST:

@@ -570,7 +570,7 @@ const TableDetailsPageV1 = () => {
         key: EntityTabs.LINEAGE,
         children: (
           <Card
-            className="card-body-full w-auto h-70vh border-none"
+            className="lineage-card card-body-full w-auto border-none"
             id="lineageDetails">
             <EntityLineageComponent
               deleted={tableDetails?.deleted}
@@ -582,14 +582,21 @@ const TableDetailsPageV1 = () => {
           </Card>
         ),
       },
-      {
-        label: (
-          <TabsLabel id={EntityTabs.DBT} name={t('label.dbt-lowercase')} />
-        ),
-        // isHidden: !(dataModel?.sql ?? dataModel?.rawSql),
-        key: EntityTabs.DBT,
-        children: <DbtTab dataModel={tableDetails?.dataModel} />,
-      },
+      ...(tableDetails?.dataModel
+        ? [
+            {
+              label: (
+                <TabsLabel
+                  id={EntityTabs.DBT}
+                  name={t('label.dbt-lowercase')}
+                />
+              ),
+              // isHidden: !(dataModel?.sql ?? dataModel?.rawSql),
+              key: EntityTabs.DBT,
+              children: <DbtTab dataModel={tableDetails?.dataModel} />,
+            },
+          ]
+        : []),
       {
         label: (
           <TabsLabel

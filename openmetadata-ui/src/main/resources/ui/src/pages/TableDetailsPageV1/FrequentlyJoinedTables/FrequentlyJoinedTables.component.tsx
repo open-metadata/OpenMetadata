@@ -43,6 +43,7 @@ export const FrequentlyJoinedTables = ({
         {joinedTables.map((table) => (
           <Space
             className="w-full frequently-joint-data"
+            data-testid="related-tables-data"
             key={table.name}
             size={4}>
             <Link to={getTableDetailsPath(table.fullyQualifiedName)}>

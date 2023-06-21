@@ -175,24 +175,22 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   );
 
   const onTierUpdate = async (newTier?: string) => {
-    if (newTier) {
-      const tierTag: Mlmodel['tags'] = newTier
-        ? [
-            ...mlModelTags,
-            {
-              tagFQN: newTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-          ]
-        : mlModelDetail.tags;
-      const updatedMlModelDetails = {
-        ...mlModelDetail,
-        tags: tierTag,
-      };
+    const tierTag: Mlmodel['tags'] = newTier
+      ? [
+          ...mlModelTags,
+          {
+            tagFQN: newTier,
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+          },
+        ]
+      : getTagsWithoutTier(mlModelDetail.tags ?? []);
+    const updatedMlModelDetails = {
+      ...mlModelDetail,
+      tags: tierTag,
+    };
 
-      await settingsUpdateHandler(updatedMlModelDetails);
-    }
+    await settingsUpdateHandler(updatedMlModelDetails);
   };
 
   const handleUpdateDisplayName = async (data: EntityName) => {
@@ -449,7 +447,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         key: EntityTabs.LINEAGE,
         children: (
           <Card
-            className="card-body-full m-md w-auto h-70vh"
+            className="lineage-card card-body-full w-auto border-none"
             data-testid="lineage-details">
             <EntityLineageComponent
               entityType={EntityType.MLMODEL}

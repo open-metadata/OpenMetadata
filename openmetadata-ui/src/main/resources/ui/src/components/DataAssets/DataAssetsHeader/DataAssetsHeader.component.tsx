@@ -96,7 +96,9 @@ export const ExtraInfoLink = ({
   <>
     <Divider className="self-center m-x-sm" type="vertical" />
     <div className="d-flex items-center text-xs">
-      <span className="text-grey-muted m-r-xss">{`${label}: `}</span>
+      {!isEmpty(label) && (
+        <span className="text-grey-muted m-r-xss">{`${label}: `}</span>
+      )}
       <Typography.Link href={href} style={{ fontSize: '12px' }}>
         {value}{' '}
       </Typography.Link>
@@ -444,11 +446,11 @@ export const DataAssetsHeader = ({
                 <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
                   <Space>
                     {tier ? (
-                      <span className="font-medium text-xs">
+                      <span className="font-medium text-xs" data-testid="Tier">
                         {tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1]}
                       </span>
                     ) : (
-                      <span className="font-medium text-xs">
+                      <span className="font-medium text-xs" data-testid="Tier">
                         {t('label.no-entity', {
                           entity: t('label.tier'),
                         })}

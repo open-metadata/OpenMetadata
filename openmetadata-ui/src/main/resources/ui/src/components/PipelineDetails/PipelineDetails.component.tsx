@@ -272,23 +272,21 @@ const PipelineDetails = ({
   );
 
   const onTierUpdate = async (newTier?: string) => {
-    if (newTier) {
-      const tierTag: Pipeline['tags'] = newTier
-        ? [
-            ...getTagsWithoutTier(pipelineDetails.tags as Array<EntityTags>),
-            {
-              tagFQN: newTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-          ]
-        : pipelineDetails.tags;
-      const updatedPipelineDetails = {
-        ...pipelineDetails,
-        tags: tierTag,
-      };
-      await settingsUpdateHandler(updatedPipelineDetails);
-    }
+    const tierTag: Pipeline['tags'] = newTier
+      ? [
+          ...getTagsWithoutTier(pipelineDetails.tags as Array<EntityTags>),
+          {
+            tagFQN: newTier,
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+          },
+        ]
+      : getTagsWithoutTier(pipelineDetails.tags ?? []);
+    const updatedPipelineDetails = {
+      ...pipelineDetails,
+      tags: tierTag,
+    };
+    await settingsUpdateHandler(updatedPipelineDetails);
   };
 
   const handleUpdateDisplayName = async (data: EntityName) => {
@@ -711,7 +709,7 @@ const PipelineDetails = ({
         key: EntityTabs.LINEAGE,
         children: (
           <Card
-            className="card-body-full w-auto h-70vh border-none"
+            className="lineage-card card-body-full w-auto border-none"
             data-testid="lineage-details"
             id="lineageDetails">
             <EntityLineageComponent

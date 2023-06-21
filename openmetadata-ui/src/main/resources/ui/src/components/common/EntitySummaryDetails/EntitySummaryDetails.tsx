@@ -134,7 +134,9 @@ const EntitySummaryDetails = ({
                       type="circle"
                       width="24"
                     />
-                    <span>{userDetails.ownerName}</span>
+                    <span data-testid="owner-link">
+                      {userDetails.ownerName}
+                    </span>
                     <span className="tw-mr-1 tw-inline-block tw-text-gray-400">
                       {t('label.pipe-symbol')}
                     </span>
@@ -156,10 +158,12 @@ const EntitySummaryDetails = ({
               <></>
             )
           ) : (
-            <>
+            <span
+              className="d-flex gap-1 items-center"
+              data-testid="owner-link">
               {t('label.no-entity', { entity: t('label.owner') })}
               {updateOwner && !deleted ? ownerDropdown : null}
-            </>
+            </span>
           );
       }
 
@@ -286,7 +290,7 @@ const EntitySummaryDetails = ({
                     'tw-w-52': (displayVal as string).length > 32,
                   }
                 )}
-                data-testid="owner-name"
+                data-testid="owner-link"
                 title={displayVal as string}>
                 <Button data-testid="owner-dropdown" type="link">
                   {displayVal}
@@ -303,11 +307,11 @@ const EntitySummaryDetails = ({
               data-testid="tier-name"
               direction="horizontal"
               title={displayVal as string}>
-              <span data-testid="tier-dropdown">{displayVal}</span>
+              <span data-testid="Tier">{displayVal}</span>
 
               {updateTier && !deleted ? (
                 <TierCard currentTier={tier?.tagFQN} updateTier={updateTier}>
-                  <span data-testid={`edit-${data.key}-icon`}>
+                  <span data-testid="edit-tier">
                     <EditIcon className="cursor-pointer" width={14} />
                   </span>
                 </TierCard>

@@ -113,10 +113,6 @@ jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
     .mockReturnValue(<p>CustomPropertyTable.component</p>),
 }));
 
-jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
-  return jest.fn().mockReturnValue(<p>ActivityFeedList</p>);
-});
-
 jest.mock('../schema-editor/SchemaEditor', () => {
   return jest.fn().mockReturnValue(<p>SchemaEditor</p>);
 });

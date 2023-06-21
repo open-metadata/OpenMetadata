@@ -215,10 +215,6 @@ jest.mock('./MlModelFeaturesList', () => {
   return jest.fn().mockReturnValue(<p>MlModelFeaturesList</p>);
 });
 
-jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
-  return jest.fn().mockReturnValue(<p>ActivityFeedList</p>);
-});
-
 jest.mock('../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel', () => {
   return jest.fn().mockReturnValue(<p>ActivityThreadPanel</p>);
 });
