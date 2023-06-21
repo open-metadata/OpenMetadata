@@ -66,7 +66,7 @@ TESTS_ROOT_DIR = pathlib.Path(__file__).parent.parent.parent.parent
 BIGQUERY_CONFIG_FILE = "cli_e2e/database/bigquery/bigquery.yaml"
 FULL_CONFIG_PATH = pathlib.Path(TESTS_ROOT_DIR, BIGQUERY_CONFIG_FILE)
 DATABASE_FILTER = {
-    "includes": os.environ["E2E_BQ_PROJECT_ID"],
+    "includes": os.environ.get("E2E_BQ_PROJECT_ID"),
     "excludes": None,
 }
 SCHEMA_FILTER = {
