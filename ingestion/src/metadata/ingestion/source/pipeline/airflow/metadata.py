@@ -281,7 +281,7 @@ class AirflowSource(PipelineServiceSource):
             logger.warning(
                 f"Couldn't fetch schedule interval for dag {pipeline_data.get('_dag_id')}"
             )
-        return ""
+        return None
 
     def get_pipelines_list(self) -> Iterable[OMSerializedDagDetails]:
         """
