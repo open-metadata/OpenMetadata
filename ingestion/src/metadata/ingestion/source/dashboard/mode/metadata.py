@@ -36,6 +36,7 @@ from metadata.ingestion.source.dashboard.dashboard_service import DashboardServi
 from metadata.ingestion.source.dashboard.mode import client
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -89,9 +90,11 @@ class ModeSource(DashboardServiceSource):
         """
         Method to Get Dashboard Entity
         """
+        dashboard_path = dashboard_details[client.LINKS][client.SHARE][client.HREF]
+        dashboard_url = f"{clean_uri(self.service_connection.hostPort)}{dashboard_path}"
         dashboard_request = CreateDashboardRequest(
             name=dashboard_details.get(client.TOKEN),
-            sourceUrl=dashboard_details[client.LINKS][client.SHARE][client.HREF],
+            sourceUrl=dashboard_url,
             displayName=dashboard_details.get(client.NAME),
             description=dashboard_details.get(client.DESCRIPTION),
             charts=[
@@ -194,11 +197,15 @@ class ModeSource(DashboardServiceSource):
                             "Chart Pattern not Allowed",
                         )
                         continue
+                    chart_path = chart[client.LINKS]["report_viz_web"][client.HREF]
+                    chart_url = (
+                        f"{clean_uri(self.service_connection.hostPort)}{chart_path}"
+                    )
                     yield CreateChartRequest(
                         name=chart.get(client.TOKEN),
                         displayName=chart_name,
                         chartType=ChartType.Other,
-                        sourceUrl=chart[client.LINKS]["report_viz_web"][client.HREF],
+                        sourceUrl=chart_url,
                         service=self.context.dashboard_service.fullyQualifiedName.__root__,
                     )
                     self.status.scanned(chart_name)

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { ExclamationCircleFilled } from '@ant-design/icons';
-import { Col, Row, Typography } from 'antd';
+import { Badge, Col, Row, Typography } from 'antd';
 import { ReactComponent as IconExternalLink } from 'assets/svg/external-link-grey.svg';
 import { ROUTES } from 'constants/constants';
 import { isEmpty } from 'lodash';
@@ -30,6 +30,8 @@ const EntityHeaderTitle = ({
   deleted = false,
   serviceName,
   badge,
+  isDisabled,
+  className,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useLocation();
@@ -42,6 +44,7 @@ const EntityHeaderTitle = ({
   const content = (
     <Row
       align="middle"
+      className={className}
       data-testid={`${serviceName}-${name}`}
       gutter={16}
       wrap={false}>
@@ -71,6 +74,13 @@ const EntityHeaderTitle = ({
           )}
         </Typography.Text>
       </Col>
+      {isDisabled && (
+        <Badge
+          className="m-l-xs badge-grey"
+          count={t('label.disabled')}
+          data-testid="disabled"
+        />
+      )}
       {deleted && (
         <Col className="text-xs">
           <div className="deleted-badge-button" data-testid="deleted-badge">

@@ -139,4 +139,7 @@ class LkmlParser:
         """
         Customize string repr for logs
         """
-        return f"Parser at [{self.reader.credentials.repositoryOwner}/{self.reader.credentials.repositoryName}]"
+        return (
+            f"Parser at [{self.reader.credentials.repositoryOwner.__root__}/"
+            f"{self.reader.credentials.repositoryName.__root__}]"
+        )

@@ -52,6 +52,10 @@ There are two types of metadata we ingest from Looker:
 - Dashboards & Charts
 - LookML Models
 
+For the `project` metadata being ingested:
+- We get the actual LookML Project an Explore or View is developed in.
+- For Dashboards, we use the folder name from the UI, since there is no other hierarchy involved there.
+
 In terms of permissions, we need a user with access to the Dashboards and LookML Explores that we want to ingest. You can
 create your API credentials following these [docs](https://cloud.google.com/looker/docs/api-auth).
 
