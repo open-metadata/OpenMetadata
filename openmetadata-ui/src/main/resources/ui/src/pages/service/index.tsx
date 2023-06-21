@@ -623,16 +623,6 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
-  function getOptionalPipelineScheduleInterval(record: ServicePageData): any {
-    const pipeline = record as Pipeline;
-
-    return (
-      <Typography.Text>
-        {pipeline.scheduleInterval ?? NO_DATA_PLACEHOLDER}
-      </Typography.Text>
-    );
-  }
-
   const getOptionalTableCells = (data: ServicePageData) => {
     switch (serviceCategory) {
       case ServiceCategory.DATABASE_SERVICES: {
@@ -1023,8 +1013,12 @@ const ServicePage: FunctionComponent = () => {
               title: t('label.schedule-interval'),
               dataIndex: 'scheduleInterval',
               key: 'scheduleInterval',
-              render: (_: any, record: ServicePageData) =>
-                getOptionalPipelineScheduleInterval(record),
+              render: (scheduleInterval: Pipeline['scheduleInterval']) =>
+                scheduleInterval ? (
+                  <span>{scheduleInterval}</span>
+                ) : (
+                  <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>
+                ),
             },
           ]
         : []),
