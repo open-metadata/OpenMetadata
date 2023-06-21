@@ -482,7 +482,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
             </Col>
           </Row>
 
-          {isUndefined(profile) && (
+          {isUndefined(profile) && !isDataQuality && (
             <div
               className="tw-border d-flex tw-items-center tw-border-warning tw-rounded tw-p-2 tw-mb-4"
               data-testid="no-profiler-placeholder">
@@ -532,6 +532,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
           {isDataQuality && (
             <QualityTab
               isLoading={isTestCaseLoading}
+              showTableColumn={false}
               testCases={getFilterTestCase()}
               testSuite={testSuite}
               onTestCaseResultUpdate={handleResultUpdate}

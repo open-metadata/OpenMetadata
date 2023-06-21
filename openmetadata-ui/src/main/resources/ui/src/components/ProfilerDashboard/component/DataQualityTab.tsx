@@ -68,6 +68,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   onTestUpdate,
   onTestCaseResultUpdate,
   removeFromTestSuite,
+  showTableColumn = true,
 }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -140,7 +141,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        width: 280,
+        width: 300,
         render: (name: string, record) => {
           const status = record.testCaseResult?.testCaseStatus;
 
@@ -159,38 +160,29 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           );
         },
       },
-      {
-        title: t('label.test-suite'),
-        dataIndex: 'testSuite',
-        key: 'testSuite',
-        width: 250,
-        render: (value) => {
-          return (
-            <Typography.Paragraph data-testid="test-suite-name">
-              {getEntityName(value)}
-            </Typography.Paragraph>
-          );
-        },
-      },
-      {
-        title: t('label.table'),
-        dataIndex: 'entityLink',
-        key: 'table',
-        width: 150,
-        render: (entityLink) => {
-          const tableFqn = getEntityFqnFromEntityLink(entityLink);
-          const name = getNameFromFQN(tableFqn);
+      ...(showTableColumn
+        ? [
+            {
+              title: t('label.table'),
+              dataIndex: 'entityLink',
+              key: 'table',
+              width: 150,
+              render: (entityLink: string) => {
+                const tableFqn = getEntityFqnFromEntityLink(entityLink);
+                const name = getNameFromFQN(tableFqn);
 
-          return (
-            <Link
-              data-testid="table-link"
-              to={getTableTabPath(tableFqn, 'profiler')}
-              onClick={(e) => e.stopPropagation()}>
-              {name}
-            </Link>
-          );
-        },
-      },
+                return (
+                  <Link
+                    data-testid="table-link"
+                    to={getTableTabPath(tableFqn, 'profiler')}
+                    onClick={(e) => e.stopPropagation()}>
+                    {name}
+                  </Link>
+                );
+              },
+            },
+          ]
+        : []),
       {
         title: t('label.column'),
         dataIndex: 'entityLink',
@@ -381,7 +373,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           }}
           pagination={false}
           rowKey="name"
-          scroll={{ x: 1300 }}
+          scroll={{ x: 1000 }}
           size="small"
         />
       </Col>

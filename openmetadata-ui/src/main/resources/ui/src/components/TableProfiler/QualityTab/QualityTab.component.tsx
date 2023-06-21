@@ -25,6 +25,7 @@ export const QualityTab = ({
   onTestCaseResultUpdate,
   onTestUpdate,
   testSuite,
+  showTableColumn,
 }: QualityTabProps) => {
   const { t } = useTranslation();
   const tabs = useMemo(
@@ -36,6 +37,7 @@ export const QualityTab = ({
           <div className="p-t-md">
             <DataQualityTab
               isLoading={isLoading}
+              showTableColumn={showTableColumn}
               testCases={testCases}
               onTestCaseResultUpdate={onTestCaseResultUpdate}
               onTestUpdate={onTestUpdate}

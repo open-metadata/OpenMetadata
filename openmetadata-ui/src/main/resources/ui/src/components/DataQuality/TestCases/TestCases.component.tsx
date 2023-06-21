@@ -100,7 +100,7 @@ export const TestCases = () => {
         pageNumber: page,
         pageSize: PAGE_SIZE,
         searchIndex: SearchIndex.TEST_CASE,
-        query: searchValue,
+        query: `*${searchValue}*`,
       });
       const hits = (
         response.hits.hits as SearchHitBody<SearchIndex.TEST_CASE, TestCase>[]
@@ -121,7 +121,7 @@ export const TestCases = () => {
     activePage?: number
   ) => {
     if (searchValue) {
-      searchTestCases(activePage);
+      searchTestCases(cursorValue as number);
     } else {
       const { paging } = testCase;
       if (isString(cursorValue)) {

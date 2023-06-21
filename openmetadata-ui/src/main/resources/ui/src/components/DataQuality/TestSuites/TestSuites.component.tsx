@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Select, Space, Table, Typography } from 'antd';
+import { Button, Col, Row, Table } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -198,25 +198,13 @@ export const TestSuites = () => {
             />
           </Col>
           <Col>
-            <Space size={12}>
-              <Space>
-                <Typography.Text>{t('label.status')}</Typography.Text>
-                <Select
-                  className="w-32"
-                  options={statusOption}
-                  placeholder={t('label.status')}
-                  value={status}
-                  onChange={(value) => handleSearchParam(value, 'status')}
-                />
-              </Space>
-              {tab === DataQualityPageTabs.TEST_SUITES && (
-                <Link to={ROUTES.ADD_TEST_SUITES}>
-                  <Button type="primary">
-                    {t('label.add-entity', { entity: t('label.test-suite') })}
-                  </Button>
-                </Link>
-              )}
-            </Space>
+            {tab === DataQualityPageTabs.TEST_SUITES && (
+              <Link to={ROUTES.ADD_TEST_SUITES}>
+                <Button type="primary">
+                  {t('label.add-entity', { entity: t('label.test-suite') })}
+                </Button>
+              </Link>
+            )}
           </Col>
         </Row>
       </Col>
