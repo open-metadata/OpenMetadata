@@ -67,14 +67,14 @@ class DagsterClient:
             result = self.client._execute(  # pylint: disable=protected-access
                 DAGSTER_PIPELINE_DETAILS_GRAPHQL
             )
-            result = RepositoriesOrErrorModel(**result)  # pylint: disable=not-a-mapping
+            result = RepositoriesOrErrorModel.parse_obj(result)
             return result.repositoriesOrError.nodes
         except ConnectionError as conerr:
+            logger.debug(f"Failed due to: {traceback.format_exc()}")
             logger.error(f"Cannot connect to dagster client {conerr}")
-            logger.debug(f"Failed due to : {traceback.format_exc()}")
         except Exception as exc:
+            logger.debug(f"Failed due to: {traceback.format_exc()}")
             logger.error(f"Unable to get dagster run list {exc}")
-            logger.debug(f"Failed due to : {traceback.format_exc()}")
 
         return None
 
@@ -100,14 +100,14 @@ class DagsterClient:
             runs = self.client._execute(  # pylint: disable=protected-access
                 query=GRAPHQL_RUNS_QUERY, variables=parameters
             )
-            runs = PipelineOrErrorModel(**runs)  # pylint: disable=not-a-mapping
+            runs = PipelineOrErrorModel.parse_obj(runs)
 
             return runs.pipelineOrError
         except Exception as err:
+            logger.debug(traceback.format_exc())
             logger.error(
                 f"Error while getting runs for {job_id} - {pipeline_name} - {err}"
             )
-            logger.debug(traceback.format_exc())
 
         return None
 
@@ -128,10 +128,10 @@ class DagsterClient:
             jobs = self.client._execute(  # pylint: disable=protected-access
                 query=GRAPHQL_QUERY_FOR_JOBS, variables=parameters
             )
-            jobs = GraphOrErrorModel(**jobs)  # pylint: disable=not-a-mapping
+            jobs = GraphOrErrorModel.parse_obj(jobs)
             return jobs.graphOrError
         except Exception as err:
-            logger.error(f"Error while getting jobs {pipeline_name} - {err}")
             logger.debug(traceback.format_exc())
+            logger.error(f"Error while getting jobs {pipeline_name} - {err}")
 
         return None
