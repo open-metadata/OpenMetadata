@@ -25,6 +25,7 @@ import {
   Tooltip,
 } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
+import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
 import { AxiosError } from 'axios';
 import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
 import { SummaryCardProps } from 'components/common/SummaryCard/SummaryCard.interface';
@@ -128,6 +129,9 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const isDataQuality = activeTab === TableProfilerTab.DATA_QUALITY;
   const isTableProfile = activeTab === TableProfilerTab.TABLE_PROFILE;
 
+  const updateActiveTab = (key: string) =>
+    history.push({ search: Qs.stringify({ activeTab: key }) });
+
   const testCaseStatusOption = useMemo(() => {
     const testCaseStatus: DefaultOptionType[] = Object.values(
       TestCaseStatus
@@ -149,9 +153,24 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     } else if (isDataQuality) {
       return PAGE_HEADERS.DATA_QUALITY;
     } else {
-      return PAGE_HEADERS.COLUMN_PROFILE;
+      return {
+        ...PAGE_HEADERS.COLUMN_PROFILE,
+        header: isEmpty(activeColumnFqn) ? (
+          PAGE_HEADERS.COLUMN_PROFILE.header
+        ) : (
+          <Button
+            className="p-0 text-md font-medium"
+            type="link"
+            onClick={() => updateActiveTab(TableProfilerTab.COLUMN_PROFILE)}>
+            <Space>
+              <DropDownIcon className="transform-90" height={16} width={16} />
+              {PAGE_HEADERS.COLUMN_PROFILE.header}
+            </Space>
+          </Button>
+        ),
+      };
     }
-  }, [isTableProfile, isDataQuality]);
+  }, [isTableProfile, isDataQuality, activeColumnFqn]);
 
   const testCaseTypeOption = useMemo(() => {
     const testCaseStatus: DefaultOptionType[] = map(TestType, (value, key) => ({
@@ -259,9 +278,6 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
       onClick: () => handleAddTestClick(ProfilerDashboardType.COLUMN),
     },
   ];
-
-  const updateActiveTab = (key: string) =>
-    history.push({ search: Qs.stringify({ activeTab: key }) });
 
   const updateActiveColumnFqn = (key: string) =>
     history.push({ search: Qs.stringify({ activeColumnFqn: key, activeTab }) });
