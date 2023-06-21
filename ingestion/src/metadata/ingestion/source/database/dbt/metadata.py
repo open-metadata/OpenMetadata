@@ -752,11 +752,12 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     entity=TestDefinition,
                 )
                 if not check_test_definition_exists:
-                    column_name = manifest_node.column_name
-                    if column_name:
+                    entity_type = EntityType.TABLE
+                    if (
+                        hasattr(manifest_node, "column_name")
+                        and manifest_node.column_name
+                    ):
                         entity_type = EntityType.COLUMN
-                    else:
-                        entity_type = EntityType.TABLE
                     yield CreateTestDefinitionRequest(
                         name=manifest_node.name,
                         description=manifest_node.description,
@@ -874,7 +875,9 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         database_name=source_elements[1],
                         schema_name=source_elements[2],
                         table_name=source_elements[3],
-                        column_name=manifest_node.column_name,
+                        column_name=manifest_node.column_name
+                        if hasattr(manifest_node, "column_name")
+                        else None,
                         test_case_name=manifest_node.name,
                     )
                     self.metadata.add_test_case_results(
@@ -915,7 +918,10 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
         entity_link_list = [
             entity_link.get_entity_link(
-                table_fqn=table_fqn, column_name=manifest_node.column_name
+                table_fqn=table_fqn,
+                column_name=manifest_node.column_name
+                if hasattr(manifest_node, "column_name")
+                else None,
             )
             for table_fqn in dbt_test[DbtCommonEnum.UPSTREAM.value]
         ]
