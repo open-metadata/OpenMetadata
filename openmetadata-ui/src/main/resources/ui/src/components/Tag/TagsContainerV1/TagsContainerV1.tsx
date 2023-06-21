@@ -382,7 +382,7 @@ const TagsContainerV1 = ({
   }, [selectedTags]);
 
   return (
-    <div data-testid="tag-container">
+    <div data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}>
       <div className="d-flex justify-between m-b-xs">
         <div className="d-flex items-center">
           <Typography.Text className="right-panel-label">

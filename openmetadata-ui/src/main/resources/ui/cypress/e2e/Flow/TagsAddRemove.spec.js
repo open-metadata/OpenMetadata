@@ -86,7 +86,9 @@ describe('Check if tags addition and removal flow working properly from tables',
         entityDetails.entity
       );
 
-      cy.get('[data-testid="entity-right-panel"] [data-testid="add-tag"]')
+      cy.get(
+        '[data-testid="entity-right-panel"] [data-testid="tags-container"]  [data-testid="add-tag"]'
+      )
         .should('be.visible')
         .click();
 
