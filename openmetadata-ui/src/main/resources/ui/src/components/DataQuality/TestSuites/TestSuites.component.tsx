@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Col, Row, Table } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
@@ -28,7 +27,6 @@ import {
 import { PROGRESS_BAR_COLOR } from 'constants/TestSuite.constant';
 import { EntityTabs } from 'enums/entity.enum';
 import { TestSummary } from 'generated/entity/data/table';
-import { TestCaseStatus } from 'generated/tests/testCase';
 import { TestSuite } from 'generated/tests/testSuite';
 import { EntityReference } from 'generated/type/entityReference';
 import { Paging } from 'generated/type/paging';
@@ -75,22 +73,7 @@ export const TestSuites = () => {
     return params as DataQualitySearchParams;
   }, [location]);
 
-  const { searchValue = '', status = '' } = params;
-
-  const statusOption = useMemo(() => {
-    const testCaseStatus: DefaultOptionType[] = Object.values(
-      TestCaseStatus
-    ).map((value) => ({
-      label: value,
-      value: value,
-    }));
-    testCaseStatus.unshift({
-      label: t('label.all'),
-      value: '',
-    });
-
-    return testCaseStatus;
-  }, []);
+  const { searchValue = '' } = params;
 
   const columns = useMemo(() => {
     const data: ColumnsType<TestSuite> = [

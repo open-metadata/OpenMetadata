@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Form, Row, Select, Space, Typography } from 'antd';
+import { Button, Col, Form, Row, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import RightPanel from 'components/AddDataQualityTest/components/RightPanel';
 import { getRightPanelForAddTestSuitePage } from 'components/AddDataQualityTest/rightPanelData';
@@ -184,27 +184,25 @@ const TestSuiteStepper = () => {
             data-testid="test-suite-stepper-container">
             <TitleBreadcrumb titleLinks={TEST_SUITE_STEPPER_BREADCRUMB} />
             <Space className="m-t-md" direction="vertical" size="middle">
-              <Card className="p-sm">
-                <Row gutter={[16, 16]}>
-                  <Col span={24}>
-                    <Typography.Title
-                      className="heading"
-                      data-testid="header"
-                      level={5}>
-                      {t('label.add-entity', {
-                        entity: t('label.test-suite'),
-                      })}
-                    </Typography.Title>
-                  </Col>
-                  <Col span={24}>
-                    <IngestionStepper
-                      activeStep={activeServiceStep}
-                      steps={STEPS_FOR_ADD_TEST_SUITE}
-                    />
-                  </Col>
-                  <Col span={24}>{RenderSelectedTab()}</Col>
-                </Row>
-              </Card>
+              <Row className="p-sm" gutter={[16, 16]}>
+                <Col span={24}>
+                  <Typography.Title
+                    className="heading"
+                    data-testid="header"
+                    level={5}>
+                    {t('label.add-entity', {
+                      entity: t('label.test-suite'),
+                    })}
+                  </Typography.Title>
+                </Col>
+                <Col span={24}>
+                  <IngestionStepper
+                    activeStep={activeServiceStep}
+                    steps={STEPS_FOR_ADD_TEST_SUITE}
+                  />
+                </Col>
+                <Col span={24}>{RenderSelectedTab()}</Col>
+              </Row>
             </Space>
           </div>
         ),

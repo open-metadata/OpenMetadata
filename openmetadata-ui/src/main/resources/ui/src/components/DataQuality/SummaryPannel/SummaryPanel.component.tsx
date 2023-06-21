@@ -49,7 +49,7 @@ export const SummaryPanel = () => {
           className="h-full"
           isLoading={isLoading}
           showProgressBar={false}
-          title={t('label.total-entity', { entity: t('label.test') })}
+          title={t('label.total-entity', { entity: t('label.test-plural') })}
           total={summary?.total ?? 0}
           value={summary?.total ?? 0}
         />
