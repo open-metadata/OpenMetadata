@@ -177,7 +177,7 @@ const EntitySummaryDetails = ({
               {t('label.no-entity', { entity: t('label.tier') })}
               {updateTier && !deleted ? (
                 <TierCard currentTier={tier?.tagFQN} updateTier={updateTier}>
-                  <span data-testid={`edit-${data.key}-icon`}>
+                  <span data-testid="edit-tier">
                     <EditIcon className="tw-cursor-pointer" width={14} />
                   </span>
                 </TierCard>
