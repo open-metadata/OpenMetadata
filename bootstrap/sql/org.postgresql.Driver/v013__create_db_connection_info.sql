@@ -84,6 +84,9 @@ jsonb_build_object('password',json#>'{connection,config,password}')
 WHERE serviceType IN ('Postgres', 'Mysql')
   and json#>'{connection,config,password}' is not null;
 
+-- Clean old test connections
+TRUNCATE automations_workflow;
+
 DROP INDEX field_relationship_from_index, field_relationship_to_index;
 ALTER TABLE field_relationship DROP CONSTRAINT field_relationship_pkey, ADD COLUMN fromFQNHash VARCHAR(256), ADD COLUMN toFQNHash VARCHAR(256),
      ADD CONSTRAINT  field_relationship_pkey PRIMARY KEY(fromFQNHash, toFQNHash, relation),
