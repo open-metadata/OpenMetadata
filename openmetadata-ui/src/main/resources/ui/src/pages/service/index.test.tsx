@@ -358,7 +358,7 @@ describe('Test ServicePage Component', () => {
     });
 
     const ingestionContainer = await screen.findByText(
-      'message.airflow-guide-message'
+      'message.pipeline-scheduler-message'
     );
 
     expect(ingestionContainer).toBeInTheDocument();

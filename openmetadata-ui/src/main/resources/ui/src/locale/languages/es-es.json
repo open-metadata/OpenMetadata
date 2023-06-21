@@ -1286,6 +1286,7 @@
     "permanently-delete-metadata": "Al eliminar permanentemente este {{entityName}}, se eliminaran sus metadatos de OpenMetadata permanentemente.",
     "permanently-delete-metadata-and-dependents": "Al eliminar permanentemente este {{entityName}}, se eliminaran sus metadatos, así como los metadatos de {{dependents}} de OpenMetadata permanentemente.",
     "pipeline-description-message": "Descripción del pipeline.",
+    "pipeline-scheduler-message": "The Ingestion Scheduler is unable to respond. Please reach out to Collate support. Thank you.",
     "pipeline-trigger-failed-message": "Failed to trigger the pipeline!",
     "pipeline-trigger-success-message": "¡Pipeline activado correctamente!",
     "pipeline-will-trigger-manually": "El pipeline sólo se activará manualmente.",
