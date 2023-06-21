@@ -51,7 +51,9 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   };
 
   return (
-    <Card className="shadow-none" data-testid="profiler-details-card-container">
+    <Card
+      className="shadow-none global-border-radius"
+      data-testid="profiler-details-card-container">
       <Row gutter={[16, 16]}>
         <Col span={4}>
           <ProfilerLatestValue

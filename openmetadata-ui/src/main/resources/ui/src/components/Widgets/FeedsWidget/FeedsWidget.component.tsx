@@ -19,6 +19,7 @@ import { ThreadType } from 'generated/entity/feed/thread';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFeedsWithFilter } from 'rest/feedsAPI';
+import { getCountBadge } from 'utils/CommonUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import './feeds-widget.less';
 
@@ -46,12 +47,20 @@ const FeedsWidget = () => {
         // Added block for sonar code smell
       });
     } else if (activeTab === 'tasks') {
-      getFeedData(FeedFilter.OWNER, undefined, ThreadType.Task).catch(() => {
-        // ignore since error is displayed in toast in the parent promise.
-        // Added block for sonar code smell
-      });
+      getFeedData(FeedFilter.OWNER, undefined, ThreadType.Task)
+        .then((data) => {
+          setTaskCount(data.length);
+        })
+        .catch(() => {
+          // ignore since error is displayed in toast in the parent promise.
+          // Added block for sonar code smell
+        });
     }
   }, [activeTab]);
+
+  const countBadge = useMemo(() => {
+    return getCountBadge(taskCount, '', activeTab === 'tasks');
+  }, [taskCount, activeTab]);
 
   useEffect(() => {
     getFeedsWithFilter(
@@ -78,6 +87,7 @@ const FeedsWidget = () => {
             children: (
               <ActivityFeedListV1
                 feedList={entityThread}
+                hidePopover={false}
                 isLoading={loading}
                 showThread={false}
               />
@@ -89,17 +99,24 @@ const FeedsWidget = () => {
             children: (
               <ActivityFeedListV1
                 feedList={entityThread}
+                hidePopover={false}
                 isLoading={loading}
                 showThread={false}
               />
             ),
           },
           {
-            label: `${t('label.task-plural')} (${taskCount})`,
+            label: (
+              <>
+                {`${t('label.task-plural')} `}
+                {countBadge}
+              </>
+            ),
             key: 'tasks',
             children: (
               <ActivityFeedListV1
                 feedList={entityThread}
+                hidePopover={false}
                 isLoading={loading}
                 showThread={false}
               />

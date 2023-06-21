@@ -4,6 +4,7 @@
 			"displayName": "Presto ETL",
 			"description": "Presto ETL pipeline",
 			"sourceUrl": "http://localhost:8080/tree?dag_id=presto_etl",
+			"scheduleInterval": "* * * * *",
 			"tasks": [
 				{
 				"name": "presto_task",
@@ -28,6 +29,7 @@
 			"displayName": "dim_address etl",
 			"description": "dim_address ETL pipeline",
 			"sourceUrl": "http://localhost:8080/tree?dag_id=dim_address_etl",
+			"scheduleInterval": "5 * * * *",
 			"tasks": [{
 				"name": "dim_address_task",
 				"displayName": "dim_address Task",
@@ -120,6 +122,7 @@
 			"displayName": "Trino ETL",
 			"description": "Trino ETL pipeline",
 			"sourceUrl": "http://localhost:8080/tree?dag_id=trino_etl",
+			"scheduleInterval": "@once",
 			"tasks": [{
 				"name": "trino_task",
 				"displayName": "Trino Task",

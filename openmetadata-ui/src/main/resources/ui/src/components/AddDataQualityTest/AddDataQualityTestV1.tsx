@@ -11,43 +11,33 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
+import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { t } from 'i18next';
-import { isUndefined, toString } from 'lodash';
+import { isUndefined } from 'lodash';
 import { default as React, useCallback, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { createTestCase, createTestSuites } from 'rest/testAPI';
+import { createExecutableTestSuite, createTestCase } from 'rest/testAPI';
 import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
 import { getTableTabPath } from '../../constants/constants';
 import { STEPS_FOR_ADD_TEST_CASE } from '../../constants/profiler.constant';
-import { EntityType, FqnPart } from '../../enums/entity.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
-import { PageLayoutType } from '../../enums/layout.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
-import {
-  getCurrentUserId,
-  getPartialNameFromTableFQN,
-} from '../../utils/CommonUtils';
-import { getTestSuitePath } from '../../utils/RouterUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
+import { getCurrentUserId } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
-import PageLayout from '../containers/PageLayout';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
-import {
-  AddDataQualityTestProps,
-  SelectTestSuiteType,
-} from './AddDataQualityTest.interface';
+import { AddDataQualityTestProps } from './AddDataQualityTest.interface';
 import RightPanel from './components/RightPanel';
-import SelectTestSuite from './components/SelectTestSuite';
 import TestCaseForm from './components/TestCaseForm';
 import { addTestSuiteRightPanel, INGESTION_DATA } from './rightPanelData';
 import TestSuiteIngestion from './TestSuiteIngestion';
@@ -59,8 +49,6 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const history = useHistory();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
-  const [selectedTestSuite, setSelectedTestSuite] =
-    useState<SelectTestSuiteType>();
   const [testCaseData, setTestCaseData] = useState<CreateTestCase>();
   const [testSuiteData, setTestSuiteData] = useState<TestSuite>();
   const [testCaseRes, setTestCaseRes] = useState<TestCase>();
@@ -73,95 +61,67 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
         name: getEntityName(table),
         url: getTableTabPath(table.fullyQualifiedName || '', 'profiler'),
       },
-    ];
-
-    if (isColumnFqn) {
-      const colVal = [
-        {
-          name: getPartialNameFromTableFQN(getDecodedFqn(entityTypeFQN), [
-            FqnPart.NestedColumn,
-          ]),
-          url: getTableTabPath(table.fullyQualifiedName || '', 'profiler'),
-        },
-        {
-          name: t('label.add-entity-test', { entity: t('label.column') }),
-          url: '',
-          activeTitle: true,
-        },
-      ];
-      data.push(...colVal);
-    } else {
-      data.push({
-        name: t('label.add-entity-test', { entity: t('label.table') }),
+      {
+        name: t('label.add-entity-test', {
+          entity: isColumnFqn ? t('label.column') : t('label.table'),
+        }),
         url: '',
         activeTitle: true,
-      });
-    }
+      },
+    ];
 
     return data;
   }, [table, entityTypeFQN, isColumnFqn]);
 
-  const handleViewTestSuiteClick = () => {
-    history.push(
-      getTestSuitePath(
-        selectedTestSuite?.data?.fullyQualifiedName ||
-          testSuiteData?.fullyQualifiedName ||
-          ''
-      )
-    );
+  const owner = useMemo(
+    () => ({
+      id: getCurrentUserId(),
+      type: OwnerType.USER,
+    }),
+    [getCurrentUserId]
+  );
+
+  const handleRedirection = () => {
+    history.goBack();
   };
 
-  const handleCancelClick = () => {
-    setActiveServiceStep((pre) => pre - 1);
-  };
+  const getTestSuiteFqn = async () => {
+    try {
+      if (isUndefined(table.testSuite)) {
+        const testSuite = {
+          name: `${table.name}.TestSuite`,
+          executableEntityReference: table.fullyQualifiedName,
+          owner,
+        };
+        const response = await createExecutableTestSuite(testSuite);
+        setTestSuiteData(response);
 
-  const handleTestCaseBack = (testCase: CreateTestCase) => {
-    setTestCaseData(testCase);
-    handleCancelClick();
-  };
+        return response.fullyQualifiedName ?? '';
+      }
+      setTestSuiteData(table.testSuite);
 
-  const handleSelectTestSuite = (data: SelectTestSuiteType) => {
-    setSelectedTestSuite(data);
-    setActiveServiceStep(2);
+      return table.testSuite?.fullyQualifiedName ?? '';
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+
+    return '';
   };
 
   const handleFormSubmit = async (data: CreateTestCase) => {
     setTestCaseData(data);
-    if (isUndefined(selectedTestSuite)) {
-      return;
-    }
+
     try {
-      const { parameterValues, testDefinition, name, entityLink, description } =
-        data;
-      const { isNewTestSuite, data: selectedSuite } = selectedTestSuite;
-      const owner = {
-        id: getCurrentUserId(),
-        type: OwnerType.USER,
-      };
+      const testSuite = await getTestSuiteFqn();
+
       const testCasePayload: CreateTestCase = {
-        name,
-        description,
-        entityLink,
-        parameterValues,
+        ...data,
         owner,
-        testDefinition,
-        testSuite: toString(selectedSuite?.fullyQualifiedName),
+        testSuite,
       };
-      if (isNewTestSuite && isUndefined(testSuiteData)) {
-        const testSuitePayload = {
-          name: selectedTestSuite.name || '',
-          description: selectedTestSuite.description || '',
-          owner,
-        };
-        const testSuiteResponse = await createTestSuites(testSuitePayload);
-        testCasePayload.testSuite = testSuiteResponse.fullyQualifiedName || '';
-        setTestSuiteData(testSuiteResponse);
-      } else if (!isUndefined(testSuiteData)) {
-        testCasePayload.testSuite = testSuiteData.fullyQualifiedName || '';
-      }
 
       const testCaseResponse = await createTestCase(testCasePayload);
-      setActiveServiceStep(3);
+      setActiveServiceStep(2);
       setTestCaseRes(testCaseResponse);
     } catch (error) {
       if (
@@ -187,22 +147,13 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 
   const RenderSelectedTab = useCallback(() => {
     if (activeServiceStep === 2) {
-      return (
-        <TestCaseForm
-          initialValue={testCaseData}
-          table={table}
-          onCancel={handleTestCaseBack}
-          onSubmit={handleFormSubmit}
-        />
-      );
-    } else if (activeServiceStep > 2) {
-      const successName = selectedTestSuite?.isNewTestSuite
-        ? `${testSuiteData?.name} & ${testCaseRes?.name}`
-        : testCaseRes?.name || t('label.test-case') || '';
+      const isNewTestSuite = isUndefined(table.testSuite);
 
-      const successMessage = selectedTestSuite?.isNewTestSuite ? undefined : (
+      const successMessage = isNewTestSuite ? undefined : (
         <span>
-          <span className="tw-mr-1 tw-font-semibold">{`"${successName}"`}</span>
+          <span className="tw-mr-1 tw-font-semibold">{`"${
+            testCaseRes?.name ?? t('label.test-case')
+          }"`}</span>
           <span>
             {`${t('message.has-been-created-successfully')}.`}
             &nbsp;
@@ -214,9 +165,9 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       return (
         <SuccessScreen
           handleIngestionClick={() => setAddIngestion(true)}
-          handleViewServiceClick={handleViewTestSuiteClick}
-          name={successName}
-          showIngestionButton={selectedTestSuite?.isNewTestSuite || false}
+          handleViewServiceClick={handleRedirection}
+          name={testCaseRes?.name ?? t('label.test-case')}
+          showIngestionButton={isNewTestSuite}
           state={FormSubmitType.ADD}
           successMessage={successMessage}
           viewServiceText={t('message.view-test-suite')}
@@ -225,67 +176,87 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
     }
 
     return (
-      <SelectTestSuite
-        initialValue={selectedTestSuite}
-        onSubmit={handleSelectTestSuite}
+      <TestCaseForm
+        initialValue={testCaseData}
+        table={table}
+        onCancel={handleRedirection}
+        onSubmit={handleFormSubmit}
       />
     );
   }, [activeServiceStep, testCaseRes]);
 
   return (
-    <PageLayout
-      classes="tw-max-w-full-hd tw-h-full tw-pt-4"
-      header={<TitleBreadcrumb titleLinks={breadcrumb} />}
-      layout={PageLayoutType['2ColRTL']}
+    <ResizablePanels
+      firstPanel={{
+        children: (
+          <div className="max-width-md w-9/10 service-form-container">
+            <TitleBreadcrumb titleLinks={breadcrumb} />
+            <div className="m-t-md">
+              {addIngestion ? (
+                <TestSuiteIngestion
+                  table={table}
+                  testSuite={testSuiteData as TestSuite}
+                  onCancel={() => setAddIngestion(false)}
+                />
+              ) : (
+                <Card className="p-xs">
+                  <Row gutter={[16, 16]}>
+                    <Col span={24}>
+                      <Typography.Paragraph
+                        className="tw-heading tw-text-base"
+                        data-testid="header">
+                        {t('label.add-entity-test', {
+                          entity: isColumnFqn
+                            ? t('label.column')
+                            : t('label.table'),
+                        })}
+                      </Typography.Paragraph>
+                    </Col>
+                    <Col span={24}>
+                      <IngestionStepper
+                        activeStep={activeServiceStep}
+                        steps={STEPS_FOR_ADD_TEST_CASE}
+                      />
+                    </Col>
+                    <Col span={24}>{RenderSelectedTab()}</Col>
+                  </Row>
+                </Card>
+              )}
+            </div>
+          </div>
+        ),
+        minWidth: 700,
+        flex: 0.7,
+      }}
       pageTitle={t('label.add-entity', {
         entity: t('label.data-quality-test'),
       })}
-      rightPanel={
-        <RightPanel
-          data={
-            addIngestion
-              ? INGESTION_DATA
-              : addTestSuiteRightPanel(
-                  activeServiceStep,
-                  selectedTestSuite?.isNewTestSuite,
-                  {
-                    testCase: testCaseData?.name || '',
-                    testSuite: testSuiteData?.name || '',
-                  }
-                )
-          }
-        />
-      }>
-      {addIngestion ? (
-        <TestSuiteIngestion
-          testSuite={
-            selectedTestSuite?.isNewTestSuite
-              ? (testSuiteData as TestSuite)
-              : (selectedTestSuite?.data as TestSuite)
-          }
-          onCancel={() => setAddIngestion(false)}
-        />
-      ) : (
-        <Row className="tw-form-container" gutter={[16, 16]}>
-          <Col span={24}>
-            <Typography.Paragraph
-              className="tw-heading tw-text-base"
-              data-testid="header">
-              {t('label.add-entity-test', {
-                entity: isColumnFqn ? t('label.column') : t('label.table'),
-              })}
-            </Typography.Paragraph>
-          </Col>
-          <Col span={24}>
-            <IngestionStepper
-              activeStep={activeServiceStep}
-              steps={STEPS_FOR_ADD_TEST_CASE}
-            />
-          </Col>
-          <Col span={24}>{RenderSelectedTab()}</Col>
-        </Row>
-      )}
-    </PageLayout>
+      secondPanel={{
+        children: (
+          <RightPanel
+            data={
+              addIngestion
+                ? INGESTION_DATA
+                : addTestSuiteRightPanel(
+                    activeServiceStep,
+                    isUndefined(table.testSuite),
+                    {
+                      testCase: testCaseData?.name || '',
+                      testSuite: testSuiteData?.name || '',
+                    }
+                  )
+            }
+          />
+        ),
+        className: 'p-md service-doc-panel',
+        minWidth: 60,
+        overlay: {
+          displayThreshold: 200,
+          header: t('label.setup-guide'),
+          rotation: 'counter-clockwise',
+        },
+      }}
+    />
   );
 };
 

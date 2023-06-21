@@ -16,16 +16,12 @@
 .activity-feed-card {
   padding: 18px 12px;
   margin: 0 12px;
-  border-bottom: 1px solid @border-color;
   position: relative;
   .toastui-editor-contents code {
     color: black !important;
     background-color: @code-background !important;
     padding: 2px 4px;
     font-size: 14px;
-  }
-  .thread-count span {
-    padding-top: 3px;
   }
 }
 
@@ -36,51 +32,17 @@
     width: fit-content;
   }
   .diff-removed {
-    color: @grey-2;
+    color: @grey-3;
     text-decoration: line-through;
     width: fit-content;
   }
   .diff-description {
     color: @success-color;
   }
-}
 
-.feed-actions {
-  position: absolute;
-  display: inline-block;
-  right: -12px;
-  bottom: 18px;
-  transition: width 0.3s;
-  width: 26px;
-  background: #f4f6f9;
-  border: 1px solid #0000001a;
-  border-radius: 10px 0px 0px 10px;
-  border-right: none;
-}
-
-.action-buttons {
-  position: absolute;
-  top: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  opacity: 0;
-  transform: translateX(100%);
-  transition: opacity 0.3s, transform 0.3s;
-}
-
-.expand-button {
-  background-color: transparent;
-  border: none;
-  color: gray;
-}
-
-.toolbar-button {
-  width: 30px !important;
-  padding: 0 !important;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  &.active {
+    border-left: 4px solid #2196f3;
+  }
 }
 
 .thread-users-profile-pic .profile-image-span:first-child {
@@ -100,15 +62,8 @@
 }
 
 .activity-feed-card-v1:hover {
+  background-color: @grey-1;
   .feed-actions {
-    width: 130px;
-    .expand-button {
-      opacity: 0;
-      pointer-events: none;
-    }
-    .action-buttons {
-      opacity: 1;
-      transform: translateX(0);
-    }
+    display: flex;
   }
 }

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { PRIMERY_COLOR } from 'constants/constants';
 import { t } from 'i18next';
 import React, { FC, ReactNode } from 'react';
 import { Area, AreaChart, Tooltip } from 'recharts';
@@ -78,9 +79,9 @@ const TableProfilerGraph: FC<Props> = ({
         />
         <Area
           dataKey="value"
-          fill="#7147E8"
+          fill={PRIMERY_COLOR}
           fillOpacity="0.4"
-          stroke="#7147E8"
+          stroke={PRIMERY_COLOR}
           type="monotone"
         />
       </AreaChart>

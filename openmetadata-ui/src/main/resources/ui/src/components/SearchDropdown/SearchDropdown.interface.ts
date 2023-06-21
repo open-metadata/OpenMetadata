@@ -27,4 +27,5 @@ export interface SearchDropdownProps {
 export interface SearchDropdownOption {
   key: string;
   label: string;
+  count?: number;
 }

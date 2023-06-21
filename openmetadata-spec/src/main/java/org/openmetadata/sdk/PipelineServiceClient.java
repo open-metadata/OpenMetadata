@@ -24,6 +24,8 @@ import java.util.Properties;
 import java.util.regex.Pattern;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ServiceEntityInterface;
@@ -52,6 +54,8 @@ public abstract class PipelineServiceClient {
   protected final String hostIp;
 
   protected final boolean ingestionIpInfoEnabled;
+
+  @Getter @Setter private String platform;
 
   protected static final String AUTH_HEADER = "Authorization";
   protected static final String CONTENT_HEADER = "Content-Type";
@@ -147,12 +151,12 @@ public abstract class PipelineServiceClient {
 
   /** To build the response of getServiceStatus */
   public Map<String, String> buildHealthyStatus(String ingestionVersion) {
-    return Map.of("status", "healthy", "version", ingestionVersion);
+    return Map.of("status", "healthy", "version", ingestionVersion, "platform", this.getPlatform());
   }
 
   /** To build the response of getServiceStatus */
   public Map<String, String> buildUnhealthyStatus(String reason) {
-    return Map.of("status", "unhealthy", "reason", reason);
+    return Map.of("status", "unhealthy", "reason", reason, "platform", this.getPlatform());
   }
 
   public final Response getHostIp() {

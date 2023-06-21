@@ -255,7 +255,7 @@ export const INITIAL_ROW_METRIC_VALUE = {
         entity: t('label.row'),
       }),
       dataKey: 'rowCount',
-      color: '#008376',
+      color: '#43a047',
     },
   ],
   data: [],
@@ -266,17 +266,17 @@ export const INITIAL_OPERATION_METRIC_VALUE = {
     {
       title: t('label.insert'),
       dataKey: DMLOperationType.Insert,
-      color: '#008376',
+      color: '#7147e8',
     },
     {
       title: t('label.update'),
       dataKey: DMLOperationType.Update,
-      color: '#1890FF',
+      color: '#43a047',
     },
     {
       title: t('label.delete'),
       dataKey: DMLOperationType.Delete,
-      color: '#7147E8',
+      color: '#ff7c50',
     },
   ],
   data: [],
@@ -327,13 +327,13 @@ export const codeMirrorOption = {
 };
 
 export const STEPS_FOR_ADD_TEST_CASE: Array<StepperStepType> = [
-  { name: t('label.select-add-test-suite'), step: 1 },
   {
     name: t('label.configure-entity', {
       entity: t('label.test-case-lowercase'),
     }),
-    step: 2,
+    step: 1,
   },
+  { name: t('label.success'), step: 2 },
 ];
 
 export const SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME = [

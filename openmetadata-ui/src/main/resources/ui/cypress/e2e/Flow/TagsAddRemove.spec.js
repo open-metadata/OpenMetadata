@@ -18,20 +18,28 @@ import {
 } from '../../common/common';
 import { TAGS_ADD_REMOVE_ENTITIES } from '../../constants/tagsAddRemove.constants';
 
-const addTags = (tag) => {
+const addTags = (tag, parent) => {
   cy.get('[data-testid="tag-selector"]')
     .scrollIntoView()
     .should('be.visible')
     .click()
     .type(tag);
 
-  cy.get('.ant-select-item-option-content').should('be.visible').click();
+  if (parent) {
+    cy.get(`[title="${tag}"]`).should('be.visible').click();
+  } else {
+    cy.get('.ant-select-item-option-content')
+      .should('be.visible')
+      .click({ multiple: true });
+  }
   cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
 };
 
 const checkTags = (tag, checkForParentEntity) => {
   if (checkForParentEntity) {
-    cy.get('[data-testid="entity-tags"]  [data-testid="tag-container"]')
+    cy.get(
+      '[data-testid="entity-right-panel"]  [data-testid="tag-container"] [data-testid="entity-tags"] '
+    )
       .scrollIntoView()
       .should('be.visible')
       .contains(tag);
@@ -42,7 +50,7 @@ const checkTags = (tag, checkForParentEntity) => {
 
 const removeTags = (checkForParentEntity, separate) => {
   if (checkForParentEntity) {
-    cy.get('[data-testid="entity-tags"] [data-testid="edit-button"] ')
+    cy.get('[data-testid="entity-right-panel"] [data-testid="edit-button"] ')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -78,13 +86,11 @@ describe('Check if tags addition and removal flow working properly from tables',
         entityDetails.entity
       );
 
-      cy.get(
-        '[data-testid="entity-tags"] [data-testid="tags-wrapper"] [data-testid="tag-container"] [data-testid="tags"]  [data-testid="add-tag"]'
-      )
+      cy.get('[data-testid="entity-right-panel"] [data-testid="add-tag"]')
         .should('be.visible')
         .click();
 
-      addTags(entityDetails.tags[0]);
+      addTags(entityDetails.entityTags, true);
 
       interceptURL('PATCH', `/api/v1/${entityDetails.entity}/*`, 'tagsChange');
 
@@ -113,7 +119,7 @@ describe('Check if tags addition and removal flow working properly from tables',
       }
 
       entityDetails.tags.map((tag) => addTags(tag));
-
+      cy.clickOutside();
       interceptURL(
         'PATCH',
         `/api/v1/${entityDetails.insideEntity ?? entityDetails.entity}/*`,

@@ -62,6 +62,15 @@ jest.mock('components/IngestionStepper/IngestionStepper.component', () => {
   return jest.fn().mockReturnValue(<div>Ingestion Stepper</div>);
 });
 
+jest.mock('components/common/ResizablePanels/ResizablePanels', () =>
+  jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <>
+      <div>{firstPanel.children}</div>
+      <div>{secondPanel.children}</div>
+    </>
+  ))
+);
+
 jest.mock(
   'components/common/title-breadcrumb/title-breadcrumb.component',
   () => {

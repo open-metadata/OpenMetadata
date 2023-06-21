@@ -24,8 +24,6 @@ import {
 } from '../../common/common';
 import { DELETE_ENTITY, DELETE_TERM } from '../../constants/constants';
 
-const entityTag = 'PersonalData.Personal';
-
 describe('Entity Details Page', () => {
   beforeEach(() => {
     cy.login();
@@ -106,165 +104,6 @@ describe('Entity Details Page', () => {
     cy.clickOnLogo();
   };
 
-  const addOwnerTierAndTag = (value) => {
-    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
-
-    interceptURL(
-      'GET',
-      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
-      'waitForTeams'
-    );
-
-    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
-
-    verifyResponseStatusCode('@waitForTeams', 200);
-    // Clicking on users tab
-    cy.get('.user-team-select-popover')
-      .contains('Users')
-      .should('exist')
-      .should('be.visible')
-      .click();
-
-    interceptURL('PATCH', '/api/v1/tables/*', 'validateOwner');
-    // Selecting the user
-    cy.get('[data-testid="selectable-list"]')
-      .eq(1)
-      .should('exist')
-      .should('be.visible')
-      .find('[title="admin"]')
-      .should('be.visible')
-      .click();
-
-    verifyResponseStatusCode('@validateOwner', 200);
-
-    cy.get('[data-testid="owner-link"]')
-      .scrollIntoView()
-      .invoke('text')
-      .then((text) => {
-        expect(text).equal('admin');
-      });
-
-    cy.get('[data-testid="edit-Tier-icon"]')
-      .scrollIntoView()
-      .should('exist')
-      .should('be.visible')
-      .click();
-
-    cy.get('[data-testid="select-tier-button"]')
-      .first()
-      .should('exist')
-      .should('be.visible')
-      .click();
-
-    cy.get('[data-testid="tier-dropdown"]')
-      .invoke('text')
-      .then((text) => {
-        expect(text).equal('Tier1');
-      });
-
-    // add tag to the entity
-    interceptURL('GET', '/api/v1/tags?limit=1000', 'tagsRequest');
-    interceptURL(
-      'GET',
-      '/api/v1/search/query?q=*&from=0&size=1000&index=glossary_search_index',
-      'glossaryRequest'
-    );
-
-    cy.get('[data-testid="entity-tags"]')
-      .find('[data-testid="add-tag"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-
-    cy.get('[data-testid="tag-selector"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .type(entityTag);
-
-    verifyResponseStatusCode('@tagsRequest', 200);
-    verifyResponseStatusCode('@glossaryRequest', 200);
-
-    cy.get('.ant-select-item-option-content')
-      .first()
-      .should('be.visible')
-      .click();
-
-    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
-
-    // Test out the activity feed and task tab
-    cy.get('[data-testid="activity_feed"]').should('be.visible').click();
-    // Check for tab count
-    cy.get('[data-testid=filter-count').should('be.visible');
-
-    // Check for activity feeds - count should be 3
-    // 1 for tier change , 1 for owner change, 1 for entity tag and 1 for Entity created.
-    cy.get('[data-testid="message-container"]').its('length').should('eq', 4);
-
-    cy.clickOnLogo();
-
-    // checks newly generated feed for follow and setting owner
-    cy.get('[data-testid="message-container"]')
-      .eq(2)
-      .contains('Added owner: admin')
-      .should('be.visible');
-
-    cy.get('[data-testid="message-container"]')
-      .eq(1)
-      .scrollIntoView()
-      .contains('Added tags: Tier.Tier1')
-      .should('be.visible');
-
-    cy.clickOnLogo();
-  };
-
-  const removeOwnerAndTier = (value) => {
-    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
-
-    interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'waitForUsers');
-
-    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
-
-    verifyResponseStatusCode('@waitForUsers', 200);
-
-    cy.get('.user-team-select-popover')
-      .contains('Users')
-      .should('exist')
-      .should('be.visible')
-      .click();
-
-    interceptURL('PATCH', `/api/v1/*/*`, 'removeOwner');
-    // Removing the user
-    cy.get('[data-testid="remove-owner"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
-
-    verifyResponseStatusCode('@removeOwner', 200);
-
-    // Check if user exist
-    cy.get('[data-testid="entity-summary-details"]')
-      .first()
-      .scrollIntoView()
-      .should('exist')
-      .contains('No Owner');
-
-    cy.get('[data-testid="edit-Tier-icon"]')
-      .scrollIntoView()
-      .should('exist')
-      .should('be.visible')
-      .click();
-
-    cy.get('[data-testid="remove-tier"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
-
-    // after removing the tier entity tag should exists
-    cy.get('[data-testid="entity-tags"]').should('contain', entityTag);
-
-    cy.clickOnLogo();
-  };
-
   const addAnnouncement = (value) => {
     const startDate = getCurrentLocaleDate();
     const endDate = getFutureLocaleDateFromCurrentDate(5);
@@ -308,14 +147,6 @@ describe('Entity Details Page', () => {
 
     cy.clickOnLogo();
   };
-
-  it('Add Owner, Tier and tags for entity', () => {
-    addOwnerTierAndTag(DELETE_ENTITY.table);
-  });
-
-  it('Remove Owner and Tier for entity', () => {
-    removeOwnerAndTier(DELETE_ENTITY.table);
-  });
 
   it('Add and check active announcement for the entity', () => {
     addAnnouncement(DELETE_ENTITY.table);

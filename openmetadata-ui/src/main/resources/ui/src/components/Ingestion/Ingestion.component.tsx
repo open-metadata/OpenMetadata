@@ -181,7 +181,7 @@ const Ingestion: React.FC<IngestionProps> = ({
               />
             ) : null}
           </div>
-          <div className="tw-relative">
+          <div className="relative">
             {showAddIngestionButton && (
               <AddIngestionButton
                 ingestionData={ingestionData}

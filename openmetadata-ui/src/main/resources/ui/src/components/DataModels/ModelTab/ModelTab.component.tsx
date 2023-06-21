@@ -186,6 +186,7 @@ const ModelTab = ({
         dataIndex: 'description',
         key: 'description',
         accessor: 'description',
+        width: 350,
         render: renderColumnDescription,
       },
       {
@@ -261,6 +262,7 @@ const ModelTab = ({
         dataSource={data}
         pagination={false}
         rowKey="name"
+        scroll={{ x: 1200 }}
         size="small"
       />
 

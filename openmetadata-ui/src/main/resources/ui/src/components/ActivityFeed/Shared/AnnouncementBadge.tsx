@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import { ReactComponent as AnnouncementIcon } from '../../../assets/svg/announcements-v1.svg';
 import './Badge.less';
 
 const AnnouncementBadge = () => {
@@ -21,12 +22,11 @@ const AnnouncementBadge = () => {
 
   return (
     <div className="announcement-badge-container">
-      <SVGIcons
-        alt="announcement"
-        className="announcement-badge"
-        icon={Icons.ANNOUNCEMENT_YELLOW}
-      />
-      <span className="announcement-content">{t('label.announcement')}</span>
+      <AnnouncementIcon className="announcement-badge" />
+
+      <Typography.Paragraph className="text-xs m-l-xss m-b-0 text-primary">
+        {t('label.announcement')}
+      </Typography.Paragraph>
     </div>
   );
 };

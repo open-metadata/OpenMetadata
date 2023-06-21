@@ -33,7 +33,7 @@ import { getEntityName } from 'utils/EntityUtils';
 import appState from '../../AppState';
 import { ReactComponent as IconAPI } from '../../assets/svg/api.svg';
 import { ReactComponent as IconDoc } from '../../assets/svg/doc.svg';
-import { ReactComponent as IconExternalLink } from '../../assets/svg/external-link.svg';
+import { ReactComponent as IconExternalLink } from '../../assets/svg/external-links.svg';
 import { ReactComponent as IconSlackGrey } from '../../assets/svg/slack-grey.svg';
 import { ReactComponent as IconVersionBlack } from '../../assets/svg/version-black.svg';
 import {
@@ -128,7 +128,11 @@ const Appbar: React.FC = (): JSX.Element => {
             />
             <span className="text-base-color">{t('label.doc-plural')}</span>
 
-            <IconExternalLink className="m-l-xss" height={14} width={14} />
+            <IconExternalLink
+              className="text-base-color m-l-xss"
+              height={14}
+              width={14}
+            />
           </Space>
         </a>
       ),
@@ -165,7 +169,11 @@ const Appbar: React.FC = (): JSX.Element => {
               width={14}
             />
             <span className="text-base-color">{t('label.slack-support')}</span>
-            <IconExternalLink className="m-l-xss" height={14} width={14} />
+            <IconExternalLink
+              className="text-base-color m-l-xss"
+              height={14}
+              width={14}
+            />
           </Space>
         </a>
       ),
@@ -208,7 +216,11 @@ const Appbar: React.FC = (): JSX.Element => {
               'label.version'
             )} ${(version ? version : '?').split('-')[0]}`}</span>
 
-            <IconExternalLink className="m-l-xss" height={14} width={14} />
+            <IconExternalLink
+              className="text-base-color m-l-xss"
+              height={14}
+              width={14}
+            />
           </Space>
         </a>
       ),
@@ -266,7 +278,7 @@ const Appbar: React.FC = (): JSX.Element => {
           to={getUserPath(currentUser?.name as string)}>
           {' '}
           <Typography.Paragraph
-            className="ant-typography-ellipsis-custom font-medium cursor-pointer text-primary"
+            className="ant-typography-ellipsis-custom font-medium cursor-pointer text-link-color"
             ellipsis={{ rows: 1, tooltip: true }}>
             {name}
           </Typography.Paragraph>
@@ -298,7 +310,6 @@ const Appbar: React.FC = (): JSX.Element => {
                 {remainingTeamsCount} {t('label.more')}
               </Link>
             ) : null}
-            <hr className="tw-mt-1.5" />
           </div>
         ) : null}
       </div>
@@ -312,12 +323,6 @@ const Appbar: React.FC = (): JSX.Element => {
       disabled: false,
       icon: <></>,
       isText: true,
-    },
-    {
-      name: t('label.logout'),
-      to: '',
-      disabled: false,
-      method: onLogoutHandler,
     },
   ];
 
@@ -407,8 +412,7 @@ const Appbar: React.FC = (): JSX.Element => {
   return (
     <>
       {isProtectedRoute(location.pathname) &&
-      (isAuthDisabled || isAuthenticated) &&
-      !isTourRoute(location.pathname) ? (
+      (isAuthDisabled || isAuthenticated) ? (
         <NavBar
           handleClear={handleClear}
           handleFeatureModal={handleFeatureModal}
