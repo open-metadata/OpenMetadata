@@ -34,7 +34,10 @@ import ProfilerLatestValue from '../../ProfilerDashboard/component/ProfilerLates
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
 import { TableProfilerChartProps } from '../TableProfiler.interface';
 
-const TableProfilerChart = ({ dateRangeObject }: TableProfilerChartProps) => {
+const TableProfilerChart = ({
+  dateRangeObject,
+  entityFqn = '',
+}: TableProfilerChartProps) => {
   const { datasetFQN } = useParams<{ datasetFQN: string }>();
 
   const [rowCountMetrics, setRowCountMetrics] = useState<MetricChartType>(
@@ -89,12 +92,12 @@ const TableProfilerChart = ({ dateRangeObject }: TableProfilerChartProps) => {
   };
 
   useEffect(() => {
-    if (datasetFQN) {
-      fetchProfilerData(datasetFQN, dateRangeObject);
+    if (datasetFQN || entityFqn) {
+      fetchProfilerData(datasetFQN || entityFqn, dateRangeObject);
     } else {
       setIsLoading(false);
     }
-  }, [datasetFQN, dateRangeObject]);
+  }, [datasetFQN, dateRangeObject, entityFqn]);
 
   if (isLoading) {
     return <Loader />;

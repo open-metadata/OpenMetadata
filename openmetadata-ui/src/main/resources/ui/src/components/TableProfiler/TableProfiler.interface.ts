@@ -85,6 +85,7 @@ export type TableProfilerData = {
 
 export type TableProfilerChartProps = {
   dateRangeObject: DateRangeObject;
+  entityFqn?: string;
 };
 
 export interface ProfilerSettingModalState {
