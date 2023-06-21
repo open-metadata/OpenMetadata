@@ -97,6 +97,7 @@ export enum TabSpecificField {
   TABLE_CONSTRAINTS = 'tableConstraints',
   EXTENSION = 'extension',
   EXECUTIONS = 'executions',
+  SCHEDULE_INTERVAL = 'scheduleInterval',
   TESTSUITE = 'testSuite',
 }
 

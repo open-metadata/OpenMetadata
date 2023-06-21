@@ -70,6 +70,7 @@ import { getEntityName } from 'utils/EntityUtils';
 import {
   getServiceDetailsPath,
   getTeamAndUserDetailsPath,
+  NO_DATA_PLACEHOLDER,
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
@@ -1006,6 +1007,21 @@ const ServicePage: FunctionComponent = () => {
             </span>
           ),
       },
+      ...(ServiceCategory.PIPELINE_SERVICES === serviceCategory
+        ? [
+            {
+              title: t('label.schedule-interval'),
+              dataIndex: 'scheduleInterval',
+              key: 'scheduleInterval',
+              render: (scheduleInterval: Pipeline['scheduleInterval']) =>
+                scheduleInterval ? (
+                  <span>{scheduleInterval}</span>
+                ) : (
+                  <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>
+                ),
+            },
+          ]
+        : []),
       {
         title: t('label.owner'),
         dataIndex: 'owner',
