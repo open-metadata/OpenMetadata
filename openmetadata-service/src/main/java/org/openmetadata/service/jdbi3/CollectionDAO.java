@@ -34,6 +34,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
@@ -1219,6 +1220,10 @@ public interface CollectionDAO {
         @Bind("toType") String toType,
         @Bind("relation") int relation);
 
+    @SqlQuery("SELECT * FROM field_relationship")
+    @RegisterRowMapper(FieldRelationShipMapper.class)
+    List<FieldRelationship> listAll();
+
     @SqlQuery(
         "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
             + "fromFQNHash = :fqnHash AND fromType = :type AND toType = :otherType AND relation = :relation "
@@ -1271,6 +1276,37 @@ public interface CollectionDAO {
       public Triple<String, String, String> map(ResultSet rs, StatementContext ctx) throws SQLException {
         return Triple.of(rs.getString("fromFQN"), rs.getString("toFQN"), rs.getString("json"));
       }
+    }
+
+    class FieldRelationShipMapper implements RowMapper<FieldRelationship> {
+      @Override
+      public FieldRelationship map(ResultSet rs, StatementContext ctx) throws SQLException {
+        FieldRelationship result = new FieldRelationship();
+        result.setFromFQNHash(rs.getString("fromFQNHash"));
+        result.setToFQNHash(rs.getString("toFQNHash"));
+        result.setFromFQN(rs.getString("fromFQN"));
+        result.setToFQN(rs.getString("toFQN"));
+        result.setFromType(rs.getString("fromType"));
+        result.setToType(rs.getString("toType"));
+        result.setRelation(rs.getInt("relation"));
+        result.setJsonSchema(rs.getString("jsonSchema"));
+        result.setJson(rs.getString("json"));
+        return result;
+      }
+    }
+
+    @Getter
+    @Setter
+    class FieldRelationship {
+      private String fromFQNHash;
+      private String toFQNHash;
+      private String fromFQN;
+      private String toFQN;
+      private String fromType;
+      private String toType;
+      private int relation;
+      private String jsonSchema;
+      private String json;
     }
   }
 
@@ -1348,7 +1384,7 @@ public interface CollectionDAO {
   interface MetricsDAO extends EntityDAO<Metrics> {
     @Override
     default String getTableName() {
-      return "metrics_entity";
+      return "metric_entity";
     }
 
     @Override

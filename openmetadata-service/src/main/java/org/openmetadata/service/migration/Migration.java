@@ -40,6 +40,24 @@ public final class Migration {
     return Collections.max(migrationFiles);
   }
 
+  public static Optional<String> lastMigratedServerVersion(Jdbi jdbi) {
+    try {
+      return jdbi.withExtension(MigrationDAO.class, MigrationDAO::getMaxServerVersion);
+    } catch (StatementException e) {
+      throw new IllegalArgumentException(
+          "Exception encountered when trying to obtain last migrated Server Version.", e);
+    }
+  }
+
+  public static Optional<String> lastRunMigrationStepFile(Jdbi jdbi) throws IOException {
+    try {
+      return jdbi.withExtension(MigrationDAO.class, MigrationDAO::getLastRunMigrationStepFile);
+    } catch (StatementException e) {
+      throw new IllegalArgumentException(
+          "Exception encountered when trying to obtain last migrated Server Version.", e);
+    }
+  }
+
   /** Read the migrations path from the Catalog YAML config and return a list of all the files' versions. */
   private static List<String> getMigrationVersions(MigrationConfiguration conf) throws IOException {
     try (Stream<String> names =

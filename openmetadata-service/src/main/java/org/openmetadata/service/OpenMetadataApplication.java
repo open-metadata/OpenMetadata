@@ -85,6 +85,8 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationConfiguration;
+import org.openmetadata.service.migration.api.MigrationWorkflow;
+import org.openmetadata.service.migration.versions.MigrationOneDotOne;
 import org.openmetadata.service.monitoring.EventMonitor;
 import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
@@ -155,6 +157,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Validate flyway Migrations
     validateMigrations(jdbi, catalogConfig.getMigrationConfiguration());
+
+    // Validate and Run System Data Migrations
+    validateAndRunSystemDataMigrations(jdbi);
 
     // Register Authorizer
     registerAuthorizer(catalogConfig, environment);
@@ -331,6 +336,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
               + " You can find more information on upgrading OpenMetadata at"
               + " https://docs.open-metadata.org/deployment/upgrade ");
     }
+  }
+
+  private void validateAndRunSystemDataMigrations(Jdbi jdbi) throws IOException {
+    // TODO: Add validation and migration if required
+    MigrationOneDotOne migrationOneDotOne = new MigrationOneDotOne();
+    MigrationWorkflow workflow = new MigrationWorkflow(jdbi, migrationOneDotOne);
+    workflow.runMigrationWorkflows();
   }
 
   private void validateConfiguration(OpenMetadataApplicationConfig catalogConfig) throws ConfigurationException {

@@ -13,4 +13,18 @@ public interface MigrationDAO {
   @ConnectionAwareSqlQuery(value = "SELECT max(version) FROM \"DATABASE_CHANGE_LOG\"", connectionType = POSTGRES)
   @SingleValue
   Optional<String> getMaxVersion() throws StatementException;
+
+  @ConnectionAwareSqlQuery(value = "SELECT MAX(version) FROM SERVER_CHANGE_LOG", connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(value = "SELECT max(version) FROM \"SERVER_CHANGE_LOG\"", connectionType = POSTGRES)
+  @SingleValue
+  Optional<String> getMaxServerVersion() throws StatementException;
+
+  @ConnectionAwareSqlQuery(
+      value = "SELECT migrationFileName FROM SERVER_CHANGE_LOG ORDER BY installed_rank DESC LIMIT 1",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value = "SELECT migrationFileName FROM \"SERVER_CHANGE_LOG\" ORDER BY installed_rank DESC LIMIT 1",
+      connectionType = POSTGRES)
+  @SingleValue
+  Optional<String> getLastRunMigrationStepFile() throws StatementException;
 }
