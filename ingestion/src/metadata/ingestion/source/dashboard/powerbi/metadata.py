@@ -641,12 +641,12 @@ class PowerbiSource(DashboardServiceSource):
         Method to search the workspace name in which the dataset in contained
         """
         if dataset_id:
-            workspace_names = [
+            workspace_names = (
                 workspace.name
                 for workspace in self.workspace_data
                 for dataset in workspace.datasets
                 if dataset.id == dataset_id
-            ]
+            )
             return next(iter(workspace_names), None)
 
         return None
