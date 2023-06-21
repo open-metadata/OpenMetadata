@@ -62,10 +62,10 @@ import {
   getTopicVersion,
   getTopicVersions,
 } from 'rest/topicsAPI';
-import { getContainerDetailPath } from 'utils/ContainerDetailUtils';
-import { getEntityBreadcrumbs } from 'utils/EntityUtils';
+import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
+  getContainerDetailPath,
   getDashboardDetailsPath,
   getDataModelDetailsPath,
   getMlModelDetailsPath,
@@ -88,6 +88,7 @@ import {
 import { defaultFields as DataModelFields } from '../../utils/DataModelsUtils';
 import { defaultFields as MlModelFields } from '../../utils/MlModelDetailsUtils';
 
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -945,7 +946,16 @@ const EntityVersionPage: FunctionComponent = () => {
     fetchCurrentVersion();
   }, [version]);
 
-  return <>{isLoading ? <Loader /> : versionComponent()}</>;
+  return (
+    <PageLayoutV1
+      pageTitle={t('label.entity-detail-plural', {
+        entity: getEntityName(currentVersionData),
+      })}>
+      <div className="page-container">
+        {isLoading ? <Loader /> : versionComponent()}
+      </div>
+    </PageLayoutV1>
+  );
 };
 
 export default EntityVersionPage;

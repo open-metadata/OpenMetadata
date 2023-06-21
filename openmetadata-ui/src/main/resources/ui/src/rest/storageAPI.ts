@@ -18,6 +18,7 @@ import { EntityReference } from 'generated/type/entityReference';
 import { Paging } from 'generated/type/paging';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { ServicePageData } from 'pages/service';
+import { getURLWithQueryFields } from 'utils/APIUtils';
 import APIClient from './index';
 
 const configOptionsForPatch = {
@@ -111,6 +112,22 @@ export const getContainerVersions = async (id: string) => {
 
 export const getContainerVersion = async (id: string, version: string) => {
   const url = `/containers/${id}/versions/${version}`;
+
+  const response = await APIClient.get<Container>(url);
+
+  return response.data;
+};
+
+export const getContainerByFQN = async (
+  fqn: string,
+  arrQueryFields: string | string[],
+  include = 'all'
+) => {
+  const url = getURLWithQueryFields(
+    `/containers/name/${fqn}`,
+    arrQueryFields,
+    `include=${include}`
+  );
 
   const response = await APIClient.get<Container>(url);
 

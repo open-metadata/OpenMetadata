@@ -11,20 +11,26 @@
  *  limitations under the License.
  */
 
-@background: #fffdf8;
-@border: #ffc143;
+@import url('../../../../styles/variables.less');
 
 .announcement-card {
   width: 340px;
-  background: @background;
-  border: 1px solid @border;
-  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.12);
-  border-radius: 6px;
+  background: @announcement-background;
+  border: 1px solid @announcement-border;
+  border-radius: 8px;
+  box-shadow: none;
   cursor: pointer;
   .ant-card-body {
     padding: 8px;
   }
-  .ant-space .ant-space-item:first-child {
-    width: 40px;
+
+  .announcement-icon {
+    color: @announcement-border;
+    margin: 2px 0 0;
+  }
+  .announcement-title {
+    width: 300px;
+    font-weight: 500;
+    margin: 0;
   }
 }

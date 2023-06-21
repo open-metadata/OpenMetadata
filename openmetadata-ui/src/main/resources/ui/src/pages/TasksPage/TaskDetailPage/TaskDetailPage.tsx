@@ -94,7 +94,6 @@ import {
 import { getDayTimeByTimeStamp } from '../../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
-import ClosedTask from '../shared/ClosedTask';
 import ColumnDetail from '../shared/ColumnDetail';
 import CommentModal from '../shared/CommentModal';
 import DescriptionTask from '../shared/DescriptionTask';
@@ -102,7 +101,6 @@ import EntityDetail from '../shared/EntityDetail';
 import TagsTask from '../shared/TagsTask';
 import TaskStatus from '../shared/TaskStatus';
 import '../TaskPage.style.less';
-import { background, cardStyles, contentStyles } from '../TaskPage.styles';
 import {
   EntityData,
   Option,
@@ -590,12 +588,12 @@ const TaskDetailPage = () => {
       {isTaskLoading ? (
         <Loader />
       ) : (
-        <Layout style={{ ...background, height: '100vh' }}>
+        <Layout style={{ height: '100vh' }}>
           {error ? (
             <ErrorPlaceHolder>{error}</ErrorPlaceHolder>
           ) : (
             <Fragment>
-              <Content style={{ ...contentStyles, overflowY: 'auto' }}>
+              <Content className="p-lg" style={{ overflowY: 'auto' }}>
                 <TitleBreadcrumb
                   className="m-t-lg m-b-xs"
                   titleLinks={[
@@ -611,9 +609,7 @@ const TaskDetailPage = () => {
                 />
                 <EntityDetail entityData={entityData} />
 
-                <Card
-                  data-testid="task-metadata"
-                  style={{ ...cardStyles, marginTop: '16px' }}>
+                <Card className="m-t-lg" data-testid="task-metadata">
                   <p
                     className="tw-text-base tw-font-medium tw-mb-4"
                     data-testid="task-title">
@@ -706,12 +702,7 @@ const TaskDetailPage = () => {
                   </div>
                 </Card>
 
-                <Card
-                  className="mt-4 ml-6 task-data"
-                  data-testid="task-data"
-                  style={{
-                    ...cardStyles,
-                  }}>
+                <Card className="mt-4 ml-6 task-data" data-testid="task-data">
                   <Form
                     form={form}
                     layout="vertical"
@@ -786,11 +777,7 @@ const TaskDetailPage = () => {
                         </Button>
                       )}
 
-                      {isTaskClosed ? (
-                        <ClosedTask task={taskDetail.task} />
-                      ) : (
-                        actionButtons
-                      )}
+                      {!isTaskClosed && actionButtons}
                     </Space>
                   </Form>
                 </Card>

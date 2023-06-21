@@ -51,7 +51,7 @@ export const CopyToClipboardButton: FunctionComponent<Props> = ({
       placement={position}
       trigger="click">
       <Button
-        className="tw-h-8 tw-ml-4 tw-relative"
+        className="h-8 m-l-md relative"
         data-testid="copy-secret"
         icon={<CopyIcon data-testid="copy-icon" width="16" />}
         type="text"

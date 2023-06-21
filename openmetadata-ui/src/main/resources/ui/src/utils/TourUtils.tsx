@@ -154,7 +154,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
         </p>
       ),
       stepInteraction: false,
-      selector: '[data-testid="Owner"]',
+      selector: '[data-testid="owner-link"]',
     },
     {
       content: () => (

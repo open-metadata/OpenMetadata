@@ -45,41 +45,36 @@ const OWNER = 'Aaron Johnson';
 const TIER = 'Tier1';
 
 const addRemoveOwner = () => {
-  cy.get('[data-testid="edit-owner"]').should('be.visible').click();
-  verifyResponseStatusCode('@getTeams', 200);
-  cy.get('.ant-tabs [id*=tab-users]').should('be.visible').click();
+  cy.get('[data-testid="edit-owner"]').click();
+
+  cy.get('.ant-tabs [id*=tab-users]').click();
   verifyResponseStatusCode('@getUsers', 200);
-  cy.get(`.ant-tabs [title="${OWNER}"]`).should('be.visible').click();
+  cy.get(`.ant-tabs [title="${OWNER}"]`).click();
   verifyResponseStatusCode('@patchOwner', 200);
-  cy.get('[data-testid="Owner"]').should('be.visible').should('contain', OWNER);
-  cy.get('[data-testid="edit-owner"]').should('be.visible').click();
-  verifyResponseStatusCode('@getUsers', 200);
-  cy.get('[data-testid="remove-owner"]').should('be.visible').click();
+  cy.get('[data-testid="owner-link"]').should('contain', OWNER);
+  cy.get('[data-testid="edit-owner"]').click();
+
+  cy.get('[data-testid="remove-owner"]').click();
   verifyResponseStatusCode('@patchOwner', 200);
-  cy.get('[data-testid="Owner"]')
-    .should('be.visible')
-    .should('contain', 'No Owner');
+  cy.get('[data-testid="owner-link"]').should('contain', 'No Owner');
 };
+
 const addRemoveTier = () => {
-  cy.get('[data-testid="edit-Tier-icon"]').should('be.visible').click();
+  cy.get('[data-testid="edit-tier"]').click();
   cy.get('[data-testid="card-list"]').first().should('be.visible').as('tier1');
   cy.get('@tier1')
     .find('[data-testid="icon"] > [data-testid="select-tier-button"]')
-    .should('be.visible')
     .click();
   verifyResponseStatusCode('@patchOwner', 200);
-  cy.get('[data-testid="Tier"]').should('be.visible').should('contain', TIER);
+  cy.clickOutside();
+  cy.get('[data-testid="Tier"]').should('contain', TIER);
 
-  cy.get('[data-testid="edit-Tier-icon"]').should('be.visible').click();
+  cy.get('[data-testid="edit-tier"]').click();
   cy.get('[data-testid="card-list"]').first().should('be.visible').as('tier1');
-  cy.get('@tier1')
-    .find('[data-testid="icon"] > [data-testid="remove-tier"]')
-    .should('be.visible')
-    .click();
+  cy.get('@tier1').find('[data-testid="remove-tier"]').click();
+
   verifyResponseStatusCode('@patchOwner', 200);
-  cy.get('[data-testid="Tier"]')
-    .should('be.visible')
-    .should('contain', 'No Tier');
+  cy.get('[data-testid="Tier"]').should('contain', 'No Tier');
 };
 
 describe('Add and Remove Owner and Tier', () => {
@@ -214,14 +209,14 @@ describe('Add and Remove Owner and Tier', () => {
     verifyResponseStatusCode('@getUsers', 200);
     cy.get(`.ant-popover [title="${OWNER}"]`).should('be.visible').click();
     verifyResponseStatusCode('@patchOwner', 200);
-    cy.get('[data-testid="entity-summary-details"]')
+    cy.get('[data-testid="owner-link"]')
       .should('be.visible')
       .should('contain', OWNER);
     cy.get('[data-testid="add-user"]').should('be.visible').click();
     verifyResponseStatusCode('@getUsers', 200);
     cy.get('[data-testid="remove-owner"]').should('be.visible').click();
     verifyResponseStatusCode('@patchOwner', 200);
-    cy.get('[data-testid="entity-summary-details"]')
+    cy.get('[data-testid="owner-link"]')
       .should('be.visible')
       .should('contain', 'No Owner');
   });
@@ -248,7 +243,7 @@ describe('Add and Remove Owner and Tier', () => {
     verifyResponseStatusCode('@getGlossaries', 200);
     verifyResponseStatusCode('@glossaryPermission', 200);
 
-    cy.get('[data-testid="edit-owner-button"]')
+    cy.get('[data-testid="edit-owner"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -265,7 +260,7 @@ describe('Add and Remove Owner and Tier', () => {
     verifyResponseStatusCode('@glossaryPermission', 200);
     verifyResponseStatusCode('@getGlossaries', 200);
 
-    cy.get('[data-testid="edit-owner-button"]').should('be.visible').click();
+    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
     cy.wait('@getUsers').then(() => {
       cy.get('[data-testid="remove-owner"]').should('be.visible').click();
       verifyResponseStatusCode('@patchOwner', 200);
@@ -317,7 +312,7 @@ describe('Add and Remove Owner and Tier', () => {
     verifyResponseStatusCode('@glossaryTermPermission', 200);
     verifyResponseStatusCode('@getGlossaryTerms', 200);
 
-    cy.get('[data-testid="edit-owner-button"]')
+    cy.get('[data-testid="edit-owner"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -334,7 +329,7 @@ describe('Add and Remove Owner and Tier', () => {
     verifyResponseStatusCode('@glossaryTermPermission', 200);
     verifyResponseStatusCode('@getGlossaries', 200);
 
-    cy.get('[data-testid="edit-owner-button"]').should('be.visible').click();
+    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
     cy.wait('@getUsers').then(() => {
       cy.get('[data-testid="remove-owner"]').should('be.visible').click();
       verifyResponseStatusCode('@patchOwner', 200);

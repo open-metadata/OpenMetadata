@@ -188,7 +188,7 @@ jest.mock('../../utils/ServiceUtils', () => ({
   getServicePageTabs: jest.fn().mockImplementation(() => mockTabs),
 }));
 
-jest.mock('components/common/description/Description', () => {
+jest.mock('components/common/description/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<div>Description_component</div>);
 });
 

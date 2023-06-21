@@ -33,6 +33,8 @@ interface ActivityFeedCardV1Props {
   className?: string;
   showThread?: boolean;
   isPost: boolean;
+  isActive?: boolean;
+  hidePopover: boolean;
 }
 
 const ActivityFeedCardV1 = ({
@@ -41,6 +43,8 @@ const ActivityFeedCardV1 = ({
   className = '',
   showThread = true,
   isPost = false,
+  isActive,
+  hidePopover = false,
 }: ActivityFeedCardV1Props) => {
   const postLength = feed?.postsCount ?? 0;
   const [isEditPost, setIsEditPost] = useState(false);
@@ -76,7 +80,8 @@ const ActivityFeedCardV1 = ({
       <div
         className={classNames(
           className,
-          'activity-feed-card activity-feed-card-v1'
+          'activity-feed-card activity-feed-card-v1',
+          { active: isActive }
         )}>
         <Row>
           <Col span={24}>
@@ -100,32 +105,36 @@ const ActivityFeedCardV1 = ({
           </Col>
         </Row>
 
-        {!showThread && !isPost && postLength > 0 && (
+        {!showThread && !isPost && (
           <Row>
             <Col className="p-t-xs" span={24}>
               <div className="d-flex items-center gap-2 pl-8">
-                <div className="thread-users-profile-pic">
-                  {repliedUniqueUsersList.map((user) => (
-                    <UserPopOverCard key={user} userName={user}>
-                      <span
-                        className="profile-image-span cursor-pointer"
-                        data-testid="authorAvatar">
-                        <ProfilePicture
-                          id=""
-                          name={user}
-                          type="circle"
-                          width="24"
-                        />
-                      </span>
-                    </UserPopOverCard>
-                  ))}
-                </div>
-                <div
-                  className="d-flex items-center thread-count cursor-pointer"
-                  onClick={showReplies}>
-                  <ThreadIcon width={20} />{' '}
-                  <span className="text-xs p-l-xss">{postLength}</span>
-                </div>
+                {postLength > 0 && (
+                  <>
+                    <div className="thread-users-profile-pic">
+                      {repliedUniqueUsersList.map((user) => (
+                        <UserPopOverCard key={user} userName={user}>
+                          <span
+                            className="profile-image-span cursor-pointer"
+                            data-testid="authorAvatar">
+                            <ProfilePicture
+                              id=""
+                              name={user}
+                              type="circle"
+                              width="22"
+                            />
+                          </span>
+                        </UserPopOverCard>
+                      ))}
+                    </div>
+                    <div
+                      className="d-flex items-center thread-count cursor-pointer"
+                      onClick={!hidePopover ? showReplies : noop}>
+                      <ThreadIcon width={18} />{' '}
+                      <span className="text-xs p-l-xss">{postLength}</span>
+                    </div>
+                  </>
+                )}
 
                 {Boolean(post.reactions?.length) && (
                   <Reactions
@@ -138,12 +147,14 @@ const ActivityFeedCardV1 = ({
           </Row>
         )}
 
-        <ActivityFeedActions
-          feed={feed}
-          isPost={isPost}
-          post={post}
-          onEditPost={onEditPost}
-        />
+        {!hidePopover && (
+          <ActivityFeedActions
+            feed={feed}
+            isPost={isPost}
+            post={post}
+            onEditPost={onEditPost}
+          />
+        )}
       </div>
     </>
   );

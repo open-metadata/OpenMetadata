@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Table as AntdTable, Typography } from 'antd';
+import { Space, Table as AntdTable, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { ROUTES } from 'constants/constants';
 import { mockDatasetData } from 'constants/mockTourData.constants';
@@ -56,7 +56,7 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
         title: (
           <Space direction="vertical" size={0}>
             <Typography.Text> {column}</Typography.Text>
-            <Typography.Text className="text-grey-muted">{`(${lowerCase(
+            <Typography.Text className="text-grey-muted text-xs font-normal">{`(${lowerCase(
               matchedColumn?.dataType ?? ''
             )})`}</Typography.Text>
           </Space>
@@ -139,20 +139,18 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
   }
 
   return (
-    <Card className="m-y-md h-full" id="sampleDataDetails">
-      <div data-testid="sample-data">
-        <AntdTable
-          bordered
-          columns={sampleData?.columns}
-          data-testid="sample-data-table"
-          dataSource={sampleData?.rows}
-          pagination={false}
-          rowKey="name"
-          scroll={{ x: true }}
-          size="small"
-        />
-      </div>
-    </Card>
+    <div className="m-md" data-testid="sample-data" id="sampleDataDetails">
+      <AntdTable
+        bordered
+        columns={sampleData?.columns}
+        data-testid="sample-data-table"
+        dataSource={sampleData?.rows}
+        pagination={false}
+        rowKey="name"
+        scroll={{ x: true }}
+        size="small"
+      />
+    </div>
   );
 };
 

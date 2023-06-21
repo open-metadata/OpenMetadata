@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-@text-color: #37352f;
-@gray-color: #dde3ea;
-@border-color: #dce3ec;
-@primary-color: #7147e8;
-@text-grey-muted: #6b7280d9;
+@import url('../variables.less');
 
 .glossary-card {
   .ant-card-body {
@@ -40,10 +36,6 @@
   padding-right: 0.75rem;
 }
 .left-panel-card {
-  border: 1px rgb(221, 227, 234) solid;
-  border-radius: 4px;
-  box-shadow: 1px 1px 8px rgb(0 0 0 / 6%);
-  height: 100%;
   .header {
     padding: 0.5rem 0.75rem;
   }
@@ -148,4 +140,15 @@
   font-size: 14px;
   font-weight: 500;
   color: @text-grey-muted;
+}
+
+.glossary-page-layout {
+  .page-layout-rightpanel {
+    padding-right: 0;
+    background-color: @white;
+    border: 1px solid @border-color;
+    border-radius: 0;
+    padding-left: 0;
+    border-top: 0;
+  }
 }

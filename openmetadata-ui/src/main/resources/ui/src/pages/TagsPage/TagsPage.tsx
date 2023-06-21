@@ -771,7 +771,7 @@ const TagsPage = () => {
           dataIndex: 'description',
           key: 'description',
           render: (text: string, record: Tag) => (
-            <div className="tw-group tableBody-cell">
+            <>
               <div className="cursor-pointer d-flex">
                 <div>
                   {text ? (
@@ -800,7 +800,7 @@ const TagsPage = () => {
                   <span className="text-grey-muted">{t('label.not-used')}</span>
                 )}
               </div>
-            </div>
+            </>
           ),
         },
         {
@@ -1023,7 +1023,7 @@ const TagsPage = () => {
     <PageLayoutV1
       leftPanel={fetchLeftPanel()}
       pageTitle={t('label.tag-plural')}>
-      <div className="full-height" data-testid="tags-container">
+      <div className="full-height page-container" data-testid="tags-container">
         {currentClassification && (
           <Row data-testid="header" wrap={false}>
             <Col flex="auto">
@@ -1040,7 +1040,7 @@ const TagsPage = () => {
               />
             </Col>
 
-            <Col className="d-flex justify-end item-start" flex="270px">
+            <Col className="d-flex justify-end items-start" flex="270px">
               <Space>
                 {createPermission && (
                   <Tooltip title={addTagButtonToolTip}>

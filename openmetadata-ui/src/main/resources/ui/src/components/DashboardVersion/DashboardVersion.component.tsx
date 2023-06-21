@@ -13,8 +13,8 @@
 
 import { Card, Space, Table, Tabs } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import classNames from 'classnames';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { EntityTabs } from 'enums/entity.enum';
 import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -38,7 +38,6 @@ import {
   getTagsDiff,
 } from '../../utils/EntityVersionUtils';
 import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
-import SVGIcons from '../../utils/SvgUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
@@ -222,12 +221,8 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
           <Link target="_blank" to={{ pathname: text }}>
             <Space>
               <span>{getEntityName(record)}</span>
-              <SVGIcons
-                alt="external-link"
-                className="tw-align-middle"
-                icon="external-link"
-                width="16px"
-              />
+
+              <IconExternalLink width={16} />
             </Space>
           </Link>
         ),
@@ -265,10 +260,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   );
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(currentVersionData),
-      })}>
+    <>
       <div data-testid="dashboard-version-container">
         {isVersionLoading ? (
           <Loader />
@@ -329,7 +321,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
           onBack={backHandler}
         />
       </div>
-    </PageLayoutV1>
+    </>
   );
 };
 

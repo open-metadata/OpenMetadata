@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Typography } from 'antd';
+import { Button, Card, Col, Row, Typography } from 'antd';
 import AppState from 'AppState';
 import EntityListSkeleton from 'components/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import { getUserPath } from 'constants/constants';
@@ -60,28 +60,28 @@ const MyDataWidgetInternal = () => {
   }, [currentUserDetails]);
 
   return (
-    <Card
-      className="card-widget"
-      loading={isLoading}
-      title={
-        <div className="d-flex justify-between p-y-sm">
-          <Typography.Text className="font-medium">
-            {t('label.my-data')}
-          </Typography.Text>
-          {data.length ? (
-            <Link
-              data-testid="view-all-link"
-              to={getUserPath(currentUserDetails?.name || '', 'mydata')}>
-              <span className="tw-text-info font-normal text-xs">
-                {t('label.view-all')}{' '}
-                <span data-testid="my-data-total-count">
-                  {`(${data.length})`}
+    <Card className="card-widget" loading={isLoading}>
+      <Row>
+        <Col span={24}>
+          <div className="d-flex justify-between m-b-xs">
+            <Typography.Text className="font-medium">
+              {t('label.my-data')}
+            </Typography.Text>
+            {data.length ? (
+              <Link
+                data-testid="view-all-link"
+                to={getUserPath(currentUserDetails?.name || '', 'mydata')}>
+                <span className="text-grey-muted font-normal text-xs">
+                  {t('label.view-all')}{' '}
+                  <span data-testid="my-data-total-count">
+                    {`(${data.length})`}
+                  </span>
                 </span>
-              </span>
-            </Link>
-          ) : null}
-        </div>
-      }>
+              </Link>
+            ) : null}
+          </div>
+        </Col>
+      </Row>
       <EntityListSkeleton
         dataLength={data.length !== 0 ? data.length : 5}
         loading={Boolean(isLoading)}>
@@ -102,7 +102,7 @@ const MyDataWidgetInternal = () => {
                             item.fullyQualifiedName as string
                           )}>
                           <Button
-                            className="entity-button d-flex p-xss"
+                            className="entity-button flex-center p-xss"
                             icon={
                               <div className="entity-button-icon m-r-xs">
                                 {getEntityIcon(item.type || '')}
@@ -110,7 +110,7 @@ const MyDataWidgetInternal = () => {
                             }
                             type="text">
                             <Typography.Text
-                              className="text-left font-thin"
+                              className="text-left text-xs"
                               ellipsis={{ tooltip: true }}>
                               {getEntityName(item)}
                             </Typography.Text>
