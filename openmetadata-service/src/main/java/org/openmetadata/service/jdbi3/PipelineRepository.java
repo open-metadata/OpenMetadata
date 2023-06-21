@@ -39,7 +39,7 @@ import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -66,12 +66,19 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   @Override
   public void setFullyQualifiedName(Pipeline pipeline) {
-    pipeline.setFullyQualifiedName(FullyQualifiedName.add(pipeline.getService().getName(), pipeline.getName()));
+    pipeline.setFullyQualifiedName(
+        FullyQualifiedName.add(pipeline.getService().getFullyQualifiedName(), pipeline.getName()));
     setTaskFQN(pipeline.getFullyQualifiedName(), pipeline.getTasks());
   }
 
   @Override
-  public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) throws IOException {
+  public String getFullyQualifiedNameHash(Pipeline pipeline) {
+    return FullyQualifiedName.buildHash(pipeline.getFullyQualifiedName());
+  }
+
+  @Override
+  public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user)
+      throws IOException {
     if (entityLink.getFieldName().equals("tasks")) {
       Pipeline pipeline = getByName(null, entityLink.getEntityFQN(), getFields("tasks,tags"), Include.ALL);
       String oldJson = JsonUtils.pojoToJson(pipeline);
@@ -110,9 +117,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   private PipelineStatus getPipelineStatus(Pipeline pipeline) throws IOException {
     return JsonUtils.readValue(
-        daoCollection
-            .entityExtensionTimeSeriesDao()
-            .getLatestExtension(pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
+        getLatestExtensionFromTimeseries(pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
         PipelineStatus.class);
   }
 
@@ -127,29 +132,16 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       validateTask(pipeline, taskStatus.getName());
     }
 
-    PipelineStatus storedPipelineStatus =
-        JsonUtils.readValue(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, pipelineStatus.getTimestamp()),
-            PipelineStatus.class);
-    if (storedPipelineStatus != null) {
-      daoCollection
-          .entityExtensionTimeSeriesDao()
-          .update(
-              pipeline.getFullyQualifiedName(),
-              PIPELINE_STATUS_EXTENSION,
-              JsonUtils.pojoToJson(pipelineStatus),
-              pipelineStatus.getTimestamp());
-    } else {
-      daoCollection
-          .entityExtensionTimeSeriesDao()
-          .insert(
-              pipeline.getFullyQualifiedName(),
-              PIPELINE_STATUS_EXTENSION,
-              "pipelineStatus",
-              JsonUtils.pojoToJson(pipelineStatus));
-    }
+    String storedPipelineStatus =
+        getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, pipelineStatus.getTimestamp());
+    storeTimeSeries(
+        pipeline.getFullyQualifiedName(),
+        PIPELINE_STATUS_EXTENSION,
+        "pipelineStatus",
+        JsonUtils.pojoToJson(pipelineStatus),
+        pipelineStatus.getTimestamp(),
+        storedPipelineStatus != null);
+
     return pipeline.withPipelineStatus(pipelineStatus);
   }
 
@@ -159,13 +151,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     Pipeline pipeline = dao.findEntityByName(fqn);
     pipeline.setService(getContainer(pipeline.getId()));
     PipelineStatus storedPipelineStatus =
-        JsonUtils.readValue(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, timestamp),
-            PipelineStatus.class);
+        JsonUtils.readValue(getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, timestamp), PipelineStatus.class);
     if (storedPipelineStatus != null) {
-      daoCollection.entityExtensionTimeSeriesDao().deleteAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, timestamp);
+      deleteExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, timestamp);
       pipeline.setPipelineStatus(storedPipelineStatus);
       return pipeline;
     }
@@ -177,11 +165,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     List<PipelineStatus> pipelineStatuses;
     pipelineStatuses =
         JsonUtils.readObjects(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .listBetweenTimestamps(fqn, PIPELINE_STATUS_EXTENSION, starTs, endTs),
-            PipelineStatus.class);
-
+            getResultsFromAndToTimestamps(fqn, PIPELINE_STATUS_EXTENSION, starTs, endTs), PipelineStatus.class);
     return new ResultList<>(pipelineStatuses, starTs.toString(), endTs.toString(), pipelineStatuses.size());
   }
 

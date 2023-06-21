@@ -24,6 +24,7 @@ import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public abstract class ServiceEntityRepository<
@@ -95,8 +96,16 @@ public abstract class ServiceEntityRepository<
   public T addTestConnectionResult(UUID serviceId, TestConnectionResult testConnectionResult) throws IOException {
     T service = dao.findEntityById(serviceId);
     service.setTestConnectionResult(testConnectionResult);
-    dao.update(serviceId, JsonUtils.pojoToJson(service));
+    dao.update(serviceId, FullyQualifiedName.buildHash(service.getFullyQualifiedName()), JsonUtils.pojoToJson(service));
     return service;
+  }
+
+  /** Remove the secrets from the secret manager */
+  @Override
+  protected void postDelete(T service) {
+    SecretsManagerFactory.getSecretsManager()
+        .deleteSecretsFromServiceConnectionConfig(
+            service.getConnection().getConfig(), service.getServiceType().value(), service.getName(), serviceType);
   }
 
   @Override

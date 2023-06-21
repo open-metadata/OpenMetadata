@@ -40,6 +40,7 @@ import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.resources.types.TypeResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 
@@ -129,7 +130,10 @@ public class TypeRepository extends EntityRepository<Type> {
         daoCollection
             .fieldRelationshipDAO()
             .listToByPrefix(
-                getCustomPropertyFQNPrefix(type.getName()), Entity.TYPE, Entity.TYPE, Relationship.HAS.ordinal());
+                FullyQualifiedName.buildHash(getCustomPropertyFQNPrefix(type.getName())),
+                Entity.TYPE,
+                Entity.TYPE,
+                Relationship.HAS.ordinal());
     for (Triple<String, String, String> result : results) {
       CustomProperty property = JsonUtils.readValue(result.getRight(), CustomProperty.class);
       property.setPropertyType(dao.findEntityReferenceByName(result.getMiddle()));
@@ -188,6 +192,8 @@ public class TypeRepository extends EntityRepository<Type> {
       daoCollection
           .fieldRelationshipDAO()
           .insert(
+              FullyQualifiedName.buildHash(customPropertyFQN),
+              FullyQualifiedName.buildHash(property.getPropertyType().getName()),
               customPropertyFQN,
               property.getPropertyType().getName(),
               Entity.TYPE,
@@ -206,8 +212,8 @@ public class TypeRepository extends EntityRepository<Type> {
       daoCollection
           .fieldRelationshipDAO()
           .delete(
-              customPropertyFQN,
-              property.getPropertyType().getName(),
+              FullyQualifiedName.buildHash(customPropertyFQN),
+              FullyQualifiedName.buildHash(property.getPropertyType().getName()),
               Entity.TYPE,
               Entity.TYPE,
               Relationship.HAS.ordinal());
@@ -226,6 +232,8 @@ public class TypeRepository extends EntityRepository<Type> {
         daoCollection
             .fieldRelationshipDAO()
             .upsert(
+                FullyQualifiedName.buildHash(customPropertyFQN),
+                FullyQualifiedName.buildHash(updatedProperty.getPropertyType().getName()),
                 customPropertyFQN,
                 updatedProperty.getPropertyType().getName(),
                 Entity.TYPE,
