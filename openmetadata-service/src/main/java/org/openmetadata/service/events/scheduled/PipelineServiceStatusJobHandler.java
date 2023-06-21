@@ -29,6 +29,7 @@ public class PipelineServiceStatusJobHandler {
   private final PipelineServiceClient pipelineServiceClient;
   private final PrometheusMeterRegistry meterRegistry;
   private final String clusterName;
+  private final Integer healthCheckInterval;
   private final Scheduler scheduler = new StdSchedulerFactory().getScheduler();
 
   private static PipelineServiceStatusJobHandler INSTANCE;
@@ -38,6 +39,7 @@ public class PipelineServiceStatusJobHandler {
     this.pipelineServiceClient = PipelineServiceClientFactory.createPipelineServiceClient(config);
     this.meterRegistry = MicrometerBundleSingleton.prometheusMeterRegistry;
     this.clusterName = clusterName;
+    this.healthCheckInterval = config.getHealthCheckInterval();
     this.scheduler.start();
   }
 
@@ -70,7 +72,7 @@ public class PipelineServiceStatusJobHandler {
   private Trigger getTrigger() {
     return TriggerBuilder.newTrigger()
         .withIdentity(STATUS_CRON_TRIGGER, STATUS_GROUP)
-        .withSchedule(SimpleScheduleBuilder.simpleSchedule().withIntervalInSeconds(5 * 60).repeatForever())
+        .withSchedule(SimpleScheduleBuilder.simpleSchedule().withIntervalInSeconds(healthCheckInterval).repeatForever())
         .build();
   }
 

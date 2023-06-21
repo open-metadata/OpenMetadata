@@ -10,7 +10,6 @@ import java.util.Map;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.sdk.PipelineServiceClient;
-import org.openmetadata.service.exception.PipelineServiceStatusJobException;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 
@@ -36,7 +35,7 @@ public class PipelineServiceStatusJob implements Job {
       registerStatusMetric(pipelineServiceClient, meterRegistry, clusterName);
     } catch (Exception e) {
       LOG.error("[Pipeline Service Status Job] Failed in sending metric due to", e);
-      throw new PipelineServiceStatusJobException(e);
+      publishUnhealthyCounter(meterRegistry, clusterName);
     }
   }
 
