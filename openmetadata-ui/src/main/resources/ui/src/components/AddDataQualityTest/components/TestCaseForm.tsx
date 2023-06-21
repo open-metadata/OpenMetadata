@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { t } from 'i18next';
-import { isEmpty } from 'lodash';
+import { isEmpty, snakeCase } from 'lodash';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getListTestCase, getListTestDefinitions } from 'rest/testAPI';
@@ -139,10 +139,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     return {
       name:
         value.testName?.trim() ||
-        `${table.name}${
-          columnName ? '_' + columnName : ''
-        }_${cryptoRandomString({
-          length: 8,
+        `${columnName ? columnName : table.name}_${snakeCase(
+          selectedTestType
+        )}_${cryptoRandomString({
+          length: 4,
           type: 'alphanumeric',
         })}`,
       entityLink: generateEntityLink(

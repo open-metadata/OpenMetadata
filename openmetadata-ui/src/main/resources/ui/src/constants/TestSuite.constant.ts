@@ -57,4 +57,4 @@ export const TEST_SUITE_STEPPER_BREADCRUMB = [
   },
 ];
 
-export const PROGRESS_BAR_COLOR = '#4E8C9C';
+export const PROGRESS_BAR_COLOR = '#48ca9e';

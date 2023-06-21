@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Typography } from 'antd';
+import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
@@ -198,28 +198,26 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
                   onCancel={() => setAddIngestion(false)}
                 />
               ) : (
-                <Card className="p-xs">
-                  <Row gutter={[16, 16]}>
-                    <Col span={24}>
-                      <Typography.Paragraph
-                        className="tw-heading tw-text-base"
-                        data-testid="header">
-                        {t('label.add-entity-test', {
-                          entity: isColumnFqn
-                            ? t('label.column')
-                            : t('label.table'),
-                        })}
-                      </Typography.Paragraph>
-                    </Col>
-                    <Col span={24}>
-                      <IngestionStepper
-                        activeStep={activeServiceStep}
-                        steps={STEPS_FOR_ADD_TEST_CASE}
-                      />
-                    </Col>
-                    <Col span={24}>{RenderSelectedTab()}</Col>
-                  </Row>
-                </Card>
+                <Row className="p-xs" gutter={[16, 16]}>
+                  <Col span={24}>
+                    <Typography.Paragraph
+                      className="heading text-base"
+                      data-testid="header">
+                      {t('label.add-entity-test', {
+                        entity: isColumnFqn
+                          ? t('label.column')
+                          : t('label.table'),
+                      })}
+                    </Typography.Paragraph>
+                  </Col>
+                  <Col span={24}>
+                    <IngestionStepper
+                      activeStep={activeServiceStep}
+                      steps={STEPS_FOR_ADD_TEST_CASE}
+                    />
+                  </Col>
+                  <Col span={24}>{RenderSelectedTab()}</Col>
+                </Row>
               )}
             </div>
           </div>
