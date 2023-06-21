@@ -25,8 +25,8 @@ source:
       #     awsSecretAccessKey: SECRET
       #     awsRegion: us-east-2
       #   dbtPrefixConfig:
-      #     dbtBucketName: bucket
-      #     dbtObjectPrefix: "dbt/"
+      #     dbtBucketName: bucket_name
+      #     dbtObjectPrefix: "main_dir/dbt_files"
       # # For GCS
       #   dbtSecurityConfig:  # These are modeled after all GCS credentials
       #     gcpConfig:
@@ -44,8 +44,17 @@ source:
       #       authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs (default)
       #       clientX509CertUrl: https://cert.url (URI)
       #   dbtPrefixConfig:
-      #     dbtBucketName: bucket
-      #     dbtObjectPrefix: "dbt/"
+      #     dbtBucketName: bucket_name
+      #     dbtObjectPrefix: "main_dir/dbt_files"
+      # # For Azure
+      #   dbtSecurityConfig:  # These are modeled after all Azure credentials
+      #     clientId: clientId
+      #     clientSecret: clientSecret
+      #     tenantId: tenantId
+      #     accountName: accountName
+      #   dbtPrefixConfig:
+      #     dbtBucketName: bucket_name
+      #     dbtObjectPrefix: main_dir/dbt_files/
       # dbtUpdateDescriptions: true or false
       # includeTags: true or false
       # dbtClassificationName: dbtTags

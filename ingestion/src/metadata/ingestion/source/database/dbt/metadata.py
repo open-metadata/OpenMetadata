@@ -904,7 +904,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Failed to capture tests case paramenter definitions for node: {dbt_test} {err}"
+                f"Failed to capture tests case parameter definitions for node: {dbt_test} {err}"
             )
         return None
 
@@ -923,7 +923,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Failed to capture tests case paramenter values for node: {dbt_test} {err}"
+                f"Failed to capture tests case parameter values for node: {dbt_test} {err}"
             )
         return None
 
