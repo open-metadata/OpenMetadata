@@ -71,9 +71,9 @@ TABLE_FILTER = {
 class TestRedshiftSystem(TestCase):
     """Test class for redshift system metrics"""
 
-    hostPort = os.environ["E2E_REDSHIFT_HOST_PORT"]
-    username = os.environ["E2E_REDSHIFT_USERNAME"]
-    password = os.environ["E2E_REDSHIFT_PASSWORD"]
+    hostPort = os.environ.get("E2E_REDSHIFT_HOST_PORT")
+    username = os.environ.get("E2E_REDSHIFT_USERNAME")
+    password = os.environ.get("E2E_REDSHIFT_PASSWORD")
     database = DATABASE_FILTER["includes"]
 
     full_config_path = FULL_CONFIG_PATH

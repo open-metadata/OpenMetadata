@@ -85,12 +85,12 @@ TABLE_FILTER = {
 class TestBigquerySystem(TestCase):
     """Test class for bigquery system metrics"""
 
-    taxonomy = os.environ["E2E_BQ_PROJECT_ID_TAXONOMY"]
-    private_key_id = os.environ["E2E_BQ_PRIVATE_KEY_ID"]
-    private_key = os.environ["E2E_BQ_PRIVATE_KEY"]
+    taxonomy = os.environ.get("E2E_BQ_PROJECT_ID_TAXONOMY")
+    private_key_id = os.environ.get("E2E_BQ_PRIVATE_KEY_ID")
+    private_key = os.environ.get("E2E_BQ_PRIVATE_KEY")
     project_id = DATABASE_FILTER["includes"]
-    client_email = os.environ["E2E_BQ_CLIENT_EMAIL"]
-    client_id = os.environ["E2E_BQ_CLIENT_ID"]
+    client_email = os.environ.get("E2E_BQ_CLIENT_EMAIL")
+    client_id = os.environ.get("E2E_BQ_CLIENT_ID")
 
     full_config_path = FULL_CONFIG_PATH
 

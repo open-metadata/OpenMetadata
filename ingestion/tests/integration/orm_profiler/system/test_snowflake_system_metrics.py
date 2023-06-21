@@ -90,10 +90,10 @@ TABLE_FILTER = {
 class TestSnowflakeystem(TestCase):
     """Test class for snowflake system metrics"""
 
-    account = os.environ["E2E_SNOWFLAKE_ACCOUNT"]
-    warehouse = os.environ["E2E_SNOWFLAKE_WAREHOUSE"]
-    username = os.environ["E2E_SNOWFLAKE_USERNAME"]
-    password = os.environ["E2E_SNOWFLAKE_PASSWORD"]
+    account = os.environ.get("E2E_SNOWFLAKE_ACCOUNT")
+    warehouse = os.environ.get("E2E_SNOWFLAKE_WAREHOUSE")
+    username = os.environ.get("E2E_SNOWFLAKE_USERNAME")
+    password = os.environ.get("E2E_SNOWFLAKE_PASSWORD")
     database = DATABASE_FILTER["includes"]
 
     full_config_path = FULL_CONFIG_PATH
