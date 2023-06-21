@@ -891,25 +891,41 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
             )
 
     def create_test_case_parameter_definitions(self, dbt_test):
-        test_case_param_definition = [
-            {
-                "name": dbt_test.test_metadata.name,
-                "displayName": dbt_test.test_metadata.name,
-                "required": False,
-            }
-        ]
-        return test_case_param_definition
+        try:
+            if hasattr(dbt_test, "test_metadata"):
+                test_case_param_definition = [
+                    {
+                        "name": dbt_test.test_metadata.name,
+                        "displayName": dbt_test.test_metadata.name,
+                        "required": False,
+                    }
+                ]
+                return test_case_param_definition
+        except Exception as err:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Failed to capture tests case paramenter definitions for node: {dbt_test} {err}"
+            )
+        return None
 
     def create_test_case_parameter_values(self, dbt_test):
-        manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
-        values = manifest_node.test_metadata.kwargs.get("values")
-        dbt_test_values = ""
-        if values:
-            dbt_test_values = ",".join(str(value) for value in values)
-        test_case_param_values = [
-            {"name": manifest_node.test_metadata.name, "value": dbt_test_values}
-        ]
-        return test_case_param_values
+        try:
+            manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
+            if hasattr(manifest_node, "test_metadata"):
+                values = manifest_node.test_metadata.kwargs.get("values")
+                dbt_test_values = ""
+                if values:
+                    dbt_test_values = ",".join(str(value) for value in values)
+                test_case_param_values = [
+                    {"name": manifest_node.test_metadata.name, "value": dbt_test_values}
+                ]
+                return test_case_param_values
+        except Exception as err:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Failed to capture tests case paramenter values for node: {dbt_test} {err}"
+            )
+        return None
 
     def generate_entity_link(self, dbt_test):
         """
