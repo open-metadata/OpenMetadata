@@ -167,10 +167,6 @@ class REST:
         if self.config.extra_headers:
             extra_headers: Dict[str, str] = self.config.extra_headers
             extra_headers = {k: (v % headers) for k, v in extra_headers.items()}
-            logger.debug(
-                "Extra headers provided '%s'",
-                self._mask_authorization_headers(extra_headers),
-            )
             headers = {**headers, **extra_headers}
 
         opts = {
