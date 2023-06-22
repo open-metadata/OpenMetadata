@@ -27,13 +27,13 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteScheme,
 )
 from metadata.profiler.api.models import ProfileSampleConfig
-from metadata.profiler.interface.sqlalchemy.sqa_profiler_interface import (
+from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import CustomTypes
 from metadata.profiler.processor.core import Profiler
-from metadata.profiler.processor.sampler import Sampler
+from metadata.profiler.processor.sqlalchemy.sampler import Sampler
 
 Base = declarative_base()
 

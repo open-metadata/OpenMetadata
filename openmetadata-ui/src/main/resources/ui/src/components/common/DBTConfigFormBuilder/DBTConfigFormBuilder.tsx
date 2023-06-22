@@ -12,6 +12,7 @@
  */
 
 import { Button, Form, FormProps, Space } from 'antd';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import React, { FunctionComponent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -157,6 +158,12 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
       formItemProps: {
         initialValue: ingestionName,
       },
+      rules: [
+        {
+          pattern: ENTITY_NAME_REGEX,
+          message: t('message.entity-name-validation'),
+        },
+      ],
     },
     {
       name: 'dbtConfigSource',

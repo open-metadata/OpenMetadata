@@ -640,7 +640,7 @@ export const addNewTagToEntity = (entityObj, term) => {
     .scrollIntoView()
     .should('be.visible')
     .click();
-  cy.get('[data-testid="entity-tags"]')
+  cy.get('[data-testid="tags-container"] [data-testid="entity-tags"]')
     .scrollIntoView()
     .should('be.visible')
     .contains(term);

@@ -18,6 +18,11 @@
       "description": "Pipeline Service Client host IP that will be used to connect to the sources.",
       "type": "string"
     },
+    "healthCheckInterval": {
+      "description": "Interval in seconds that the server will use to check the /status of the pipelineServiceClient and flag any errors in a Prometheus metric `pipelineServiceClientStatus.counter`.",
+      "type": "integer",
+      "default": 300
+    },
     "ingestionIpInfoEnabled": {
       "description": "Enable or disable the API that fetches the public IP running the ingestion process.",
       "type": "boolean",

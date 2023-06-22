@@ -13,6 +13,7 @@
 
 import { Button, Form, FormProps, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
@@ -244,8 +245,8 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
             message: `${t('label.field-required', { field: t('label.name') })}`,
           },
           {
-            pattern: /^[A-Za-z0-9_]*$/g,
-            message: t('message.special-character-not-allowed'),
+            pattern: ENTITY_NAME_REGEX,
+            message: t('message.entity-name-validation'),
           },
           {
             validator: (_, value) => {

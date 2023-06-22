@@ -2,66 +2,39 @@ package org.openmetadata.service.elasticsearch;
 
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import java.io.IOException;
 import java.io.InputStream;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Date;
 import java.util.EnumMap;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import lombok.Builder;
-import lombok.Getter;
 import lombok.SneakyThrows;
-import lombok.extern.jackson.Jacksonized;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.exception.ExceptionUtils;
-import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
-import org.elasticsearch.action.support.master.AcknowledgedResponse;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.client.indices.CreateIndexRequest;
-import org.elasticsearch.client.indices.CreateIndexResponse;
-import org.elasticsearch.client.indices.GetIndexRequest;
-import org.elasticsearch.client.indices.PutMappingRequest;
-import org.elasticsearch.common.xcontent.XContentType;
 import org.json.JSONObject;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.system.EventPublisherJob;
-import org.openmetadata.schema.system.EventPublisherJob.Status;
-import org.openmetadata.schema.system.Failure;
-import org.openmetadata.schema.system.FailureDetails;
 import org.openmetadata.schema.type.IndexMappingLanguage;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.search.SearchClient;
 
 @Slf4j
 public class ElasticSearchIndexDefinition {
-  public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
-  public static final String ELASTIC_SEARCH_ENTITY_FQN_STREAM = "eventPublisher:ElasticSearch:STREAM";
   private static final String MAPPINGS_KEY = "mappings";
   private static final String PROPERTIES_KEY = "properties";
-  private static final String REASON_TRACE = "Reason: [%s] , Trace : [%s]";
   public static final String ENTITY_REPORT_DATA = "entityReportData";
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = "webAnalyticEntityViewReportData";
   public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = "webAnalyticUserActivityReportData";
   private final CollectionDAO dao;
   final EnumMap<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes =
       new EnumMap<>(ElasticSearchIndexType.class);
-  private static final Map<String, Object> ENTITY_TO_MAPPING_SCHEMA_MAP = new HashMap<>();
+  public static final Map<String, Object> ENTITY_TO_MAPPING_SCHEMA_MAP = new HashMap<>();
 
   protected static final Map<String, String> ENTITY_TYPE_TO_INDEX_MAP;
   private static final Map<ElasticSearchIndexType, Set<String>> INDEX_TO_MAPPING_FIELDS_MAP =
       new EnumMap<>(ElasticSearchIndexType.class);
-  private final RestHighLevelClient client;
+
+  private SearchClient searchClient;
 
   static {
     // Populate Entity Type to Index Map
@@ -71,9 +44,9 @@ public class ElasticSearchIndexDefinition {
     }
   }
 
-  public ElasticSearchIndexDefinition(RestHighLevelClient client, CollectionDAO dao) {
+  public ElasticSearchIndexDefinition(SearchClient client, CollectionDAO dao) {
     this.dao = dao;
-    this.client = client;
+    this.searchClient = client;
     for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
       elasticSearchIndexes.put(elasticSearchIndexType, ElasticSearchIndexStatus.NOT_CREATED);
     }
@@ -125,109 +98,29 @@ public class ElasticSearchIndexDefinition {
 
   public void createIndexes(ElasticSearchConfiguration esConfig) {
     for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
-      createIndex(elasticSearchIndexType, esConfig.getSearchIndexMappingLanguage().value());
+      searchClient.createIndex(elasticSearchIndexType, esConfig.getSearchIndexMappingLanguage().value());
     }
   }
 
   public void updateIndexes(ElasticSearchConfiguration esConfig) {
     for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
-      updateIndex(elasticSearchIndexType, esConfig.getSearchIndexMappingLanguage().value());
+      searchClient.updateIndex(elasticSearchIndexType, esConfig.getSearchIndexMappingLanguage().value());
     }
   }
 
   public void dropIndexes() {
     for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
-      deleteIndex(elasticSearchIndexType);
+      searchClient.deleteIndex(elasticSearchIndexType);
     }
-  }
-
-  public boolean createIndex(ElasticSearchIndexType elasticSearchIndexType, String lang) {
-    try {
-      GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
-      gRequest.local(false);
-      boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
-      String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType, lang);
-      ENTITY_TO_MAPPING_SCHEMA_MAP.put(
-          elasticSearchIndexType.entityType, JsonUtils.getMap(JsonUtils.readJson(elasticSearchIndexMapping)));
-      if (!exists) {
-        CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
-        request.source(elasticSearchIndexMapping, XContentType.JSON);
-        CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
-        LOG.info("{} Created {}", elasticSearchIndexType.indexName, createIndexResponse.isAcknowledged());
-      }
-      setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.CREATED);
-    } catch (Exception e) {
-      setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.FAILED);
-      updateElasticSearchFailureStatus(
-          getContext("Creating Index", elasticSearchIndexType.indexName),
-          String.format(REASON_TRACE, e.getMessage(), ExceptionUtils.getStackTrace(e)));
-      LOG.error("Failed to create Elastic Search indexes due to", e);
-      return false;
-    }
-    return true;
-  }
-
-  private String getContext(String type, String info) {
-    return String.format("Failed While : %s %n Additional Info:  %s ", type, info);
-  }
-
-  private void updateIndex(ElasticSearchIndexType elasticSearchIndexType, String lang) {
-    try {
-      GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
-      gRequest.local(false);
-      boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
-      String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType, lang);
-      ENTITY_TO_MAPPING_SCHEMA_MAP.put(
-          elasticSearchIndexType.entityType, JsonUtils.getMap(JsonUtils.readJson(elasticSearchIndexMapping)));
-      if (exists) {
-        PutMappingRequest request = new PutMappingRequest(elasticSearchIndexType.indexName);
-        request.source(elasticSearchIndexMapping, XContentType.JSON);
-        AcknowledgedResponse putMappingResponse = client.indices().putMapping(request, RequestOptions.DEFAULT);
-        LOG.info("{} Updated {}", elasticSearchIndexType.indexName, putMappingResponse.isAcknowledged());
-      } else {
-        CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
-        request.source(elasticSearchIndexMapping, XContentType.JSON);
-        CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
-        LOG.info("{} Created {}", elasticSearchIndexType.indexName, createIndexResponse.isAcknowledged());
-      }
-      setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.CREATED);
-    } catch (Exception e) {
-      setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.FAILED);
-      updateElasticSearchFailureStatus(
-          getContext("Updating Index", elasticSearchIndexType.indexName),
-          String.format(REASON_TRACE, e.getMessage(), ExceptionUtils.getStackTrace(e)));
-      LOG.error("Failed to update Elastic Search indexes due to", e);
-    }
-  }
-
-  public void deleteIndex(ElasticSearchIndexType elasticSearchIndexType) {
-    try {
-      GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
-      gRequest.local(false);
-      boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
-      if (exists) {
-        DeleteIndexRequest request = new DeleteIndexRequest(elasticSearchIndexType.indexName);
-        AcknowledgedResponse deleteIndexResponse = client.indices().delete(request, RequestOptions.DEFAULT);
-        LOG.info("{} Deleted {}", elasticSearchIndexType.indexName, deleteIndexResponse.isAcknowledged());
-      }
-    } catch (IOException e) {
-      updateElasticSearchFailureStatus(
-          getContext("Deleting Index", elasticSearchIndexType.indexName),
-          String.format(REASON_TRACE, e.getMessage(), ExceptionUtils.getStackTrace(e)));
-      LOG.error("Failed to delete Elastic Search indexes due to", e);
-    }
-  }
-
-  private void setIndexStatus(ElasticSearchIndexType indexType, ElasticSearchIndexStatus elasticSearchIndexStatus) {
-    elasticSearchIndexes.put(indexType, elasticSearchIndexStatus);
   }
 
   public static String getIndexMapping(ElasticSearchIndexType elasticSearchIndexType, String lang) throws IOException {
-    InputStream in =
+    try (InputStream in =
         ElasticSearchIndexDefinition.class.getResourceAsStream(
-            String.format(elasticSearchIndexType.indexMappingFile, lang.toLowerCase()));
-    assert in != null;
-    return new String(in.readAllBytes());
+            String.format(elasticSearchIndexType.indexMappingFile, lang.toLowerCase()))) {
+      assert in != null;
+      return new String(in.readAllBytes());
+    }
   }
 
   /**
@@ -295,35 +188,6 @@ public class ElasticSearchIndexDefinition {
     return fields;
   }
 
-  private void updateElasticSearchFailureStatus(String failedFor, String failureMessage) {
-    try {
-      long updateTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
-      String recordString =
-          dao.entityExtensionTimeSeriesDao()
-              .getExtension(EntityUtil.hash(ELASTIC_SEARCH_ENTITY_FQN_STREAM), ELASTIC_SEARCH_EXTENSION);
-      EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
-      long originalLastUpdate = lastRecord.getTimestamp();
-      lastRecord.setStatus(Status.ACTIVE_WITH_ERROR);
-      lastRecord.setTimestamp(updateTime);
-      lastRecord.setFailure(
-          new Failure()
-              .withSinkError(
-                  new FailureDetails()
-                      .withContext(failedFor)
-                      .withLastFailedAt(updateTime)
-                      .withLastFailedReason(failureMessage)));
-
-      dao.entityExtensionTimeSeriesDao()
-          .update(
-              EntityUtil.hash(ELASTIC_SEARCH_ENTITY_FQN_STREAM),
-              ELASTIC_SEARCH_EXTENSION,
-              JsonUtils.pojoToJson(lastRecord),
-              originalLastUpdate);
-    } catch (Exception e) {
-      LOG.error("Failed to Update Elastic Search Job Info");
-    }
-  }
-
   public static Map<String, Object> getIndexMappingSchema(Set<String> entities) {
     if (entities.contains("*")) {
       return ENTITY_TO_MAPPING_SCHEMA_MAP;
@@ -331,54 +195,5 @@ public class ElasticSearchIndexDefinition {
     Map<String, Object> result = new HashMap<>();
     entities.forEach((entityType) -> result.put(entityType, ENTITY_TO_MAPPING_SCHEMA_MAP.get(entityType)));
     return result;
-  }
-}
-
-@JsonInclude(JsonInclude.Include.NON_NULL)
-@Jacksonized
-@Getter
-@Builder
-class ElasticSearchSuggest {
-  String input;
-  Integer weight;
-}
-
-@Getter
-@Builder
-class FlattenColumn {
-  String name;
-  String description;
-  List<TagLabel> tags;
-}
-
-@Getter
-@Builder
-class FlattenSchemaField {
-  String name;
-  String description;
-  List<TagLabel> tags;
-}
-
-class ParseTags {
-  TagLabel tierTag;
-  final List<TagLabel> tags;
-
-  ParseTags(List<TagLabel> tags) {
-    if (!tags.isEmpty()) {
-      List<TagLabel> tagsList = new ArrayList<>(tags);
-      for (TagLabel tag : tagsList) {
-        String tier = tag.getTagFQN().split("\\.")[0];
-        if (tier.equalsIgnoreCase("tier")) {
-          tierTag = tag;
-          break;
-        }
-      }
-      if (tierTag != null) {
-        tagsList.remove(tierTag);
-      }
-      this.tags = tagsList;
-    } else {
-      this.tags = tags;
-    }
   }
 }
