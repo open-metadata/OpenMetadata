@@ -37,6 +37,7 @@ jest.mock('../../../../utils/CommonUtils', () => ({
   getPartialNameFromTableFQN: jest.fn().mockImplementation(() => {
     return expectedDisplayName;
   }),
+  getEntityDetailLink: jest.fn().mockImplementation(() => expectedDisplayName),
 }));
 
 jest.mock('../../../../utils/TableUtils', () => ({
