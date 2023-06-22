@@ -92,9 +92,8 @@ export const CustomEdge = ({
     targetType: EntityType
   ) => {
     return (
-      (sourceType === EntityType.TABLE && targetType === EntityType.TABLE) ||
-      (sourceType === EntityType.TOPIC && targetType === EntityType.TABLE) ||
-      (sourceType === EntityType.TABLE && targetType === EntityType.TOPIC)
+      [EntityType.TABLE, EntityType.TOPIC].indexOf(sourceType) > -1 &&
+      [EntityType.TABLE, EntityType.TOPIC].indexOf(targetType) > -1
     );
   };
 
