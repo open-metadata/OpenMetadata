@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tabs, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Row,
+  Space,
+  Switch,
+  Tabs,
+  Tooltip,
+  Typography,
+} from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import AirflowMessageBanner from 'components/common/AirflowMessageBanner/AirflowMessageBanner';
@@ -41,6 +50,7 @@ import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
+import { Include } from 'generated/type/include';
 import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
 import {
   ExtraInfo,
@@ -136,10 +146,16 @@ const ServicePage: FunctionComponent = () => {
     tab: string;
   }>();
 
-  const activeTab = useMemo(
-    () => tab ?? getCountLabel(serviceCategory).toLowerCase(),
-    [tab, serviceCategory]
-  );
+  const activeTab = useMemo(() => {
+    if (tab) {
+      return tab;
+    }
+    if (serviceCategory === ServiceCategory.METADATA_SERVICES) {
+      return EntityTabs.INGESTIONS;
+    }
+
+    return getCountLabel(serviceCategory).toLowerCase();
+  }, [tab, serviceCategory]);
   const entitySpecificTabName = useMemo(
     () => getCountLabel(serviceCategory).toLowerCase(),
     [serviceCategory]
@@ -168,6 +184,7 @@ const ServicePage: FunctionComponent = () => {
   const [ingestions, setIngestions] = useState<IngestionPipeline[]>([]);
   const [serviceList] = useState<Array<DatabaseService>>([]);
   const [ingestionPaging, setIngestionPaging] = useState<Paging>({} as Paging);
+  const [showDeleted, setShowDeleted] = useState<boolean>(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [dataModelCurrentPage, setDataModelCurrentPage] = useState(1);
@@ -432,13 +449,19 @@ const ServicePage: FunctionComponent = () => {
     }).finally(() => setIsLoading(false));
   };
 
+  const include = useMemo(
+    () => (showDeleted ? Include.Deleted : Include.NonDeleted),
+    [showDeleted]
+  );
+
   const fetchDatabases = async (paging?: PagingWithoutTotal) => {
     setIsServiceLoading(true);
     try {
       const { data, paging: resPaging } = await getDatabases(
         serviceFQN,
         'owner,usageSummary',
-        paging
+        paging,
+        include
       );
 
       setData(data);
@@ -458,7 +481,8 @@ const ServicePage: FunctionComponent = () => {
       const { data, paging: resPaging } = await getTopics(
         serviceFQN,
         'owner,tags',
-        paging
+        paging,
+        include
       );
       setData(data);
       setPaging(resPaging);
@@ -475,7 +499,8 @@ const ServicePage: FunctionComponent = () => {
       const { data, paging: resPaging } = await getDashboards(
         serviceFQN,
         'owner,usageSummary,tags',
-        paging
+        paging,
+        include
       );
       setData(data);
       setPaging(resPaging);
@@ -492,7 +517,8 @@ const ServicePage: FunctionComponent = () => {
       const { data, paging: resPaging } = await getDataModels(
         serviceFQN,
         'owner,tags,followers',
-        paging
+        paging,
+        include
       );
       setDataModel(data);
       setDataModelPaging(resPaging);
@@ -509,7 +535,8 @@ const ServicePage: FunctionComponent = () => {
       const { data, paging: resPaging } = await getPipelines(
         serviceFQN,
         'owner,tags',
-        paging
+        paging,
+        include
       );
       setData(data);
       setPaging(resPaging);
@@ -526,7 +553,8 @@ const ServicePage: FunctionComponent = () => {
       const { data, paging: resPaging } = await getMlModels(
         serviceFQN,
         'owner,tags',
-        paging
+        paging,
+        include
       );
       setData(data);
       setPaging(resPaging);
@@ -545,6 +573,7 @@ const ServicePage: FunctionComponent = () => {
         fields: 'owner,tags',
         paging,
         root: true,
+        include,
       });
 
       setData(response.data);
@@ -675,6 +704,10 @@ const ServicePage: FunctionComponent = () => {
         return <></>;
     }
   };
+
+  useEffect(() => {
+    getOtherDetails(undefined, activeTab === EntityTabs.DATA_Model);
+  }, [activeTab, showDeleted]);
 
   useEffect(() => {
     if (servicePermission.ViewAll || servicePermission.ViewBasic) {
@@ -887,13 +920,30 @@ const ServicePage: FunctionComponent = () => {
 
   const dataModalTab = useMemo(
     () => (
-      <DataModelTable
-        currentPage={dataModelCurrentPage}
-        data={dataModel}
-        isLoading={isServiceLoading}
-        paging={dataModelPaging}
-        pagingHandler={dataModelPagingHandler}
-      />
+      <Row>
+        <Col span={24}>
+          <Row justify="end">
+            <Col>
+              <Switch
+                checked={showDeleted}
+                data-testid="show-deleted"
+                onClick={setShowDeleted}
+              />
+              <Typography.Text className="m-l-xs">
+                {t('label.deleted')}
+              </Typography.Text>{' '}
+            </Col>
+          </Row>
+        </Col>
+
+        <DataModelTable
+          currentPage={dataModelCurrentPage}
+          data={dataModel}
+          isLoading={isServiceLoading}
+          paging={dataModelPaging}
+          pagingHandler={dataModelPagingHandler}
+        />
+      </Row>
     ),
     [dataModel, isServiceLoading, dataModelPagingHandler, dataModelCurrentPage]
   );
@@ -1059,7 +1109,7 @@ const ServicePage: FunctionComponent = () => {
       return <Loader />;
     } else if (!isEmpty(data) && !isServiceLoading) {
       return (
-        <div data-testid="table-container">
+        <Col data-testid="table-container" span={24}>
           <Table
             bordered
             className="mt-4"
@@ -1080,7 +1130,7 @@ const ServicePage: FunctionComponent = () => {
               totalCount={paging.total}
             />
           )}
-        </div>
+        </Col>
       );
     } else {
       return <ErrorPlaceHolder />;
@@ -1202,7 +1252,25 @@ const ServicePage: FunctionComponent = () => {
                   onChange={activeTabHandler}
                 />
                 <Col span={24}>
-                  {activeTab === entitySpecificTabName && entityServiceTab}
+                  {activeTab === entitySpecificTabName && (
+                    <Row>
+                      <Col span={24}>
+                        <Row justify="end">
+                          <Col>
+                            <Switch
+                              checked={showDeleted}
+                              data-testid="show-deleted"
+                              onClick={setShowDeleted}
+                            />
+                            <Typography.Text className="m-l-xs">
+                              {t('label.deleted')}
+                            </Typography.Text>{' '}
+                          </Col>
+                        </Row>
+                      </Col>
+                      {entityServiceTab}
+                    </Row>
+                  )}
                   {activeTab === EntityTabs.DATA_Model && dataModalTab}
                   {activeTab === EntityTabs.INGESTIONS && ingestionTab}
                   {activeTab === EntityTabs.CONNECTION && testConnectionTab}

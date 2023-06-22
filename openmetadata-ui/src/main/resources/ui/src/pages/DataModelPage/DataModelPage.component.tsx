@@ -26,6 +26,7 @@ import { EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { CreateThread } from 'generated/api/feed/createThread';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
+import { Include } from 'generated/type/include';
 import { LabelType, State, TagSource } from 'generated/type/tagLabel';
 import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { isUndefined, omitBy } from 'lodash';
@@ -148,7 +149,8 @@ const DataModelsPage = () => {
     try {
       const response = await getDataModelsByName(
         dashboardDataModelFQN,
-        'owner,tags,followers'
+        'owner,tags,followers',
+        Include.All
       );
       setDataModelData(response);
     } catch (error) {

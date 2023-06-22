@@ -144,9 +144,6 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         # Flag the connection for the test connection
         self.connection_obj = self.connection
         self.client = self.connection
-
-        # Flag the connection for the test connection
-        self.connection_obj = self.connection
         self.test_connection()
 
     @abstractmethod
