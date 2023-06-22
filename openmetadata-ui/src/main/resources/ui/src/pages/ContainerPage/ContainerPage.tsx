@@ -52,6 +52,7 @@ import { CreateThread, ThreadType } from 'generated/api/feed/createThread';
 import { Container } from 'generated/entity/data/container';
 import { EntityLineage } from 'generated/type/entityLineage';
 import { EntityReference } from 'generated/type/entityReference';
+import { Include } from 'generated/type/include';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { isUndefined, omitBy, toString } from 'lodash';
@@ -155,7 +156,8 @@ const ContainerPage = () => {
     try {
       const response = await getContainerByName(
         containerFQN,
-        'parent,dataModel,owner,tags,followers,extension'
+        'parent,dataModel,owner,tags,followers,extension',
+        Include.All
       );
       setContainerData({
         ...response,
