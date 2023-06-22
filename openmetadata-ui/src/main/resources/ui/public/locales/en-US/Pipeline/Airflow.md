@@ -16,20 +16,20 @@ You can find further information on the Airflow connector in the [docs](https://
 ## Connection Details
 
 $$section
-### Host and Port $(id="hostPort")
+### Host and Port
 
 Pipeline Service Management URI. This should be specified as a URI string in the format `scheme://hostname:port`. E.g., `http://localhost:8080`, `http://host.docker.internal:8080`.
 
 $$
 
 $$section
-### Number Of Status $(id="numberOfStatus")
+### Number Of Status
 
 Number of past task status to read every time the ingestion runs. By default, we will pick up and update the last 10 runs.
 $$
 
 $$section
-### Metadata Database Connection $(id="connection")
+### Metadata Database Connection
 
 Select your underlying database connection. We support the [official](https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html) backends from Airflow.
 
