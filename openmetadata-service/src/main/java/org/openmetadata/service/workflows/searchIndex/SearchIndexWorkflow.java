@@ -16,7 +16,6 @@ package org.openmetadata.service.workflows.searchIndex;
 import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.getIndexFields;
 import static org.openmetadata.service.util.ReIndexingHandler.REINDEXING_JOB_EXTENSION;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getSuccessFromBulkResponse;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
@@ -35,10 +34,10 @@ import org.apache.commons.lang.exception.ExceptionUtils;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.client.RestHighLevelClient;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.Failure;
 import org.openmetadata.schema.system.FailureDetails;
@@ -49,30 +48,35 @@ import org.openmetadata.service.exception.ProcessorException;
 import org.openmetadata.service.exception.SinkException;
 import org.openmetadata.service.exception.SourceException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.elasticSearch.ElasticSearchDataInsightProcessor;
+import org.openmetadata.service.search.elasticSearch.ElasticSearchEntitiesProcessor;
+import org.openmetadata.service.search.elasticSearch.ElasticSearchIndexSink;
+import org.openmetadata.service.search.openSearch.OpenSearchDataInsightProcessor;
+import org.openmetadata.service.search.openSearch.OpenSearchEntitiesProcessor;
+import org.openmetadata.service.search.openSearch.OpenSearchIndexSink;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ReIndexingHandler;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.workflows.interfaces.Processor;
+import org.openmetadata.service.workflows.interfaces.Sink;
 
 @Slf4j
 public class SearchIndexWorkflow implements Runnable {
   private static final String ENTITY_TYPE_ERROR_MSG = "EntityType: %s %n Cause: %s %n Stack: %s";
   private final List<PaginatedEntitiesSource> paginatedEntitiesSources = new ArrayList<>();
   private final List<PaginatedDataInsightSource> paginatedDataInsightSources = new ArrayList<>();
-  private final EsEntitiesProcessor entitiesProcessor;
-  private final EsDataInsightProcessor dataInsightProcessor;
-  private final EsSearchIndexSink searchIndexSink;
-  private final ElasticSearchIndexDefinition elasticSearchIndexDefinition;
-  @Getter private final EventPublisherJob jobData;
+  private final Processor entityProcessor;
+  private Processor dataInsightProcessor;
+  private Sink searchIndexSink;
+  private final SearchClient searchClient;
+  @Getter final EventPublisherJob jobData;
   private final CollectionDAO dao;
   private volatile boolean stopped = false;
 
-  public SearchIndexWorkflow(
-      CollectionDAO dao,
-      ElasticSearchIndexDefinition elasticSearchIndexDefinition,
-      RestHighLevelClient client,
-      EventPublisherJob request) {
+  public SearchIndexWorkflow(CollectionDAO dao, SearchClient client, EventPublisherJob request) {
     this.dao = dao;
     this.jobData = request;
     request
@@ -94,10 +98,16 @@ public class SearchIndexWorkflow implements Runnable {
                     new PaginatedDataInsightSource(dao, entityType, jobData.getBatchSize()));
               }
             });
-    this.entitiesProcessor = new EsEntitiesProcessor();
-    this.dataInsightProcessor = new EsDataInsightProcessor();
-    this.searchIndexSink = new EsSearchIndexSink(client);
-    this.elasticSearchIndexDefinition = elasticSearchIndexDefinition;
+    this.searchClient = client;
+    if (searchClient.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPEN_SEARCH)) {
+      this.entityProcessor = new OpenSearchEntitiesProcessor();
+      this.dataInsightProcessor = new OpenSearchDataInsightProcessor();
+      this.searchIndexSink = new OpenSearchIndexSink(searchClient);
+    } else {
+      this.entityProcessor = new ElasticSearchEntitiesProcessor();
+      this.dataInsightProcessor = new ElasticSearchDataInsightProcessor();
+      this.searchIndexSink = new ElasticSearchIndexSink(searchClient);
+    }
   }
 
   @SneakyThrows
@@ -145,14 +155,27 @@ public class SearchIndexWorkflow implements Runnable {
           resultList = paginatedEntitiesSource.readNext(null);
           requestToProcess = resultList.getData().size() + resultList.getErrors().size();
           if (!resultList.getData().isEmpty()) {
-            // process data to build Reindex Request
-            BulkRequest requests = entitiesProcessor.process(resultList, contextData);
-            // write the data to ElasticSearch
-            BulkResponse response = searchIndexSink.write(requests, contextData);
-            // update Status
-            handleErrors(resultList, paginatedEntitiesSource.getLastFailedCursor(), response, currentTime);
-            // Update stats
-            success = getSuccessFromBulkResponse(response);
+            if (searchClient.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPEN_SEARCH)) {
+              // process data to build Reindex Request
+              org.opensearch.action.bulk.BulkRequest requests =
+                  (org.opensearch.action.bulk.BulkRequest) entityProcessor.process(resultList, contextData);
+              // process data to build Reindex Request
+              org.opensearch.action.bulk.BulkResponse response =
+                  (org.opensearch.action.bulk.BulkResponse) searchIndexSink.write(requests, contextData);
+              // update Status
+              handleErrorsOs(resultList, paginatedEntitiesSource.getLastFailedCursor(), response, currentTime);
+              // Update stats
+              success = searchClient.getSuccessFromBulkResponse(response);
+            } else {
+              // process data to build Reindex Request
+              BulkRequest requests = (BulkRequest) entityProcessor.process(resultList, contextData);
+              // process data to build Reindex Request
+              BulkResponse response = (BulkResponse) searchIndexSink.write(requests, contextData);
+              // update Status
+              handleErrorsEs(resultList, paginatedEntitiesSource.getLastFailedCursor(), response, currentTime);
+              // Update stats
+              success = searchClient.getSuccessFromBulkResponse(response);
+            }
             failed = requestToProcess - success;
           } else {
             failed = 0;
@@ -189,7 +212,7 @@ public class SearchIndexWorkflow implements Runnable {
               success,
               failed,
               paginatedEntitiesSource.getStats(),
-              entitiesProcessor.getStats(),
+              entityProcessor.getStats(),
               searchIndexSink.getStats());
           sendUpdates();
         }
@@ -212,15 +235,25 @@ public class SearchIndexWorkflow implements Runnable {
           resultList = paginatedDataInsightSource.readNext(null);
           requestToProcess = resultList.getData().size() + resultList.getErrors().size();
           if (!resultList.getData().isEmpty()) {
-            // process data to build Reindex Request
-            BulkRequest requests = dataInsightProcessor.process(resultList, contextData);
-            // write the data to ElasticSearch
-            // write the data to ElasticSearch
-            BulkResponse response = searchIndexSink.write(requests, contextData);
-            // update Status
-            handleErrors(resultList, "", response, currentTime);
-            // Update stats
-            success = getSuccessFromBulkResponse(response);
+            if (searchClient.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPEN_SEARCH)) {
+              // process data to build Reindex Request
+              org.opensearch.action.bulk.BulkRequest requests =
+                  (org.opensearch.action.bulk.BulkRequest) dataInsightProcessor.process(resultList, contextData);
+              // process data to build Reindex Request
+              org.opensearch.action.bulk.BulkResponse response =
+                  (org.opensearch.action.bulk.BulkResponse) searchIndexSink.write(requests, contextData);
+              handleErrorsOs(resultList, "", response, currentTime);
+              // Update stats
+              success = searchClient.getSuccessFromBulkResponse(response);
+            } else {
+              // process data to build Reindex Request
+              BulkRequest requests = (BulkRequest) dataInsightProcessor.process(resultList, contextData);
+              // process data to build Reindex Request
+              BulkResponse response = (BulkResponse) searchIndexSink.write(requests, contextData);
+              handleErrorsEs(resultList, "", response, currentTime);
+              // Update stats
+              success = searchClient.getSuccessFromBulkResponse(response);
+            }
             failed = requestToProcess - success;
           } else {
             failed = 0;
@@ -321,12 +354,18 @@ public class SearchIndexWorkflow implements Runnable {
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
         ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
     // Delete index
-    elasticSearchIndexDefinition.deleteIndex(indexType);
+    searchClient.deleteIndex(indexType);
     // Create index
-    elasticSearchIndexDefinition.createIndex(indexType, jobData.getSearchIndexMappingLanguage().value());
+    searchClient.createIndex(indexType, jobData.getSearchIndexMappingLanguage().value());
   }
 
-  private void handleErrors(ResultList<?> data, String lastCursor, BulkResponse response, long time) {
+  private void handleErrorsOs(
+      ResultList<?> data, String lastCursor, org.opensearch.action.bulk.BulkResponse response, long time) {
+    handleSourceError(data, lastCursor, time);
+    handleOsSinkErrors(response, time);
+  }
+
+  private void handleErrorsEs(ResultList<?> data, String lastCursor, BulkResponse response, long time) {
     handleSourceError(data, lastCursor, time);
     handleEsSinkErrors(response, time);
   }
@@ -366,6 +405,34 @@ public class SearchIndexWorkflow implements Runnable {
           String.format("SourceContext: After Cursor : %s, Encountered Error While Reading Data.", lastCursor),
           String.format(
               "Following Entities were not fetched Successfully : %s", JsonUtils.pojoToJson(data.getErrors())),
+          time);
+    }
+  }
+
+  @SneakyThrows
+  private void handleOsSinkErrors(org.opensearch.action.bulk.BulkResponse response, long time) {
+    List<FailureDetails> details = new ArrayList<>();
+    for (org.opensearch.action.bulk.BulkItemResponse bulkItemResponse : response) {
+      if (bulkItemResponse.isFailed()) {
+        org.opensearch.action.bulk.BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
+        FailureDetails esFailure =
+            new FailureDetails()
+                .withContext(
+                    String.format(
+                        "EsWriterContext: Encountered Error While Writing Data %n Entity %n ID : [%s] ",
+                        failure.getId()))
+                .withLastFailedReason(
+                    String.format(
+                        "Index Type: [%s], Reason: [%s] %n Trace : [%s]",
+                        failure.getIndex(), failure.getMessage(), ExceptionUtils.getStackTrace(failure.getCause())))
+                .withLastFailedAt(System.currentTimeMillis());
+        details.add(esFailure);
+      }
+    }
+    if (!details.isEmpty()) {
+      handleEsSinkError(
+          "[EsWriter] BulkResponseItems",
+          String.format("[BulkItemResponse] Got Following Error Responses: %n %s ", JsonUtils.pojoToJson(details)),
           time);
     }
   }

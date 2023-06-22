@@ -10,6 +10,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.elasticsearch.indexes.ElasticSearchIndex;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TestCaseIndex implements ElasticSearchIndex {

@@ -13,18 +13,28 @@ public abstract class DataInsightAggregatorInterface {
   protected static final String ENTITY_COUNT = "entityCount";
   protected static final String TIMESTAMP = "timestamp";
   protected static final String ENTITY_TIER = "entityTier";
-  protected final Aggregations aggregations;
+  protected final Aggregations aggregationsEs;
+  protected final org.opensearch.search.aggregations.Aggregations aggregationsOs;
   protected final DataInsightChartResult.DataInsightChartType dataInsightChartType;
 
   protected DataInsightAggregatorInterface(
       Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
-    this.aggregations = aggregations;
+    this.aggregationsEs = aggregations;
+    this.aggregationsOs = null;
+    this.dataInsightChartType = dataInsightChartType;
+  }
+
+  protected DataInsightAggregatorInterface(
+      org.opensearch.search.aggregations.Aggregations aggregations,
+      DataInsightChartResult.DataInsightChartType dataInsightChartType) {
+    this.aggregationsEs = null;
+    this.aggregationsOs = aggregations;
     this.dataInsightChartType = dataInsightChartType;
   }
 
   public abstract DataInsightChartResult process() throws ParseException;
 
-  abstract List<Object> aggregate() throws ParseException;
+  public abstract List<Object> aggregate() throws ParseException;
 
   public Long convertDatTimeStringToTimestamp(String dateTimeString) throws ParseException {
     SimpleDateFormat dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
