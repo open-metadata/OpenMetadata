@@ -17,6 +17,13 @@
       "maxLength": 128,
       "pattern": "^((?!::).)*$"
     },
+    "fullyQualifiedEntityName": {
+      "description": "A unique name that identifies a table. Example for table 'DatabaseService:Database:Table'.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^((?!::).)*$"
+    },
     "profileSampleType": {
       "description": "Type of Profile Sample (percentage or rows)",
       "type": "string",
@@ -270,7 +277,7 @@
           "$ref": "../../type/basic.json#/definitions/markdown"
         },
         "fullyQualifiedName": {
-          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+          "$ref": "#/definitions/fullyQualifiedEntityName"
         },
         "tags": {
           "description": "Tags associated with the column.",
@@ -325,7 +332,7 @@
       "type": "object",
       "properties": {
         "fullyQualifiedName": {
-          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+          "$ref": "#/definitions/fullyQualifiedEntityName"
         },
         "joinCount": {
           "type": "integer"
@@ -868,7 +875,7 @@
     },
     "fullyQualifiedName": {
       "description": "Fully qualified name of a table in the form `serviceName.databaseName.tableName`.",
-      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      "$ref": "#/definitions/fullyQualifiedEntityName"
     },
     "description": {
       "description": "Description of a table.",
