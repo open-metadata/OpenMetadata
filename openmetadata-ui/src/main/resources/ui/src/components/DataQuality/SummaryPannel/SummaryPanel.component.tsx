@@ -78,7 +78,7 @@ export const SummaryPanel = () => {
           title={t('label.failed')}
           total={summary?.total ?? 0}
           type="failed"
-          value={summary?.aborted ?? 0}
+          value={summary?.failed ?? 0}
         />
       </Col>
     </Row>
