@@ -24,6 +24,8 @@ import {
 import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
 import { ReactComponent as Help } from 'assets/svg/ic-help.svg';
 import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import SearchOptions from 'components/AppBar/SearchOptions';
+import Suggestions from 'components/AppBar/Suggestions';
 import BrandImage from 'components/common/BrandImage/BrandImage';
 import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import WhatsNewAlert from 'components/Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component';
@@ -67,8 +69,6 @@ import {
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import SearchOptions from '../app-bar/SearchOptions';
-import Suggestions from '../app-bar/Suggestions';
 import Avatar from '../common/avatar/Avatar';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
 import LegacyDropDown from '../dropdown/DropDown';

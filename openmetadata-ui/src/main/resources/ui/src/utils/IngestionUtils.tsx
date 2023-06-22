@@ -11,35 +11,34 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { getServiceDetailsPath } from 'constants/constants';
+import {
+  DATA_INSIGHTS_PIPELINE_DOCS,
+  ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS,
+  WORKFLOWS_METADATA_DOCS,
+} from 'constants/docs.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from 'constants/GlobalSettings.constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from 'enums/ElasticSearch.enum';
 import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { t } from 'i18next';
 import { DataObj } from 'interface/service.interface';
 import { isUndefined, startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
-import { Connection } from '../generated/entity/services/databaseService';
-import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { Connection as MetadataConnection } from '../generated/entity/services/metadataService';
-import { ServicesType } from '../interface/service.interface';
-
-import { Typography } from 'antd';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import {
-  DATA_INSIGHTS_PIPELINE_DOCS,
-  ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS,
-  WORKFLOWS_METADATA_DOCS,
-} from 'constants/docs.constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from 'enums/ElasticSearch.enum';
 import {
   INGESTION_ACTION_TYPE,
   PIPELINE_TYPE_LOCALIZATION,
 } from '../constants/Ingestions.constant';
+import { Connection } from '../generated/entity/services/databaseService';
+import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { Connection as MetadataConnection } from '../generated/entity/services/metadataService';
+import { ServicesType } from '../interface/service.interface';
 import { Transi18next } from './CommonUtils';
 import { getSettingPath, getSettingsPathWithFqn } from './RouterUtils';
 import {
@@ -299,7 +298,7 @@ export const getIngestionButtonText = (
     });
   } else {
     return pipelineType === PipelineType.ElasticSearchReindex
-      ? t('label.deploy-search-index-pipeline')
+      ? t('label.deploy')
       : t('label.add-workflow-ingestion', {
           workflow: startCase(
             pipelineType ? pipelineType : t(`label.${PipelineType.Metadata}`)
