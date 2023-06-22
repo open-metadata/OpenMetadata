@@ -18,8 +18,6 @@ from typing import Any, Type, TypeVar, Union
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.type import basic
-
 T = TypeVar("T", bound=BaseModel)
 
 
