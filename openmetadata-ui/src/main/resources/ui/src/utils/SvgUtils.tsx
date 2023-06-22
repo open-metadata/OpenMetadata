@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import IconFlatFolder from 'assets/svg/folder.svg';
 import IconFlatDoc from 'assets/svg/ic-flat-doc.svg';
 import { omit } from 'lodash';
 import React, { FunctionComponent } from 'react';
@@ -1164,10 +1163,6 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       break;
     case Icons.CONTAINER:
       IconComponent = IconContainer;
-
-      break;
-    case Icons.FLAT_FOLDER:
-      IconComponent = IconFlatFolder;
 
       break;
     case Icons.FLAT_DOC:

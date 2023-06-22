@@ -38,7 +38,6 @@ import { useHistory, useParams } from 'react-router-dom';
 import ReactFlow, {
   addEdge,
   Background,
-  BackgroundVariant,
   Connection,
   Edge,
   getConnectedEdges,
@@ -1628,7 +1627,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             onPaneClick={onPaneClick}>
             {updatedLineageData && (
               <CustomControlsComponent
-                className="absolute top-1 right-1 bottom-full"
+                className="absolute top-1 right-1 bottom-full p-md"
                 deleted={deleted}
                 fitViewParams={{
                   minZoom: MIN_ZOOM_VALUE,
@@ -1654,9 +1653,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                 onOptionSelect={handleOptionSelect}
               />
             )}
-            {isEditMode && (
-              <Background gap={12} size={1} variant={BackgroundVariant.Lines} />
-            )}
+            <Background gap={12} size={1} />
           </ReactFlow>
         </ReactFlowProvider>
       </div>

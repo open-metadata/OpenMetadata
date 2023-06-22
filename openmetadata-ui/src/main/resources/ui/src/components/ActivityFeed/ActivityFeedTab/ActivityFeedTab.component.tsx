@@ -15,7 +15,6 @@ import AppState from 'AppState';
 import classNames from 'classnames';
 import Loader from 'components/Loader/Loader';
 import { TaskTab } from 'components/Task/TaskTab/TaskTab.component';
-import { pagingObject } from 'constants/constants';
 import { observerOptions } from 'constants/Mydata.constants';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { FeedFilter } from 'enums/mydata.enum';
@@ -63,7 +62,6 @@ export const ActivityFeedTab = ({
   columns,
   entityType,
 }: ActivityFeedTabProps) => {
-  const [paging] = useState<Paging>(pagingObject);
   const history = useHistory();
   const { t } = useTranslation();
   const [elementRef, isInView] = useElementInView(observerOptions);
@@ -227,8 +225,8 @@ export const ActivityFeedTab = ({
   };
 
   useEffect(() => {
-    fetchMoreThread(isInView, paging, loading);
-  }, [paging, loading, isInView]);
+    fetchMoreThread(isInView, entityPaging, loading);
+  }, [entityPaging, loading, isInView]);
 
   const loader = useMemo(() => (loading ? <Loader /> : null), [loading]);
 
@@ -277,9 +275,9 @@ export const ActivityFeedTab = ({
   }, [entityThread, activeTab]);
 
   return (
-    <div className="d-flex">
+    <div className="activity-feed-tab">
       <Menu
-        className="custom-menu w-72 p-t-sm"
+        className="custom-menu p-t-sm"
         data-testid="global-setting-left-panel"
         items={[
           {
@@ -310,24 +308,14 @@ export const ActivityFeedTab = ({
           },
         ]}
         mode="inline"
+        rootClassName="left-container"
         selectedKeys={[activeTab]}
-        style={{
-          flex: '0 0 250px',
-          borderRight: '1px solid rgba(0, 0, 0, 0.1)',
-        }}
         onClick={(info) => handleTabChange(info.key)}
       />
 
-      <div
-        style={{
-          flex: '0 0 calc(50% - 125px)',
-          height: 'calc(100vh - 236px)',
-          overflowY: 'scroll',
-        }}>
+      <div className=" center-container">
         {activeTab === ActivityFeedTabs.TASKS && (
-          <div
-            className="d-flex gap-4 p-sm p-x-lg"
-            style={{ backgroundColor: '#F8F8F8' }}>
+          <div className="d-flex gap-4 p-sm p-x-lg activity-feed-task">
             <Typography.Text
               className={classNames(
                 'cursor-pointer p-l-xss d-flex items-center',
@@ -361,19 +349,20 @@ export const ActivityFeedTab = ({
           hidePopover
           activeFeedId={selectedThread?.id}
           feedList={threads}
-          isLoading={loading}
+          isLoading={false}
           showThread={false}
           onFeedClick={handleFeedClick}
         />
+        {loader}
+        <div
+          className="w-full"
+          data-testid="observer-element"
+          id="observer-element"
+          ref={elementRef as RefObject<HTMLDivElement>}
+        />
       </div>
-      <div
-        style={{
-          flex: '0 0 calc(50% - 125px)',
-          borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
-          height: 'calc(100vh - 236px)',
-          overflowY: 'scroll',
-        }}>
-        {loading && loader}
+      <div className=" right-container">
+        {loader}
         {selectedThread &&
           !loading &&
           (activeTab !== ActivityFeedTabs.TASKS ? (
@@ -419,13 +408,6 @@ export const ActivityFeedTab = ({
             </div>
           ))}
       </div>
-      <div
-        className="w-full"
-        data-testid="observer-element"
-        id="observer-element"
-        ref={elementRef as RefObject<HTMLDivElement>}
-      />
-      {loader}
     </div>
   );
 };

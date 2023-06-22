@@ -103,8 +103,10 @@ const CustomNodeV1 = (props: NodeProps) => {
     updateNodeInternals(id);
     if (!isExpanded) {
       setShowAllColumns(false);
+    } else if (Object.values(columns).length < 5) {
+      setShowAllColumns(true);
     }
-  }, [isEditMode, isExpanded]);
+  }, [isEditMode, isExpanded, columns]);
 
   useEffect(() => {
     if (!isEmpty(columns)) {
