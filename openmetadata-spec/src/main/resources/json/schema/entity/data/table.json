@@ -21,15 +21,13 @@
       "description": "A unique name that identifies a table. Example for table 'DatabaseService.Database.Schema.Table'.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 896,
-      "pattern": "^((?!::).)*$"
+      "maxLength": 896
     },
     "columnFullyQualifiedEntityName": {
       "description": "A unique name that identifies a column. Example for table 'DatabaseService.Database.Schema.Table.Column'.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 1024,
-      "pattern": "^((?!::).)*$"
+      "maxLength": 1024
     },
     "profileSampleType": {
       "description": "Type of Profile Sample (percentage or rows)",
