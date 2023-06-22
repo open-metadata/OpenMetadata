@@ -185,14 +185,10 @@ const UserListV1: FC<UserListV1Props> = ({
           <span>
             <Switch
               checked={showDeletedUser}
-              size="small"
+              data-testid="show-deleted"
               onClick={onShowDeletedUserChange}
             />
-            <span className="tw-ml-2">
-              {t('label.deleted-entity', {
-                entity: t('label.user-plural'),
-              })}
-            </span>
+            <span className="m-l-xs">{t('label.deleted')}</span>
           </span>
         </Col>
         <Col className="mt-24" span={24}>
@@ -227,13 +223,10 @@ const UserListV1: FC<UserListV1Props> = ({
           <span>
             <Switch
               checked={showDeletedUser}
+              data-testid="show-deleted"
               onClick={onShowDeletedUserChange}
             />
-            <span className="tw-ml-2">
-              {t('label.deleted-entity', {
-                entity: t('label.user-plural'),
-              })}
-            </span>
+            <span className="m-l-xs">{t('label.deleted')}</span>
           </span>
           <Tooltip
             placement="topLeft"

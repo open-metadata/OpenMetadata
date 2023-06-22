@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Table, Tabs, Typography } from 'antd';
+import { Card, Col, Row, Space, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import ActivityFeedProvider, {
@@ -24,14 +24,14 @@ import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAss
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
-import { TagLabel } from 'generated/type/schema';
+import { TagLabel, TagSource } from 'generated/type/schema';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { restoreMlmodel } from 'rest/mlModelAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
 import AppState from '../../AppState';
 import { getMlModelDetailsPath } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
@@ -392,20 +392,33 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <TagsContainerV1
-                editable={
-                  mlModelPermissions.EditAll || mlModelPermissions.EditTags
-                }
-                entityFieldThreads={getEntityFieldThreadCounts(
-                  EntityField.TAGS,
-                  entityFieldThreadCount
-                )}
-                entityFqn={mlModelDetail.fullyQualifiedName}
-                entityType={EntityType.MLMODEL}
-                selectedTags={mlModelTags}
-                onSelectionChange={handleTagSelection}
-                onThreadLinkSelect={handleThreadLinkSelect}
-              />
+              <Space className="w-full" direction="vertical" size="large">
+                <TagsContainerV1
+                  entityFqn={mlModelDetail.fullyQualifiedName}
+                  entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
+                  entityType={EntityType.MLMODEL}
+                  permission={
+                    mlModelPermissions.EditAll || mlModelPermissions.EditTags
+                  }
+                  selectedTags={mlModelTags}
+                  tagType={TagSource.Classification}
+                  onSelectionChange={handleTagSelection}
+                  onThreadLinkSelect={handleThreadLinkSelect}
+                />
+
+                <TagsContainerV1
+                  entityFqn={mlModelDetail.fullyQualifiedName}
+                  entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
+                  entityType={EntityType.MLMODEL}
+                  permission={
+                    mlModelPermissions.EditAll || mlModelPermissions.EditTags
+                  }
+                  selectedTags={mlModelTags}
+                  tagType={TagSource.Glossary}
+                  onSelectionChange={handleTagSelection}
+                  onThreadLinkSelect={handleThreadLinkSelect}
+                />
+              </Space>
             </Col>
           </Row>
         ),

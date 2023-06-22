@@ -65,7 +65,7 @@ import {
   getFeedCounts,
   refreshPage,
 } from '../../utils/CommonUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName, getEntityThreadLink } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -651,20 +651,33 @@ const PipelineDetails = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <TagsContainerV1
-                editable={
-                  pipelinePermissions.EditAll || pipelinePermissions.EditTags
-                }
-                entityFieldThreads={getEntityFieldThreadCounts(
-                  EntityField.TAGS,
-                  entityFieldThreadCount
-                )}
-                entityFqn={pipelineFQN}
-                entityType={EntityType.TOPIC}
-                selectedTags={tags}
-                onSelectionChange={handleTagSelection}
-                onThreadLinkSelect={onThreadLinkSelect}
-              />
+              <Space className="w-full" direction="vertical" size="large">
+                <TagsContainerV1
+                  entityFqn={pipelineFQN}
+                  entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
+                  entityType={EntityType.PIPELINE}
+                  permission={
+                    pipelinePermissions.EditAll || pipelinePermissions.EditTags
+                  }
+                  selectedTags={tags}
+                  tagType={TagSource.Classification}
+                  onSelectionChange={handleTagSelection}
+                  onThreadLinkSelect={onThreadLinkSelect}
+                />
+
+                <TagsContainerV1
+                  entityFqn={pipelineFQN}
+                  entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
+                  entityType={EntityType.PIPELINE}
+                  permission={
+                    pipelinePermissions.EditAll || pipelinePermissions.EditTags
+                  }
+                  selectedTags={tags}
+                  tagType={TagSource.Glossary}
+                  onSelectionChange={handleTagSelection}
+                  onThreadLinkSelect={onThreadLinkSelect}
+                />
+              </Space>
             </Col>
           </Row>
         ),

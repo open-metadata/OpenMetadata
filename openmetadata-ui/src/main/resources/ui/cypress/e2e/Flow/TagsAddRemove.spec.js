@@ -38,8 +38,9 @@ const addTags = (tag, parent) => {
 const checkTags = (tag, checkForParentEntity) => {
   if (checkForParentEntity) {
     cy.get(
-      '[data-testid="entity-right-panel"]  [data-testid="tag-container"] [data-testid="entity-tags"] '
+      '[data-testid="entity-right-panel"]  [data-testid="tags-container"] [data-testid="entity-tags"] '
     )
+
       .scrollIntoView()
       .should('be.visible')
       .contains(tag);
@@ -48,9 +49,9 @@ const checkTags = (tag, checkForParentEntity) => {
   }
 };
 
-const removeTags = (checkForParentEntity, separate) => {
+const removeTags = (checkForParentEntity) => {
   if (checkForParentEntity) {
-    cy.get('[data-testid="entity-right-panel"] [data-testid="edit-button"] ')
+    cy.get('[data-testid="entity-right-panel"] [data-testid="edit-button"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -86,7 +87,9 @@ describe('Check if tags addition and removal flow working properly from tables',
         entityDetails.entity
       );
 
-      cy.get('[data-testid="entity-right-panel"] [data-testid="add-tag"]')
+      cy.get(
+        '[data-testid="entity-right-panel"] [data-testid="tags-container"]  [data-testid="add-tag"]'
+      )
         .should('be.visible')
         .click();
 

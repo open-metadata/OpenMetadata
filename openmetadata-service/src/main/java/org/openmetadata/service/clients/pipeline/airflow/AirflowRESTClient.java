@@ -267,7 +267,10 @@ public class AirflowRESTClient extends PipelineServiceClient {
       }
 
     } catch (Exception e) {
-      throw PipelineServiceClientException.byMessage("Failed to get REST status.", e.getMessage());
+      Map<String, String> status =
+          buildUnhealthyStatus(String.format("Failed to get REST status due to [%s].", e.getMessage()));
+
+      return Response.ok(status, MediaType.APPLICATION_JSON_TYPE).build();
     }
     throw new PipelineServiceClientException(String.format("Failed to get REST status due to %s.", response.body()));
   }

@@ -708,12 +708,19 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             description = "Tests Execution Summary",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSummary.class)))
       })
-  public TestSummary getTestsExecutionSummary(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
+  public TestSummary getTestsExecutionSummary(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "get summary for a specific test suite",
+              schema = @Schema(type = "String", format = "uuid"))
+          @QueryParam("testSuiteId")
+          UUID testSuiteId)
       throws IOException {
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().build();
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.getTestSummary();
+    return repository.getTestSummary(testSuiteId);
   }
 
   @Override

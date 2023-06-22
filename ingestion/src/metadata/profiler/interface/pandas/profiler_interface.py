@@ -34,7 +34,7 @@ from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
-from metadata.profiler.processor.datalake_sampler import DatalakeSampler
+from metadata.profiler.processor.pandas.sampler import DatalakeSampler
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_like_column import SQALikeColumn, Type
@@ -48,6 +48,8 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
     sqlalchemy.
     """
 
+    # pylint: disable=too-many-arguments
+
     _profiler_type: str = DatalakeConnection.__name__
 
     def __init__(
@@ -60,7 +62,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         source_config,
         sample_query,
         table_partition_config=None,
-        **kwargs,
+        **_,
     ):
         """Instantiate SQA Interface object"""
         self._thread_count = thread_count
@@ -359,4 +361,3 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
 
     def close(self):
         """Nothing to close with pandas"""
-        pass
