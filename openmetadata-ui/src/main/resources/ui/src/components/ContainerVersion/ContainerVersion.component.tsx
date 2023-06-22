@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 
-import { Card, Tabs, TabsProps } from 'antd';
+import { Col, Row, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
+import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
+import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
 import { getVersionPathWithTab } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import {
@@ -27,14 +30,8 @@ import { cloneDeep, toString } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { bytesToSize } from 'utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import {
-  EntityInfo,
-  EntityTabs,
-  EntityType,
-  FqnPart,
-} from '../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
   getColumnsDataWithVersionChanges,
@@ -42,8 +39,6 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
-import Description from '../common/description/Description';
-import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import VersionTable from '../VersionTable/VersionTable.component';
@@ -69,23 +64,10 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const extraInfo = useMemo(() => {
-    const containerData = currentVersionData as Container;
-
-    return [
-      ...getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
-      {
-        key: EntityInfo.NUMBER_OF_OBJECTS,
-        value: toString(containerData.numberOfObjects),
-        showLabel: true,
-      },
-      {
-        key: EntityInfo.SIZE,
-        value: bytesToSize(containerData.size ?? 0),
-        showLabel: true,
-      },
-    ];
-  }, [currentVersionData, changeDescription, owner, tier]);
+  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
+    () => getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
+    [changeDescription, owner, tier]
+  );
 
   const columns = useMemo(() => {
     const colList = cloneDeep(
@@ -118,17 +100,17 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
 
   const description = useMemo(() => {
     return getEntityVersionByField(
-      currentVersionData,
       changeDescription,
-      EntityField.DESCRIPTION
+      EntityField.DESCRIPTION,
+      currentVersionData.description
     );
   }, [currentVersionData, changeDescription]);
 
   const displayName = useMemo(() => {
     return getEntityVersionByField(
-      currentVersionData,
       changeDescription,
-      EntityField.DISPLAYNAME
+      EntityField.DISPLAYNAME,
+      currentVersionData.displayName
     );
   }, [currentVersionData, changeDescription]);
 
@@ -138,25 +120,42 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
         key: EntityTabs.SCHEMA,
         label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
         children: (
-          <Card className="m-y-md">
-            <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-              <div className="tw-col-span-full">
-                <Description isReadOnly description={description} />
-              </div>
-
-              <div className="tw-col-span-full">
-                <VersionTable
-                  columnName={getPartialNameFromTableFQN(
-                    containerFQN,
-                    [FqnPart.Column],
-                    FQN_SEPARATOR_CHAR
-                  )}
-                  columns={columns}
-                  joins={[]}
-                />
-              </div>
-            </div>
-          </Card>
+          <Row gutter={[0, 16]} wrap={false}>
+            <Col className="p-t-sm m-l-lg" flex="auto">
+              <Row gutter={[0, 16]}>
+                <Col span={24}>
+                  <DescriptionV1
+                    isReadOnly
+                    description={description}
+                    entityType={EntityType.CONTAINER}
+                  />
+                </Col>
+                <Col span={24}>
+                  <VersionTable
+                    columnName={getPartialNameFromTableFQN(
+                      containerFQN,
+                      [FqnPart.Column],
+                      FQN_SEPARATOR_CHAR
+                    )}
+                    columns={columns}
+                    joins={[]}
+                  />
+                </Col>
+              </Row>
+            </Col>
+            <Col
+              className="entity-tag-right-panel-container"
+              data-testid="entity-right-panel"
+              flex="220px">
+              <TagsContainerV1
+                showLimited
+                editable={false}
+                entityFqn={containerFQN}
+                entityType={EntityType.CONTAINER}
+                selectedTags={tags}
+              />
+            </Col>
+          </Row>
         ),
       },
       {
@@ -188,27 +187,28 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
         <Loader />
       ) : (
         <div className={classNames('version-data')}>
-          <EntityPageInfo
-            isVersionSelected
-            deleted={deleted}
-            displayName={displayName}
-            entityName={currentVersionData.name ?? ''}
-            extraInfo={extraInfo}
-            followersList={[]}
-            serviceType={currentVersionData.serviceType ?? ''}
-            tags={tags}
-            tier={undefined}
-            titleLinks={breadCrumbList}
-            version={version}
-            versionHandler={backHandler}
-          />
-          <div className="tw-mt-1 d-flex flex-col flex-grow ">
-            <Tabs
-              defaultActiveKey={tab ?? EntityTabs.SCHEMA}
-              items={tabItems}
-              onChange={handleTabChange}
-            />
-          </div>
+          <Row gutter={[0, 12]}>
+            <Col span={24}>
+              <DataAssetsVersionHeader
+                breadcrumbLinks={breadCrumbList}
+                currentVersionData={currentVersionData}
+                deleted={deleted}
+                displayName={displayName}
+                ownerDisplayName={ownerDisplayName}
+                ownerRef={ownerRef}
+                tierDisplayName={tierDisplayName}
+                version={version}
+                onVersionClick={backHandler}
+              />
+            </Col>
+            <Col span={24}>
+              <Tabs
+                defaultActiveKey={tab ?? EntityTabs.SCHEMA}
+                items={tabItems}
+                onChange={handleTabChange}
+              />
+            </Col>
+          </Row>
         </div>
       )}
 

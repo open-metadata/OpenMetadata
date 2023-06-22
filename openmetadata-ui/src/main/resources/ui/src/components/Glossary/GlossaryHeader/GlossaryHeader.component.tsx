@@ -20,6 +20,7 @@ import { ReactComponent as IconFlatDoc } from 'assets/svg/ic-flat-doc.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
@@ -40,7 +41,11 @@ import { cloneDeep, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { exportGlossaryInCSVFormat } from 'rest/glossaryAPI';
+import {
+  exportGlossaryInCSVFormat,
+  getGlossariesById,
+  getGlossaryTermsById,
+} from 'rest/glossaryAPI';
 import { getEntityDeleteMessage } from 'utils/CommonUtils';
 import {
   getGlossaryPath,
@@ -50,6 +55,7 @@ import {
   getGlossaryVersionsPath,
 } from 'utils/RouterUtils';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
+import { showErrorToast } from 'utils/ToastUtils';
 
 export interface GlossaryHeaderProps {
   isVersionView?: boolean;
@@ -86,6 +92,23 @@ const GlossaryHeader = ({
   const [showActions, setShowActions] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
+  const [latestGlossaryData, setLatestGlossaryData] = useState<
+    Glossary | GlossaryTerm
+  >();
+
+  // To fetch the latest glossary data
+  // necessary to handle back click functionality to work properly in version page
+  const fetchCurrentGlossaryInfo = async () => {
+    try {
+      const res = isGlossary
+        ? await getGlossariesById(glossaryFqn)
+        : await getGlossaryTermsById(glossaryFqn);
+
+      setLatestGlossaryData(res);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   const editDisplayNamePermission = useMemo(() => {
     return permissions.EditAll || permissions.EditDisplayName;
@@ -104,8 +127,8 @@ const GlossaryHeader = ({
     let path: string;
     if (isVersionView) {
       path = isGlossary
-        ? getGlossaryPath(selectedData.fullyQualifiedName)
-        : getGlossaryTermsPath(selectedData.fullyQualifiedName ?? '');
+        ? getGlossaryPath(latestGlossaryData?.fullyQualifiedName)
+        : getGlossaryTermsPath(latestGlossaryData?.fullyQualifiedName ?? '');
     } else {
       path = isGlossary
         ? getGlossaryVersionsPath(
@@ -324,6 +347,12 @@ const GlossaryHeader = ({
     const { fullyQualifiedName, name } = selectedData;
     handleBreadcrumb(fullyQualifiedName ? fullyQualifiedName : name);
   }, [selectedData]);
+
+  useEffect(() => {
+    if (isVersionView) {
+      fetchCurrentGlossaryInfo();
+    }
+  }, []);
 
   return (
     <>

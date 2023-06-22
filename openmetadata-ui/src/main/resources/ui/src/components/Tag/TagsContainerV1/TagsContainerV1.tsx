@@ -189,7 +189,7 @@ const TagsContainerV1 = ({
 
   const handleSave: FormProps['onFinish'] = (data) => {
     const tags = getUpdatedTags(data.tags);
-    onSelectionChange(tags);
+    onSelectionChange && onSelectionChange(tags);
     form.resetFields();
     setIsEditTags(false);
   };

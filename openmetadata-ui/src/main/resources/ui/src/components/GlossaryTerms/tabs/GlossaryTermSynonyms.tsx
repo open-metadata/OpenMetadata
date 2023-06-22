@@ -94,6 +94,7 @@ const GlossaryTermSynonyms = ({
     const unchangedSynonyms = glossaryTerm.synonyms
       ? glossaryTerm.synonyms.filter(
           (synonym) =>
+            !isEmpty(synonym) &&
             !addedSynonyms.find(
               (addedSynonym: string) => addedSynonym === synonym
             )
@@ -111,29 +112,38 @@ const GlossaryTermSynonyms = ({
 
     return (
       <div className="d-flex flex-wrap">
-        {unchangedSynonyms.map((synonym) => (
-          <TagButton
-            className="glossary-synonym-tag"
-            key={synonym}
-            label={synonym}
-          />
-        ))}
-        {addedSynonyms.map((synonym) => (
-          <TagButton
-            className="glossary-synonym-tag"
-            key={synonym}
-            label={synonym}
-            versionData={{ added: true }}
-          />
-        ))}
-        {deletedSynonyms.map((synonym) => (
-          <TagButton
-            className="glossary-synonym-tag"
-            key={synonym}
-            label={synonym}
-            versionData={{ removed: true }}
-          />
-        ))}
+        {unchangedSynonyms.map(
+          (synonym) =>
+            !isEmpty(synonym) && (
+              <TagButton
+                className="glossary-synonym-tag"
+                key={synonym}
+                label={synonym}
+              />
+            )
+        )}
+        {addedSynonyms.map(
+          (synonym) =>
+            !isEmpty(synonym) && (
+              <TagButton
+                className="glossary-synonym-tag"
+                key={synonym}
+                label={synonym}
+                versionData={{ added: true }}
+              />
+            )
+        )}
+        {deletedSynonyms.map(
+          (synonym) =>
+            !isEmpty(synonym) && (
+              <TagButton
+                className="glossary-synonym-tag"
+                key={synonym}
+                label={synonym}
+                versionData={{ removed: true }}
+              />
+            )
+        )}
       </div>
     );
   }, [glossaryTerm, isVersionView, getSynonyms]);

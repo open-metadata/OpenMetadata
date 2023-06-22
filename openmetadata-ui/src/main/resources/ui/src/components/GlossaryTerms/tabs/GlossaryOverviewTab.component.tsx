@@ -67,9 +67,9 @@ const GlossaryOverviewTab = ({
   const glossaryDescription = useMemo(() => {
     if (isVersionView) {
       return getEntityVersionByField(
-        selectedData,
         selectedData.changeDescription as ChangeDescription,
-        EntityField.DESCRIPTION
+        EntityField.DESCRIPTION,
+        selectedData.description
       );
     } else {
       return selectedData.description;

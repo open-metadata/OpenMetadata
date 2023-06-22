@@ -97,6 +97,7 @@ import { defaultFields as MlModelFields } from '../../utils/MlModelDetailsUtils'
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import './EntityVersionPage.less';
 
 export type VersionData =
   | Table
@@ -821,7 +822,7 @@ const EntityVersionPage: FunctionComponent = () => {
             owner={owner}
             slashedTableName={slashedEntityName}
             tier={tier as TagLabel}
-            version={Number(version)}
+            version={version}
             versionHandler={versionHandler}
             versionList={versionList}
           />
@@ -909,7 +910,7 @@ const EntityVersionPage: FunctionComponent = () => {
             isVersionLoading={isVersionLoading}
             owner={owner}
             tier={tier as TagLabel}
-            version={Number(version)}
+            version={version}
             versionHandler={versionHandler}
             versionList={versionList}
           />
@@ -950,12 +951,11 @@ const EntityVersionPage: FunctionComponent = () => {
 
   return (
     <PageLayoutV1
+      className="version-page-container"
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(currentVersionData),
       })}>
-      <div className="page-container">
-        {isLoading ? <Loader /> : versionComponent()}
-      </div>
+      {isLoading ? <Loader /> : versionComponent()}
     </PageLayoutV1>
   );
 };

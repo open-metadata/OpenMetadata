@@ -62,7 +62,7 @@ export type GlossaryTermDetailsProps = {
 export type TagsContainerV1Props = {
   editable: boolean;
   selectedTags: Array<EntityTags>;
-  onSelectionChange: (selectedTags: Array<EntityTags>) => void;
+  onSelectionChange?: (selectedTags: Array<EntityTags>) => void;
   placeholder?: string;
   showLimited?: boolean;
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;

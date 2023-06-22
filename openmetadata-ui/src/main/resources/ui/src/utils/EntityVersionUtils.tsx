@@ -25,7 +25,6 @@ import {
   diffWords,
   diffWordsWithSpace,
 } from 'diff';
-import { OwnerType } from 'enums/user.enum';
 import { Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Field, MessageSchemaObject, Topic } from 'generated/entity/data/topic';
@@ -40,7 +39,6 @@ import {
   toString,
   uniqueId,
 } from 'lodash';
-import { ExtraInfo } from 'Models';
 import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 import React, { Fragment, ReactNode } from 'react';
 import ReactDOMServer from 'react-dom/server';
@@ -185,15 +183,15 @@ export const getTextDiff = (
 };
 
 export const getEntityVersionByField = (
-  currentVersionData: VersionData | Glossary,
   changeDescription: ChangeDescription,
-  field: EntityField
+  field: EntityField,
+  fallbackText?: string
 ) => {
   const fieldDiff = getDiffByFieldName(field, changeDescription, true);
   const oldField = getChangedEntityOldValue(fieldDiff);
   const newField = getChangedEntityNewValue(fieldDiff);
 
-  return getTextDiff(oldField ?? '', newField, currentVersionData.displayName);
+  return getTextDiff(oldField ?? '', newField, fallbackText);
 };
 
 export const getTagsDiff = (
@@ -587,7 +585,8 @@ export const getCommonExtraInfoForVersionDetails = (
     ...JSON.parse(getChangedEntityOldValue(tagsDiff) ?? '[]'),
   ].find((t) => (t?.tagFQN as string).startsWith('Tier'));
 
-  let ownerValue: ReactNode = '';
+  let ownerValue: ReactNode = getEntityName(owner);
+  let ownerRef = owner;
   let tierValue: ReactNode = '';
 
   if (
@@ -595,15 +594,10 @@ export const getCommonExtraInfoForVersionDetails = (
     !isUndefined(ownerDiff.deleted) ||
     !isUndefined(ownerDiff.updated)
   ) {
-    ownerValue = getOwnerInfo(
-      isEmpty(newOwner) ? oldOwner : newOwner,
-      getDiffValue(getEntityName(oldOwner), getEntityName(newOwner))
-    );
+    ownerRef = isEmpty(newOwner) ? oldOwner : newOwner;
+    ownerValue = getDiffValue(getEntityName(oldOwner), getEntityName(newOwner));
   } else if (owner) {
-    ownerValue = getOwnerInfo(
-      owner,
-      getDiffValue(ownerPlaceHolder, ownerPlaceHolder)
-    );
+    getDiffValue(ownerPlaceHolder, ownerPlaceHolder);
   }
 
   if (!isUndefined(newTier) || !isUndefined(oldTier)) {
@@ -615,18 +609,11 @@ export const getCommonExtraInfoForVersionDetails = (
     tierValue = tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1];
   }
 
-  const extraInfo: Array<ExtraInfo> = [
-    {
-      key: 'Owner',
-      value: ownerValue,
-      profileName:
-        newOwner?.type === OwnerType.USER ? newOwner?.name : undefined,
-    },
-    {
-      key: 'Tier',
-      value: tierValue,
-    },
-  ];
+  const extraInfo = {
+    ownerDisplayName: ownerValue,
+    tierDisplayName: tierValue,
+    ownerRef,
+  };
 
   return extraInfo;
 };

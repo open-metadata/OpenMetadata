@@ -16,7 +16,7 @@ import { ReactComponent as IconUser } from 'assets/svg/user.svg';
 import { OwnerType } from 'enums/user.enum';
 import { EntityReference } from 'generated/entity/data/table';
 import { isUndefined } from 'lodash';
-import React, { useMemo } from 'react';
+import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
@@ -26,10 +26,12 @@ export const OwnerLabel = ({
   owner,
   onUpdate,
   hasPermission,
+  ownerDisplayName,
 }: {
   owner?: EntityReference;
   onUpdate?: (owner?: EntityReference) => void;
   hasPermission?: boolean;
+  ownerDisplayName?: ReactNode;
 }) => {
   const displayName = getEntityName(owner);
   const { t } = useTranslation();
@@ -62,7 +64,7 @@ export const OwnerLabel = ({
           className="font-normal text-xs"
           data-testid="owner-link"
           style={{ fontSize: '12px' }}>
-          {displayName}
+          {ownerDisplayName ?? displayName}
         </Typography.Link>
       ) : (
         <Typography.Text

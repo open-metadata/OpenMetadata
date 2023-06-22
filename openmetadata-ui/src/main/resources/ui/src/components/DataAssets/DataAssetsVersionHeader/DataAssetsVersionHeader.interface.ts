@@ -10,22 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Container } from 'generated/entity/data/container';
-import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
-import { EntityHistory } from '../../generated/type/entityHistory';
-import { TagLabel } from '../../generated/type/tagLabel';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
-export interface ContainerVersionProp {
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import { EntityReference } from 'generated/entity/type';
+import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
+
+export interface DataAssetsVersionHeaderProps {
+  breadcrumbLinks: TitleBreadcrumbProps['titleLinks'];
   version: string;
+  deleted: boolean;
+  displayName: string;
   currentVersionData: VersionData;
-  isVersionLoading: boolean;
-  owner: Container['owner'];
-  tier: TagLabel;
-  breadCrumbList: TitleBreadcrumbProps['titleLinks'];
-  containerFQN: string;
-  versionList: EntityHistory;
-  deleted?: boolean;
-  backHandler: () => void;
-  versionHandler: (v: string) => void;
+  ownerDisplayName: React.ReactNode;
+  tierDisplayName: React.ReactNode;
+  ownerRef: EntityReference | undefined;
+  onVersionClick: () => void;
 }

@@ -11,16 +11,19 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Table, Tabs, TabsProps } from 'antd';
+import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
+import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
+import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
 import { getVersionPathWithTab } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
-import { EntityInfo, EntityTabs, EntityType } from 'enums/entity.enum';
+import { EntityTabs, EntityType } from 'enums/entity.enum';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
@@ -30,14 +33,11 @@ import {
   Dashboard,
   EntityReference,
 } from '../../generated/entity/data/dashboard';
-import { TagLabel } from '../../generated/type/tagLabel';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
-import Description from '../common/description/Description';
-import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
@@ -62,25 +62,10 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const extraInfo = useMemo(() => {
-    const { sourceUrl, serviceType, displayName, name } =
-      currentVersionData as Dashboard;
-
-    return [
-      ...getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
-      ...(sourceUrl
-        ? [
-            {
-              key: `${serviceType} ${EntityInfo.URL}`,
-              value: sourceUrl,
-              placeholderText: displayName ?? name,
-              isLink: true,
-              openInNewTab: true,
-            },
-          ]
-        : []),
-    ];
-  }, [currentVersionData, changeDescription, owner, tier]);
+  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
+    () => getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
+    [changeDescription, owner, tier]
+  );
 
   const handleTabChange = (activeKey: string) => {
     history.push(
@@ -155,17 +140,17 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
 
   const description = useMemo(() => {
     return getEntityVersionByField(
-      currentVersionData,
       changeDescription,
-      EntityField.DESCRIPTION
+      EntityField.DESCRIPTION,
+      currentVersionData.description
     );
   }, [currentVersionData, changeDescription]);
 
   const displayName = useMemo(() => {
     return getEntityVersionByField(
-      currentVersionData,
       changeDescription,
-      EntityField.DISPLAYNAME
+      EntityField.DISPLAYNAME,
+      currentVersionData.displayName
     );
   }, [currentVersionData, changeDescription]);
 
@@ -177,24 +162,42 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
           <TabsLabel id={EntityTabs.DETAILS} name={t('label.detail-plural')} />
         ),
         children: (
-          <Card className="m-y-md">
-            <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-              <div className="tw-col-span-full">
-                <Description isReadOnly description={description} />
-              </div>
-              <div className="m-y-md tw-col-span-full">
-                <Table
-                  bordered
-                  columns={tableColumn}
-                  data-testid="schema-table"
-                  dataSource={(currentVersionData as Dashboard)?.charts}
-                  pagination={false}
-                  rowKey="id"
-                  size="small"
-                />
-              </div>
-            </div>
-          </Card>
+          <Row gutter={[0, 16]} wrap={false}>
+            <Col className="p-t-sm m-l-lg" flex="auto">
+              <Row gutter={[0, 16]}>
+                <Col span={24}>
+                  <DescriptionV1
+                    isReadOnly
+                    description={description}
+                    entityType={EntityType.DASHBOARD}
+                  />
+                </Col>
+                <Col span={24}>
+                  <Table
+                    bordered
+                    columns={tableColumn}
+                    data-testid="schema-table"
+                    dataSource={(currentVersionData as Dashboard)?.charts}
+                    pagination={false}
+                    rowKey="id"
+                    size="small"
+                  />
+                </Col>
+              </Row>
+            </Col>
+            <Col
+              className="entity-tag-right-panel-container"
+              data-testid="entity-right-panel"
+              flex="220px">
+              <TagsContainerV1
+                showLimited
+                editable={false}
+                entityFqn={currentVersionData.fullyQualifiedName}
+                entityType={EntityType.DASHBOARD}
+                selectedTags={tags}
+              />
+            </Col>
+          </Row>
         ),
       },
       {
@@ -229,28 +232,29 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
           <div
             className={classNames('version-data')}
             data-testid="version-data">
-            <EntityPageInfo
-              isVersionSelected
-              deleted={deleted}
-              displayName={displayName}
-              entityName={currentVersionData.name ?? ''}
-              extraInfo={extraInfo}
-              followersList={[]}
-              serviceType={currentVersionData.serviceType ?? ''}
-              tags={tags}
-              tier={{} as TagLabel}
-              titleLinks={slashedDashboardName}
-              version={Number(version)}
-              versionHandler={backHandler}
-            />
-            <div className="tw-mt-1 d-flex flex-col flex-grow ">
-              <Tabs
-                data-testid="tabs"
-                defaultActiveKey={tab ?? EntityTabs.DETAILS}
-                items={tabItems}
-                onChange={handleTabChange}
-              />
-            </div>
+            <Row gutter={[0, 12]}>
+              <Col span={24}>
+                <DataAssetsVersionHeader
+                  breadcrumbLinks={slashedDashboardName}
+                  currentVersionData={currentVersionData}
+                  deleted={deleted}
+                  displayName={displayName}
+                  ownerDisplayName={ownerDisplayName}
+                  ownerRef={ownerRef}
+                  tierDisplayName={tierDisplayName}
+                  version={version}
+                  onVersionClick={backHandler}
+                />
+              </Col>
+              <Col span={24}>
+                <Tabs
+                  data-testid="tabs"
+                  defaultActiveKey={tab ?? EntityTabs.DETAILS}
+                  items={tabItems}
+                  onChange={handleTabChange}
+                />
+              </Col>
+            </Row>
           </div>
         )}
 

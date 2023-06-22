@@ -71,9 +71,9 @@ const GlossaryDetails = ({
     () =>
       isVersionView
         ? getEntityVersionByField(
-            glossary,
             glossary.changeDescription as ChangeDescription,
-            EntityField.DESCRIPTION
+            EntityField.DESCRIPTION,
+            glossary.description
           )
         : glossary.description,
 
@@ -84,9 +84,9 @@ const GlossaryDetails = ({
     () =>
       isVersionView
         ? getEntityVersionByField(
-            glossary,
             glossary.changeDescription as ChangeDescription,
-            EntityField.NAME
+            EntityField.NAME,
+            glossary.name
           )
         : glossary.name,
 
@@ -97,9 +97,9 @@ const GlossaryDetails = ({
     () =>
       isVersionView
         ? getEntityVersionByField(
-            glossary,
             glossary.changeDescription as ChangeDescription,
-            EntityField.DISPLAYNAME
+            EntityField.DISPLAYNAME,
+            glossary.displayName
           )
         : glossary.displayName,
 

@@ -11,17 +11,20 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Table, Tabs, TabsProps } from 'antd';
+import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
+import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
+import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { getVersionPathWithTab } from 'constants/constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
-import { EntityInfo, EntityTabs, EntityType } from 'enums/entity.enum';
+import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { t } from 'i18next';
 import { EntityDiffProps } from 'interface/EntityVersion.interface';
 import { cloneDeep, isEqual } from 'lodash';
@@ -49,8 +52,6 @@ import {
   getTextDiff,
 } from '../../utils/EntityVersionUtils';
 import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
-import Description from '../common/description/Description';
-import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
@@ -82,25 +83,10 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
     return name?.endsWith(checkWith);
   };
 
-  const extraInfo = useMemo(() => {
-    const { sourceUrl, serviceType, displayName, name } =
-      currentVersionData as Pipeline;
-
-    return [
-      ...getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
-      ...(sourceUrl
-        ? [
-            {
-              key: `${serviceType} ${EntityInfo.URL}`,
-              value: sourceUrl,
-              placeholderText: displayName ?? name,
-              isLink: true,
-              openInNewTab: true,
-            },
-          ]
-        : []),
-    ];
-  }, [currentVersionData, changeDescription, owner, tier]);
+  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
+    () => getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
+    [changeDescription, owner, tier]
+  );
 
   const handleColumnDescriptionChangeDiff = (
     colList: Pipeline['tasks'],
@@ -337,17 +323,17 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
 
   const description = useMemo(() => {
     return getEntityVersionByField(
-      currentVersionData,
       changeDescription,
-      EntityField.DESCRIPTION
+      EntityField.DESCRIPTION,
+      currentVersionData.description
     );
   }, [currentVersionData, changeDescription]);
 
   const displayName = useMemo(() => {
     return getEntityVersionByField(
-      currentVersionData,
       changeDescription,
-      EntityField.DISPLAYNAME
+      EntityField.DISPLAYNAME,
+      currentVersionData.displayName
     );
   }, [currentVersionData, changeDescription]);
 
@@ -359,25 +345,43 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           <TabsLabel id={EntityTabs.TASKS} name={t('label.task-plural')} />
         ),
         children: (
-          <Card className="m-y-md">
-            <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-              <div className="tw-col-span-full">
-                <Description isReadOnly description={description} />
-              </div>
-              <div className="m-y-md tw-col-span-full">
-                <Table
-                  bordered
-                  columns={tableColumn}
-                  data-testid="schema-table"
-                  dataSource={pipelineVersionTableData}
-                  pagination={false}
-                  rowKey="name"
-                  scroll={TABLE_SCROLL_VALUE}
-                  size="small"
-                />
-              </div>
-            </div>
-          </Card>
+          <Row gutter={[0, 16]} wrap={false}>
+            <Col className="p-t-sm m-l-lg" flex="auto">
+              <Row gutter={[0, 16]}>
+                <Col span={24}>
+                  <DescriptionV1
+                    isReadOnly
+                    description={description}
+                    entityType={EntityType.PIPELINE}
+                  />
+                </Col>
+                <Col span={24}>
+                  <Table
+                    bordered
+                    columns={tableColumn}
+                    data-testid="schema-table"
+                    dataSource={pipelineVersionTableData}
+                    pagination={false}
+                    rowKey="name"
+                    scroll={TABLE_SCROLL_VALUE}
+                    size="small"
+                  />
+                </Col>
+              </Row>
+            </Col>
+            <Col
+              className="entity-tag-right-panel-container"
+              data-testid="entity-right-panel"
+              flex="220px">
+              <TagsContainerV1
+                showLimited
+                editable={false}
+                entityFqn={currentVersionData.fullyQualifiedName}
+                entityType={EntityType.PIPELINE}
+                selectedTags={tags}
+              />
+            </Col>
+          </Row>
         ),
       },
       {
@@ -409,29 +413,28 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         <Loader />
       ) : (
         <div className={classNames('version-data')}>
-          <EntityPageInfo
-            isVersionSelected
-            deleted={deleted}
-            displayName={displayName}
-            entityName={
-              currentVersionData.displayName ?? currentVersionData.name ?? ''
-            }
-            extraInfo={extraInfo}
-            followersList={[]}
-            serviceType={currentVersionData.serviceType ?? ''}
-            tags={tags}
-            tier={{} as TagLabel}
-            titleLinks={slashedPipelineName}
-            version={Number(version)}
-            versionHandler={backHandler}
-          />
-          <div className="tw-mt-1 d-flex flex-col flex-grow ">
-            <Tabs
-              defaultActiveKey={tab ?? EntityTabs.TASKS}
-              items={tabItems}
-              onChange={handleTabChange}
-            />
-          </div>
+          <Row gutter={[0, 12]}>
+            <Col span={24}>
+              <DataAssetsVersionHeader
+                breadcrumbLinks={slashedPipelineName}
+                currentVersionData={currentVersionData}
+                deleted={deleted}
+                displayName={displayName}
+                ownerDisplayName={ownerDisplayName}
+                ownerRef={ownerRef}
+                tierDisplayName={tierDisplayName}
+                version={version}
+                onVersionClick={backHandler}
+              />
+            </Col>
+            <Col span={24}>
+              <Tabs
+                defaultActiveKey={tab ?? EntityTabs.TASKS}
+                items={tabItems}
+                onChange={handleTabChange}
+              />
+            </Col>
+          </Row>
         </div>
       )}
 

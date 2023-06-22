@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 
-import { Card, Tabs, TabsProps } from 'antd';
+import { Col, Row, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
+import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
+import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
 import VersionTable from 'components/VersionTable/VersionTable.component';
-import { EntityTabs, FqnPart } from 'enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from 'enums/entity.enum';
 import {
   ChangeDescription,
   Column,
@@ -42,8 +45,6 @@ import {
   isEndsWithField,
 } from '../../utils/EntityVersionUtils';
 import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
-import Description from '../common/description/Description';
-import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import { DataModelVersionProp } from './DataModelVersion.interface';
@@ -76,7 +77,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
     }
   };
 
-  const extraInfo = useMemo(
+  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
     () => getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
     [changeDescription, owner, tier]
   );
@@ -247,17 +248,17 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
 
   const description = useMemo(() => {
     return getEntityVersionByField(
-      currentVersionData,
       changeDescription,
-      EntityField.DESCRIPTION
+      EntityField.DESCRIPTION,
+      currentVersionData.description
     );
   }, [currentVersionData, changeDescription]);
 
   const displayName = useMemo(() => {
     return getEntityVersionByField(
-      currentVersionData,
       changeDescription,
-      EntityField.DISPLAYNAME
+      EntityField.DISPLAYNAME,
+      currentVersionData.displayName
     );
   }, [currentVersionData, changeDescription]);
 
@@ -267,24 +268,42 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
         key: EntityTabs.MODEL,
         label: <TabsLabel id={EntityTabs.MODEL} name={t('label.model')} />,
         children: (
-          <Card className="m-y-md">
-            <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-              <div className="tw-col-span-full">
-                <Description isReadOnly description={description} />
-              </div>
-              <div className="tw-col-span-full">
-                <VersionTable
-                  columnName={getPartialNameFromTableFQN(
-                    dataModelFQN,
-                    [FqnPart.Column],
-                    FQN_SEPARATOR_CHAR
-                  )}
-                  columns={columns}
-                  joins={[]}
-                />
-              </div>
-            </div>
-          </Card>
+          <Row gutter={[0, 16]} wrap={false}>
+            <Col className="p-t-sm m-l-lg" flex="auto">
+              <Row gutter={[0, 16]}>
+                <Col span={24}>
+                  <DescriptionV1
+                    isReadOnly
+                    description={description}
+                    entityType={EntityType.DASHBOARD_DATA_MODEL}
+                  />
+                </Col>
+                <Col span={24}>
+                  <VersionTable
+                    columnName={getPartialNameFromTableFQN(
+                      dataModelFQN,
+                      [FqnPart.Column],
+                      FQN_SEPARATOR_CHAR
+                    )}
+                    columns={columns}
+                    joins={[]}
+                  />
+                </Col>
+              </Row>
+            </Col>
+            <Col
+              className="entity-tag-right-panel-container"
+              data-testid="entity-right-panel"
+              flex="220px">
+              <TagsContainerV1
+                showLimited
+                editable={false}
+                entityFqn={dataModelFQN}
+                entityType={EntityType.DASHBOARD_DATA_MODEL}
+                selectedTags={tags}
+              />
+            </Col>
+          </Row>
         ),
       },
     ],
@@ -300,23 +319,24 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
           <div
             className={classNames('version-data')}
             data-testid="version-data">
-            <EntityPageInfo
-              isVersionSelected
-              deleted={deleted}
-              displayName={displayName}
-              entityName={currentVersionData.name ?? ''}
-              extraInfo={extraInfo}
-              followersList={[]}
-              serviceType={currentVersionData.serviceType ?? ''}
-              tags={tags}
-              tier={{} as TagLabel}
-              titleLinks={slashedDataModelName}
-              version={Number(version)}
-              versionHandler={backHandler}
-            />
-            <div className="tw-mt-1 d-flex flex-col flex-grow ">
-              <Tabs activeKey={EntityTabs.MODEL} items={tabItems} />
-            </div>
+            <Row gutter={[0, 12]}>
+              <Col span={24}>
+                <DataAssetsVersionHeader
+                  breadcrumbLinks={slashedDataModelName}
+                  currentVersionData={currentVersionData}
+                  deleted={deleted}
+                  displayName={displayName}
+                  ownerDisplayName={ownerDisplayName}
+                  ownerRef={ownerRef}
+                  tierDisplayName={tierDisplayName}
+                  version={version}
+                  onVersionClick={backHandler}
+                />
+              </Col>
+              <Col span={24}>
+                <Tabs activeKey={EntityTabs.MODEL} items={tabItems} />
+              </Col>
+            </Row>
           </div>
         )}
 

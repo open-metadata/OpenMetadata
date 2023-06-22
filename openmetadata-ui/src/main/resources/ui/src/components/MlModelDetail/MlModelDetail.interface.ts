@@ -18,7 +18,6 @@ import { EntityFieldThreadCount } from '../../interface/feed.interface';
 
 export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   mlModelDetail: Mlmodel;
-  version?: string;
   feedCount: number;
   followMlModelHandler: () => Promise<void>;
   unFollowMlModelHandler: () => Promise<void>;

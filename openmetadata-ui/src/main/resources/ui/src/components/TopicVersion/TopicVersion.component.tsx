@@ -11,30 +11,28 @@
  *  limitations under the License.
  */
 
-import { Card, Tabs, TabsProps } from 'antd';
+import { Col, Row, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
+import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
+import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
 import TopicSchemaFields from 'components/TopicDetails/TopicSchema/TopicSchema';
 import { getVersionPathWithTab } from 'constants/constants';
-import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { EntityField } from 'constants/Feeds.constants';
-import { EntityInfo, EntityTabs, EntityType } from 'enums/entity.enum';
+import { EntityTabs, EntityType } from 'enums/entity.enum';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { ChangeDescription, Topic } from '../../generated/entity/data/topic';
-import { TagLabel } from '../../generated/type/tagLabel';
+import { ChangeDescription } from '../../generated/entity/data/topic';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
   getUpdatedMessageSchema,
 } from '../../utils/EntityVersionUtils';
-import { bytesToSize } from '../../utils/StringsUtils';
-import Description from '../common/description/Description';
-import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import { TopicVersionProp } from './TopicVersion.interface';
@@ -58,61 +56,10 @@ const TopicVersion: FC<TopicVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const extraInfo = useMemo(() => {
-    const {
-      partitions,
-      replicationFactor,
-      retentionSize,
-      cleanupPolicies,
-      maximumMessageSize,
-    } = currentVersionData as Topic;
-
-    return [
-      ...getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
-      {
-        key: EntityInfo.PARTITIONS,
-        value: `${partitions} ${t('label.partition-plural')}`,
-      },
-      ...(replicationFactor
-        ? [
-            {
-              key: EntityInfo.REPLICATION_FACTOR,
-              value: `${replicationFactor} ${t('label.replication-factor')}`,
-            },
-          ]
-        : []),
-      ...(retentionSize
-        ? [
-            {
-              key: EntityInfo.RETENTION_SIZE,
-              value: `${bytesToSize(retentionSize)}  ${t(
-                'label.retention-size'
-              )}`,
-            },
-          ]
-        : []),
-      ...(cleanupPolicies
-        ? [
-            {
-              key: EntityInfo.CLEAN_UP_POLICIES,
-              value: `${cleanupPolicies.join(', ')} ${t(
-                'label.clean-up-policy-plural-lowercase'
-              )}`,
-            },
-          ]
-        : []),
-      ...(maximumMessageSize
-        ? [
-            {
-              key: EntityInfo.MAX_MESSAGE_SIZE,
-              value: `${bytesToSize(maximumMessageSize)} ${t(
-                'label.maximum-size-lowercase'
-              )} `,
-            },
-          ]
-        : []),
-    ];
-  }, [currentVersionData, changeDescription, owner, tier]);
+  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
+    () => getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
+    [changeDescription, owner, tier]
+  );
 
   const messageSchemaDiff = useMemo(
     () => getUpdatedMessageSchema(currentVersionData, changeDescription),
@@ -142,17 +89,17 @@ const TopicVersion: FC<TopicVersionProp> = ({
 
   const description = useMemo(() => {
     return getEntityVersionByField(
-      currentVersionData,
       changeDescription,
-      EntityField.DESCRIPTION
+      EntityField.DESCRIPTION,
+      currentVersionData.description
     );
   }, [currentVersionData, changeDescription]);
 
   const displayName = useMemo(() => {
     return getEntityVersionByField(
-      currentVersionData,
       changeDescription,
-      EntityField.DISPLAYNAME
+      EntityField.DISPLAYNAME,
+      currentVersionData.displayName
     );
   }, [currentVersionData, changeDescription]);
 
@@ -162,21 +109,41 @@ const TopicVersion: FC<TopicVersionProp> = ({
         key: EntityTabs.SCHEMA,
         label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
         children: (
-          <Card className={ENTITY_CARD_CLASS}>
-            <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-              <div className="tw-col-span-full">
-                <Description isReadOnly description={description} />
-              </div>
-            </div>
-            <TopicSchemaFields
-              defaultExpandAllRows
-              isReadOnly
-              hasDescriptionEditAccess={false}
-              hasTagEditAccess={false}
-              messageSchema={messageSchemaDiff}
-              showSchemaDisplayTypeSwitch={false}
-            />
-          </Card>
+          <Row gutter={[0, 16]} wrap={false}>
+            <Col className="p-t-sm m-l-lg" flex="auto">
+              <Row gutter={[0, 16]}>
+                <Col span={24}>
+                  <DescriptionV1
+                    isReadOnly
+                    description={description}
+                    entityType={EntityType.TOPIC}
+                  />
+                </Col>
+                <Col span={24}>
+                  <TopicSchemaFields
+                    defaultExpandAllRows
+                    isReadOnly
+                    hasDescriptionEditAccess={false}
+                    hasTagEditAccess={false}
+                    messageSchema={messageSchemaDiff}
+                    showSchemaDisplayTypeSwitch={false}
+                  />
+                </Col>
+              </Row>
+            </Col>
+            <Col
+              className="entity-tag-right-panel-container"
+              data-testid="entity-right-panel"
+              flex="220px">
+              <TagsContainerV1
+                showLimited
+                editable={false}
+                entityFqn={currentVersionData.fullyQualifiedName}
+                entityType={EntityType.TOPIC}
+                selectedTags={tags}
+              />
+            </Col>
+          </Row>
         ),
       },
       {
@@ -208,27 +175,28 @@ const TopicVersion: FC<TopicVersionProp> = ({
         <Loader />
       ) : (
         <div className={classNames('version-data')}>
-          <EntityPageInfo
-            isVersionSelected
-            deleted={deleted}
-            displayName={displayName}
-            entityName={currentVersionData.name ?? ''}
-            extraInfo={extraInfo}
-            followersList={[]}
-            serviceType={currentVersionData.serviceType ?? ''}
-            tags={tags}
-            tier={{} as TagLabel}
-            titleLinks={slashedTopicName}
-            version={Number(version)}
-            versionHandler={backHandler}
-          />
-          <div className="tw-mt-1 d-flex flex-col flex-grow ">
-            <Tabs
-              defaultActiveKey={tab ?? EntityTabs.SCHEMA}
-              items={tabItems}
-              onChange={handleTabChange}
-            />
-          </div>
+          <Row gutter={[0, 12]}>
+            <Col span={24}>
+              <DataAssetsVersionHeader
+                breadcrumbLinks={slashedTopicName}
+                currentVersionData={currentVersionData}
+                deleted={deleted}
+                displayName={displayName}
+                ownerDisplayName={ownerDisplayName}
+                ownerRef={ownerRef}
+                tierDisplayName={tierDisplayName}
+                version={version}
+                onVersionClick={backHandler}
+              />
+            </Col>
+            <Col span={24}>
+              <Tabs
+                defaultActiveKey={tab ?? EntityTabs.SCHEMA}
+                items={tabItems}
+                onChange={handleTabChange}
+              />
+            </Col>
+          </Row>
         </div>
       )}
 

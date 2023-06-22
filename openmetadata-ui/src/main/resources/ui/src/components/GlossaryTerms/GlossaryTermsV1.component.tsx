@@ -196,9 +196,9 @@ const GlossaryTermsV1 = ({
     () =>
       isVersionView
         ? getEntityVersionByField(
-            glossaryTerm,
             glossaryTerm.changeDescription as ChangeDescription,
-            EntityField.NAME
+            EntityField.NAME,
+            glossaryTerm.name
           )
         : glossaryTerm.name,
 
@@ -209,9 +209,9 @@ const GlossaryTermsV1 = ({
     () =>
       isVersionView
         ? getEntityVersionByField(
-            glossaryTerm,
             glossaryTerm.changeDescription as ChangeDescription,
-            EntityField.DISPLAYNAME
+            EntityField.DISPLAYNAME,
+            glossaryTerm.displayName
           )
         : glossaryTerm.displayName,
 

@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 
-import { Card, Tabs, TabsProps } from 'antd';
+import { Col, Row, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
+import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
+import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
 import { getVersionPathWithTab } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { cloneDeep, isUndefined, toString } from 'lodash';
@@ -38,8 +41,6 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
-import Description from '../common/description/Description';
-import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import VersionTable from '../VersionTable/VersionTable.component';
@@ -65,7 +66,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const extraInfo = useMemo(
+  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
     () => getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
     [changeDescription, owner, tier]
   );
@@ -99,17 +100,17 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
 
   const description = useMemo(() => {
     return getEntityVersionByField(
-      currentVersionData,
       changeDescription,
-      EntityField.DESCRIPTION
+      EntityField.DESCRIPTION,
+      currentVersionData.description
     );
   }, [currentVersionData, changeDescription]);
 
   const displayName = useMemo(() => {
     return getEntityVersionByField(
-      currentVersionData,
       changeDescription,
-      EntityField.DISPLAYNAME
+      EntityField.DISPLAYNAME,
+      currentVersionData.displayName
     );
   }, [currentVersionData, changeDescription]);
 
@@ -135,29 +136,46 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
         key: EntityTabs.SCHEMA,
         label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
         children: (
-          <Card className="m-y-md">
-            <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-              <div className="tw-col-span-full">
-                <Description isReadOnly description={description} />
-              </div>
-
-              <div className="tw-col-span-full">
-                <VersionTable
-                  columnName={getPartialNameFromTableFQN(
-                    datasetFQN,
-                    [FqnPart.Column],
-                    FQN_SEPARATOR_CHAR
-                  )}
-                  columns={columns}
-                  constraintUpdatedColumns={constraintUpdatedColumns}
-                  joins={(currentVersionData as Table).joins as ColumnJoins[]}
-                  tableConstraints={
-                    (currentVersionData as Table).tableConstraints
-                  }
-                />
-              </div>
-            </div>
-          </Card>
+          <Row gutter={[0, 16]} wrap={false}>
+            <Col className="p-t-sm m-l-lg" flex="auto">
+              <Row gutter={[0, 16]}>
+                <Col span={24}>
+                  <DescriptionV1
+                    isReadOnly
+                    description={description}
+                    entityType={EntityType.TABLE}
+                  />
+                </Col>
+                <Col span={24}>
+                  <VersionTable
+                    columnName={getPartialNameFromTableFQN(
+                      datasetFQN,
+                      [FqnPart.Column],
+                      FQN_SEPARATOR_CHAR
+                    )}
+                    columns={columns}
+                    constraintUpdatedColumns={constraintUpdatedColumns}
+                    joins={(currentVersionData as Table).joins as ColumnJoins[]}
+                    tableConstraints={
+                      (currentVersionData as Table).tableConstraints
+                    }
+                  />
+                </Col>
+              </Row>
+            </Col>
+            <Col
+              className="entity-tag-right-panel-container"
+              data-testid="entity-right-panel"
+              flex="220px">
+              <TagsContainerV1
+                showLimited
+                editable={false}
+                entityFqn={datasetFQN}
+                entityType={EntityType.TABLE}
+                selectedTags={tags}
+              />
+            </Col>
+          </Row>
         ),
       },
       {
@@ -195,27 +213,28 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
         <Loader />
       ) : (
         <div className={classNames('version-data')}>
-          <EntityPageInfo
-            isVersionSelected
-            deleted={deleted}
-            displayName={displayName}
-            entityName={currentVersionData.name ?? ''}
-            extraInfo={extraInfo}
-            followersList={[]}
-            serviceType={currentVersionData.serviceType ?? ''}
-            tags={tags}
-            tier={tier}
-            titleLinks={slashedTableName}
-            version={Number(version)}
-            versionHandler={backHandler}
-          />
-          <div className="tw-mt-1 d-flex flex-col flex-grow ">
-            <Tabs
-              defaultActiveKey={tab ?? EntityTabs.SCHEMA}
-              items={tabItems}
-              onChange={handleTabChange}
-            />
-          </div>
+          <Row gutter={[0, 12]}>
+            <Col span={24}>
+              <DataAssetsVersionHeader
+                breadcrumbLinks={slashedTableName}
+                currentVersionData={currentVersionData}
+                deleted={deleted}
+                displayName={displayName}
+                ownerDisplayName={ownerDisplayName}
+                ownerRef={ownerRef}
+                tierDisplayName={tierDisplayName}
+                version={version}
+                onVersionClick={backHandler}
+              />
+            </Col>
+            <Col span={24}>
+              <Tabs
+                defaultActiveKey={tab ?? EntityTabs.SCHEMA}
+                items={tabItems}
+                onChange={handleTabChange}
+              />
+            </Col>
+          </Row>
         </div>
       )}
 

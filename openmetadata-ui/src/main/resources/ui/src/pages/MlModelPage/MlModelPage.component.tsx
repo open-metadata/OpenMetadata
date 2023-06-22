@@ -67,8 +67,6 @@ const MlModelPage = () => {
     EntityFieldThreadCount[]
   >([]);
 
-  const [currentVersion, setCurrentVersion] = useState<string>();
-
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const fetchResourcePermission = async (entityFqn: string) => {
@@ -105,7 +103,6 @@ const MlModelPage = () => {
     try {
       const res = await getMlModelByFQN(name, defaultFields);
       setMlModelDetail(res);
-      setCurrentVersion(res.version?.toString());
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -123,10 +120,10 @@ const MlModelPage = () => {
     try {
       const response = await saveUpdatedMlModelData(updatedMlModel);
       const { description, version } = response;
-      setCurrentVersion(version?.toString());
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
-        description: description,
+        version,
+        description,
       }));
       fetchEntityFeedCount();
     } catch (error) {
@@ -180,8 +177,8 @@ const MlModelPage = () => {
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
         tags: sortTagsCaseInsensitive(res.tags || []),
+        version: res.version,
       }));
-      setCurrentVersion(res.version?.toString());
       fetchEntityFeedCount();
     } catch (error) {
       showErrorToast(
@@ -203,8 +200,8 @@ const MlModelPage = () => {
         displayName: res.displayName,
         owner: res.owner,
         tags: res.tags,
+        version: res.version,
       }));
-      setCurrentVersion(res.version?.toString());
       fetchEntityFeedCount();
     } catch (error) {
       showErrorToast(
@@ -222,8 +219,8 @@ const MlModelPage = () => {
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
         mlFeatures: response.mlFeatures,
+        version: response.version,
       }));
-      setCurrentVersion(response.version?.toString());
       fetchEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -234,7 +231,6 @@ const MlModelPage = () => {
     try {
       const data = await saveUpdatedMlModelData(updatedMlModel);
       setMlModelDetail(data);
-      setCurrentVersion(data.version?.toString());
       fetchEntityFeedCount();
     } catch (error) {
       showErrorToast(
@@ -262,7 +258,11 @@ const MlModelPage = () => {
 
   const versionHandler = () => {
     history.push(
-      getVersionPath(EntityType.MLMODEL, mlModelFqn, currentVersion as string)
+      getVersionPath(
+        EntityType.MLMODEL,
+        mlModelFqn,
+        mlModelDetail.version ? String(mlModelDetail.version) : ''
+      )
     );
   };
 
@@ -311,7 +311,6 @@ const MlModelPage = () => {
       tagUpdateHandler={onTagUpdate}
       unFollowMlModelHandler={unFollowMlModel}
       updateMlModelFeatures={updateMlModelFeatures}
-      version={currentVersion}
       versionHandler={versionHandler}
       onExtensionUpdate={handleExtensionUpdate}
     />
