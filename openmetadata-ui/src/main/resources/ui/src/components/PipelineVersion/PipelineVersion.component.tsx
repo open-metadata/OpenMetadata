@@ -25,6 +25,7 @@ import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { getVersionPathWithTab } from 'constants/constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
+import { TagSource } from 'generated/type/schema';
 import { t } from 'i18next';
 import { EntityDiffProps } from 'interface/EntityVersion.interface';
 import { cloneDeep, isEqual } from 'lodash';
@@ -373,13 +374,20 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="220px">
-              <TagsContainerV1
-                showLimited
-                editable={false}
-                entityFqn={currentVersionData.fullyQualifiedName}
-                entityType={EntityType.PIPELINE}
-                selectedTags={tags}
-              />
+              <Space className="w-full" direction="vertical" size="large">
+                {Object.keys(TagSource).map((tagType) => (
+                  <TagsContainerV1
+                    isVersionView
+                    showLimited
+                    entityFqn={currentVersionData.fullyQualifiedName}
+                    entityType={EntityType.PIPELINE}
+                    key={tagType}
+                    permission={false}
+                    selectedTags={tags}
+                    tagType={TagSource[tagType as TagSource]}
+                  />
+                ))}
+              </Space>
             </Col>
           </Row>
         ),

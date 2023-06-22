@@ -55,6 +55,7 @@ export type GlossaryTermDetailsProps = {
 };
 
 export type TagsContainerV1Props = {
+  isVersionView?: boolean;
   permission: boolean;
   selectedTags: Array<EntityTags>;
   onSelectionChange?: (selectedTags: Array<EntityTags>) => void;

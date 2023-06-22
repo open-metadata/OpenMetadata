@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs, TabsProps } from 'antd';
+import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
@@ -21,6 +21,7 @@ import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
 import { getVersionPathWithTab } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
+import { TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, isUndefined, toString } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -167,13 +168,20 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="220px">
-              <TagsContainerV1
-                showLimited
-                editable={false}
-                entityFqn={datasetFQN}
-                entityType={EntityType.TABLE}
-                selectedTags={tags}
-              />
+              <Space className="w-full" direction="vertical" size="large">
+                {Object.keys(TagSource).map((tagType) => (
+                  <TagsContainerV1
+                    isVersionView
+                    showLimited
+                    entityFqn={datasetFQN}
+                    entityType={EntityType.TABLE}
+                    key={tagType}
+                    permission={false}
+                    selectedTags={tags}
+                    tagType={TagSource[tagType as TagSource]}
+                  />
+                ))}
+              </Space>
             </Col>
           </Row>
         ),

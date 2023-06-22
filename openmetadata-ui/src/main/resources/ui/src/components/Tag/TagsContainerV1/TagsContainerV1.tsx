@@ -69,6 +69,7 @@ const TagsContainerV1 = ({
   tagType,
   onSelectionChange,
   onThreadLinkSelect,
+  isVersionView,
 }: TagsContainerV1Props) => {
   const history = useHistory();
   const [form] = Form.useForm();
@@ -405,10 +406,12 @@ const TagsContainerV1 = ({
             />
           )}
         </div>
-        <Row gutter={8}>
-          {requestTagElement}
-          {conversationThreadElement}
-        </Row>
+        {isVersionView && (
+          <Row gutter={8}>
+            {requestTagElement}
+            {conversationThreadElement}
+          </Row>
+        )}
       </div>
 
       {!isEditTags && (

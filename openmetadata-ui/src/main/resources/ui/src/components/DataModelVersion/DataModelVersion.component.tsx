@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs, TabsProps } from 'antd';
+import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
@@ -24,6 +24,7 @@ import {
   Column,
   DashboardDataModel,
 } from 'generated/entity/data/dashboardDataModel';
+import { TagSource } from 'generated/type/schema';
 import { EntityDiffProps } from 'interface/EntityVersion.interface';
 import { cloneDeep, isEqual } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -295,13 +296,20 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="220px">
-              <TagsContainerV1
-                showLimited
-                editable={false}
-                entityFqn={dataModelFQN}
-                entityType={EntityType.DASHBOARD_DATA_MODEL}
-                selectedTags={tags}
-              />
+              <Space className="w-full" direction="vertical" size="large">
+                {Object.keys(TagSource).map((tagType) => (
+                  <TagsContainerV1
+                    isVersionView
+                    showLimited
+                    entityFqn={currentVersionData.fullyQualifiedName}
+                    entityType={EntityType.DASHBOARD_DATA_MODEL}
+                    key={tagType}
+                    permission={false}
+                    selectedTags={tags}
+                    tagType={TagSource[tagType as TagSource]}
+                  />
+                ))}
+              </Space>
             </Col>
           </Row>
         ),

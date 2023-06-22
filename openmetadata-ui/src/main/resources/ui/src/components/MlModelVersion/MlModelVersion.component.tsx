@@ -35,6 +35,7 @@ import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { getVersionPathWithTab } from 'constants/constants';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { MlFeature, Mlmodel } from 'generated/entity/data/mlmodel';
+import { TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, isEqual } from 'lodash';
 import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -353,13 +354,20 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="220px">
-              <TagsContainerV1
-                showLimited
-                editable={false}
-                entityFqn={currentVersionData.fullyQualifiedName}
-                entityType={EntityType.PIPELINE}
-                selectedTags={tags}
-              />
+              <Space className="w-full" direction="vertical" size="large">
+                {Object.keys(TagSource).map((tagType) => (
+                  <TagsContainerV1
+                    isVersionView
+                    showLimited
+                    entityFqn={currentVersionData.fullyQualifiedName}
+                    entityType={EntityType.MLMODEL}
+                    key={tagType}
+                    permission={false}
+                    selectedTags={tags}
+                    tagType={TagSource[tagType as TagSource]}
+                  />
+                ))}
+              </Space>
             </Col>
           </Row>
         ),

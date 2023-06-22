@@ -24,6 +24,7 @@ import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
 import { getVersionPathWithTab } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
+import { TagSource } from 'generated/type/tagLabel';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
@@ -189,13 +190,20 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="220px">
-              <TagsContainerV1
-                showLimited
-                editable={false}
-                entityFqn={currentVersionData.fullyQualifiedName}
-                entityType={EntityType.DASHBOARD}
-                selectedTags={tags}
-              />
+              <Space className="w-full" direction="vertical" size="large">
+                {Object.keys(TagSource).map((tagType) => (
+                  <TagsContainerV1
+                    isVersionView
+                    showLimited
+                    entityFqn={currentVersionData.fullyQualifiedName}
+                    entityType={EntityType.DASHBOARD}
+                    key={tagType}
+                    permission={false}
+                    selectedTags={tags}
+                    tagType={TagSource[tagType as TagSource]}
+                  />
+                ))}
+              </Space>
             </Col>
           </Row>
         ),

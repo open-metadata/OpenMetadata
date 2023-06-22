@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs, TabsProps } from 'antd';
+import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
@@ -26,6 +26,7 @@ import {
   Column,
   Container,
 } from 'generated/entity/data/container';
+import { TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, toString } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -147,13 +148,20 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="220px">
-              <TagsContainerV1
-                showLimited
-                editable={false}
-                entityFqn={containerFQN}
-                entityType={EntityType.CONTAINER}
-                selectedTags={tags}
-              />
+              <Space className="w-full" direction="vertical" size="large">
+                {Object.keys(TagSource).map((tagType) => (
+                  <TagsContainerV1
+                    isVersionView
+                    showLimited
+                    entityFqn={containerFQN}
+                    entityType={EntityType.CONTAINER}
+                    key={tagType}
+                    permission={false}
+                    selectedTags={tags}
+                    tagType={TagSource[tagType as TagSource]}
+                  />
+                ))}
+              </Space>
             </Col>
           </Row>
         ),
