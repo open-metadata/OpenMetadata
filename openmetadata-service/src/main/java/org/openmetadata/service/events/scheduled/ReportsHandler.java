@@ -24,12 +24,12 @@ import java.util.concurrent.ConcurrentMap;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
-import org.elasticsearch.client.RestHighLevelClient;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.TriggerConfig;
 import org.openmetadata.service.exception.DataInsightJobException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
+import org.openmetadata.service.search.SearchClient;
 import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -45,16 +45,17 @@ public class ReportsHandler {
   public static final String EMAIL_REPORT = "emailReport";
   public static final String CRON_TRIGGER = "dataInsightEmailTrigger";
   public static final String JOB_CONTEXT_CHART_REPO = "dataInsightChartRepository";
-  public static final String ES_REST_CLIENT = "esRestClient";
-  private final RestHighLevelClient restHighLevelClient;
+  public static final String SEARCH_CLIENT = "searchClient";
+
+  private final SearchClient searchClient;
   private final DataInsightChartRepository chartRepository;
   private static ReportsHandler INSTANCE;
   private static volatile boolean INITIALIZED = false;
   private final Scheduler reportScheduler = new StdSchedulerFactory().getScheduler();
   private static final ConcurrentHashMap<UUID, JobDetail> reportJobKeyMap = new ConcurrentHashMap<>();
 
-  private ReportsHandler(CollectionDAO dao, RestHighLevelClient restHighLevelClient) throws SchedulerException {
-    this.restHighLevelClient = restHighLevelClient;
+  private ReportsHandler(CollectionDAO dao, SearchClient searchClient) throws SchedulerException {
+    this.searchClient = searchClient;
     this.chartRepository = new DataInsightChartRepository(dao);
     this.reportScheduler.start();
   }
@@ -68,9 +69,9 @@ public class ReportsHandler {
     return reportJobKeyMap;
   }
 
-  public static void initialize(CollectionDAO dao, RestHighLevelClient restHighLevelClient) throws SchedulerException {
+  public static void initialize(CollectionDAO dao, SearchClient searchClient) throws SchedulerException {
     if (!INITIALIZED) {
-      INSTANCE = new ReportsHandler(dao, restHighLevelClient);
+      INSTANCE = new ReportsHandler(dao, searchClient);
       INITIALIZED = true;
     } else {
       LOG.info("Reindexing Handler is already initialized");
@@ -109,7 +110,7 @@ public class ReportsHandler {
     if (subscription.getAlertType() == DATA_INSIGHT_REPORT) {
       JobDataMap dataMap = new JobDataMap();
       dataMap.put(JOB_CONTEXT_CHART_REPO, this.chartRepository);
-      dataMap.put(ES_REST_CLIENT, restHighLevelClient);
+      dataMap.put(SEARCH_CLIENT, searchClient);
       dataMap.put(EVENT_SUBSCRIPTION, subscription);
       JobBuilder jobBuilder =
           JobBuilder.newJob(DataInsightsReportJob.class)
@@ -142,7 +143,7 @@ public class ReportsHandler {
     if (jobDetail != null) {
       JobDataMap dataMap = new JobDataMap();
       dataMap.put(JOB_CONTEXT_CHART_REPO, this.chartRepository);
-      dataMap.put(ES_REST_CLIENT, restHighLevelClient);
+      dataMap.put(SEARCH_CLIENT, searchClient);
       dataMap.put(EVENT_SUBSCRIPTION, dataReport);
       reportScheduler.triggerJob(jobDetail.getKey(), dataMap);
       return Response.status(Response.Status.OK).entity("Job Triggered Successfully.").build();
