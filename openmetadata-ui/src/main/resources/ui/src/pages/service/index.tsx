@@ -602,10 +602,11 @@ const ServicePage: FunctionComponent = () => {
         break;
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
-        if (!isDataModel) {
+        if (isDataModel) {
+          fetchDashboardsDataModel(paging);
+        } else {
           fetchDashboards(paging);
         }
-        fetchDashboardsDataModel(paging);
 
         break;
       }
