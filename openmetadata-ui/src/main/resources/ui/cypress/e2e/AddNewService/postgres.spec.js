@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
+// / <reference types="Cypress" />
 import {
   checkServiceFieldSectionHighlighting,
   deleteCreatedService,
@@ -53,7 +53,7 @@ describe('Postgres Ingestion', () => {
         .scrollIntoView()
         .type(Cypress.env('postgresUsername'));
       checkServiceFieldSectionHighlighting('username');
-      cy.get('#root\\/password')
+      cy.get('#root\\/authType\\/password')
         .scrollIntoView()
         .type(Cypress.env('postgresPassword'));
       checkServiceFieldSectionHighlighting('password');
@@ -212,9 +212,9 @@ describe('Postgres Ingestion', () => {
       .should('be.visible')
       .should('contain', selectQuery);
     // Validate queries count is greater than 1
-    cy.get('[data-testid="entity-summary-details"]')
+    cy.get('[data-testid="table_queries"] [data-testid="filter-count"]')
       .invoke('text')
-      .should('not.contain', '0 Queries');
+      .should('equal', '1');
     // Validate schema contains frequently joined tables and columns
     cy.get('[data-testid="schema"]').should('be.visible').click();
     cy.get('[data-testid="related-tables-data"]').should('be.visible');

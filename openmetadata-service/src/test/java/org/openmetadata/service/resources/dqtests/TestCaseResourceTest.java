@@ -6,6 +6,9 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
@@ -16,6 +19,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
+import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -38,6 +42,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
@@ -46,6 +51,7 @@ import org.openmetadata.schema.tests.type.TestCaseFailureStatus;
 import org.openmetadata.schema.tests.type.TestCaseFailureStatusType;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -331,6 +337,59 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             TestUtils.dateToTimestamp("2021-10-15"),
             ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, testCase1ResultList, 4);
+
+    TestSummary testSummary = getTestSummary(ADMIN_AUTH_HEADERS, null);
+    assertNotEquals(0, testSummary.getFailed());
+    assertNotEquals(0, testSummary.getSuccess());
+    assertNotEquals(0, testSummary.getTotal());
+    assertEquals(0, testSummary.getAborted());
+
+    TestSummary emptyTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, UUID.randomUUID().toString());
+    assertNull(emptyTestSummary.getFailed());
+  }
+
+  @Test
+  void test_sensitivePIITestCase(TestInfo test) throws IOException {
+    // First, create a table with PII Sensitive tag in a column
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(test)
+            .withName("sensitiveTableTest")
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withOwner(USER1_REF)
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName(C1)
+                        .withDisplayName("c1")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(10)
+                        .withTags(List.of(PII_SENSITIVE_TAG_LABEL))))
+            .withOwner(USER1_REF);
+    Table sensitiveTable = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
+    String sensitiveColumnLink =
+        String.format("<#E::table::%s::columns::%s>", sensitiveTable.getFullyQualifiedName(), C1);
+
+    CreateTestCase create = createRequest(test);
+    create
+        .withEntityLink(sensitiveColumnLink)
+        .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
+        .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+        .withParameterValues(List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Owner can see the results
+    ResultList<TestCase> testCases =
+        getTestCases(10, "*", sensitiveColumnLink, false, authHeaders(USER1_REF.getName()));
+    assertNotNull(testCases.getData().get(0).getDescription());
+    assertListNotEmpty(testCases.getData().get(0).getParameterValues());
+
+    // Owner can see the results
+    ResultList<TestCase> maskedTestCases =
+        getTestCases(10, "*", sensitiveColumnLink, false, authHeaders(USER2_REF.getName()));
+    assertNull(maskedTestCases.getData().get(0).getDescription());
+    assertEquals(maskedTestCases.getData().get(0).getParameterValues().size(), 0);
   }
 
   @Test
@@ -636,6 +695,14 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     target = target.queryParam("startTs", start);
     target = target.queryParam("endTs", end);
     return TestUtils.get(target, TestCaseResource.TestCaseResultList.class, authHeaders);
+  }
+
+  private TestSummary getTestSummary(Map<String, String> authHeaders, String testSuiteId) throws IOException {
+    WebTarget target = getCollection().path("/executionSummary");
+    if (testSuiteId != null) {
+      target = target.queryParam("testSuiteId", testSuiteId);
+    }
+    return TestUtils.get(target, TestSummary.class, authHeaders);
   }
 
   public ResultList<TestCase> getTestCases(

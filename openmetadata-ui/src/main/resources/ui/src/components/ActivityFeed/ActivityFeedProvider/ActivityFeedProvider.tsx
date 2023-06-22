@@ -12,6 +12,7 @@
  */
 import AppState from 'AppState';
 import { AxiosError } from 'axios';
+import { EntityType } from 'enums/entity.enum';
 import { FeedFilter } from 'enums/mydata.enum';
 import { ReactionOperation } from 'enums/reactions.enum';
 import { compare, Operation } from 'fast-json-patch';
@@ -22,6 +23,7 @@ import {
   Thread,
   ThreadType,
 } from 'generated/entity/feed/thread';
+import { Paging } from 'generated/type/paging';
 import { isEqual } from 'lodash';
 import React, {
   createContext,
@@ -35,14 +37,16 @@ import { useTranslation } from 'react-i18next';
 import {
   deletePostById,
   deleteThread,
+  getAllFeeds,
   getFeedById,
-  getFeedsWithFilter,
   postFeedById,
   updatePost,
   updateThread,
 } from 'rest/feedsAPI';
+import { getEntityFeedLink } from 'utils/EntityUtils';
 import { getUpdatedThread } from 'utils/FeedUtils';
 import { showErrorToast } from 'utils/ToastUtils';
+import ActivityFeedDrawer from '../ActivityFeedDrawer/ActivityFeedDrawer';
 import { ActivityFeedProviderContextType } from './ActivityFeedProviderContext.interface';
 
 interface Props {
@@ -56,6 +60,7 @@ export const ActivityFeedContext = createContext(
 const ActivityFeedProvider = ({ children }: Props) => {
   const { t } = useTranslation();
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
+  const [entityPaging, setEntityPaging] = useState<Paging>({} as Paging);
   const [focusReplyEditor, setFocusReplyEditor] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [isDrawerLoading, setIsDrawerLoading] = useState(false);
@@ -67,7 +72,7 @@ const ActivityFeedProvider = ({ children }: Props) => {
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
 
-  const setActiveThread = useCallback((active: Thread) => {
+  const setActiveThread = useCallback((active?: Thread) => {
     setSelectedThread(active);
   }, []);
 
@@ -89,20 +94,35 @@ const ActivityFeedProvider = ({ children }: Props) => {
   }, []);
 
   const getFeedData = useCallback(
-    async (filterType?: FeedFilter, after?: string, type?: ThreadType) => {
+    async (
+      filterType?: FeedFilter,
+      after?: string,
+      type?: ThreadType,
+      entityType?: EntityType,
+      fqn?: string
+    ) => {
       try {
         setLoading(true);
         const feedFilterType = filterType ?? FeedFilter.ALL;
         const userId =
           feedFilterType === FeedFilter.ALL ? undefined : currentUser?.id;
 
-        const { data } = await getFeedsWithFilter(
-          userId,
-          feedFilterType,
+        const { data, paging } = await getAllFeeds(
+          entityType !== EntityType.USER_NAME
+            ? getEntityFeedLink(entityType, fqn)
+            : undefined,
           after,
-          type
+          type,
+          feedFilterType,
+          undefined,
+          userId
         );
         setEntityThread([...data]);
+        setEntityPaging(paging);
+
+        setLoading(false);
+
+        return data;
       } catch (err) {
         showErrorToast(
           err as AxiosError,
@@ -110,6 +130,8 @@ const ActivityFeedProvider = ({ children }: Props) => {
             entity: t('label.activity-feed'),
           })
         );
+
+        return [];
       } finally {
         setLoading(false);
       }
@@ -336,6 +358,8 @@ const ActivityFeedProvider = ({ children }: Props) => {
       showDrawer,
       hideDrawer,
       updateEditorFocus,
+      setActiveThread,
+      entityPaging,
     };
   }, [
     entityThread,
@@ -353,11 +377,18 @@ const ActivityFeedProvider = ({ children }: Props) => {
     showDrawer,
     hideDrawer,
     updateEditorFocus,
+    setActiveThread,
+    entityPaging,
   ]);
 
   return (
     <ActivityFeedContext.Provider value={activityFeedContextValues}>
       {children}
+      {isDrawerOpen && (
+        <>
+          <ActivityFeedDrawer open={isDrawerOpen} />
+        </>
+      )}
     </ActivityFeedContext.Provider>
   );
 };

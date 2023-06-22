@@ -307,13 +307,19 @@ const ExplorePageV1: FunctionComponent = () => {
       queryFilter as unknown as QueryFilterInterface
     );
 
+    let newSortValue = sortValue;
+    if (searchQueryParam !== '') {
+      newSortValue = '_score';
+      setSortValue(newSortValue);
+    }
+
     setIsLoading(true);
     Promise.all([
       searchQuery({
         query: searchQueryParam,
         searchIndex,
         queryFilter: combinedQueryFilter,
-        sortField: sortValue,
+        sortField: newSortValue,
         sortOrder,
         pageNumber: page,
         pageSize: size,

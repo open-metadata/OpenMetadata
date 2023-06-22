@@ -13,6 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { OidcUser } from 'components/authentication/auth-provider/AuthProvider.interface';
+import { User } from 'generated/entity/teams/user';
 import { isEqual, isUndefined } from 'lodash';
 import { SearchedUsersAndTeams } from 'Models';
 import {
@@ -26,7 +27,6 @@ import AppState from '../AppState';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SettledStatus } from '../enums/axios.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { User } from '../generated/entity/teams/user';
 import {
   RawSuggestResponse,
   SearchResponse,

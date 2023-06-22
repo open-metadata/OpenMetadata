@@ -223,7 +223,7 @@ declare module 'Models' {
     };
     brokers?: Array<string>;
     schemaRegistry?: string;
-    dashboardUrl?: string;
+    sourceUrl?: string;
     username?: string;
     password?: string;
     url?: string;
@@ -232,7 +232,7 @@ declare module 'Models' {
     api_version?: string;
     server?: string;
     env?: string;
-    pipelineUrl?: string;
+    sourceUrl?: string;
   };
 
   export type ImageShape = 'circle' | 'square';

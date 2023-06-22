@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.formatter.entity;
 
+import static org.openmetadata.service.formatter.util.FormatterUtil.transformMessage;
+
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResult;
@@ -22,6 +24,7 @@ import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 public class TestCaseFormatter implements EntityFormatter {
+  private static final String TEST_RESULT_FIELD = "testCaseResult";
 
   @Override
   public String format(
@@ -29,6 +32,14 @@ public class TestCaseFormatter implements EntityFormatter {
       FieldChange fieldChange,
       EntityInterface entity,
       FormatterUtil.CHANGE_TYPE changeType) {
+    if (TEST_RESULT_FIELD.equals(fieldChange.getName())) {
+      return transformTestCaseResult(messageFormatter, fieldChange, entity);
+    }
+    return transformMessage(messageFormatter, fieldChange, entity, changeType);
+  }
+
+  private String transformTestCaseResult(
+      MessageDecorator<?> messageFormatter, FieldChange fieldChange, EntityInterface entity) {
     String testCaseName = entity.getName();
     TestCaseResult result = (TestCaseResult) fieldChange.getNewValue();
     TestCase testCaseEntity = (TestCase) entity;

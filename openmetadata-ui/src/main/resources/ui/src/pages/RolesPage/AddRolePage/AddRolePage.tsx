@@ -13,9 +13,9 @@
 
 import { Button, Card, Form, Input, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { ERROR_MESSAGE } from 'constants/constants';
 import { t } from 'i18next';
 import { trim } from 'lodash';
@@ -107,118 +107,135 @@ const AddRolePage = () => {
   }, []);
 
   return (
-    <div data-testid="add-role-container">
-      <PageLayoutV1
-        center
-        pageTitle={t('label.add-entity', { entity: t('label.role') })}>
-        <Space direction="vertical" size="middle">
-          <TitleBreadcrumb titleLinks={breadcrumb} />
-          <Card>
-            <Typography.Paragraph
-              className="text-base"
-              data-testid="form-title">
-              {t('label.add-new-entity', { entity: t('label.role') })}
-            </Typography.Paragraph>
-            <Form
-              data-testid="role-form"
-              id="role-form"
-              layout="vertical"
-              onFinish={handleSubmit}>
-              <Form.Item
-                label={`${t('label.name')}:`}
-                name="name"
-                rules={[
-                  {
-                    required: true,
-                    max: 128,
-                    min: 1,
-                    message: t('label.invalid-name'),
-                  },
-                  {
-                    validator: (_, value) => {
-                      if (allowedNameRegEx.test(value)) {
-                        return Promise.reject(
-                          t('message.field-text-is-invalid', {
-                            fieldText: t('label.name'),
-                          })
-                        );
-                      }
-
-                      return Promise.resolve();
+    <ResizablePanels
+      firstPanel={{
+        children: (
+          <div
+            className="max-width-md w-9/10 service-form-container"
+            data-testid="add-role-container">
+            <TitleBreadcrumb titleLinks={breadcrumb} />
+            <Card className="p-sm m-t-md">
+              <Typography.Paragraph
+                className="text-base"
+                data-testid="form-title">
+                {t('label.add-new-entity', { entity: t('label.role') })}
+              </Typography.Paragraph>
+              <Form
+                data-testid="role-form"
+                id="role-form"
+                layout="vertical"
+                onFinish={handleSubmit}>
+                <Form.Item
+                  label={`${t('label.name')}:`}
+                  name="name"
+                  rules={[
+                    {
+                      required: true,
+                      max: 128,
+                      min: 1,
+                      message: t('label.invalid-name'),
                     },
-                  },
-                ]}>
-                <Input
-                  data-testid="name"
-                  placeholder={t('label.role-name')}
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </Form.Item>
-              <Form.Item
-                label={`${t('label.description')}:`}
-                name="description">
-                <RichTextEditor
-                  height="200px"
-                  initialValue={description}
-                  placeHolder={t('message.write-your-description')}
-                  style={{ margin: 0 }}
-                  onTextChange={(value) => setDescription(value)}
-                />
-              </Form.Item>
-              <Form.Item
-                label={`${t('label.select-a-policy')}:`}
-                name="policies"
-                rules={[
-                  {
-                    required: true,
-                    message: t('message.at-least-one-policy'),
-                  },
-                ]}>
-                <Select
-                  data-testid="policies"
-                  mode="multiple"
-                  placeholder={t('label.select-a-policy')}
-                  value={selectedPolicies}
-                  onChange={(values) => setSelectedPolicies(values)}>
-                  {policies.map((policy) => (
-                    <Option key={policy.fullyQualifiedName}>
-                      {policy.displayName || policy.name}
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
+                    {
+                      validator: (_, value) => {
+                        if (allowedNameRegEx.test(value)) {
+                          return Promise.reject(
+                            t('message.field-text-is-invalid', {
+                              fieldText: t('label.name'),
+                            })
+                          );
+                        }
 
-              <Space align="center" className="w-full justify-end">
-                <Button
-                  data-testid="cancel-btn"
-                  type="link"
-                  onClick={handleCancel}>
-                  {t('label.cancel')}
-                </Button>
-                <Button
-                  data-testid="submit-btn"
-                  form="role-form"
-                  htmlType="submit"
-                  type="primary">
-                  {t('label.submit')}
-                </Button>
-              </Space>
-            </Form>
-          </Card>
-        </Space>
+                        return Promise.resolve();
+                      },
+                    },
+                  ]}>
+                  <Input
+                    data-testid="name"
+                    placeholder={t('label.role-name')}
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </Form.Item>
+                <Form.Item
+                  label={`${t('label.description')}:`}
+                  name="description">
+                  <RichTextEditor
+                    height="200px"
+                    initialValue={description}
+                    placeHolder={t('message.write-your-description')}
+                    style={{ margin: 0 }}
+                    onTextChange={(value) => setDescription(value)}
+                  />
+                </Form.Item>
+                <Form.Item
+                  label={`${t('label.select-a-policy')}:`}
+                  name="policies"
+                  rules={[
+                    {
+                      required: true,
+                      message: t('message.at-least-one-policy'),
+                    },
+                  ]}>
+                  <Select
+                    data-testid="policies"
+                    mode="multiple"
+                    placeholder={t('label.select-a-policy')}
+                    value={selectedPolicies}
+                    onChange={(values) => setSelectedPolicies(values)}>
+                    {policies.map((policy) => (
+                      <Option key={policy.fullyQualifiedName}>
+                        {policy.displayName || policy.name}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
 
-        <div className="m-t-xlg p-l-lg w-max-400">
-          <Typography.Paragraph className="text-base font-medium">
-            {t('label.add-entity', {
-              entity: t('label.role'),
-            })}
-          </Typography.Paragraph>
-          <Typography.Text>{t('message.add-role-message')}</Typography.Text>
-        </div>
-      </PageLayoutV1>
-    </div>
+                <Space align="center" className="w-full justify-end">
+                  <Button
+                    data-testid="cancel-btn"
+                    type="link"
+                    onClick={handleCancel}>
+                    {t('label.cancel')}
+                  </Button>
+                  <Button
+                    data-testid="submit-btn"
+                    form="role-form"
+                    htmlType="submit"
+                    type="primary">
+                    {t('label.submit')}
+                  </Button>
+                </Space>
+              </Form>
+            </Card>
+          </div>
+        ),
+        minWidth: 700,
+        flex: 0.7,
+      }}
+      pageTitle={t('label.add-new-entity', {
+        entity: t('label.role'),
+      })}
+      secondPanel={{
+        children: (
+          <>
+            <Typography.Paragraph className="text-base font-medium">
+              {t('label.add-entity', {
+                entity: t('label.role'),
+              })}
+            </Typography.Paragraph>
+            <Typography.Text>{t('message.add-role-message')}</Typography.Text>
+          </>
+        ),
+        className: 'p-md service-doc-panel',
+        minWidth: 60,
+        overlay: {
+          displayThreshold: 200,
+          header: t('label.setup-guide'),
+          rotation: 'counter-clockwise',
+        },
+      }}
+    />
   );
 };
 

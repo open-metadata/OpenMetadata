@@ -11,10 +11,20 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tabs, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Row,
+  Space,
+  Switch,
+  Tabs,
+  Tooltip,
+  Typography,
+} from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import Description from 'components/common/description/Description';
+import AirflowMessageBanner from 'components/common/AirflowMessageBanner/AirflowMessageBanner';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
 import EntitySummaryDetails from 'components/common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -40,6 +50,7 @@ import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
+import { Include } from 'generated/type/include';
 import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
 import {
   ExtraInfo,
@@ -69,6 +80,7 @@ import { getEntityName } from 'utils/EntityUtils';
 import {
   getServiceDetailsPath,
   getTeamAndUserDetailsPath,
+  NO_DATA_PLACEHOLDER,
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
@@ -134,10 +146,16 @@ const ServicePage: FunctionComponent = () => {
     tab: string;
   }>();
 
-  const activeTab = useMemo(
-    () => tab ?? getCountLabel(serviceCategory).toLowerCase(),
-    [tab, serviceCategory]
-  );
+  const activeTab = useMemo(() => {
+    if (tab) {
+      return tab;
+    }
+    if (serviceCategory === ServiceCategory.METADATA_SERVICES) {
+      return EntityTabs.INGESTIONS;
+    }
+
+    return getCountLabel(serviceCategory).toLowerCase();
+  }, [tab, serviceCategory]);
   const entitySpecificTabName = useMemo(
     () => getCountLabel(serviceCategory).toLowerCase(),
     [serviceCategory]
@@ -166,6 +184,7 @@ const ServicePage: FunctionComponent = () => {
   const [ingestions, setIngestions] = useState<IngestionPipeline[]>([]);
   const [serviceList] = useState<Array<DatabaseService>>([]);
   const [ingestionPaging, setIngestionPaging] = useState<Paging>({} as Paging);
+  const [showDeleted, setShowDeleted] = useState<boolean>(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [dataModelCurrentPage, setDataModelCurrentPage] = useState(1);
@@ -430,13 +449,19 @@ const ServicePage: FunctionComponent = () => {
     }).finally(() => setIsLoading(false));
   };
 
+  const include = useMemo(
+    () => (showDeleted ? Include.Deleted : Include.NonDeleted),
+    [showDeleted]
+  );
+
   const fetchDatabases = async (paging?: PagingWithoutTotal) => {
     setIsServiceLoading(true);
     try {
       const { data, paging: resPaging } = await getDatabases(
         serviceFQN,
         'owner,usageSummary',
-        paging
+        paging,
+        include
       );
 
       setData(data);
@@ -456,7 +481,8 @@ const ServicePage: FunctionComponent = () => {
       const { data, paging: resPaging } = await getTopics(
         serviceFQN,
         'owner,tags',
-        paging
+        paging,
+        include
       );
       setData(data);
       setPaging(resPaging);
@@ -473,7 +499,8 @@ const ServicePage: FunctionComponent = () => {
       const { data, paging: resPaging } = await getDashboards(
         serviceFQN,
         'owner,usageSummary,tags',
-        paging
+        paging,
+        include
       );
       setData(data);
       setPaging(resPaging);
@@ -490,7 +517,8 @@ const ServicePage: FunctionComponent = () => {
       const { data, paging: resPaging } = await getDataModels(
         serviceFQN,
         'owner,tags,followers',
-        paging
+        paging,
+        include
       );
       setDataModel(data);
       setDataModelPaging(resPaging);
@@ -507,7 +535,8 @@ const ServicePage: FunctionComponent = () => {
       const { data, paging: resPaging } = await getPipelines(
         serviceFQN,
         'owner,tags',
-        paging
+        paging,
+        include
       );
       setData(data);
       setPaging(resPaging);
@@ -524,7 +553,8 @@ const ServicePage: FunctionComponent = () => {
       const { data, paging: resPaging } = await getMlModels(
         serviceFQN,
         'owner,tags',
-        paging
+        paging,
+        include
       );
       setData(data);
       setPaging(resPaging);
@@ -543,6 +573,7 @@ const ServicePage: FunctionComponent = () => {
         fields: 'owner,tags',
         paging,
         root: true,
+        include,
       });
 
       setData(response.data);
@@ -673,6 +704,10 @@ const ServicePage: FunctionComponent = () => {
         return <></>;
     }
   };
+
+  useEffect(() => {
+    getOtherDetails(undefined, activeTab === EntityTabs.DATA_Model);
+  }, [activeTab, showDeleted]);
 
   useEffect(() => {
     if (servicePermission.ViewAll || servicePermission.ViewBasic) {
@@ -885,13 +920,30 @@ const ServicePage: FunctionComponent = () => {
 
   const dataModalTab = useMemo(
     () => (
-      <DataModelTable
-        currentPage={dataModelCurrentPage}
-        data={dataModel}
-        isLoading={isServiceLoading}
-        paging={dataModelPaging}
-        pagingHandler={dataModelPagingHandler}
-      />
+      <Row>
+        <Col span={24}>
+          <Row justify="end">
+            <Col>
+              <Switch
+                checked={showDeleted}
+                data-testid="show-deleted"
+                onClick={setShowDeleted}
+              />
+              <Typography.Text className="m-l-xs">
+                {t('label.deleted')}
+              </Typography.Text>{' '}
+            </Col>
+          </Row>
+        </Col>
+
+        <DataModelTable
+          currentPage={dataModelCurrentPage}
+          data={dataModel}
+          isLoading={isServiceLoading}
+          paging={dataModelPaging}
+          pagingHandler={dataModelPagingHandler}
+        />
+      </Row>
     ),
     [dataModel, isServiceLoading, dataModelPagingHandler, dataModelCurrentPage]
   );
@@ -899,48 +951,55 @@ const ServicePage: FunctionComponent = () => {
   const testConnectionTab = useMemo(() => {
     return (
       <>
-        <Space className="w-full my-4 justify-end">
-          <Tooltip
-            title={
-              servicePermission.EditAll
-                ? t('label.edit-entity', {
+        <Row className="my-4">
+          <Col span={12}>
+            <AirflowMessageBanner />
+          </Col>
+          <Col span={12}>
+            <Space className="w-full justify-end">
+              <Tooltip
+                title={
+                  servicePermission.EditAll
+                    ? t('label.edit-entity', {
+                        entity: t('label.connection'),
+                      })
+                    : t('message.no-permission-for-action')
+                }>
+                <Button
+                  ghost
+                  data-testid="edit-connection-button"
+                  disabled={!servicePermission.EditAll}
+                  type="primary"
+                  onClick={goToEditConnection}>
+                  {t('label.edit-entity', {
                     entity: t('label.connection'),
-                  })
-                : t('message.no-permission-for-action')
-            }>
-            <Button
-              ghost
-              data-testid="edit-connection-button"
-              disabled={!servicePermission.EditAll}
-              type="primary"
-              onClick={goToEditConnection}>
-              {t('label.edit-entity', {
-                entity: t('label.connection'),
-              })}
-            </Button>
-          </Tooltip>
-          {allowTestConn && isAirflowAvailable && (
-            <Tooltip
-              title={
-                servicePermission.EditAll
-                  ? t('label.test-entity', {
-                      entity: t('label.connection'),
-                    })
-                  : t('message.no-permission-for-action')
-              }>
-              <TestConnection
-                connectionType={serviceDetails?.serviceType ?? ''}
-                formData={connectionDetails as ConfigData}
-                isTestingDisabled={isTestingDisabled}
-                serviceCategory={serviceCategory as ServiceCategory}
-                serviceName={serviceDetails?.name}
-                // validation is not required as we have all the data available and not in edit mode
-                shouldValidateForm={false}
-                showDetails={false}
-              />
-            </Tooltip>
-          )}
-        </Space>
+                  })}
+                </Button>
+              </Tooltip>
+              {allowTestConn && isAirflowAvailable && (
+                <Tooltip
+                  title={
+                    servicePermission.EditAll
+                      ? t('label.test-entity', {
+                          entity: t('label.connection'),
+                        })
+                      : t('message.no-permission-for-action')
+                  }>
+                  <TestConnection
+                    connectionType={serviceDetails?.serviceType ?? ''}
+                    formData={connectionDetails as ConfigData}
+                    isTestingDisabled={isTestingDisabled}
+                    serviceCategory={serviceCategory as ServiceCategory}
+                    serviceName={serviceDetails?.name}
+                    // validation is not required as we have all the data available and not in edit mode
+                    shouldValidateForm={false}
+                    showDetails={false}
+                  />
+                </Tooltip>
+              )}
+            </Space>
+          </Col>
+        </Row>
         <ServiceConnectionDetails
           connectionDetails={connectionDetails || {}}
           serviceCategory={serviceCategory}
@@ -998,6 +1057,21 @@ const ServicePage: FunctionComponent = () => {
             </span>
           ),
       },
+      ...(ServiceCategory.PIPELINE_SERVICES === serviceCategory
+        ? [
+            {
+              title: t('label.schedule-interval'),
+              dataIndex: 'scheduleInterval',
+              key: 'scheduleInterval',
+              render: (scheduleInterval: Pipeline['scheduleInterval']) =>
+                scheduleInterval ? (
+                  <span>{scheduleInterval}</span>
+                ) : (
+                  <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>
+                ),
+            },
+          ]
+        : []),
       {
         title: t('label.owner'),
         dataIndex: 'owner',
@@ -1035,10 +1109,10 @@ const ServicePage: FunctionComponent = () => {
       return <Loader />;
     } else if (!isEmpty(data) && !isServiceLoading) {
       return (
-        <div data-testid="table-container">
+        <Col data-testid="table-container" span={24}>
           <Table
             bordered
-            className="mt-4 table-shadow"
+            className="mt-4"
             columns={tableColumn}
             components={tableComponent}
             data-testid="service-children-table"
@@ -1056,7 +1130,7 @@ const ServicePage: FunctionComponent = () => {
               totalCount={paging.total}
             />
           )}
-        </div>
+        </Col>
       );
     } else {
       return <ErrorPlaceHolder />;
@@ -1093,7 +1167,7 @@ const ServicePage: FunctionComponent = () => {
             entity: getEntityName(serviceDetails),
           })}>
           {servicePermission.ViewAll || servicePermission.ViewBasic ? (
-            <Row data-testid="service-page">
+            <Row className="page-container" data-testid="service-page">
               {serviceDetails && (
                 <Row className="w-full m-b-xs" wrap={false}>
                   <Col flex="auto">
@@ -1155,11 +1229,11 @@ const ServicePage: FunctionComponent = () => {
                 </Space>
               </Col>
               <Col data-testid="description-container" span={24}>
-                <Description
+                <DescriptionV1
                   description={description || ''}
                   entityFqn={serviceFQN}
                   entityName={serviceFQN}
-                  entityType={serviceCategory.slice(0, -1)}
+                  entityType={serviceCategory.slice(0, -1) as EntityType}
                   hasEditAccess={
                     servicePermission.EditAll ||
                     servicePermission.EditDescription
@@ -1178,7 +1252,25 @@ const ServicePage: FunctionComponent = () => {
                   onChange={activeTabHandler}
                 />
                 <Col span={24}>
-                  {activeTab === entitySpecificTabName && entityServiceTab}
+                  {activeTab === entitySpecificTabName && (
+                    <Row>
+                      <Col span={24}>
+                        <Row justify="end">
+                          <Col>
+                            <Switch
+                              checked={showDeleted}
+                              data-testid="show-deleted"
+                              onClick={setShowDeleted}
+                            />
+                            <Typography.Text className="m-l-xs">
+                              {t('label.deleted')}
+                            </Typography.Text>{' '}
+                          </Col>
+                        </Row>
+                      </Col>
+                      {entityServiceTab}
+                    </Row>
+                  )}
                   {activeTab === EntityTabs.DATA_Model && dataModalTab}
                   {activeTab === EntityTabs.INGESTIONS && ingestionTab}
                   {activeTab === EntityTabs.CONNECTION && testConnectionTab}

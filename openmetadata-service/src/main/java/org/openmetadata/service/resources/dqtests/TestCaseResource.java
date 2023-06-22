@@ -11,7 +11,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -37,20 +39,26 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestSummary;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
@@ -175,8 +183,45 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     // Override OperationContext to change the entity to table and operation from VIEW_ALL to VIEW_TESTS
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     Fields fields = getFields(fieldsParam);
-    return super.listInternal(
-        uriInfo, securityContext, fields, filter, limitParam, before, after, operationContext, resourceContext);
+
+    ResultList<TestCase> tests =
+        super.listInternal(
+            uriInfo, securityContext, fields, filter, limitParam, before, after, operationContext, resourceContext);
+
+    List<TestCase> maskedTests =
+        tests.getData().stream()
+            .map(
+                testCase -> {
+                  try {
+                    EntityLink testCaseLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+                    Table table =
+                        Entity.getEntityByName(
+                            Entity.TABLE, testCaseLink.getEntityFQN(), "owner,tags", Include.NON_DELETED);
+
+                    // Ignore table tests
+                    if (testCaseLink.getFieldName() == null) return testCase;
+
+                    Optional<Column> referencedColumn =
+                        table.getColumns().stream()
+                            .filter(
+                                col -> testCaseLink.getFullyQualifiedFieldValue().equals(col.getFullyQualifiedName()))
+                            .findFirst();
+
+                    if (referencedColumn.isPresent()) {
+                      Column col = referencedColumn.get();
+                      // We need the table owner to know if we can authorize the access
+                      boolean authorizePII = authorizer.authorizePII(securityContext, table.getOwner());
+                      return PIIMasker.getTestCase(col, testCase, authorizePII);
+                    }
+                    return testCase;
+                  } catch (IOException e) {
+                    throw new RuntimeException(e);
+                  }
+                })
+            .collect(Collectors.toList());
+
+    tests.setData(maskedTests);
+    return tests;
   }
 
   @GET
@@ -639,7 +684,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext = new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().entity(testSuite).build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-
+    if (testSuite.getExecutable()) {
+      throw new IllegalArgumentException("You are trying to add test cases to an executable test suite.");
+    }
     List<UUID> testCaseIds = createLogicalTestCases.getTestCaseIds();
 
     int existingTestCaseCount = repository.getTestCaseCount(testCaseIds);
@@ -647,6 +694,40 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       throw new IllegalArgumentException("You are trying to add one or more test cases that do not exist.");
     }
     return repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
+  }
+
+  @GET
+  @Path("/executionSummary")
+  @Operation(
+      operationId = "getExecutionSummaryOfTestCases",
+      summary = "Get the execution summary of test cases",
+      description = "Get the execution summary of test cases.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Tests Execution Summary",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSummary.class)))
+      })
+  public TestSummary getTestsExecutionSummary(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "get summary for a specific test suite",
+              schema = @Schema(type = "String", format = "uuid"))
+          @QueryParam("testSuiteId")
+          UUID testSuiteId)
+      throws IOException {
+    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().build();
+    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    return repository.getTestSummary(testSuiteId);
+  }
+
+  @Override
+  public TestCase getByNameInternal(
+      UriInfo uriInfo, SecurityContext securityContext, String fqn, String fieldsParam, Include include)
+      throws IOException {
+    return super.getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(fqn), fieldsParam, include);
   }
 
   private TestCase getTestCase(CreateTestCase create, String user, EntityLink entityLink) throws IOException {

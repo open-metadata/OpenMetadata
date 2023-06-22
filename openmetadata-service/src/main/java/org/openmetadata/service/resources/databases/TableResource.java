@@ -27,6 +27,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -72,7 +73,9 @@ import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.ResultList;
 
@@ -171,6 +174,13 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB.schema"))
           @QueryParam("databaseSchema")
           String databaseSchemaParam,
+      @Parameter(
+              description =
+                  "Include tables with an empty test suite (i.e. no test cases have been created for this table). Default to true",
+              schema = @Schema(type = "boolean", example = "true"))
+          @QueryParam("includeEmptyTestSuite")
+          @DefaultValue("true")
+          boolean includeEmptyTestSuite,
       @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = " + "10) ")
           @DefaultValue("10")
           @Min(0)
@@ -194,7 +204,15 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         new ListFilter(include)
             .addQueryParam("database", databaseParam)
             .addQueryParam("databaseSchema", databaseSchemaParam);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    ResultList<Table> tableList =
+        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    if (!includeEmptyTestSuite) {
+      tableList.setData(
+          tableList.getData().stream()
+              .filter(table -> table.getTestSuite() != null && !table.getTestSuite().getTests().isEmpty())
+              .collect(Collectors.toList()));
+    }
+    return tableList;
   }
 
   @GET
@@ -531,8 +549,12 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return addHref(uriInfo, repository.getSampleData(id));
+    ResourceContext resourceContext = getResourceContextById(id);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+
+    Table maskedTable = PIIMasker.getSampleData(repository.getSampleData(id, authorizePII), authorizePII);
+    return addHref(uriInfo, maskedTable);
   }
 
   @DELETE
@@ -647,8 +669,11 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           String fqn)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return repository.getLatestTableProfile(fqn);
+    ResourceContext resourceContext = getResourceContextByName(fqn);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+
+    return PIIMasker.getTableProfile(repository.getLatestTableProfile(fqn, authorizePII), authorizePII);
   }
 
   @GET
@@ -928,6 +953,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return validateNewTable(
             copy(new Table(), create, user)
                 .withColumns(create.getColumns())
+                .withSourceUrl(create.getSourceUrl())
                 .withTableConstraints(create.getTableConstraints())
                 .withTablePartition(create.getTablePartition())
                 .withTableType(create.getTableType())

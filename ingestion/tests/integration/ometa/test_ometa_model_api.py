@@ -37,6 +37,9 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlModel,
 )
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -270,7 +273,9 @@ class OMetaModelTest(TestCase):
             connection=DatabaseConnection(
                 config=MysqlConnection(
                     username="username",
-                    password="password",
+                    authType=BasicAuth(
+                        password="password",
+                    ),
                     hostPort="http://localhost:1234",
                 )
             ),

@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.services.metadata;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -84,36 +85,32 @@ public class MetadataServiceResource
   public static final String FIELDS = "pipelines,owner,tags";
 
   @Override
-  public void initialize(OpenMetadataApplicationConfig config) {
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     registerMetadataServices(config);
   }
 
-  private void registerMetadataServices(OpenMetadataApplicationConfig config) {
-    try {
+  private void registerMetadataServices(OpenMetadataApplicationConfig config) throws IOException {
+    List<MetadataService> servicesList =
+        repository.getEntitiesFromSeedData(".*json/data/metadataService/OpenmetadataService.json$");
+    if (!nullOrEmpty(servicesList)) {
+      MetadataService openMetadataService = servicesList.get(0);
+      openMetadataService.setId(UUID.randomUUID());
+      openMetadataService.setUpdatedBy(ADMIN_USER_NAME);
+      openMetadataService.setUpdatedAt(System.currentTimeMillis());
       if (config.getElasticSearchConfiguration() != null) {
         OpenMetadataConnection openMetadataServerConnection =
             new OpenMetadataConnectionBuilder(config)
                 .build()
                 .withElasticsSearch(getElasticSearchConnectionSink(config.getElasticSearchConfiguration()));
         MetadataConnection metadataConnection = new MetadataConnection().withConfig(openMetadataServerConnection);
-        List<MetadataService> servicesList =
-            repository.getEntitiesFromSeedData(".*json/data/metadataService/.*\\.json$");
-        if (servicesList.size() == 1) {
-          MetadataService service = servicesList.get(0);
-          service.setId(UUID.randomUUID());
-          service.setConnection(metadataConnection);
-          service.setUpdatedBy(ADMIN_USER_NAME);
-          service.setUpdatedAt(System.currentTimeMillis());
-          repository.setFullyQualifiedName(service);
-          repository.createOrUpdate(null, service);
-        } else {
-          throw new IOException("Only one Openmetadata Service can be initialized from the Data.");
-        }
+        openMetadataService.setConnection(metadataConnection);
       } else {
         LOG.error("[MetadataService] Missing Elastic Search Config.");
       }
-    } catch (Exception ex) {
-      LOG.error("[MetadataService] Error in creating Metadata Services.", ex);
+      repository.setFullyQualifiedName(openMetadataService);
+      repository.createOrUpdate(null, openMetadataService);
+    } else {
+      throw new IOException("Failed to initialize OpenMetadata Service.");
     }
   }
 

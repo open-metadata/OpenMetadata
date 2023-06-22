@@ -17,7 +17,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/dashboard
 - **`version`**: Metadata version of the entity. Refer to *../../type/entityHistory.json#/definitions/entityVersion*.
 - **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`updatedBy`** *(string)*: User who made the update.
-- **`dashboardUrl`** *(string)*: Dashboard URL suffix from its service.
+- **`sourceUrl`** *(string)*: Dashboard URL suffix from its service.
 - **`charts`** *(array)*: All the charts included in this Dashboard. Default: `None`.
   - **Items**: Refer to *../../type/entityReference.json*.
 - **`href`**: Link to the resource corresponding to this entity. Refer to *../../type/basic.json#/definitions/href*.

@@ -105,8 +105,12 @@
     "executableEntityReference": {
       "description": "Entity reference the test suite is executed against. Only applicable if the test suite is executable.",
       "$ref": "../type/entityReference.json"
+    },
+    "summary": {
+      "description": "Summary of the previous day test cases execution for this test suite.",
+      "$ref": "./basic.json#/definitions/testSummary"
     }
   },
-  "required": ["name", "description"],
+  "required": ["name"],
   "additionalProperties": false
 }

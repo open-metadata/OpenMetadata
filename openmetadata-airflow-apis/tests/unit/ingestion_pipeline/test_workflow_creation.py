@@ -105,7 +105,7 @@ class OMetaServiceTest(TestCase):
             "config": {
                 "type": "Mysql",
                 "username": "openmetadata_user",
-                "password": "openmetadata_password",
+                "authType": {"password": "openmetadata_password"},
                 "hostPort": "localhost:3306",
             }
         },
@@ -161,13 +161,6 @@ class OMetaServiceTest(TestCase):
             config=cls.usage_workflow_source,
         )
 
-        cls.test_suite: TestSuite = cls.metadata.create_or_update(
-            CreateTestSuiteRequest(
-                name="airflow_workflow_test_suite",
-                description="This is a test suite airflow worflow",
-            )
-        )
-
     @classmethod
     def tearDownClass(cls) -> None:
         """
@@ -176,13 +169,6 @@ class OMetaServiceTest(TestCase):
         cls.metadata.delete(
             entity=DatabaseService,
             entity_id=cls.service.id,
-            recursive=True,
-            hard_delete=True,
-        )
-
-        cls.metadata.delete(
-            entity=TestSuite,
-            entity_id=cls.test_suite.id,
             recursive=True,
             hard_delete=True,
         )
@@ -333,15 +319,20 @@ class OMetaServiceTest(TestCase):
             name="test_test_suite_workflow",
             pipelineType=PipelineType.TestSuite,
             fullyQualifiedName="local_mysql.test_test_suite_workflow",
-            sourceConfig=SourceConfig(config=TestSuitePipeline(type="TestSuite")),
+            sourceConfig=SourceConfig(
+                config=TestSuitePipeline(
+                    type="TestSuite",
+                    entityFullyQualifiedName=self.service.name.__root__,
+                )
+            ),
             openMetadataServerConnection=self.server_config,
             airflowConfig=AirflowConfig(
                 startDate="2022-06-10T15:06:47+00:00",
             ),
             service=EntityReference(
-                id=self.test_suite.id,
+                id=uuid.uuid4(),
                 type="testSuite",
-                name=self.test_suite.name.__root__,
+                name="test_test_suite_workflow",
             ),
         )
 
@@ -349,3 +340,4 @@ class OMetaServiceTest(TestCase):
         config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 
         parse_workflow_config_gracefully(config)
+        assert workflow_config.source.type == "mysql"

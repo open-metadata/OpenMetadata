@@ -20,15 +20,8 @@ describe('Logout User', () => {
   });
 
   it('After login logout the user and invalidate the token', () => {
-    cy.get('[data-testid="avatar"]')
-      .first()
-      .should('be.visible')
-      .trigger('mouseover')
-      .click();
-
     interceptURL('POST', '/api/v1/users/logout', 'logoutUser');
-
-    cy.get('[data-testid="menu-item-Logout"]').should('be.visible').click();
+    cy.get('[data-testid="appbar-item-logout"]').click();
 
     // verify the logout request
     verifyResponseStatusCode('@logoutUser', 200);

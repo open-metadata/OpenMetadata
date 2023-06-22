@@ -54,6 +54,10 @@
         "$ref": "../../entity/data/table.json#/definitions/column"
       },
       "default": null
+    },
+    "project": {
+      "description": "Name of the project / workspace / collection in which the dataModel is contained",
+      "type": "string"
     }
   },
   "required": ["name", "service", "dataModelType", "columns"],

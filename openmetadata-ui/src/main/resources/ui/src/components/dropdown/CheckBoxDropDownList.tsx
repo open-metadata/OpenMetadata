@@ -36,9 +36,9 @@ const CheckBoxDropDownList = ({
       <div
         aria-labelledby="menu-button"
         aria-orientation="vertical"
-        className="tw-origin-top-right tw-absolute tw-z-20
-              tw-right-0 tw-w-full tw-mt-1 tw-shadow-lg tw-border tw-border-main
-              tw-bg-white tw-rounded focus:tw-outline-none"
+        className="tw-origin-top-right absolute tw-z-20
+              tw-right-0 w-full tw-mt-1 tw-shadow-lg tw-border tw-border-main
+              bg-white tw-rounded focus:tw-outline-none"
         role="menu">
         <div className="tw-py-1" role="none">
           {dropDownList.map((item: DropDownListItem, index: number) =>

@@ -31,6 +31,7 @@ import {
 } from 'rest/ingestionPipelineAPI';
 import { fetchAirflowConfig } from 'rest/miscAPI';
 import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-links.svg';
 import { Operation } from '../../generated/entity/policies/policy';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
@@ -40,7 +41,6 @@ import {
   getLogsViewerPath,
   getTestSuiteIngestionPath,
 } from '../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolderIngestion from '../common/error-with-placeholder/ErrorPlaceHolderIngestion';
 import { IngestionRecentRuns } from '../Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
@@ -330,11 +330,9 @@ const TestSuitePipelineTab = () => {
                   rel="noopener noreferrer"
                   target="_blank">
                   {name}
-                  <SVGIcons
-                    alt="external-link"
+                  <ExternalLinkIcon
                     className="tw-align-middle tw-ml-1"
-                    icon={Icons.EXTERNAL_LINK}
-                    width="16px"
+                    width={16}
                   />
                 </a>
               </Button>
@@ -603,7 +601,6 @@ const TestSuitePipelineTab = () => {
       <Col span={24}>
         <Table
           bordered
-          className="table-shadow"
           columns={pipelineColumns}
           dataSource={testSuitePipelines.map((test) => ({
             ...test,

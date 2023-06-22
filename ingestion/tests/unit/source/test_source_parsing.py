@@ -525,7 +525,7 @@ def test_mysql():
             "config": {
                 "type": "Mysql",
                 "username": "openmetadata_user",
-                "password": "openmetadata_password",
+                "authType": {"password": "openmetadata_password"},
                 "hostPort": "localhost:3306",
             }
         },

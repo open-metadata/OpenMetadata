@@ -62,7 +62,7 @@ const TaskNode = (props: NodeProps) => {
   const { label } = data;
 
   return (
-    <div className="task-node tw-relative nowheel tw-px-2 tw-bg-primary-lite tw-border tw-border-primary-hover tw-rounded-md">
+    <div className="task-node relative nowheel tw-px-2 bg-primary-lite border border-primary tw-rounded-md">
       {getHandle(type, isConnectable)}
       {/* Node label could be simple text or reactNode */}
       <div className="tw-px-2 tw-py-3" data-testid="node-label">
