@@ -52,7 +52,7 @@ public class PipelineServiceStatusJob implements Job {
             .maxAttempts(MAX_ATTEMPTS)
             .waitDuration(Duration.ofMillis(BACKOFF_TIME_SECONDS * 1_000L))
             .retryOnResult(response -> !HEALTHY_STATUS.equals(response))
-            .failAfterMaxAttempts(true)
+            .failAfterMaxAttempts(false)
             .build();
 
     Retry retry = Retry.of("getServiceStatus", retryConfig);
