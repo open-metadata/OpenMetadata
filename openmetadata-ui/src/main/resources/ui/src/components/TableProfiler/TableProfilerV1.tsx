@@ -282,9 +282,6 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const updateActiveColumnFqn = (key: string) =>
     history.push({ search: Qs.stringify({ activeColumnFqn: key, activeTab }) });
 
-  const updateActiveColumnFqn = (key: string) =>
-    history.push({ search: Qs.stringify({ activeColumnFqn: key, activeTab }) });
-
   const handleTabChange: MenuProps['onClick'] = (value) => {
     updateActiveTab(value.key);
   };
