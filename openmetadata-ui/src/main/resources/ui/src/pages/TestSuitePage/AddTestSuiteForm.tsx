@@ -14,6 +14,7 @@
 import { Button, Form, Input, Space } from 'antd';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import Loader from 'components/Loader/Loader';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -72,8 +73,17 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
             required: true,
           },
           {
-            pattern: /^[A-Za-z0-9_]*$/g,
-            message: t('message.special-character-not-allowed'),
+            pattern: ENTITY_NAME_REGEX,
+            message: t('message.entity-name-validation'),
+          },
+          {
+            min: 1,
+            max: 256,
+            message: `${t('message.entity-size-in-between', {
+              entity: `${t('label.name')}`,
+              max: '256',
+              min: '1',
+            })}`,
           },
           {
             validator: (_, value) => {

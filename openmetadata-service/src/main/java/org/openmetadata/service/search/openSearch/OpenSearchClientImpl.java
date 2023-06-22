@@ -278,6 +278,9 @@ public class OpenSearchClientImpl implements SearchClient {
       case "query_search_index":
         searchSourceBuilder = buildQuerySearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
         break;
+      case "test_case_search_index":
+        searchSourceBuilder = buildTestCaseSearch(request.getQuery(), request.getFrom(), request.getSize());
+        break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
         break;
@@ -732,6 +735,39 @@ public class OpenSearchClientImpl implements SearchClient {
     hb.field(highlightQuery);
     hb.preTags(EntityBuilderConstant.PRE_TAG);
     hb.postTags(EntityBuilderConstant.POST_TAG);
+    return searchBuilder(queryBuilder, hb, from, size);
+  }
+
+  private static SearchSourceBuilder buildTestCaseSearch(String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .field(FIELD_NAME, 10.0f)
+            .field(EntityBuilderConstant.DESCRIPTION, 3.0f)
+            .field("testSuite.fullyQualifiedName", 10.0f)
+            .field("testSuite.name", 10.0f)
+            .field("testSuite.description", 3.0f)
+            .field("entityLink", 3.0f)
+            .field("entityFQN", 10.0f)
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
+
+    HighlightBuilder.Field highlightTestCaseDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
+    highlightTestCaseDescription.highlighterType(EntityBuilderConstant.UNIFIED);
+    HighlightBuilder.Field highlightTestCaseName = new HighlightBuilder.Field(FIELD_NAME);
+    highlightTestCaseName.highlighterType(EntityBuilderConstant.UNIFIED);
+    HighlightBuilder.Field highlightTestSuiteName = new HighlightBuilder.Field("testSuite.name");
+    highlightTestSuiteName.highlighterType(EntityBuilderConstant.UNIFIED);
+    HighlightBuilder.Field highlightTestSuiteDescription = new HighlightBuilder.Field("testSuite.description");
+    highlightTestSuiteDescription.highlighterType(EntityBuilderConstant.UNIFIED);
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightTestCaseDescription);
+    hb.field(highlightTestCaseName);
+    hb.field(highlightTestSuiteName);
+    hb.field(highlightTestSuiteDescription);
+
+    hb.preTags(EntityBuilderConstant.PRE_TAG);
+    hb.postTags(EntityBuilderConstant.POST_TAG);
+
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
