@@ -281,7 +281,7 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@addTags', 200);
-    cy.get('[data-testid="entity-tags"]')
+    cy.get('[data-testid="tag-container"]')
       .scrollIntoView()
       .should('be.visible')
       .contains(tag);

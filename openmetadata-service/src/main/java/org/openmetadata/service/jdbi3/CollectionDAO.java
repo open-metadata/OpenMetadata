@@ -2912,7 +2912,7 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT ranked.json FROM (SELECT json, ROW_NUMBER() OVER(PARTITION BY entityFQNHash ORDER BY timestamp DESC) AS row_num "
-            + "FROM entity_extension_time_series WHERE entityFQNHash IN (<entityFQNHashes>)) ranked WHERE ranked.row_num = 1")
+            + "FROM entity_extension_time_series WHERE entityFQNHash IN (<entityFQNHashes>) AND extension = :extension) ranked WHERE ranked.row_num = 1")
     List<String> getLatestExtensionByFQNs(
         @BindList("entityFQNHashes") List<String> entityFQNHashes, @Bind("extension") String extension);
 

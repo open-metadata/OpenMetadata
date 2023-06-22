@@ -13,7 +13,7 @@
 
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { camelCase, isEmpty } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -47,6 +47,7 @@ import TestSuiteScheduler from './components/TestSuiteScheduler';
 
 const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   ingestionPipeline,
+  table,
   testSuite,
   onCancel,
 }) => {
@@ -124,8 +125,8 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       name: `${updatedName}_${PipelineType.TestSuite}`,
       pipelineType: PipelineType.TestSuite,
       service: {
-        id: testSuite.id || '',
-        type: camelCase(PipelineType.TestSuite),
+        id: table?.service?.id ?? '',
+        type: table?.service?.type ?? '',
       },
       sourceConfig: {
         config: {

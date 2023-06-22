@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Table } from 'antd';
+import { Col, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
@@ -74,7 +74,7 @@ const DataModelTable = ({
   }
 
   return (
-    <div data-testid="table-container">
+    <Col data-testid="table-container" span={24}>
       <Table
         bordered
         className="mt-4 table-shadow"
@@ -98,7 +98,7 @@ const DataModelTable = ({
           totalCount={paging.total}
         />
       )}
-    </div>
+    </Col>
   );
 };
 

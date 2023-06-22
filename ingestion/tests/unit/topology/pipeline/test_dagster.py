@@ -42,6 +42,7 @@ from metadata.generated.schema.type.tagLabel import (
 )
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.dagster.metadata import DagsterSource
+from metadata.ingestion.source.pipeline.dagster.models import GraphOrError
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/dagster_dataset.json"
@@ -113,7 +114,7 @@ EXPECTED_CREATED_PIPELINES = [
                 fullyQualifiedName=None,
                 description=None,
                 sourceUrl=None,
-                downstreamTasks=[],
+                downstreamTasks=None,
                 taskType=None,
                 taskSQL=None,
                 startDate=None,
@@ -268,15 +269,15 @@ class DagsterUnitTest(TestCase):
 
     def test_pipeline_name(self):
         assert (
-            self.dagster.get_pipeline_name(EXPECTED_DAGSTER_DETAILS)
+            self.dagster.get_pipeline_name(GraphOrError(**EXPECTED_DAGSTER_DETAILS))
             in EXPTECTED_PIPELINE_NAME
         )
 
-    @patch("metadata.ingestion.source.pipeline.dagster.metadata.DagsterSource.get_jobs")
+    @patch("metadata.ingestion.source.pipeline.dagster.client.DagsterClient.get_jobs")
     @patch("metadata.utils.tag_utils.get_tag_label")
     def test_yield_pipeline(self, get_tag_label, get_jobs):
-        results = self.dagster.yield_pipeline(EXPECTED_DAGSTER_DETAILS)
-        get_jobs.return_value = EXPECTED_DAGSTER_DETAILS
+        results = self.dagster.yield_pipeline(GraphOrError(**EXPECTED_DAGSTER_DETAILS))
+        get_jobs.return_value = GraphOrError(**EXPECTED_DAGSTER_DETAILS)
         get_tag_label.return_value = TagLabel(
             tagFQN="DagsterTags.hacker_new_repository",
             labelType=LabelType.Automated.value,
