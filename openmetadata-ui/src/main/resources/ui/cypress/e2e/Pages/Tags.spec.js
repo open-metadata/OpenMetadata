@@ -251,7 +251,7 @@ describe('Tags page should work', () => {
     );
     interceptURL('PATCH', '/api/v1/databaseSchemas/*', 'addTags');
 
-    const entity = SEARCH_ENTITY_TABLE.table_2;
+    const entity = SEARCH_ENTITY_TABLE.table_1;
     const tag = 'Sensitive';
 
     visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);

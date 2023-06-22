@@ -17,6 +17,10 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import { CellRendered } from 'components/ContainerDetail/ContainerDataModel/ContainerDataModel.interface';
 import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TableTags from 'components/TableTags/TableTags.component';
+import {
+  GlossaryTermDetailsProps,
+  TagsDetailsProps,
+} from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
 import { Column } from 'generated/entity/data/dashboardDataModel';
 import { TagLabel, TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, isUndefined, map } from 'lodash';
@@ -28,9 +32,11 @@ import {
   updateDataModelColumnTags,
 } from 'utils/DataModelsUtils';
 import { getEntityName } from 'utils/EntityUtils';
-import { fetchGlossaryTerms, getGlossaryTermlist } from 'utils/GlossaryUtils';
-import { getFilterTags } from 'utils/TableTags/TableTags.utils';
-import { getClassifications, getTaglist } from 'utils/TagsUtils';
+import {
+  getGlossaryTermHierarchy,
+  getGlossaryTermsList,
+} from 'utils/GlossaryUtils';
+import { getAllTagsList, getTagsHierarchy } from 'utils/TagsUtils';
 import { ModelTabProps } from './ModelTab.interface';
 
 const ModelTab = ({
@@ -46,18 +52,18 @@ const ModelTab = ({
   const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
 
-  const [glossaryTags, setGlossaryTags] = useState<TagOption[]>([]);
-  const [classificationTags, setClassificationTags] = useState<TagOption[]>([]);
+  const [glossaryTags, setGlossaryTags] = useState<GlossaryTermDetailsProps[]>(
+    []
+  );
+  const [classificationTags, setClassificationTags] = useState<
+    TagsDetailsProps[]
+  >([]);
 
   const fetchGlossaryTags = async () => {
     setIsGlossaryLoading(true);
     try {
-      const res = await fetchGlossaryTerms();
-
-      const glossaryTerms: TagOption[] = getGlossaryTermlist(res).map(
-        (tag) => ({ fqn: tag, source: TagSource.Glossary })
-      );
-      setGlossaryTags(glossaryTerms);
+      const glossaryTermList = await getGlossaryTermsList();
+      setGlossaryTags(glossaryTermList);
     } catch {
       setTagFetchFailed(true);
     } finally {
@@ -68,15 +74,8 @@ const ModelTab = ({
   const fetchClassificationTags = async () => {
     setIsTagLoading(true);
     try {
-      const res = await getClassifications();
-      const tagList = await getTaglist(res.data);
-
-      const classificationTag: TagOption[] = map(tagList, (tag) => ({
-        fqn: tag,
-        source: TagSource.Classification,
-      }));
-
-      setClassificationTags(classificationTag);
+      const tags = await getAllTagsList();
+      setClassificationTags(tags);
     } catch {
       setTagFetchFailed(true);
     } finally {
@@ -85,15 +84,11 @@ const ModelTab = ({
   };
 
   const handleFieldTagsChange = useCallback(
-    async (
-      selectedTags: EntityTags[],
-      editColumnTag: Column,
-      otherTags: TagLabel[]
-    ) => {
-      const newSelectedTags: TagOption[] = map(
-        [...selectedTags, ...otherTags],
-        (tag) => ({ fqn: tag.tagFQN, source: tag.source })
-      );
+    async (selectedTags: EntityTags[], editColumnTag: Column) => {
+      const newSelectedTags: TagOption[] = map(selectedTags, (tag) => ({
+        fqn: tag.tagFQN,
+        source: tag.source,
+      }));
 
       const dataModelData = cloneDeep(data);
 
@@ -206,8 +201,8 @@ const ModelTab = ({
             isTagLoading={isTagLoading}
             record={record}
             tagFetchFailed={tagFetchFailed}
-            tagList={classificationTags}
-            tags={getFilterTags(tags)}
+            tagList={getTagsHierarchy(classificationTags)}
+            tags={tags}
             type={TagSource.Classification}
           />
         ),
@@ -229,8 +224,8 @@ const ModelTab = ({
             isTagLoading={isGlossaryLoading}
             record={record}
             tagFetchFailed={tagFetchFailed}
-            tagList={glossaryTags}
-            tags={getFilterTags(tags)}
+            tagList={getGlossaryTermHierarchy(glossaryTags)}
+            tags={tags}
             type={TagSource.Glossary}
           />
         ),

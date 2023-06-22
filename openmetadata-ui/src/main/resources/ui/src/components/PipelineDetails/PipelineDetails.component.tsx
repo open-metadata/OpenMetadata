@@ -30,6 +30,10 @@ import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.in
 import TableTags from 'components/TableTags/TableTags.component';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
+import {
+  GlossaryTermDetailsProps,
+  TagsDetailsProps,
+} from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
 import TasksDAGView from 'components/TasksDAGView/TasksDAGView';
 import { EntityField } from 'constants/Feeds.constants';
 import { compare } from 'fast-json-patch';
@@ -41,8 +45,11 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
 import { restorePipeline } from 'rest/pipelineAPI';
-import { fetchGlossaryTerms, getGlossaryTermlist } from 'utils/GlossaryUtils';
-import { getFilterTags } from 'utils/TableTags/TableTags.utils';
+import {
+  getGlossaryTermHierarchy,
+  getGlossaryTermsList,
+} from 'utils/GlossaryUtils';
+import { getAllTagsList, getTagsHierarchy } from 'utils/TagsUtils';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-links.svg';
 import {
   getPipelineDetailsPath,
@@ -69,7 +76,6 @@ import { getEntityName, getEntityThreadLink } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
@@ -147,8 +153,13 @@ const PipelineDetails = ({
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
-  const [glossaryTags, setGlossaryTags] = useState<TagOption[]>([]);
-  const [classificationTags, setClassificationTags] = useState<TagOption[]>([]);
+
+  const [glossaryTags, setGlossaryTags] = useState<GlossaryTermDetailsProps[]>(
+    []
+  );
+  const [classificationTags, setClassificationTags] = useState<
+    TagsDetailsProps[]
+  >([]);
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -194,12 +205,8 @@ const PipelineDetails = ({
   const fetchGlossaryTags = async () => {
     setIsGlossaryLoading(true);
     try {
-      const res = await fetchGlossaryTerms();
-
-      const glossaryTerms: TagOption[] = getGlossaryTermlist(res).map(
-        (tag) => ({ fqn: tag, source: TagSource.Glossary })
-      );
-      setGlossaryTags(glossaryTerms);
+      const glossaryTermList = await getGlossaryTermsList();
+      setGlossaryTags(glossaryTermList);
     } catch {
       setTagFetchFailed(true);
     } finally {
@@ -210,15 +217,8 @@ const PipelineDetails = ({
   const fetchClassificationTags = async () => {
     setIsTagLoading(true);
     try {
-      const res = await getClassifications();
-      const tagList = await getTaglist(res.data);
-
-      const classificationTag: TagOption[] = map(tagList, (tag) => ({
-        fqn: tag,
-        source: TagSource.Classification,
-      }));
-
-      setClassificationTags(classificationTag);
+      const tags = await getAllTagsList();
+      setClassificationTags(tags);
     } catch {
       setTagFetchFailed(true);
     } finally {
@@ -358,13 +358,12 @@ const PipelineDetails = ({
 
   const handleTableTagSelection = async (
     selectedTags: EntityTags[],
-    editColumnTag: Task,
-    otherTags: TagLabel[]
+    editColumnTag: Task
   ) => {
-    const newSelectedTags: TagOption[] = map(
-      [...selectedTags, ...otherTags],
-      (tag) => ({ fqn: tag.tagFQN, source: tag.source })
-    );
+    const newSelectedTags: TagOption[] = map(selectedTags, (tag) => ({
+      fqn: tag.tagFQN,
+      source: tag.source,
+    }));
 
     const prevTags = editColumnTag.tags?.filter((tag) =>
       newSelectedTags.some((selectedTag) => selectedTag.fqn === tag.tagFQN)
@@ -487,8 +486,8 @@ const PipelineDetails = ({
             isTagLoading={isTagLoading}
             record={record}
             tagFetchFailed={tagFetchFailed}
-            tagList={classificationTags}
-            tags={getFilterTags(tags)}
+            tagList={getTagsHierarchy(classificationTags)}
+            tags={tags}
             type={TagSource.Classification}
           />
         ),
@@ -510,8 +509,8 @@ const PipelineDetails = ({
             isTagLoading={isGlossaryLoading}
             record={record}
             tagFetchFailed={tagFetchFailed}
-            tagList={glossaryTags}
-            tags={getFilterTags(tags)}
+            tagList={getGlossaryTermHierarchy(glossaryTags)}
+            tags={tags}
             type={TagSource.Glossary}
           />
         ),
@@ -657,7 +656,9 @@ const PipelineDetails = ({
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.PIPELINE}
                   permission={
-                    pipelinePermissions.EditAll || pipelinePermissions.EditTags
+                    (pipelinePermissions.EditAll ||
+                      pipelinePermissions.EditTags) &&
+                    !pipelineDetails.deleted
                   }
                   selectedTags={tags}
                   tagType={TagSource.Classification}
@@ -670,7 +671,9 @@ const PipelineDetails = ({
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.PIPELINE}
                   permission={
-                    pipelinePermissions.EditAll || pipelinePermissions.EditTags
+                    (pipelinePermissions.EditAll ||
+                      pipelinePermissions.EditTags) &&
+                    !pipelineDetails.deleted
                   }
                   selectedTags={tags}
                   tagType={TagSource.Glossary}

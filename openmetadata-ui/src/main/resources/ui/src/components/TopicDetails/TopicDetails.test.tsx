@@ -91,16 +91,12 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviwer</p>);
 });
 
-jest.mock('components/Tag/TagsContainer/tags-container', () => {
-  return jest.fn().mockReturnValue(<p>Tag Container</p>);
+jest.mock('components/Tag/TagsContainerV1/TagsContainerV1', () => {
+  return jest.fn().mockReturnValue(<p>TagsContainerV1</p>);
 });
 
 jest.mock('components/Tag/Tags/tags', () => {
   return jest.fn().mockReturnValue(<p>Tags</p>);
-});
-
-jest.mock('../common/entityPageInfo/EntityPageInfo', () => {
-  return jest.fn().mockReturnValue(<p>EntityPageInfo</p>);
 });
 
 jest.mock('../FeedEditor/FeedEditor', () => {

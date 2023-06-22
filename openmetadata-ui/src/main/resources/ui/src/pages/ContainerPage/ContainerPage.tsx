@@ -634,7 +634,9 @@ const ContainerPage = () => {
                   entityFqn={containerName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.CONTAINER}
-                  permission={hasEditDescriptionPermission}
+                  permission={
+                    hasEditDescriptionPermission && !containerData?.deleted
+                  }
                   selectedTags={tags}
                   tagType={TagSource.Classification}
                   onSelectionChange={handleTagSelection}
@@ -644,7 +646,9 @@ const ContainerPage = () => {
                   entityFqn={containerName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.CONTAINER}
-                  permission={hasEditDescriptionPermission}
+                  permission={
+                    hasEditDescriptionPermission && !containerData?.deleted
+                  }
                   selectedTags={tags}
                   tagType={TagSource.Glossary}
                   onSelectionChange={handleTagSelection}
@@ -738,6 +742,7 @@ const ContainerPage = () => {
       },
     ],
     [
+      containerData,
       description,
       containerName,
       entityName,

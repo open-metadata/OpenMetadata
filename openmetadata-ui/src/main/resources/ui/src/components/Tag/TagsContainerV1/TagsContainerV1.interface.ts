@@ -28,14 +28,16 @@ export interface HierarchyTagsProps extends TagsTreeProps {
   children: TagsTreeProps[];
 }
 
+export interface TagsDetailsProps {
+  name: string;
+  fqn: string;
+  classification: Tag['classification'];
+  source: TagSource;
+}
+
 export type TagDetailsProps = {
   isLoading: boolean;
-  options: {
-    name: string;
-    fqn: string;
-    classification: Tag['classification'];
-    source: TagSource;
-  }[];
+  options: TagsDetailsProps[];
   isError: boolean;
 };
 
@@ -70,4 +72,6 @@ export type TagsTreeComponentProps = {
   treeData: HierarchyTagsProps[];
   defaultValue: string[];
   onChange?: (value: string[]) => void;
+  onSubmit: (tags: string[]) => void;
+  onCancel: () => void;
 };

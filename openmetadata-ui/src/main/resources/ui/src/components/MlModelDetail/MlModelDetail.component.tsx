@@ -398,7 +398,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.MLMODEL}
                   permission={
-                    mlModelPermissions.EditAll || mlModelPermissions.EditTags
+                    (mlModelPermissions.EditAll ||
+                      mlModelPermissions.EditTags) &&
+                    !mlModelDetail.deleted
                   }
                   selectedTags={mlModelTags}
                   tagType={TagSource.Classification}
@@ -411,7 +413,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.MLMODEL}
                   permission={
-                    mlModelPermissions.EditAll || mlModelPermissions.EditTags
+                    (mlModelPermissions.EditAll ||
+                      mlModelPermissions.EditTags) &&
+                    !mlModelDetail.deleted
                   }
                   selectedTags={mlModelTags}
                   tagType={TagSource.Glossary}

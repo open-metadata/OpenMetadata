@@ -18,10 +18,6 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import TableTags from './TableTags.component';
 
-jest.mock('components/Tag/TagsViewer/tags-viewer', () => {
-  return jest.fn().mockReturnValue(<p data-testid="tags-viewer">TagViewer</p>);
-});
-
 jest.mock('utils/FeedElementUtils', () => ({
   getFieldThreadElement: jest
     .fn()
@@ -68,10 +64,7 @@ const requestUpdateTags = {
 const mockProp = {
   placeholder: 'Search Tags',
   dataTestId: 'tag-container',
-  tags: {
-    Classification: [],
-    Glossary: [],
-  },
+  tags: [],
   record: {
     constraint: Constraint.Null,
     dataLength: 1,
@@ -128,10 +121,7 @@ describe('Test EntityTableTags Component', () => {
           ...mockProp.record,
           tags: [...classificationTags, ...glossaryTags],
         }}
-        tags={{
-          Classification: classificationTags,
-          Glossary: glossaryTags,
-        }}
+        tags={[...classificationTags, ...glossaryTags]}
       />,
       {
         wrapper: MemoryRouter,
@@ -139,10 +129,8 @@ describe('Test EntityTableTags Component', () => {
     );
 
     const tagContainer = await screen.findByTestId('tag-container-0');
-    const tagViewer = await screen.findByTestId('tags-viewer');
 
     expect(tagContainer).toBeInTheDocument();
-    expect(tagViewer).toBeInTheDocument();
   });
 
   it('Tags list should be visible', async () => {
@@ -153,10 +141,7 @@ describe('Test EntityTableTags Component', () => {
           ...mockProp.record,
           tags: [...classificationTags, ...glossaryTags],
         }}
-        tags={{
-          Classification: classificationTags,
-          Glossary: glossaryTags,
-        }}
+        tags={[...classificationTags, ...glossaryTags]}
       />,
       {
         wrapper: MemoryRouter,
@@ -178,10 +163,7 @@ describe('Test EntityTableTags Component', () => {
           ...mockProp.record,
           tags: [...classificationTags, ...glossaryTags],
         }}
-        tags={{
-          Classification: classificationTags,
-          Glossary: glossaryTags,
-        }}
+        tags={[...classificationTags, ...glossaryTags]}
       />,
       {
         wrapper: MemoryRouter,
@@ -204,10 +186,7 @@ describe('Test EntityTableTags Component', () => {
           ...mockProp.record,
           tags: [...classificationTags, ...glossaryTags],
         }}
-        tags={{
-          Classification: classificationTags,
-          Glossary: glossaryTags,
-        }}
+        tags={[...classificationTags, ...glossaryTags]}
       />,
       {
         wrapper: MemoryRouter,

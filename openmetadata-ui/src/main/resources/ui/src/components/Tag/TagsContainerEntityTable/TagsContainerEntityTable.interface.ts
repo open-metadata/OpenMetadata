@@ -10,20 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TagSource } from 'generated/type/tagLabel';
+import { EntityTags } from 'Models';
+import { HierarchyTagsProps } from '../TagsContainerV1/TagsContainerV1.interface';
 
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { TagsDetailsProps } from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
-import { Query } from 'generated/entity/data/query';
-
-export interface TableQueryRightPanelProps {
-  query: Query;
+export type TagsContainerEntityTableProps = {
+  isEditing: boolean;
   isLoading: boolean;
-  permission: OperationPermission;
-  onQueryUpdate: (updatedQuery: Query, key: keyof Query) => Promise<void>;
-}
-
-export type TagDetails = {
-  isLoading: boolean;
-  options: TagsDetailsProps[];
-  isError: boolean;
+  permission: boolean;
+  selectedTags: EntityTags;
+  tagType: TagSource;
+  treeData: HierarchyTagsProps[];
+  showEditButton?: boolean;
+  onCancel: () => void;
+  onAddButtonClick: () => void;
+  onSelectionChange: (selectedTags: EntityTags[]) => void;
 };
