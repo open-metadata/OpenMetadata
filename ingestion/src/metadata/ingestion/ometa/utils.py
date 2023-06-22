@@ -68,6 +68,6 @@ def model_str(arg: Any) -> str:
     have the actual value under the pydantic base __root__
     """
     if hasattr(arg, "__root__"):
-        return arg.__root__
+        return str(arg.__root__)
 
     return str(arg)
