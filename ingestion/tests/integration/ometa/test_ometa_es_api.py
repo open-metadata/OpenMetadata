@@ -93,7 +93,7 @@ class OMetaESTest(TestCase):
             )
             if not res:
                 tries += 1
-                time.sleep(3)
+                time.sleep(1)
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -150,7 +150,7 @@ class OMetaESTest(TestCase):
     # Disabling this test because it fails with
     # this pr: https://github.com/open-metadata/OpenMetadata/pull/11879
     # and failure is repoducible only with docker deployment
-    def x_test_es_search_from_service_table(self):
+    def test_es_search_from_service_table(self):
         """
         We can fetch tables from a service
         """
@@ -201,7 +201,7 @@ class OMetaESTest(TestCase):
         self.assertIsNotNone(res)
         self.assertIn(self.entity, res)
 
-    def x_test_es_search_from_service_table_empty(self):
+    def test_es_search_from_service_table_empty(self):
         """
         Wrong filters return none
         """
