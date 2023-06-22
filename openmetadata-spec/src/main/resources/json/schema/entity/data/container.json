@@ -14,14 +14,14 @@
       "description": "Name of a container. Expected to be unique in the same level containers.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 128
+      "maxLength": 128,
+      "pattern": "^((?!::).)*$"
     },
     "fullyQualifiedEntityName": {
       "description": "A unique name that identifies a container. Built by concatenating parent & children containers: e.g., `parent1.parent2.children`.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 1024,
-      "pattern": "^((?!::).)*$"
+      "maxLength": 1024
     },
     "containerDataModel": {
       "description": "This captures information about how the container's data is modeled, if it has a schema. ",
