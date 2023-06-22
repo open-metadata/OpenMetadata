@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Paging } from 'generated/type/paging';
 import { CurveType } from 'recharts/types/shape/Curve';
 import { ListTestCaseParams } from 'rest/testAPI';
 import {
@@ -99,7 +100,12 @@ export interface DataQualityTabProps {
   testCases: TestCase[];
   onTestUpdate?: () => void;
   isLoading?: boolean;
-  deletedTable?: boolean;
+  onTestCaseResultUpdate?: (data: TestCase) => void;
+  pagingData?: {
+    paging: Paging;
+    currentPage: number;
+    onPagingClick: (cursorValue: string | number, activePage?: number) => void;
+  };
 }
 
 export interface TestSummaryProps {
@@ -112,3 +118,8 @@ export interface ProfilerLatestValueProps {
   tickFormatter?: string;
   stringValue?: boolean;
 }
+
+export type TestCaseAction = {
+  data: TestCase;
+  action: 'UPDATE' | 'DELETE' | 'UPDATE_STATUS';
+};

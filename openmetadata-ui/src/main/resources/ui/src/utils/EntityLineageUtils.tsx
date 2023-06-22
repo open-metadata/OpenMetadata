@@ -15,7 +15,7 @@ import { CheckOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { CustomEdge } from 'components/EntityLineage/CustomEdge.component';
-import CustomNode from 'components/EntityLineage/CustomNode.component';
+import CustomNodeV1 from 'components/EntityLineage/CustomNodeV1.component';
 import {
   CustomEdgeData,
   CustomElement,
@@ -32,8 +32,6 @@ import {
   SelectedEdge,
   SelectedNode,
 } from 'components/EntityLineage/EntityLineage.interface';
-import LineageNodeLabel from 'components/EntityLineage/LineageNodeLabel';
-import LoadMoreNode from 'components/EntityLineage/LoadMoreNode.component';
 import Loader from 'components/Loader/Loader';
 import dagre from 'dagre';
 import { t } from 'i18next';
@@ -67,13 +65,14 @@ import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  getContainerDetailPath,
   getDashboardDetailsPath,
   getDataModelDetailsPath,
   getMlModelPath,
   getPipelineDetailsPath,
   getTableTabPath,
   getTopicDetailsPath,
-  SECONDARY_COLOR,
+  INFO_COLOR,
 } from '../constants/constants';
 import {
   EXPANDED_NODE_HEIGHT,
@@ -101,7 +100,6 @@ import {
   getPartialNameFromTableFQN,
   prepareLabel,
 } from './CommonUtils';
-import { getContainerDetailPath } from './ContainerDetailUtils';
 import { getEntityName } from './EntityUtils';
 import SVGIcons from './SvgUtils';
 import { getEntityLink } from './TableUtils';
@@ -340,27 +338,20 @@ export const getLineageData = (
         type === EntityLineageNodeType.LOAD_MORE || !isEditMode
           ? type
           : EntityLineageNodeType.DEFAULT,
-      className: 'leaf-node',
+      className: '',
       data: {
-        label: (
-          <LineageNodeLabel
-            isExpanded={isExpanded}
-            isNodeLoading={isNodeLoading}
-            lineageLeafNodes={lineageLeafNodes}
-            loadNodeHandler={loadNodeHandler}
-            node={node}
-            type={type}
-            onNodeExpand={onNodeExpand}
-            onSelect={onSelect}
-          />
-        ),
         entityType: node.type,
+        lineageLeafNodes: lineageLeafNodes,
         removeNodeHandler,
         isEditMode,
         isExpanded,
         columns: cols,
         handleColumnClick,
+        onNodeExpand,
         node,
+        isNodeLoading,
+        loadNodeHandler,
+        onSelect,
       },
       position: {
         x: x,
@@ -385,23 +376,12 @@ export const getLineageData = (
       sourcePosition: 'right',
       targetPosition: 'left',
       type: mainNodeType,
-      className: `leaf-node core`,
+      className: `core`,
       data: {
-        label: (
-          <LineageNodeLabel
-            isExpanded={isExpanded}
-            isNodeLoading={isNodeLoading}
-            lineageLeafNodes={lineageLeafNodes}
-            loadNodeHandler={loadNodeHandler}
-            node={mainNode}
-            type={mainNodeType}
-            onNodeExpand={onNodeExpand}
-            onSelect={onSelect}
-          />
-        ),
         isEditMode,
         removeNodeHandler,
         handleColumnClick,
+        onNodeExpand,
         columns: mainCols,
         isExpanded,
         node: mainNode,
@@ -1132,7 +1112,7 @@ export const getEdgeStyle = (value: boolean) => {
   return {
     opacity: value ? 1 : 0.25,
     strokeWidth: value ? 2 : 1,
-    stroke: value ? SECONDARY_COLOR : undefined,
+    stroke: value ? INFO_COLOR : undefined,
   };
 };
 
@@ -1307,10 +1287,10 @@ export const removeDuplicates = (arr: EntityLineageEdge[]) => {
 };
 
 export const nodeTypes = {
-  output: CustomNode,
-  input: CustomNode,
-  default: CustomNode,
-  'load-more': LoadMoreNode,
+  output: CustomNodeV1,
+  input: CustomNodeV1,
+  default: CustomNodeV1,
+  'load-more': CustomNodeV1,
 };
 
 export const customEdges = { buttonedge: CustomEdge };
@@ -1384,7 +1364,6 @@ export const removeLineageHandler = async (data: EdgeData): Promise<void> => {
 
 export const getParamByEntityType = (entityType: EntityType): string => {
   switch (entityType) {
-    case EntityType.DATASET:
     case EntityType.TABLE:
       return 'datasetFQN';
     case EntityType.TOPIC:

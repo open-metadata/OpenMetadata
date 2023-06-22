@@ -43,6 +43,7 @@ import org.openmetadata.service.util.SSLUtil;
 @Slf4j
 public class AirflowRESTClient extends PipelineServiceClient {
 
+  private static final String PLATFORM = "Airflow";
   private static final String USERNAME_KEY = "username";
   private static final String PASSWORD_KEY = "password";
   private static final String TIMEOUT_KEY = "timeout";
@@ -59,6 +60,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
   public AirflowRESTClient(PipelineServiceClientConfiguration config) throws KeyStoreException {
 
     super(config);
+
+    this.setPlatform(PLATFORM);
 
     this.username = (String) config.getParameters().getAdditionalProperties().get(USERNAME_KEY);
     this.password = (String) config.getParameters().getAdditionalProperties().get(PASSWORD_KEY);
@@ -264,7 +267,10 @@ public class AirflowRESTClient extends PipelineServiceClient {
       }
 
     } catch (Exception e) {
-      throw PipelineServiceClientException.byMessage("Failed to get REST status.", e.getMessage());
+      Map<String, String> status =
+          buildUnhealthyStatus(String.format("Failed to get REST status due to [%s].", e.getMessage()));
+
+      return Response.ok(status, MediaType.APPLICATION_JSON_TYPE).build();
     }
     throw new PipelineServiceClientException(String.format("Failed to get REST status due to %s.", response.body()));
   }

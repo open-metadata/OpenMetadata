@@ -22,6 +22,11 @@
 }
 
 .entity-panel-container {
+  margin-top: 48px;
+  .ant-drawer-header {
+    border-bottom: none;
+    padding-bottom: 0 !important;
+  }
   .ant-drawer-body {
     padding: unset;
   }
@@ -37,6 +42,16 @@
     .ant-btn-link > span {
       color: @text-color-secondary;
     }
+  }
+
+  .ant-divider {
+    visibility: hidden;
+    margin: 12px 0;
+  }
+
+  .summary-panel-section-title {
+    font-size: 14px;
+    color: @text-grey-muted;
   }
 
   .summary-panel-statistics-count {

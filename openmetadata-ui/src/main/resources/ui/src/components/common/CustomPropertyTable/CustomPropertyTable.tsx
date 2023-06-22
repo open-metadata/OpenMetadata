@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Table, Typography } from 'antd';
+import { Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
@@ -106,17 +106,16 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
           </Typography.Paragraph>
         </ErrorPlaceHolder>
       ) : (
-        <Card className="m-y-md h-full">
-          <Table
-            bordered
-            columns={tableColumn}
-            data-testid="custom-properties-table"
-            dataSource={entityTypeDetail.customProperties || []}
-            pagination={false}
-            rowKey="name"
-            size="small"
-          />
-        </Card>
+        <Table
+          bordered
+          className="m-md"
+          columns={tableColumn}
+          data-testid="custom-properties-table"
+          dataSource={entityTypeDetail.customProperties || []}
+          pagination={false}
+          rowKey="name"
+          size="small"
+        />
       )}
     </>
   );

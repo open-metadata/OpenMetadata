@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen } from '@testing-library/react';
 import { EntityType } from 'enums/entity.enum';
 import React from 'react';
 import EntitySummaryPanel from './EntitySummaryPanel.component';
@@ -90,16 +89,8 @@ describe('EntitySummaryPanel component tests', () => {
     );
 
     const tableSummary = screen.getByTestId('TableSummary');
-    const closeIcon = screen.getByTestId('summary-panel-close-icon');
 
     expect(tableSummary).toBeInTheDocument();
-    expect(closeIcon).toBeInTheDocument();
-
-    await act(async () => {
-      userEvent.click(closeIcon);
-    });
-
-    expect(mockHandleClosePanel).toHaveBeenCalledTimes(1);
   });
 
   it('TopicSummary should render for topics data', async () => {
@@ -113,16 +104,8 @@ describe('EntitySummaryPanel component tests', () => {
     );
 
     const topicSummary = screen.getByTestId('TopicSummary');
-    const closeIcon = screen.getByTestId('summary-panel-close-icon');
 
     expect(topicSummary).toBeInTheDocument();
-    expect(closeIcon).toBeInTheDocument();
-
-    await act(async () => {
-      userEvent.click(closeIcon);
-    });
-
-    expect(mockHandleClosePanel).toHaveBeenCalledTimes(1);
   });
 
   it('DashboardSummary should render for dashboard data', async () => {
@@ -139,16 +122,8 @@ describe('EntitySummaryPanel component tests', () => {
     );
 
     const dashboardSummary = screen.getByTestId('DashboardSummary');
-    const closeIcon = screen.getByTestId('summary-panel-close-icon');
 
     expect(dashboardSummary).toBeInTheDocument();
-    expect(closeIcon).toBeInTheDocument();
-
-    await act(async () => {
-      userEvent.click(closeIcon);
-    });
-
-    expect(mockHandleClosePanel).toHaveBeenCalledTimes(1);
   });
 
   it('PipelineSummary should render for pipeline data', async () => {
@@ -165,16 +140,8 @@ describe('EntitySummaryPanel component tests', () => {
     );
 
     const pipelineSummary = screen.getByTestId('PipelineSummary');
-    const closeIcon = screen.getByTestId('summary-panel-close-icon');
 
     expect(pipelineSummary).toBeInTheDocument();
-    expect(closeIcon).toBeInTheDocument();
-
-    await act(async () => {
-      userEvent.click(closeIcon);
-    });
-
-    expect(mockHandleClosePanel).toHaveBeenCalledTimes(1);
   });
 
   it('MlModelSummary should render for mlModel data', async () => {
@@ -191,15 +158,7 @@ describe('EntitySummaryPanel component tests', () => {
     );
 
     const mlModelSummary = screen.getByTestId('MlModelSummary');
-    const closeIcon = screen.getByTestId('summary-panel-close-icon');
 
     expect(mlModelSummary).toBeInTheDocument();
-    expect(closeIcon).toBeInTheDocument();
-
-    await act(async () => {
-      userEvent.click(closeIcon);
-    });
-
-    expect(mockHandleClosePanel).toHaveBeenCalledTimes(1);
   });
 });

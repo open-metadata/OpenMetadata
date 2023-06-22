@@ -20,7 +20,7 @@ import {
   screen,
 } from '@testing-library/react';
 import React from 'react';
-import { MOCK_TABLE, TEST_CASE } from '../../mocks/TableData.mock';
+import { TEST_CASE } from '../../mocks/TableData.mock';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import { TableProfilerProps } from './TableProfiler.interface';
 // internal imports
@@ -68,7 +68,6 @@ jest.mock('rest/testAPI', () => ({
 }));
 
 const mockProps: TableProfilerProps = {
-  tableFqn: MOCK_TABLE.fullyQualifiedName || '',
   permissions: {
     Create: true,
     Delete: true,

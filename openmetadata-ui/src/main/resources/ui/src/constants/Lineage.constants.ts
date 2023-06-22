@@ -33,14 +33,16 @@ export const entityData = [
   { type: EntityType.DASHBOARD, label: capitalize(EntityType.DASHBOARD) },
   { type: EntityType.TOPIC, label: capitalize(EntityType.TOPIC) },
   { type: EntityType.MLMODEL, label: capitalize(EntityType.MLMODEL) },
+  { type: EntityType.CONTAINER, label: capitalize(EntityType.CONTAINER) },
+  { type: EntityType.PIPELINE, label: capitalize(EntityType.PIPELINE) },
 ];
 
 export const POSITION_X = 150;
 export const POSITION_Y = 60;
 
 export const NODE_WIDTH = 400;
-export const NODE_HEIGHT = 50;
-export const EXPANDED_NODE_HEIGHT = 300;
+export const NODE_HEIGHT = 90;
+export const EXPANDED_NODE_HEIGHT = 350;
 
 export const ELEMENT_DELETE_STATE = {
   loading: false,

@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { Include } from 'generated/type/include';
 import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { ServicePageData } from 'pages/service';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -40,7 +41,8 @@ export const getDashboardVersion = async (id: string, version: string) => {
 export const getDashboards = async (
   service: string,
   fields: string,
-  paging?: PagingWithoutTotal
+  paging?: PagingWithoutTotal,
+  include: Include = Include.NonDeleted
 ) => {
   const response = await APIClient.get<{
     data: ServicePageData[];
@@ -50,6 +52,7 @@ export const getDashboards = async (
       service,
       fields,
       ...paging,
+      include,
     },
   });
 
@@ -133,7 +136,8 @@ export const restoreDashboard = async (id: string) => {
 export const getDataModels = async (
   service: string,
   fields: string,
-  paging?: PagingWithoutTotal
+  paging?: PagingWithoutTotal,
+  include: Include = Include.NonDeleted
 ) => {
   const response = await APIClient.get<PagingResponse<ServicePageData[]>>(
     `/dashboard/datamodels`,
@@ -142,6 +146,7 @@ export const getDataModels = async (
         service,
         fields,
         ...paging,
+        include,
       },
     }
   );
