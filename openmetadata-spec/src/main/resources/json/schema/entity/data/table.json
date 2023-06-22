@@ -18,7 +18,14 @@
       "pattern": "^((?!::).)*$"
     },
     "fullyQualifiedEntityName": {
-      "description": "A unique name that identifies a table. Example for table 'DatabaseService:Database:Table'.",
+      "description": "A unique name that identifies a table. Example for table 'DatabaseService.Database.Schema.Table'.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 896,
+      "pattern": "^((?!::).)*$"
+    },
+    "columnFullyQualifiedEntityName": {
+      "description": "A unique name that identifies a column. Example for table 'DatabaseService.Database.Schema.Table.Column'.",
       "type": "string",
       "minLength": 1,
       "maxLength": 1024,
@@ -192,7 +199,7 @@
           "description": "List of referred columns for the constraint.",
           "type": "array",
           "items": {
-            "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+            "$ref": "#/definitions/columnFullyQualifiedEntityName"
           },
           "default": null
         }
@@ -277,7 +284,7 @@
           "$ref": "../../type/basic.json#/definitions/markdown"
         },
         "fullyQualifiedName": {
-          "$ref": "#/definitions/fullyQualifiedEntityName"
+          "$ref": "#/definitions/columnFullyQualifiedEntityName"
         },
         "tags": {
           "description": "Tags associated with the column.",
