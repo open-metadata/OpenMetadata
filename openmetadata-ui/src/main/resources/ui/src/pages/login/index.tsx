@@ -308,7 +308,7 @@ const SigninPage = () => {
             )}
           </div>
         </Col>
-        <Col className="relative" span={14}>
+        <Col className="relative d-flex justify-center flex-col" span={14}>
           <div className="absolute inset-0">
             <img
               alt="bg-image"
@@ -318,7 +318,7 @@ const SigninPage = () => {
             />
           </div>
           <div className="relative">
-            <div className="flex justify-center mt-44 mb-10">
+            <div className="flex justify-center">
               <LoginCarousel />
             </div>
           </div>

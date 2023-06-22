@@ -177,10 +177,6 @@ const UpdateTagsPage = withSuspenseFallback(
   React.lazy(() => import('pages/TasksPage/UpdateTagPage/UpdateTagPage'))
 );
 
-const TaskDetailPage = withSuspenseFallback(
-  React.lazy(() => import('pages/TasksPage/TaskDetailPage/TaskDetailPage'))
-);
-
 const AddRolePage = withSuspenseFallback(
   React.lazy(() => import('pages/RolesPage/AddRolePage/AddRolePage'))
 );
@@ -562,7 +558,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.UPDATE_DESCRIPTION}
       />
 
-      <Route exact component={TaskDetailPage} path={ROUTES.TASK_DETAIL} />
       <Route exact component={RequestTagsPage} path={ROUTES.REQUEST_TAGS} />
       <Route exact component={UpdateTagsPage} path={ROUTES.UPDATE_TAGS} />
       <Route
