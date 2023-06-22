@@ -22,7 +22,7 @@ jest.mock('components/router/AppRouter', () => {
   return jest.fn().mockReturnValue(<p>AppRouter</p>);
 });
 
-jest.mock('components/app-bar/Appbar', () => {
+jest.mock('components/Appbar/Appbar', () => {
   return jest.fn().mockReturnValue(<p>AppBar</p>);
 });
 
