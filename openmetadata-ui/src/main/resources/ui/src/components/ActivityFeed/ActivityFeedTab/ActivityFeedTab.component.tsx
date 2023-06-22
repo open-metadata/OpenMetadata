@@ -275,9 +275,9 @@ export const ActivityFeedTab = ({
   }, [entityThread, activeTab]);
 
   return (
-    <div className="d-flex">
+    <div className="activity-feed-tab">
       <Menu
-        className="custom-menu w-72 p-t-sm"
+        className="custom-menu p-t-sm"
         data-testid="global-setting-left-panel"
         items={[
           {
@@ -308,26 +308,14 @@ export const ActivityFeedTab = ({
           },
         ]}
         mode="inline"
+        rootClassName="left-container"
         selectedKeys={[activeTab]}
-        style={{
-          flex: '0 0 230px',
-          borderRight: '1px solid rgba(0, 0, 0, 0.1)',
-        }}
         onClick={(info) => handleTabChange(info.key)}
       />
 
-      <div
-        style={{
-          flex: '0 0 calc(50% - 115px)',
-          height: 'calc(100vh - 236px)',
-          overflowY: 'scroll',
-        }}>
+      <div className=" center-container">
         {activeTab === ActivityFeedTabs.TASKS && (
-          <div
-            className="d-flex gap-4 p-sm p-x-lg"
-            style={{
-              backgroundColor: '#F8F8F8',
-            }}>
+          <div className="d-flex gap-4 p-sm p-x-lg activity-feed-task">
             <Typography.Text
               className={classNames(
                 'cursor-pointer p-l-xss d-flex items-center',
@@ -373,13 +361,7 @@ export const ActivityFeedTab = ({
           ref={elementRef as RefObject<HTMLDivElement>}
         />
       </div>
-      <div
-        style={{
-          flex: '0 0 calc(50% - 115px)',
-          borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
-          height: 'calc(100vh - 236px)',
-          overflowY: 'scroll',
-        }}>
+      <div className=" right-container">
         {loader}
         {selectedThread &&
           !loading &&

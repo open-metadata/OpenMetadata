@@ -32,7 +32,10 @@ import {
 } from 'rest/miscAPI';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import {
+  FQN_SEPARATOR_CHAR,
+  WILD_CARD_CHAR,
+} from '../constants/char.constants';
 import {
   entityLinkRegEx,
   EntityRegEx,
@@ -177,7 +180,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
   if (mentionChar === '@') {
     let atValues = [];
     if (!searchTerm) {
-      const data = await getSearchedUsers('*', 0, 5);
+      const data = await getSearchedUsers(WILD_CARD_CHAR, 1, 5);
       const hits = data.data.hits.hits;
 
       atValues = hits.map((hit) => {
