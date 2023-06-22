@@ -185,7 +185,6 @@ export const getGlobalSettingsMenuWithPermission = (
           ),
           key: 'services.storages',
           icon: <StorageIcon className="side-panel-icons w-4 h-4" />,
-          isBeta: Boolean,
         },
       ],
     },
