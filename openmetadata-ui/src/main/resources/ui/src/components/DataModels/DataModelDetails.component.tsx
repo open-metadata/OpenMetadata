@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Tabs } from 'antd';
+import { Card, Col, Row, Space, Tabs } from 'antd';
 import ActivityFeedProvider, {
   useActivityFeedProvider,
 } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -29,13 +29,13 @@ import { getDataModelDetailsPath, getVersionPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { CSMode } from 'enums/codemirror.enum';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
+import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { isUndefined, toString } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
 import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
 import { getTagsWithoutTier } from 'utils/TableUtils';
 import { DataModelDetailsProps } from './DataModelDetails.interface';
@@ -176,18 +176,28 @@ const DataModelDetails = ({
           className="entity-tag-right-panel-container"
           data-testid="entity-right-panel"
           flex="320px">
-          <TagsContainerV1
-            editable={hasEditTagsPermission}
-            entityFieldThreads={getEntityFieldThreadCounts(
-              EntityField.TAGS,
-              entityFieldThreadCount
-            )}
-            entityFqn={dashboardDataModelFQN}
-            entityType={EntityType.DASHBOARD_DATA_MODEL}
-            selectedTags={tags}
-            onSelectionChange={handleTagSelection}
-            onThreadLinkSelect={onThreadLinkSelect}
-          />
+          <Space className="w-full" direction="vertical" size="large">
+            <TagsContainerV1
+              entityFqn={dashboardDataModelFQN}
+              entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
+              entityType={EntityType.DASHBOARD_DATA_MODEL}
+              permission={hasEditTagsPermission}
+              selectedTags={tags}
+              tagType={TagSource.Classification}
+              onSelectionChange={handleTagSelection}
+              onThreadLinkSelect={onThreadLinkSelect}
+            />
+            <TagsContainerV1
+              entityFqn={dashboardDataModelFQN}
+              entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
+              entityType={EntityType.DASHBOARD_DATA_MODEL}
+              permission={hasEditTagsPermission}
+              selectedTags={tags}
+              tagType={TagSource.Glossary}
+              onSelectionChange={handleTagSelection}
+              onThreadLinkSelect={onThreadLinkSelect}
+            />
+          </Space>
         </Col>
       </Row>
     );

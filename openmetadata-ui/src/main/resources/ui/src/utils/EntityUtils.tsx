@@ -27,6 +27,7 @@ import {
   SearchedDataProps,
   SourceType,
 } from 'components/searched-data/SearchedData.interface';
+import { EntityField } from 'constants/Feeds.constants';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
@@ -34,6 +35,7 @@ import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Topic } from 'generated/entity/data/topic';
 import i18next from 'i18next';
+import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { get, isEmpty, isNil, isUndefined, lowerCase, startCase } from 'lodash';
 import { Bucket, EntityDetailUnion } from 'Models';
 import React, { Fragment } from 'react';
@@ -74,6 +76,7 @@ import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
+import { getEntityFieldThreadCounts } from './FeedUtils';
 import Fqn from './Fqn';
 import { getGlossaryPath } from './RouterUtils';
 import {
@@ -1063,4 +1066,15 @@ export const getEntityLinkFromType = (
     default:
       return '';
   }
+};
+
+export const getEntityThreadLink = (
+  entityFieldThreadCount: EntityFieldThreadCount[]
+) => {
+  const thread = getEntityFieldThreadCounts(
+    EntityField.TAGS,
+    entityFieldThreadCount
+  );
+
+  return thread[0]?.entityLink;
 };
