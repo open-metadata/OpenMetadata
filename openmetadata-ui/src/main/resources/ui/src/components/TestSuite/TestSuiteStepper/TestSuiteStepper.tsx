@@ -21,7 +21,14 @@ import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb
 import IngestionStepper from 'components/IngestionStepper/IngestionStepper.component';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import { PAGE_SIZE_LARGE } from 'constants/constants';
+import {
+  STEPS_FOR_ADD_TEST_SUITE,
+  TEST_SUITE_STEPPER_BREADCRUMB,
+} from 'constants/TestSuite.constant';
+import { FormSubmitType } from 'enums/form.enum';
+import { OwnerType } from 'enums/user.enum';
 import { TestCase } from 'generated/tests/testCase';
+import { TestSuite } from 'generated/tests/testSuite';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -30,18 +37,11 @@ import {
   createTestSuites,
   getListTestCase,
 } from 'rest/testAPI';
+import { getCurrentUserId } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { getTestSuitePath } from 'utils/RouterUtils';
-import {
-  STEPS_FOR_ADD_TEST_SUITE,
-  TEST_SUITE_STEPPER_BREADCRUMB,
-} from '../../constants/TestSuite.constant';
-import { FormSubmitType } from '../../enums/form.enum';
-import { OwnerType } from '../../enums/user.enum';
-import { TestSuite } from '../../generated/tests/testSuite';
-import { getCurrentUserId } from '../../utils/CommonUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
-import AddTestSuiteForm from './AddTestSuiteForm';
+import { showErrorToast } from 'utils/ToastUtils';
+import AddTestSuiteForm from '../AddTestSuiteForm/AddTestSuiteForm';
 
 const TestSuiteStepper = () => {
   const { t } = useTranslation();

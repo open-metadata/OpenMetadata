@@ -22,9 +22,9 @@ import {
   PAGE_SIZE_MEDIUM,
   ROUTES,
   VALIDATION_MESSAGES,
-} from '../../constants/constants';
-import { TestSuite } from '../../generated/tests/testSuite';
-import { AddTestSuiteFormProps } from './testSuite.interface';
+} from '../../../constants/constants';
+import { TestSuite } from '../../../generated/tests/testSuite';
+import { AddTestSuiteFormProps } from '../TestSuiteStepper/testSuite.interface';
 
 const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({
   onSubmit,

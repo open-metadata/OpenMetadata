@@ -200,10 +200,6 @@ const EditRulePage = withSuspenseFallback(
   React.lazy(() => import('pages/PoliciesPage/PoliciesDetailPage/EditRulePage'))
 );
 
-const TestSuitePage = withSuspenseFallback(
-  React.lazy(() => import('pages/TestSuitePage/TestSuitePage'))
-);
-
 const TestCaseDetailsPage = withSuspenseFallback(
   React.lazy(
     () => import('pages/TestCaseDetailsPage/TestCaseDetailsPage.component')
@@ -227,7 +223,9 @@ const EditKPIPage = withSuspenseFallback(
 );
 
 const AddTestSuitePage = withSuspenseFallback(
-  React.lazy(() => import('pages/TestSuitePage/TestSuiteStepper'))
+  React.lazy(
+    () => import('components/TestSuite/TestSuiteStepper/TestSuiteStepper')
+  )
 );
 
 const ContainerPage = withSuspenseFallback(
@@ -624,15 +622,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={TestSuiteIngestionPage}
         path={ROUTES.TEST_SUITES_EDIT_INGESTION}
-      />
-      <AdminProtectedRoute
-        exact
-        component={TestSuitePage}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.TEST_SUITE,
-          permissions
-        )}
-        path={ROUTES.TEST_SUITES}
       />
       <AdminProtectedRoute
         exact

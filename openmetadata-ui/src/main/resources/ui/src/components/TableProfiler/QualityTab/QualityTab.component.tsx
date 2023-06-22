@@ -13,7 +13,7 @@
 import { Col, Row, Tabs } from 'antd';
 import { SummaryPanel } from 'components/DataQuality/SummaryPannel/SummaryPanel.component';
 import DataQualityTab from 'components/ProfilerDashboard/component/DataQualityTab';
-import TestSuitePipelineTab from 'components/TestSuitePipelineTab/TestSuitePipelineTab.component';
+import TestSuitePipelineTab from 'components/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
 import { EntityTabs } from 'enums/entity.enum';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

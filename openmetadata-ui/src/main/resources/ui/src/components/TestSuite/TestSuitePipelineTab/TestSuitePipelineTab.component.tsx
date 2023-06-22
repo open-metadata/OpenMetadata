@@ -14,12 +14,24 @@
 import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Popover, Row, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as ExternalLinkIcon } from 'assets/svg/external-links.svg';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolderIngestion from 'components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
+import { IngestionRecentRuns } from 'components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
+import Loader from 'components/Loader/Loader';
+import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
+import KillIngestionModal from 'components/Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import TestCaseCommonTabContainer from 'components/TestCaseCommonTabContainer/TestCaseCommonTabContainer.component';
 import cronstrue from 'cronstrue';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
 import { Table as TableType } from 'generated/entity/data/table';
+import { Operation } from 'generated/entity/policies/policy';
+import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { isEmpty } from 'lodash';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,26 +44,14 @@ import {
   triggerIngestionPipelineById,
 } from 'rest/ingestionPipelineAPI';
 import { fetchAirflowConfig } from 'rest/miscAPI';
+import { getLoadingStatus } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
-import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-links.svg';
-import { Operation } from '../../generated/entity/policies/policy';
-import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { useAirflowStatus } from '../../hooks/useAirflowStatus';
-import { getLoadingStatus } from '../../utils/CommonUtils';
-import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
+import { checkPermission, userPermissions } from 'utils/PermissionsUtils';
 import {
   getLogsViewerPath,
   getTestSuiteIngestionPath,
-} from '../../utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import ErrorPlaceHolderIngestion from '../common/error-with-placeholder/ErrorPlaceHolderIngestion';
-import { IngestionRecentRuns } from '../Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
-import Loader from '../Loader/Loader';
-import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
-import KillIngestionModal from '../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
-import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
-import TestCaseCommonTabContainer from '../TestCaseCommonTabContainer/TestCaseCommonTabContainer.component';
+} from 'utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
 interface Props {
   testSuite: TableType['testSuite'];
