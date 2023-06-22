@@ -61,7 +61,11 @@ import {
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import { getDashboards, getDataModels } from 'rest/dashboardAPI';
+import {
+  getDashboards,
+  getDataModels,
+  ListDataModelParams,
+} from 'rest/dashboardAPI';
 import { getDatabases } from 'rest/databaseAPI';
 import {
   deleteIngestionPipelineById,
@@ -511,15 +515,15 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
-  const fetchDashboardsDataModel = async (paging?: PagingWithoutTotal) => {
+  const fetchDashboardsDataModel = async (params?: ListDataModelParams) => {
     setIsServiceLoading(true);
     try {
-      const { data, paging: resPaging } = await getDataModels(
-        serviceFQN,
-        'owner,tags,followers',
-        paging,
-        include
-      );
+      const { data, paging: resPaging } = await getDataModels({
+        service: serviceFQN,
+        fields: 'owner,tags,followers',
+        include,
+        ...params,
+      });
       setDataModel(data);
       setDataModelPaging(resPaging);
     } catch (error) {
@@ -603,7 +607,7 @@ const ServicePage: FunctionComponent = () => {
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
         if (isDataModel) {
-          fetchDashboardsDataModel(paging);
+          fetchDashboardsDataModel({ ...paging });
         } else {
           fetchDashboards(paging);
         }
@@ -709,6 +713,16 @@ const ServicePage: FunctionComponent = () => {
   useEffect(() => {
     getOtherDetails(undefined, activeTab === EntityTabs.DATA_Model);
   }, [activeTab, showDeleted]);
+
+  useEffect(() => {
+    // fetch count for data modal tab, its need only when its dashboard page and data modal tab is not active
+    if (
+      serviceCategory === ServiceCategory.DASHBOARD_SERVICES &&
+      activeTab !== EntityTabs.DATA_Model
+    ) {
+      fetchDashboardsDataModel({ limit: 0 });
+    }
+  }, []);
 
   useEffect(() => {
     if (servicePermission.ViewAll || servicePermission.ViewBasic) {
