@@ -87,6 +87,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     // TODO add system glossary
     super(Entity.GLOSSARY, Glossary.class, GlossaryResource.GlossaryList.class, "glossaries", GlossaryResource.FIELDS);
     supportsEmptyDescription = false;
+    supportsSearchIndex = true;
   }
 
   public void setupGlossaries() throws IOException {

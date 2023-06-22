@@ -673,6 +673,43 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertTrue(assertTestCaseIdNotInList(executableTestSuiteTestCases, executableTestCaseIdToDelete));
   }
 
+  @Test
+  public void list_allTestSuitesFromTestCase_200(TestInfo test) throws IOException {
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    // Create a logical Test Suite
+    CreateTestSuite createLogicalTestSuite = testSuiteResourceTest.createRequest(test);
+    TestSuite logicalTestSuite = testSuiteResourceTest.createEntity(createLogicalTestSuite, ADMIN_AUTH_HEADERS);
+    // Create an executable test suite
+    CreateTestSuite createTestSuite =
+        testSuiteResourceTest.createRequest(test).withName(TEST_TABLE2.getFullyQualifiedName());
+    TestSuite executableTestSuite =
+        testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+
+    // Create the test cases (need to be created against an executable test suite)
+    CreateTestCase create =
+        createRequest("test_testSuite__" + test.getDisplayName())
+            .withTestSuite(executableTestSuite.getFullyQualifiedName());
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    List<UUID> testCaseIds = Arrays.asList(testCase.getId());
+
+    // Add the test cases to the logical test suite
+    testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
+
+    TestCase testCaseWithSuites = getEntityByName(testCase.getFullyQualifiedName(), "*", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        executableTestSuite.getFullyQualifiedName(), testCaseWithSuites.getTestSuite().getFullyQualifiedName());
+    assertEquals(2, testCaseWithSuites.getTestSuites().size());
+
+    // Verify both our testSuites are in the list of TestSuite Entities
+    Map<String, TestSuite> testSuiteFQNs = new HashMap<>();
+    testSuiteFQNs.put(logicalTestSuite.getFullyQualifiedName(), logicalTestSuite);
+    testSuiteFQNs.put(executableTestSuite.getFullyQualifiedName(), executableTestSuite);
+
+    for (TestSuite testSuite : testCaseWithSuites.getTestSuites()) {
+      assertNotNull(testSuiteFQNs.get(testSuite.getFullyQualifiedName()));
+    }
+  }
+
   public void deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getCollection().path("/" + fqn + "/testCaseResult/" + timestamp);

@@ -14,6 +14,7 @@
 import { Form, FormProps, Input } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { compare } from 'fast-json-patch';
 import { Table } from 'generated/entity/data/table';
 import React, {
@@ -215,7 +216,16 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
               <Input disabled />
             </Form.Item>
           )}
-          <Form.Item required label={`${t('label.name')}:`} name="name">
+          <Form.Item
+            required
+            label={`${t('label.name')}:`}
+            name="name"
+            rules={[
+              {
+                pattern: ENTITY_NAME_REGEX,
+                message: t('message.entity-name-validation'),
+              },
+            ]}>
             <Input disabled placeholder={t('message.enter-test-case-name')} />
           </Form.Item>
           <Form.Item

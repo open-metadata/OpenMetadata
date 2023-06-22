@@ -36,7 +36,6 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
-import org.elasticsearch.client.RestHighLevelClient;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
 import org.jdbi.v3.core.Jdbi;
@@ -48,6 +47,8 @@ import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.search.IndexUtil;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 
 public final class TablesInitializer {
@@ -180,9 +181,8 @@ public final class TablesInitializer {
             scriptRootPath,
             config.getDataSourceFactory().getDriverClass(),
             !disableValidateOnMigrate);
-    RestHighLevelClient client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
     try {
-      execute(config, flyway, client, schemaMigrationOptionSpecified);
+      execute(config, flyway, schemaMigrationOptionSpecified);
       printToConsoleInDebug(schemaMigrationOptionSpecified + "option successful");
     } catch (Exception e) {
       printError(schemaMigrationOptionSpecified + "option failed with : " + e);
@@ -221,10 +221,7 @@ public final class TablesInitializer {
   }
 
   private static void execute(
-      OpenMetadataApplicationConfig config,
-      Flyway flyway,
-      RestHighLevelClient client,
-      SchemaMigrationOption schemaMigrationOption)
+      OpenMetadataApplicationConfig config, Flyway flyway, SchemaMigrationOption schemaMigrationOption)
       throws SQLException {
     final Jdbi jdbi =
         Jdbi.create(
@@ -234,6 +231,9 @@ public final class TablesInitializer {
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
+    SearchClient searchClient;
+    searchClient =
+        IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), jdbi.onDemand(CollectionDAO.class));
     ElasticSearchIndexDefinition esIndexDefinition;
 
     // Initialize secrets manager
@@ -281,15 +281,15 @@ public final class TablesInitializer {
         flyway.repair();
         break;
       case ES_CREATE:
-        esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class));
+        esIndexDefinition = new ElasticSearchIndexDefinition(searchClient, jdbi.onDemand(CollectionDAO.class));
         esIndexDefinition.createIndexes(config.getElasticSearchConfiguration());
         break;
       case ES_MIGRATE:
-        esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class));
+        esIndexDefinition = new ElasticSearchIndexDefinition(searchClient, jdbi.onDemand(CollectionDAO.class));
         esIndexDefinition.updateIndexes(config.getElasticSearchConfiguration());
         break;
       case ES_DROP:
-        esIndexDefinition = new ElasticSearchIndexDefinition(client, jdbi.onDemand(CollectionDAO.class));
+        esIndexDefinition = new ElasticSearchIndexDefinition(searchClient, jdbi.onDemand(CollectionDAO.class));
         esIndexDefinition.dropIndexes();
         break;
       default:

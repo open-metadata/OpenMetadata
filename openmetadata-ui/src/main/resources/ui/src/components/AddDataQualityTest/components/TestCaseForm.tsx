@@ -13,7 +13,6 @@
 
 import { Button, Form, FormProps, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
-import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { t } from 'i18next';
 import { isEmpty, snakeCase } from 'lodash';
@@ -251,8 +250,8 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         name="testName"
         rules={[
           {
-            pattern: /^[A-Za-z0-9_]*$/g,
-            message: t('message.special-character-not-allowed'),
+            pattern: ENTITY_NAME_REGEX,
+            message: t('message.entity-name-validation'),
           },
           {
             validator: (_, value) => {
