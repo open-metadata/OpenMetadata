@@ -38,7 +38,6 @@ import { useHistory, useParams } from 'react-router-dom';
 import ReactFlow, {
   addEdge,
   Background,
-  BackgroundVariant,
   Connection,
   Edge,
   getConnectedEdges,
@@ -1654,9 +1653,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                 onOptionSelect={handleOptionSelect}
               />
             )}
-            {isEditMode && (
-              <Background gap={12} size={1} variant={BackgroundVariant.Lines} />
-            )}
+            <Background gap={12} size={1} />
           </ReactFlow>
         </ReactFlowProvider>
       </div>
