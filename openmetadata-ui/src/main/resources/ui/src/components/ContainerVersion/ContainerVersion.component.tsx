@@ -15,7 +15,6 @@ import { Card, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { getVersionPathWithTab } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
@@ -28,7 +27,6 @@ import { cloneDeep, toString } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
 import { bytesToSize } from 'utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
@@ -185,10 +183,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
   );
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(currentVersionData),
-      })}>
+    <>
       {isVersionLoading ? (
         <Loader />
       ) : (
@@ -224,7 +219,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
         versionList={versionList}
         onBack={backHandler}
       />
-    </PageLayoutV1>
+    </>
   );
 };
 

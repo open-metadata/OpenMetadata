@@ -259,13 +259,15 @@ const CustomControls: FC<ControlProps> = ({
               disabled={isEditMode}
               title={t('label.setting-plural')}
               onClick={() => setDialogVisible(true)}>
-              <SettingOutlined style={{ fontSize: '16px', color: '#7147E8' }} />
+              <SettingOutlined
+                style={{ fontSize: '16px', color: PRIMERY_COLOR }}
+              />
             </ControlButton>
 
             {!deleted && (
               <ControlButton
                 className={classNames(
-                  'custom-control-edit-button h-8 w-8 rounded-full p-x-xss tw-shadow-lg',
+                  'custom-control-edit-button h-8 w-8 rounded-full p-x-xss',
                   {
                     'bg-primary': !isEditMode,
                     'bg-primary-hover-lite': isEditMode,

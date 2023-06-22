@@ -12,6 +12,7 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
@@ -21,6 +22,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { mockTablePermission } from 'constants/mockTourData.constants';
 import { ClientErrors } from 'enums/axios.enum';
 import { ExplorePageTabs } from 'enums/Explore.enum';
@@ -41,13 +43,15 @@ import {
   getEntityOverview,
 } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import SVGIcons from 'utils/SvgUtils';
 import { API_RES_MAX_SIZE, ROUTES } from '../../../../constants/constants';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../../../constants/profiler.constant';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { Table } from '../../../../generated/entity/data/table';
 import { Include } from '../../../../generated/type/include';
-import { formTwoDigitNmber as formTwoDigitNumber } from '../../../../utils/CommonUtils';
+import {
+  formTwoDigitNmber as formTwoDigitNumber,
+  getTagValue,
+} from '../../../../utils/CommonUtils';
 import { updateTestResults } from '../../../../utils/DataQualityAndProfilerUtils';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
@@ -266,7 +270,7 @@ function TableSummary({
   return (
     <SummaryPanelSkeleton loading={isLoading || isEmpty(tableDetails)}>
       <>
-        <Row className="m-md" gutter={[0, 4]}>
+        <Row className="m-md m-t-0" gutter={[0, 4]}>
           <Col span={24}>
             <Row gutter={[0, 4]}>
               {entityInfo.map((info) => {
@@ -294,12 +298,7 @@ function TableSummary({
                             to={{ pathname: info.url }}>
                             {info.value}
                             {info.isExternal ? (
-                              <SVGIcons
-                                alt="external-link"
-                                className="m-l-xs"
-                                icon="external-link"
-                                width="12px"
-                              />
+                              <IconExternalLink className="m-l-xs" width={12} />
                             ) : null}
                           </Link>
                         ) : (
@@ -334,10 +333,10 @@ function TableSummary({
           </>
         ) : null}
 
-        <Row className="m-md" gutter={[0, 16]}>
+        <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-grey-muted"
+              className="summary-panel-section-title"
               data-testid="profiler-header">
               {t('label.profiler-amp-data-quality')}
             </Typography.Text>
@@ -347,10 +346,40 @@ function TableSummary({
 
         <Divider className="m-y-xs" />
 
+        {isExplore ? (
+          <>
+            <Row className="m-md" gutter={[0, 8]}>
+              <Col span={24}>
+                <Typography.Text
+                  className="summary-panel-section-title"
+                  data-testid="tags-header">
+                  {t('label.tag-plural')}
+                </Typography.Text>
+              </Col>
+
+              <Col className="flex-grow" span={24}>
+                {entityDetails.tags && entityDetails.tags.length > 0 ? (
+                  <TagsViewer
+                    sizeCap={2}
+                    tags={(entityDetails.tags || []).map((tag) =>
+                      getTagValue(tag)
+                    )}
+                    type="border"
+                  />
+                ) : (
+                  <Typography.Text className="text-grey-body">
+                    {t('label.no-tags-added')}
+                  </Typography.Text>
+                )}
+              </Col>
+            </Row>
+            <Divider className="m-y-xs" />
+          </>
+        ) : null}
         <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-grey-muted"
+              className="summary-panel-section-title"
               data-testid="schema-header">
               {t('label.schema')}
             </Typography.Text>

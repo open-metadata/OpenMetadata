@@ -13,10 +13,10 @@
 
 import { Card, Space, Table, Tabs, TabsProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { getVersionPathWithTab } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
@@ -36,7 +36,6 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
-import SVGIcons from '../../utils/SvgUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
@@ -112,12 +111,8 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
           <Link target="_blank" to={{ pathname: text }}>
             <Space>
               <span>{getEntityName(record)}</span>
-              <SVGIcons
-                alt="external-link"
-                className="tw-align-middle"
-                icon="external-link"
-                width="16px"
-              />
+
+              <IconExternalLink width={16} />
             </Space>
           </Link>
         ),
@@ -226,10 +221,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   );
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(currentVersionData),
-      })}>
+    <>
       <div data-testid="dashboard-version-container">
         {isVersionLoading ? (
           <Loader />
@@ -270,7 +262,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
           onBack={backHandler}
         />
       </div>
-    </PageLayoutV1>
+    </>
   );
 };
 

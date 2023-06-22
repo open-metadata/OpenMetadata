@@ -173,23 +173,6 @@
     @apply tw-m-auto tw-w-120 tw-bg-white tw-shadow-modal;
   }
 
-  /* React flow */
-  .leaf-node {
-    @apply tw-border-main tw-py-1;
-  }
-  .leaf-node.core {
-    @apply tw-border-primary tw-text-primary;
-  }
-  .leaf-node.selected,
-  .leaf-node.selected:hover {
-    @apply tw-border-main;
-    box-shadow: 0 0 0 0.5px #e2dce4;
-  }
-  .leaf-node.selected,
-  .leaf-node.selected:hover {
-    @apply tw-border-primary-active;
-    box-shadow: 0 0 0 0.5px #7147e8;
-  }
   .tw-filter-seperator {
     @apply tw-mb-1;
     border-bottom: 1px solid #dce3ec80;

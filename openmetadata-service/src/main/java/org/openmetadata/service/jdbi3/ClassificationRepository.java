@@ -113,6 +113,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       // TODO handle name change
       // TODO mutuallyExclusive from false to true?
       recordChange("mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
+      recordChange("disabled,", original.getDisabled(), updated.getDisabled());
       updateName(original, updated);
     }
 

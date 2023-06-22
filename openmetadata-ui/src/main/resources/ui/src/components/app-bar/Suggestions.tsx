@@ -184,7 +184,7 @@ const Suggestions = ({
             aria-orientation="vertical"
             className="suggestions-menu tw-origin-top-right tw-absolute z-400
           tw-w-600 tw-mt-1 tw-rounded-md tw-shadow-lg
-        tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
+        bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
             role="menu">
             {getEntitiesSuggestions()}
           </div>

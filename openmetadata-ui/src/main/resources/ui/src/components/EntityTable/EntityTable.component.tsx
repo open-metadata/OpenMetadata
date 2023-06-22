@@ -493,7 +493,7 @@ const EntityTable = ({
         dataIndex: 'name',
         key: 'name',
         accessor: 'name',
-        width: 220,
+        width: 180,
         fixed: 'left',
         render: (name: Column['name'], record: Column) => (
           <Space
@@ -511,7 +511,7 @@ const EntityTable = ({
         key: 'dataTypeDisplay',
         accessor: 'dataTypeDisplay',
         ellipsis: true,
-        width: 220,
+        width: 180,
         render: renderDataTypeDisplay,
       },
       {
@@ -519,7 +519,7 @@ const EntityTable = ({
         dataIndex: 'description',
         key: 'description',
         accessor: 'description',
-        width: 400,
+        width: 320,
         render: renderDescription,
       },
       {
@@ -527,7 +527,7 @@ const EntityTable = ({
         dataIndex: 'tags',
         key: 'tags',
         accessor: 'tags',
-        width: 300,
+        width: 250,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             dataTestId="classification-tags"
@@ -558,7 +558,7 @@ const EntityTable = ({
         dataIndex: 'tags',
         key: 'tags',
         accessor: 'tags',
-        width: 300,
+        width: 250,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             dataTestId="glossary-tags"
@@ -624,7 +624,7 @@ const EntityTable = ({
     <>
       <Table
         bordered
-        className="vertical-top-align-td"
+        className="m-b-sm"
         columns={columns}
         data-testid="entity-table"
         dataSource={data}
@@ -638,7 +638,7 @@ const EntityTable = ({
         pagination={false}
         rowKey="id"
         scroll={TABLE_SCROLL_VALUE}
-        size="small"
+        size="middle"
       />
       {editColumn && (
         <ModalWithMarkdownEditor

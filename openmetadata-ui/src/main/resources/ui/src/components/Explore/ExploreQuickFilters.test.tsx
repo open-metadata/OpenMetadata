@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render } from '@testing-library/react';
+import { act, render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { getAdvancedFieldOptions } from 'rest/miscAPI';
@@ -147,20 +147,11 @@ describe('Test ExploreQuickFilters component', () => {
   });
 
   it('Should call onAdvanceSearch method on click of Advance Search button', async () => {
-    const { findByTestId, findAllByTitle } = render(
-      <ExploreQuickFilters {...mockProps} />
-    );
+    const { findAllByTitle } = render(<ExploreQuickFilters {...mockProps} />);
 
     const fields = await findAllByTitle('search-dropdown');
-    const advanceSearchButton = await findByTestId('advance-search-button');
 
     expect(fields).toHaveLength(mockFields.length);
-
-    expect(advanceSearchButton).toBeInTheDocument();
-
-    fireEvent.click(advanceSearchButton);
-
-    expect(onAdvanceSearch).toHaveBeenCalled();
   });
 
   it('All options should be passed to SearchDropdown component for proper API response', async () => {

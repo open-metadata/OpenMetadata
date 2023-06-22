@@ -210,7 +210,7 @@ const GlossaryDetailsRightPanel = ({
                   onUpdate={handleUpdatedOwner}>
                   <Button
                     className="cursor-pointer flex-center m-l-xss"
-                    data-testid="edit-owner-button"
+                    data-testid="edit-owner"
                     icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
                     size="small"
                     type="text"

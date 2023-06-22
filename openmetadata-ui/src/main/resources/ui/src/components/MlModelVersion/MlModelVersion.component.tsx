@@ -26,7 +26,6 @@ import { CustomPropertyTable } from 'components/common/CustomPropertyTable/Custo
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import SourceList from 'components/MlModelDetail/SourceList.component';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
@@ -403,10 +402,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   );
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(currentVersionData),
-      })}>
+    <>
       {isVersionLoading ? (
         <Loader />
       ) : (
@@ -444,7 +440,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
         versionList={versionList}
         onBack={backHandler}
       />
-    </PageLayoutV1>
+    </>
   );
 };
 

@@ -15,7 +15,6 @@ import { Card, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TopicSchemaFields from 'components/TopicDetails/TopicSchema/TopicSchema';
 import { getVersionPathWithTab } from 'constants/constants';
@@ -25,7 +24,6 @@ import { EntityInfo, EntityTabs, EntityType } from 'enums/entity.enum';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
 import { ChangeDescription, Topic } from '../../generated/entity/data/topic';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
@@ -205,10 +203,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
   );
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(currentVersionData),
-      })}>
+    <>
       {isVersionLoading ? (
         <Loader />
       ) : (
@@ -244,7 +239,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
         versionList={versionList}
         onBack={backHandler}
       />
-    </PageLayoutV1>
+    </>
   );
 };
 

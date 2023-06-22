@@ -215,7 +215,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         dataIndex: 'description',
         key: 'description',
         accessor: 'description',
-        width: 400,
+        width: 350,
         render: renderContainerColumnDescription,
       },
       {

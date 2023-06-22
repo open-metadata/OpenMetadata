@@ -110,7 +110,9 @@ const TableProfilerChart = ({ dateRangeObject }: TableProfilerChartProps) => {
         />
       </Col>
       <Col span={24}>
-        <Card className="shadow-none" data-testid="operation-date-metrics">
+        <Card
+          className="shadow-none global-border-radius"
+          data-testid="operation-date-metrics">
           <Row gutter={[16, 16]}>
             <Col span={4}>
               <ProfilerLatestValue
@@ -128,7 +130,9 @@ const TableProfilerChart = ({ dateRangeObject }: TableProfilerChartProps) => {
         </Card>
       </Col>
       <Col span={24}>
-        <Card className="shadow-none" data-testid="operation-metrics">
+        <Card
+          className="shadow-none global-border-radius"
+          data-testid="operation-metrics">
           <Row gutter={[16, 16]}>
             <Col span={4}>
               <ProfilerLatestValue information={operationMetrics.information} />

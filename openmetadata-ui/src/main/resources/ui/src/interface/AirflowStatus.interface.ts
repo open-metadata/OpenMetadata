@@ -18,8 +18,10 @@ export enum AirflowStatus {
   HEALTHY = 'healthy',
   UNHEALTHY = 'unhealthy',
 }
+
 export interface AirflowResponse {
   status: AirflowStatus;
   version?: string;
   reason?: string;
+  platform?: string;
 }

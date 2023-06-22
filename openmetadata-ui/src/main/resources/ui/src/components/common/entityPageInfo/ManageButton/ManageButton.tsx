@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown, Modal, Tooltip, Typography } from 'antd';
+import { Button, Col, Dropdown, Modal, Row, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import classNames from 'classnames';
@@ -20,7 +20,7 @@ import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.c
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
-import React, { FC, useState } from 'react';
+import React, { FC, ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg/announcements-black.svg';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
@@ -52,6 +52,7 @@ interface Props {
   deleted?: boolean;
   editDisplayNamePermission?: boolean;
   onEditDisplayName?: (data: EntityName) => Promise<void>;
+  allowRename?: boolean;
 }
 
 const ManageButton: FC<Props> = ({
@@ -73,6 +74,7 @@ const ManageButton: FC<Props> = ({
   deleted,
   editDisplayNamePermission,
   onEditDisplayName,
+  allowRename,
 }) => {
   const { t } = useTranslation();
   const [isDelete, setIsDelete] = useState<boolean>(false);
@@ -250,6 +252,7 @@ const ManageButton: FC<Props> = ({
       )}
       {onEditDisplayName && (
         <EntityNameModal
+          allowRename={allowRename}
           entity={{
             name: entityName,
             displayName,
@@ -291,3 +294,49 @@ const ManageButton: FC<Props> = ({
 };
 
 export default ManageButton;
+
+interface ManageButtonItemProps {
+  label: ReactNode;
+  icon: ReactNode;
+  description: string;
+  disabled: boolean;
+  onClick: () => void;
+}
+
+export const ManageButtonItem = ({
+  label,
+  icon,
+  description,
+  disabled,
+  onClick,
+}: ManageButtonItemProps) => {
+  return (
+    <Tooltip title={disabled && NO_PERMISSION_FOR_ACTION}>
+      <Row
+        className={classNames('cursor-pointer manage-button', {
+          'cursor-not-allowed opacity-50': disabled,
+        })}
+        onClick={onClick}>
+        <Col className="m-t-xss" span={3}>
+          {icon}
+        </Col>
+        <Col span={21}>
+          <Row data-testid="restore-button">
+            <Col span={21}>
+              <Typography.Text
+                className="font-medium"
+                data-testid="delete-button-title">
+                {label}
+              </Typography.Text>
+            </Col>
+            <Col className="p-t-xss">
+              <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                {description}
+              </Typography.Paragraph>
+            </Col>
+          </Row>
+        </Col>
+      </Row>
+    </Tooltip>
+  );
+};

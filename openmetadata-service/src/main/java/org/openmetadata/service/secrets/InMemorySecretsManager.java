@@ -46,6 +46,11 @@ public class InMemorySecretsManager extends ExternalSecretsManager {
   }
 
   @Override
+  protected void deleteSecretInternal(String secretName) {
+    secretsMap.remove(secretName);
+  }
+
+  @Override
   String getSecret(String secretName) {
     String value = secretsMap.getOrDefault(secretName, null);
     if (value == null) {

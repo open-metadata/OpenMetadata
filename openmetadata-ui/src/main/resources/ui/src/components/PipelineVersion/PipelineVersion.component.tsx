@@ -13,10 +13,10 @@
 
 import { Card, Space, Table, Tabs, TabsProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { getVersionPathWithTab } from 'constants/constants';
@@ -49,7 +49,6 @@ import {
   getTextDiff,
 } from '../../utils/EntityVersionUtils';
 import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
-import SVGIcons from '../../utils/SvgUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
@@ -279,12 +278,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           <Link target="_blank" to={{ pathname: record.sourceUrl }}>
             <Space>
               <span>{getEntityName(record)}</span>
-              <SVGIcons
-                alt="external-link"
-                className="tw-align-middle"
-                icon="external-link"
-                width="16px"
-              />
+              <IconExternalLink className="m-l-xs" width={16} />
             </Space>
           </Link>
         ),
@@ -410,10 +404,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   );
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(currentVersionData),
-      })}>
+    <>
       {isVersionLoading ? (
         <Loader />
       ) : (
@@ -451,7 +442,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         versionList={versionList}
         onBack={backHandler}
       />
-    </PageLayoutV1>
+    </>
   );
 };
 

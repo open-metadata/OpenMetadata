@@ -12,44 +12,22 @@
  */
 
 import { HTMLAttributes } from 'react';
-import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
-import { Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { Paging } from '../../generated/type/paging';
-import {
-  EntityFieldThreadCount,
-  ThreadUpdatedFunc,
-} from '../../interface/feed.interface';
+import { EntityFieldThreadCount } from '../../interface/feed.interface';
 
 export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   mlModelDetail: Mlmodel;
   version?: string;
-  entityThread: Thread[];
-  isEntityThreadLoading: boolean;
-  paging: Paging;
   feedCount: number;
-  followMlModelHandler: () => void;
-  unfollowMlModelHandler: () => void;
+  followMlModelHandler: () => Promise<void>;
+  unFollowMlModelHandler: () => Promise<void>;
   descriptionUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;
   tagUpdateHandler: (updatedMlModel: Mlmodel) => void;
   updateMlModelFeatures: (updatedMlModel: Mlmodel) => Promise<void>;
   settingsUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;
   versionHandler: () => void;
   onExtensionUpdate: (updatedMlModel: Mlmodel) => Promise<void>;
-  fetchFeedHandler: (
-    after?: string,
-    feedType?: FeedFilter,
-    threadType?: ThreadType
-  ) => void;
-  postFeedHandler: (value: string, id: string) => void;
-  deletePostHandler: (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ) => void;
-
-  updateThreadHandler: ThreadUpdatedFunc;
   entityFieldThreadCount: EntityFieldThreadCount[];
   entityFieldTaskCount: EntityFieldThreadCount[];
   createThread: (data: CreateThread) => void;

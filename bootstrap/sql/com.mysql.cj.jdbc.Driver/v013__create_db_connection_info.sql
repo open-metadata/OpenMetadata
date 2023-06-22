@@ -122,6 +122,10 @@ SET json = JSON_INSERT(
 where serviceType in ('Postgres', 'Mysql');
 
 
+-- Clean old test connections
+TRUNCATE automations_workflow;
+
+
 -- add fullyQualifiedName hash and remove existing columns
 
 -- update the OM system tables
@@ -215,9 +219,7 @@ UPDATE pipeline_entity
 SET json = JSON_REMOVE(json, '$.sourceUrl')
 WHERE JSON_EXTRACT(json, '$.serviceType') in ('DatabricksPipeline','Fivetran');
 
-
 -- Remove sourceUrl in dashboard_entity from Mode
 UPDATE dashboard_entity 
 SET json = JSON_REMOVE(json, '$.sourceUrl')
 WHERE JSON_EXTRACT(json, '$.serviceType') in ('Mode');
-

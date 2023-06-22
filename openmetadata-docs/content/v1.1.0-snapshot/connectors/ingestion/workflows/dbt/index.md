@@ -41,7 +41,36 @@ Configure the dbt Workflow from the CLI.
 
 {% /multiTablesWrapper %}
 
-## OpenMetadata integrates below metadata from dbt
+## Requirements
+
+### AWS S3
+
+If we have the artifacts on the bucket `MyBucket`, the user running the ingestion should have, at least, the permissions
+from the following policy:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::MyBucket",
+                "arn:aws:s3:::MyBucket/*"
+            ]
+        }
+    ]
+}
+```
+
+Note that it's not enough to point the resource to `arn:aws:s3:::MyBucket`. We need its contents as well!
+
+
+## OpenMetadata integrates the below metadata from dbt
 
 ### 1. dbt Queries
 

@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
+@import url('../../styles/variables.less');
+
 @trigger-btn-hover-bg: #efefef;
 @remove-icon-color: #bbb;
 @remove-icon-hover-color: #373737;
 @update-btn-hover-bg: #e2e2e2;
 
 .custom-dropdown-render {
-  // this is taken from antd dropdown menu box shadow
-  box-shadow: 0 3px 6px -4px rgb(0 0 0 / 12%), 0 6px 16px 0 rgb(0 0 0 / 8%),
-    0 9px 28px 8px rgb(0 0 0 / 5%);
+  box-shadow: @box-shadow-base;
 
   .ant-dropdown-menu {
     box-shadow: none;

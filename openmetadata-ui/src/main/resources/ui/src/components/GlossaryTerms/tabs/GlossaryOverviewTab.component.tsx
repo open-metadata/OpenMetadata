@@ -16,6 +16,7 @@ import GlossaryDetailsRightPanel from 'components/GlossaryDetailsRightPanel/Glos
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import TagsInput from 'components/TagsInput/TagsInput.component';
 import { EntityField } from 'constants/Feeds.constants';
+import { EntityType } from 'enums/entity.enum';
 import { Glossary, TagLabel } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { ChangeDescription } from 'generated/entity/type';
@@ -106,6 +107,7 @@ const GlossaryOverviewTab = ({
               <DescriptionV1
                 description={glossaryDescription}
                 entityName={selectedData?.displayName ?? selectedData?.name}
+                entityType={EntityType.GLOSSARY}
                 hasEditAccess={
                   permissions.EditDescription || permissions.EditAll
                 }

@@ -222,7 +222,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
-        width: 400,
+        width: 350,
         render: renderFieldDescription,
       },
       {

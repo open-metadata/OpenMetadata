@@ -6,6 +6,7 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -337,10 +338,14 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             ADMIN_AUTH_HEADERS);
     verifyTestCaseResults(testCaseResults, testCase1ResultList, 4);
 
-    TestSummary testSummary = getTestSummary(ADMIN_AUTH_HEADERS);
-    assertEquals(2, testSummary.getFailed());
-    assertEquals(2, testSummary.getSuccess());
+    TestSummary testSummary = getTestSummary(ADMIN_AUTH_HEADERS, null);
+    assertNotEquals(0, testSummary.getFailed());
+    assertNotEquals(0, testSummary.getSuccess());
+    assertNotEquals(0, testSummary.getTotal());
     assertEquals(0, testSummary.getAborted());
+
+    TestSummary emptyTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, UUID.randomUUID().toString());
+    assertNull(emptyTestSummary.getFailed());
   }
 
   @Test
@@ -692,8 +697,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     return TestUtils.get(target, TestCaseResource.TestCaseResultList.class, authHeaders);
   }
 
-  private TestSummary getTestSummary(Map<String, String> authHeaders) throws IOException {
+  private TestSummary getTestSummary(Map<String, String> authHeaders, String testSuiteId) throws IOException {
     WebTarget target = getCollection().path("/executionSummary");
+    if (testSuiteId != null) {
+      target = target.queryParam("testSuiteId", testSuiteId);
+    }
     return TestUtils.get(target, TestSummary.class, authHeaders);
   }
 

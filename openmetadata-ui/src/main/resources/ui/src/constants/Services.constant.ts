@@ -380,3 +380,5 @@ export const ADVANCED_PROPERTIES = [
   'connectionOptions',
   'scheme',
 ];
+
+export const PIPELINE_SERVICE_PLATFORM = 'Airflow';

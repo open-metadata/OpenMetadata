@@ -50,8 +50,8 @@ const EmptyPlaceholder = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="d-flex items-center flex-col p-sm">
-      <KPIIcon width={100} />
+    <div className="d-flex items-center flex-col p-t-sm">
+      <KPIIcon width={80} />
       <div className="m-t-xs text-center">
         <Typography.Paragraph style={{ marginBottom: '0' }}>
           {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
@@ -185,14 +185,14 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
       className="kpi-widget-card h-full"
       data-testid="kpi-card"
       id="kpi-charts"
-      loading={isLoading}
-      title={
-        <div className="p-y-sm">
+      loading={isLoading}>
+      <Row>
+        <Col span={24}>
           <Typography.Text className="font-medium">
             {t('label.kpi-title')}
           </Typography.Text>
-        </div>
-      }>
+        </Col>
+      </Row>
       {kpiList.length ? (
         <Row>
           {graphData.length ? (

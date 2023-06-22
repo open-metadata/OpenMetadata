@@ -15,4 +15,4 @@ import { TabSpecificField } from '../enums/entity.enum';
 
 export const defaultFields = `${TabSpecificField.COLUMNS}, ${TabSpecificField.USAGE_SUMMARY}, 
 ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.JOINS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}, 
-${TabSpecificField.DATAMODEL},${TabSpecificField.TABLE_CONSTRAINTS},${TabSpecificField.EXTENSION}`;
+${TabSpecificField.DATAMODEL},${TabSpecificField.TABLE_CONSTRAINTS},${TabSpecificField.EXTENSION},${TabSpecificField.TESTSUITE}`;
