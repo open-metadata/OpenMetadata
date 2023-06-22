@@ -722,9 +722,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                           <Col>
                             <Switch
                               checked={showDeletedTables}
+                              data-testid="show-deleted"
                               onClick={setShowDeletedTables}
                             />
-                            <Typography.Text className="tw-ml-2">
+                            <Typography.Text className="m-l-xs">
                               {t('label.deleted')}
                             </Typography.Text>{' '}
                           </Col>

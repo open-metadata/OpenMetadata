@@ -1106,9 +1106,10 @@ const TeamDetailsV1 = ({
                         <span>
                           <Switch
                             checked={showDeletedTeam}
+                            data-testid="show-deleted"
                             onClick={onShowDeletedTeamChange}
                           />
-                          <Typography.Text className="tw-ml-2">
+                          <Typography.Text className="m-l-xs">
                             {t('label.deleted')}
                           </Typography.Text>
                         </span>

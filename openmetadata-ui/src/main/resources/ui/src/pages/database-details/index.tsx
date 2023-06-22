@@ -876,9 +876,10 @@ const DatabaseDetails: FunctionComponent = () => {
                             <Col>
                               <Switch
                                 checked={showDeletedSchemas}
+                                data-testid="show-deleted"
                                 onClick={setShowDeletedSchemas}
                               />
-                              <Typography.Text className="tw-ml-2">
+                              <Typography.Text className="m-l-xs">
                                 {t('label.deleted')}
                               </Typography.Text>{' '}
                             </Col>

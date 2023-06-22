@@ -923,8 +923,12 @@ const ServicePage: FunctionComponent = () => {
         <Col span={24}>
           <Row justify="end">
             <Col>
-              <Switch checked={showDeleted} onClick={setShowDeleted} />
-              <Typography.Text className="tw-ml-2">
+              <Switch
+                checked={showDeleted}
+                data-testid="show-deleted"
+                onClick={setShowDeleted}
+              />
+              <Typography.Text className="m-l-xs">
                 {t('label.deleted')}
               </Typography.Text>{' '}
             </Col>
@@ -1239,9 +1243,10 @@ const ServicePage: FunctionComponent = () => {
                           <Col>
                             <Switch
                               checked={showDeleted}
+                              data-testid="show-deleted"
                               onClick={setShowDeleted}
                             />
-                            <Typography.Text className="tw-ml-2">
+                            <Typography.Text className="m-l-xs">
                               {t('label.deleted')}
                             </Typography.Text>{' '}
                           </Col>
