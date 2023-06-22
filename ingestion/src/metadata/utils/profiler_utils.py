@@ -12,14 +12,33 @@
 """Profiler utils class and functions"""
 
 import re
-from collections import namedtuple
-from typing import Optional
+from collections import defaultdict
+from datetime import datetime
+from functools import reduce
+from typing import Optional, Tuple
 
 import sqlparse
-from sqlalchemy.engine.row import Row
-from sqlparse.sql import Identifier
+from pydantic import BaseModel
 
+from metadata.utils.logger import profiler_logger
 from metadata.utils.sqa_utils import is_array
+
+logger = profiler_logger()
+
+PARSING_TIMEOUT = 10
+
+
+class QueryResult(BaseModel):
+    """System metric query result shared by Redshift and Snowflake"""
+
+    database_name: str
+    schema_name: str
+    table_name: str
+    query_type: str
+    timestamp: datetime
+    query_id: Optional[str] = None
+    query_text: Optional[str] = None
+    rows: Optional[int] = None
 
 
 class ColumnLike:
@@ -57,60 +76,58 @@ def clean_up_query(query: str) -> str:
     return sqlparse.format(query, strip_comments=True).replace("\\n", "")
 
 
-def get_snowflake_system_queries(
-    row: Row, database: str, schema: str
-) -> Optional["QueryResult"]:
-    """get snowflake system queries for a specific database and schema. Parsing the query
-    is the only reliable way to get the DDL operation as fields in the table are not.
+def get_identifiers_from_string(
+    identifier: str,
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """given a string identifier try to fetch the database, schema and table names.
+    part of the identifier name as `"DATABASE.DOT"` will be returned on the left side of the tuple
+    and the rest of the identifier name as `"SCHEMA.DOT.TABLE"` will be returned on the right side of the tuple
 
     Args:
-        row (dict): row from the snowflake system queries table
-        database (str): database name
-        schema (str): schema name
+        identifier (str): table identifier
+
     Returns:
-        QueryResult: namedtuple with the query result
+        Tuple[str, str, str]: database, schema and table names
     """
+    pattern = r"\"([^\"]+)\"|(\w+(?:\.\w+)*(?:\.\w+)*)"
+    matches = re.findall(pattern, identifier)
 
-    QueryResult = namedtuple(
-        "QueryResult",
-        "query_id,database_name,schema_name,table_name,query_text,query_type,timestamp",
-    )
+    values = []
+    for match in matches:
+        if match[0] != "":
+            values.append(match[0])
+        if match[1] != "":
+            split_match = match[1].split(".")
+            values.extend(split_match)
 
+    database_name, schema_name, table_name = ([None] * (3 - len(values))) + values
+    return database_name, schema_name, table_name
+
+
+def get_value_from_cache(cache: dict, key: str):
+    """given a dict of cache and a key, return the value if exists
+
+    Args:
+        cache (dict): dict of cache
+        key (str): key to look for in the cache
+    """
     try:
-        parsed_query = sqlparse.parse(clean_up_query(row.query_text))[0]
-        identifier = next(
-            (
-                query_el
-                for query_el in parsed_query.tokens
-                if isinstance(query_el, Identifier)
-            ),
-            None,
-        )
-        if not identifier:
-            return None
-        values = identifier.value.split(".")
-        database_name, schema_name, table_name = ([None] * (3 - len(values))) + values
-
-        if not all([database_name, schema_name, table_name]):
-            return None
-
-        # clean up table name
-        table_name = re.sub(r"\s.*", "", table_name).strip()
-
-        if (
-            database.lower() == database_name.lower()
-            and schema.lower() == schema_name.lower()
-        ):
-            return QueryResult(
-                row.query_id,
-                database_name.lower(),
-                schema_name.lower(),
-                table_name.lower(),
-                parsed_query,
-                row.query_type,
-                row.start_time,
-            )
-    except Exception:
+        return reduce(dict.get, key.split("."), cache)
+    except TypeError:
         return None
 
-    return None
+
+def set_cache(cache: defaultdict, key: str, value):
+    """given a dict of cache, a key and a value, set the value in the cache
+
+    Args:
+        cache (dict): dict of cache
+        key (str): key to set for in the cache
+        value: value to set in the cache
+    """
+    split_key = key.split(".")
+    for indx, key_ in enumerate(split_key):
+        if indx == len(split_key) - 1:
+            cache[key_] = value
+            break
+        cache = cache[key_]

@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { ModifiedGlossaryTerm } from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import {
   GlossaryTermDetailsProps,
-  GlossaryTermNodeProps,
+  HierarchyTagsProps,
 } from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
 import { isUndefined, omit } from 'lodash';
 import { ListGlossaryTermsParams } from 'rest/glossaryAPI';
@@ -224,9 +224,9 @@ export const formatRelatedTermOptions = (
 
 export const getGlossaryTermHierarchy = (
   data: GlossaryTermDetailsProps[]
-): GlossaryTermNodeProps[] => {
-  const nodes: Record<string, GlossaryTermNodeProps> = {};
-  const tree: GlossaryTermNodeProps[] = [];
+): HierarchyTagsProps[] => {
+  const nodes: Record<string, HierarchyTagsProps> = {};
+  const tree: HierarchyTagsProps[] = [];
 
   data.forEach((obj) => {
     if (obj.fqn) {

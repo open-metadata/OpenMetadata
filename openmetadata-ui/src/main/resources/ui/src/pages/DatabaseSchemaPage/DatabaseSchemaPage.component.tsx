@@ -20,7 +20,6 @@ import {
   Tabs,
   Typography,
 } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import ActivityFeedProvider, {
@@ -44,7 +43,6 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { TagLabel } from 'generated/type/tagLabel';
@@ -69,7 +67,6 @@ import {
 import { getFeedCount, postThread } from 'rest/feedsAPI';
 import { searchQuery } from 'rest/searchAPI';
 import { default as appState } from '../../AppState';
-import { ReactComponent as IconShowPassword } from '../../assets/svg/show-password.svg';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
@@ -560,53 +557,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     );
   };
 
-  const extraDropdownContent: ItemType[] = useMemo(
-    () => [
-      {
-        label: (
-          <Row className="cursor-pointer" data-testid="deleted-table-menu-item">
-            <Col span={3}>
-              <IconShowPassword {...DROPDOWN_ICON_SIZE_PROPS} />
-            </Col>
-            <Col span={21}>
-              <Row>
-                <Col span={21}>
-                  <Typography.Text
-                    className="font-medium"
-                    data-testid="deleted-table-menu-item-label">
-                    {t('label.show-deleted-entity', {
-                      entity: t('label.table'),
-                    })}
-                  </Typography.Text>
-                </Col>
-
-                <Col span={3}>
-                  <Switch
-                    checked={showDeletedTables}
-                    data-testid="deleted-table-menu-item-switch"
-                    size="small"
-                    onChange={setShowDeletedTables}
-                  />
-                </Col>
-
-                <Col className="p-t-xss">
-                  <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                    {t('message.view-deleted-entity', {
-                      entity: t('label.table-plural'),
-                      parent: t('label.schema'),
-                    })}
-                  </Typography.Paragraph>
-                </Col>
-              </Row>
-            </Col>
-          </Row>
-        ),
-        key: 'deleted-team-dropdown',
-      },
-    ],
-    [showDeletedTables]
-  );
-
   const handleRestoreDatabaseSchema = useCallback(async () => {
     try {
       await restoreDatabaseSchema(databaseSchemaId);
@@ -707,7 +657,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                   entityId={databaseSchemaId}
                   entityName={databaseSchemaName}
                   entityType={EntityType.DATABASE_SCHEMA}
-                  extraDropdownContent={extraDropdownContent}
                   extraInfo={extraInfo}
                   followersList={[]}
                   permission={databaseSchemaPermission}
@@ -767,6 +716,20 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                           onDescriptionUpdate={onDescriptionUpdate}
                           onThreadLinkSelect={onThreadLinkSelect}
                         />
+                      </Col>
+                      <Col span={24}>
+                        <Row justify="end">
+                          <Col>
+                            <Switch
+                              checked={showDeletedTables}
+                              data-testid="show-deleted"
+                              onClick={setShowDeletedTables}
+                            />
+                            <Typography.Text className="m-l-xs">
+                              {t('label.deleted')}
+                            </Typography.Text>{' '}
+                          </Col>
+                        </Row>
                       </Col>
                       {getSchemaTableList()}
                     </Row>

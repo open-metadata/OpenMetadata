@@ -19,6 +19,9 @@ from typing import Any, Optional, Tuple
 import requests
 from pydantic import BaseModel
 
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtAzureConfig import (
+    DbtAzureConfig,
+)
 from metadata.generated.schema.metadataIngestion.dbtconfig.dbtCloudConfig import (
     DbtCloudConfig,
 )
@@ -314,6 +317,79 @@ def _(config: DbtGcsConfig):
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise DBTConfigException(f"Error fetching dbt files from gcs: {exc}")
+
+
+@get_dbt_details.register
+def _(config: DbtAzureConfig):
+    dbt_catalog = None
+    dbt_manifest = None
+    dbt_run_results = None
+    try:
+        bucket_name, prefix = get_dbt_prefix_config(config)
+        from azure.identity import (  # pylint: disable=import-outside-toplevel
+            ClientSecretCredential,
+        )
+        from azure.storage.blob import (  # pylint: disable=import-outside-toplevel
+            BlobServiceClient,
+        )
+
+        azure_client = BlobServiceClient(
+            f"https://{config.dbtSecurityConfig.accountName}.blob.core.windows.net/",
+            credential=ClientSecretCredential(
+                config.dbtSecurityConfig.tenantId,
+                config.dbtSecurityConfig.clientId,
+                config.dbtSecurityConfig.clientSecret.get_secret_value(),
+            ),
+        )
+
+        if not bucket_name:
+            container_dicts = azure_client.list_containers()
+            containers = [
+                azure_client.get_container_client(container["name"])
+                for container in container_dicts
+            ]
+        else:
+            container_client = azure_client.get_container_client(bucket_name)
+            containers = [container_client]
+        for container_client in containers:
+            if prefix:
+                blob_list = container_client.list_blobs(name_starts_with=prefix)
+            else:
+                blob_list = container_client.list_blobs()
+            for blob in blob_list:
+                if DBT_MANIFEST_FILE_NAME in blob.name:
+                    logger.debug(f"{DBT_MANIFEST_FILE_NAME} found")
+                    dbt_manifest = (
+                        container_client.download_blob(blob.name)
+                        .readall()
+                        .decode("utf-8")
+                    )
+                if DBT_CATALOG_FILE_NAME in blob.name:
+                    logger.debug(f"{DBT_CATALOG_FILE_NAME} found")
+                    dbt_catalog = (
+                        container_client.download_blob(blob.name)
+                        .readall()
+                        .decode("utf-8")
+                    )
+                if DBT_RUN_RESULTS_FILE_NAME in blob.name:
+                    logger.debug(f"{DBT_RUN_RESULTS_FILE_NAME} found")
+                    dbt_run_results = (
+                        container_client.download_blob(blob.name)
+                        .readall()
+                        .decode("utf-8")
+                    )
+        if not dbt_manifest:
+            raise DBTConfigException("Manifest file not found in Azure")
+        return DbtFiles(
+            dbt_catalog=json.loads(dbt_catalog) if dbt_catalog else None,
+            dbt_manifest=json.loads(dbt_manifest),
+            dbt_run_results=json.loads(dbt_run_results) if dbt_run_results else None,
+        )
+    except DBTConfigException as exc:
+        raise exc
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        raise DBTConfigException(f"Error fetching dbt files from Azure: {exc}")
 
 
 def get_dbt_prefix_config(config) -> Tuple[Optional[str], Optional[str]]:
