@@ -24,4 +24,14 @@ public class DatasourceConfig {
   public Boolean isMySQL() {
     return ConnectionType.MYSQL.label.equals(dataSourceFactory.getDriverClass());
   }
+
+  public ConnectionType getDatabaseConnectionType() {
+    if (ConnectionType.MYSQL.label.equals(dataSourceFactory.getDriverClass())) {
+      return ConnectionType.MYSQL;
+    } else {
+      // Currently Mysql and Postgres are only supported hence not added a label check for now for Postgres it's either
+      // this or that
+      return ConnectionType.POSTGRES;
+    }
+  }
 }
