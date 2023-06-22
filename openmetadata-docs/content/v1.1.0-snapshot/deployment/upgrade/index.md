@@ -77,6 +77,7 @@ pipelineServiceClientConfiguration:
   # Secrets Manager Loader: specify to the Ingestion Framework how to load the SM credentials from its env
   # Supported: noop, airflow, env
   secretsManagerLoader: ${PIPELINE_SERVICE_CLIENT_SECRETS_MANAGER_LOADER:-"noop"}
+  healthCheckInterval: ${PIPELINE_SERVICE_CLIENT_HEALTH_CHECK_INTERVAL:-300}
 ```
 
 ### Secrets Manager YAML config
