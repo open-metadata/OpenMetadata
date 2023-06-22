@@ -14,6 +14,18 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.elasticsearch.indexes.ContainerIndex;
+import org.openmetadata.service.elasticsearch.indexes.DashboardIndex;
+import org.openmetadata.service.elasticsearch.indexes.ElasticSearchIndex;
+import org.openmetadata.service.elasticsearch.indexes.GlossaryTermIndex;
+import org.openmetadata.service.elasticsearch.indexes.MlModelIndex;
+import org.openmetadata.service.elasticsearch.indexes.PipelineIndex;
+import org.openmetadata.service.elasticsearch.indexes.QueryIndex;
+import org.openmetadata.service.elasticsearch.indexes.TableIndex;
+import org.openmetadata.service.elasticsearch.indexes.TagIndex;
+import org.openmetadata.service.elasticsearch.indexes.TeamIndex;
+import org.openmetadata.service.elasticsearch.indexes.TopicIndex;
+import org.openmetadata.service.elasticsearch.indexes.UserIndex;
 
 @Slf4j
 public class ElasticSearchIndexFactory {
