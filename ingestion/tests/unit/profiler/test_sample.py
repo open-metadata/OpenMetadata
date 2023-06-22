@@ -33,7 +33,7 @@ from metadata.profiler.interface.sqlalchemy.profiler_interface import (
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import CustomTypes
 from metadata.profiler.processor.core import Profiler
-from metadata.profiler.processor.sqa.sampler import Sampler
+from metadata.profiler.processor.sqlalchemy.sampler import Sampler
 
 Base = declarative_base()
 

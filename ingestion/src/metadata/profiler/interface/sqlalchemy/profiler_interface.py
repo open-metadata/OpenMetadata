@@ -41,7 +41,7 @@ from metadata.profiler.orm.functions.table_metric_construct import (
     table_metric_construct_factory,
 )
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.profiler.processor.sqa.sampler import Sampler
+from metadata.profiler.processor.sqlalchemy.sampler import Sampler
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
