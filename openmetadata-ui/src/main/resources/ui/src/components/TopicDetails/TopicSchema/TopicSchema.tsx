@@ -211,6 +211,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
+        width: 350,
         render: renderFieldDescription,
       },
       {
@@ -332,6 +333,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
                 }}
                 pagination={false}
                 rowKey="name"
+                scroll={{ x: 1200 }}
                 size="small"
               />
             )}

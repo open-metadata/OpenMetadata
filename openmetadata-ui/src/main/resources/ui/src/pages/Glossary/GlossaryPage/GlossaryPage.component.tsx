@@ -266,6 +266,7 @@ const GlossaryPage = () => {
 
   return (
     <PageLayoutV1
+      className="glossary-page-layout"
       leftPanel={<GlossaryLeftPanel glossaries={glossaries} />}
       pageTitle={t('label.glossary')}
       rightPanel={
@@ -280,7 +281,7 @@ const GlossaryPage = () => {
       {isRightPanelLoading ? (
         <Loader />
       ) : (
-        <Row gutter={[16, 0]} wrap={false}>
+        <Row className="page-container" gutter={[16, 0]} wrap={false}>
           <Col flex="auto">
             <GlossaryV1
               deleteStatus={deleteStatus}

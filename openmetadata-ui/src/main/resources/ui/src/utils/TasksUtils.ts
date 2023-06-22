@@ -27,6 +27,7 @@ import { getDataModelDetailsByFQN } from 'rest/dataModelsAPI';
 import { getUserSuggestions } from 'rest/miscAPI';
 import { getMlModelByFQN } from 'rest/mlModelAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
+import { getContainerByFQN } from 'rest/storageAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTopicByFqn } from 'rest/topicsAPI';
 import {
@@ -190,6 +191,7 @@ export const TASK_ENTITIES = [
   EntityType.TOPIC,
   EntityType.PIPELINE,
   EntityType.MLMODEL,
+  EntityType.CONTAINER,
   EntityType.DATABASE_SCHEMA,
   EntityType.DASHBOARD_DATA_MODEL,
 ];
@@ -272,6 +274,10 @@ export const getBreadCrumbList = (
       return [service(ServiceCategory.DASHBOARD_SERVICES), activeEntity];
     }
 
+    case EntityType.CONTAINER: {
+      return [service(ServiceCategory.STORAGE_SERVICES), activeEntity];
+    }
+
     default:
       return [];
   }
@@ -342,12 +348,32 @@ export const fetchEntityDetail = (
 
       break;
 
+    case EntityType.CONTAINER:
+      getContainerByFQN(entityFQN, DataModelFields)
+        .then((res) => {
+          setEntityData(res);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+
     default:
       break;
   }
 };
 
 export const getTaskActionList = (): TaskAction[] => [
+  {
+    label: i18Next.t('label.accept-suggestion'),
+    key: TaskActionMode.VIEW,
+  },
+  {
+    label: i18Next.t('label.edit-amp-accept-suggestion'),
+    key: TaskActionMode.EDIT,
+  },
+];
+
+export const TASK_ACTION_LIST: TaskAction[] = [
   {
     label: i18Next.t('label.accept-suggestion'),
     key: TaskActionMode.VIEW,

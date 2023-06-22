@@ -3,7 +3,7 @@ package org.openmetadata.service.resources.dqtests;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
@@ -13,6 +13,7 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +32,8 @@ import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
@@ -104,15 +107,21 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   }
 
   @Test
-  void put_testCaseResults_200() throws IOException {
+  void put_testCaseResults_200() throws IOException, ParseException {
     TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
     List<EntityReference> testCases1 = new ArrayList<>();
+    TestCaseResult testCaseResult =
+        new TestCaseResult()
+            .withResult("tested")
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withTimestamp(TestUtils.dateToTimestamp("2021-09-09"));
 
     for (int i = 0; i < 5; i++) {
       CreateTestCase createTestCase =
           testCaseResourceTest.createRequest("test_testSuite_" + i).withTestSuite(TEST_SUITE1.getFullyQualifiedName());
       TestCase testCase = testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
       testCases1.add(testCase.getEntityReference());
+      testCaseResourceTest.putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
     }
 
     for (int i = 5; i < 10; i++) {
@@ -120,7 +129,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
           testCaseResourceTest
               .createRequest("test_testSuite_2_" + i)
               .withTestSuite(TEST_SUITE2.getFullyQualifiedName());
-      testCaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+      TestCase testCase = testCaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+      testCaseResourceTest.putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
     }
 
     ResultList<TestSuite> actualTestSuites = getTestSuites(10, "*", ADMIN_AUTH_HEADERS);
@@ -446,7 +456,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
       TestSuite storedTestSuite = testSuiteMap.get(result.getName());
       if (storedTestSuite == null) continue;
       validateCreatedEntity(storedTestSuite, result, ADMIN_AUTH_HEADERS);
-      assertNotNull(storedTestSuite.getSummary());
+      assertNotEquals(0, storedTestSuite.getSummary().getSuccess());
+      assertNotEquals(0, storedTestSuite.getSummary().getTotal());
     }
   }
 

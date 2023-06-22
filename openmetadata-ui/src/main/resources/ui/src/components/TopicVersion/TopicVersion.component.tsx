@@ -13,13 +13,11 @@
 
 import { Card, Tabs } from 'antd';
 import classNames from 'classnames';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { EntityTabs } from 'enums/entity.enum';
 import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { OwnerType } from '../../enums/user.enum';
@@ -235,7 +233,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
               <span className="tw-py-1.5 tw-px-2 tw-rounded-l tw-bg-tag ">
                 {info.key}
               </span>
-              <span className="tw-py-1.5 tw-px-2 tw-bg-primary-lite tw-font-normal tw-rounded-r">
+              <span className="tw-py-1.5 tw-px-2 bg-primary-lite tw-font-normal tw-rounded-r">
                 {info.value}
               </span>
             </div>
@@ -253,10 +251,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
   }, [currentVersionData]);
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(currentVersionData),
-      })}>
+    <>
       {isVersionLoading ? (
         <Loader />
       ) : (
@@ -314,7 +309,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
         versionList={versionList}
         onBack={backHandler}
       />
-    </PageLayoutV1>
+    </>
   );
 };
 

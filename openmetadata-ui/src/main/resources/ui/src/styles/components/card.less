@@ -14,7 +14,6 @@
 @import url('../variables.less');
 
 .ant-card {
-  box-shadow: @card-shadow;
   background: @background-color;
   border: @global-border;
   border-radius: @border-radius-base;
@@ -31,5 +30,12 @@
 .card-padding-0 {
   .ant-card-body {
     padding: 0;
+  }
+}
+
+.card-body-border-none {
+  border: none;
+  .ant-card-head {
+    border: none;
   }
 }

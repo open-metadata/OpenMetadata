@@ -100,6 +100,14 @@ public abstract class ServiceEntityRepository<
     return service;
   }
 
+  /** Remove the secrets from the secret manager */
+  @Override
+  protected void postDelete(T service) {
+    SecretsManagerFactory.getSecretsManager()
+        .deleteSecretsFromServiceConnectionConfig(
+            service.getConnection().getConfig(), service.getServiceType().value(), service.getName(), serviceType);
+  }
+
   @Override
   public ServiceUpdater getUpdater(T original, T updated, Operation operation) {
     return new ServiceUpdater(original, updated, operation);

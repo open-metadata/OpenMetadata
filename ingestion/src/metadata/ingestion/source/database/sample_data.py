@@ -851,6 +851,11 @@ class SampleDataSource(
 
     def ingest_pipelines(self) -> Iterable[Pipeline]:
         for pipeline in self.pipelines["pipelines"]:
+            owner = None
+            if pipeline.get("owner"):
+                user = self.metadata.get_user_by_email(email=pipeline.get("owner"))
+                if user:
+                    owner = EntityReference(id=user.id.__root__, type="user")
             pipeline_ev = CreatePipelineRequest(
                 name=pipeline["name"],
                 displayName=pipeline["displayName"],
@@ -858,6 +863,8 @@ class SampleDataSource(
                 sourceUrl=pipeline["sourceUrl"],
                 tasks=pipeline["tasks"],
                 service=self.pipeline_service.fullyQualifiedName,
+                owner=owner,
+                scheduleInterval=pipeline.get("scheduleInterval"),
             )
             yield pipeline_ev
 

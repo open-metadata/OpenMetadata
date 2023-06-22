@@ -13,7 +13,6 @@
 
 import { Card, Tabs } from 'antd';
 import classNames from 'classnames';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import {
   ChangeDescription,
   Column,
@@ -384,10 +383,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
   }, [currentVersionData]);
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(currentVersionData),
-      })}>
+    <>
       {isVersionLoading ? (
         <Loader />
       ) : (
@@ -441,7 +437,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
         versionList={versionList}
         onBack={backHandler}
       />
-    </PageLayoutV1>
+    </>
   );
 };
 

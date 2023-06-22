@@ -59,6 +59,7 @@ describe('Teams flow should work properly', () => {
     cy.get('[data-testid="settings-left-panel"]')
       .should('exist')
       .should('be.visible')
+      .contains('Teams')
       .click();
   });
 

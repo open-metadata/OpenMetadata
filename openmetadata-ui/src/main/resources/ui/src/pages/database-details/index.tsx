@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Skeleton, Space, Table, Tabs } from 'antd';
+import { Col, Row, Skeleton, Space, Table, Tabs } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import ActivityFeedList from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList';
+import ActivityFeedProvider, {
+  useActivityFeedProvider,
+} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import Description from 'components/common/description/Description';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
 import EntitySummaryDetails from 'components/common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -43,7 +46,6 @@ import { observer } from 'mobx-react';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, {
   FunctionComponent,
-  RefObject,
   useCallback,
   useEffect,
   useMemo,
@@ -57,14 +59,9 @@ import {
   getDatabaseSchemas,
   patchDatabaseDetails,
 } from 'rest/databaseAPI';
-import {
-  getAllFeeds,
-  getFeedCount,
-  postFeedById,
-  postThread,
-} from 'rest/feedsAPI';
+import { getFeedCount, postThread } from 'rest/feedsAPI';
 import { fetchTagsAndGlossaryTerms } from 'utils/TagsUtils';
-import { default as AppState, default as appState } from '../../AppState';
+import { default as appState } from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
@@ -77,25 +74,18 @@ import {
 } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityInfo, EntityTabs, EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
-import { Post, Thread } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/entity/teams/user';
 import { UsageDetails } from '../../generated/type/entityUsage';
 import { Paging } from '../../generated/type/paging';
-import { useElementInView } from '../../hooks/useElementInView';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
-import {
-  deletePost,
-  getEntityFieldThreadCounts,
-  updateThreadData,
-} from '../../utils/FeedUtils';
+import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import {
@@ -112,6 +102,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
+  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const [slashedDatabaseName, setSlashedDatabaseName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -122,7 +113,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [database, setDatabase] = useState<Database>();
   const [serviceType, setServiceType] = useState<string>();
-  const [schemaData, setSchemaData] = useState<Array<DatabaseSchema>>([]);
+  const [schemaData, setSchemaData] = useState<DatabaseSchema[]>([]);
   const [schemaDataLoading, setSchemaDataLoading] = useState<boolean>(true);
 
   const [databaseName, setDatabaseName] = useState<string>(
@@ -139,18 +130,12 @@ const DatabaseDetails: FunctionComponent = () => {
     useState<number>(0);
 
   const [error, setError] = useState('');
-
-  const [entityThread, setEntityThread] = useState<Thread[]>([]);
-  const [isentityThreadLoading, setIsentityThreadLoading] =
-    useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
     EntityFieldThreadCount[]
   >([]);
 
   const [threadLink, setThreadLink] = useState<string>('');
-  const [paging, setPaging] = useState<Paging>({} as Paging);
-  const [elementRef, isInView] = useElementInView(observerOptions);
   const [currentPage, setCurrentPage] = useState(1);
   const [isEditable, setIsEditable] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<TagOption>>([]);
@@ -441,69 +426,10 @@ const DatabaseDetails: FunctionComponent = () => {
     [database, database?.owner, settingsUpdateHandler]
   );
 
-  const fetchActivityFeed = (after?: string) => {
-    setIsentityThreadLoading(true);
-    getAllFeeds(getEntityFeedLink(EntityType.DATABASE, databaseFQN), after)
-      .then((res) => {
-        const { data, paging: pagingObj } = res;
-        if (data) {
-          setPaging(pagingObj);
-          setEntityThread((prevData) => [...prevData, ...data]);
-        } else {
-          throw t('server.unexpected-response');
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.entity-fetch-error', {
-            entity: t('label.feed-plural'),
-          })
-        );
-      })
-      .finally(() => setIsentityThreadLoading(false));
-  };
-
-  const postFeedHandler = (value: string, id: string) => {
-    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
-
-    const data = {
-      message: value,
-      from: currentUser,
-    } as Post;
-    postFeedById(id, data)
-      .then((res) => {
-        if (res) {
-          const { id, posts } = res;
-          setEntityThread((pre) => {
-            return pre.map((thread) => {
-              if (thread.id === id) {
-                return { ...res, posts: posts?.slice(-3) };
-              } else {
-                return thread;
-              }
-            });
-          });
-          getEntityFeedCount();
-        } else {
-          throw t('server.unexpected-response');
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.add-entity-error', {
-            entity: t('label.feed'),
-          })
-        );
-      });
-  };
-
   const createThread = (data: CreateThread) => {
     postThread(data)
       .then((res) => {
         if (res) {
-          setEntityThread((pre) => [...pre, res]);
           getEntityFeedCount();
         } else {
           showErrorToast(t('server.unexpected-response'));
@@ -517,37 +443,6 @@ const DatabaseDetails: FunctionComponent = () => {
           })
         );
       });
-  };
-
-  const deletePostHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ) => {
-    deletePost(threadId, postId, isThread, setEntityThread);
-  };
-
-  const updateThreadHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean,
-    data: Operation[]
-  ) => {
-    updateThreadData(threadId, postId, isThread, data, setEntityThread);
-  };
-
-  const getLoader = () => {
-    return isentityThreadLoading ? <Loader /> : null;
-  };
-
-  const fetchMoreFeed = (
-    isElementInView: boolean,
-    pagingObj: Paging,
-    isFeedLoading: boolean
-  ) => {
-    if (isElementInView && pagingObj?.after && !isFeedLoading) {
-      fetchActivityFeed(pagingObj.after);
-    }
   };
 
   useEffect(() => {
@@ -575,18 +470,6 @@ const DatabaseDetails: FunctionComponent = () => {
       getDetailsByFQN();
     }
   }, [databasePermission, databaseFQN]);
-
-  useEffect(() => {
-    if (EntityTabs.ACTIVITY_FEED === activeTab) {
-      fetchActivityFeed();
-    } else {
-      setEntityThread([]);
-    }
-  }, [activeTab]);
-
-  useEffect(() => {
-    fetchMoreFeed(isInView, paging, isentityThreadLoading);
-  }, [isInView, paging, isentityThreadLoading]);
 
   useEffect(() => {
     fetchDatabasePermission();
@@ -647,38 +530,25 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const handleUpdateTier = useCallback(
     (newTier?: string) => {
-      if (newTier) {
-        const tierTag = newTier
-          ? [
-              ...getTagsWithoutTier(database?.tags ?? []),
-              {
-                tagFQN: newTier,
-                labelType: LabelType.Manual,
-                state: State.Confirmed,
-              },
-            ]
-          : database?.tags;
-        const updatedTableDetails = {
-          ...database,
-          tags: tierTag,
-        };
+      const tierTag = newTier
+        ? [
+            ...getTagsWithoutTier(database?.tags ?? []),
+            {
+              tagFQN: newTier,
+              labelType: LabelType.Manual,
+              state: State.Confirmed,
+            },
+          ]
+        : getTagsWithoutTier(database?.tags ?? []);
+      const updatedTableDetails = {
+        ...database,
+        tags: tierTag,
+      };
 
-        return settingsUpdateHandler(updatedTableDetails as Database);
-      }
-
-      return;
+      return settingsUpdateHandler(updatedTableDetails as Database);
     },
     [settingsUpdateHandler, database, tier]
   );
-
-  const handleRemoveTier = useCallback(() => {
-    const updatedTableDetails = {
-      ...database,
-      tags: getTagsWithoutTier(database?.tags ?? []),
-    };
-
-    return settingsUpdateHandler(updatedTableDetails as Database);
-  }, [settingsUpdateHandler, database, tier]);
 
   const handleUpdateDisplayName = async (data: EntityName) => {
     if (isUndefined(database)) {
@@ -770,7 +640,6 @@ const DatabaseDetails: FunctionComponent = () => {
         <Col span={24}>
           <Table
             bordered
-            className="table-shadow"
             columns={tableColumn}
             data-testid="database-databaseSchemas"
             dataSource={schemaData}
@@ -827,207 +696,192 @@ const DatabaseDetails: FunctionComponent = () => {
           pageTitle={t('label.entity-detail-plural', {
             entity: getEntityName(database),
           })}>
-          {isDatabaseDetailsLoading ? (
-            <Skeleton
-              active
-              paragraph={{
-                rows: 3,
-                width: ['20%', '80%', '60%'],
-              }}
-            />
-          ) : (
-            <>
-              {database && (
-                <Row className="p-x-xs" wrap={false}>
-                  <Col flex="auto">
-                    <EntityHeader
-                      breadcrumb={slashedDatabaseName}
-                      entityData={database}
-                      entityType={EntityType.DATABASE}
-                      icon={
-                        <img
-                          className="h-8"
-                          src={serviceTypeLogo(serviceType ?? '')}
-                        />
-                      }
-                      serviceName={database.service.name ?? ''}
-                    />
-                  </Col>
-                  <Col flex="30px">
-                    <ManageButton
-                      isRecursiveDelete
-                      allowSoftDelete={false}
-                      canDelete={databasePermission.Delete}
-                      displayName={database.displayName}
-                      editDisplayNamePermission={
-                        databasePermission.EditAll ||
-                        databasePermission.EditDisplayName
-                      }
-                      entityFQN={databaseFQN}
-                      entityId={databaseId}
-                      entityName={databaseName}
-                      entityType={EntityType.DATABASE}
-                      onEditDisplayName={handleUpdateDisplayName}
-                    />
-                  </Col>
-                </Row>
-              )}
-              <Col className="m-t-xs" span={24}>
-                <Space wrap align="center" data-testid="extrainfo" size={4}>
-                  {extraInfo.map((info, index) => (
-                    <span
-                      className="d-flex tw-items-center"
-                      data-testid={info.key || `info${index}`}
-                      key={index}>
-                      <EntitySummaryDetails
-                        currentOwner={database?.owner}
-                        data={info}
-                        removeTier={handleRemoveTier}
-                        tier={getTierTags(database?.tags ?? [])}
-                        updateOwner={
-                          databasePermission.EditOwner ||
-                          databasePermission.EditAll
-                            ? handleUpdateOwner
-                            : undefined
-                        }
-                        updateTier={
-                          databasePermission.EditTags ||
-                          databasePermission.EditAll
-                            ? handleUpdateTier
-                            : undefined
-                        }
-                      />
-                      {extraInfo.length !== 1 &&
-                      index < extraInfo.length - 1 ? (
-                        <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
-                          {t('label.pipe-symbol')}
-                        </span>
-                      ) : null}
-                    </span>
-                  ))}
-                </Space>
-              </Col>
-              <Col className="m-t-xs" span={24}>
-                <Space
-                  wrap
-                  align="center"
-                  data-testid="entity-tags"
-                  size={6}
-                  onClick={() => {
-                    if (isTagEditable) {
-                      // Fetch tags and terms only once
-                      if (tagList.length === 0) {
-                        fetchTags();
-                      }
-                      setIsEditable(true);
-                    }
-                  }}>
-                  {!deleted && (
-                    <TagsContainer
-                      className="w-min-20"
-                      dropDownHorzPosRight={false}
-                      editable={isEditable}
-                      isLoading={isTagLoading}
-                      selectedTags={selectedTags}
-                      showAddTagButton={isTagEditable && isEmpty(selectedTags)}
-                      showEditTagButton={isTagEditable}
-                      size="small"
-                      tagList={tagList}
-                      onCancel={() => {
-                        handleTagSelection();
-                      }}
-                      onSelectionChange={(tags) => {
-                        handleTagSelection(tags);
-                      }}
-                    />
-                  )}
-                </Space>
-              </Col>
-            </>
-          )}
-
-          <Col span={24}>
-            <Row className="m-t-md">
+          <Row className="page-container">
+            {isDatabaseDetailsLoading ? (
+              <Skeleton
+                active
+                paragraph={{
+                  rows: 3,
+                  width: ['20%', '80%', '60%'],
+                }}
+              />
+            ) : (
               <Col span={24}>
-                <Tabs
-                  activeKey={activeTab ?? EntityTabs.SCHEMA}
-                  items={tabs}
-                  onChange={activeTabHandler}
-                />
-              </Col>
-              <Col className="p-y-md" span={24}>
-                {activeTab === EntityTabs.SCHEMA && (
-                  <Card className="h-full">
-                    <Row gutter={[16, 16]}>
-                      <Col data-testid="description-container" span={24}>
-                        <Description
-                          description={description}
-                          entityFieldThreads={getEntityFieldThreadCounts(
-                            EntityField.DESCRIPTION,
-                            entityFieldThreadCount
-                          )}
-                          entityFqn={databaseFQN}
-                          entityName={databaseName}
-                          entityType={EntityType.DATABASE}
-                          hasEditAccess={
-                            databasePermission.EditDescription ||
+                {database && (
+                  <Row wrap={false}>
+                    <Col flex="auto">
+                      <EntityHeader
+                        breadcrumb={slashedDatabaseName}
+                        entityData={database}
+                        entityType={EntityType.DATABASE}
+                        icon={
+                          <img
+                            className="h-8"
+                            src={serviceTypeLogo(serviceType ?? '')}
+                          />
+                        }
+                        serviceName={database.service.name ?? ''}
+                      />
+                    </Col>
+                    <Col flex="30px">
+                      <ManageButton
+                        isRecursiveDelete
+                        allowSoftDelete={false}
+                        canDelete={databasePermission.Delete}
+                        displayName={database.displayName}
+                        editDisplayNamePermission={
+                          databasePermission.EditAll ||
+                          databasePermission.EditDisplayName
+                        }
+                        entityFQN={databaseFQN}
+                        entityId={databaseId}
+                        entityName={databaseName}
+                        entityType={EntityType.DATABASE}
+                        onEditDisplayName={handleUpdateDisplayName}
+                      />
+                    </Col>
+                  </Row>
+                )}
+                <Col className="m-t-xs" span={24}>
+                  <Space wrap align="center" data-testid="extrainfo" size={4}>
+                    {extraInfo.map((info, index) => (
+                      <span
+                        className="d-flex tw-items-center"
+                        data-testid={info.key || `info${index}`}
+                        key={index}>
+                        <EntitySummaryDetails
+                          currentOwner={database?.owner}
+                          data={info}
+                          tier={getTierTags(database?.tags ?? [])}
+                          updateOwner={
+                            databasePermission.EditOwner ||
                             databasePermission.EditAll
+                              ? handleUpdateOwner
+                              : undefined
                           }
-                          isEdit={isEdit}
-                          onCancel={onCancel}
-                          onDescriptionEdit={onDescriptionEdit}
-                          onDescriptionUpdate={onDescriptionUpdate}
-                          onThreadLinkSelect={onThreadLinkSelect}
+                          updateTier={
+                            databasePermission.EditTags ||
+                            databasePermission.EditAll
+                              ? handleUpdateTier
+                              : undefined
+                          }
                         />
-                      </Col>
-
-                      {databaseTable}
-                    </Row>
-                  </Card>
-                )}
-                {activeTab === EntityTabs.ACTIVITY_FEED && (
-                  <Card className="p-t-xss p-b-md">
-                    <Row className="entity-feed-list" id="activityfeed">
-                      <Col offset={4} span={16}>
-                        <ActivityFeedList
-                          hideFeedFilter
-                          hideThreadFilter
-                          isEntityFeed
-                          withSidePanel
-                          className=""
-                          deletePostHandler={deletePostHandler}
-                          entityName={databaseName}
-                          feedList={entityThread}
-                          postFeedHandler={postFeedHandler}
-                          updateThreadHandler={updateThreadHandler}
-                        />
-                      </Col>
-                    </Row>
-                  </Card>
-                )}
-                <Col
-                  data-testid="observer-element"
-                  id="observer-element"
-                  ref={elementRef as RefObject<HTMLDivElement>}
-                  span={24}>
-                  {getLoader()}
+                        {extraInfo.length !== 1 &&
+                        index < extraInfo.length - 1 ? (
+                          <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
+                            {t('label.pipe-symbol')}
+                          </span>
+                        ) : null}
+                      </span>
+                    ))}
+                  </Space>
+                </Col>
+                <Col className="m-t-xs" span={24}>
+                  <Space
+                    wrap
+                    align="center"
+                    data-testid="entity-tags"
+                    size={6}
+                    onClick={() => {
+                      if (isTagEditable) {
+                        // Fetch tags and terms only once
+                        if (tagList.length === 0) {
+                          fetchTags();
+                        }
+                        setIsEditable(true);
+                      }
+                    }}>
+                    {!deleted && (
+                      <TagsContainer
+                        className="w-min-20"
+                        dropDownHorzPosRight={false}
+                        editable={isEditable}
+                        isLoading={isTagLoading}
+                        selectedTags={selectedTags}
+                        showAddTagButton={
+                          isTagEditable && isEmpty(selectedTags)
+                        }
+                        showEditTagButton={isTagEditable}
+                        size="small"
+                        tagList={tagList}
+                        onCancel={() => {
+                          handleTagSelection();
+                        }}
+                        onSelectionChange={(tags) => {
+                          handleTagSelection(tags);
+                        }}
+                      />
+                    )}
+                  </Space>
                 </Col>
               </Col>
-            </Row>
-          </Col>
-          <Col span={24}>
-            {threadLink ? (
-              <ActivityThreadPanel
-                createThread={createThread}
-                deletePostHandler={deletePostHandler}
-                open={Boolean(threadLink)}
-                postFeedHandler={postFeedHandler}
-                threadLink={threadLink}
-                updateThreadHandler={updateThreadHandler}
-                onCancel={onThreadPanelClose}
-              />
-            ) : null}
-          </Col>
+            )}
+
+            <Col span={24}>
+              <Row className="m-t-md">
+                <Col span={24}>
+                  <Tabs
+                    activeKey={activeTab ?? EntityTabs.SCHEMA}
+                    items={tabs}
+                    onChange={activeTabHandler}
+                  />
+                </Col>
+                <Col className="p-y-md" span={24}>
+                  {activeTab === EntityTabs.SCHEMA && (
+                    <>
+                      <Row gutter={[16, 16]}>
+                        <Col data-testid="description-container" span={24}>
+                          <DescriptionV1
+                            description={description}
+                            entityFieldThreads={getEntityFieldThreadCounts(
+                              EntityField.DESCRIPTION,
+                              entityFieldThreadCount
+                            )}
+                            entityFqn={databaseFQN}
+                            entityName={databaseName}
+                            entityType={EntityType.DATABASE}
+                            hasEditAccess={
+                              databasePermission.EditDescription ||
+                              databasePermission.EditAll
+                            }
+                            isEdit={isEdit}
+                            onCancel={onCancel}
+                            onDescriptionEdit={onDescriptionEdit}
+                            onDescriptionUpdate={onDescriptionUpdate}
+                            onThreadLinkSelect={onThreadLinkSelect}
+                          />
+                        </Col>
+
+                        {databaseTable}
+                      </Row>
+                    </>
+                  )}
+                  {activeTab === EntityTabs.ACTIVITY_FEED && (
+                    <ActivityFeedProvider>
+                      <ActivityFeedTab
+                        entityType={EntityType.DATABASE}
+                        fqn={database?.fullyQualifiedName ?? ''}
+                        onFeedUpdate={() => Promise.resolve()}
+                      />
+                    </ActivityFeedProvider>
+                  )}
+                </Col>
+              </Row>
+            </Col>
+            <Col span={24}>
+              {threadLink ? (
+                <ActivityThreadPanel
+                  createThread={createThread}
+                  deletePostHandler={deleteFeed}
+                  open={Boolean(threadLink)}
+                  postFeedHandler={postFeed}
+                  threadLink={threadLink}
+                  updateThreadHandler={updateFeed}
+                  onCancel={onThreadPanelClose}
+                />
+              ) : null}
+            </Col>
+          </Row>
         </PageLayoutV1>
       ) : (
         <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
