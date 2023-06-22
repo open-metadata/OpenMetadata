@@ -33,6 +33,7 @@
     "admin": "Admin",
     "admin-plural": "Admins",
     "admin-profile": "Admin profile",
+    "advanced": "Advanced",
     "advanced-configuration": "Advanced Configuration",
     "advanced-entity": "Advanced {{entity}}",
     "advanced-search": "Advanced Search",
