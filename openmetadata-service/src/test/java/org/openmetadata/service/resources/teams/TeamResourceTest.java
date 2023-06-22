@@ -117,6 +117,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
   public TeamResourceTest() {
     super(TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS);
+    supportsSearchIndex = true;
   }
 
   public void setupTeams(TestInfo test) throws HttpResponseException {
