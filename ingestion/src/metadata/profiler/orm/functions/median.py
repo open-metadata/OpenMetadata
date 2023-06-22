@@ -48,7 +48,7 @@ def _(elements, compiler, **kwargs):
     col, _, percentile = [
         compiler.process(element, **kwargs) for element in elements.clauses
     ]
-    return "quantile(%s)(%s)" % (percentile, col)
+    return "if(isNaN(quantile(%s)(%s)),null,quantile(%s)(%s))" % ((percentile, col) * 2)
 
 
 # pylint: disable=unused-argument

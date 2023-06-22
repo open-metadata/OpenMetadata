@@ -41,7 +41,7 @@ from metadata.profiler.orm.functions.table_metric_construct import (
     table_metric_construct_factory,
 )
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.profiler.processor.sampler import Sampler
+from metadata.profiler.processor.sqlalchemy.sampler import Sampler
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
@@ -68,6 +68,8 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
     sqlalchemy.
     """
 
+    # pylint: disable=too-many-instance-attributes,too-many-arguments
+
     _profiler_type: str = DatabaseConnection.__name__
 
     def __init__(
@@ -82,7 +84,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         sqa_metadata=None,
         timeout_seconds=43200,
         thread_count=5,
-        **kwargs,
+        **_,
     ):
         """Instantiate SQA Interface object"""
         self._thread_count = thread_count
@@ -172,6 +174,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
+        return None
 
     @valuedispatch
     def _get_metrics(self, *args, **kwargs):
@@ -199,6 +202,8 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         Returns:
             dictionnary of results
         """
+        # pylint: disable=protected-access
+
         try:
             dialect = runner._session.get_bind().dialect.name
             row = table_metric_construct_factory.construct(
@@ -250,12 +255,9 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
                 **self._is_array_column(column),
             )
             return dict(row)
-        except Exception as exc:
-            if (
-                isinstance(exc, ProgrammingError)
-                and exc.orig
-                and exc.orig.errno
-                in OVERFLOW_ERROR_CODES.get(session.bind.dialect.name)
+        except ProgrammingError as exc:
+            if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(
+                session.bind.dialect.name
             ):
                 logger.info(
                     f"Computing metrics without sum for {runner.table.__tablename__}.{column.name}"
@@ -264,8 +266,10 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
                     metrics, runner, session, column
                 )
 
+        except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
+        return None
 
     # pylint: disable=unused-argument
     @_get_metrics.register(MetricTypes.Query.value)
@@ -302,6 +306,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
+        return None
 
     # pylint: disable=unused-argument
     @_get_metrics.register(MetricTypes.Window.value)
@@ -331,17 +336,17 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
                 *[metric(column).fn() for metric in metrics],
                 **self._is_array_column(column),
             )
-        except Exception as exc:
-            if (
-                isinstance(exc, ProgrammingError)
-                and exc.orig
-                and exc.orig.errno
-                in OVERFLOW_ERROR_CODES.get(session.bind.dialect.name)
+        except ProgrammingError as exc:
+            if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(
+                session.bind.dialect.name
             ):
                 logger.info(
                     f"Skipping window metrics for {runner.table.__tablename__}.{column.name} due to overflow"
                 )
                 return None
+
+        except Exception as exc:
+
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
         if row:
@@ -374,6 +379,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}: {exc}"
             handle_query_exception(msg, exc, session)
+        return None
 
     def _create_thread_safe_sampler(
         self,
@@ -548,7 +554,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
             return None
 
     def get_hybrid_metrics(
-        self, column: Column, metric: Metrics, column_results: Dict, table, **kwargs
+        self, column: Column, metric: Metrics, column_results: Dict, **kwargs
     ):
         """Given a list of metrics, compute the given results
         and returns the values
@@ -561,7 +567,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         """
         sampler = Sampler(
             session=self.session,
-            table=table,
+            table=kwargs.get("table"),
             sample_columns=self._get_sample_columns(),
             profile_sample_config=self.profile_sample_config,
             partition_details=self.partition_details,
