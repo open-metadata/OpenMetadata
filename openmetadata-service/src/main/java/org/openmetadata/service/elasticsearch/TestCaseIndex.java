@@ -31,7 +31,7 @@ public class TestCaseIndex implements ElasticSearchIndex {
     List<TestSuite> testSuiteArray = new ArrayList<>();
     testSuiteArray.add(testSuite);
     Map<String, Object> doc = JsonUtils.getMap(testCase);
-    doc.put("testSuites", testSuiteArray); // add the executable test suite on creation
+    doc.put("testSuites", testSuiteArray);
     return doc;
   }
 
