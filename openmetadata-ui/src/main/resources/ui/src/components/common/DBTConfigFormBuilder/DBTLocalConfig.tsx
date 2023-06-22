@@ -12,8 +12,9 @@
  */
 
 import { t } from 'i18next';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import React, { Fragment, FunctionComponent } from 'react';
-import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
+import { generateFormFields } from 'utils/formUtils';
 import DBTCommonFields from './DBTCommonFields.component';
 import { DbtConfigLocal } from './DBTConfigForm.interface';
 

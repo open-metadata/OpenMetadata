@@ -58,6 +58,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -87,13 +88,15 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.type.TaskDetails;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
@@ -103,6 +106,7 @@ import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
@@ -151,7 +155,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private final String collectionPath;
   private final Class<T> entityClass;
   @Getter protected final String entityType;
-  public final EntityDAO<T> dao;
+  @Getter protected final EntityDAO<T> dao;
   protected final CollectionDAO daoCollection;
   @Getter protected final List<String> allowedFields;
   public final boolean supportsSoftDelete;
@@ -173,8 +177,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityDAO<T> entityDAO,
       CollectionDAO collectionDAO,
       String patchFields,
-      String putFields,
-      List<MetadataOperation> entitySpecificOperations) {
+      String putFields) {
     this.collectionPath = collectionPath;
     this.entityClass = entityClass;
     allowedFields = getEntityFields(entityClass);
@@ -189,7 +192,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
     this.supportsFollower = allowedFields.contains(FIELD_FOLLOWERS);
     this.supportsVotes = allowedFields.contains(FIELD_VOTES);
-    Entity.registerEntity(entityClass, entityType, dao, this, entitySpecificOperations);
   }
 
   /**
@@ -244,6 +246,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public abstract void storeRelationships(T entity) throws IOException;
 
   /**
+   * This method is called to set inherited property that an entity inherits from its parent.
+   *
+   * @see TableRepository#setInheritedFields(Table) for an example implementation
+   */
+  @SuppressWarnings("unused")
+  public void setInheritedFields(T entity) throws IOException {
+    // Override to set inherited properties
+  }
+
+  /**
    * PATCH operations can't overwrite certain fields, such as entity ID, fullyQualifiedNames etc. Instead of throwing an
    * error, we take lenient approach of ignoring the user error and restore those attributes based on what is already
    * stored in the original entity.
@@ -254,7 +266,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /** Set fullyQualifiedName of an entity */
   public void setFullyQualifiedName(T entity) {
-    entity.setFullyQualifiedName(entity.getName());
+    entity.setFullyQualifiedName(EntityInterfaceUtil.quoteName(entity.getName()));
+  }
+
+  /** Set fullyQualifiedNameHash of an entity */
+  public String getFullyQualifiedNameHash(T entity) {
+    return FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
+  }
+
+  /** Update an entity based suggested description and tags in the task */
+  public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) throws IOException {
+    TaskType taskType = task.getType();
+    T entity = getByName(null, entityLink.getEntityFQN(), getFields("tags"), Include.ALL);
+    String origJson = JsonUtils.pojoToJson(entity);
+    if (EntityUtil.isDescriptionTask(taskType) && entityLink.getFieldName().equals(FIELD_DESCRIPTION)) {
+      entity.setDescription(newValue);
+    } else if (supportsTags && EntityUtil.isTagTask(taskType) && entityLink.getFieldName().equals("tags")) {
+      List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
+      entity.setTags(tags);
+    } else {
+      // Not supported
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.invalidFieldForTask(entityLink.getFieldName(), task.getType()));
+    }
+    String updatedEntityJson = JsonUtils.pojoToJson(entity);
+    JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
+    patch(null, entity.getId(), user, patch);
   }
 
   /**
@@ -333,7 +370,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  public final T getByName(UriInfo uriInfo, String fqn, Fields fields) throws IOException {
+  public T getByName(UriInfo uriInfo, String fqn, Fields fields) throws IOException {
     return getByName(uriInfo, fqn, fields, NON_DELETED);
   }
 
@@ -380,10 +417,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       String beforeCursor;
       String afterCursor = null;
-      beforeCursor = after == null ? null : entities.get(0).getFullyQualifiedName();
+      beforeCursor = after == null ? null : entities.get(0).getName();
       if (entities.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
         entities.remove(limitParam);
-        afterCursor = entities.get(limitParam - 1).getFullyQualifiedName();
+        afterCursor = entities.get(limitParam - 1).getName();
       }
       return getResultList(entities, beforeCursor, afterCursor, total);
     } else {
@@ -414,11 +451,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       String beforeCursor;
       String afterCursor = null;
-      beforeCursor = after == null ? null : JsonUtils.readValue(jsons.get(0), entityClass).getFullyQualifiedName();
-      if (jsons.size() > limitParam) {
+      beforeCursor = after == null ? null : entities.get(0).getName();
+      if (entities.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
         T lastReadEntity = JsonUtils.readValue(jsons.get(limitParam), entityClass);
-        entities.remove(lastReadEntity.getId());
-        afterCursor = JsonUtils.readValue(jsons.get(limitParam - 1), entityClass).getFullyQualifiedName();
+        entities.remove(limitParam);
+        afterCursor = entities.get(limitParam - 1).getName();
         errors.forEach((key, value) -> entities.remove(key));
         // Remove the Last Json Entry if present in error, since the read was actually just till limitParam , and if
         // error
@@ -450,9 +487,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     String afterCursor;
     if (entities.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
       entities.remove(0);
-      beforeCursor = entities.get(0).getFullyQualifiedName();
+      beforeCursor = entities.get(0).getName();
     }
-    afterCursor = entities.get(entities.size() - 1).getFullyQualifiedName();
+    afterCursor = entities.get(entities.size() - 1).getName();
     return getResultList(entities, beforeCursor, afterCursor, total);
   }
 
@@ -517,6 +554,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity.getFullyQualifiedName()) : null);
     entity.setExtension(fields.contains(FIELD_EXTENSION) ? getExtension(entity) : null);
     setFields(entity, fields);
+    setInheritedFields(entity);
     return entity;
   }
 
@@ -573,6 +611,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PUT);
     entityUpdater.update();
     String change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
+    setInheritedFields(updated);
     return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
@@ -594,6 +633,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
     entityUpdater.update();
     String change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
+    setInheritedFields(updated);
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
@@ -776,7 +816,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.relationshipDAO().deleteAll(id, entityType);
 
     // Delete all the field relationships to other entities
-    daoCollection.fieldRelationshipDAO().deleteAllByPrefix(entityInterface.getFullyQualifiedName());
+    daoCollection
+        .fieldRelationshipDAO()
+        .deleteAllByPrefix(FullyQualifiedName.buildHash(entityInterface.getFullyQualifiedName()));
 
     // Delete all the extensions of entity
     daoCollection.entityExtensionDAO().deleteAll(id);
@@ -836,6 +878,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     storeEntity(entity, false);
     storeExtension(entity);
     storeRelationships(entity);
+    setInheritedFields(entity);
     return entity;
   }
 
@@ -848,16 +891,92 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setTags(null);
 
     if (update) {
-      dao.update(entity.getId(), JsonUtils.pojoToJson(entity));
+      dao.update(entity.getId(), getFullyQualifiedNameHash(entity), JsonUtils.pojoToJson(entity));
       LOG.info("Updated {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
     } else {
-      dao.insert(entity);
+      dao.insert(entity, getFullyQualifiedNameHash(entity));
       LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
     }
 
     // Restore the relationships
     entity.setOwner(owner);
     entity.setTags(tags);
+  }
+
+  protected void storeTimeSeries(
+      String fullyQualifiedName, String extension, String jsonSchema, String entityJson, Long timestamp, boolean update)
+      throws JsonProcessingException {
+    String fqnHash = FullyQualifiedName.buildHash(fullyQualifiedName);
+    if (update) {
+      daoCollection.entityExtensionTimeSeriesDao().update(fqnHash, extension, entityJson, timestamp);
+    } else {
+      daoCollection.entityExtensionTimeSeriesDao().insert(fqnHash, extension, jsonSchema, entityJson);
+    }
+  }
+
+  protected void storeTimeSeriesWithOperation(
+      String fullyQualifiedName,
+      String extension,
+      String jsonSchema,
+      String entityJson,
+      Long timestamp,
+      String operation,
+      boolean update)
+      throws JsonProcessingException {
+    String fqnHash = FullyQualifiedName.buildHash(fullyQualifiedName);
+    if (update) {
+      daoCollection
+          .entityExtensionTimeSeriesDao()
+          .updateExtensionByOperation(fqnHash, extension, entityJson, timestamp, operation);
+    } else {
+      daoCollection.entityExtensionTimeSeriesDao().insert(fqnHash, extension, jsonSchema, entityJson);
+    }
+  }
+
+  public String getExtensionAtTimestamp(String fullyQualifiedName, String extension, Long timestamp) {
+    String fqnHash = FullyQualifiedName.buildHash(fullyQualifiedName);
+    return daoCollection.entityExtensionTimeSeriesDao().getExtensionAtTimestamp(fqnHash, extension, timestamp);
+  }
+
+  public String getExtensionAtTimestampWithOperation(
+      String fullyQualifiedName, String extension, Long timestamp, String operation) {
+    String fqnHash = FullyQualifiedName.buildHash(fullyQualifiedName);
+    return daoCollection
+        .entityExtensionTimeSeriesDao()
+        .getExtensionAtTimestampWithOperation(fqnHash, extension, timestamp, operation);
+  }
+
+  public String getLatestExtensionFromTimeseries(String fullyQualifiedName, String extension) {
+    String fqnHash = FullyQualifiedName.buildHash(fullyQualifiedName);
+    return daoCollection.entityExtensionTimeSeriesDao().getLatestExtension(fqnHash, extension);
+  }
+
+  public List<String> getResultsFromAndToTimestamps(
+      String fullyQualifiedName, String extension, Long startTs, Long endTs) {
+    return getResultsFromAndToTimestamps(
+        fullyQualifiedName, extension, startTs, endTs, CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy.DESC);
+  }
+
+  public List<String> getResultsFromAndToTimestamps(
+      String fullyQualifiedName,
+      String extension,
+      Long startTs,
+      Long endTs,
+      CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy) {
+    String fqnHash = FullyQualifiedName.buildHash(fullyQualifiedName);
+    return daoCollection
+        .entityExtensionTimeSeriesDao()
+        .listBetweenTimestampsByOrder(fqnHash, extension, startTs, endTs, orderBy);
+  }
+
+  public void deleteExtensionAtTimestamp(String fullyQualifiedName, String extension, Long timestamp) {
+    String fqnHash = FullyQualifiedName.buildHash(fullyQualifiedName);
+    daoCollection.entityExtensionTimeSeriesDao().deleteAtTimestamp(fqnHash, extension, timestamp);
+  }
+
+  public void deleteExtensionBeforeTimestamp(String fullyQualifiedName, String extension, Long timestamp) {
+    String fqnHash = FullyQualifiedName.buildHash(fullyQualifiedName);
+    daoCollection.entityExtensionTimeSeriesDao().deleteBeforeTimestamp(fqnHash, extension, timestamp);
   }
 
   public void validateExtension(T entity) {
@@ -984,7 +1103,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .applyTag(
               tagLabel.getSource().ordinal(),
               tagLabel.getTagFQN(),
-              targetFQN,
+              FullyQualifiedName.buildHash(tagLabel.getTagFQN()),
+              FullyQualifiedName.buildHash(targetFQN),
               tagLabel.getLabelType().ordinal(),
               tagLabel.getState().ordinal());
     }
@@ -994,7 +1114,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     Map<String, TagLabel> map = new HashMap<>();
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
       // When two tags have the same parent that is mutuallyExclusive, then throw an error
-      String parentFqn = FullyQualifiedName.getParent(tagLabel.getTagFQN());
+      String parentFqn = FullyQualifiedName.getParentFQN(tagLabel.getTagFQN());
       TagLabel stored = map.put(parentFqn, tagLabel);
       if (stored != null && TagLabelCache.getInstance().mutuallyExclusive(tagLabel)) {
         throw new IllegalArgumentException(CatalogExceptionMessage.mutuallyExclusiveLabels(tagLabel, stored));
@@ -1047,7 +1167,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return RestUtil.getHref(uriInfo, collectionPath, id);
   }
 
-  public T restoreEntity(String updatedBy, String entityType, UUID id) throws IOException {
+  public PutResponse<T> restoreEntity(String updatedBy, String entityType, UUID id) throws IOException {
     // If an entity being restored contains other **deleted** children entities, restore them
     List<EntityRelationshipRecord> records =
         daoCollection.relationshipDAO().findTo(id.toString(), entityType, Relationship.CONTAINS.ordinal());
@@ -1062,10 +1182,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Finally set entity deleted flag to false
     LOG.info("Restoring the {} {}", entityType, id);
-    T entity = dao.findEntityById(id, DELETED);
-    entity.setDeleted(false);
-    dao.update(entity.getId(), JsonUtils.pojoToJson(entity));
-    return entity;
+    T original = dao.findEntityById(id, DELETED);
+    setFieldsInternal(original, putFields);
+    T updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), entityClass);
+    updated.setUpdatedBy(updatedBy);
+    updated.setUpdatedAt(System.currentTimeMillis());
+    EntityUpdater updater = getUpdater(original, updated, Operation.PUT);
+    updater.update();
+    String change = updater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
+    return new PutResponse<>(Status.OK, updated, change);
   }
 
   public void addRelationship(UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship) {
@@ -1094,6 +1219,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       to = fromId;
     }
     daoCollection.relationshipDAO().insert(from, to, fromEntity, toEntity, relationship.ordinal(), json);
+  }
+
+  public final void bulkAddToRelationship(
+      UUID fromId, List<UUID> toId, String fromEntity, String toEntity, Relationship relationship) {
+    daoCollection
+        .relationshipDAO()
+        .bulkInsertToRelationship(fromId, toId, fromEntity, toEntity, relationship.ordinal());
   }
 
   public List<EntityRelationshipRecord> findBoth(
@@ -1135,7 +1267,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UUID fromId, Relationship relationship, String toEntityType, boolean mustHaveRelationship) throws IOException {
     List<EntityRelationshipRecord> records = findTo(fromId, entityType, relationship, toEntityType);
     ensureSingleRelationship(entityType, fromId, records, relationship.value(), mustHaveRelationship);
-    return records.size() >= 1
+    return !records.isEmpty()
         ? Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
         : null;
   }
@@ -1143,7 +1275,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void ensureSingleRelationship(
       String entityType, UUID id, List<?> relations, String relationshipName, boolean mustHaveRelationship) {
     // An entity can have only one container
-    if (mustHaveRelationship && relations.size() == 0) {
+    if (mustHaveRelationship && relations.isEmpty()) {
       throw new UnhandledServerException(CatalogExceptionMessage.entityTypeNotFound(entityType));
     }
     if (!mustHaveRelationship && relations.isEmpty()) {
@@ -1364,6 +1496,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     protected boolean majorVersionChange = false;
     protected final User updatingUser;
     private boolean entityRestored = false;
+    private boolean entityChanged = false;
 
     public EntityUpdater(T original, T updated, Operation operation) {
       this.original = original;
@@ -1401,6 +1534,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void updateDescription() throws JsonProcessingException {
       if (operation.isPut() && !nullOrEmpty(original.getDescription()) && updatedByBot()) {
         // Revert change to non-empty description if it is being updated by a bot
+        // This is to prevent bots from overwriting the description. Description need to be
+        // updated with a PATCH request
         updated.setDescription(original.getDescription());
         return;
       }
@@ -1410,7 +1545,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void updateDeleted() throws JsonProcessingException {
       if (operation.isPut() || operation.isPatch()) {
         // Update operation can't set delete attributed to true. This can only be done as part of delete operation
-        if (updated.getDeleted() != original.getDeleted() && Boolean.TRUE.equals(updated.getDeleted())) {
+        if (!Objects.equals(updated.getDeleted(), original.getDeleted()) && Boolean.TRUE.equals(updated.getDeleted())) {
           throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(entityType, FIELD_DELETED));
         }
         // PUT or PATCH is restoring the soft-deleted entity
@@ -1454,12 +1589,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       // Remove current entity tags in the database. It will be added back later from the merged tag list.
-      daoCollection.tagUsageDAO().deleteTagsByTarget(fqn);
+      daoCollection.tagUsageDAO().deleteTagsByTarget(FullyQualifiedName.buildHash(fqn));
 
       if (operation.isPut()) {
         // PUT operation merges tags in the request with what already exists
         EntityUtil.mergeTags(updatedTags, origTags);
+        checkMutuallyExclusive(updatedTags);
       }
+
+      // Remove current entity tags in the database. It will be added back later from the merged tag list.
+      daoCollection.tagUsageDAO().deleteTagsByTarget(fqn);
 
       List<TagLabel> addedTags = new ArrayList<>();
       List<TagLabel> deletedTags = new ArrayList<>();
@@ -1546,18 +1685,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     public final <K> boolean recordChange(String field, K orig, K updated) throws JsonProcessingException {
-      return recordChange(field, orig, updated, false, objectMatch);
+      return recordChange(field, orig, updated, false, objectMatch, true);
     }
 
     public final <K> boolean recordChange(String field, K orig, K updated, boolean jsonValue)
         throws JsonProcessingException {
-      return recordChange(field, orig, updated, jsonValue, objectMatch);
+      return recordChange(field, orig, updated, jsonValue, objectMatch, true);
     }
 
     public final <K> boolean recordChange(
         String field, K orig, K updated, boolean jsonValue, BiPredicate<K, K> typeMatch)
         throws JsonProcessingException {
+      return recordChange(field, orig, updated, jsonValue, typeMatch, true);
+    }
+
+    public final <K> boolean recordChange(
+        String field, K orig, K updated, boolean jsonValue, BiPredicate<K, K> typeMatch, boolean updateVersion)
+        throws JsonProcessingException {
       if (orig == updated) {
+        return false;
+      }
+      if (!updateVersion && entityChanged) {
         return false;
       }
       FieldChange fieldChange =
@@ -1566,13 +1714,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
               .withOldValue(jsonValue ? JsonUtils.pojoToJson(orig) : orig)
               .withNewValue(jsonValue ? JsonUtils.pojoToJson(updated) : updated);
       if (orig == null) {
-        changeDescription.getFieldsAdded().add(fieldChange);
+        entityChanged = true;
+        if (updateVersion) {
+          changeDescription.getFieldsAdded().add(fieldChange);
+        }
         return true;
       } else if (updated == null) {
-        changeDescription.getFieldsDeleted().add(fieldChange);
+        entityChanged = true;
+        if (updateVersion) {
+          changeDescription.getFieldsDeleted().add(fieldChange);
+        }
         return true;
       } else if (!typeMatch.test(orig, updated)) {
-        changeDescription.getFieldsUpdated().add(fieldChange);
+        entityChanged = true;
+        if (updateVersion) {
+          changeDescription.getFieldsUpdated().add(fieldChange);
+        }
         return true;
       }
       return false;
@@ -1721,6 +1878,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (updateVersion(original.getVersion())) { // Update changed the entity version
         storeOldVersion(); // Store old version for listing previous versions of the entity
         storeNewVersion(); // Store the update version of the entity
+      } else if (entityChanged) {
+        storeNewVersion();
       } else { // Update did not change the entity version
         updated.setUpdatedBy(original.getUpdatedBy());
         updated.setUpdatedAt(original.getUpdatedAt());
@@ -1777,7 +1936,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Delete tags related to deleted columns
       deletedColumns.forEach(
-          deleted -> daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName()));
+          deleted ->
+              daoCollection
+                  .tagUsageDAO()
+                  .deleteTagsByTarget(FullyQualifiedName.buildHash(deleted.getFullyQualifiedName())));
 
       // Add tags related to newly added columns
       for (Column added : addedColumns) {

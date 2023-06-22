@@ -12,9 +12,9 @@
  */
 
 export enum EntityType {
-  DATASET = 'dataset',
   TABLE = 'table',
   TOPIC = 'topic',
+  CLASSIFICATION = 'classification',
   DASHBOARD = 'dashboard',
   PIPELINE = 'pipeline',
   DATABASE = 'database',
@@ -44,6 +44,8 @@ export enum EntityType {
   CONTAINER = 'container',
   TAG = 'tag',
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
+  SUBSCRIPTION = 'subscription',
+  USER_NAME = 'username',
 }
 
 export enum AssetsType {
@@ -95,6 +97,8 @@ export enum TabSpecificField {
   TABLE_CONSTRAINTS = 'tableConstraints',
   EXTENSION = 'extension',
   EXECUTIONS = 'executions',
+  SCHEDULE_INTERVAL = 'scheduleInterval',
+  TESTSUITE = 'testSuite',
 }
 
 export enum FqnPart {
@@ -127,4 +131,34 @@ export enum EntityInfo {
   NUMBER_OF_OBJECTS = 'number-of-object-plural',
   DATA_MODEL_TYPE = 'data-model-type',
   QUERIES = 'queries',
+}
+
+export enum EntityTabs {
+  SCHEMA = 'schema',
+  ACTIVITY_FEED = 'activity_feed',
+  SAMPLE_DATA = 'sample_data',
+  TABLE_QUERIES = 'table_queries',
+  PROFILER = 'profiler',
+  LINEAGE = 'lineage',
+  DBT = 'dbt',
+  CUSTOM_PROPERTIES = 'custom_properties',
+  MODEL = 'model',
+  FEATURES = 'features',
+  TASKS = 'tasks',
+  CONFIG = 'config',
+  DETAILS = 'details',
+  CHILDREN = 'children',
+  EXECUTIONS = 'executions',
+  TABLE = 'table',
+  TEST_CASES = 'test-cases',
+  PIPELINE = 'pipeline',
+  DATA_Model = 'data-model',
+  INGESTIONS = 'ingestions',
+  CONNECTION = 'connection',
+  SQL = 'sql',
+}
+
+export enum EntityAction {
+  EXPORT = 'export',
+  IMPORT = 'import',
 }

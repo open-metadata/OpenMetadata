@@ -33,7 +33,9 @@ public class CatalogSecurityContextRequestFilter implements ContainerRequestFilt
   @SuppressWarnings("unused")
   private CatalogSecurityContextRequestFilter() {}
 
-  public CatalogSecurityContextRequestFilter(AuthenticationConfiguration authenticationConfiguration) {}
+  public CatalogSecurityContextRequestFilter(AuthenticationConfiguration authenticationConfiguration) {
+    /* used for testing */
+  }
 
   @Override
   public void filter(ContainerRequestContext requestContext) {

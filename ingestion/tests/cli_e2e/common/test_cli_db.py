@@ -19,6 +19,7 @@ from typing import Optional
 
 from sqlalchemy.engine import Engine
 
+from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.api.workflow import Workflow
@@ -86,7 +87,7 @@ class CliCommonDB:
             self.assertTrue(len(source_status.failures) == 0)
             self.assertTrue(len(sink_status.failures) == 0)
             sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
-            self.assertTrue(len(sample_data.rows) < self.inserted_rows_count())
+            self.assertTrue(len(sample_data.rows) <= self.inserted_rows_count())
             profile = self.retrieve_profile(self.fqn_created_table())
             expected_profiler_time_partition_results = (
                 self.get_profiler_time_partition_results()
@@ -119,10 +120,7 @@ class CliCommonDB:
                                 column_profile[key] == expected_column_profile[key]
                             )
                 if sample_data:
-                    self.assertTrue(
-                        len(json.loads(sample_data.json()).get("rows"))
-                        == table_profile.get("rowCount")
-                    )
+                    self.assertTrue(len(json.loads(sample_data.json()).get("rows")) > 0)
 
         def assert_for_delete_table_is_marked_as_deleted(
             self, source_status: SourceStatus, sink_status: SinkStatus

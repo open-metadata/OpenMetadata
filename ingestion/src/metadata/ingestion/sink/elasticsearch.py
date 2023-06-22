@@ -47,7 +47,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.type.entityReference import EntityReferenceList
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.models.es_documents import (
@@ -65,6 +65,7 @@ from metadata.ingestion.models.es_documents import (
     UserESDocument,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.sink.elasticsearch_mapping.container_search_index_mapping import (
     CONTAINER_ELASTICSEARCH_INDEX_MAPPING,
 )
@@ -648,7 +649,7 @@ def _(record: Dashboard, _: OpenMetadata) -> DashboardESDocument:
         version=record.version.__root__,
         updatedAt=record.updatedAt.__root__,
         updatedBy=record.updatedBy,
-        dashboardUrl=record.dashboardUrl,
+        sourceUrl=record.sourceUrl,
         charts=record.charts.__root__,
         href=record.href.__root__,
         deleted=record.deleted,
@@ -690,7 +691,7 @@ def _create_pipeline_es_doc(record: Pipeline, _: OpenMetadata) -> PipelineESDocu
         version=record.version.__root__,
         updatedAt=record.updatedAt.__root__,
         updatedBy=record.updatedBy,
-        pipelineUrl=record.pipelineUrl,
+        sourceUrl=record.sourceUrl,
         tasks=record.tasks,
         href=record.href.__root__,
         deleted=record.deleted,
@@ -906,7 +907,7 @@ def _create_tag_es_doc(
 
     for tag in tag_list.entities or []:
         suggest = [
-            ESSuggest(input=tag.fullyQualifiedName.__root__, weight=5),
+            ESSuggest(input=model_str(tag.fullyQualifiedName), weight=5),
             ESSuggest(input=tag.name.__root__, weight=10),
         ]
 

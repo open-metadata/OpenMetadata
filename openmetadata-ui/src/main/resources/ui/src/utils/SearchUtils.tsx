@@ -136,7 +136,7 @@ export const getGroupLabel = (index: string, wrapInSelectOption = false) => {
         }`}
         icon={icon}
       />
-      <p className="tw-px-2 tw-text-grey-muted tw-text-xs tw-h-4 tw-mb-0">
+      <p className="tw-px-2 text-grey-muted tw-text-xs tw-h-4 tw-mb-0">
         {label}
       </p>
     </div>

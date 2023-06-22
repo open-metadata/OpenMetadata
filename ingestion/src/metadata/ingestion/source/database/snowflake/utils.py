@@ -22,6 +22,7 @@ from sqlalchemy.types import FLOAT
 
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_COMMENTS,
+    SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES,
     SNOWFLAKE_GET_SCHEMA_COLUMNS,
     SNOWFLAKE_GET_TABLE_NAMES,
     SNOWFLAKE_GET_VIEW_NAMES,
@@ -63,14 +64,14 @@ def get_table_names_reflection(self, schema=None, **kw):
 
 
 def get_table_names(self, connection, schema, **kw):
+    query = SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES
     if kw.get("include_temp_tables"):
-        cursor = connection.execute(SNOWFLAKE_GET_TABLE_NAMES.format(schema))
-        result = [self.normalize_name(row[0]) for row in cursor]
-        return result
+        query = SNOWFLAKE_GET_TABLE_NAMES
 
-    cursor = connection.execute(
-        SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES.format(schema)
-    )
+    if kw.get("external_tables"):
+        query = SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES
+
+    cursor = connection.execute(query.format(schema))
     result = [self.normalize_name(row[0]) for row in cursor]
     return result
 

@@ -67,14 +67,6 @@ const mockTriggerIngestion = jest
   .fn()
   .mockImplementation(() => Promise.resolve());
 
-jest.mock('../containers/PageContainer', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <div>{children}</div>
-    ));
-});
-
 jest.mock('../common/searchbar/Searchbar', () => {
   return jest.fn().mockImplementation(() => <div>Searchbar</div>);
 });

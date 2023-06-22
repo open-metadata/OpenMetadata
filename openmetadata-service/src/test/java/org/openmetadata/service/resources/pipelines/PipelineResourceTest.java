@@ -57,6 +57,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.StatusType;
 import org.openmetadata.schema.type.Task;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.pipelines.PipelineResource.PipelineList;
@@ -84,7 +85,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
               .withName("task" + i)
               .withDescription("description")
               .withDisplayName("displayName")
-              .withTaskUrl("http://localhost:0");
+              .withSourceUrl("http://localhost:0");
       TASKS.add(task);
     }
   }
@@ -169,7 +170,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
   @Test
   void post_PipelineWithDifferentService_200_ok(TestInfo test) throws IOException {
-    String[] differentServices = {AIRFLOW_REFERENCE.getName(), GLUE_REFERENCE.getName()};
+    String[] differentServices = {AIRFLOW_REFERENCE.getFullyQualifiedName(), GLUE_REFERENCE.getFullyQualifiedName()};
 
     // Create Pipeline for each service and test APIs
     for (String service : differentServices) {
@@ -181,7 +182,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
       ResultList<Pipeline> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Pipeline db : list.getData()) {
-        assertEquals(service, db.getService().getName());
+        assertEquals(service, db.getService().getFullyQualifiedName());
       }
     }
   }
@@ -189,7 +190,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   @Test
   void post_pipelineWithTasksWithDots(TestInfo test) throws IOException {
     CreatePipeline create = createRequest(test);
-    Task task = new Task().withName("ta.sk").withDescription("description").withTaskUrl("http://localhost:0");
+    Task task = new Task().withName("ta.sk").withDescription("description").withSourceUrl("http://localhost:0");
     create.setTasks(List.of(task));
     Pipeline created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     Task actualTask = created.getTasks().get(0);
@@ -199,7 +200,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   @Test
   void put_PipelineUrlUpdate_200(TestInfo test) throws IOException {
     CreatePipeline request =
-        createRequest(test).withService(AIRFLOW_REFERENCE.getName()).withDescription("description");
+        createRequest(test).withService(AIRFLOW_REFERENCE.getFullyQualifiedName()).withDescription("description");
     createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     String pipelineURL = "https://airflow.open-metadata.org/tree?dag_id=airflow_redshift_usage";
     Integer pipelineConcurrency = 110;
@@ -208,11 +209,14 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     // Updating description is ignored when backend already has description
     Pipeline pipeline =
         updateEntity(
-            request.withPipelineUrl(pipelineURL).withConcurrency(pipelineConcurrency).withStartDate(startDate),
+            request.withSourceUrl(pipelineURL).withConcurrency(pipelineConcurrency).withStartDate(startDate),
             OK,
             ADMIN_AUTH_HEADERS);
-    String expectedFQN = FullyQualifiedName.add(AIRFLOW_REFERENCE.getFullyQualifiedName(), pipeline.getName());
-    assertEquals(pipelineURL, pipeline.getPipelineUrl());
+    String expectedFQN =
+        FullyQualifiedName.add(
+            EntityInterfaceUtil.quoteName(AIRFLOW_REFERENCE.getName()),
+            EntityInterfaceUtil.quoteName(pipeline.getName()));
+    assertEquals(pipelineURL, pipeline.getSourceUrl());
     assertEquals(startDate, pipeline.getStartDate());
     assertEquals(pipelineConcurrency, pipeline.getConcurrency());
     assertEquals(expectedFQN, pipeline.getFullyQualifiedName());
@@ -221,7 +225,10 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   @Test
   void put_PipelineTasksUpdate_200(TestInfo test) throws IOException {
     CreatePipeline request =
-        createRequest(test).withService(AIRFLOW_REFERENCE.getName()).withDescription(null).withTasks(null);
+        createRequest(test)
+            .withService(AIRFLOW_REFERENCE.getFullyQualifiedName())
+            .withDescription(null)
+            .withTasks(null);
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Add description and tasks
@@ -236,7 +243,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     // Add a task without description
     change = getChangeDescription(pipeline.getVersion());
     List<Task> tasks = new ArrayList<>();
-    Task taskEmptyDesc = new Task().withName("taskEmpty").withTaskUrl("http://localhost:0");
+    Task taskEmptyDesc = new Task().withName("taskEmpty").withSourceUrl("http://localhost:0");
     tasks.add(taskEmptyDesc);
     fieldAdded(change, "tasks", tasks);
     // Create new request with all the Tasks
@@ -258,7 +265,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   void put_PipelineTasksOverride_200(TestInfo test) throws IOException {
     // A PUT operation with a new Task should override the current tasks in the Pipeline
     // This change will always be minor, both with deletes/adds
-    CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE.getName());
+    CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE.getFullyQualifiedName());
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     List<Task> newTask =
@@ -267,7 +274,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
                 .withName("newTask")
                 .withDescription("description")
                 .withDisplayName("displayName")
-                .withTaskUrl("http://localhost:0"));
+                .withSourceUrl("http://localhost:0"));
 
     ChangeDescription change = getChangeDescription(pipeline.getVersion());
     fieldAdded(change, "tasks", newTask);
@@ -277,7 +284,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
   @Test
   void put_PipelineStatus_200(TestInfo test) throws IOException, ParseException {
-    CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE.getName());
+    CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE.getFullyQualifiedName());
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // PUT one status and validate
@@ -395,7 +402,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
   @Test
   void put_PipelineInvalidStatus_4xx(TestInfo test) throws IOException, ParseException {
-    CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE.getName());
+    CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE.getFullyQualifiedName());
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
@@ -419,14 +426,14 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
   @Test
   void patch_PipelineTasksUpdate_200_ok(TestInfo test) throws IOException {
-    CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE.getName());
+    CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE.getFullyQualifiedName());
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     String origJson = JsonUtils.pojoToJson(pipeline);
     // Add a task without description
     ChangeDescription change = getChangeDescription(pipeline.getVersion());
     List<Task> tasks = new ArrayList<>();
-    Task taskEmptyDesc = new Task().withName("taskEmpty").withTaskUrl("http://localhost:0");
+    Task taskEmptyDesc = new Task().withName("taskEmpty").withSourceUrl("http://localhost:0");
     tasks.add(taskEmptyDesc);
     fieldAdded(change, "tasks", tasks);
     fieldUpdated(change, "description", "", "newDescription");
@@ -487,11 +494,11 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   void put_AddRemovePipelineTasksUpdate_200(TestInfo test) throws IOException {
     CreatePipeline request =
         createRequest(test)
-            .withService(AIRFLOW_REFERENCE.getName())
+            .withService(AIRFLOW_REFERENCE.getFullyQualifiedName())
             .withDescription(null)
             .withTasks(null)
             .withConcurrency(null)
-            .withPipelineUrl("http://localhost:8080");
+            .withSourceUrl("http://localhost:8080");
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Add tasks and description
@@ -499,14 +506,14 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     fieldAdded(change, "description", "newDescription");
     fieldAdded(change, "tasks", TASKS);
     fieldAdded(change, "concurrency", 5);
-    fieldUpdated(change, "pipelineUrl", "http://localhost:8080", "https://airflow.open-metadata.org");
+    fieldUpdated(change, "sourceUrl", "http://localhost:8080", "https://airflow.open-metadata.org");
     pipeline =
         updateAndCheckEntity(
             request
                 .withDescription("newDescription")
                 .withTasks(TASKS)
                 .withConcurrency(5)
-                .withPipelineUrl("https://airflow.open-metadata.org"),
+                .withSourceUrl("https://airflow.open-metadata.org"),
             OK,
             ADMIN_AUTH_HEADERS,
             MINOR_UPDATE,
@@ -521,7 +528,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
               .withName("task" + i)
               .withDescription("description")
               .withDisplayName("displayName")
-              .withTaskUrl("http://localhost:0");
+              .withSourceUrl("http://localhost:0");
       new_tasks.add(task);
     }
     request.setTasks(new_tasks);
@@ -547,7 +554,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
         pipeline.getFollowers(),
         pipeline.getTags());
 
-    fields = "owner,tasks,pipelineStatus,followers,tags";
+    fields = "owner,tasks,pipelineStatus,followers,tags,scheduleInterval";
     pipeline =
         byName
             ? getPipelineByName(pipeline.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

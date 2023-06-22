@@ -152,7 +152,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                 />
                 <div className="flex-1 text-left tw-px-2">
                   {entity.entityType === EntityType.TABLE && (
-                    <p className="d-block text-xs tw-text-grey-muted">
+                    <p className="d-block text-xs text-grey-muted">
                       {getSuggestionLabelHeading(
                         entity.fullyQualifiedName,
                         entity.entityType as string
@@ -168,7 +168,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         </div>
       ) : (
         searchValue && (
-          <div className="tw-origin-top-right tw-absolute tw-z-20 tw-w-max tw-mt-1 tw-rounded-md tw-shadow-lg tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none">
+          <div className="tw-origin-top-right tw-absolute tw-z-20 tw-w-max tw-mt-1 tw-rounded-md tw-shadow-lg bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none">
             <Empty
               description={t('label.no-data-found')}
               image={Empty.PRESENTED_IMAGE_SIMPLE}

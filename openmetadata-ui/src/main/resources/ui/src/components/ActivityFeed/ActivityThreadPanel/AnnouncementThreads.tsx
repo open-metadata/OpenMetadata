@@ -88,6 +88,8 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
       );
       const lastPost = thread?.posts?.[postLength - 1];
 
+      //   ashish
+
       return (
         <Fragment key={index}>
           <Card
@@ -118,7 +120,7 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
                     {Boolean(lastPost) && (
                       <div className="tw-filter-seperator" />
                     )}
-                    <div className="tw-flex tw-my-4">
+                    <div className="d-flex tw-my-4">
                       <FeedCardFooter
                         isFooterVisible
                         lastReplyTimeStamp={lastPost?.postTs}

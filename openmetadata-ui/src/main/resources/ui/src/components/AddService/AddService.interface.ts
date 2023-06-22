@@ -31,3 +31,8 @@ export interface AddServiceProps {
   slashedBreadcrumb: TitleBreadcrumbProps['titleLinks'];
   onIngestionDeploy?: () => Promise<void>;
 }
+
+export interface ServiceConfig {
+  serviceName: string;
+  description: string;
+}

@@ -23,6 +23,8 @@ from metadata.generated.schema.entity.services.connections.dashboard.metabaseCon
 from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.dashboard.metabase.models import (
+    MetabaseCollection,
+    MetabaseCollectionList,
     MetabaseDashboard,
     MetabaseDashboardDetails,
     MetabaseDashboardList,
@@ -95,6 +97,20 @@ class MetabaseClient:
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the dashboard list")
+        return []
+
+    def get_collections_list(self) -> List[MetabaseCollection]:
+        """
+        Get List of all collections
+        """
+        try:
+            resp_collections = self.client.get("/collection")
+            if resp_collections:
+                collection_list = MetabaseCollectionList(collections=resp_collections)
+                return collection_list.collections
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the collections list")
         return []
 
     def get_dashboard_details(

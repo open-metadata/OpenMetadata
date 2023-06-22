@@ -2,17 +2,27 @@ package org.openmetadata.service.resources.system;
 
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.dropwizard.configuration.ConfigurationException;
+import io.dropwizard.configuration.FileConfigurationSourceProvider;
+import io.dropwizard.configuration.YamlConfigurationFactory;
+import io.dropwizard.jackson.Jackson;
+import io.dropwizard.jersey.validation.Validators;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import javax.validation.Validator;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.api.data.CreateGlossary;
@@ -30,11 +40,15 @@ import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
+import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
+import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
@@ -53,11 +67,23 @@ import org.openmetadata.service.resources.storages.ContainerResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class SystemResourceTest extends OpenMetadataApplicationTest {
+  static OpenMetadataApplicationConfig config;
+
+  @BeforeAll
+  static void setup() throws IOException, ConfigurationException {
+    // Get config object from test yaml file
+    ObjectMapper objectMapper = Jackson.newObjectMapper();
+    Validator validator = Validators.newValidator();
+    YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
+        new YamlConfigurationFactory<>(OpenMetadataApplicationConfig.class, validator, objectMapper, "dw");
+    config = factory.build(new FileConfigurationSourceProvider(), CONFIG_PATH);
+  }
 
   @BeforeAll
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
@@ -66,7 +92,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  public void entitiesCount(TestInfo test) throws HttpResponseException {
+  void entitiesCount(TestInfo test) throws HttpResponseException {
     // Get count before adding entities
     EntitiesCount beforeCount = getEntitiesCount();
 
@@ -139,7 +165,52 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  public void servicesCount(TestInfo test) throws HttpResponseException {
+  @Order(1)
+  void testSystemConfigs() throws HttpResponseException {
+    // Test Email Config
+    Settings emailSettings = getSystemConfig(SettingsType.EMAIL_CONFIGURATION);
+    SmtpSettings smtp = JsonUtils.convertValue(emailSettings.getConfigValue(), SmtpSettings.class);
+    // Password for Email is always sent in hidden
+    SmtpSettings expected = config.getSmtpSettings();
+    expected.setPassword("***********");
+    Assertions.assertEquals(expected, smtp);
+
+    // Test Custom Log Config
+    Settings logoConfigWrapped = getSystemConfig(SettingsType.CUSTOM_LOGO_CONFIGURATION);
+    LogoConfiguration loginConfiguration =
+        JsonUtils.convertValue(logoConfigWrapped.getConfigValue(), LogoConfiguration.class);
+
+    Assertions.assertEquals(config.getApplicationConfiguration().getLogoConfig(), loginConfiguration);
+  }
+
+  @Test
+  void testSystemConfigsUpdate(TestInfo test) throws HttpResponseException {
+    // Test Email Config
+    SmtpSettings smtpSettings = config.getSmtpSettings();
+    // Update a few Email fields
+    smtpSettings.setUsername(test.getDisplayName());
+    smtpSettings.setEmailingEntity(test.getDisplayName());
+
+    updateSystemConfig(new Settings().withConfigType(SettingsType.EMAIL_CONFIGURATION).withConfigValue(smtpSettings));
+    SmtpSettings updateEmailSettings =
+        JsonUtils.convertValue(getSystemConfig(SettingsType.EMAIL_CONFIGURATION).getConfigValue(), SmtpSettings.class);
+    Assertions.assertEquals(updateEmailSettings.getUsername(), test.getDisplayName());
+    Assertions.assertEquals(updateEmailSettings.getEmailingEntity(), test.getDisplayName());
+
+    // Test Custom Logo Update
+    LogoConfiguration updateConfigReq =
+        new LogoConfiguration().withCustomLogoUrlPath("http://test.com").withCustomMonogramUrlPath("http://test.com");
+    // Update Custom Logo Settings
+    updateSystemConfig(
+        new Settings().withConfigType(SettingsType.CUSTOM_LOGO_CONFIGURATION).withConfigValue(updateConfigReq));
+    LogoConfiguration updatedConfig =
+        JsonUtils.convertValue(
+            getSystemConfig(SettingsType.CUSTOM_LOGO_CONFIGURATION).getConfigValue(), LogoConfiguration.class);
+    Assertions.assertEquals(updateConfigReq, updatedConfig);
+  }
+
+  @Test
+  void servicesCount(TestInfo test) throws HttpResponseException {
     // Get count before adding services
     ServicesCount beforeCount = getServicesCount();
 
@@ -183,7 +254,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  public void botUserCountCheck(TestInfo test) throws HttpResponseException {
+  void botUserCountCheck(TestInfo test) throws HttpResponseException {
     int beforeUserCount = getEntitiesCount().getUserCount();
 
     // Create a bot user.
@@ -215,5 +286,15 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
   private static ServicesCount getServicesCount() throws HttpResponseException {
     WebTarget target = getResource("system/services/count");
     return TestUtils.get(target, ServicesCount.class, ADMIN_AUTH_HEADERS);
+  }
+
+  private static Settings getSystemConfig(SettingsType settingsType) throws HttpResponseException {
+    WebTarget target = getResource(String.format("system/settings/%s", settingsType.value()));
+    return TestUtils.get(target, Settings.class, ADMIN_AUTH_HEADERS);
+  }
+
+  private static void updateSystemConfig(Settings updatedSetting) throws HttpResponseException {
+    WebTarget target = getResource("system/settings");
+    TestUtils.put(target, updatedSetting, Response.Status.OK, ADMIN_AUTH_HEADERS);
   }
 }

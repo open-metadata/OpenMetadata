@@ -29,8 +29,18 @@ import {
   mockUserRole,
 } from './mocks/User.mocks';
 import Users from './Users.component';
+import { UserPageTabs } from './Users.interface';
 
-jest.mock('rest/rolesAPIV1.ts', () => ({
+const mockParams = {
+  tab: UserPageTabs.ACTIVITY,
+};
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useParams: jest.fn().mockImplementation(() => mockParams),
+}));
+
+jest.mock('rest/rolesAPIV1', () => ({
   getRoles: jest.fn().mockImplementation(() => Promise.resolve(mockUserRole)),
 }));
 
@@ -38,23 +48,38 @@ jest.mock('../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
 });
 
-jest.mock('pages/teams/UserCard', () => {
-  return jest.fn().mockReturnValue(<p>UserCard</p>);
+jest.mock('components/searched-data/SearchedData', () => {
+  return jest.fn().mockReturnValue(<p>SearchedData</p>);
 });
 
-jest.mock('../common/TabsPane/TabsPane', () => {
-  return jest.fn().mockReturnValue(<p data-testid="tabs">Tabs</p>);
-});
+jest.mock(
+  'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component',
+  () => {
+    return jest.fn().mockReturnValue(<p>EntitySummaryPanel</p>);
+  }
+);
 
-jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
-  return jest.fn().mockReturnValue(<p>FeedCards</p>);
-});
+jest.mock(
+  'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
+  () => {
+    return jest.fn().mockImplementation(({ children }) => <>{children}</>);
+  }
+);
+
+jest.mock(
+  'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
+  () => ({
+    ActivityFeedTab: jest
+      .fn()
+      .mockImplementation(() => <>ActivityFeedTabTest</>),
+  })
+);
 
 jest.mock('rest/teamsAPI', () => ({
   getTeams: jest.fn().mockImplementation(() => Promise.resolve(mockTeamsData)),
 }));
 
-jest.mock('../containers/PageLayout', () =>
+jest.mock('../containers/PageLayoutV1', () =>
   jest
     .fn()
     .mockImplementation(
@@ -96,7 +121,6 @@ const mockPaging = {
 
 const mockProp = {
   username: 'test',
-  tab: 'following',
   feedData: [],
   feedFilter: FeedFilter.ALL,
   feedFilterHandler: feedFilterHandler,
@@ -208,22 +232,10 @@ describe('Test User Component', () => {
     expect(deletedTeam).not.toBeInTheDocument();
   });
 
-  it('Should create an observer if IntersectionObserver is available', async () => {
-    const { container } = render(
-      <Users userData={mockUserData} {...mockProp} tab="activity" />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const obServerElement = await findByTestId(container, 'observer-element');
-
-    expect(obServerElement).toBeInTheDocument();
-  });
-
   it('Should check if cards are rendered', async () => {
+    mockParams.tab = UserPageTabs.MY_DATA;
     const { container } = render(
-      <Users userData={mockUserData} {...mockProp} tab="mydata" />,
+      <Users userData={mockUserData} {...mockProp} />,
       {
         wrapper: MemoryRouter,
       }
@@ -235,6 +247,7 @@ describe('Test User Component', () => {
   });
 
   it('Should render inherited roles', async () => {
+    mockParams.tab = UserPageTabs.FOLLOWING;
     const { container } = render(
       <Users userData={mockUserData} {...mockProp} />,
       {
@@ -247,13 +260,9 @@ describe('Test User Component', () => {
   });
 
   it('MyData tab should show loader if the data is loading', async () => {
+    mockParams.tab = UserPageTabs.MY_DATA;
     const { container } = render(
-      <Users
-        userData={mockUserData}
-        {...mockProp}
-        isUserEntitiesLoading
-        tab="mydata"
-      />,
+      <Users userData={mockUserData} {...mockProp} isUserEntitiesLoading />,
       {
         wrapper: MemoryRouter,
       }
@@ -264,6 +273,7 @@ describe('Test User Component', () => {
   });
 
   it('Following tab should show loader if the data is loading', async () => {
+    mockParams.tab = UserPageTabs.FOLLOWING;
     const { container } = render(
       <Users userData={mockUserData} {...mockProp} isUserEntitiesLoading />,
       {

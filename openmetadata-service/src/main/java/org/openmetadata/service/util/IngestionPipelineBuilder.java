@@ -20,10 +20,14 @@ import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
 
-public class IngestionPipelineBuilder {
+public final class IngestionPipelineBuilder {
+
+  private IngestionPipelineBuilder() {
+    // Final
+  }
 
   /** Build `IngestionPipeline` object with concrete class for the config which by definition it is a `Object`. */
-  public static IngestionPipeline addDefinedConfig(IngestionPipeline ingestionPipeline) {
+  public static void addDefinedConfig(IngestionPipeline ingestionPipeline) {
     if (DBT.equals(ingestionPipeline.getPipelineType()) && ingestionPipeline.getSourceConfig() != null) {
       ingestionPipeline
           .getSourceConfig()
@@ -37,6 +41,5 @@ public class IngestionPipelineBuilder {
               ClassConverterFactory.getConverter(OpenMetadataConnection.class)
                   .convert(ingestionPipeline.getOpenMetadataServerConnection()));
     }
-    return ingestionPipeline;
   }
 }

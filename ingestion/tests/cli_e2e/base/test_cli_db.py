@@ -319,6 +319,22 @@ class CliDBBase(TestCase):
             return None
 
         @staticmethod
+        def delete_queries() -> Optional[List[str]]:
+            return None
+
+        @staticmethod
+        def update_queries() -> Optional[List[str]]:
+            return None
+
+        @staticmethod
+        def delete_table_rows() -> None:
+            return None
+
+        @staticmethod
+        def update_table_row() -> None:
+            return None
+
+        @staticmethod
         def get_test_type() -> str:
             return "database"
 

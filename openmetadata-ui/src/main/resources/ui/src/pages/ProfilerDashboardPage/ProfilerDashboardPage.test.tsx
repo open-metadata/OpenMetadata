@@ -68,14 +68,6 @@ jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
   return jest.fn().mockImplementation(() => <div>No data placeholder</div>);
 });
 
-jest.mock('components/containers/PageContainerV1', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <div data-testid="page-container">{children}</div>
-    ));
-});
-
 jest.mock('components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <p data-testid="loader">Loader</p>);
 });
@@ -91,17 +83,6 @@ jest.mock('components/ProfilerDashboard/ProfilerDashboard', () => {
 describe('Test ProfilerDashboardPage component', () => {
   beforeEach(() => cleanup());
 
-  it('ProfilerDashboardPage component should render properly for profiler tab', async () => {
-    await act(async () => {
-      render(<ProfilerDashboardPage />, {
-        wrapper: MemoryRouter,
-      });
-    });
-    const pageContainer = await screen.findByTestId('page-container');
-
-    expect(pageContainer).toBeInTheDocument();
-  });
-
   it('Show error placeholder if table API fails', async () => {
     (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.reject()
@@ -111,26 +92,9 @@ describe('Test ProfilerDashboardPage component', () => {
         wrapper: MemoryRouter,
       });
     });
-    const pageContainer = screen.queryByTestId('page-container');
     const noDataPlaceholder = await screen.findByText('No data placeholder');
 
-    expect(pageContainer).not.toBeInTheDocument();
     expect(noDataPlaceholder).toBeInTheDocument();
-  });
-
-  it('ProfilerDashboardPage component should render properly for data quality tab', async () => {
-    mockParam = {
-      ...mockParam,
-      tab: ProfilerDashboardTab.DATA_QUALITY,
-    };
-    await act(async () => {
-      render(<ProfilerDashboardPage />, {
-        wrapper: MemoryRouter,
-      });
-    });
-    const pageContainer = await screen.findByTestId('page-container');
-
-    expect(pageContainer).toBeInTheDocument();
   });
 
   it('Show error placeholder if there is no fqn available', async () => {
@@ -143,10 +107,8 @@ describe('Test ProfilerDashboardPage component', () => {
         wrapper: MemoryRouter,
       });
     });
-    const pageContainer = screen.queryByTestId('page-container');
     const noDataPlaceholder = await screen.findByText('No data placeholder');
 
-    expect(pageContainer).not.toBeInTheDocument();
     expect(noDataPlaceholder).toBeInTheDocument();
   });
 });

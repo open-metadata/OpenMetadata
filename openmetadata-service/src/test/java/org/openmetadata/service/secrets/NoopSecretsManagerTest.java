@@ -16,6 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
+import static org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType.Mysql;
+import static org.openmetadata.schema.api.services.CreateMlModelService.MlModelServiceType.Sklearn;
+import static org.openmetadata.schema.entity.services.ServiceType.ML_MODEL;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -23,19 +26,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.openmetadata.schema.api.services.CreateDatabaseService;
-import org.openmetadata.schema.api.services.CreateMlModelService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.mlmodel.SklearnConnection;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.util.JsonUtils;
 
 @ExtendWith(MockitoExtension.class)
 public class NoopSecretsManagerTest {
 
-  private static final boolean ENCRYPT = true;
-  private static final boolean DECRYPT = false;
   private static final String ENCRYPTED_VALUE = "fernet:abcdef";
   private static final String DECRYPTED_VALUE = "123456";
   private static NoopSecretsManager secretsManager;
@@ -58,22 +59,26 @@ public class NoopSecretsManagerTest {
 
   @Test
   void testEncryptDatabaseServiceConnectionConfig() {
-    testEncryptDecryptServiceConnection(ENCRYPT);
+    testEncryptServiceConnection();
   }
 
   @Test
   void testDecryptDatabaseServiceConnectionConfig() {
-    testEncryptDecryptServiceConnection(DECRYPT);
+    testDecryptServiceConnection();
   }
 
   @Test
   void testEncryptServiceConnectionWithoutPassword() {
-    testEncryptDecryptServiceConnectionWithoutPassword(ENCRYPT);
+    SklearnConnection connection = new SklearnConnection();
+    Object actualConfig = secretsManager.encryptServiceConnectionConfig(connection, Sklearn.value(), "test", ML_MODEL);
+    assertNotSame(connection, actualConfig);
   }
 
   @Test
-  void testEncryptDecryptServiceConnectionWithoutPassword() {
-    testEncryptDecryptServiceConnectionWithoutPassword(DECRYPT);
+  void testDecryptServiceConnectionWithoutPassword() {
+    SklearnConnection connection = new SklearnConnection();
+    Object actualConfig = secretsManager.decryptServiceConnectionConfig(connection, Sklearn.value(), ML_MODEL);
+    assertNotSame(connection, actualConfig);
   }
 
   @Test
@@ -81,29 +86,23 @@ public class NoopSecretsManagerTest {
     assertEquals(SecretsManagerProvider.NOOP, secretsManager.getSecretsManagerProvider());
   }
 
-  private void testEncryptDecryptServiceConnectionWithoutPassword(boolean decrypt) {
-    SklearnConnection sklearnConnection = new SklearnConnection();
-    CreateMlModelService.MlModelServiceType databaseServiceType = CreateMlModelService.MlModelServiceType.Sklearn;
-    String connectionName = "test";
-
+  private void testEncryptServiceConnection() {
+    MysqlConnection connection = new MysqlConnection().withAuthType(new basicAuth().withPassword(ENCRYPTED_VALUE));
     Object actualConfig =
-        secretsManager.encryptOrDecryptServiceConnectionConfig(
-            sklearnConnection, databaseServiceType.value(), connectionName, ServiceType.ML_MODEL, decrypt);
-
-    assertNotSame(sklearnConnection, actualConfig);
+        secretsManager.encryptServiceConnectionConfig(connection, Mysql.value(), "test", ServiceType.DATABASE);
+    assertEquals(
+        ENCRYPTED_VALUE,
+        JsonUtils.convertValue(((MysqlConnection) actualConfig).getAuthType(), basicAuth.class).getPassword());
+    assertNotSame(connection, actualConfig);
   }
 
-  private void testEncryptDecryptServiceConnection(boolean encrypt) {
-    MysqlConnection mysqlConnection = new MysqlConnection();
-    mysqlConnection.setPassword(encrypt ? ENCRYPTED_VALUE : DECRYPTED_VALUE);
-    CreateDatabaseService.DatabaseServiceType databaseServiceType = CreateDatabaseService.DatabaseServiceType.Mysql;
-    String connectionName = "test";
-
+  private void testDecryptServiceConnection() {
+    MysqlConnection mysqlConnection = new MysqlConnection().withAuthType(new basicAuth().withPassword(DECRYPTED_VALUE));
     Object actualConfig =
-        secretsManager.encryptOrDecryptServiceConnectionConfig(
-            mysqlConnection, databaseServiceType.value(), connectionName, ServiceType.DATABASE, encrypt);
-
-    assertEquals(encrypt ? ENCRYPTED_VALUE : DECRYPTED_VALUE, ((MysqlConnection) actualConfig).getPassword());
+        secretsManager.decryptServiceConnectionConfig(mysqlConnection, Mysql.value(), ServiceType.DATABASE);
+    assertEquals(
+        DECRYPTED_VALUE,
+        JsonUtils.convertValue(((MysqlConnection) actualConfig).getAuthType(), basicAuth.class).getPassword());
     assertNotSame(mysqlConnection, actualConfig);
   }
 }

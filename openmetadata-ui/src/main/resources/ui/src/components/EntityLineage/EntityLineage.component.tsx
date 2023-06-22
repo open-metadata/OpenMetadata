@@ -27,7 +27,6 @@ import {
 import { LoadingState } from 'Models';
 import React, {
   DragEvent,
-  Fragment,
   FunctionComponent,
   useCallback,
   useEffect,
@@ -146,7 +145,6 @@ import {
 } from './EntityLineage.interface';
 import './entityLineage.style.less';
 import EntityLineageSidebar from './EntityLineageSidebar.component';
-import LineageNodeLabel from './LineageNodeLabel';
 import NodeSuggestions from './NodeSuggestions.component';
 
 const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
@@ -270,7 +268,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       try {
         const res = await getLineageByFQN(
           node.fullyQualifiedName ?? '',
-          node.type
+          node.type,
+          lineageConfig.upstreamDepth,
+          lineageConfig.downstreamDepth
         );
         if (res && entityLineage) {
           setNodeLoading((prev) => ({ ...prev, id: node.id, state: false }));
@@ -287,7 +287,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         );
       }
     },
-    [entityLineage, setNodeLoading]
+    [entityLineage, lineageConfig, setNodeLoading]
   );
 
   const setLeafNode = useCallback(
@@ -673,18 +673,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         const newNodes = prevState.map((prevNode) => {
           if (prevNode.id === node.id) {
             const nodeId = node.id;
-            prevNode.data.label = (
-              <LineageNodeLabel
-                isExpanded
-                isNodeLoading={isNodeLoading}
-                lineageLeafNodes={leafNodes}
-                loadNodeHandler={loadNodeHandler}
-                node={node}
-                type={prevNode.type}
-                onNodeExpand={handleNodeExpand}
-                onSelect={selectNodeHandler}
-              />
-            );
             prevNode.data.isExpanded = true;
             if (isUndefined(tableColumnsRef.current[nodeId])) {
               getTableColumns(node);
@@ -714,18 +702,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       setNodes((prevState) => {
         const newNodes = prevState.map((n) => {
           if (n.id === node.id) {
-            n.data.label = (
-              <LineageNodeLabel
-                isExpanded={false}
-                isNodeLoading={isNodeLoading}
-                lineageLeafNodes={leafNodes}
-                loadNodeHandler={loadNodeHandler}
-                node={node}
-                type={n.type}
-                onNodeExpand={handleNodeExpand}
-                onSelect={selectNodeHandler}
-              />
-            );
             n.data.isExpanded = false;
             n.data.columns = undefined;
           }
@@ -1259,13 +1235,13 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         id: uniqueId(),
         nodeType,
         position,
-        className: 'leaf-node',
+        className: '',
         connectable: false,
         selectable: false,
         type: 'default',
         data: {
           label: (
-            <div className="tw-relative">
+            <div className="relative">
               {getNodeRemoveButton(() => {
                 removeNodeHandler(newNode as Node);
               })}
@@ -1332,25 +1308,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                   removeNodeHandler,
                   isEditMode,
                   node: selectedEntity,
-                  label: (
-                    <Fragment>
-                      <LineageNodeLabel
-                        isNodeLoading={isNodeLoading}
-                        lineageLeafNodes={leafNodes}
-                        loadNodeHandler={loadNodeHandler}
-                        node={selectedEntity}
-                        type={el.type}
-                        onNodeExpand={handleNodeExpand}
-                        onSelect={selectNodeHandler}
-                      />
-                      {getNodeRemoveButton(() => {
-                        removeNodeHandler({
-                          ...el,
-                          id: selectedEntity.id,
-                        } as Node);
-                      })}
-                    </Fragment>
-                  ),
                 },
               };
             } else {
@@ -1403,18 +1360,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     setNodes((prevNodes) => {
       const updatedNode = prevNodes.map((node) => {
         node.data.isExpanded = value;
-        node.data.label = (
-          <LineageNodeLabel
-            isExpanded={value}
-            isNodeLoading={isNodeLoading}
-            lineageLeafNodes={leafNodes}
-            loadNodeHandler={loadNodeHandler}
-            node={node.data.node}
-            type={node.type}
-            onNodeExpand={handleNodeExpand}
-            onSelect={selectNodeHandler}
-          />
-        );
 
         return node;
       });
@@ -1546,17 +1491,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             ...el,
             data: {
               ...el.data,
-              label: (
-                <LineageNodeLabel
-                  isNodeLoading={isNodeLoading}
-                  lineageLeafNodes={leafNodes}
-                  loadNodeHandler={loadNodeHandler}
-                  node={newlyAddedNode}
-                  type={el.type}
-                  onNodeExpand={handleNodeExpand}
-                  onSelect={selectNodeHandler}
-                />
-              ),
             },
           };
         } else {

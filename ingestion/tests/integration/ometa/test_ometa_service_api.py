@@ -54,11 +54,11 @@ class OMetaServiceTest(TestCase):
             jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
         ),
     )
-    metadata = OpenMetadata(server_config)
+    admin_metadata = OpenMetadata(server_config)
 
     # we need to use ingestion bot user for this test since the admin user won't be able to see the password fields
-    ingestion_bot: User = metadata.get_by_name(entity=User, fqn="ingestion-bot")
-    ingestion_bot_auth: AuthenticationMechanism = metadata.get_by_id(
+    ingestion_bot: User = admin_metadata.get_by_name(entity=User, fqn="ingestion-bot")
+    ingestion_bot_auth: AuthenticationMechanism = admin_metadata.get_by_id(
         entity=AuthenticationMechanism, entity_id=ingestion_bot.id
     )
     server_config.securityConfig = OpenMetadataJWTClientConfig(
@@ -79,7 +79,7 @@ class OMetaServiceTest(TestCase):
                 "config": {
                     "type": "Mysql",
                     "username": "openmetadata_user",
-                    "password": "openmetadata_password",
+                    "authType": {"password": "openmetadata_password"},
                     "hostPort": "random:3306",
                 }
             },
@@ -95,7 +95,7 @@ class OMetaServiceTest(TestCase):
         assert service
         assert service.serviceType == DatabaseServiceType.Mysql
         assert (
-            service.connection.config.password.get_secret_value()
+            service.connection.config.authType.password.get_secret_value()
             == "openmetadata_password"
         )
 
@@ -157,7 +157,7 @@ class OMetaServiceTest(TestCase):
                 "config": {
                     "type": "BigQuery",
                     "credentials": {
-                        "gcsConfig": {
+                        "gcpConfig": {
                             "type": "service_account",
                             "projectId": "projectID",
                             "privateKeyId": "privateKeyId",

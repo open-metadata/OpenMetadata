@@ -196,7 +196,7 @@ describe('DataConsumer Edit policy should work properly', () => {
       cy.get('[data-testid="cancel"]').should('be.visible').click();
 
       // Navigate to lineage tab
-      cy.get('[data-testid="Lineage"]').should('be.visible').click();
+      cy.get('[data-testid="lineage"]').should('be.visible').click();
 
       // Check if edit lineage button is disabled
       cy.get('[data-testid="edit-lineage"]')
@@ -262,13 +262,9 @@ describe('DataConsumer Edit policy should work properly', () => {
     }
     cy.get('body').click();
     cy.wait(200);
-    cy.get('[data-testid="add-new-tag-button"]')
-      .should('be.visible')
-      .should('be.disabled');
+    cy.get('[data-testid="add-new-tag-button"]').should('not.exist');
 
-    cy.get('[data-testid="delete-classification-or-tag"]')
-      .should('be.visible')
-      .should('be.disabled');
+    cy.get('[data-testid="manage-button"]').should('not.exist');
   });
 
   it('Check CRUD operations for settings page', () => {

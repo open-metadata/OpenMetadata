@@ -15,6 +15,7 @@ import { Col, Divider, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { getTeamAndUserDetailsPath } from 'constants/constants';
 import { ClientErrors } from 'enums/axios.enum';
 import { isArray, isEmpty } from 'lodash';
@@ -22,6 +23,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getTopicByFqn } from 'rest/topicsAPI';
+import { getTagValue } from 'utils/CommonUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getOwnerNameWithProfilePic,
@@ -123,7 +125,7 @@ function TopicSummary({
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
       <>
-        <Row className="m-md" gutter={[0, 4]}>
+        <Row className="m-md m-t-0" gutter={[0, 4]}>
           {!isExplore ? (
             <Col className="p-b-md" span={24}>
               {ownerDetails.isLink ? (
@@ -140,7 +142,7 @@ function TopicSummary({
             </Col>
           ) : null}
           <Col span={24}>
-            <Row>
+            <Row gutter={[0, 4]}>
               {Object.keys(topicConfig).map((fieldName) => {
                 const value =
                   topicConfig[fieldName as keyof TopicConfigObjectInterface];
@@ -175,25 +177,52 @@ function TopicSummary({
             />
             <Divider className="m-y-xs" />
           </>
-        ) : null}
+        ) : (
+          <>
+            <Row className="m-md" gutter={[0, 8]}>
+              <Col span={24}>
+                <Typography.Text
+                  className="summary-panel-section-title"
+                  data-testid="profiler-header">
+                  {t('label.tag-plural')}
+                </Typography.Text>
+              </Col>
 
-        <Row className="m-md" gutter={[0, 16]}>
+              <Col className="flex-grow" span={24}>
+                {entityDetails.tags && entityDetails.tags.length > 0 ? (
+                  <TagsViewer
+                    sizeCap={2}
+                    tags={(entityDetails.tags || []).map((tag) =>
+                      getTagValue(tag)
+                    )}
+                    type="border"
+                  />
+                ) : (
+                  <Typography.Text className="text-grey-body">
+                    {t('label.no-tags-added')}
+                  </Typography.Text>
+                )}
+              </Col>
+            </Row>
+            <Divider className="m-y-xs" />
+          </>
+        )}
+
+        <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-base text-grey-muted"
+              className="summary-panel-section-title"
               data-testid="schema-header">
               {t('label.schema')}
             </Typography.Text>
           </Col>
           <Col span={24}>
             {isEmpty(topicDetails?.messageSchema?.schemaFields) ? (
-              <div className="m-y-md">
-                <Typography.Text data-testid="no-data-message">
-                  <Typography.Text className="text-grey-body">
-                    {t('message.no-data-available')}
-                  </Typography.Text>
+              <Typography.Text data-testid="no-data-message">
+                <Typography.Text className="text-grey-body">
+                  {t('message.no-data-available')}
                 </Typography.Text>
-              </div>
+              </Typography.Text>
             ) : (
               <SummaryList formattedEntityData={formattedSchemaFieldsData} />
             )}

@@ -12,26 +12,23 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Form, Input, Space, Switch, Typography } from 'antd';
+import { Button, Card, Form, Space, Typography } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
-import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
+import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import { UserTag } from 'components/common/UserTag/UserTag.component';
 import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
-import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
+import { EntityReference } from 'generated/type/entityLineage';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { toString } from 'lodash';
-import TagSuggestion from 'pages/TasksPage/shared/TagSuggestion';
-import React, { useRef, useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
-import { PageLayoutType } from '../../enums/layout.enum';
+import { generateFormFields, getField } from 'utils/formUtils';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
-import { EntityReference } from '../../generated/type/entityReference';
 import { getCurrentUserId } from '../../utils/CommonUtils';
-import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
-import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
-import PageLayout from '../containers/PageLayout';
 import { AddGlossaryProps } from './AddGlossary.interface';
 
 const AddGlossary = ({
@@ -42,35 +39,38 @@ const AddGlossary = ({
   onCancel,
   onSave,
 }: AddGlossaryProps) => {
-  const markdownRef = useRef<EditorContentRef>();
   const { t } = useTranslation();
   const [form] = useForm();
 
-  const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
-  const [owner, setOwner] = useState<EntityReference | undefined>();
-
-  const handleReviewerSave = (reviewer: EntityReference[]) => {
-    setReviewer(reviewer);
-  };
-  const handleUpdatedOwner = async (owner: EntityReference | undefined) => {
-    setOwner(owner);
-  };
+  const selectedOwner = Form.useWatch<EntityReference | undefined>(
+    'owner',
+    form
+  );
+  const reviewersList =
+    Form.useWatch<EntityReference[]>('reviewers', form) ?? [];
 
   const handleSave: FormProps['onFinish'] = (formData) => {
-    const { name, displayName, description, tags, mutuallyExclusive } =
-      formData;
+    const {
+      name,
+      displayName,
+      description,
+      tags,
+      mutuallyExclusive,
+      reviewers = [],
+      owner,
+    } = formData;
 
-    const selectedOwner = owner || {
+    const selectedOwner = owner ?? {
       id: getCurrentUserId(),
       type: 'user',
     };
     const data: CreateGlossary = {
       name: name.trim(),
-      displayName: (displayName || name).trim(),
+      displayName: displayName?.trim(),
       description: description,
-      reviewers:
-        reviewer.map((d) => toString(d.fullyQualifiedName)).filter(Boolean) ??
-        [],
+      reviewers: reviewers
+        .map((d: EntityReference) => toString(d.fullyQualifiedName))
+        .filter(Boolean),
       owner: selectedOwner,
       tags: tags || [],
       mutuallyExclusive: Boolean(mutuallyExclusive),
@@ -78,205 +78,231 @@ const AddGlossary = ({
     onSave(data);
   };
 
-  const fetchRightPanel = () => {
-    return (
-      <>
-        <Typography.Title level={5}>
-          {t('label.configure-entity', {
-            entity: t('label.glossary'),
-          })}
-        </Typography.Title>
-        <div className="mb-5">{t('message.create-new-glossary-guide')}</div>
-      </>
-    );
+  const rightPanel = (
+    <div data-testid="right-panel">
+      <Typography.Title level={5}>
+        {t('label.configure-entity', {
+          entity: t('label.glossary'),
+        })}
+      </Typography.Title>
+      <Typography.Text className="mb-5">
+        {t('message.create-new-glossary-guide')}
+      </Typography.Text>
+    </div>
+  );
+
+  const formFields: FieldProp[] = [
+    {
+      name: 'name',
+      id: 'root/name',
+      label: t('label.name'),
+      required: true,
+      placeholder: t('label.name'),
+      type: FieldTypes.TEXT,
+      props: {
+        'data-testid': 'name',
+      },
+      rules: [
+        {
+          pattern: ENTITY_NAME_REGEX,
+          message: t('message.entity-name-validation'),
+        },
+        {
+          min: 1,
+          max: 128,
+          message: `${t('message.entity-maximum-size', {
+            entity: `${t('label.name')}`,
+            max: '128',
+          })}`,
+        },
+      ],
+    },
+    {
+      name: 'displayName',
+      id: 'root/displayName',
+      label: t('label.display-name'),
+      required: false,
+      placeholder: t('label.display-name'),
+      type: FieldTypes.TEXT,
+      props: {
+        'data-testid': 'display-name',
+      },
+    },
+    {
+      name: 'description',
+      required: true,
+      label: t('label.description'),
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'description',
+        initialValue: '',
+        height: '170px',
+        readonly: !allowAccess,
+      },
+    },
+    {
+      name: 'tags',
+      required: false,
+      label: t('label.tag-plural'),
+      id: 'root/tags',
+      type: FieldTypes.TAG_SUGGESTION,
+      props: {
+        'data-testid': 'tags-container',
+      },
+    },
+    {
+      name: 'mutuallyExclusive',
+      label: t('label.mutually-exclusive'),
+      type: FieldTypes.SWITCH,
+      required: false,
+      props: {
+        'data-testid': 'mutually-exclusive-button',
+      },
+      id: 'root/mutuallyExclusive',
+      formItemLayout: 'horizontal',
+    },
+  ];
+
+  const ownerField: FieldProp = {
+    name: 'owner',
+    id: 'root/owner',
+    required: false,
+    label: t('label.owner'),
+    type: FieldTypes.USER_TEAM_SELECT,
+    props: {
+      hasPermission: true,
+      children: (
+        <Button
+          data-testid="add-owner"
+          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+          size="small"
+          type="primary"
+        />
+      ),
+    },
+    formItemLayout: 'horizontal',
+    formItemProps: {
+      valuePropName: 'owner',
+      trigger: 'onUpdate',
+    },
+  };
+
+  const reviewersField: FieldProp = {
+    name: 'reviewers',
+    id: 'root/reviewers',
+    required: false,
+    label: t('label.reviewer-plural'),
+    type: FieldTypes.USER_MULTI_SELECT,
+    props: {
+      hasPermission: true,
+      popoverProps: { placement: 'topLeft' },
+      children: (
+        <Button
+          data-testid="add-reviewers"
+          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+          size="small"
+          type="primary"
+        />
+      ),
+    },
+    formItemLayout: 'horizontal',
+    formItemProps: {
+      valuePropName: 'selectedUsers',
+      trigger: 'onUpdate',
+      initialValue: [],
+    },
   };
 
   return (
-    <PageLayout
-      classes="tw-max-w-full-hd tw-h-full tw-pt-4"
-      header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
-      layout={PageLayoutType['2ColRTL']}
-      pageTitle={t('label.add-entity', { entity: t('label.glossary') })}
-      rightPanel={fetchRightPanel()}>
-      <div className="tw-form-container glossary-form">
-        <Typography.Title data-testid="form-heading" level={5}>
-          {header}
-        </Typography.Title>
-        <div className="tw-pb-3" data-testid="add-glossary">
-          <Form form={form} layout="vertical" onFinish={handleSave}>
-            <Form.Item
-              label={t('label.name')}
-              name="name"
-              rules={[
-                {
-                  required: true,
-                  message: `${t('message.field-text-is-required', {
-                    fieldText: t('label.name'),
-                  })}`,
-                },
-                {
-                  pattern: ENTITY_NAME_REGEX,
-                  message: `${t('message.entity-pattern-validation', {
-                    entity: `${t('label.name')}`,
-                    pattern: `- _ & . '`,
-                  })}`,
-                },
-                {
-                  min: 1,
-                  max: 128,
-                  message: `${t('message.entity-maximum-size', {
-                    entity: `${t('label.name')}`,
-                    max: '128',
-                  })}`,
-                },
-              ]}>
-              <Input data-testid="name" placeholder={t('label.name')} />
-            </Form.Item>
-            <Form.Item
-              data-testid="display-name"
-              id="display-name"
-              label={t('label.display-name')}
-              name="displayName">
-              <Input placeholder={t('label.display-name')} />
-            </Form.Item>
-            <Form.Item
-              label={`${t('label.description')}:`}
-              name="description"
-              rules={[
-                {
-                  required: true,
-                  message: `${t('message.field-text-is-required', {
-                    fieldText: t('label.description'),
-                  })}`,
-                },
-              ]}
-              trigger="onTextChange"
-              valuePropName="initialValue">
-              <RichTextEditor
-                data-testid="description"
-                height="170px"
-                initialValue=""
-                readonly={!allowAccess}
-                ref={markdownRef}
-              />
-            </Form.Item>
-            <Form.Item
-              data-testid="tags-container"
-              label={t('label.tag-plural')}
-              name="tags">
-              <TagSuggestion />
-            </Form.Item>
-            <Space align="center" className="switch-field" size={16}>
-              <Typography.Text>{t('label.mutually-exclusive')}</Typography.Text>
-              <Form.Item
-                className="m-b-0 glossary-form-antd-label d-flex items-center"
-                colon={false}
-                data-testid="mutually-exclusive-label"
-                name="mutuallyExclusive"
-                valuePropName="checked">
-                <Switch
-                  data-testid="mutually-exclusive-button"
-                  id="mutuallyExclusive"
-                />
-              </Form.Item>
-            </Space>
-
-            <div className="m-t-xss">
-              <div className="d-flex items-center">
-                <p className="glossary-form-label w-form-label tw-mr-3">{`${t(
-                  'label.owner'
-                )}`}</p>
-                <UserTeamSelectableList
-                  hasPermission
-                  owner={owner}
-                  onUpdate={handleUpdatedOwner}>
-                  <Button
-                    data-testid="add-owner"
-                    icon={
-                      <PlusOutlined
-                        style={{ color: 'white', fontSize: '12px' }}
-                      />
-                    }
-                    size="small"
-                    type="primary"
-                  />
-                </UserTeamSelectableList>
+    <ResizablePanels
+      firstPanel={{
+        children: (
+          <div className="max-width-md w-9/10 service-form-container">
+            <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
+            <Card className="p-sm m-t-md glossary-form">
+              <Typography.Title data-testid="form-heading" level={5}>
+                {header}
+              </Typography.Title>
+              <div data-testid="add-glossary">
+                <Form form={form} layout="vertical" onFinish={handleSave}>
+                  {generateFormFields(formFields)}
+                  <div className="m-t-xss">
+                    {getField(ownerField)}
+                    {selectedOwner && (
+                      <div className="m-y-xs" data-testid="owner-container">
+                        <UserTag
+                          id={selectedOwner.id}
+                          name={getEntityName(selectedOwner)}
+                          size={UserTagSize.small}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="m-t-xss">
+                    {getField(reviewersField)}
+                    {Boolean(reviewersList.length) && (
+                      <Space
+                        wrap
+                        className="m-y-xs"
+                        data-testid="reviewers-container"
+                        size={[8, 8]}>
+                        {reviewersList.map((d, index) => (
+                          <UserTag
+                            id={d.id}
+                            key={index}
+                            name={getEntityName(d)}
+                            size={UserTagSize.small}
+                          />
+                        ))}
+                      </Space>
+                    )}
+                  </div>
+                  <Form.Item>
+                    <Space
+                      className="w-full justify-end"
+                      data-testid="cta-buttons"
+                      size={16}>
+                      <Button
+                        data-testid="cancel-glossary"
+                        type="link"
+                        onClick={onCancel}>
+                        {t('label.cancel')}
+                      </Button>
+                      <Button
+                        data-testid="save-glossary"
+                        disabled={!allowAccess}
+                        htmlType="submit"
+                        loading={isLoading}
+                        type="primary">
+                        {t('label.save')}
+                      </Button>
+                    </Space>
+                  </Form.Item>
+                </Form>
               </div>
-              {owner && (
-                <div className="tw-my-2" data-testid="owner-container">
-                  <UserTag
-                    id={owner.id}
-                    name={getEntityName(owner)}
-                    size={UserTagSize.small}
-                  />
-                </div>
-              )}
-            </div>
-            <div className="m-t-xss">
-              <div className="d-flex items-center">
-                <p className="glossary-form-label w-form-label tw-mr-3">
-                  {t('label.reviewer-plural')}
-                </p>
-                <UserSelectableList
-                  hasPermission
-                  popoverProps={{ placement: 'topLeft' }}
-                  selectedUsers={reviewer ?? []}
-                  onUpdate={handleReviewerSave}>
-                  <Button
-                    data-testid="add-reviewers"
-                    icon={
-                      <PlusOutlined
-                        style={{ color: 'white', fontSize: '12px' }}
-                      />
-                    }
-                    size="small"
-                    type="primary"
-                  />
-                </UserSelectableList>
-              </div>
-              {Boolean(reviewer.length) && (
-                <Space
-                  wrap
-                  className="tw-my-2"
-                  data-testid="reviewers-container"
-                  size={[8, 8]}>
-                  {reviewer.map((d, index) => (
-                    <UserTag
-                      id={d.id}
-                      key={index}
-                      name={getEntityName(d)}
-                      size={UserTagSize.small}
-                    />
-                  ))}
-                </Space>
-              )}
-            </div>
-            <Form.Item>
-              <Space
-                className="w-full justify-end"
-                data-testid="cta-buttons"
-                size={16}>
-                <Button
-                  data-testid="cancel-glossary"
-                  type="link"
-                  onClick={onCancel}>
-                  {t('label.cancel')}
-                </Button>
-                <Button
-                  data-testid="save-glossary"
-                  disabled={!allowAccess}
-                  htmlType="submit"
-                  loading={isLoading}
-                  type="primary">
-                  {t('label.save')}
-                </Button>
-              </Space>
-            </Form.Item>
-          </Form>
-        </div>
-      </div>
-    </PageLayout>
+            </Card>
+          </div>
+        ),
+        minWidth: 700,
+        flex: 0.7,
+      }}
+      pageTitle={t('label.add-entity', {
+        entity: t('label.glossary'),
+      })}
+      secondPanel={{
+        children: rightPanel,
+        className: 'p-md service-doc-panel',
+        minWidth: 60,
+        overlay: {
+          displayThreshold: 200,
+          header: t('label.setup-guide'),
+          rotation: 'counter-clockwise',
+        },
+      }}
+    />
   );
 };
 
 export default AddGlossary;
+PageLayoutV1;

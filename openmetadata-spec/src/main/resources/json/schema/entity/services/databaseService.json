@@ -45,7 +45,9 @@
         "DomoDatabase",
         "QueryLog",
         "CustomDatabase",
-        "Dbt"
+        "Dbt",
+        "SapHana",
+        "MongoDB"
       ],
       "javaEnums": [
         {
@@ -140,6 +142,12 @@
         },
         {
           "name": "Dbt"
+        },
+        {
+          "name": "SapHana"
+        },
+        {
+          "name": "MongoDB"
         }
       ]
     },
@@ -239,6 +247,12 @@
             },
             {
               "$ref": "./connections/database/customDatabaseConnection.json"
+            },
+            {
+              "$ref": "./connections/database/sapHanaConnection.json"
+            },
+            {
+              "$ref": "./connections/database/mongoDBConnection.json"
             }
           ]
         }
@@ -276,7 +290,7 @@
     },
     "pipelines": {
       "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     },
     "testConnectionResult": {
       "description": "Last test connection results for this service",

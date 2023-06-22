@@ -15,7 +15,7 @@ import json
 import uuid
 from datetime import datetime, timedelta
 from functools import partial
-from typing import Callable
+from typing import Callable, cast
 
 import airflow
 from airflow import DAG
@@ -30,9 +30,12 @@ from metadata.generated.schema.entity.services.metadataService import MetadataSe
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
-from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
+    TestSuitePipeline,
+)
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.fqn import split
 
 try:
     from airflow.operators.python import PythonOperator
@@ -43,9 +46,6 @@ from openmetadata_managed_apis.utils.logger import set_operator_logger, workflow
 from openmetadata_managed_apis.utils.parser import (
     parse_service_connection,
     parse_validation_err,
-)
-from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
-    build_secrets_manager_credentials,
 )
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
@@ -104,12 +104,6 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
     :param ingestion_pipeline: With the service ref
     :return: WorkflowSource
     """
-    secrets_manager = (
-        ingestion_pipeline.openMetadataServerConnection.secretsManagerProvider
-    )
-    ingestion_pipeline.openMetadataServerConnection.secretsManagerCredentials = (
-        build_secrets_manager_credentials(secrets_manager)
-    )
 
     try:
         metadata = OpenMetadata(config=ingestion_pipeline.openMetadataServerConnection)
@@ -122,19 +116,6 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
         )
 
     service_type = ingestion_pipeline.service.type
-
-    if service_type == "testSuite":
-        service = metadata.get_by_name(
-            entity=TestSuite, fqn=ingestion_pipeline.service.name
-        )  # check we are able to access OM server
-        if not service:
-            raise GetServiceException(service_type, ingestion_pipeline.service.name)
-
-        return WorkflowSource(
-            type=service_type,
-            serviceName=ingestion_pipeline.service.name,
-            sourceConfig=ingestion_pipeline.sourceConfig,
-        )
 
     entity_class = None
     try:
@@ -172,6 +153,24 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
             entity_class = StorageService
             service: StorageService = metadata.get_by_name(
                 entity=entity_class, fqn=ingestion_pipeline.service.name
+            )
+        elif service_type == "testSuite":
+            entity_class = DatabaseService
+            ingestion_pipeline.sourceConfig.config = cast(
+                TestSuitePipeline, ingestion_pipeline.sourceConfig.config
+            )
+            split_fqn = split(
+                ingestion_pipeline.sourceConfig.config.entityFullyQualifiedName.__root__
+            )
+            try:
+                service_fqn = split_fqn[0]
+            except IndexError:
+                raise ParsingConfigurationError(
+                    "Invalid fully qualified name "
+                    f"{ingestion_pipeline.sourceConfig.config.entityFullyQualifiedName.__root__}"
+                )
+            service: DatabaseService = metadata.get_by_name(
+                entity=entity_class, fqn=service_fqn
             )
         else:
             raise InvalidServiceException(f"Invalid Service Type: {service_type}")

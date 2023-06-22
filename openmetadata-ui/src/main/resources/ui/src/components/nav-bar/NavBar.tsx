@@ -22,7 +22,8 @@ import {
   Tooltip,
 } from 'antd';
 import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
-import { useApplicationConfigProvider } from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
+import { ReactComponent as Help } from 'assets/svg/ic-help.svg';
+import BrandImage from 'components/common/BrandImage/BrandImage';
 import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import WhatsNewAlert from 'components/Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component';
 import { CookieStorage } from 'cookie-storage';
@@ -36,7 +37,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, NavLink, useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { refreshPage } from 'utils/CommonUtils';
 import { isCommandKeyPress, Keys } from 'utils/KeyboardUtil';
 import AppState from '../../AppState';
@@ -44,7 +45,6 @@ import Logo from '../../assets/svg/logo-monogram.svg';
 import {
   globalSearchOptions,
   NOTIFICATION_READ_TIMER,
-  ROUTES,
   SOCKET_EVENTS,
 } from '../../constants/constants';
 import {
@@ -64,7 +64,6 @@ import {
   inPageSearchOptions,
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
-import { activeLink, normalLink } from '../../utils/styleconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getTaskDetailPath } from '../../utils/TasksUtils';
 import SearchOptions from '../app-bar/SearchOptions';
@@ -95,7 +94,6 @@ const NavBar = ({
   handleOnClick,
   handleClear,
 }: NavBarProps) => {
-  const { logoConfig } = useApplicationConfigProvider();
   const { searchCriteria, updateSearchCriteria } = useGlobalSearchProvider();
 
   // get current user details
@@ -151,14 +149,6 @@ const NavBar = ({
   );
 
   const { socket } = useWebSocketConnector();
-
-  const navStyle = (value: boolean) => {
-    if (value) {
-      return { color: activeLink };
-    }
-
-    return { color: normalLink };
-  };
 
   const debouncedOnChange = useCallback(
     (text: string): void => {
@@ -251,37 +241,6 @@ const NavBar = ({
     };
   };
 
-  const governanceMenu = [
-    {
-      key: 'glossary',
-      label: (
-        <NavLink
-          className="focus:no-underline"
-          data-testid="appbar-item-glossary"
-          style={navStyle(pathname.startsWith('/glossary'))}
-          to={{
-            pathname: ROUTES.GLOSSARY,
-          }}>
-          {t('label.glossary')}
-        </NavLink>
-      ),
-    },
-    {
-      key: 'tags',
-      label: (
-        <NavLink
-          className="focus:no-underline"
-          data-testid="appbar-item-tags"
-          style={navStyle(pathname.startsWith('/tags'))}
-          to={{
-            pathname: ROUTES.TAGS,
-          }}>
-          {t('label.classification')}
-        </NavLink>
-      ),
-    },
-  ];
-
   const handleKeyPress = useCallback((event) => {
     if (isCommandKeyPress(event) && event.key === Keys.K) {
       searchRef.current?.focus();
@@ -361,257 +320,179 @@ const NavBar = ({
     [AppState]
   );
 
-  const brandLogoUrl = useMemo(() => {
-    return logoConfig?.customMonogramUrlPath || Logo;
-  }, [logoConfig]);
-
   return (
     <>
-      <div className="tw-h-16 tw-py-3 tw-border-b-2 tw-border-separator tw-bg-white">
-        <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6">
-          <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
-            <Link className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
-              <img
-                alt="OpenMetadata Logo"
-                className="vertical-middle"
-                data-testid="image"
-                height={30}
-                src={brandLogoUrl}
-                width={30}
-              />
-            </Link>
-            <Space className="tw-ml-5 flex-none" size={16}>
-              <NavLink
-                className="focus:tw-no-underline"
-                data-testid="appbar-item-explore"
-                style={navStyle(pathname.startsWith('/explore'))}
-                to={{
-                  pathname: '/explore/tables',
-                }}>
-                {t('label.explore')}
-              </NavLink>
-              <NavLink
-                className="focus:tw-no-underline"
-                data-testid="appbar-item-data-quality"
-                style={navStyle(pathname.includes(ROUTES.TEST_SUITES))}
-                to={{
-                  pathname: ROUTES.TEST_SUITES,
-                }}>
-                {t('label.quality')}
-              </NavLink>
-              <NavLink
-                className="focus:tw-no-underline"
-                data-testid="appbar-item-data-insight"
-                style={navStyle(pathname.includes(ROUTES.DATA_INSIGHT))}
-                to={{
-                  pathname: ROUTES.DATA_INSIGHT,
-                }}>
-                {t('label.insight-plural')}
-              </NavLink>
-              <Dropdown
-                className="cursor-pointer"
-                menu={{ items: governanceMenu }}
-                trigger={['click']}>
-                <Space data-testid="governance" size={2}>
-                  {t('label.govern')}
-                  <DropDownIcon
-                    className="m-xs m-l-xss"
-                    height={14}
-                    width={14}
-                  />
-                </Space>
-              </Dropdown>
-            </Space>
-          </div>
-          <div
-            className="tw-flex-none tw-relative tw-justify-items-center tw-ml-16 appbar-search"
-            data-testid="appbar-item">
-            <Input
-              addonBefore={entitiesSelect}
-              autoComplete="off"
-              className="search-grey rounded-4"
-              data-testid="searchBox"
-              id="searchBox"
-              placeholder={t('message.search-for-entity-types')}
-              ref={searchRef}
-              style={{
-                boxShadow: 'none',
-                height: '37px',
-              }}
-              suffix={
-                <span className="tw-flex tw-items-center">
-                  <CmdKIcon />
-                  <span className="tw-cursor-pointer tw-mb-2 tw-ml-3 tw-w-4 tw-h-4 tw-text-center">
-                    {searchValue ? (
-                      <SVGIcons
-                        alt="icon-cancel"
-                        icon={cancelIcon}
-                        onClick={handleClear}
-                      />
-                    ) : (
-                      <SVGIcons
-                        alt="icon-search"
-                        icon={searchIcon}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleOnClick();
-                        }}
-                      />
-                    )}
-                  </span>
+      <div className="navbar-container bg-white flex-nowrap w-full">
+        <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
+          <BrandImage
+            isMonoGram
+            alt="OpenMetadata Logo"
+            className="vertical-middle"
+            dataTestId="image"
+            height={30}
+            width={30}
+          />
+        </Link>
+        <div className="m-auto">
+          <Input
+            addonBefore={entitiesSelect}
+            autoComplete="off"
+            className="rounded-4  appbar-search"
+            data-testid="searchBox"
+            id="searchBox"
+            placeholder={t('message.search-for-entity-types')}
+            ref={searchRef}
+            style={{
+              height: '37px',
+            }}
+            suffix={
+              <span className="d-flex items-center">
+                <CmdKIcon />
+                <span className="cursor-pointer m-b-xs m-l-sm w-4 h-4 text-center">
+                  {searchValue ? (
+                    <SVGIcons
+                      alt="icon-cancel"
+                      icon={cancelIcon}
+                      onClick={handleClear}
+                    />
+                  ) : (
+                    <SVGIcons
+                      alt="icon-search"
+                      icon={searchIcon}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleOnClick();
+                      }}
+                    />
+                  )}
                 </span>
-              }
-              type="text"
-              value={searchValue}
-              onBlur={() => {
-                setSearchIcon('icon-searchv1');
-                setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED);
-              }}
-              onChange={(e) => {
-                const { value } = e.target;
-                debounceOnSearch(value);
-                handleSearchChange(value);
-              }}
-              onFocus={() => {
-                setSearchIcon('icon-searchv1color');
-                setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED_COLOR);
-              }}
-              onKeyDown={handleKeyDown}
-            />
-            {!isTourRoute &&
-              searchValue &&
-              (isInPageSearchAllowed(pathname) ? (
-                <SearchOptions
-                  isOpen={isSearchBoxOpen}
-                  options={inPageSearchOptions(pathname)}
-                  searchText={searchValue}
-                  selectOption={handleSelectOption}
-                  setIsOpen={handleSearchBoxOpen}
-                />
-              ) : (
-                <Suggestions
-                  isOpen={isSearchBoxOpen}
-                  searchCriteria={
-                    searchCriteria === '' ? undefined : searchCriteria
-                  }
-                  searchText={suggestionSearch}
-                  setIsOpen={handleSearchBoxOpen}
-                />
-              ))}
-          </div>
-          <Space className="tw-ml-auto" size={16}>
-            <NavLink
-              className="focus:tw-no-underline"
-              data-testid="appbar-item-settings"
-              style={navStyle(pathname.startsWith('/settings'))}
-              to={{
-                pathname: ROUTES.SETTINGS,
-              }}>
-              {t('label.setting-plural')}
-            </NavLink>
-
-            <Dropdown
-              className="cursor-pointer"
-              menu={{ items: supportDropdown }}
-              overlayStyle={{ width: 175 }}
-              placement="bottomRight"
-              trigger={['click']}>
-              <Space size={2}>
-                <span>{t('label.help')}</span>
-                <DropDownIcon
-                  className="m-y-xs m-l-xss"
-                  height={14}
-                  width={14}
-                />
-              </Space>
-            </Dropdown>
-
-            <Dropdown
-              className="cursor-pointer"
-              menu={{
-                items: languageSelectOptions,
-                onClick: handleLanguageChange,
-              }}
-              placement="bottomRight"
-              trigger={['click']}>
-              <Space size={2}>
-                {upperCase(
-                  (language || SupportedLocales.English).split('-')[0]
-                )}
-                <DropDownIcon
-                  className="m-y-xs m-l-xss"
-                  height={14}
-                  width={14}
-                />
-              </Space>
-            </Dropdown>
-
-            <button className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 ">
-              <Dropdown
-                destroyPopupOnHide
-                dropdownRender={() => (
-                  <NotificationBox
-                    hasMentionNotification={hasMentionNotification}
-                    hasTaskNotification={hasTaskNotification}
-                    onMarkMentionsNotificationRead={
-                      handleMentionsNotificationRead
-                    }
-                    onMarkTaskNotificationRead={handleTaskNotificationRead}
-                    onTabChange={handleActiveTab}
-                  />
-                )}
-                overlayStyle={{
-                  zIndex: 9999,
-                  width: '425px',
-                  minHeight: '375px',
-                }}
-                placement="bottomRight"
-                trigger={['click']}
-                onOpenChange={handleBellClick}>
-                <Badge dot={hasTaskNotification || hasMentionNotification}>
-                  <SVGIcons
-                    alt="Alert bell icon"
-                    icon={Icons.ALERT_BELL}
-                    width="18"
-                  />
-                </Badge>
-              </Dropdown>
-            </button>
-            <div className="profile-dropdown" data-testid="dropdown-profile">
-              <LegacyDropDown
-                dropDownList={profileDropdown}
-                icon={
-                  <Tooltip placement="bottom" title="Profile" trigger="hover">
-                    {isImgUrlValid ? (
-                      <div className="profile-image square tw--mr-2">
-                        <Image
-                          alt="user"
-                          preview={false}
-                          referrerPolicy="no-referrer"
-                          src={profilePicture || ''}
-                          onError={handleOnImageError}
-                        />
-                      </div>
-                    ) : (
-                      <Avatar name={username} width="30" />
-                    )}
-                  </Tooltip>
-                }
-                isDropDownIconVisible={false}
-                type="link"
+              </span>
+            }
+            type="text"
+            value={searchValue}
+            onBlur={() => {
+              setSearchIcon('icon-searchv1');
+              setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED);
+            }}
+            onChange={(e) => {
+              const { value } = e.target;
+              debounceOnSearch(value);
+              handleSearchChange(value);
+            }}
+            onFocus={() => {
+              setSearchIcon('icon-searchv1color');
+              setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED_COLOR);
+            }}
+            onKeyDown={handleKeyDown}
+          />
+          {!isTourRoute &&
+            searchValue &&
+            (isInPageSearchAllowed(pathname) ? (
+              <SearchOptions
+                isOpen={isSearchBoxOpen}
+                options={inPageSearchOptions(pathname)}
+                searchText={searchValue}
+                selectOption={handleSelectOption}
+                setIsOpen={handleSearchBoxOpen}
               />
-            </div>
-          </Space>
+            ) : (
+              <Suggestions
+                isOpen={isSearchBoxOpen}
+                searchCriteria={
+                  searchCriteria === '' ? undefined : searchCriteria
+                }
+                searchText={suggestionSearch}
+                setIsOpen={handleSearchBoxOpen}
+              />
+            ))}
         </div>
-        <WhatsNewModal
-          header={`${t('label.whats-new')}!`}
-          visible={isFeatureModalOpen}
-          onCancel={handleModalCancel}
-        />
+        <Space size={24}>
+          <Dropdown
+            destroyPopupOnHide
+            className="cursor-pointer"
+            dropdownRender={() => (
+              <NotificationBox
+                hasMentionNotification={hasMentionNotification}
+                hasTaskNotification={hasTaskNotification}
+                onMarkMentionsNotificationRead={handleMentionsNotificationRead}
+                onMarkTaskNotificationRead={handleTaskNotificationRead}
+                onTabChange={handleActiveTab}
+              />
+            )}
+            overlayStyle={{
+              zIndex: 9999,
+              width: '425px',
+              minHeight: '375px',
+            }}
+            placement="bottomRight"
+            trigger={['click']}
+            onOpenChange={handleBellClick}>
+            <Badge dot={hasTaskNotification || hasMentionNotification}>
+              <SVGIcons
+                alt="Alert bell icon"
+                icon={Icons.ALERT_BELL}
+                width="18"
+              />
+            </Badge>
+          </Dropdown>
 
-        <WhatsNewAlert />
+          <Dropdown
+            className="cursor-pointer"
+            menu={{
+              items: languageSelectOptions,
+              onClick: handleLanguageChange,
+            }}
+            placement="bottomRight"
+            trigger={['click']}>
+            <Space size={2}>
+              {upperCase((language || SupportedLocales.English).split('-')[0])}
+              <DropDownIcon className="m-y-xs" height={14} width={14} />
+            </Space>
+          </Dropdown>
+
+          <Dropdown
+            className="cursor-pointer"
+            menu={{ items: supportDropdown }}
+            overlayStyle={{ width: 175 }}
+            placement="bottomRight"
+            trigger={['click']}>
+            <Help height={20} width={20} />
+          </Dropdown>
+
+          <div className="profile-dropdown " data-testid="dropdown-profile">
+            <LegacyDropDown
+              dropDownList={profileDropdown}
+              icon={
+                <Tooltip placement="bottom" title="Profile" trigger="hover">
+                  {isImgUrlValid ? (
+                    <div className="profile-image circle tw--mr-2">
+                      <Image
+                        alt="user"
+                        preview={false}
+                        referrerPolicy="no-referrer"
+                        src={profilePicture || ''}
+                        width={24}
+                        onError={handleOnImageError}
+                      />
+                    </div>
+                  ) : (
+                    <Avatar name={username} type="circle" width="24" />
+                  )}
+                </Tooltip>
+              }
+              isDropDownIconVisible={false}
+              type="link"
+            />
+          </div>
+        </Space>
       </div>
+      <WhatsNewModal
+        header={`${t('label.whats-new')}!`}
+        visible={isFeatureModalOpen}
+        onCancel={handleModalCancel}
+      />
+      <WhatsNewAlert />
     </>
   );
 };

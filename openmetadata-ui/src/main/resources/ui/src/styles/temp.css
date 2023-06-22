@@ -729,13 +729,13 @@ body .list-option.rdw-option-active {
 }
 
 .slick-dots li button:before {
-  font-size: 24px !important;
+  font-size: 12px !important;
   color: #d9ceee !important;
   opacity: 1 !important;
 }
 
 .slick-dots li.slick-active button:before {
-  color: #7147e8 !important;
+  color: #0968da !important;
   opacity: 1 !important;
 }
 

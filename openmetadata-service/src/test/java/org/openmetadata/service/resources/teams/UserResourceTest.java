@@ -1234,7 +1234,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   @Override
   public String getAllowedFields() {
-    List<String> allowedFields = Entity.getAllowedFields(entityClass);
+    List<String> allowedFields = Entity.getEntityFields(entityClass);
     allowedFields.removeAll(of(USER_PROTECTED_FIELDS.split(",")));
     return String.join(",", allowedFields);
   }

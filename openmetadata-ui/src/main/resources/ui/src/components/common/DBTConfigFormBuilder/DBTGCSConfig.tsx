@@ -12,14 +12,10 @@
  */
 
 import { t } from 'i18next';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import React, { Fragment, FunctionComponent } from 'react';
-import {
-  FieldProp,
-  FieldTypes,
-  generateFormFields,
-  getField,
-} from 'utils/formUtils';
-import { GCSCredentialsValues } from '../../../generated/metadataIngestion/dbtPipeline';
+import { generateFormFields, getField } from 'utils/formUtils';
+import { GCPCredentialsValues } from '../../../generated/metadataIngestion/dbtPipeline';
 import DBTCommonFields from './DBTCommonFields.component';
 import { DbtConfigS3GCS } from './DBTConfigForm.interface';
 import { GCSCreds } from './DBTFormConstants';
@@ -68,7 +64,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
     },
   ];
 
-  const gcsCredConfigs = (gcsConfig?: GCSCredentialsValues) => {
+  const gcsCredConfigs = (gcsConfig?: GCPCredentialsValues) => {
     const gcsCredConfigFields: FieldProp[] = [
       {
         name: 'type',
@@ -222,7 +218,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
       },
       id: 'root/GCSCredentialsPath',
       formItemProps: {
-        initialValue: dbtSecurityConfig?.gcsConfig || '',
+        initialValue: dbtSecurityConfig?.gcpConfig || '',
       },
     },
   ];
@@ -245,7 +241,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
       })}
 
       {gcsType === GCS_CONFIG.GCSValues
-        ? gcsCredConfigs(dbtSecurityConfig?.gcsConfig as GCSCredentialsValues)
+        ? gcsCredConfigs(dbtSecurityConfig?.gcpConfig as GCPCredentialsValues)
         : generateFormFields(gcsCredPathFields)}
 
       {generateFormFields(dbtPrefixConfigFields)}

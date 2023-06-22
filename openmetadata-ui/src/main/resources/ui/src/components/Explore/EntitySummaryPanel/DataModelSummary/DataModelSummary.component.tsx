@@ -12,6 +12,7 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
@@ -25,7 +26,6 @@ import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from 'utils/EntityUtils';
-import SVGIcons from 'utils/SvgUtils';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import SummaryList from '../SummaryList/SummaryList.component';
@@ -70,7 +70,7 @@ const DataModelSummary = ({
       <>
         <Row className="m-md" gutter={[0, 4]}>
           <Col span={24}>
-            <Row>
+            <Row gutter={[0, 4]}>
               {entityInfo.map((info) => {
                 const isOwner = info.name === t('label.owner');
 
@@ -96,12 +96,7 @@ const DataModelSummary = ({
                             to={{ pathname: info.url }}>
                             {info.value}
                             {info.isExternal ? (
-                              <SVGIcons
-                                alt="external-link"
-                                className="m-l-xs"
-                                icon="external-link"
-                                width="12px"
-                              />
+                              <IconExternalLink className="m-l-xs" width={12} />
                             ) : null}
                           </Link>
                         ) : (
@@ -135,7 +130,7 @@ const DataModelSummary = ({
 
         <Divider className="m-y-xs" />
 
-        <Row className="m-md" gutter={[0, 16]}>
+        <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
               className="text-base text-grey-muted"

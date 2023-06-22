@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { Button, Popover, Space, Typography } from 'antd';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
@@ -181,7 +180,7 @@ const Description: FC<DescriptionProps> = ({
       <Space align="end" size={0}>
         {hasEditAccess && (
           <Button
-            className="w-7 h-7 p-0 flex-center text-primary"
+            className="w-7 h-7 p-0 flex-center"
             data-testid="edit-description"
             icon={<IconEdit height={16} width={16} />}
             type="text"
@@ -214,26 +213,26 @@ const Description: FC<DescriptionProps> = ({
                 markdown={description}
               />
             ) : (
-              <span className="tw-no-description p-y-xs">
+              <span className="text-grey-muted p-y-xs">
                 {t('label.no-entity', {
                   entity: t('label.description'),
                 })}
               </span>
             )}
           </div>
-          <ModalWithMarkdownEditor
-            header={header || t('label.edit-description-for', { entityName })}
-            placeholder={t('label.enter-entity', {
-              entity: t('label.description'),
-            })}
-            value={description}
-            visible={Boolean(isEdit)}
-            onCancel={onCancel}
-            onSave={handleSave}
-          />
         </div>
         <DescriptionActions />
       </Space>
+      <ModalWithMarkdownEditor
+        header={header || t('label.edit-description-for', { entityName })}
+        placeholder={t('label.enter-entity', {
+          entity: t('label.description'),
+        })}
+        value={description}
+        visible={Boolean(isEdit)}
+        onCancel={onCancel}
+        onSave={handleSave}
+      />
     </div>
   );
 };

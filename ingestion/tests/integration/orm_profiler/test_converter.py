@@ -25,6 +25,9 @@ from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -44,6 +47,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.orm.converter import ometa_to_sqa_orm
+from metadata.profiler.orm.types.custom_timestamp import CustomTimestamp
 
 
 class ProfilerWorkflowTest(TestCase):
@@ -70,7 +74,9 @@ class ProfilerWorkflowTest(TestCase):
         connection = DatabaseConnection(
             config=MysqlConnection(
                 username="username",
-                password="password",
+                authType=BasicAuth(
+                    password="password",
+                ),
                 hostPort="http://localhost:1234",
             )
         )
@@ -121,7 +127,7 @@ class ProfilerWorkflowTest(TestCase):
         assert isinstance(orm_table.id.type, sqlalchemy.BIGINT)
         assert isinstance(orm_table.name.type, sqlalchemy.String)
         assert isinstance(orm_table.age.type, sqlalchemy.INTEGER)
-        assert isinstance(orm_table.last_updated.type, sqlalchemy.TIMESTAMP)
+        assert isinstance(orm_table.last_updated.type, CustomTimestamp)
         assert isinstance(orm_table.created_date.type, sqlalchemy.DATE)
         assert isinstance(orm_table.group.type, sqlalchemy.CHAR)
         assert isinstance(orm_table.savings.type, sqlalchemy.DECIMAL)

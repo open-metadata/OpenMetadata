@@ -11,11 +11,14 @@
         }
       },
       "analyzer": {
-        "om_analyzer": {
-          "tokenizer": "letter",
-          "filter": [
-            "lowercase",
-            "om_stemmer"
+        "om_analyzer_jp" : {
+          "tokenizer" : "kuromoji_tokenizer",
+          "type" : "custom",
+          "filter" : [
+            "kuromoji_baseform",
+            "kuromoji_part_of_speech",
+            "kuromoji_number",
+            "kuromoji_stemmer"
           ]
         },
         "om_ngram": {
@@ -55,7 +58,7 @@
       },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer",
+        "analyzer": "om_analyzer_jp",
         "fields": {
           "ngram": {
             "type": "text",
@@ -65,9 +68,7 @@
       },
       "description": {
         "type": "text",
-        "index_options": "docs",
-        "analyzer": "om_analyzer",
-        "norms": false
+        "analyzer": "om_analyzer_jp"
       },
       "version": {
         "type": "float"
@@ -145,9 +146,7 @@
               },
               "description": {
                 "type": "text",
-                "index_options": "docs",
-                "analyzer": "om_analyzer",
-                "norms": false
+                "analyzer": "om_analyzer_jp"
               },
               "fullyQualifiedName": {
                 "type": "text"

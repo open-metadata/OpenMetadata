@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Qs from 'qs';
 import { ReactNode } from 'react';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -24,6 +25,7 @@ import {
   TableSearchSource,
   TagClassSearchSource,
   TeamSearchSource,
+  TestCaseSearchSource,
   UserSearchSource,
 } from '../../interface/search.interface';
 import { ExploreSearchIndex } from '../Explore/explore.interface';
@@ -34,7 +36,8 @@ type Fields =
   | 'description'
   | 'serviceType'
   | 'displayName'
-  | 'deleted';
+  | 'deleted'
+  | 'service';
 
 export type SourceType = (
   | Pick<
@@ -53,6 +56,7 @@ export type SourceType = (
         | QuerySearchSource
         | UserSearchSource
         | TeamSearchSource
+        | TestCaseSearchSource
       >,
       Fields
     >
@@ -79,7 +83,6 @@ export interface SearchedDataProps {
   fetchLeftPanel?: () => ReactNode;
   isSummaryPanelVisible: boolean;
   showResultCount?: boolean;
-  searchText?: string;
   showOnboardingTemplate?: boolean;
   showOnlyChildren?: boolean;
   isFilterSelected: boolean;
@@ -87,4 +90,6 @@ export interface SearchedDataProps {
     details: SearchedDataProps['data'][number]['_source'],
     entityType: string
   ) => void;
+  filter?: Qs.ParsedQs;
+  currentPage?: number;
 }

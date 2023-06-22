@@ -107,5 +107,5 @@ In OpenMetadata, the Database Service hierarchy works as follows:
 Database Service > Database > Schema > Table
 ```
 
-In the case of Athena, we won't have a Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
+In the case of Glue, we won't have a Database as such instead we use the [Glue Catalog ID](https://docs.aws.amazon.com/glue/latest/dg/glue-specifying-resource-arns.html#data-catalog-resource-arns) as the database name. If you'd like to see your data in a database named something other than Catalog ID, you can specify the name in this field.
 $$

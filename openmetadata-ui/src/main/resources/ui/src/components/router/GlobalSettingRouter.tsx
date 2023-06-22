@@ -33,6 +33,15 @@ const AddAlertPage = withSuspenseFallback(
   React.lazy(() => import('pages/AddAlertPage/AddAlertPage'))
 );
 
+const ImportTeamsPage = withSuspenseFallback(
+  React.lazy(() => import('pages/teams/ImportTeamsPage/ImportTeamsPage'))
+);
+const AddDataInsightReportAlert = withSuspenseFallback(
+  React.lazy(
+    () => import('pages/AddDataInsightReportAlert/AddDataInsightReportAlert')
+  )
+);
+
 const AlertDetailsPage = withSuspenseFallback(
   React.lazy(() => import('pages/AlertDetailsPage/AlertDetailsPage'))
 );
@@ -40,6 +49,11 @@ const AlertDetailsPage = withSuspenseFallback(
 const AlertsActivityFeedPage = withSuspenseFallback(
   React.lazy(
     () => import('pages/AlertsActivityFeedPage/AlertsActivityFeedPage')
+  )
+);
+const AlertDataInsightReportPage = withSuspenseFallback(
+  React.lazy(
+    () => import('pages/AlertDataInsightReportPage/AlertDataInsightReportPage')
   )
 );
 
@@ -106,6 +120,12 @@ const EmailConfigSettingsPage = withSuspenseFallback(
       import('pages/EmailConfigSettingsPage/EmailConfigSettingsPage.component')
   )
 );
+const CustomLogoConfigSettingsPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('pages/CustomLogoConfigSettingsPage/CustomLogoConfigSettingsPage')
+  )
+);
 
 const GlobalSettingRouter = () => {
   const { permissions } = usePermissionProvider();
@@ -125,6 +145,20 @@ const GlobalSettingRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.MEMBERS,
           GlobalSettingOptions.TEAMS,
+          true
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={ImportTeamsPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEAM,
+          permissions
+        )}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.TEAMS,
+          true,
           true
         )}
       />
@@ -238,6 +272,15 @@ const GlobalSettingRouter = () => {
           GlobalSettingOptions.EMAIL
         )}
       />
+      <AdminProtectedRoute
+        exact
+        component={CustomLogoConfigSettingsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.CUSTOM_LOGO
+        )}
+      />
 
       <Route
         exact
@@ -293,6 +336,34 @@ const GlobalSettingRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.NOTIFICATIONS,
           GlobalSettingOptions.ACTIVITY_FEED
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AddDataInsightReportAlert}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.ADD_DATA_INSIGHT_REPORT_ALERT
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AddDataInsightReportAlert}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.EDIT_DATA_INSIGHT_REPORT_ALERT,
+          true
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AlertDataInsightReportPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.DATA_INSIGHT_REPORT_ALERT
         )}
       />
 

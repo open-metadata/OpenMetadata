@@ -19,6 +19,9 @@ from metadata.generated.schema.entity.services.connections.database.clickhouseCo
     ClickhouseConnection,
     ClickhouseScheme,
 )
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
     DatabricksScheme,
@@ -36,7 +39,6 @@ from metadata.generated.schema.entity.services.connections.database.hiveConnecti
     HiveScheme,
 )
 from metadata.generated.schema.entity.services.connections.database.impalaConnection import (
-    AuthMechanism,
     ImpalaConnection,
     ImpalaScheme,
 )
@@ -654,8 +656,8 @@ class SourceConnectionTest(TestCase):
         postgres_conn_obj = PostgresConnection(
             username="openmetadata_user",
             hostPort="localhost:5432",
-            scheme=PostgresScheme.postgresql_psycopg2,
             database="default",
+            scheme=PostgresScheme.postgresql_psycopg2,
         )
         assert expected_url == get_connection_url_common(postgres_conn_obj)
 
@@ -753,7 +755,9 @@ class SourceConnectionTest(TestCase):
         expected_args = {}
         mysql_conn_obj = MysqlConnection(
             username="user",
-            password=None,
+            authType=BasicAuth(
+                password=None,
+            ),
             hostPort="localhost:443",
             connectionArguments=None,
             scheme=MySQLScheme.mysql_pymysql,
@@ -764,7 +768,9 @@ class SourceConnectionTest(TestCase):
         expected_args = {"user": "user-to-be-impersonated"}
         mysql_conn_obj = MysqlConnection(
             username="user",
-            password=None,
+            authType=BasicAuth(
+                password=None,
+            ),
             hostPort="localhost:443",
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=MySQLScheme.mysql_pymysql,
@@ -824,9 +830,11 @@ class SourceConnectionTest(TestCase):
         expected_args = {}
         postgres_conn_obj = PostgresConnection(
             username="user",
-            password=None,
-            hostPort="localhost:443",
+            authType=BasicAuth(
+                password=None,
+            ),
             database="postgres",
+            hostPort="localhost:443",
             connectionArguments=None,
             scheme=PostgresScheme.postgresql_psycopg2,
         )
@@ -835,8 +843,10 @@ class SourceConnectionTest(TestCase):
         # connection arguments with connectionArguments
         expected_args = {"user": "user-to-be-impersonated"}
         postgres_conn_obj = PostgresConnection(
+            authType=BasicAuth(
+                password=None,
+            ),
             username="user",
-            password=None,
             hostPort="localhost:443",
             database="tiny",
             connectionArguments={"user": "user-to-be-impersonated"},

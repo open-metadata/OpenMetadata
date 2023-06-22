@@ -138,9 +138,9 @@ const Services = ({
                 <Col key={index} lg={8} xl={6}>
                   <Card className="w-full" size="small">
                     <div
-                      className="tw-flex tw-justify-between tw-text-grey-muted"
+                      className="d-flex tw-justify-between text-grey-muted"
                       data-testid="service-card">
-                      <div className="tw-flex tw-flex-col tw-justify-between tw-truncate">
+                      <div className="d-flex flex-col tw-justify-between tw-truncate">
                         <div>
                           <Link
                             to={getServiceDetailsPath(
@@ -167,7 +167,7 @@ const Services = ({
                                 markdown={service.description}
                               />
                             ) : (
-                              <span className="tw-no-description">
+                              <span className="text-grey-muted">
                                 {t('label.no-description')}
                               </span>
                             )}
@@ -183,9 +183,9 @@ const Services = ({
                           </span>
                         </div>
                       </div>
-                      <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
+                      <div className="d-flex flex-col tw-justify-between flex-none">
                         <div
-                          className="tw-flex tw-justify-end"
+                          className="d-flex tw-justify-end"
                           data-testid="service-icon">
                           {getServiceLogo(service.serviceType || '', 'h-7')}
                         </div>

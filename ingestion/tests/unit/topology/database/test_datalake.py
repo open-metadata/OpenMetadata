@@ -31,10 +31,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
-from metadata.ingestion.source.database.datalake.utils import (
-    read_from_avro,
-    read_from_json,
-)
+from metadata.utils.datalake.avro_dispatch import read_from_avro
+from metadata.utils.datalake.json_dispatch import read_from_json
 
 mock_datalake_config = {
     "source": {
@@ -144,7 +142,7 @@ EXAMPLE_JSON_TEST_3 = """
 
 EXAMPLE_JSON_TEST_4 = """
 [
-    {"name":"John","age":16,"sex":"M"},
+    {"name":"John","age":16,"sex":"M","address":null},
     {
         "name":"John",
         "age":16,

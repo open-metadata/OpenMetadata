@@ -20,7 +20,7 @@ POSTGRES_SQL_STATEMENT = textwrap.dedent(
         u.usename,
         d.datname database_name,
         s.query query_text,
-        s.total_exec_time/1000 duration
+        s.{time_column_name}/1000 duration
       FROM
         pg_stat_statements s
         JOIN pg_catalog.pg_database d ON s.dbid = d.oid
@@ -96,12 +96,14 @@ POSTGRES_TABLE_COMMENTS = """
     ORDER BY "schema", "table_name"
 """
 
-
+# Postgres views definitions only contains the select query
+# hence we are appending "create view <schema>.<table> as " to select query
+# to generate the column level lineage
 POSTGRES_VIEW_DEFINITIONS = """
 SELECT 
 	n.nspname "schema",
 	c.relname view_name,
-	pg_get_viewdef(c.oid) view_def
+	'create view ' || n.nspname || '.' || c.relname || ' as ' || pg_get_viewdef(c.oid,true) view_def
 FROM pg_class c 
 JOIN pg_namespace n ON n.oid = c.relnamespace 
 WHERE c.relkind IN ('v', 'm')
@@ -180,3 +182,7 @@ POSTGRES_SQL_COLUMNS = """
         AND a.attnum > 0 AND NOT a.attisdropped
         ORDER BY a.attnum
     """
+
+POSTGRES_GET_SERVER_VERSION = """
+show server_version
+"""

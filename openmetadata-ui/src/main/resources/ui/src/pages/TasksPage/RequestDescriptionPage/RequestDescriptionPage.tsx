@@ -14,10 +14,12 @@
 import { Button, Card, Form, FormProps, Input, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
+import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { EditorContentRef } from 'components/common/rich-text-editor/RichTextEditor.interface';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { capitalize, isNil } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
@@ -31,10 +33,11 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
+import { getEntityDetailLink } from 'utils/CommonUtils';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
   CreateThread,
   TaskType,
@@ -52,13 +55,10 @@ import {
   fetchOptions,
   getBreadCrumbList,
   getColumnObject,
-  getTaskDetailPath,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
-import TaskPageLayout from '../shared/TaskPageLayout';
 import '../TaskPage.style.less';
-import { cardStyles } from '../TaskPage.styles';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const RequestDescription = () => {
@@ -120,7 +120,7 @@ const RequestDescription = () => {
             {t('label.column-entity', { entity: t('label.detail-plural') })}
           </p>
           <p>
-            <span className="tw-text-grey-muted">{`${t('label.type')}:`}</span>{' '}
+            <span className="text-grey-muted">{`${t('label.type')}:`}</span>{' '}
             <span>{columnObject.dataTypeDisplay}</span>
           </p>
           <p>{columnObject?.tags?.map((tag) => `#${tag.tagFQN}`)?.join(' ')}</p>
@@ -165,13 +165,20 @@ const RequestDescription = () => {
         type: ThreadType.Task,
       };
       postThread(data)
-        .then((res) => {
+        .then(() => {
           showSuccessToast(
             t('server.create-entity-success', {
               entity: t('label.task'),
             })
           );
-          history.push(getTaskDetailPath(res.task?.id.toString() ?? ''));
+          history.push(
+            getEntityDetailLink(
+              entityType as EntityType,
+              entityFQN,
+              EntityTabs.ACTIVITY_FEED,
+              ActivityFeedTabs.TASKS
+            )
+          );
         })
         .catch((err: AxiosError) => showErrorToast(err));
     } else {
@@ -204,7 +211,7 @@ const RequestDescription = () => {
   }, [entityData]);
 
   return (
-    <TaskPageLayout>
+    <PageLayoutV1 center pageTitle={t('label.task')}>
       <Space className="w-full" direction="vertical" size="middle">
         <TitleBreadcrumb
           titleLinks={[
@@ -222,7 +229,6 @@ const RequestDescription = () => {
         <Card
           className="m-t-0 request-description"
           key="request-description"
-          style={{ ...cardStyles }}
           title={t('label.create-entity', {
             entity: t('label.task'),
           })}>
@@ -234,6 +240,7 @@ const RequestDescription = () => {
               })}:`}
               name="title">
               <Input
+                disabled
                 placeholder={t('label.task-entity', {
                   entity: t('label.title'),
                 })}
@@ -300,11 +307,11 @@ const RequestDescription = () => {
         <h6 className="tw-text-base">
           {capitalize(entityType)} {t('label.detail-plural')}
         </h6>
-        <div className="tw-flex tw-mb-4">
-          <span className="tw-text-grey-muted">{`${t('label.owner')}:`}</span>{' '}
+        <div className="d-flex tw-mb-4">
+          <span className="text-grey-muted">{`${t('label.owner')}:`}</span>{' '}
           <span>
             {entityData.owner ? (
-              <span className="tw-flex tw-ml-1">
+              <span className="d-flex tw-ml-1">
                 <ProfilePicture
                   displayName={getEntityName(entityData.owner)}
                   id=""
@@ -316,7 +323,7 @@ const RequestDescription = () => {
                 </span>
               </span>
             ) : (
-              <span className="tw-text-grey-muted tw-ml-1">
+              <span className="text-grey-muted tw-ml-1">
                 {t('label.no-entity', { entity: t('label.owner') })}
               </span>
             )}
@@ -327,7 +334,7 @@ const RequestDescription = () => {
           {entityTier ? (
             entityTier
           ) : (
-            <span className="tw-text-grey-muted">
+            <span className="text-grey-muted">
               {t('label.no-entity', { entity: t('label.tier') })}
             </span>
           )}
@@ -337,7 +344,7 @@ const RequestDescription = () => {
 
         {getColumnDetails()}
       </div>
-    </TaskPageLayout>
+    </PageLayoutV1>
   );
 };
 

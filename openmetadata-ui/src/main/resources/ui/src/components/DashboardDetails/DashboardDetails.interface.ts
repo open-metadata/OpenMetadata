@@ -13,17 +13,10 @@
 
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { Operation } from 'fast-json-patch';
-import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
-import { Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { Paging } from '../../generated/type/paging';
-import {
-  EntityFieldThreadCount,
-  ThreadUpdatedFunc,
-} from '../../interface/feed.interface';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
+import { EntityFieldThreadCount } from '../../interface/feed.interface';
 
 export interface ChartType extends Chart {
   displayName: string;
@@ -34,46 +27,26 @@ export interface ChartsPermissions {
   permissions: OperationPermission;
 }
 export interface DashboardDetailsProps {
-  dashboardFQN: string;
   charts: Array<ChartType>;
   dashboardDetails: Dashboard;
-  activeTab: number;
-  slashedDashboardName: TitleBreadcrumbProps['titleLinks'];
-  entityThread: Thread[];
-  isEntityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
   entityFieldTaskCount: EntityFieldThreadCount[];
-  paging: Paging;
-  fetchFeedHandler: (
-    after?: string,
-    feedType?: FeedFilter,
-    threadType?: ThreadType
-  ) => void;
   createThread: (data: CreateThread) => void;
-  setActiveTabHandler: (value: number) => void;
-  followDashboardHandler: () => void;
-  unfollowDashboardHandler: () => void;
-  settingsUpdateHandler: (updatedDashboard: Dashboard) => Promise<void>;
-  descriptionUpdateHandler: (updatedDashboard: Dashboard) => Promise<void>;
+  followDashboardHandler: () => Promise<void>;
+  unFollowDashboardHandler: () => Promise<void>;
   chartDescriptionUpdateHandler: (
     index: number,
     chartId: string,
     patch: Array<Operation>
   ) => Promise<void>;
   chartTagUpdateHandler: (
-    index: number,
     chartId: string,
     patch: Array<Operation>
-  ) => void;
-  tagUpdateHandler: (updatedDashboard: Dashboard) => void;
+  ) => Promise<void>;
   versionHandler: () => void;
-  postFeedHandler: (value: string, id: string) => void;
-  deletePostHandler: (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ) => void;
-  updateThreadHandler: ThreadUpdatedFunc;
-  onExtensionUpdate: (updatedDashboard: Dashboard) => Promise<void>;
+  onDashboardUpdate: (
+    updatedDashboard: Dashboard,
+    key: keyof Dashboard
+  ) => Promise<void>;
 }

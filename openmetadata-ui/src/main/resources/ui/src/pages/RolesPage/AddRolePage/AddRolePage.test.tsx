@@ -55,6 +55,15 @@ jest.mock('components/containers/PageLayoutV1', () =>
   ))
 );
 
+jest.mock('components/common/ResizablePanels/ResizablePanels', () =>
+  jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <>
+      <div>{firstPanel.children}</div>
+      <div>{secondPanel.children}</div>
+    </>
+  ))
+);
+
 describe('Test Add Role Page', () => {
   it('Should Render the Add Role page component', async () => {
     render(<AddRolePage />, { wrapper: MemoryRouter });

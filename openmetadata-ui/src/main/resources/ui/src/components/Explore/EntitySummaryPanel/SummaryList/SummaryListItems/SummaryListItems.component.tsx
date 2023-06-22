@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Row, Space, Typography } from 'antd';
+import { Col, Row, Space, Typography } from 'antd';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,85 +31,67 @@ function SummaryListItem({
 
   return (
     <Col key={entityDetails.name} span={24}>
-      <Row gutter={[0, 4]}>
-        <Col data-testid="title-container" span={24}>
-          {isColumnsData &&
-            prepareConstraintIcon(
-              entityDetails.name,
-              entityDetails.columnConstraint,
-              entityDetails.tableConstraints,
-              'm-r-xss',
-              '14px'
-            )}
-          {entityDetails.title}
-        </Col>
-        <Col span={24}>
-          <Row className="text-xs font-thin" gutter={[4, 4]}>
-            <Col className="self-center">
-              {entityDetails.type && (
-                <Space className="h-6" size={4}>
-                  <Text className="text-grey-muted">{`${t(
-                    'label.type'
-                  )}:`}</Text>
-                  <Text
-                    className="font-medium text-grey-body"
-                    data-testid="entity-type">
-                    {entityDetails.type}
-                  </Text>
-                </Space>
+      <div className="summary-list-item-container">
+        <Row gutter={[0, 8]}>
+          <Col
+            className="d-flex items-center"
+            data-testid="title-container"
+            span={24}>
+            {isColumnsData &&
+              prepareConstraintIcon(
+                entityDetails.name,
+                entityDetails.columnConstraint,
+                entityDetails.tableConstraints,
+                'm-r-xss',
+                '14px'
               )}
-            </Col>
+            {entityDetails.title}
 
-            {entityDetails.algorithm && (
-              <>
-                <Col className="self-center">
-                  <Divider type="vertical" />
-                </Col>
-                <Col className="self-center">
-                  <Space className="h-6" size={4}>
-                    <Text className="text-grey-muted">{`${t(
-                      'label.algorithm'
-                    )}:`}</Text>
-                    <Text
-                      className="font-medium text-grey-body"
-                      data-testid="algorithm">
-                      {entityDetails.algorithm}
-                    </Text>
-                  </Space>
-                </Col>
-              </>
+            {entityDetails.type && (
+              <Typography.Text
+                className="text-grey-muted text-xs p-l-xs"
+                data-testid="entity-type">{`(${entityDetails.type})`}</Typography.Text>
             )}
-            {entityDetails.tags && entityDetails.tags.length !== 0 && (
-              <>
-                <Col className="self-center">
-                  <Divider type="vertical" />
-                </Col>
-                <Col className="flex-grow">
-                  <TagsViewer
-                    sizeCap={-1}
-                    tags={(entityDetails.tags || []).map((tag) =>
-                      getTagValue(tag)
-                    )}
-                  />
-                </Col>
-              </>
-            )}
-          </Row>
-        </Col>
-        <Col span={24}>
-          <Paragraph className="text-grey-body">
-            {entityDetails.description ? (
-              <RichTextEditorPreviewer
-                markdown={entityDetails.description || ''}
-                maxLength={MAX_CHAR_LIMIT_ENTITY_SUMMARY}
+          </Col>
+
+          {entityDetails.algorithm && (
+            <Col span={24}>
+              <Space className="h-6" size={4}>
+                <Text className="text-grey-muted">{`${t(
+                  'label.algorithm'
+                )}:`}</Text>
+                <Text
+                  className="font-medium text-grey-body"
+                  data-testid="algorithm">
+                  {entityDetails.algorithm}
+                </Text>
+              </Space>
+            </Col>
+          )}
+
+          <Col span={24}>
+            <Paragraph className="text-grey-body m-y-0">
+              {entityDetails.description ? (
+                <RichTextEditorPreviewer
+                  markdown={entityDetails.description || ''}
+                  maxLength={MAX_CHAR_LIMIT_ENTITY_SUMMARY}
+                />
+              ) : (
+                t('label.no-entity', { entity: t('label.description') })
+              )}
+            </Paragraph>
+          </Col>
+          {entityDetails.tags && entityDetails.tags.length !== 0 && (
+            <Col className="flex-grow" span={24}>
+              <TagsViewer
+                sizeCap={2}
+                tags={(entityDetails.tags || []).map((tag) => getTagValue(tag))}
+                type="border"
               />
-            ) : (
-              t('label.no-entity', { entity: t('label.description') })
-            )}
-          </Paragraph>
-        </Col>
-      </Row>
-      <Divider className="m-y-xs" />
+            </Col>
+          )}
+        </Row>
+      </div>
     </Col>
   );
 }

@@ -16,7 +16,11 @@ package org.openmetadata.service.secrets;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class SecretsUtil {
+public final class SecretsUtil {
+
+  private SecretsUtil() {
+    /* Final Class */
+  }
 
   /**
    * Returns an error message when it is related to an Unrecognized field

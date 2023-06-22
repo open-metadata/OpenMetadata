@@ -58,11 +58,11 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
             aria-orientation="vertical"
             className="tw-origin-top-right tw-absolute tw-z-10
           tw-w-full tw-mt-1 tw-rounded-md tw-shadow-lg 
-        tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
+        bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
             role="menu">
             <div className="py-1" role="none">
               <Link
-                className="link-text tw-flex tw-justify-between tw-px-4 tw-py-2 tw-text-sm 
+                className="link-text d-flex tw-justify-between tw-px-4 tw-py-2 tw-text-sm 
                     hover:tw-bg-body-hover"
                 data-testid="InOpenMetadata"
                 to={getExplorePath({ search: searchText })}
@@ -72,7 +72,7 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
               </Link>
               {options.map((option, index) => (
                 <span
-                  className="link-text tw-flex tw-justify-between tw-px-4 tw-py-2 tw-text-sm 
+                  className="link-text d-flex tw-justify-between tw-px-4 tw-py-2 tw-text-sm 
                     hover:tw-bg-body-hover"
                   data-testid="InPage"
                   key={index}

@@ -214,7 +214,7 @@ describe('Bots Page should work properly', () => {
     cy.get('[data-testid="save-displayName"]').should('be.visible').click();
 
     // Verify the display name is updated on bot details page
-    cy.get('[data-testid="container"]').should('contain', updatedBotName);
+    cy.get('[data-testid="left-panel"]').should('contain', updatedBotName);
     cy.wait(1000);
     // Click on edit description button
     cy.get('[data-testid="edit-description"]').should('be.visible').click();
@@ -251,6 +251,6 @@ describe('Bots Page should work properly', () => {
     interceptURL('DELETE', '/api/v1/bots/*', 'deleteBot');
     cy.get('[data-testid="confirm-button"]').should('be.visible').click();
     verifyResponseStatusCode('@deleteBot', 200);
-    cy.get('[data-testid="container"]').should('not.contain', botName);
+    cy.get('[data-testid="page-layout-v1"]').should('not.contain', botName);
   });
 });

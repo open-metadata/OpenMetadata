@@ -11,7 +11,6 @@ import javax.annotation.CheckForNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 
 @Slf4j
@@ -22,7 +21,7 @@ public class ActivityFeedAlertCache {
   protected static EventSubscriptionRepository EVENT_SUB_REPOSITORY;
   private static String activityFeedAlertName;
 
-  public static void initialize(String alertName, CollectionDAO dao, EventSubscriptionRepository repo) {
+  public static void initialize(String alertName, EventSubscriptionRepository repo) {
     if (!INITIALIZED) {
       EVENT_SUB_CACHE =
           CacheBuilder.newBuilder()

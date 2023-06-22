@@ -11,15 +11,21 @@
  *  limitations under the License.
  */
 
+import '@fontsource/poppins'; // Font 400
+import '@fontsource/poppins/300.css'; // Font 300
+import '@fontsource/poppins/500.css'; // Font 500
+import '@fontsource/poppins/600.css'; // Font 600
+import '@fontsource/source-code-pro'; // Font 400
 import 'react-awesome-query-builder/lib/css/styles.css';
 import 'reactflow/dist/base.css';
 import 'reactflow/dist/style.css';
-import 'tailwindcss/tailwind.css';
-import '../fonts/Inter/Inter-VariableFont_slnt,wght.ttf';
+// import 'tailwindcss/tailwind.css';
 import './antd-master.less';
 import './app.less';
+import './components/badge.less';
 import './components/code-mirror.less';
 import './components/drawer.less';
+import './components/entity-version-time-line.less';
 import './components/glossary.less';
 import './components/menu.less';
 import './components/profiler.less';
@@ -28,7 +34,6 @@ import './components/react-awesome-query.less';
 import './components/size.less';
 import './components/slider.less';
 import './components/step.less';
-import './fonts.css';
 import './fonts.less';
 import './modal.less';
 import './myDataDetailsTemp.css';
@@ -37,6 +42,5 @@ import './tailwind.css';
 import './temp.css';
 import './tree.less';
 import './x-custom/CronEditor.css';
-import './x-custom/EntityVersionTimeLine.css';
 import './x-custom/stepper.css';
 import './x-master.css';

@@ -103,9 +103,9 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
           type.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
           LOG.info("Loading type {}", type.getName());
           try {
-            Fields fields = getFields("customProperties");
+            Fields fields = getFields(PROPERTIES_FIELD);
             try {
-              Type storedType = dao.getByName(null, type.getName(), fields);
+              Type storedType = repository.getByName(null, type.getName(), fields);
               type.setId(storedType.getId());
               // If entity type already exists, then carry forward custom properties
               if (storedType.getCategory().equals(Category.Entity)) {
@@ -114,8 +114,8 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
             } catch (Exception e) {
               LOG.debug("Creating entity that does not exist ", e);
             }
-            this.dao.createOrUpdate(null, type);
-            this.dao.addToRegistry(type);
+            this.repository.createOrUpdate(null, type);
+            this.repository.addToRegistry(type);
           } catch (Exception e) {
             LOG.error("Error loading type {}", type.getName(), e);
           }
@@ -123,13 +123,11 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   }
 
   public static class TypeList extends ResultList<Type> {
-    @SuppressWarnings("unused")
-    TypeList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   public static final String PROPERTIES = "customProperties";
+  public static final String PROPERTIES_FIELD = "customProperties";
 
   @GET
   @Valid
@@ -401,7 +399,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PutResponse<Type> response =
-        dao.addCustomProperty(uriInfo, securityContext.getUserPrincipal().getName(), id, property);
+        repository.addCustomProperty(uriInfo, securityContext.getUserPrincipal().getName(), id, property);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }

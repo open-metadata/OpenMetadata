@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.services.connections;
 
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -65,20 +67,21 @@ public class TestConnectionDefinitionResource
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     List<TestConnectionDefinition> testConnectionDefinitions =
-        dao.getEntitiesFromSeedData(".*json/data/testConnections/.*\\.json$");
+        repository.getEntitiesFromSeedData(".*json/data/testConnections/.*\\.json$");
+
     for (TestConnectionDefinition testConnectionDefinition : testConnectionDefinitions) {
-      dao.initializeEntity(testConnectionDefinition);
+      repository.prepareInternal(testConnectionDefinition);
+      testConnectionDefinition.setId(UUID.randomUUID());
+      testConnectionDefinition.setUpdatedBy(ADMIN_USER_NAME);
+      testConnectionDefinition.setUpdatedAt(System.currentTimeMillis());
+      repository.createOrUpdate(null, testConnectionDefinition);
     }
   }
 
   public static class TestConnectionDefinitionList extends ResultList<TestConnectionDefinition> {
-    @SuppressWarnings("unused")
-    public TestConnectionDefinitionList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
-  // TODO remove the list method?
   @GET
   @Operation(
       operationId = "listTestConnectionDefinitions",

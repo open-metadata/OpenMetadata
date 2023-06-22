@@ -382,7 +382,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
         <>
           <div className="tw-mb-1.5" data-testid="day-segment-container">
             <label>{`${t('label.time')}:`}</label>
-            <div className="tw-flex" data-testid="time-option-container">
+            <div className="d-flex" data-testid="time-option-container">
               {getHourSelect(selectedDayOption, (value: number) =>
                 onDayOptionSelect(value, 'hour')
               )}
@@ -416,7 +416,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
           <div className="tw-mb-1.5" data-testid="week-segment-time-container">
             <label>{`${t('label.time')}:`}</label>
             <div
-              className="tw-flex"
+              className="d-flex"
               data-testid="week-segment-time-options-container">
               {getHourSelect(selectedWeekOption, (value: number) =>
                 onWeekOptionSelect(value, 'hour')

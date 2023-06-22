@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Space } from 'antd';
 import classNames from 'classnames';
 import React from 'react';
 import { TestIndicatorProps } from '../../TableProfiler/TableProfiler.interface';
@@ -18,15 +19,17 @@ import './testIndicator.less';
 
 const TestIndicator: React.FC<TestIndicatorProps> = ({ value, type }) => {
   return (
-    <span
-      className="tw-flex tw-gap-1.5 tw-items-center"
-      data-testid="indicator-container">
-      <span
-        className={classNames('test-indicator', type.toLowerCase())}
-        data-testid="test-status"
-      />
-      <span data-testid="test-value">{value}</span>
-    </span>
+    <Space
+      align="center"
+      className={classNames(
+        'test-indicator justify-center',
+        type.toLowerCase()
+      )}
+      data-testid="test-status">
+      <div className="test-value" data-testid="test-value">
+        {value}
+      </div>
+    </Space>
   );
 };
 

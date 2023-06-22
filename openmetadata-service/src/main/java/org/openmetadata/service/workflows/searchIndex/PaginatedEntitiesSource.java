@@ -41,11 +41,11 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   private String cursor = null;
   @Getter private boolean isDone = false;
 
-  PaginatedEntitiesSource(String entityType, int batchSize, List<String> fields) {
+  public PaginatedEntitiesSource(String entityType, int batchSize, List<String> fields) {
     this.entityType = entityType;
     this.batchSize = batchSize;
     this.fields = fields;
-    this.stats.setTotalRecords(Entity.getEntityRepository(entityType).dao.listTotalCount());
+    this.stats.setTotalRecords(Entity.getEntityRepository(entityType).getDao().listTotalCount());
   }
 
   @Override

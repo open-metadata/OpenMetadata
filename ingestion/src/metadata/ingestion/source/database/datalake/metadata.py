@@ -53,11 +53,18 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
-from metadata.ingestion.source.database.datalake.models import DatalakeColumnWrapper
-from metadata.ingestion.source.database.datalake.utils import COMPLEX_COLUMN_SEPARATOR
+from metadata.ingestion.source.database.datalake.models import (
+    DatalakeTableSchemaWrapper,
+)
 from metadata.utils import fqn
-from metadata.utils.constants import DEFAULT_DATABASE
+from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, DEFAULT_DATABASE
+from metadata.utils.datalake.datalake_utils import (
+    SupportedTypes,
+    clean_dataframe,
+    fetch_dataframe,
+)
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -72,52 +79,6 @@ DATALAKE_DATA_TYPES = {
         ["datetime64", "timedelta[ns]", "datetime64[ns]"], DataType.DATETIME.value
     ),
 }
-
-JSON_SUPPORTED_TYPES = (".json", ".json.gz", ".json.zip")
-
-DATALAKE_SUPPORTED_FILE_TYPES = (
-    ".csv",
-    ".tsv",
-    ".parquet",
-    ".avro",
-) + JSON_SUPPORTED_TYPES
-
-
-def ometa_to_dataframe(config_source, client, table):
-    """
-    Method to get dataframe for profiling
-    """
-
-    data = None
-    if isinstance(config_source, GCSConfig):
-        data = DatalakeSource.get_gcs_files(
-            client=client,
-            key=table.name.__root__,
-            bucket_name=table.databaseSchema.name,
-        )
-    if isinstance(config_source, S3Config):
-        data = DatalakeSource.get_s3_files(
-            client=client,
-            key=table.name.__root__,
-            bucket_name=table.databaseSchema.name,
-        )
-    if isinstance(config_source, AzureConfig):
-        connection_args = config_source.securityConfig
-        data = DatalakeSource.get_azure_files(
-            client=client,
-            key=table.name.__root__,
-            container_name=table.databaseSchema.name,
-            storage_options={
-                "tenant_id": connection_args.tenantId,
-                "client_id": connection_args.clientId,
-                "client_secret": connection_args.clientSecret.get_secret_value(),
-                "account_name": connection_args.accountName,
-            },
-        )
-    if isinstance(data, DatalakeColumnWrapper):
-        data = data.dataframes
-
-    return data
 
 
 class DatalakeSource(DatabaseServiceSource):
@@ -410,49 +371,26 @@ class DatalakeSource(DatabaseServiceSource):
         From topology.
         Prepare a table request and pass it to the sink
         """
-        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
-
         table_name, table_type = table_name_and_type
         schema_name = self.context.database_schema.name.__root__
         columns = []
         try:
             table_constraints = None
-            if isinstance(self.service_connection.configSource, GCSConfig):
-                data_frame = self.get_gcs_files(
-                    client=self.client, key=table_name, bucket_name=schema_name
-                )
-            if isinstance(self.service_connection.configSource, S3Config):
-                connection_args = self.service_connection.configSource.securityConfig
-                data_frame = self.get_s3_files(
-                    client=self.client,
+            connection_args = self.service_connection.configSource.securityConfig
+            data_frame = fetch_dataframe(
+                config_source=self.service_connection.configSource,
+                client=self.client,
+                file_fqn=DatalakeTableSchemaWrapper(
                     key=table_name,
                     bucket_name=schema_name,
-                    client_kwargs=connection_args,
-                )
-            if isinstance(self.service_connection.configSource, AzureConfig):
-                connection_args = self.service_connection.configSource.securityConfig
-                storage_options = {
-                    "tenant_id": connection_args.tenantId,
-                    "client_id": connection_args.clientId,
-                    "client_secret": connection_args.clientSecret.get_secret_value(),
-                }
-                data_frame = self.get_azure_files(
-                    client=self.client,
-                    key=table_name,
-                    container_name=schema_name,
-                    storage_options=storage_options,
-                )
-            if isinstance(data_frame, DataFrame):
-                columns = self.get_columns(data_frame)
-            if isinstance(data_frame, list) and data_frame:
-                columns = self.get_columns(data_frame[0])
-            if isinstance(data_frame, DatalakeColumnWrapper):
-                columns = data_frame.columns
+                ),
+                connection_kwargs=connection_args,
+            )
+            columns = self.get_columns(data_frame[0])
             if columns:
                 table_request = CreateTableRequest(
                     name=table_name,
                     tableType=table_type,
-                    description="",
                     columns=columns,
                     tableConstraints=table_constraints if table_constraints else None,
                     databaseSchema=self.context.database_schema.fullyQualifiedName,
@@ -464,117 +402,6 @@ class DatalakeSource(DatabaseServiceSource):
             logger.debug(traceback.format_exc())
             logger.warning(error)
             self.status.failed(table_name, error, traceback.format_exc())
-
-    @staticmethod
-    def get_gcs_files(client, key, bucket_name):
-        """
-        Fetch GCS Bucket files
-        """
-        from metadata.utils.gcs_utils import (  # pylint: disable=import-outside-toplevel
-            read_avro_from_gcs,
-            read_csv_from_gcs,
-            read_json_from_gcs,
-            read_parquet_from_gcs,
-            read_tsv_from_gcs,
-        )
-
-        try:
-            if key.endswith(".csv"):
-                return read_csv_from_gcs(key, bucket_name)
-
-            if key.endswith(".tsv"):
-                return read_tsv_from_gcs(key, bucket_name)
-
-            if key.endswith(JSON_SUPPORTED_TYPES):
-                return read_json_from_gcs(client, key, bucket_name)
-
-            if key.endswith(".parquet"):
-                return read_parquet_from_gcs(key, bucket_name)
-
-            if key.endswith(".avro"):
-                return read_avro_from_gcs(client, key, bucket_name)
-
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Unexpected exception to get GCS files from [{bucket_name}]: {exc}"
-            )
-        return None
-
-    @staticmethod
-    def get_azure_files(client, key, container_name, storage_options):
-        """
-        Fetch Azure Storage files
-        """
-        from metadata.utils.azure_utils import (  # pylint: disable=import-outside-toplevel
-            read_avro_from_azure,
-            read_csv_from_azure,
-            read_json_from_azure,
-            read_parquet_from_azure,
-        )
-
-        try:
-            if key.endswith(".csv"):
-                return read_csv_from_azure(client, key, container_name, storage_options)
-
-            if key.endswith(JSON_SUPPORTED_TYPES):
-                return read_json_from_azure(client, key, container_name)
-
-            if key.endswith(".parquet"):
-                return read_parquet_from_azure(
-                    client, key, container_name, storage_options
-                )
-
-            if key.endswith(".tsv"):
-                return read_csv_from_azure(
-                    client, key, container_name, storage_options, sep="\t"
-                )
-
-            if key.endswith(".avro"):
-                return read_avro_from_azure(client, key, container_name)
-
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Unexpected exception get in azure for file [{key}] for {container_name}: {exc}"
-            )
-        return None
-
-    @staticmethod
-    def get_s3_files(client, key, bucket_name, client_kwargs=None):
-        """
-        Fetch S3 Bucket files
-        """
-        from metadata.utils.s3_utils import (  # pylint: disable=import-outside-toplevel
-            read_avro_from_s3,
-            read_csv_from_s3,
-            read_json_from_s3,
-            read_parquet_from_s3,
-            read_tsv_from_s3,
-        )
-
-        try:
-            if key.endswith(".csv"):
-                return read_csv_from_s3(client, key, bucket_name)
-
-            if key.endswith(".tsv"):
-                return read_tsv_from_s3(client, key, bucket_name)
-
-            if key.endswith(JSON_SUPPORTED_TYPES):
-                return read_json_from_s3(client, key, bucket_name)
-
-            if key.endswith(".parquet"):
-                return read_parquet_from_s3(client_kwargs, key, bucket_name)
-
-            if key.endswith(".avro"):
-                return read_avro_from_s3(client, key, bucket_name)
-
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Unexpected exception to get S3 file [{key}] from bucket [{bucket_name}]: {exc}"
-            )
-        return None
 
     @staticmethod
     def _parse_complex_column(
@@ -623,12 +450,26 @@ class DatalakeSource(DatabaseServiceSource):
             col_hierarchy = tuple(column_name.split(COMPLEX_COLUMN_SEPARATOR))
             parent_col: Optional[Column] = None
             root_col: Optional[Column] = None
+
+            # here we are only processing col_hierarchy till [:-1]
+            # because all the column/node before -1 would be treated
+            # as a record and the column at -1 would be the column
+            # having a primitive datatype
+            # for example if col_hierarchy is ("image", "properties", "size")
+            # then image would be the record having child properties which is
+            # also a record  but the "size" will not be handled in this loop
+            # as it will be of primitive type for ex. int
             for index, col_name in enumerate(col_hierarchy[:-1]):
+
                 if complex_col_dict.get(col_hierarchy[: index + 1]):
+                    # if we have already seen this column fetch that column
                     parent_col = complex_col_dict.get(col_hierarchy[: index + 1])
                 else:
+                    # if we have not seen this column than create the column and
+                    # append to the parent if available
                     intermediate_column = Column(
-                        name=col_name[:64],
+                        name=truncate_column_name(col_name),
+                        displayName=col_name,
                         dataType=DataType.RECORD.value,
                         children=[],
                         dataTypeDisplay=DataType.RECORD.value,
@@ -639,7 +480,8 @@ class DatalakeSource(DatabaseServiceSource):
                     parent_col = intermediate_column
                     complex_col_dict[col_hierarchy[: index + 1]] = parent_col
 
-            # use String by default
+            # prepare the leaf node
+            # use String as default type
             data_type = DataType.STRING.value
             if hasattr(data_frame[column], "dtypes"):
                 data_type = DATALAKE_DATA_TYPES.get(
@@ -652,9 +494,10 @@ class DatalakeSource(DatabaseServiceSource):
             )
             parent_col.children.append(leaf_column)
 
-            if col_hierarchy[0] not in processed_complex_columns and root_col:
+            # finally add the top level node in the column list
+            if col_hierarchy[0] not in processed_complex_columns:
                 processed_complex_columns.add(col_hierarchy[0])
-                final_column_list.append(root_col)
+                final_column_list.append(root_col or parent_col)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception parsing column [{column}]: {exc}")
@@ -679,12 +522,14 @@ class DatalakeSource(DatabaseServiceSource):
         return data_type
 
     @staticmethod
-    def get_columns(data_frame):
+    def get_columns(data_frame: list):
         """
         method to process column details
         """
+        data_frame = clean_dataframe(data_frame)
         cols = []
         complex_col_dict = {}
+
         processed_complex_columns = set()
         if hasattr(data_frame, "columns"):
             df_columns = list(data_frame.columns)
@@ -709,7 +554,8 @@ class DatalakeSource(DatabaseServiceSource):
                         parsed_string = {
                             "dataTypeDisplay": data_type,
                             "dataType": data_type,
-                            "name": column[:64],
+                            "name": truncate_column_name(column),
+                            "displayName": column,
                         }
                         parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
                         cols.append(Column(**parsed_string))
@@ -733,8 +579,9 @@ class DatalakeSource(DatabaseServiceSource):
         return table
 
     def check_valid_file_type(self, key_name):
-        if key_name.endswith(DATALAKE_SUPPORTED_FILE_TYPES):
-            return True
+        for supported_types in SupportedTypes:
+            if key_name.endswith(supported_types.value):
+                return True
         return False
 
     def close(self):

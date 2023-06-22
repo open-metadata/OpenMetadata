@@ -18,6 +18,8 @@ import {
   ResourceEntity,
   UIPermission,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { GlobalSettingOptions } from 'constants/GlobalSettings.constants';
+import { EntityType } from 'enums/entity.enum';
 import i18next from 'i18next';
 import React, { ReactNode } from 'react';
 import { ReactComponent as AdminIcon } from '../../src/assets/svg/admin.svg';
@@ -28,6 +30,7 @@ import { ReactComponent as DataInsightIcon } from '../../src/assets/svg/data-ins
 import { ReactComponent as ElasticSearchIcon } from '../../src/assets/svg/elasticsearch.svg';
 import { ReactComponent as EmailSettingsIcon } from '../../src/assets/svg/email-settings.svg';
 import { ReactComponent as BellIcon } from '../../src/assets/svg/ic-alert-bell.svg';
+import { ReactComponent as DataInsightReportIcon } from '../../src/assets/svg/ic-data-insight-report.svg';
 import { ReactComponent as RolesIcon } from '../../src/assets/svg/icon-role-grey.svg';
 import { ReactComponent as OMLogo } from '../../src/assets/svg/metadata.svg';
 import { ReactComponent as MlModelIcon } from '../../src/assets/svg/mlmodal.svg';
@@ -37,6 +40,7 @@ import { ReactComponent as TableIcon } from '../../src/assets/svg/table-grey.svg
 import { ReactComponent as TeamsIcon } from '../../src/assets/svg/teams-grey.svg';
 import { ReactComponent as TopicIcon } from '../../src/assets/svg/topic-grey.svg';
 import { ReactComponent as UsersIcon } from '../../src/assets/svg/user.svg';
+import { ReactComponent as CustomLogoIcon } from '../assets/svg/ic-custom-logo.svg';
 import { ReactComponent as StorageIcon } from '../assets/svg/ic-storage.svg';
 import { userPermissions } from '../utils/PermissionsUtils';
 
@@ -129,7 +133,7 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: <TableIcon className="side-panel-icons" />,
         },
         {
-          label: i18next.t('label.messaging'),
+          label: i18next.t('label.messaging-plural'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.MESSAGING_SERVICE,
             permissions
@@ -191,15 +195,30 @@ export const getGlobalSettingsMenuWithPermission = (
       items: [
         {
           label: i18next.t('label.activity-feed-plural'),
-          isProtected: Boolean(isAdminUser),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.EVENT_SUBSCRIPTION,
+            permissions
+          ),
           key: 'notifications.activityFeeds',
           icon: <AllActivityIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.alert-plural'),
-          isProtected: Boolean(isAdminUser),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.EVENT_SUBSCRIPTION,
+            permissions
+          ),
           key: 'notifications.alerts',
           icon: <BellIcon className="side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.data-insight-report'),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.EVENT_SUBSCRIPTION,
+            permissions
+          ),
+          key: 'notifications.dataInsightReport',
+          icon: <DataInsightReportIcon className="side-panel-icons" />,
         },
       ],
     },
@@ -285,6 +304,12 @@ export const getGlobalSettingsMenuWithPermission = (
           key: 'openMetadata.email',
           icon: <EmailSettingsIcon className="w-4 side-panel-icons" />,
         },
+        {
+          label: i18next.t('label.custom-logo'),
+          isProtected: Boolean(isAdminUser),
+          key: 'openMetadata.customLogo',
+          icon: <CustomLogoIcon className="w-4 side-panel-icons" />,
+        },
       ],
     },
     {
@@ -298,7 +323,7 @@ export const getGlobalSettingsMenuWithPermission = (
             permissions
           ),
           key: 'integrations.bots',
-          icon: <BotIcon className="tw-w-4 side-panel-icons" />,
+          icon: <BotIcon className="w-4 side-panel-icons" />,
         },
       ],
     },
@@ -352,7 +377,7 @@ export const getGlobalSettingMenuItem = (args: {
     label: isBeta ? (
       <Badge
         className={classNames({ 'text-xs text-grey-muted': !isChildren })}
-        color="#7147e8"
+        color="#0968da"
         count="beta"
         offset={[30, 8]}
         size="small">
@@ -363,4 +388,23 @@ export const getGlobalSettingMenuItem = (args: {
     ),
     type,
   };
+};
+
+export const getSettingOptionByEntityType = (entityType: EntityType) => {
+  switch (entityType) {
+    case EntityType.TOPIC:
+      return GlobalSettingOptions.TOPICS;
+    case EntityType.DASHBOARD:
+      return GlobalSettingOptions.DASHBOARDS;
+    case EntityType.PIPELINE:
+      return GlobalSettingOptions.PIPELINES;
+    case EntityType.MLMODEL:
+      return GlobalSettingOptions.MLMODELS;
+    case EntityType.CONTAINER:
+      return GlobalSettingOptions.CONTAINERS;
+
+    case EntityType.TABLE:
+    default:
+      return GlobalSettingOptions.TABLES;
+  }
 };

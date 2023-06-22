@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Card, Typography } from 'antd';
 import { ROUTES } from 'constants/constants';
 import {
   ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE,
@@ -19,6 +19,7 @@ import {
 } from 'enums/common.enum';
 import { uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
+import Qs from 'qs';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -37,7 +38,7 @@ import ErrorPlaceHolder from './ErrorPlaceHolder';
 type Props = {
   type: ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE;
   errorMessage?: string;
-  query?: string;
+  query?: Qs.ParsedQs;
 };
 
 const stepsData = [
@@ -67,15 +68,22 @@ const stepsData = [
   },
 ];
 
-const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
+const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
+  const { showDeleted, search, queryFilter, quickFilter } = query ?? {};
   const { tab } = useParams<{ tab: string }>();
   const { t } = useTranslation();
   const history = useHistory();
 
+  const isQuery = useMemo(
+    () =>
+      Boolean(search || queryFilter || quickFilter || showDeleted === 'true'),
+    [search, queryFilter, quickFilter, showDeleted]
+  );
+
   const noRecordForES = useMemo(() => {
     return (
       <div className="tw-text-center" data-testid="no-search-results">
-        {query ? (
+        {isQuery ? (
           <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.FILTER} />
         ) : ['glossaries', 'tags'].includes(tab) ? (
           <ErrorPlaceHolder
@@ -114,7 +122,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
         )}
       </div>
     );
-  }, [query]);
+  }, [isQuery]);
 
   const elasticSearchError = useMemo(() => {
     const index = errorMessage?.split('[')[3]?.split(']')[0];
@@ -134,12 +142,12 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
         </div>
         <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-mt-5">
           {stepsData.map((data) => (
-            <div
-              className="tw-card tw-flex tw-flex-col tw-justify-between tw-p-5"
+            <Card
+              className="d-flex flex-col tw-justify-between tw-p-5"
               key={uniqueId()}>
               <div>
-                <div className="tw-flex tw-mb-2">
-                  <div className="tw-rounded-full tw-flex tw-justify-center tw-items-center tw-h-10 tw-w-10 tw-border-2 tw-border-primary tw-text-lg tw-font-bold tw-text-primary">
+                <div className="d-flex tw-mb-2">
+                  <div className="tw-rounded-full d-flex tw-justify-center tw-items-center tw-h-10 tw-w-10 tw-border-2 tw-border-primary tw-text-lg tw-font-bold tw-text-primary">
                     {data.step}
                   </div>
                 </div>
@@ -160,7 +168,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
                   {`${t('label.click-here')} >>`}
                 </a>
               </p>
-            </div>
+            </Card>
           ))}
         </div>
       </div>

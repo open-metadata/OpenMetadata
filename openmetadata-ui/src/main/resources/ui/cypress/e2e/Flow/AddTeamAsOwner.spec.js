@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// / <reference types="cypress" />
+// eslint-disable-next-line spaced-comment
+/// <reference types="cypress" />
 import {
   addTeam,
   interceptURL,
@@ -25,6 +26,7 @@ const TEAM_DETAILS = {
   name: teamName,
   teamType: 'Group',
   description: `This is ${teamName} description`,
+  email: 'team@gmail.com',
   ...SEARCH_ENTITY_TABLE.table_1,
 };
 
@@ -116,9 +118,6 @@ describe('Create a team and add that team as a owner of the entity', () => {
 
     cy.get('[data-testid="remove-owner"]').should('be.visible').click();
     verifyResponseStatusCode('@updateTable', 200);
-    cy.get('[data-testid="entity-summary-details"]').should(
-      'contain',
-      'No Owner'
-    );
+    cy.get('[data-testid="owner-link"]').should('contain', 'No Owner');
   });
 });

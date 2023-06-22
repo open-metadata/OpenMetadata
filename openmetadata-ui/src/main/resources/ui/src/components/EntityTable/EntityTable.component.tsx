@@ -66,11 +66,7 @@ import {
 } from '../../utils/TasksUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import {
-  EditColumnTag,
-  EntityTableProps,
-  TableCellRendered,
-} from './EntityTable.interface';
+import { EntityTableProps, TableCellRendered } from './EntityTable.interface';
 import './EntityTable.style.less';
 
 const EntityTable = ({
@@ -109,16 +105,12 @@ const EntityTable = ({
     index: number;
   }>();
 
-  const [editColumnTag, setEditColumnTag] = useState<{
-    column: Column;
-    index: number;
-  }>();
-
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+  const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
 
   const fetchGlossaryTags = async () => {
-    setIsTagLoading(true);
+    setIsGlossaryLoading(true);
     try {
       const res = await fetchGlossaryTerms();
 
@@ -129,7 +121,7 @@ const EntityTable = ({
     } catch {
       setTagFetchFailed(true);
     } finally {
-      setIsTagLoading(false);
+      setIsGlossaryLoading(false);
     }
   };
 
@@ -232,33 +224,31 @@ const EntityTable = ({
         editColumn.column.fullyQualifiedName,
         columnDescription
       );
-      await onUpdate?.(tableCols);
+      await onUpdate(tableCols);
       setEditColumn(undefined);
     } else {
       setEditColumn(undefined);
     }
   };
 
-  const handleTagSelection = (
-    selectedTags?: Array<EntityTags>,
-    columnFQN = '',
-    editColumnTag?: EditColumnTag,
-    otherTags?: TagLabel[]
+  const handleTagSelection = async (
+    selectedTags: EntityTags[],
+    editColumnTag: Column,
+    otherTags: TagLabel[]
   ) => {
     const newSelectedTags: TagOption[] = map(
-      [...(selectedTags || []), ...(otherTags || [])],
+      [...selectedTags, ...otherTags],
       (tag) => ({ fqn: tag.tagFQN, source: tag.source })
     );
-    if (newSelectedTags && (editColumnTag || columnFQN)) {
+    if (newSelectedTags && editColumnTag) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnTags(
         tableCols,
-        editColumnTag?.column.fullyQualifiedName || columnFQN,
+        editColumnTag.fullyQualifiedName ?? '',
         newSelectedTags
       );
-      onUpdate?.(tableCols);
+      await onUpdate(tableCols);
     }
-    setEditColumnTag(undefined);
   };
 
   const searchInColumns = (table: Column[], searchText: string): Column[] => {
@@ -350,7 +340,7 @@ const EntityTable = ({
 
     return (
       <Button
-        className="p-0 w-7 h-7 tw-flex-none flex-center link-text focus:tw-outline-none hover-cell-icon m-r-xss"
+        className="p-0 w-7 h-7 flex-none flex-center link-text focus:tw-outline-none hover-cell-icon m-r-xss"
         data-testid="request-description"
         type="text"
         onClick={() =>
@@ -426,7 +416,7 @@ const EntityTable = ({
               {description ? (
                 <RichTextEditorPreviewer markdown={description} />
               ) : (
-                <span className="tw-no-description">
+                <span className="text-grey-muted">
                   {t('label.no-entity', {
                     entity: t('label.description'),
                   })}
@@ -439,7 +429,7 @@ const EntityTable = ({
                   {hasDescriptionEditAccess && (
                     <>
                       <Button
-                        className="p-0 tw-self-start flex-center w-7 h-7 text-primary tw-flex-none hover-cell-icon"
+                        className="p-0 tw-self-start flex-center w-7 h-7 text-primary d-flex-none hover-cell-icon"
                         type="text"
                         onClick={() => handleUpdate(record, index)}>
                         <IconEdit
@@ -490,6 +480,11 @@ const EntityTable = ({
     );
   };
 
+  const getColumnFieldFQN = (record: Column) =>
+    `${EntityField.COLUMNS}${ENTITY_LINK_SEPARATOR}${getColumnName(
+      record
+    )}${ENTITY_LINK_SEPARATOR}${EntityField.TAGS}`;
+
   const columns: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -497,7 +492,7 @@ const EntityTable = ({
         dataIndex: 'name',
         key: 'name',
         accessor: 'name',
-        width: 220,
+        width: 180,
         fixed: 'left',
         render: (name: Column['name'], record: Column) => (
           <Space
@@ -515,7 +510,7 @@ const EntityTable = ({
         key: 'dataTypeDisplay',
         accessor: 'dataTypeDisplay',
         ellipsis: true,
-        width: 220,
+        width: 180,
         render: renderDataTypeDisplay,
       },
       {
@@ -523,7 +518,7 @@ const EntityTable = ({
         dataIndex: 'description',
         key: 'description',
         accessor: 'description',
-        width: 400,
+        width: 320,
         render: renderDescription,
       },
       {
@@ -531,23 +526,21 @@ const EntityTable = ({
         dataIndex: 'tags',
         key: 'tags',
         accessor: 'tags',
-        width: 300,
+        width: 250,
         render: (tags: TagLabel[], record: Column, index: number) => (
-          <TableTags
+          <TableTags<Column>
             dataTestId="classification-tags"
             entityFieldTasks={entityFieldTasks}
             entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             fetchTags={fetchClassificationTags}
+            getColumnFieldFQN={getColumnFieldFQN(record)}
             getColumnName={getColumnName}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}
             index={index}
             isReadOnly={isReadOnly}
             isTagLoading={isTagLoading}
-            placeholder={t('label.search-entity', {
-              entity: t('label.tag-plural'),
-            })}
             record={record}
             tagFetchFailed={tagFetchFailed}
             tagList={classificationTags}
@@ -555,7 +548,6 @@ const EntityTable = ({
             type={TagSource.Classification}
             onRequestTagsHandler={onRequestTagsHandler}
             onThreadLinkSelect={onThreadLinkSelect}
-            onUpdate={onUpdate}
             onUpdateTagsHandler={onUpdateTagsHandler}
           />
         ),
@@ -565,23 +557,21 @@ const EntityTable = ({
         dataIndex: 'tags',
         key: 'tags',
         accessor: 'tags',
-        width: 300,
+        width: 250,
         render: (tags: TagLabel[], record: Column, index: number) => (
-          <TableTags
+          <TableTags<Column>
             dataTestId="glossary-tags"
             entityFieldTasks={entityFieldTasks}
             entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             fetchTags={fetchGlossaryTags}
+            getColumnFieldFQN={getColumnFieldFQN(record)}
             getColumnName={getColumnName}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}
             index={index}
             isReadOnly={isReadOnly}
-            isTagLoading={isTagLoading}
-            placeholder={t('label.search-entity', {
-              entity: t('label.glossary-term-plural'),
-            })}
+            isTagLoading={isGlossaryLoading}
             record={record}
             tagFetchFailed={tagFetchFailed}
             tagList={glossaryTags}
@@ -589,13 +579,35 @@ const EntityTable = ({
             type={TagSource.Glossary}
             onRequestTagsHandler={onRequestTagsHandler}
             onThreadLinkSelect={onThreadLinkSelect}
-            onUpdate={onUpdate}
             onUpdateTagsHandler={onUpdateTagsHandler}
           />
         ),
       },
     ],
-    [editColumnTag, isTagLoading, handleUpdate, handleTagSelection]
+    [
+      entityFieldTasks,
+      entityFieldThreads,
+      entityFqn,
+      tableConstraints,
+      isTagLoading,
+      isGlossaryLoading,
+      handleUpdate,
+      handleTagSelection,
+      renderDataTypeDisplay,
+      renderDescription,
+      fetchGlossaryTags,
+      getColumnName,
+      handleTagSelection,
+      getFilterTags,
+      hasTagEditAccess,
+      isReadOnly,
+      tagFetchFailed,
+      glossaryTags,
+      onRequestTagsHandler,
+      onUpdateTagsHandler,
+      onThreadLinkSelect,
+      classificationTags,
+    ]
   );
 
   useEffect(() => {
@@ -611,7 +623,7 @@ const EntityTable = ({
     <>
       <Table
         bordered
-        className="vertical-top-align-td"
+        className="m-b-sm"
         columns={columns}
         data-testid="entity-table"
         dataSource={data}
@@ -623,9 +635,9 @@ const EntityTable = ({
           emptyText: <FilterTablePlaceHolder />,
         }}
         pagination={false}
-        rowKey="name"
-        scroll={{ x: 1200 }}
-        size="small"
+        rowKey="id"
+        scroll={{ x: 500 }}
+        size="middle"
       />
       {editColumn && (
         <ModalWithMarkdownEditor

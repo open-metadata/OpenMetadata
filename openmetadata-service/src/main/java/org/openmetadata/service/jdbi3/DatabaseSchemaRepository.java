@@ -19,6 +19,7 @@ import static org.openmetadata.service.Entity.FIELD_OWNER;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.type.EntityReference;
@@ -32,7 +33,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
-  private static final String DATABASE_SCHEMA_UPDATE_FIELDS = "owner,tags";
+  private static final String DATABASE_SCHEMA_UPDATE_FIELDS = "owner,tags,extension";
   private static final String DATABASE_SCHEMA_PATCH_FIELDS = DATABASE_SCHEMA_UPDATE_FIELDS;
 
   public DatabaseSchemaRepository(CollectionDAO dao) {
@@ -43,14 +44,18 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         dao.databaseSchemaDAO(),
         dao,
         DATABASE_SCHEMA_PATCH_FIELDS,
-        DATABASE_SCHEMA_UPDATE_FIELDS,
-        null);
+        DATABASE_SCHEMA_UPDATE_FIELDS);
   }
 
   @Override
   public void setFullyQualifiedName(DatabaseSchema schema) {
     schema.setFullyQualifiedName(
         FullyQualifiedName.add(schema.getDatabase().getFullyQualifiedName(), schema.getName()));
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(DatabaseSchema schema) {
+    return FullyQualifiedName.buildHash(schema.getFullyQualifiedName());
   }
 
   @Override
@@ -103,6 +108,21 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   @Override
+  public void setInheritedFields(DatabaseSchema schema) throws IOException {
+    Database database = Entity.getEntity(schema.getDatabase(), "owner", Include.ALL);
+    setInheritedProperties(schema, schema.getDatabase().getId());
+  }
+
+  public void setInheritedProperties(DatabaseSchema schema, UUID databaseId) throws IOException {
+    Database database = null;
+    // If schema does not have its own retention period, then inherit parent database retention period
+    if (schema.getRetentionPeriod() == null) {
+      database = database == null ? Entity.getEntity(Entity.DATABASE, databaseId, "", ALL) : database;
+      schema.withRetentionPeriod(database.getRetentionPeriod());
+    }
+  }
+
+  @Override
   public void restorePatchAttributes(DatabaseSchema original, DatabaseSchema updated) {
     // Patch can't make changes to following fields. Ignore the changes
     updated
@@ -110,6 +130,12 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         .withName(original.getName())
         .withService(original.getService())
         .withId(original.getId());
+  }
+
+  @Override
+  public EntityRepository<DatabaseSchema>.EntityUpdater getUpdater(
+      DatabaseSchema original, DatabaseSchema updated, Operation operation) {
+    return new DatabaseSchemaUpdater(original, updated, operation);
   }
 
   private void populateDatabase(DatabaseSchema schema) throws IOException {
@@ -122,6 +148,17 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     // Carry forward ownership from database, if necessary
     if (database.getOwner() != null && schema.getOwner() == null) {
       schema.withOwner(database.getOwner().withDescription("inherited"));
+    }
+  }
+
+  public class DatabaseSchemaUpdater extends EntityUpdater {
+    public DatabaseSchemaUpdater(DatabaseSchema original, DatabaseSchema updated, Operation operation) {
+      super(original, updated, operation);
+    }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
     }
   }
 }

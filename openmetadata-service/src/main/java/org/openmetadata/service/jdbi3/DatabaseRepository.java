@@ -28,7 +28,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class DatabaseRepository extends EntityRepository<Database> {
-  private static final String DATABASE_UPDATE_FIELDS = "owner,tags";
+  private static final String DATABASE_UPDATE_FIELDS = "owner,tags,extension";
   private static final String DATABASE_PATCH_FIELDS = DATABASE_UPDATE_FIELDS;
 
   public DatabaseRepository(CollectionDAO dao) {
@@ -39,13 +39,17 @@ public class DatabaseRepository extends EntityRepository<Database> {
         dao.databaseDAO(),
         dao,
         DATABASE_PATCH_FIELDS,
-        DATABASE_UPDATE_FIELDS,
-        null);
+        DATABASE_UPDATE_FIELDS);
   }
 
   @Override
   public void setFullyQualifiedName(Database database) {
     database.setFullyQualifiedName(FullyQualifiedName.build(database.getService().getName(), database.getName()));
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(Database entity) {
+    return FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
   }
 
   @Override
@@ -98,9 +102,25 @@ public class DatabaseRepository extends EntityRepository<Database> {
         .withId(original.getId());
   }
 
+  @Override
+  public EntityRepository<Database>.EntityUpdater getUpdater(Database original, Database updated, Operation operation) {
+    return new DatabaseUpdater(original, updated, operation);
+  }
+
   private void populateService(Database database) throws IOException {
     DatabaseService service = Entity.getEntity(database.getService(), "", Include.NON_DELETED);
     database.setService(service.getEntityReference());
     database.setServiceType(service.getServiceType());
+  }
+
+  public class DatabaseUpdater extends EntityUpdater {
+    public DatabaseUpdater(Database original, Database updated, Operation operation) {
+      super(original, updated, operation);
+    }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
+    }
   }
 }

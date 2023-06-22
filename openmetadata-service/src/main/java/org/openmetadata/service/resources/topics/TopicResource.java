@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.topics;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,6 +25,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -73,6 +76,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "topics")
 public class TopicResource extends EntityResource<Topic, TopicRepository> {
   public static final String COLLECTION_PATH = "v1/topics/";
+  static final String FIELDS = "owner,followers,tags,sampleData,extension";
 
   @Override
   public Topic addHref(UriInfo uriInfo, Topic topic) {
@@ -86,14 +90,15 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     super(Topic.class, new TopicRepository(dao), authorizer);
   }
 
-  public static class TopicList extends ResultList<Topic> {
-    @SuppressWarnings("unused")
-    public TopicList() {
-      // Empty constructor needed for deserialization
-    }
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("sampleData", MetadataOperation.VIEW_SAMPLE_DATA);
+    return listOf(MetadataOperation.VIEW_SAMPLE_DATA, MetadataOperation.EDIT_SAMPLE_DATA);
   }
 
-  static final String FIELDS = "owner,followers,tags,sampleData,extension";
+  public static class TopicList extends ResultList<Topic> {
+    /* Required for serde */
+  }
 
   @GET
   @Operation(
@@ -338,7 +343,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Topic topic = dao.addSampleData(id, sampleData);
+    Topic topic = repository.addSampleData(id, sampleData);
     return addHref(uriInfo, topic);
   }
 
@@ -361,7 +366,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId)
       throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @DELETE
@@ -383,7 +388,9 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
           @PathParam("userId")
           String userId)
       throws IOException {
-    return dao.deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId)).toResponse();
+    return repository
+        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
+        .toResponse();
   }
 
   @DELETE

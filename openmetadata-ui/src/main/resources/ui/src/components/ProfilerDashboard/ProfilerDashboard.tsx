@@ -33,19 +33,15 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { addFollower, removeFollower } from 'rest/tableAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
-  getServiceDetailsPath,
   getTableTabPath,
   getTeamAndUserDetailsPath,
 } from '../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { DEFAULT_RANGE_DATA } from '../../constants/profiler.constant';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
-import { ServiceCategory } from '../../enums/service.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Column, Table } from '../../generated/entity/data/table';
@@ -63,7 +59,6 @@ import {
   getAddDataQualityTableTestPath,
   getProfilerDashboardWithFqnPath,
 } from '../../utils/RouterUtils';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import {
   generateEntityLink,
@@ -166,35 +161,12 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
 
   const tier = useMemo(() => getTierTags(table.tags ?? []), [table]);
   const breadcrumb = useMemo(() => {
-    const serviceName = getEntityName(table.service);
-    const fqn = table.fullyQualifiedName || '';
     const columnName = getPartialNameFromTableFQN(decodedEntityFQN, [
       FqnPart.NestedColumn,
     ]);
 
     const data: TitleBreadcrumbProps['titleLinks'] = [
-      {
-        name: getEntityName(table.service),
-        url: serviceName
-          ? getServiceDetailsPath(
-              serviceName,
-              ServiceCategory.DATABASE_SERVICES
-            )
-          : '',
-        imgSrc: table.serviceType
-          ? serviceTypeLogo(table.serviceType)
-          : undefined,
-      },
-      {
-        name: getPartialNameFromTableFQN(fqn, [FqnPart.Database]),
-        url: getDatabaseDetailsPath(table.database?.fullyQualifiedName || ''),
-      },
-      {
-        name: getPartialNameFromTableFQN(fqn, [FqnPart.Schema]),
-        url: getDatabaseSchemaDetailsPath(
-          table.databaseSchema?.fullyQualifiedName || ''
-        ),
-      },
+      ...getEntityBreadcrumbs(table, EntityType.TABLE),
       {
         name: getEntityName(table),
         url: isColumnView
@@ -266,16 +238,6 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     },
     [table, table.owner]
   );
-
-  const handleTierRemove = () => {
-    if (table) {
-      const updatedTableDetails = {
-        ...table,
-        tags: undefined,
-      };
-      onTableChange(updatedTableDetails);
-    }
-  };
 
   const handleTierUpdate = (newTier?: string) => {
     if (newTier) {
@@ -449,13 +411,12 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
 
   return (
     <PageLayoutV1 pageTitle={t('label.profiler')}>
-      <Row gutter={[16, 16]}>
+      <Row className="page-container" gutter={[16, 16]}>
         <Col span={24}>
           <EntityPageInfo
-            isTagEditable
-            createAnnouncementPermission={tablePermissions.EditAll}
             currentOwner={table.owner}
             deleted={table.deleted}
+            displayName={table.displayName}
             entityFqn={table.fullyQualifiedName}
             entityId={table.id}
             entityName={table.name}
@@ -465,11 +426,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             followers={follower.length}
             followersList={follower}
             isFollowing={isFollowing}
-            removeTier={
-              tablePermissions.EditAll || tablePermissions.EditTier
-                ? handleTierRemove
-                : undefined
-            }
+            permission={tablePermissions}
             serviceType={table.serviceType ?? ''}
             tags={getTagsWithoutTier(table.tags || [])}
             tagsHandler={handleTagUpdate}
@@ -561,7 +518,6 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
         {activeTab === ProfilerDashboardTab.DATA_QUALITY && (
           <Col span={24}>
             <DataQualityTab
-              deletedTable={showDeletedTest}
               isLoading={isTestCaseLoading}
               testCases={getFilterTestCase()}
               onTestUpdate={handleTestUpdate}
