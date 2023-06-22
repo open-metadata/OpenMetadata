@@ -17,7 +17,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectCache;
 
 @Slf4j
 public class WebSocketManager {
-  private static WebSocketManager INSTANCE;
+  private static WebSocketManager instance;
   @Getter private final EngineIoServer engineIoServer;
   @Getter private final SocketIoServer socketIoServer;
   public static final String FEED_BROADCAST_CHANNEL = "activityFeed";
@@ -87,7 +87,7 @@ public class WebSocketManager {
   }
 
   public static WebSocketManager getInstance() {
-    return INSTANCE;
+    return instance;
   }
 
   public void broadCastMessageToAll(String event, String message) {
@@ -123,7 +123,7 @@ public class WebSocketManager {
     private WebSocketManagerBuilder() {}
 
     public static void build(EngineIoServerOptions eiOptions) {
-      INSTANCE = new WebSocketManager(eiOptions);
+      instance = new WebSocketManager(eiOptions);
     }
   }
 }

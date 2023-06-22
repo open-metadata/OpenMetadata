@@ -5,20 +5,20 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 public class DatasourceConfig {
-  private static DatasourceConfig INSTANCE;
-  private static volatile boolean INITIALIZED = false;
+  private static DatasourceConfig instance;
+  private static volatile boolean initialized = false;
   private static DataSourceFactory dataSourceFactory;
 
   public static void initialize(OpenMetadataApplicationConfig config) {
-    if (!INITIALIZED) {
-      INSTANCE = new DatasourceConfig();
+    if (!initialized) {
+      instance = new DatasourceConfig();
       dataSourceFactory = config.getDataSourceFactory();
-      INITIALIZED = true;
+      initialized = true;
     }
   }
 
   public static DatasourceConfig getInstance() {
-    return INSTANCE;
+    return instance;
   }
 
   public Boolean isMySQL() {
