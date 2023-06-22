@@ -15,7 +15,6 @@ import { ThreadType } from 'generated/api/feed/createThread';
 import { Tag } from 'generated/entity/classification/tag';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { TagSource } from 'generated/type/tagLabel';
-import { EntityFieldThreads } from 'interface/feed.interface';
 import { EntityTags } from 'Models';
 
 interface TagsTreeProps {
@@ -27,10 +26,6 @@ interface TagsTreeProps {
 
 export interface HierarchyTagsProps extends TagsTreeProps {
   children: TagsTreeProps[];
-}
-
-export interface GlossaryTermNodeProps extends TagsTreeProps {
-  children: TagsTreeProps[] | undefined;
 }
 
 export type TagDetailsProps = {
@@ -60,13 +55,19 @@ export type GlossaryTermDetailsProps = {
 };
 
 export type TagsContainerV1Props = {
-  editable: boolean;
+  permission: boolean;
   selectedTags: Array<EntityTags>;
   onSelectionChange: (selectedTags: Array<EntityTags>) => void;
-  placeholder?: string;
-  showLimited?: boolean;
-  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
+  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
   entityType?: string;
-  entityFieldThreads?: EntityFieldThreads[];
+  entityThreadLink?: string;
   entityFqn?: string;
+  tagType: TagSource;
+};
+
+export type TagsTreeComponentProps = {
+  placeholder: string;
+  treeData: HierarchyTagsProps[];
+  defaultValue: string[];
+  onChange?: (value: string[]) => void;
 };
