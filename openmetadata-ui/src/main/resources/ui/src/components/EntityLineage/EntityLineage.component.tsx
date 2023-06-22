@@ -1627,7 +1627,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             onPaneClick={onPaneClick}>
             {updatedLineageData && (
               <CustomControlsComponent
-                className="absolute top-1 right-1 bottom-full"
+                className="absolute top-1 right-1 bottom-full p-md"
                 deleted={deleted}
                 fitViewParams={{
                   minZoom: MIN_ZOOM_VALUE,
