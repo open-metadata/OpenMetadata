@@ -13,6 +13,8 @@
 
 import { Button, Form, FormProps, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
+import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { t } from 'i18next';
 import { isEmpty, snakeCase } from 'lodash';
@@ -109,7 +111,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
   const GenerateParamsField = useCallback(() => {
     const selectedDefinition = getSelectedTestDefinition();
-    if (selectedDefinition && selectedDefinition.parameterDefinition) {
+    if (selectedDefinition?.parameterDefinition) {
       return <ParameterForm definition={selectedDefinition} table={table} />;
     }
 

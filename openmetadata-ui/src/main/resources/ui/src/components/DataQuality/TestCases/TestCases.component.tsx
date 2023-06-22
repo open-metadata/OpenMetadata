@@ -18,7 +18,10 @@ import { INITIAL_PAGING_VALUE, PAGE_SIZE } from 'constants/constants';
 import { SearchIndex } from 'enums/search.enum';
 import { TestCase, TestCaseStatus } from 'generated/tests/testCase';
 import { Paging } from 'generated/type/paging';
-import { SearchHitBody } from 'interface/search.interface';
+import {
+  SearchHitBody,
+  TestCaseSearchSource,
+} from 'interface/search.interface';
 import { isString, sortBy } from 'lodash';
 import { PagingResponse } from 'Models';
 import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
@@ -121,7 +124,10 @@ export const TestCases = () => {
         query: searchValue,
       });
       const hits = (
-        response.hits.hits as SearchHitBody<SearchIndex.TEST_CASE, TestCase>[]
+        response.hits.hits as SearchHitBody<
+          SearchIndex.TEST_CASE,
+          TestCaseSearchSource
+        >[]
       ).map((value) => value._source);
 
       setTestCase({

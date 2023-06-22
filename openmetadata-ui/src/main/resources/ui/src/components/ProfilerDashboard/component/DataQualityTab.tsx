@@ -104,11 +104,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       try {
         await putTestCaseResult(testCaseFqn, updatedResult);
 
-        onTestCaseResultUpdate &&
-          onTestCaseResultUpdate({
-            ...selectedTestCase.data,
-            testCaseResult: updatedResult,
-          });
+        onTestCaseResultUpdate?.({
+          ...selectedTestCase.data,
+          testCaseResult: updatedResult,
+        });
 
         handleCancel();
       } catch (error) {
@@ -128,7 +127,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         selectedTestCase?.data.id ?? '',
         removeFromTestSuite.testSuite?.id ?? ''
       );
-      onTestUpdate && onTestUpdate();
+      onTestUpdate?.();
       setSelectedTestCase(undefined);
     } catch (error) {
       showErrorToast(error as AxiosError);
