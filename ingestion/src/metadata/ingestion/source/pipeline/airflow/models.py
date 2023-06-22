@@ -63,6 +63,7 @@ class AirflowDagDetails(AirflowBaseModel):
     data: AirflowDag
     max_active_runs: Optional[int]
     description: Optional[str]
-    start_date: Optional[datetime] = None
+    start_date: Optional[datetime]
     tasks: List[Task]
-    owners: Any
+    owners: Optional[Any]
+    schedule_interval: Optional[str]

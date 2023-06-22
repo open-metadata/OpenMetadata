@@ -78,7 +78,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "pipelines")
 public class PipelineResource extends EntityResource<Pipeline, PipelineRepository> {
   public static final String COLLECTION_PATH = "v1/pipelines/";
-  static final String FIELDS = "owner,tasks,pipelineStatus,followers,tags,extension";
+  static final String FIELDS = "owner,tasks,pipelineStatus,followers,tags,extension,scheduleInterval";
 
   @Override
   public Pipeline addHref(UriInfo uriInfo, Pipeline pipeline) {
@@ -545,6 +545,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
         .withTags(create.getTags())
         .withConcurrency(create.getConcurrency())
         .withStartDate(create.getStartDate())
-        .withPipelineLocation(create.getPipelineLocation());
+        .withPipelineLocation(create.getPipelineLocation())
+        .withScheduleInterval(create.getScheduleInterval());
   }
 }

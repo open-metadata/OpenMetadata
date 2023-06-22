@@ -456,6 +456,7 @@ const AddIngestion = ({
             pipelineFilterPattern,
             showPipelineFilter
           ),
+          includeOwners: includeOwners,
           dbServiceNames: databaseServiceNames,
           type: ConfigType.PipelineMetadata,
           markDeletedPipelines,
