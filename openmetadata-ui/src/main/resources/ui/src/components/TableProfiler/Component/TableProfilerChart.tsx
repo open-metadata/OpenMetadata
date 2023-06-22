@@ -37,6 +37,7 @@ import { TableProfilerChartProps } from '../TableProfiler.interface';
 const TableProfilerChart = ({
   dateRangeObject,
   entityFqn = '',
+  showOperationGraph = false,
 }: TableProfilerChartProps) => {
   const { datasetFQN } = useParams<{ datasetFQN: string }>();
 
@@ -112,43 +113,49 @@ const TableProfilerChart = ({
           name="rowCount"
         />
       </Col>
-      <Col span={24}>
-        <Card
-          className="shadow-none global-border-radius"
-          data-testid="operation-date-metrics">
-          <Row gutter={[16, 16]}>
-            <Col span={4}>
-              <ProfilerLatestValue
-                stringValue
-                information={operationDateMetrics.information}
-              />
-            </Col>
-            <Col span={20}>
-              <OperationDateBarChart
-                chartCollection={operationDateMetrics}
-                name="operationDateMetrics"
-              />
-            </Col>
-          </Row>
-        </Card>
-      </Col>
-      <Col span={24}>
-        <Card
-          className="shadow-none global-border-radius"
-          data-testid="operation-metrics">
-          <Row gutter={[16, 16]}>
-            <Col span={4}>
-              <ProfilerLatestValue information={operationMetrics.information} />
-            </Col>
-            <Col span={20}>
-              <CustomBarChart
-                chartCollection={operationMetrics}
-                name="operationMetrics"
-              />
-            </Col>
-          </Row>
-        </Card>
-      </Col>
+      {showOperationGraph && (
+        <>
+          <Col span={24}>
+            <Card
+              className="shadow-none global-border-radius"
+              data-testid="operation-date-metrics">
+              <Row gutter={[16, 16]}>
+                <Col span={4}>
+                  <ProfilerLatestValue
+                    stringValue
+                    information={operationDateMetrics.information}
+                  />
+                </Col>
+                <Col span={20}>
+                  <OperationDateBarChart
+                    chartCollection={operationDateMetrics}
+                    name="operationDateMetrics"
+                  />
+                </Col>
+              </Row>
+            </Card>
+          </Col>
+          <Col span={24}>
+            <Card
+              className="shadow-none global-border-radius"
+              data-testid="operation-metrics">
+              <Row gutter={[16, 16]}>
+                <Col span={4}>
+                  <ProfilerLatestValue
+                    information={operationMetrics.information}
+                  />
+                </Col>
+                <Col span={20}>
+                  <CustomBarChart
+                    chartCollection={operationMetrics}
+                    name="operationMetrics"
+                  />
+                </Col>
+              </Row>
+            </Card>
+          </Col>
+        </>
+      )}
     </Row>
   );
 };

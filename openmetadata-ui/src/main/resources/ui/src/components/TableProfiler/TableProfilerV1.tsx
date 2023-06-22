@@ -57,6 +57,7 @@ import { ReactComponent as TableProfileIcon } from '../../assets/svg/table-profi
 import { API_RES_MAX_SIZE, ROUTES } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import {
+  allowedServiceForOperationGraph,
   DEFAULT_RANGE_DATA,
   INITIAL_TEST_RESULT_SUMMARY,
 } from '../../constants/profiler.constant';
@@ -87,7 +88,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   testSuite,
   isTableDeleted,
   permissions,
-}) => {
+}: TableProfilerProps) => {
   const { t } = useTranslation();
   const history = useHistory();
   const location = useLocation();
@@ -124,6 +125,14 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const [dateRangeObject, setDateRangeObject] =
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
+
+  const showOperationGraph = useMemo(() => {
+    if (table && table.serviceType) {
+      return allowedServiceForOperationGraph.includes(table.serviceType);
+    }
+
+    return false;
+  }, [table]);
 
   const isColumnProfile = activeTab === TableProfilerTab.COLUMN_PROFILE;
   const isDataQuality = activeTab === TableProfilerTab.DATA_QUALITY;
@@ -615,7 +624,10 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
           )}
 
           {isTableProfile && (
-            <TableProfilerChart dateRangeObject={dateRangeObject} />
+            <TableProfilerChart
+              dateRangeObject={dateRangeObject}
+              showOperationGraph={showOperationGraph}
+            />
           )}
 
           {settingModalVisible && (
