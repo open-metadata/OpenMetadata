@@ -1,6 +1,8 @@
 package org.openmetadata.service.resources.analytics;
 
-import static javax.ws.rs.core.Response.Status.*;
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -39,6 +41,7 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
         WebAnalyticEventResource.WebAnalyticEventList.class,
         "analytics/web/events",
         WebAnalyticEventResource.FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Test

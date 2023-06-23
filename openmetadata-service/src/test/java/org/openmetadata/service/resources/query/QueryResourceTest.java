@@ -46,6 +46,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   public QueryResourceTest() {
     super(Entity.QUERY, Query.class, QueryResource.QueryList.class, "queries", QueryResource.FIELDS);
     supportsSoftDelete = false;
+    supportsSearchIndex = true;
   }
 
   @BeforeAll

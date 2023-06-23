@@ -15,10 +15,16 @@ import { AxiosError } from 'axios';
 import { ModifiedGlossaryTerm } from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import {
   GlossaryTermDetailsProps,
-  GlossaryTermNodeProps,
+  HierarchyTagsProps,
 } from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
+import { API_RES_MAX_SIZE, PAGE_SIZE_LARGE } from 'constants/constants';
+import { TagSource } from 'generated/type/tagLabel';
 import { isUndefined, omit } from 'lodash';
-import { ListGlossaryTermsParams } from 'rest/glossaryAPI';
+import {
+  getGlossariesList,
+  getGlossaryTerms,
+  ListGlossaryTermsParams,
+} from 'rest/glossaryAPI';
 import { searchData } from 'rest/miscAPI';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
@@ -224,9 +230,9 @@ export const formatRelatedTermOptions = (
 
 export const getGlossaryTermHierarchy = (
   data: GlossaryTermDetailsProps[]
-): GlossaryTermNodeProps[] => {
-  const nodes: Record<string, GlossaryTermNodeProps> = {};
-  const tree: GlossaryTermNodeProps[] = [];
+): HierarchyTagsProps[] => {
+  const nodes: Record<string, HierarchyTagsProps> = {};
+  const tree: HierarchyTagsProps[] = [];
 
   data.forEach((obj) => {
     if (obj.fqn) {
@@ -266,4 +272,41 @@ export const getGlossaryTermHierarchy = (
   });
 
   return tree;
+};
+
+export const getGlossaryTermsList = async () => {
+  try {
+    const glossaryTermList: GlossaryTermDetailsProps[] = [];
+    const { data } = await getGlossariesList({
+      limit: PAGE_SIZE_LARGE,
+    });
+
+    const promises = data.map((item) =>
+      getGlossaryTerms({
+        glossary: item.id,
+        limit: API_RES_MAX_SIZE,
+        fields: 'children,parent',
+      })
+    );
+    const response = await Promise.allSettled(promises);
+
+    response.forEach((res) => {
+      if (res.status === 'fulfilled') {
+        glossaryTermList.push(
+          ...res.value.data.map((data) => ({
+            name: data.name,
+            fqn: data.fullyQualifiedName ?? '',
+            children: data.children,
+            parent: data.parent,
+            glossary: data.glossary,
+            source: TagSource.Glossary,
+          }))
+        );
+      }
+    });
+
+    return Promise.resolve(glossaryTermList);
+  } catch (error) {
+    return Promise.reject({ data: (error as AxiosError).response });
+  }
 };

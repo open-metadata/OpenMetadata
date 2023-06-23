@@ -14,7 +14,7 @@ import Icon, { DownOutlined } from '@ant-design/icons';
 import { Button, Col, Dropdown, Row, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as IconFolder } from 'assets/svg/folder.svg';
+import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
 import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
 import { ReactComponent as IconFlatDoc } from 'assets/svg/ic-flat-doc.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
@@ -322,7 +322,7 @@ const GlossaryHeader = ({
             entityType={EntityType.GLOSSARY_TERM}
             icon={
               isGlossary ? (
-                <IconFolder
+                <GlossaryIcon
                   color={DE_ACTIVE_COLOR}
                   height={36}
                   name="folder"

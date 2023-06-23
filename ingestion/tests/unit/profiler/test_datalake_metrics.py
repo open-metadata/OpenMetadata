@@ -23,7 +23,7 @@ from sqlalchemy.orm import declarative_base
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
-from metadata.profiler.interface.pandas.pandas_profiler_interface import (
+from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
 )
 from metadata.profiler.metrics.core import add_props

@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Skeleton, Space, Table, Tabs } from 'antd';
+import {
+  Col,
+  Row,
+  Skeleton,
+  Space,
+  Switch,
+  Table,
+  Tabs,
+  Typography,
+} from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import ActivityFeedProvider, {
@@ -40,6 +49,7 @@ import TagsContainer from 'components/Tag/TagsContainer/tags-container';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { LabelType } from 'generated/entity/data/table';
+import { Include } from 'generated/type/include';
 import { State } from 'generated/type/tagLabel';
 import { isEmpty, isNil, isUndefined, startCase } from 'lodash';
 import { observer } from 'mobx-react';
@@ -111,6 +121,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const { databaseFQN, tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ databaseFQN: string; tab: EntityTabs }>();
   const [isLoading, setIsLoading] = useState(true);
+  const [showDeletedSchemas, setShowDeletedSchemas] = useState<boolean>(false);
   const [database, setDatabase] = useState<Database>();
   const [serviceType, setServiceType] = useState<string>();
   const [schemaData, setSchemaData] = useState<DatabaseSchema[]>([]);
@@ -221,7 +232,12 @@ const DatabaseDetails: FunctionComponent = () => {
   const fetchDatabaseSchemas = (pagingObj?: string) => {
     return new Promise<void>((resolve, reject) => {
       setSchemaDataLoading(true);
-      getDatabaseSchemas(databaseFQN, pagingObj, ['owner', 'usageSummary'])
+      getDatabaseSchemas(
+        databaseFQN,
+        pagingObj,
+        ['owner', 'usageSummary'],
+        showDeletedSchemas ? Include.Deleted : Include.NonDeleted
+      )
         .then((res) => {
           if (res.data) {
             setSchemaData(res.data);
@@ -677,6 +693,10 @@ const DatabaseDetails: FunctionComponent = () => {
     databaseSchemaPagingHandler,
   ]);
 
+  useEffect(() => {
+    fetchDatabaseSchemas();
+  }, [showDeletedSchemas]);
+
   if (isLoading) {
     return <Loader />;
   }
@@ -851,7 +871,20 @@ const DatabaseDetails: FunctionComponent = () => {
                             onThreadLinkSelect={onThreadLinkSelect}
                           />
                         </Col>
-
+                        <Col span={24}>
+                          <Row justify="end">
+                            <Col>
+                              <Switch
+                                checked={showDeletedSchemas}
+                                data-testid="show-deleted"
+                                onClick={setShowDeletedSchemas}
+                              />
+                              <Typography.Text className="m-l-xs">
+                                {t('label.deleted')}
+                              </Typography.Text>{' '}
+                            </Col>
+                          </Row>
+                        </Col>
                         {databaseTable}
                       </Row>
                     </>

@@ -30,7 +30,6 @@ import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { ReactComponent as IconRestore } from 'assets/svg/ic-restore.svg';
 import { ReactComponent as IconOpenLock } from 'assets/svg/open-lock.svg';
-import { ReactComponent as IconShowPassword } from 'assets/svg/show-password.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -195,7 +194,7 @@ const TeamDetailsV1 = ({
   }>(DELETE_USER_INITIAL_STATE);
   const [searchTerm, setSearchTerm] = useState('');
   const [table, setTable] = useState<Team[]>([]);
-  const [slashedDatabaseName, setSlashedDatabaseName] = useState<
+  const [slashedTeamName, setSlashedTeamName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
   const [addAttribute, setAddAttribute] = useState<AddAttribute>();
@@ -612,7 +611,7 @@ const TeamDetailsV1 = ({
           url: '',
         },
       ];
-      setSlashedDatabaseName(breadcrumb);
+      setSlashedTeamName(breadcrumb);
       setHeading(currentTeam.displayName || currentTeam.name);
     }
   }, [currentTeam, parentTeams, showDeletedTeam]);
@@ -668,42 +667,6 @@ const TeamDetailsV1 = ({
       search: Qs.stringify({ type: ImportType.TEAMS }),
     });
   }, []);
-
-  const DELETED_TOGGLE_MENU_ITEM = {
-    label: (
-      <ManageButtonItemLabel
-        description={t('message.view-deleted-entity', {
-          entity: t('label.team-plural'),
-          parent: t('label.team'),
-        })}
-        icon={<IconShowPassword {...DROPDOWN_ICON_SIZE_PROPS} />}
-        id="deleted-team-dropdown"
-        name={
-          <Row>
-            <Col span={21}>
-              <Typography.Text
-                className="font-medium"
-                data-testid="deleted-menu-item-label">
-                {t('label.show-deleted-entity', {
-                  entity: t('label.team'),
-                })}
-              </Typography.Text>
-            </Col>
-
-            <Col span={3}>
-              <Switch
-                checked={showDeletedTeam}
-                data-testid="deleted-menu-item-switch"
-                size="small"
-              />
-            </Col>
-          </Row>
-        }
-      />
-    ),
-    onClick: onShowDeletedTeamChange,
-    key: 'deleted-team-dropdown',
-  };
 
   const IMPORT_EXPORT_MENU_ITEM = useMemo(() => {
     const options = [
@@ -795,9 +758,6 @@ const TeamDetailsV1 = ({
         onClick: handleOpenToJoinToggle,
         key: 'open-group-dropdown',
       },
-      ...(currentTeam.teamType === TeamType.BusinessUnit
-        ? [DELETED_TOGGLE_MENU_ITEM]
-        : []),
     ],
     [
       entityPermissions,
@@ -1024,10 +984,7 @@ const TeamDetailsV1 = ({
       {!isEmpty(currentTeam) ? (
         <Fragment>
           {!isOrganization && (
-            <TitleBreadcrumb
-              className="p-b-xs"
-              titleLinks={slashedDatabaseName}
-            />
+            <TitleBreadcrumb className="p-b-xs" titleLinks={slashedTeamName} />
           )}
           <div
             className="d-flex tw-justify-between tw-items-center"
@@ -1067,10 +1024,7 @@ const TeamDetailsV1 = ({
               <ManageButton
                 canDelete={false}
                 entityName={currentTeam.fullyQualifiedName ?? currentTeam.name}
-                extraDropdownContent={[
-                  ...IMPORT_EXPORT_MENU_ITEM,
-                  DELETED_TOGGLE_MENU_ITEM,
-                ]}
+                extraDropdownContent={[...IMPORT_EXPORT_MENU_ITEM]}
               />
             )}
           </div>
@@ -1149,6 +1103,16 @@ const TeamDetailsV1 = ({
                     </Col>
                     <Col>
                       <Space align="center">
+                        <span>
+                          <Switch
+                            checked={showDeletedTeam}
+                            data-testid="show-deleted"
+                            onClick={onShowDeletedTeamChange}
+                          />
+                          <Typography.Text className="m-l-xs">
+                            {t('label.deleted')}
+                          </Typography.Text>
+                        </span>
                         <Button
                           data-testid="add-team"
                           disabled={!createTeamPermission}

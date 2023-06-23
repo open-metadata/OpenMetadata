@@ -23,6 +23,13 @@
   color: inherit;
 }
 
+.ant-btn.ant-btn-background-ghost.expand-btn {
+  background-color: white;
+  &:hover {
+    background-color: white;
+  }
+}
+
 .lineage-node-content {
   margin: 1px;
 }
@@ -89,6 +96,9 @@
     background: @primary-color-hover;
     border-top: 1px solid @border-color;
   }
+  .custom-node-header-tracing {
+    border: none;
+  }
 }
 
 .react-flow__handle.connectable {
@@ -111,6 +121,23 @@
   border-color: @border-color;
   background: @white;
   top: 38px; // Need to show handles on top half
+}
+
+.react-flow .lineage-column-node-handle {
+  width: 20px;
+  border-radius: 0;
+  border-color: @border-color;
+  background: @white;
+  top: 0;
+  height: 27px;
+  transform: none;
+  border: none;
+  &.react-flow__handle-left {
+    left: 0;
+  }
+  &.react-flow__handle-right {
+    right: 0;
+  }
 }
 
 .custom-node-column-container {

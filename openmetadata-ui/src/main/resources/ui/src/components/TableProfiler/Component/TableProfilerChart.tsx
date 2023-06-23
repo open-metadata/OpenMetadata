@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row } from 'antd';
+import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { getSystemProfileList, getTableProfilesList } from 'rest/tableAPI';
 import {
@@ -34,8 +35,13 @@ import ProfilerLatestValue from '../../ProfilerDashboard/component/ProfilerLates
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
 import { TableProfilerChartProps } from '../TableProfiler.interface';
 
-const TableProfilerChart = ({ dateRangeObject }: TableProfilerChartProps) => {
+const TableProfilerChart = ({
+  dateRangeObject,
+  entityFqn = '',
+  showOperationGraph = false,
+}: TableProfilerChartProps) => {
   const { datasetFQN } = useParams<{ datasetFQN: string }>();
+  const { t } = useTranslation();
 
   const [rowCountMetrics, setRowCountMetrics] = useState<MetricChartType>(
     INITIAL_ROW_METRIC_VALUE
@@ -89,12 +95,12 @@ const TableProfilerChart = ({ dateRangeObject }: TableProfilerChartProps) => {
   };
 
   useEffect(() => {
-    if (datasetFQN) {
-      fetchProfilerData(datasetFQN, dateRangeObject);
+    if (datasetFQN || entityFqn) {
+      fetchProfilerData(datasetFQN || entityFqn, dateRangeObject);
     } else {
       setIsLoading(false);
     }
-  }, [datasetFQN, dateRangeObject]);
+  }, [datasetFQN, dateRangeObject, entityFqn]);
 
   if (isLoading) {
     return <Loader />;
@@ -107,45 +113,62 @@ const TableProfilerChart = ({ dateRangeObject }: TableProfilerChartProps) => {
           chartCollection={rowCountMetrics}
           curveType="stepAfter"
           name="rowCount"
+          title={t('label.data-volume')}
         />
       </Col>
-      <Col span={24}>
-        <Card
-          className="shadow-none global-border-radius"
-          data-testid="operation-date-metrics">
-          <Row gutter={[16, 16]}>
-            <Col span={4}>
-              <ProfilerLatestValue
-                stringValue
-                information={operationDateMetrics.information}
-              />
-            </Col>
-            <Col span={20}>
-              <OperationDateBarChart
-                chartCollection={operationDateMetrics}
-                name="operationDateMetrics"
-              />
-            </Col>
-          </Row>
-        </Card>
-      </Col>
-      <Col span={24}>
-        <Card
-          className="shadow-none global-border-radius"
-          data-testid="operation-metrics">
-          <Row gutter={[16, 16]}>
-            <Col span={4}>
-              <ProfilerLatestValue information={operationMetrics.information} />
-            </Col>
-            <Col span={20}>
-              <CustomBarChart
-                chartCollection={operationMetrics}
-                name="operationMetrics"
-              />
-            </Col>
-          </Row>
-        </Card>
-      </Col>
+      {showOperationGraph && (
+        <>
+          <Col span={24}>
+            <Card
+              className="shadow-none global-border-radius"
+              data-testid="operation-date-metrics">
+              <Row gutter={[16, 16]}>
+                <Col span={24}>
+                  <Typography.Title level={5}>
+                    {t('label.table-update-plural')}
+                  </Typography.Title>
+                </Col>
+                <Col span={4}>
+                  <ProfilerLatestValue
+                    stringValue
+                    information={operationDateMetrics.information}
+                  />
+                </Col>
+                <Col span={20}>
+                  <OperationDateBarChart
+                    chartCollection={operationDateMetrics}
+                    name="operationDateMetrics"
+                  />
+                </Col>
+              </Row>
+            </Card>
+          </Col>
+          <Col span={24}>
+            <Card
+              className="shadow-none global-border-radius"
+              data-testid="operation-metrics">
+              <Row gutter={[16, 16]}>
+                <Col span={24}>
+                  <Typography.Title level={5}>
+                    {t('label.volume-change')}
+                  </Typography.Title>
+                </Col>
+                <Col span={4}>
+                  <ProfilerLatestValue
+                    information={operationMetrics.information}
+                  />
+                </Col>
+                <Col span={20}>
+                  <CustomBarChart
+                    chartCollection={operationMetrics}
+                    name="operationMetrics"
+                  />
+                </Col>
+              </Row>
+            </Card>
+          </Col>
+        </>
+      )}
     </Row>
   );
 };

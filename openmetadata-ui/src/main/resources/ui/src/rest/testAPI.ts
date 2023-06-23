@@ -156,6 +156,18 @@ export const addTestCaseToLogicalTestSuite = async (
   return response.data;
 };
 
+export const removeTestCaseFromTestSuite = async (
+  testCaseId: string,
+  testSuiteId: string
+) => {
+  const response = await APIClient.delete<
+    AddTestCaseToLogicalTestSuiteType,
+    AxiosResponse<TestCase>
+  >(`${testCaseUrl}/logicalTestCases/${testSuiteId}/${testCaseId}`);
+
+  return response.data;
+};
+
 // testDefinition Section
 export const getListTestDefinitions = async (
   params?: ListTestDefinitionsParams

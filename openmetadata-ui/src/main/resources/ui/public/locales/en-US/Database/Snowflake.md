@@ -153,6 +153,12 @@ Enable this setting to ingest them during the metadata workflow.
 $$
 
 $$section
+### Client Session Keep Alive $(id="clientSessionKeepAlive")
+
+Optional Configuration to keep the session active in case the ingestion job runs for longer duration. 
+$$
+
+$$section
 ### Connection Options $(id="connectionOptions")
 
 Additional connection options to build the URL that can be sent to service during the connection.

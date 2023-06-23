@@ -8,19 +8,19 @@ slug: /connectors/database/oracle
 {% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- | :--------------------------- |
+| :----------------- |:-----------------------------|
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | Partially via Views          |
+| Lineage            | {% icon iconName="check" /%} |
 | DBT                | {% icon iconName="check" /%} |
-| Supported Versions | --                           |
+| Supported Versions | 12c, 18c, 19c, and 21c       |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
-| Lineage      | Partially via Views          |
+| Lineage      | {% icon iconName="check" /%} |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |
 
@@ -34,6 +34,7 @@ Configure and schedule Oracle metadata and profiler workflows from the OpenMetad
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](/connectors/ingestion/workflows/profiler)
 - [Data Quality](/connectors/ingestion/workflows/data-quality)
+- [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
@@ -355,6 +356,16 @@ caption="Edit and Deploy the Ingestion Pipeline" /%}
 ## Related
 
 {% tilesContainer %}
+
+{% tile
+  title="Usage Workflow"
+  description="Learn more about how to configure the Usage Workflow to ingest Query information from the UI."
+  link="/connectors/ingestion/workflows/usage" /%}
+
+{% tile
+  title="Lineage Workflow"
+  description="Learn more about how to configure the Lineage from the UI."
+  link="/connectors/ingestion/workflows/lineage" /%}
 
 {% tile
   title="Profiler Workflow"

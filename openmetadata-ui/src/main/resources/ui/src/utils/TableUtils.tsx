@@ -14,9 +14,9 @@
 import Icon from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
-import { ReactComponent as IconFlatFolder } from 'assets/svg/folder.svg';
+import { ReactComponent as ClassificationIcon } from 'assets/svg/classification.svg';
+import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
 import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
-import { ReactComponent as IconTag } from 'assets/svg/tag-grey.svg';
 import classNames from 'classnames';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
 import { t } from 'i18next';
@@ -275,11 +275,11 @@ export const getEntityLink = (
 
 export const getServiceIcon = (source: SourceType) => {
   if (source.entityType === EntityType.GLOSSARY_TERM) {
-    return (
-      <IconFlatFolder className="h-7" style={{ color: DE_ACTIVE_COLOR }} />
-    );
+    return <GlossaryIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />;
   } else if (source.entityType === EntityType.TAG) {
-    return <IconTag className="h-7" style={{ color: DE_ACTIVE_COLOR }} />;
+    return (
+      <ClassificationIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />
+    );
   } else {
     return (
       <img
