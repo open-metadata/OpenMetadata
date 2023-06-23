@@ -527,7 +527,7 @@ export const DataAssetsHeader = ({
                   entityFQN={dataAsset.fullyQualifiedName}
                   entityId={dataAsset.id}
                   entityName={entityName}
-                  entityType={EntityType.TABLE}
+                  entityType={entityType}
                   onAnnouncementClick={
                     permissions?.EditAll
                       ? () => setIsAnnouncementDrawer(true)
