@@ -19,42 +19,36 @@ public interface MigrationDAO {
   @SingleValue
   Optional<String> getMaxVersion() throws StatementException;
 
-  @ConnectionAwareSqlQuery(value = "SELECT MAX(version) FROM SERVER_CHANGE_LOG", connectionType = MYSQL)
-  @ConnectionAwareSqlQuery(value = "SELECT max(version) FROM \"SERVER_CHANGE_LOG\"", connectionType = POSTGRES)
-  @SingleValue
-  Optional<String> getMaxServerVersion() throws StatementException;
-
   @ConnectionAwareSqlQuery(
-      value = "SELECT migrationFileName FROM SERVER_CHANGE_LOG ORDER BY installed_rank DESC LIMIT 1",
+      value = "SELECT checksum FROM SERVER_CHANGE_LOG where version = :version",
       connectionType = MYSQL)
   @ConnectionAwareSqlQuery(
-      value = "SELECT migrationFileName FROM \"SERVER_CHANGE_LOG\" ORDER BY installed_rank DESC LIMIT 1",
+      value = "SELECT checksum FROM \"SERVER_CHANGE_LOG\" where version = :version",
       connectionType = POSTGRES)
-  @SingleValue
-  Optional<String> getLastRunMigrationStepFile() throws StatementException;
+  String getVersionMigrationChecksum(@Bind("version") String version) throws StatementException;
 
   @ConnectionAwareSqlUpdate(
       value =
-          "INSERT INTO SERVER_CHANGE_LOG (version, migrationFileName, success, installed_on)"
-              + "VALUES (:version, :migrationFileName, :success, CURRENT_TIMESTAMP) "
+          "INSERT INTO SERVER_CHANGE_LOG (version, migrationFileName, checksum, installed_on)"
+              + "VALUES (:version, :migrationFileName, :checksum, CURRENT_TIMESTAMP) "
               + "ON DUPLICATE KEY UPDATE "
               + "migrationFileName = :migrationFileName, "
-              + "success = :success, "
+              + "checksum = :checksum, "
               + "installed_on = CURRENT_TIMESTAMP",
       connectionType = MYSQL)
   @ConnectionAwareSqlUpdate(
       value =
-          "INSERT INTO server_change_log (version, migration_file_name, success, installed_on)"
-              + "VALUES (:version, :migrationFileName, :success, current_timestamp) "
+          "INSERT INTO server_change_log (version, migration_file_name, checksum, installed_on)"
+              + "VALUES (:version, :migrationFileName, :checksum, current_timestamp) "
               + "ON CONFLICT (version) DO UPDATE SET "
               + "migration_file_name = EXCLUDED.migration_file_name, "
-              + "success = EXCLUDED.success, "
+              + "checksum = EXCLUDED.checksum, "
               + "installed_on = EXCLUDED.installed_on",
       connectionType = POSTGRES)
   void upsertServerMigration(
       @Bind("version") String version,
       @Bind("migrationFileName") String migrationFileName,
-      @Bind("success") boolean success);
+      @Bind("checksum") String checksum);
 
   @ConnectionAwareSqlUpdate(
       value =

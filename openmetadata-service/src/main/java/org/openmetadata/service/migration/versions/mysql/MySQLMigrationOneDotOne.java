@@ -66,13 +66,18 @@ public class MySQLMigrationOneDotOne implements MigrationStep {
   private Handle handle;
 
   @Override
-  public double getMigrationVersion() {
-    return 1.1;
+  public String getMigrationVersion() {
+    return "1.1.0";
   }
 
   @Override
   public String getMigrationFileName() {
     return "MySQLMigrationOneDotOne";
+  }
+
+  @Override
+  public String getFileUuid() {
+    return "ffcc502b-d4a0-4e5f-a562-0a6d4110c76c";
   }
 
   @Override

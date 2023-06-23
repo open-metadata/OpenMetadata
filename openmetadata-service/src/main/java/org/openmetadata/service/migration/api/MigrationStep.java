@@ -7,9 +7,11 @@ public interface MigrationStep {
   // This version should match the server version
   // Ex: if the server is 1.0.0 the migration version for that server is 1.0.0
   // This version is used to sort all the upgrade migrations and apply them in order
-  double getMigrationVersion();
+  String getMigrationVersion();
 
   String getMigrationFileName();
+
+  String getFileUuid();
 
   ConnectionType getDatabaseConnectionType();
 

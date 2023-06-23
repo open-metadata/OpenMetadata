@@ -184,7 +184,8 @@ UPDATE dashboard_entity
 SET json = json::jsonb #- '{sourceUrl}'
 where json #> '{serviceType}' in ('"Mode"');
 
-CREATE TABLE SERVER_CHANGE_LOG (
+CREATE TABLE IF NOT EXISTS SERVER_CHANGE_LOG (
+    installed_rank SERIAL,
     version VARCHAR(256) PRIMARY KEY,
     migrationFileName VARCHAR(256) NOT NULL,
     checksum VARCHAR(256) NOT NULL,
@@ -192,9 +193,8 @@ CREATE TABLE SERVER_CHANGE_LOG (
 );
 
 CREATE TABLE IF NOT EXISTS SERVER_MIGRATION_SQL_LOGS (
-    version VARCHAR(256),
+    version VARCHAR(256) NOT NULL,
     sqlStatement VARCHAR(10000) NOT NULL,
-    checksum VARCHAR(256) NOT NULL,
+    checksum VARCHAR(256) PRIMARY KEY,
     executedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
