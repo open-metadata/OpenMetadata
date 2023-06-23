@@ -13,10 +13,6 @@
 
 @import url('../../styles/variables.less');
 
-@page-height: calc(
-  100vh - 122px
-); /* navbar + tabs_height + padding = 64 + 46 + 12  */
-
 .roles-container {
   display: flex;
   justify-content: space-between;
@@ -33,7 +29,7 @@
 }
 
 .user-page-layout {
-  height: @page-height;
+  height: @users-page-tabs-height;
   .page-layout-rightpanel {
     padding-right: 0 !important;
     background-color: @white;
@@ -47,14 +43,14 @@
 .user-layout {
   .activity-feed-tab {
     .center-container {
-      height: @page-height;
+      height: @users-page-tabs-height;
     }
     .right-container {
-      height: @page-height;
+      height: @users-page-tabs-height;
     }
   }
   .summary-panel-container {
-    height: @page-height;
+    height: @users-page-tabs-height;
   }
   .explore-search-card {
     margin: 0 12px;
