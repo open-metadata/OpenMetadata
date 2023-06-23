@@ -10,20 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { TagsDetailsProps } from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
-import { Query } from 'generated/entity/data/query';
-
-export interface TableQueryRightPanelProps {
-  query: Query;
-  isLoading: boolean;
-  permission: OperationPermission;
-  onQueryUpdate: (updatedQuery: Query, key: keyof Query) => Promise<void>;
+.stepper-container {
+  .ant-steps-item-content {
+    width: 120px;
+  }
 }
-
-export type TagDetails = {
-  isLoading: boolean;
-  options: TagsDetailsProps[];
-  isError: boolean;
-};
