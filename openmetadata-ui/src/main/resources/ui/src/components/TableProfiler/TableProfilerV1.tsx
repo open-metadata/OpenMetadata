@@ -573,7 +573,9 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
               <Col span={selectedColumn ? 14 : 24}>
                 <Row wrap gutter={[16, 16]}>
                   {overallSummery.map((summery) => (
-                    <Col key={summery.title}>
+                    <Col
+                      key={summery.title}
+                      span={selectedColumn ? undefined : 8}>
                       <SummaryCard
                         className={summery.className}
                         showProgressBar={false}

@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Typography } from 'antd';
+import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
+import PageHeader from 'components/header/PageHeader.component';
 import { isEmpty, uniqueId } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -119,14 +120,12 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
       id={DataInsightChartType.PageViewsByEntities}
       loading={isLoading}
       title={
-        <>
-          <Typography.Title level={5}>
-            {t('label.page-views-by-data-asset-plural')}
-          </Typography.Title>
-          <Typography.Text className="data-insight-label-text">
-            {t('message.data-insight-page-views')}
-          </Typography.Text>
-        </>
+        <PageHeader
+          data={{
+            header: t('label.page-views-by-data-asset-plural'),
+            subHeader: t('message.data-insight-page-views'),
+          }}
+        />
       }>
       {data.length ? (
         <Row gutter={DI_STRUCTURE.rowContainerGutter}>
