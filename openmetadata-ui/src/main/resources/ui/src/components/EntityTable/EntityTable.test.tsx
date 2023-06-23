@@ -118,56 +118,6 @@ const mockEntityTableProp = {
   onUpdate,
 };
 
-// const mockTagList = [
-//   {
-//     id: 'tagCatId1',
-//     name: 'TagCat1',
-//     description: '',
-//     children: [
-//       {
-//         id: 'tagId1',
-//         name: 'Tag1',
-//         fullyQualifiedName: 'TagCat1.Tag1',
-//         description: '',
-//         deprecated: false,
-//         deleted: false,
-//       },
-//     ],
-//   },
-//   {
-//     id: 'tagCatId2',
-//     name: 'TagCat2',
-//     description: '',
-//     children: [
-//       {
-//         id: 'tagId2',
-//         name: 'Tag2',
-//         fullyQualifiedName: 'TagCat2.Tag2',
-//         description: '',
-//         deprecated: false,
-//         deleted: false,
-//       },
-//     ],
-//   },
-// ];
-
-// const mockGlossaryList = [
-//   {
-//     name: 'Tag1',
-//     displayName: 'Tag1',
-//     fullyQualifiedName: 'Glossary.Tag1',
-//     type: 'glossaryTerm',
-//     id: 'glossaryTagId1',
-//   },
-//   {
-//     name: 'Tag2',
-//     displayName: 'Tag2',
-//     fullyQualifiedName: 'Glossary.Tag2',
-//     type: 'glossaryTerm',
-//     id: 'glossaryTagId2',
-//   },
-// ];
-
 jest.mock('../../hooks/authHooks', () => {
   return {
     useAuth: jest.fn().mockReturnValue({
