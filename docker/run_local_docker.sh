@@ -21,11 +21,11 @@ helpFunction()
    printf "\t-s Skip maven build: [true, false]. Default [false]\n"
    printf "\t-x Open JVM debug port on 5005: [true, false]. Default [false]\n"
    printf "\t-h For usage help\n"
-   printf "\t-r For Cleaning DB Volumes"
+   printf "\t-r For Cleaning DB Volumes: [true, false]. Default [true]"
    exit 1 # Exit script after printing help
 }
 
-while getopts "m:d:s:x:h" opt
+while getopts "m:d:s:x:h:r" opt
 do
    case "$opt" in
       m ) mode="$OPTARG" ;;
