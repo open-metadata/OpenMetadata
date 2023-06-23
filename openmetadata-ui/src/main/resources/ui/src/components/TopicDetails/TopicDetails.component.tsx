@@ -25,6 +25,7 @@ import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
 import { getTopicDetailsPath } from 'constants/constants';
 import { TagLabel } from 'generated/type/schema';
+import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -36,7 +37,11 @@ import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
-import { getCurrentUserId, refreshPage } from '../../utils/CommonUtils';
+import {
+  getCurrentUserId,
+  getFeedCounts,
+  refreshPage,
+} from '../../utils/CommonUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -60,10 +65,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   followTopicHandler,
   unFollowTopicHandler,
   versionHandler,
-  feedCount,
-  entityFieldThreadCount,
   createThread,
-  entityFieldTaskCount,
+
   onTopicUpdate,
 }: TopicDetailsProps) => {
   const { t } = useTranslation();
@@ -73,6 +76,13 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
+  const [feedCount, setFeedCount] = useState<number>(0);
+  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
+  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
 
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
@@ -261,6 +271,22 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   };
 
+  const getEntityFeedCount = () => {
+    getFeedCounts(
+      EntityType.TOPIC,
+      topicFQN,
+      setEntityFieldThreadCount,
+      setEntityFieldTaskCount,
+      setFeedCount
+    );
+  };
+
+  useEffect(() => {
+    if (topicPermissions.ViewAll || topicPermissions.ViewBasic) {
+      getEntityFeedCount();
+    }
+  }, [topicPermissions, topicFQN]);
+
   const tabs = useMemo(
     () => [
       {
@@ -355,7 +381,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             <ActivityFeedTab
               entityType={EntityType.TOPIC}
               fqn={topicDetails?.fullyQualifiedName ?? ''}
-              onFeedUpdate={() => Promise.resolve()}
+              onFeedUpdate={getEntityFeedCount}
             />
           </ActivityFeedProvider>
         ),

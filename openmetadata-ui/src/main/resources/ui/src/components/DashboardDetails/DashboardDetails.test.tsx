@@ -65,9 +65,6 @@ const dashboardDetailsProps: DashboardDetailsProps = {
   chartTagUpdateHandler: jest.fn(),
   onDashboardUpdate: jest.fn(),
   versionHandler: jest.fn(),
-  feedCount: 0,
-  entityFieldThreadCount: [],
-  entityFieldTaskCount: [],
   createThread: jest.fn(),
 };
 

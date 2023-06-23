@@ -30,11 +30,13 @@ import { EntityField } from 'constants/Feeds.constants';
 import { CSMode } from 'enums/codemirror.enum';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
-import { isUndefined, toString } from 'lodash';
+import { EntityFieldThreadCount } from 'interface/feed.interface';
+import { isUndefined, noop, toString } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { getFeedCounts } from 'utils/CommonUtils';
 import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
 import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
 import { getTagsWithoutTier } from 'utils/TableUtils';
@@ -42,8 +44,6 @@ import { DataModelDetailsProps } from './DataModelDetails.interface';
 import ModelTab from './ModelTab/ModelTab.component';
 
 const DataModelDetails = ({
-  entityFieldThreadCount,
-  feedCount,
   dataModelData,
   dataModelPermissions,
   createThread,
@@ -63,6 +63,10 @@ const DataModelDetails = ({
 
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
+  const [feedCount, setFeedCount] = useState<number>(0);
+  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
 
   const {
     hasEditDescriptionPermission,
@@ -90,6 +94,20 @@ const DataModelDetails = ({
         tags: getTagsWithoutTier(dataModelData.tags || []),
       };
     }, [dataModelData]);
+
+  const getEntityFeedCount = () => {
+    getFeedCounts(
+      EntityType.DASHBOARD_DATA_MODEL,
+      dashboardDataModelFQN,
+      setEntityFieldThreadCount,
+      noop,
+      setFeedCount
+    );
+  };
+
+  useEffect(() => {
+    dashboardDataModelFQN && getEntityFeedCount();
+  }, [dashboardDataModelFQN]);
 
   const handleUpdateDisplayName = async (data: EntityName) => {
     if (isUndefined(dataModelData)) {
@@ -247,7 +265,7 @@ const DataModelDetails = ({
             <ActivityFeedTab
               entityType={EntityType.DASHBOARD_DATA_MODEL}
               fqn={dataModelData?.fullyQualifiedName ?? ''}
-              onFeedUpdate={() => Promise.resolve()}
+              onFeedUpdate={getEntityFeedCount}
             />
           </ActivityFeedProvider>
         ),
