@@ -27,6 +27,7 @@ import {
 import { DefaultOptionType } from 'antd/lib/select';
 import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
 import { SummaryCardProps } from 'components/common/SummaryCard/SummaryCard.interface';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
@@ -573,9 +574,11 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
               <Col span={selectedColumn ? 14 : 24}>
                 <Row wrap gutter={[16, 16]}>
                   {overallSummery.map((summery) => (
-                    <Col key={summery.title}>
+                    <Col
+                      key={summery.title}
+                      span={selectedColumn ? undefined : 8}>
                       <SummaryCard
-                        className={summery.className}
+                        className={classNames(summery.className, 'h-full')}
                         showProgressBar={false}
                         title={summery.title}
                         total={0}

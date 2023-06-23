@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row } from 'antd';
+import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { getSystemProfileList, getTableProfilesList } from 'rest/tableAPI';
 import {
@@ -40,6 +41,7 @@ const TableProfilerChart = ({
   showOperationGraph = false,
 }: TableProfilerChartProps) => {
   const { datasetFQN } = useParams<{ datasetFQN: string }>();
+  const { t } = useTranslation();
 
   const [rowCountMetrics, setRowCountMetrics] = useState<MetricChartType>(
     INITIAL_ROW_METRIC_VALUE
@@ -111,6 +113,7 @@ const TableProfilerChart = ({
           chartCollection={rowCountMetrics}
           curveType="stepAfter"
           name="rowCount"
+          title={t('label.data-volume')}
         />
       </Col>
       {showOperationGraph && (
@@ -120,6 +123,11 @@ const TableProfilerChart = ({
               className="shadow-none global-border-radius"
               data-testid="operation-date-metrics">
               <Row gutter={[16, 16]}>
+                <Col span={24}>
+                  <Typography.Title level={5}>
+                    {t('label.table-update-plural')}
+                  </Typography.Title>
+                </Col>
                 <Col span={4}>
                   <ProfilerLatestValue
                     stringValue
@@ -140,6 +148,11 @@ const TableProfilerChart = ({
               className="shadow-none global-border-radius"
               data-testid="operation-metrics">
               <Row gutter={[16, 16]}>
+                <Col span={24}>
+                  <Typography.Title level={5}>
+                    {t('label.volume-change')}
+                  </Typography.Title>
+                </Col>
                 <Col span={4}>
                   <ProfilerLatestValue
                     information={operationMetrics.information}

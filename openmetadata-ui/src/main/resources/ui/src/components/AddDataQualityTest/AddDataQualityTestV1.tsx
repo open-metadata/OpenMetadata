@@ -14,6 +14,7 @@
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
+import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import SingleColumnProfile from 'components/TableProfiler/Component/SingleColumnProfile';
 import TableProfilerChart from 'components/TableProfiler/Component/TableProfilerChart';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
@@ -25,6 +26,7 @@ import {
   default as React,
   Fragment,
   useCallback,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -37,7 +39,7 @@ import {
   DEFAULT_RANGE_DATA,
   STEPS_FOR_ADD_TEST_CASE,
 } from '../../constants/profiler.constant';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -96,42 +98,43 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   );
 
   const handleRedirection = () => {
-    history.goBack();
+    history.push({
+      pathname: getTableTabPath(
+        table.fullyQualifiedName ?? '',
+        EntityTabs.PROFILER
+      ),
+      search: Qs.stringify({ activeTab: TableProfilerTab.DATA_QUALITY }),
+    });
   };
 
-  const getTestSuiteFqn = async () => {
-    try {
-      if (isUndefined(table.testSuite)) {
-        const testSuite = {
-          name: `${table.fullyQualifiedName}.testSuite`,
-          executableEntityReference: table.fullyQualifiedName,
-          owner,
-        };
-        const response = await createExecutableTestSuite(testSuite);
-        setTestSuiteData(response);
+  const createTestSuite = async () => {
+    const testSuite = {
+      name: `${table.fullyQualifiedName}.testSuite`,
+      executableEntityReference: table.fullyQualifiedName,
+      owner,
+    };
+    const response = await createExecutableTestSuite(testSuite);
+    setTestSuiteData(response);
 
-        return `${table.fullyQualifiedName}.testSuite`;
-      }
-      setTestSuiteData(table.testSuite);
-
-      return table.testSuite?.fullyQualifiedName ?? '';
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-
-    return '';
+    return response;
   };
+
+  useEffect(() => {
+    setTestSuiteData(table.testSuite);
+  }, [table.testSuite]);
 
   const handleFormSubmit = async (data: CreateTestCase) => {
     setTestCaseData(data);
 
     try {
-      const testSuite = await getTestSuiteFqn();
+      const testSuite = isUndefined(testSuiteData)
+        ? await createTestSuite()
+        : table.testSuite;
 
       const testCasePayload: CreateTestCase = {
         ...data,
         owner,
-        testSuite,
+        testSuite: testSuite?.fullyQualifiedName ?? '',
       };
 
       const testCaseResponse = await createTestCase(testCasePayload);
@@ -197,7 +200,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
         onSubmit={handleFormSubmit}
       />
     );
-  }, [activeServiceStep, testCaseRes]);
+  }, [activeServiceStep, testCaseData, testCaseRes, handleFormSubmit, table]);
 
   const { activeColumnFqn } = useMemo(() => {
     const param = location.search;
@@ -290,6 +293,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
         children: secondPanel,
         className: 'p-md service-doc-panel',
         minWidth: 60,
+        flex: 0.4,
         overlay: {
           displayThreshold: 200,
           header: t('label.setup-guide'),
