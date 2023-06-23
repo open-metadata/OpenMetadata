@@ -541,13 +541,13 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   }
 
   private TestSuite setExecutableTestSuiteName(TestSuite testSuite) {
-      if (!testSuite.getExecutable()) {
-          return testSuite;
-      }
-      String name = testSuite.getName();
-      String hashedName = FullyQualifiedName.buildHash(name + ".testSuite");
+    if (!testSuite.getExecutable()) {
+      return testSuite;
+    }
+    String name = testSuite.getName();
+    String hashedName = FullyQualifiedName.buildHash(name + ".testSuite");
 
-      return testSuite.withDisplayName(name).withName(hashedName);
+    return testSuite.withDisplayName(name).withName(hashedName);
   }
 
   @Override

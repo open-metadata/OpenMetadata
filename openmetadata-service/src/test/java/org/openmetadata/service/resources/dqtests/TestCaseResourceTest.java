@@ -613,8 +613,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     CreateTestSuite createLogicalTestSuite = testSuiteResourceTest.createRequest(test);
     TestSuite logicalTestSuite = testSuiteResourceTest.createEntity(createLogicalTestSuite, ADMIN_AUTH_HEADERS);
 
-    testSuiteResourceTest.addTestCasesToLogicalTestSuite(
-            logicalTestSuite, new ArrayList<>());
+    testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, new ArrayList<>());
   }
 
   @Test
@@ -626,22 +625,23 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Create an executable test suite
     TableResourceTest tableResourceTest = new TableResourceTest();
     CreateTable tableReq =
-            tableResourceTest
-                    .createRequest(test)
-                    .withName(test.getDisplayName())
-                    .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
-                    .withOwner(USER1_REF)
-                    .withColumns(
-                            List.of(
-                                    new Column()
-                                            .withName(C1)
-                                            .withDisplayName("c1")
-                                            .withDataType(ColumnDataType.VARCHAR)
-                                            .withDataLength(10)))
-                    .withOwner(USER1_REF);
+        tableResourceTest
+            .createRequest(test)
+            .withName(test.getDisplayName())
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withOwner(USER1_REF)
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName(C1)
+                        .withDisplayName("c1")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(10)))
+            .withOwner(USER1_REF);
     Table table = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     CreateTestSuite createExecutableTestSuite = testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
-    TestSuite executableTestSuite = testSuiteResourceTest.createExecutableTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
+    TestSuite executableTestSuite =
+        testSuiteResourceTest.createExecutableTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
 
     List<TestCase> testCases = new ArrayList<TestCase>();
 
