@@ -54,9 +54,6 @@ const topicDetailsProps: TopicDetailsProps = {
   unFollowTopicHandler: jest.fn(),
   onTopicUpdate: jest.fn(),
   versionHandler: jest.fn(),
-  feedCount: 0,
-  entityFieldThreadCount: [],
-  entityFieldTaskCount: [],
   createThread: jest.fn(),
 };
 

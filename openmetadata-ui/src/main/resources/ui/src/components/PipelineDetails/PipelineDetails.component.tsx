@@ -700,7 +700,7 @@ const PipelineDetails = ({
             <ActivityFeedTab
               entityType={EntityType.PIPELINE}
               fqn={pipelineDetails?.fullyQualifiedName ?? ''}
-              onFeedUpdate={() => Promise.resolve()}
+              onFeedUpdate={getEntityFeedCount}
             />
           </ActivityFeedProvider>
         ),
