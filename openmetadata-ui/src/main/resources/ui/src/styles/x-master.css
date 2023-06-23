@@ -691,11 +691,6 @@ body .profiler-graph .recharts-active-dot circle {
 .react-flow__node {
   min-width: max-content;
 }
-.react-flow__background {
-  background-image: url('../assets/img/graph-bg.png');
-  background-repeat: repeat;
-}
-
 .leaf-node .react-flow__handle {
   background-color: #6b7280;
 }

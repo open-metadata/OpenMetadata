@@ -86,6 +86,12 @@
       "type": "boolean",
       "default": false
     },
+    "clientSessionKeepAlive": {
+      "title": "Client Session Keep Alive",
+      "description": "Optional configuration for ingestion to keep the client session active in case the ingestion process runs for longer durations.",
+      "type": "boolean",
+      "default": false
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"

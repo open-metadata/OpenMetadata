@@ -62,7 +62,7 @@ import {
 import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { bytesToSize } from 'utils/StringsUtils';
 import { getTierTags, getUsagePercentile } from 'utils/TableUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import { showErrorToast, showInfoToast } from 'utils/ToastUtils';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
@@ -417,6 +417,11 @@ export const DataAssetsHeader = ({
     );
   };
 
+  const handleShareButtonClick = async () => {
+    await onCopyToClipBoard();
+    showInfoToast(`Link copied to clipboard`, 2000);
+  };
+
   return (
     <>
       <Row gutter={[8, 12]}>
@@ -508,7 +513,7 @@ export const DataAssetsHeader = ({
                 </Button>
                 <Button
                   icon={<Icon component={ShareIcon} />}
-                  onClick={onCopyToClipBoard}
+                  onClick={handleShareButtonClick}
                 />
                 <ManageButton
                   allowSoftDelete={!dataAsset.deleted}

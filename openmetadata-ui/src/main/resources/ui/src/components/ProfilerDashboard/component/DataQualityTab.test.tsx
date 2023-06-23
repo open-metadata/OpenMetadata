@@ -121,7 +121,6 @@ describe('DataQualityTab test', () => {
     expect(await findByText(header, 'label.resolution')).toBeInTheDocument();
     expect(await findByText(header, 'label.last-run')).toBeInTheDocument();
     expect(await findByText(header, 'label.name')).toBeInTheDocument();
-    expect(await findByText(header, 'label.test-suite')).toBeInTheDocument();
     expect(await findByText(header, 'label.table')).toBeInTheDocument();
     expect(await findByText(header, 'label.column')).toBeInTheDocument();
     expect(await findByText(header, 'label.action-plural')).toBeInTheDocument();
@@ -136,7 +135,6 @@ describe('DataQualityTab test', () => {
     const firstRow = tableRows[1];
 
     const testName = await findByTestId(firstRow, firstRowData.name);
-    const testSuite = await findByTestId(firstRow, 'test-suite-name');
     const tableLink = await findByTestId(firstRow, 'table-link');
 
     const columnName = await findByText(firstRow, 'last_name');
@@ -150,8 +148,6 @@ describe('DataQualityTab test', () => {
     );
 
     expect(testName).toBeInTheDocument();
-    expect(testSuite).toBeInTheDocument();
-    expect(testSuite.textContent).toEqual(firstRowData.testSuite.name);
     expect(tableLink).toBeInTheDocument();
     expect(tableLink.textContent).toEqual('dim_address');
     expect(columnName).toBeInTheDocument();

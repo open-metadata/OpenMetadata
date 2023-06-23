@@ -19,7 +19,7 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import Loader from 'components/Loader/Loader';
 import {
   HierarchyTagsProps,
-  TagDetailsProps,
+  TagsDetailsProps,
 } from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getExplorePath } from 'constants/constants';
@@ -311,7 +311,7 @@ export const getUsageCountLink = (tagFQN: string) => {
 };
 
 export const getTagsHierarchy = (
-  tags: TagDetailsProps['options']
+  tags: TagsDetailsProps[]
 ): HierarchyTagsProps[] => {
   const filteredTags = tags.filter(
     (tag) => !tag.fqn?.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
@@ -363,3 +363,29 @@ export const getTagsHierarchy = (
 
   return hierarchyTags;
 };
+
+export const getAllTagsList = async () => {
+  try {
+    const tags = await getAllTagsForOptions();
+
+    return Promise.resolve(
+      tags.map((tag) => ({
+        name: tag.name,
+        fqn: tag.fullyQualifiedName ?? '',
+        classification: tag.classification,
+        source: TagSource.Classification,
+      }))
+    );
+  } catch (error) {
+    return Promise.reject({ data: (error as AxiosError).response });
+  }
+};
+
+export const getTagPlaceholder = (isGlossaryType: boolean): string =>
+  isGlossaryType
+    ? i18next.t('label.search-entity', {
+        entity: i18next.t('label.glossary-term-plural'),
+      })
+    : i18next.t('label.search-entity', {
+        entity: i18next.t('label.tag-plural'),
+      });

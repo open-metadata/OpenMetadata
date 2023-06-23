@@ -181,7 +181,7 @@ const DataModelDetails = ({
               entityFqn={dashboardDataModelFQN}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
-              permission={hasEditTagsPermission}
+              permission={hasEditTagsPermission && !dataModelData.deleted}
               selectedTags={tags}
               tagType={TagSource.Classification}
               onSelectionChange={handleTagSelection}
@@ -191,7 +191,7 @@ const DataModelDetails = ({
               entityFqn={dashboardDataModelFQN}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
-              permission={hasEditTagsPermission}
+              permission={hasEditTagsPermission && !dataModelData.deleted}
               selectedTags={tags}
               tagType={TagSource.Glossary}
               onSelectionChange={handleTagSelection}
@@ -202,6 +202,7 @@ const DataModelDetails = ({
       </Row>
     );
   }, [
+    dataModelData,
     description,
     dashboardDataModelFQN,
     entityFieldThreadCount,

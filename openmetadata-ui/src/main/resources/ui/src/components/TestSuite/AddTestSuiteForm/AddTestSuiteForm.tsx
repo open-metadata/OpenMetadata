@@ -23,11 +23,14 @@ import {
   PAGE_SIZE_MEDIUM,
   ROUTES,
   VALIDATION_MESSAGES,
-} from '../../constants/constants';
-import { TestSuite } from '../../generated/tests/testSuite';
-import { AddTestSuiteFormProps } from './testSuite.interface';
+} from '../../../constants/constants';
+import { TestSuite } from '../../../generated/tests/testSuite';
+import { AddTestSuiteFormProps } from '../TestSuiteStepper/testSuite.interface';
 
-const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
+const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({
+  onSubmit,
+  testSuite,
+}) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [testSuites, setTestSuites] = useState<Array<TestSuite>>([]);
@@ -61,10 +64,11 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
     <Form
       data-testid="test-suite-form"
       form={form}
+      initialValues={testSuite}
       layout="vertical"
       name="selectTestSuite"
       validateMessages={VALIDATION_MESSAGES}
-      onFinish={(data) => onSubmit(data)}>
+      onFinish={onSubmit}>
       <Form.Item
         label={t('label.name')}
         name="name"
@@ -106,17 +110,10 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
           })}
         />
       </Form.Item>
-      <Form.Item
-        label={t('label.description')}
-        name="description"
-        rules={[
-          {
-            required: true,
-          },
-        ]}>
+      <Form.Item label={t('label.description')} name="description">
         <RichTextEditor
           data-testid="test-suite-description"
-          initialValue=""
+          initialValue={testSuite?.description ?? ''}
           onTextChange={(value) => form.setFieldsValue({ description: value })}
         />
       </Form.Item>
@@ -129,7 +126,7 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
             {t('label.cancel')}
           </Button>
           <Button data-testid="submit-button" htmlType="submit" type="primary">
-            {t('label.submit')}
+            {t('label.next')}
           </Button>
         </Space>
       </Form.Item>

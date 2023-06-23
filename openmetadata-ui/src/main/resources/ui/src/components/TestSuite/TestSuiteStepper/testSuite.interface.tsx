@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { TestSuite } from 'generated/tests/testSuite';
+
 export interface TestSuiteFormDataProps {
   name: string;
   description: string;
@@ -18,4 +20,5 @@ export interface TestSuiteFormDataProps {
 
 export interface AddTestSuiteFormProps {
   onSubmit: (data: TestSuiteFormDataProps) => void;
+  testSuite?: TestSuite;
 }

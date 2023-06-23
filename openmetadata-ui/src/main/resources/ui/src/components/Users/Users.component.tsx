@@ -748,7 +748,7 @@ const Users = ({
 
   return (
     <PageLayoutV1
-      className="tw-h-full"
+      className="user-layout h-full"
       leftPanel={fetchLeftPanel()}
       pageTitle={t('label.user')}>
       <div data-testid="table-container">

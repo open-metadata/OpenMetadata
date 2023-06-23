@@ -44,41 +44,43 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public class TagLabelCache {
   private static final TagLabelCache INSTANCE = new TagLabelCache();
-  private static volatile boolean INITIALIZED = false;
+  private static volatile boolean initialized = false;
 
-  protected static TagRepository TAG_REPOSITORY;
-  protected static ClassificationRepository TAG_CLASSIFICATION_REPOSITORY;
-  protected static LoadingCache<String, Tag> TAG_CACHE; // Tag fqn to Tag
-  protected static LoadingCache<String, Classification> CLASSIFICATION_CACHE; // Classification name to Classification
+  protected static TagRepository tagRepository;
+  protected static ClassificationRepository tagClassificationRepository;
+  protected static LoadingCache<String, Tag> tagCache; // Tag fqn to Tag
+  protected static LoadingCache<String, Classification> classificationCache; // Classification name to Classification
 
-  protected static GlossaryTermRepository GLOSSARY_TERM_REPOSITORY;
-  protected static GlossaryRepository GLOSSARY_REPOSITORY;
-  protected static LoadingCache<String, GlossaryTerm> GLOSSARY_TERM_CACHE; // Glossary term fqn to GlossaryTerm
-  protected static LoadingCache<String, Glossary> GLOSSARY_CACHE; // Glossary fqn to Glossary
+  protected static GlossaryTermRepository glossaryTermRepository;
+  protected static GlossaryRepository glossaryRepository;
+  // Glossary term fqn to GlossaryTerm
+  protected static LoadingCache<String, GlossaryTerm> glossaryTermCache;
+
+  protected static LoadingCache<String, Glossary> glossaryCache; // Glossary fqn to Glossary
 
   // Expected to be called only once from the TagResource during initialization
   public static void initialize() {
-    if (!INITIALIZED) {
-      CLASSIFICATION_CACHE =
+    if (!initialized) {
+      classificationCache =
           CacheBuilder.newBuilder()
               .maximumSize(25)
               .expireAfterWrite(2, TimeUnit.MINUTES)
               .build(new ClassificationLoader());
-      TAG_CACHE =
+      tagCache =
           CacheBuilder.newBuilder().maximumSize(100).expireAfterWrite(2, TimeUnit.MINUTES).build(new TagLoader());
-      TAG_REPOSITORY = (TagRepository) Entity.getEntityRepository(Entity.TAG);
-      TAG_CLASSIFICATION_REPOSITORY = (ClassificationRepository) Entity.getEntityRepository(Entity.CLASSIFICATION);
+      tagRepository = (TagRepository) Entity.getEntityRepository(Entity.TAG);
+      tagClassificationRepository = (ClassificationRepository) Entity.getEntityRepository(Entity.CLASSIFICATION);
 
-      GLOSSARY_CACHE =
+      glossaryCache =
           CacheBuilder.newBuilder().maximumSize(25).expireAfterWrite(2, TimeUnit.MINUTES).build(new GlossaryLoader());
-      GLOSSARY_TERM_CACHE =
+      glossaryTermCache =
           CacheBuilder.newBuilder()
               .maximumSize(100)
               .expireAfterWrite(2, TimeUnit.MINUTES)
               .build(new GlossaryTermLoader());
-      GLOSSARY_TERM_REPOSITORY = (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
-      GLOSSARY_REPOSITORY = (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
-      INITIALIZED = true;
+      glossaryTermRepository = (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
+      glossaryRepository = (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
+      initialized = true;
     } else {
       LOG.info("Subject cache is already initialized");
     }
@@ -89,16 +91,16 @@ public class TagLabelCache {
   }
 
   public static void cleanUp() {
-    CLASSIFICATION_CACHE.cleanUp();
-    TAG_CACHE.cleanUp();
-    GLOSSARY_CACHE.cleanUp();
-    GLOSSARY_TERM_CACHE.cleanUp();
-    INITIALIZED = false;
+    classificationCache.cleanUp();
+    tagCache.cleanUp();
+    glossaryCache.cleanUp();
+    glossaryTermCache.cleanUp();
+    initialized = false;
   }
 
   public Classification getClassification(String classificationName) {
     try {
-      return CLASSIFICATION_CACHE.get(classificationName);
+      return classificationCache.get(classificationName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
       throw EntityNotFoundException.byMessage(
           CatalogExceptionMessage.entityNotFound(Entity.CLASSIFICATION, classificationName));
@@ -107,7 +109,7 @@ public class TagLabelCache {
 
   public Tag getTag(String tagFqn) {
     try {
-      return TAG_CACHE.get(tagFqn);
+      return tagCache.get(tagFqn);
     } catch (ExecutionException | UncheckedExecutionException ex) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.TAG, tagFqn));
     }
@@ -115,7 +117,7 @@ public class TagLabelCache {
 
   public Glossary getGlossary(String glossaryName) {
     try {
-      return GLOSSARY_CACHE.get(glossaryName);
+      return glossaryCache.get(glossaryName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.GLOSSARY, glossaryName));
     }
@@ -123,7 +125,7 @@ public class TagLabelCache {
 
   public GlossaryTerm getGlossaryTerm(String glossaryTermFqn) {
     try {
-      return GLOSSARY_TERM_CACHE.get(glossaryTermFqn);
+      return glossaryTermCache.get(glossaryTermFqn);
     } catch (ExecutionException | UncheckedExecutionException ex) {
       throw EntityNotFoundException.byMessage(
           CatalogExceptionMessage.entityNotFound(Entity.GLOSSARY_TERM, glossaryTermFqn));
@@ -161,7 +163,7 @@ public class TagLabelCache {
   static class TagLoader extends CacheLoader<String, Tag> {
     @Override
     public Tag load(@CheckForNull String tagName) throws IOException {
-      Tag tag = TAG_REPOSITORY.getByName(null, tagName, Fields.EMPTY_FIELDS);
+      Tag tag = tagRepository.getByName(null, tagName, Fields.EMPTY_FIELDS);
       LOG.info("Loaded tag {}:{}", tag.getName(), tag.getId());
       return tag;
     }
@@ -171,7 +173,7 @@ public class TagLabelCache {
     @Override
     public Classification load(@CheckForNull String classificationName) throws IOException {
       Classification classification =
-          TAG_CLASSIFICATION_REPOSITORY.getByName(null, classificationName, Fields.EMPTY_FIELDS);
+          tagClassificationRepository.getByName(null, classificationName, Fields.EMPTY_FIELDS);
       LOG.info("Loaded classification {}:{}", classification.getName(), classification.getId());
       return classification;
     }
@@ -180,7 +182,7 @@ public class TagLabelCache {
   static class GlossaryTermLoader extends CacheLoader<String, GlossaryTerm> {
     @Override
     public GlossaryTerm load(@CheckForNull String glossaryTermName) throws IOException {
-      GlossaryTerm glossaryTerm = GLOSSARY_TERM_REPOSITORY.getByName(null, glossaryTermName, Fields.EMPTY_FIELDS);
+      GlossaryTerm glossaryTerm = glossaryTermRepository.getByName(null, glossaryTermName, Fields.EMPTY_FIELDS);
       LOG.info("Loaded glossaryTerm {}:{}", glossaryTerm.getName(), glossaryTerm.getId());
       return glossaryTerm;
     }
@@ -189,7 +191,7 @@ public class TagLabelCache {
   static class GlossaryLoader extends CacheLoader<String, Glossary> {
     @Override
     public Glossary load(@CheckForNull String glossaryName) throws IOException {
-      Glossary glossary = GLOSSARY_REPOSITORY.getByName(null, glossaryName, Fields.EMPTY_FIELDS);
+      Glossary glossary = glossaryRepository.getByName(null, glossaryName, Fields.EMPTY_FIELDS);
       LOG.info("Loaded glossary {}:{}", glossary.getName(), glossary.getId());
       return glossary;
     }

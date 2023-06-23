@@ -313,7 +313,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.TOPIC}
                   permission={
-                    topicPermissions.EditAll || topicPermissions.EditTags
+                    (topicPermissions.EditAll || topicPermissions.EditTags) &&
+                    !topicDetails.deleted
                   }
                   selectedTags={topicTags}
                   tagType={TagSource.Classification}
@@ -326,7 +327,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.TOPIC}
                   permission={
-                    topicPermissions.EditAll || topicPermissions.EditTags
+                    (topicPermissions.EditAll || topicPermissions.EditTags) &&
+                    !topicDetails.deleted
                   }
                   selectedTags={topicTags}
                   tagType={TagSource.Glossary}

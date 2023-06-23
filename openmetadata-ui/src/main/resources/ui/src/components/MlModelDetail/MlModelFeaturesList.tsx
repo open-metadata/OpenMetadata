@@ -23,19 +23,22 @@ import {
 } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import TableTags from 'components/TableTags/TableTags.component';
-import { TagLabel, TagSource } from 'generated/type/schema';
-import { isEmpty, map } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
+import {
+  GlossaryTermDetailsProps,
+  TagsDetailsProps,
+} from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
+import { TagSource } from 'generated/type/schema';
+import { isEmpty } from 'lodash';
+import { EntityTags } from 'Models';
 import React, { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getFilterTags } from 'utils/TableTags/TableTags.utils';
+import {
+  getGlossaryTermHierarchy,
+  getGlossaryTermsList,
+} from 'utils/GlossaryUtils';
+import { getAllTagsList, getTagsHierarchy } from 'utils/TagsUtils';
 import { MlFeature } from '../../generated/entity/data/mlmodel';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import {
-  fetchGlossaryTerms,
-  getGlossaryTermlist,
-} from '../../utils/GlossaryUtils';
-import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -57,9 +60,12 @@ const MlModelFeaturesList = ({
   const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
 
-  const [glossaryTags, setGlossaryTags] = useState<TagOption[]>([]);
-  const [classificationTags, setClassificationTags] = useState<TagOption[]>([]);
-
+  const [glossaryTags, setGlossaryTags] = useState<GlossaryTermDetailsProps[]>(
+    []
+  );
+  const [classificationTags, setClassificationTags] = useState<
+    TagsDetailsProps[]
+  >([]);
   const hasEditPermission = useMemo(
     () => permissions.EditTags || permissions.EditAll,
     [permissions]
@@ -89,10 +95,9 @@ const MlModelFeaturesList = ({
 
   const handleTagsChange = async (
     selectedTags: EntityTags[],
-    targetFeature: MlFeature,
-    otherTags: TagLabel[]
+    targetFeature: MlFeature
   ) => {
-    const newSelectedTags = [...selectedTags, ...otherTags].map((tag) => {
+    const newSelectedTags = selectedTags.map((tag) => {
       return {
         tagFQN: tag.tagFQN,
         source: tag.source,
@@ -119,12 +124,8 @@ const MlModelFeaturesList = ({
   const fetchGlossaryTags = async () => {
     setIsGlossaryLoading(true);
     try {
-      const res = await fetchGlossaryTerms();
-
-      const glossaryTerms: TagOption[] = getGlossaryTermlist(res).map(
-        (tag) => ({ fqn: tag, source: TagSource.Glossary })
-      );
-      setGlossaryTags(glossaryTerms);
+      const glossaryTermList = await getGlossaryTermsList();
+      setGlossaryTags(glossaryTermList);
     } catch {
       setTagFetchFailed(true);
     } finally {
@@ -135,15 +136,8 @@ const MlModelFeaturesList = ({
   const fetchClassificationTags = async () => {
     setIsTagLoading(true);
     try {
-      const res = await getClassifications();
-      const tagList = await getTaglist(res.data);
-
-      const classificationTag: TagOption[] = map(tagList, (tag) => ({
-        fqn: tag,
-        source: TagSource.Classification,
-      }));
-
-      setClassificationTags(classificationTag);
+      const tags = await getAllTagsList();
+      setClassificationTags(tags);
     } catch {
       setTagFetchFailed(true);
     } finally {
@@ -219,8 +213,8 @@ const MlModelFeaturesList = ({
                             isTagLoading={isGlossaryLoading}
                             record={feature}
                             tagFetchFailed={tagFetchFailed}
-                            tagList={glossaryTags}
-                            tags={getFilterTags(feature.tags ?? [])}
+                            tagList={getGlossaryTermHierarchy(glossaryTags)}
+                            tags={feature.tags ?? []}
                             type={TagSource.Glossary}
                           />
                         </Col>
@@ -246,8 +240,8 @@ const MlModelFeaturesList = ({
                             isTagLoading={isTagLoading}
                             record={feature}
                             tagFetchFailed={tagFetchFailed}
-                            tagList={classificationTags}
-                            tags={getFilterTags(feature.tags ?? [])}
+                            tagList={getTagsHierarchy(classificationTags)}
+                            tags={feature.tags ?? []}
                             type={TagSource.Classification}
                           />
                         </Col>

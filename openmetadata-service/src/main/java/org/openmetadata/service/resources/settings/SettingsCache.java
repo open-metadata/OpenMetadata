@@ -35,17 +35,17 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 public class SettingsCache {
   private static final SettingsCache INSTANCE = new SettingsCache();
-  private static volatile boolean INITIALIZED = false;
-  protected static LoadingCache<String, Settings> SETTINGS_CACHE;
+  private static volatile boolean initialized = false;
+  protected static LoadingCache<String, Settings> settingsCache;
   protected static SystemRepository systemRepository;
 
   // Expected to be called only once from the DefaultAuthorizer
   public static void initialize(CollectionDAO dao, OpenMetadataApplicationConfig config) {
-    if (!INITIALIZED) {
-      SETTINGS_CACHE =
+    if (!initialized) {
+      settingsCache =
           CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new SettingsLoader());
       systemRepository = new SystemRepository(dao.systemDAO());
-      INITIALIZED = true;
+      initialized = true;
       createDefaultConfiguration(config);
     }
   }
@@ -78,7 +78,7 @@ public class SettingsCache {
 
   public <T> T getSetting(SettingsType settingName, Class<T> clazz) {
     try {
-      String json = JsonUtils.pojoToJson(SETTINGS_CACHE.get(settingName.toString()).getConfigValue());
+      String json = JsonUtils.pojoToJson(settingsCache.get(settingName.toString()).getConfigValue());
       return JsonUtils.readValue(json, clazz);
     } catch (Exception ex) {
       LOG.error("Failed to fetch Settings . Setting {}", settingName, ex);
@@ -88,7 +88,7 @@ public class SettingsCache {
 
   public Settings getSetting(SettingsType settingName) {
     try {
-      return SETTINGS_CACHE.get(settingName.toString());
+      return settingsCache.get(settingName.toString());
     } catch (Exception ex) {
       LOG.error("Failed to fetch Settings . Setting {}", settingName, ex);
       throw new EntityNotFoundException("Setting not found");
@@ -96,13 +96,13 @@ public class SettingsCache {
   }
 
   public static void cleanUp() {
-    SETTINGS_CACHE.invalidateAll();
-    INITIALIZED = false;
+    settingsCache.invalidateAll();
+    initialized = false;
   }
 
   public void invalidateSettings(String settingsName) {
     try {
-      SETTINGS_CACHE.invalidate(settingsName);
+      settingsCache.invalidate(settingsName);
     } catch (Exception ex) {
       LOG.error("Failed to invalidate cache for settings {}", settingsName, ex);
     }

@@ -13,14 +13,14 @@
 import { Button, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { TagDetails } from 'components/TableQueries/TableQueryRightPanel/TableQueryRightPanel.interface';
-import TagsContainer from 'components/Tag/TagsContainer/tags-container';
+import TagsContainerEntityTable from 'components/Tag/TagsContainerEntityTable/TagsContainerEntityTable.component';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { getAllTagsForOptions } from 'utils/TagsUtils';
+import { getAllTagsList, getTagsHierarchy } from 'utils/TagsUtils';
 
 type Props = {
   editable: boolean;
@@ -68,15 +68,10 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
     setTagDetails((pre) => ({ ...pre, isLoading: true }));
 
     try {
-      const tags = await getAllTagsForOptions();
+      const tags = await getAllTagsList();
       setTagDetails((pre) => ({
         ...pre,
-        options: tags.map((tag) => {
-          return {
-            fqn: tag.fullyQualifiedName ?? tag.name,
-            source: TagSource.Classification,
-          };
-        }),
+        options: tags,
       }));
     } catch (_error) {
       setTagDetails((pre) => ({ ...pre, isError: true, options: [] }));
@@ -114,15 +109,14 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
           />
         )}
       </div>
-      <TagsContainer
-        className="glossary-select"
-        editable={isEditTags}
+
+      <TagsContainerEntityTable
+        isEditing={isEditTags}
         isLoading={tagDetails.isLoading}
+        permission={editable}
         selectedTags={getSelectedTags()}
-        showAddTagButton={editable && isEmpty(tags)}
-        size="small"
-        tagList={tagDetails.options}
-        type="label"
+        tagType={TagSource.Classification}
+        treeData={getTagsHierarchy(tagDetails.options)}
         onAddButtonClick={addButtonHandler}
         onCancel={() => setIsEditTags(false)}
         onSelectionChange={handleTagSelection}

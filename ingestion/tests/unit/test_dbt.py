@@ -24,6 +24,13 @@ from metadata.generated.schema.type.tagLabel import (
     TagSource,
 )
 from metadata.ingestion.source.database.database_service import DataModelLink
+from metadata.ingestion.source.database.dbt.dbt_utils import (
+    generate_entity_link,
+    get_corrected_name,
+    get_data_model_path,
+    get_dbt_compiled_query,
+    get_dbt_raw_query,
+)
 from metadata.ingestion.source.database.dbt.metadata import DbtSource
 from metadata.utils.dbt_config import DbtFiles, DbtObjects
 from metadata.utils.tag_utils import get_tag_labels
@@ -332,12 +339,10 @@ class DbtUnitTest(TestCase):
         )
 
     def test_dbt_get_corrected_name(self):
-        self.assertEqual(
-            "dbt_jaffle", self.dbt_source_obj.get_corrected_name(name="dbt_jaffle")
-        )
-        self.assertIsNone(self.dbt_source_obj.get_corrected_name(name="None"))
-        self.assertIsNone(self.dbt_source_obj.get_corrected_name(name="null"))
-        self.assertIsNotNone(self.dbt_source_obj.get_corrected_name(name="dev"))
+        self.assertEqual("dbt_jaffle", get_corrected_name(name="dbt_jaffle"))
+        self.assertIsNone(get_corrected_name(name="None"))
+        self.assertIsNone(get_corrected_name(name="null"))
+        self.assertIsNotNone(get_corrected_name(name="dev"))
 
     @patch("metadata.utils.tag_utils.get_tag_label")
     def test_dbt_get_dbt_tag_labels(self, get_tag_label):
@@ -378,7 +383,7 @@ class DbtUnitTest(TestCase):
         manifest_node = dbt_objects.dbt_manifest.nodes.get(
             "model.jaffle_shop.customers"
         )
-        result = self.dbt_source_obj.get_data_model_path(manifest_node=manifest_node)
+        result = get_data_model_path(manifest_node=manifest_node)
         self.assertEqual("sample/customers/root/path/models/customers.sql", result)
 
     def test_dbt_generate_entity_link(self):
@@ -393,7 +398,7 @@ class DbtUnitTest(TestCase):
             "upstream": ["local_redshift_dbt2.dev.dbt_jaffle.stg_customers"],
             "results": "",
         }
-        result = self.dbt_source_obj.generate_entity_link(dbt_test=dbt_test)
+        result = generate_entity_link(dbt_test=dbt_test)
         self.assertListEqual(
             [
                 "<#E::table::local_redshift_dbt2.dev.dbt_jaffle.stg_customers::columns::order_id>"
@@ -411,7 +416,7 @@ class DbtUnitTest(TestCase):
         manifest_node = dbt_objects.dbt_manifest.nodes.get(
             "model.jaffle_shop.customers"
         )
-        result = self.dbt_source_obj.get_dbt_compiled_query(mnode=manifest_node)
+        result = get_dbt_compiled_query(mnode=manifest_node)
         self.assertEqual(expected_query, result)
 
         # Test the compiled queries with v4 v5 v6 manifest
@@ -421,7 +426,7 @@ class DbtUnitTest(TestCase):
         manifest_node = dbt_objects.dbt_manifest.nodes.get(
             "model.jaffle_shop.customers"
         )
-        result = self.dbt_source_obj.get_dbt_compiled_query(mnode=manifest_node)
+        result = get_dbt_compiled_query(mnode=manifest_node)
         self.assertEqual(expected_query, result)
 
     def test_dbt_raw_query(self):
@@ -434,7 +439,7 @@ class DbtUnitTest(TestCase):
         manifest_node = dbt_objects.dbt_manifest.nodes.get(
             "model.jaffle_shop.customers"
         )
-        result = self.dbt_source_obj.get_dbt_raw_query(mnode=manifest_node)
+        result = get_dbt_raw_query(mnode=manifest_node)
         self.assertEqual(expected_query, result)
 
         # Test the raw queries with v4 v5 v6 manifest
@@ -444,7 +449,7 @@ class DbtUnitTest(TestCase):
         manifest_node = dbt_objects.dbt_manifest.nodes.get(
             "model.jaffle_shop.customers"
         )
-        result = self.dbt_source_obj.get_dbt_raw_query(mnode=manifest_node)
+        result = get_dbt_raw_query(mnode=manifest_node)
         self.assertEqual(expected_query, result)
 
     @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
