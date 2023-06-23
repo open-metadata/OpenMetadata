@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Divider, Row, Tabs } from 'antd';
+import { Card, Col, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import ActivityFeedProvider, {
   useActivityFeedProvider,
@@ -46,7 +46,7 @@ import { compare } from 'fast-json-patch';
 import { CreateThread } from 'generated/api/feed/createThread';
 import { JoinedWith, Table } from 'generated/entity/data/table';
 import { ThreadType } from 'generated/entity/feed/thread';
-import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
+import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { isEmpty, isEqual } from 'lodash';
 import { EntityTags } from 'Models';
@@ -71,7 +71,7 @@ import {
   sortTagsCaseInsensitive,
 } from 'utils/CommonUtils';
 import { defaultFields } from 'utils/DatasetDetailsUtils';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
 import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { createQueryFilter } from 'utils/Query/QueryUtils';
@@ -445,22 +445,38 @@ const TableDetailsPageV1 = () => {
           {!isEmpty(joinedTables) ? (
             <>
               <FrequentlyJoinedTables joinedTables={joinedTables} />
-              <Divider className="m-y-sm" />
             </>
           ) : null}
-          <TagsContainerV1
-            showLimited
-            editable={tablePermissions.EditAll || tablePermissions.EditTags}
-            entityFieldThreads={getEntityFieldThreadCounts(
-              EntityField.TAGS,
-              entityFieldThreadCount
-            )}
-            entityFqn={datasetFQN}
-            entityType={EntityType.TABLE}
-            selectedTags={tableTags}
-            onSelectionChange={handleTagSelection}
-            onThreadLinkSelect={onThreadLinkSelect}
-          />
+
+          <Space className="w-full" direction="vertical" size="large">
+            <TagsContainerV1
+              entityFqn={datasetFQN}
+              entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
+              entityType={EntityType.TABLE}
+              permission={
+                (tablePermissions.EditAll || tablePermissions.EditTags) &&
+                !tableDetails?.deleted
+              }
+              selectedTags={tableTags}
+              tagType={TagSource.Classification}
+              onSelectionChange={handleTagSelection}
+              onThreadLinkSelect={onThreadLinkSelect}
+            />
+
+            <TagsContainerV1
+              entityFqn={datasetFQN}
+              entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
+              entityType={EntityType.TABLE}
+              permission={
+                (tablePermissions.EditAll || tablePermissions.EditTags) &&
+                !tableDetails?.deleted
+              }
+              selectedTags={tableTags}
+              tagType={TagSource.Glossary}
+              onSelectionChange={handleTagSelection}
+              onThreadLinkSelect={onThreadLinkSelect}
+            />
+          </Space>
         </Col>
       </Row>
     ),
@@ -500,6 +516,7 @@ const TableDetailsPageV1 = () => {
               owner={tableDetails?.owner}
               tags={tableDetails?.tags}
               onFeedUpdate={getEntityFeedCount}
+              onUpdateEntityDetails={fetchTableDetails}
             />
           </ActivityFeedProvider>
         ),
@@ -548,7 +565,10 @@ const TableDetailsPageV1 = () => {
       },
       {
         label: (
-          <TabsLabel id={EntityTabs.PROFILER} name={t('label.data-quality')} />
+          <TabsLabel
+            id={EntityTabs.PROFILER}
+            name={t('label.profiler-amp-data-quality')}
+          />
         ),
         isHidden: !(
           tablePermissions.ViewAll ||

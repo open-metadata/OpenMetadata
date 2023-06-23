@@ -38,7 +38,6 @@ export interface TestCaseFormProps {
 export interface TestSuiteIngestionProps {
   testSuite: TestSuite;
   ingestionPipeline?: IngestionPipeline;
-  table?: Table;
   onCancel: () => void;
 }
 

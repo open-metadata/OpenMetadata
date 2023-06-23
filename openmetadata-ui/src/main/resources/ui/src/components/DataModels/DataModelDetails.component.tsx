@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Tabs } from 'antd';
+import { Card, Col, Row, Space, Tabs } from 'antd';
 import ActivityFeedProvider, {
   useActivityFeedProvider,
 } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -29,21 +29,21 @@ import { getDataModelDetailsPath, getVersionPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { CSMode } from 'enums/codemirror.enum';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
-import { isUndefined, toString } from 'lodash';
+import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
+import { EntityFieldThreadCount } from 'interface/feed.interface';
+import { isUndefined, noop, toString } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
+import { getFeedCounts } from 'utils/CommonUtils';
+import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
 import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
 import { getTagsWithoutTier } from 'utils/TableUtils';
 import { DataModelDetailsProps } from './DataModelDetails.interface';
 import ModelTab from './ModelTab/ModelTab.component';
 
 const DataModelDetails = ({
-  entityFieldThreadCount,
-  feedCount,
   dataModelData,
   dataModelPermissions,
   createThread,
@@ -63,6 +63,10 @@ const DataModelDetails = ({
 
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
+  const [feedCount, setFeedCount] = useState<number>(0);
+  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
 
   const {
     hasEditDescriptionPermission,
@@ -90,6 +94,20 @@ const DataModelDetails = ({
         tags: getTagsWithoutTier(dataModelData.tags || []),
       };
     }, [dataModelData]);
+
+  const getEntityFeedCount = () => {
+    getFeedCounts(
+      EntityType.DASHBOARD_DATA_MODEL,
+      dashboardDataModelFQN,
+      setEntityFieldThreadCount,
+      noop,
+      setFeedCount
+    );
+  };
+
+  useEffect(() => {
+    dashboardDataModelFQN && getEntityFeedCount();
+  }, [dashboardDataModelFQN]);
 
   const handleUpdateDisplayName = async (data: EntityName) => {
     if (isUndefined(dataModelData)) {
@@ -176,22 +194,33 @@ const DataModelDetails = ({
           className="entity-tag-right-panel-container"
           data-testid="entity-right-panel"
           flex="320px">
-          <TagsContainerV1
-            editable={hasEditTagsPermission}
-            entityFieldThreads={getEntityFieldThreadCounts(
-              EntityField.TAGS,
-              entityFieldThreadCount
-            )}
-            entityFqn={dashboardDataModelFQN}
-            entityType={EntityType.DASHBOARD_DATA_MODEL}
-            selectedTags={tags}
-            onSelectionChange={handleTagSelection}
-            onThreadLinkSelect={onThreadLinkSelect}
-          />
+          <Space className="w-full" direction="vertical" size="large">
+            <TagsContainerV1
+              entityFqn={dashboardDataModelFQN}
+              entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
+              entityType={EntityType.DASHBOARD_DATA_MODEL}
+              permission={hasEditTagsPermission && !dataModelData.deleted}
+              selectedTags={tags}
+              tagType={TagSource.Classification}
+              onSelectionChange={handleTagSelection}
+              onThreadLinkSelect={onThreadLinkSelect}
+            />
+            <TagsContainerV1
+              entityFqn={dashboardDataModelFQN}
+              entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
+              entityType={EntityType.DASHBOARD_DATA_MODEL}
+              permission={hasEditTagsPermission && !dataModelData.deleted}
+              selectedTags={tags}
+              tagType={TagSource.Glossary}
+              onSelectionChange={handleTagSelection}
+              onThreadLinkSelect={onThreadLinkSelect}
+            />
+          </Space>
         </Col>
       </Row>
     );
   }, [
+    dataModelData,
     description,
     dashboardDataModelFQN,
     entityFieldThreadCount,
@@ -236,7 +265,7 @@ const DataModelDetails = ({
             <ActivityFeedTab
               entityType={EntityType.DASHBOARD_DATA_MODEL}
               fqn={dataModelData?.fullyQualifiedName ?? ''}
-              onFeedUpdate={() => Promise.resolve()}
+              onFeedUpdate={getEntityFeedCount}
             />
           </ActivityFeedProvider>
         ),

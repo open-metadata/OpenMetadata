@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Table, Tabs, Typography } from 'antd';
+import { Card, Col, Row, Space, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import ActivityFeedProvider, {
@@ -24,14 +24,15 @@ import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAss
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
-import { TagLabel } from 'generated/type/schema';
+import { TagLabel, TagSource } from 'generated/type/schema';
+import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { restoreMlmodel } from 'rest/mlModelAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
 import AppState from '../../AppState';
 import { getMlModelDetailsPath } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
@@ -40,7 +41,11 @@ import { MlHyperParameter } from '../../generated/api/data/createMlModel';
 import { Mlmodel, MlStore } from '../../generated/entity/data/mlmodel';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import { getEmptyPlaceholder, refreshPage } from '../../utils/CommonUtils';
+import {
+  getEmptyPlaceholder,
+  getFeedCounts,
+  refreshPage,
+} from '../../utils/CommonUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -62,10 +67,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   settingsUpdateHandler,
   updateMlModelFeatures,
   onExtensionUpdate,
-  feedCount,
+
   createThread,
-  entityFieldTaskCount,
-  entityFieldThreadCount,
   versionHandler,
   tagUpdateHandler,
 }) => {
@@ -76,6 +79,13 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     useParams<{ tab: EntityTabs; mlModelFqn: string }>();
 
   const [isEdit, setIsEdit] = useState<boolean>(false);
+  const [feedCount, setFeedCount] = useState<number>(0);
+  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
+  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
 
   const [mlModelPermissions, setPipelinePermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
@@ -126,6 +136,22 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       ),
     };
   }, [mlModelDetail]);
+
+  const fetchEntityFeedCount = () => {
+    getFeedCounts(
+      EntityType.MLMODEL,
+      mlModelFqn,
+      setEntityFieldThreadCount,
+      setEntityFieldTaskCount,
+      setFeedCount
+    );
+  };
+
+  useEffect(() => {
+    if (mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic) {
+      fetchEntityFeedCount();
+    }
+  }, [mlModelPermissions, mlModelFqn]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
@@ -392,20 +418,37 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <TagsContainerV1
-                editable={
-                  mlModelPermissions.EditAll || mlModelPermissions.EditTags
-                }
-                entityFieldThreads={getEntityFieldThreadCounts(
-                  EntityField.TAGS,
-                  entityFieldThreadCount
-                )}
-                entityFqn={mlModelDetail.fullyQualifiedName}
-                entityType={EntityType.MLMODEL}
-                selectedTags={mlModelTags}
-                onSelectionChange={handleTagSelection}
-                onThreadLinkSelect={handleThreadLinkSelect}
-              />
+              <Space className="w-full" direction="vertical" size="large">
+                <TagsContainerV1
+                  entityFqn={mlModelDetail.fullyQualifiedName}
+                  entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
+                  entityType={EntityType.MLMODEL}
+                  permission={
+                    (mlModelPermissions.EditAll ||
+                      mlModelPermissions.EditTags) &&
+                    !mlModelDetail.deleted
+                  }
+                  selectedTags={mlModelTags}
+                  tagType={TagSource.Classification}
+                  onSelectionChange={handleTagSelection}
+                  onThreadLinkSelect={handleThreadLinkSelect}
+                />
+
+                <TagsContainerV1
+                  entityFqn={mlModelDetail.fullyQualifiedName}
+                  entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
+                  entityType={EntityType.MLMODEL}
+                  permission={
+                    (mlModelPermissions.EditAll ||
+                      mlModelPermissions.EditTags) &&
+                    !mlModelDetail.deleted
+                  }
+                  selectedTags={mlModelTags}
+                  tagType={TagSource.Glossary}
+                  onSelectionChange={handleTagSelection}
+                  onThreadLinkSelect={handleThreadLinkSelect}
+                />
+              </Space>
             </Col>
           </Row>
         ),
@@ -425,7 +468,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             <ActivityFeedTab
               entityType={EntityType.MLMODEL}
               fqn={mlModelDetail?.fullyQualifiedName ?? ''}
-              onFeedUpdate={() => Promise.resolve()}
+              onFeedUpdate={fetchEntityFeedCount}
             />
           </ActivityFeedProvider>
         ),

@@ -17,7 +17,10 @@ import Loader from 'components/Loader/Loader';
 import { getTableTabPath, PAGE_SIZE_MEDIUM } from 'constants/constants';
 import { SearchIndex } from 'enums/search.enum';
 import { TestCase } from 'generated/tests/testCase';
-import { SearchHitBody } from 'interface/search.interface';
+import {
+  SearchHitBody,
+  TestCaseSearchSource,
+} from 'interface/search.interface';
 import VirtualList from 'rc-virtual-list';
 import React, { UIEventHandler, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -78,7 +81,7 @@ export const AddTestCaseModal = ({
         });
         const hits = res.hits.hits as SearchHitBody<
           SearchIndex.TEST_CASE,
-          TestCase
+          TestCaseSearchSource
         >[];
         setTotalCount(res.hits.total.value ?? 0);
         setItems(page === 1 ? hits : (prevItems) => [...prevItems, ...hits]);

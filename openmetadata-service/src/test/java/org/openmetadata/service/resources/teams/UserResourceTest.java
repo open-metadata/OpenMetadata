@@ -143,6 +143,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   public UserResourceTest() {
     super(USER, User.class, UserList.class, "users", UserResource.FIELDS);
     supportedNameCharacters = "_-.";
+    supportsSearchIndex = true;
   }
 
   public void setupUsers(TestInfo test) throws HttpResponseException {

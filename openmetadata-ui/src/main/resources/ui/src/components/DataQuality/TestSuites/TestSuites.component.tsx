@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Select, Space, Table, Typography } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
+import { Button, Col, Row, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import Searchbar from 'components/common/searchbar/Searchbar';
+import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from 'components/TableProfiler/Component/ProfilerProgressWidget';
 import {
   getTableTabPath,
@@ -28,7 +28,6 @@ import {
 import { PROGRESS_BAR_COLOR } from 'constants/TestSuite.constant';
 import { EntityTabs } from 'enums/entity.enum';
 import { TestSummary } from 'generated/entity/data/table';
-import { TestCaseStatus } from 'generated/tests/testCase';
 import { TestSuite } from 'generated/tests/testSuite';
 import { EntityReference } from 'generated/type/entityReference';
 import { Paging } from 'generated/type/paging';
@@ -75,22 +74,7 @@ export const TestSuites = () => {
     return params as DataQualitySearchParams;
   }, [location]);
 
-  const { searchValue = '', status = '' } = params;
-
-  const statusOption = useMemo(() => {
-    const testCaseStatus: DefaultOptionType[] = Object.values(
-      TestCaseStatus
-    ).map((value) => ({
-      label: value,
-      value: value,
-    }));
-    testCaseStatus.unshift({
-      label: t('label.all'),
-      value: '',
-    });
-
-    return testCaseStatus;
-  }, []);
+  const { searchValue = '' } = params;
 
   const columns = useMemo(() => {
     const data: ColumnsType<TestSuite> = [
@@ -101,10 +85,15 @@ export const TestSuites = () => {
         render: (_, record) => {
           const path =
             tab === DataQualityPageTabs.TABLES
-              ? getTableTabPath(
-                  record.executableEntityReference?.fullyQualifiedName ?? '',
-                  EntityTabs.PROFILER
-                )
+              ? {
+                  pathname: getTableTabPath(
+                    record.executableEntityReference?.fullyQualifiedName ?? '',
+                    EntityTabs.PROFILER
+                  ),
+                  search: QueryString.stringify({
+                    activeTab: TableProfilerTab.DATA_QUALITY,
+                  }),
+                }
               : getTestSuitePath(record.fullyQualifiedName ?? record.name);
 
           return <Link to={path}>{getEntityName(record)}</Link>;
@@ -121,8 +110,8 @@ export const TestSuites = () => {
         dataIndex: 'summary',
         key: 'success',
         render: (value: TestSummary) => {
-          const { success = 0, total = 0 } = value;
-          const percent = success / total;
+          const percent =
+            value.total && value.success ? value.success / value.total : 0;
 
           return (
             <ProfilerProgressWidget
@@ -198,25 +187,13 @@ export const TestSuites = () => {
             />
           </Col>
           <Col>
-            <Space size={12}>
-              <Space>
-                <Typography.Text>{t('label.status')}</Typography.Text>
-                <Select
-                  className="w-32"
-                  options={statusOption}
-                  placeholder={t('label.status')}
-                  value={status}
-                  onChange={(value) => handleSearchParam(value, 'status')}
-                />
-              </Space>
-              {tab === DataQualityPageTabs.TEST_SUITES && (
-                <Link to={ROUTES.ADD_TEST_SUITES}>
-                  <Button type="primary">
-                    {t('label.add-entity', { entity: t('label.test-suite') })}
-                  </Button>
-                </Link>
-              )}
-            </Space>
+            {tab === DataQualityPageTabs.TEST_SUITES && (
+              <Link to={ROUTES.ADD_TEST_SUITES}>
+                <Button type="primary">
+                  {t('label.add-entity', { entity: t('label.test-suite') })}
+                </Button>
+              </Link>
+            )}
           </Col>
         </Row>
       </Col>

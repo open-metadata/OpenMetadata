@@ -36,12 +36,10 @@ import { EntityType } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
-import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
-  getFeedCounts,
 } from '../../utils/CommonUtils';
 import {
   defaultFields,
@@ -69,14 +67,6 @@ const DashboardDetailsPage = () => {
   const [charts, setCharts] = useState<ChartType[]>([]);
   const [isError, setIsError] = useState(false);
 
-  const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
-  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
-
   const [dashboardPermissions, setDashboardPermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
@@ -100,16 +90,6 @@ const DashboardDetailsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const getEntityFeedCount = () => {
-    getFeedCounts(
-      EntityType.DASHBOARD,
-      dashboardFQN,
-      setEntityFieldThreadCount,
-      setEntityFieldTaskCount,
-      setFeedCount
-    );
   };
 
   const saveUpdatedDashboardData = (updatedData: Dashboard) => {
@@ -183,8 +163,6 @@ const DashboardDetailsPage = () => {
           [key]: response[key],
         };
       });
-
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -198,7 +176,6 @@ const DashboardDetailsPage = () => {
         ...prev,
         followers: [...(prev?.followers ?? []), ...newValue],
       }));
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -221,8 +198,6 @@ const DashboardDetailsPage = () => {
             (follower) => follower.id !== oldValue[0].id
           ) ?? [],
       }));
-
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -267,7 +242,6 @@ const DashboardDetailsPage = () => {
         // which leads to wrong PATCH payload sent after further tags removal
         return sortTagsForCharts(charts);
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -288,7 +262,6 @@ const DashboardDetailsPage = () => {
   const createThread = async (data: CreateThread) => {
     try {
       await postThread(data);
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -302,7 +275,6 @@ const DashboardDetailsPage = () => {
   useEffect(() => {
     if (dashboardPermissions.ViewAll || dashboardPermissions.ViewBasic) {
       fetchDashboardDetail(dashboardFQN);
-      getEntityFeedCount();
     }
   }, [dashboardFQN, dashboardPermissions]);
 
@@ -331,9 +303,6 @@ const DashboardDetailsPage = () => {
       charts={charts}
       createThread={createThread}
       dashboardDetails={dashboardDetails}
-      entityFieldTaskCount={entityFieldTaskCount}
-      entityFieldThreadCount={entityFieldThreadCount}
-      feedCount={feedCount}
       followDashboardHandler={followDashboard}
       unFollowDashboardHandler={unFollowDashboard}
       versionHandler={versionHandler}

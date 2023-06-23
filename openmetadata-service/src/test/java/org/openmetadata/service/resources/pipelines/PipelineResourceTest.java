@@ -73,6 +73,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   public PipelineResourceTest() {
     super(Entity.PIPELINE, Pipeline.class, PipelineList.class, "pipelines", PipelineResource.FIELDS);
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
+    supportsSearchIndex = true;
   }
 
   @BeforeAll
@@ -554,7 +555,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
         pipeline.getFollowers(),
         pipeline.getTags());
 
-    fields = "owner,tasks,pipelineStatus,followers,tags";
+    fields = "owner,tasks,pipelineStatus,followers,tags,scheduleInterval";
     pipeline =
         byName
             ? getPipelineByName(pipeline.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

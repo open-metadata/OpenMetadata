@@ -10,6 +10,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.elasticsearch.indexes.ElasticSearchIndex;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TestCaseIndex implements ElasticSearchIndex {
@@ -21,9 +22,6 @@ public class TestCaseIndex implements ElasticSearchIndex {
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(testCase);
-    if (doc.containsKey("testSuite")) {
-      doc.remove("testSuite"); // we won't update testSuite on testCase update
-    }
     return doc;
   }
 
@@ -33,7 +31,7 @@ public class TestCaseIndex implements ElasticSearchIndex {
     List<TestSuite> testSuiteArray = new ArrayList<>();
     testSuiteArray.add(testSuite);
     Map<String, Object> doc = JsonUtils.getMap(testCase);
-    doc.put("testSuite", testSuiteArray); // add the executable test suite on creation
+    doc.put("testSuites", testSuiteArray);
     return doc;
   }
 

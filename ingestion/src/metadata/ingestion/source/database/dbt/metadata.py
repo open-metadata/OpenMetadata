@@ -49,7 +49,6 @@ from metadata.generated.schema.tests.testDefinition import (
     TestDefinition,
     TestPlatform,
 )
-from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Timestamp
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -75,7 +74,19 @@ from metadata.ingestion.source.database.dbt.dbt_service import (
     DbtObjects,
     DbtServiceSource,
 )
-from metadata.utils import entity_link, fqn
+from metadata.ingestion.source.database.dbt.dbt_utils import (
+    check_ephemeral_node,
+    check_or_create_test_suite,
+    create_test_case_parameter_definitions,
+    create_test_case_parameter_values,
+    generate_entity_link,
+    get_corrected_name,
+    get_data_model_path,
+    get_dbt_compiled_query,
+    get_dbt_model_name,
+    get_dbt_raw_query,
+)
+from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
@@ -89,7 +100,7 @@ class InvalidServiceException(Exception):
     """
 
 
-class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
+class DbtSource(DbtServiceSource):
     """
     Class defines method to extract metadata from DBT
     """
@@ -226,7 +237,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         self, dbt_objects: DbtObjects
     ) -> Iterable[OMetaTagAndClassification]:
         """
-        Create and yeild tags from DBT
+        Create and yield tags from DBT
         """
         if (
             self.source_config.dbtConfigSource
@@ -400,6 +411,11 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         )
                         continue
 
+                    # Skip the ephemeral nodes since it is not materialized
+                    if check_ephemeral_node(manifest_node):
+                        logger.debug(f"Skipping ephemeral DBT node: {key}.")
+                        continue
+
                     # Skip the analysis and test nodes
                     if manifest_node.resource_type.value in [
                         item.value for item in SkipResourceTypeEnum
@@ -407,56 +423,73 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         logger.debug(f"Skipping DBT node: {key}.")
                         continue
 
-                    model_name = (
-                        manifest_node.alias
-                        if hasattr(manifest_node, "alias") and manifest_node.alias
-                        else manifest_node.name
-                    )
+                    model_name = get_dbt_model_name(manifest_node)
                     logger.debug(f"Processing DBT node: {model_name}")
 
                     catalog_node = None
                     if dbt_objects.dbt_catalog:
                         catalog_node = catalog_entities.get(key)
 
-                    filter_model = self.is_filtered(
-                        database_name=self.get_corrected_name(manifest_node.database),
-                        schema_name=self.get_corrected_name(manifest_node.schema_),
+                    dbt_table_tags_list = None
+                    if manifest_node.tags:
+                        dbt_table_tags_list = get_tag_labels(
+                            metadata=self.metadata,
+                            tags=manifest_node.tags,
+                            classification_name=self.tag_classification_name,
+                            include_tags=self.source_config.includeTags,
+                        )
+
+                    dbt_compiled_query = get_dbt_compiled_query(manifest_node)
+                    dbt_raw_query = get_dbt_raw_query(manifest_node)
+
+                    # Get the table entity from ES
+                    # TODO: Change to get_by_name once the postgres case sensitive calls is fixed
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.config.serviceName,
+                        database_name=get_corrected_name(manifest_node.database),
+                        schema_name=get_corrected_name(manifest_node.schema_),
                         table_name=model_name,
                     )
 
-                    if filter_model.is_filtered:
-                        self.status.filter(filter_model.model_fqn, filter_model.message)
-                        continue
-
-                    yield from self._create_data_model_link(
-                        model_name=model_name,
-                        manifest_entities=manifest_entities,
-                        manifest_node=manifest_node,
-                        catalog_node=catalog_node,
-                    ) or []
-
+                    if table_entity:
+                        data_model_link = DataModelLink(
+                            table_entity=table_entity,
+                            datamodel=DataModel(
+                                modelType=ModelType.DBT,
+                                description=manifest_node.description
+                                if manifest_node.description
+                                else None,
+                                path=get_data_model_path(manifest_node=manifest_node),
+                                rawSql=dbt_raw_query if dbt_raw_query else "",
+                                sql=dbt_compiled_query if dbt_compiled_query else "",
+                                columns=self.parse_data_model_columns(
+                                    manifest_node, catalog_node
+                                ),
+                                upstream=self.parse_upstream_nodes(
+                                    manifest_entities, manifest_node
+                                ),
+                                owner=self.get_dbt_owner(
+                                    manifest_node=manifest_node,
+                                    catalog_node=catalog_node,
+                                ),
+                                tags=dbt_table_tags_list,
+                            ),
+                        )
+                        yield data_model_link
+                        self.context.data_model_links.append(data_model_link)
+                    else:
+                        logger.warning(
+                            f"Unable to find the table '{table_fqn}' in OpenMetadata"
+                            f"Please check if the table exists and is ingested in OpenMetadata"
+                            f"Also name, database, schema of the manifest node matches with the table present in OpenMetadata"  # pylint: disable=line-too-long
+                        )
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     logger.warning(
                         f"Unexpected exception parsing DBT node:{model_name} - {exc}"
                     )
-
-    def get_corrected_name(self, name: Optional[str]):
-        correct_name = None
-        if name:
-            correct_name = None if name.lower() in NONE_KEYWORDS_LIST else name
-        return correct_name
-
-    def get_data_model_path(self, manifest_node):
-        datamodel_path = None
-        if manifest_node.original_file_path:
-            if hasattr(manifest_node, "root_path") and manifest_node.root_path:
-                datamodel_path = (
-                    f"{manifest_node.root_path}/{manifest_node.original_file_path}"
-                )
-            else:
-                datamodel_path = manifest_node.original_file_path
-        return datamodel_path
 
     def parse_upstream_nodes(self, manifest_entities, dbt_node):
         """
@@ -472,40 +505,35 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
             for node in dbt_node.depends_on.nodes:
                 try:
                     parent_node = manifest_entities[node]
-                    table_name = (
-                        parent_node.alias
-                        if hasattr(parent_node, "alias") and parent_node.alias
-                        else parent_node.name
-                    )
-                    parent_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=self.config.serviceName,
-                        database_name=self.get_corrected_name(parent_node.database),
-                        schema_name=self.get_corrected_name(parent_node.schema_),
-                        table_name=table_name,
-                    )
-                    filter_model = self.is_filtered(
-                        database_name=self.get_corrected_name(parent_node.database),
-                        schema_name=self.get_corrected_name(parent_node.schema_),
-                        table_name=table_name,
-                    )
 
-                    if filter_model.is_filtered:
-                        continue
+                    # check if the node is an ephemeral node
+                    # Recursively store the upstream of the ephemeral node in the upstream list
+                    if check_ephemeral_node(parent_node):
+                        upstream_nodes.extend(
+                            self.parse_upstream_nodes(manifest_entities, parent_node)
+                        )
+                    else:
+                        parent_fqn = fqn.build(
+                            self.metadata,
+                            entity_type=Table,
+                            service_name=self.config.serviceName,
+                            database_name=get_corrected_name(parent_node.database),
+                            schema_name=get_corrected_name(parent_node.schema_),
+                            table_name=get_dbt_model_name(parent_node),
+                        )
 
-                    # check if the parent table exists in OM before adding it to the upstream list
-                    # TODO: Change to get_by_name once the postgres case sensitive calls is fixed
-                    parent_table_entity: Optional[
-                        Union[Table, List[Table]]
-                    ] = get_entity_from_es_result(
-                        entity_list=self.metadata.es_search_from_fqn(
-                            entity_type=Table, fqn_search_string=parent_fqn
-                        ),
-                        fetch_multiple_entities=False,
-                    )
-                    if parent_table_entity:
-                        upstream_nodes.append(parent_fqn)
+                        # check if the parent table exists in OM before adding it to the upstream list
+                        # TODO: Change to get_by_name once the postgres case sensitive calls is fixed
+                        parent_table_entity: Optional[
+                            Union[Table, List[Table]]
+                        ] = get_entity_from_es_result(
+                            entity_list=self.metadata.es_search_from_fqn(
+                                entity_type=Table, fqn_search_string=parent_fqn
+                            ),
+                            fetch_multiple_entities=False,
+                        )
+                        if parent_table_entity:
+                            upstream_nodes.append(parent_fqn)
                 except Exception as exc:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
                     logger.warning(
@@ -715,17 +743,18 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     entity=TestDefinition,
                 )
                 if not check_test_definition_exists:
-                    column_name = manifest_node.column_name
-                    if column_name:
+                    entity_type = EntityType.TABLE
+                    if (
+                        hasattr(manifest_node, "column_name")
+                        and manifest_node.column_name
+                    ):
                         entity_type = EntityType.COLUMN
-                    else:
-                        entity_type = EntityType.TABLE
                     yield CreateTestDefinitionRequest(
                         name=manifest_node.name,
                         description=manifest_node.description,
                         entityType=entity_type,
                         testPlatforms=[TestPlatform.DBT],
-                        parameterDefinition=self.create_test_case_parameter_definitions(
+                        parameterDefinition=create_test_case_parameter_definitions(
                             manifest_node
                         ),
                         displayName=None,
@@ -743,9 +772,11 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
                 logger.debug(f"Processing DBT Test Case for node: {manifest_node.name}")
-                entity_link_list = self.generate_entity_link(dbt_test)
+                entity_link_list = generate_entity_link(dbt_test)
                 for entity_link_str in entity_link_list:
-                    test_suite = self._check_or_create_test_suite(entity_link_str)
+                    test_suite = check_or_create_test_suite(
+                        self.metadata, entity_link_str
+                    )
                     yield CreateTestCaseRequest(
                         name=manifest_node.name,
                         description=manifest_node.description,
@@ -754,9 +785,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         ),
                         entityLink=entity_link_str,
                         testSuite=test_suite.fullyQualifiedName,
-                        parameterValues=self.create_test_case_parameter_values(
-                            dbt_test
-                        ),
+                        parameterValues=create_test_case_parameter_values(dbt_test),
                         displayName=None,
                         owner=None,
                     )
@@ -837,7 +866,9 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         database_name=source_elements[1],
                         schema_name=source_elements[2],
                         table_name=source_elements[3],
-                        column_name=manifest_node.column_name,
+                        column_name=manifest_node.column_name
+                        if hasattr(manifest_node, "column_name")
+                        else None,
                         test_case_name=manifest_node.name,
                     )
                     self.metadata.add_test_case_results(
@@ -849,76 +880,6 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
             logger.error(
                 f"Failed to capture tests results for node: {manifest_node.name} {err}"
             )
-
-    def create_test_case_parameter_definitions(self, dbt_test):
-        test_case_param_definition = [
-            {
-                "name": dbt_test.test_metadata.name,
-                "displayName": dbt_test.test_metadata.name,
-                "required": False,
-            }
-        ]
-        return test_case_param_definition
-
-    def create_test_case_parameter_values(self, dbt_test):
-        manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
-        values = manifest_node.test_metadata.kwargs.get("values")
-        dbt_test_values = ""
-        if values:
-            dbt_test_values = ",".join(str(value) for value in values)
-        test_case_param_values = [
-            {"name": manifest_node.test_metadata.name, "value": dbt_test_values}
-        ]
-        return test_case_param_values
-
-    def generate_entity_link(self, dbt_test):
-        """
-        Method returns entity link
-        """
-        manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
-        entity_link_list = [
-            entity_link.get_entity_link(
-                table_fqn=table_fqn, column_name=manifest_node.column_name
-            )
-            for table_fqn in dbt_test[DbtCommonEnum.UPSTREAM.value]
-        ]
-        return entity_link_list
-
-    def get_dbt_compiled_query(self, mnode) -> Optional[str]:
-        if (
-            hasattr(mnode, CompiledQueriesEnum.COMPILED_CODE.value)
-            and mnode.compiled_code
-        ):
-            return mnode.compiled_code
-        if (
-            hasattr(mnode, CompiledQueriesEnum.COMPILED_SQL.value)
-            and mnode.compiled_sql
-        ):
-            return mnode.compiled_sql
-        logger.debug(f"Unable to get DBT compiled query for node - {mnode.name}")
-        return None
-
-    def get_dbt_raw_query(self, mnode) -> Optional[str]:
-        if hasattr(mnode, RawQueriesEnum.RAW_CODE.value) and mnode.raw_code:
-            return mnode.raw_code
-        if hasattr(mnode, RawQueriesEnum.RAW_SQL.value) and mnode.raw_sql:
-            return mnode.raw_sql
-        logger.debug(f"Unable to get DBT compiled query for node - {mnode.name}")
-        return None
-
-    def _check_or_create_test_suite(
-        self, test_entity_link: str
-    ) -> Union[TestSuite, EntityReference]:
-        """Check if test suite exists, if not create it
-
-        Args:
-            entity_link (str): entity link
-
-        Returns:
-            TestSuite:
-        """
-        table_fqn = entity_link.get_table_fqn(test_entity_link)
-        return self.metadata.get_or_create_executable_test_suite(table_fqn)
 
     def close(self):
         self.metadata.close()

@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { Include } from 'generated/type/include';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { ServicePageData } from 'pages/service';
 import { TabSpecificField } from '../enums/entity.enum';
@@ -41,7 +42,8 @@ export const getTopicVersion = async (id: string, version: string) => {
 export const getTopics = async (
   service: string,
   fields: string,
-  paging?: PagingWithoutTotal
+  paging?: PagingWithoutTotal,
+  include: Include = Include.NonDeleted
 ) => {
   const response = await APIClient.get<{
     data: ServicePageData[];
@@ -51,6 +53,7 @@ export const getTopics = async (
       service,
       fields,
       ...paging,
+      include,
     },
   });
 

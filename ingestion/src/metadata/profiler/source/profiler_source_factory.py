@@ -41,5 +41,6 @@ class ProfilerSourceFactory:
 
 profiler_source_factory = ProfilerSourceFactory()
 profiler_source_factory.register_source(
-    BigqueryType.BigQuery.value.lower(), BigQueryProfilerSource
+    BigqueryType.BigQuery.value.lower(),
+    BigQueryProfilerSource,
 )

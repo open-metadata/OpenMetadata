@@ -16,6 +16,6 @@ package org.openmetadata.service.workflows.interfaces;
 import java.util.Map;
 import org.openmetadata.service.exception.ProcessorException;
 
-public interface Processor<I, O> extends Stats {
-  O process(I input, Map<String, Object> contextData) throws ProcessorException;
+public interface Processor<T, I> extends Stats {
+  T process(I input, Map<String, Object> contextData) throws ProcessorException;
 }

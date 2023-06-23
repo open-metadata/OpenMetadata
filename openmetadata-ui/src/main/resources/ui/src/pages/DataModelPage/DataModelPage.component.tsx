@@ -22,12 +22,11 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { CreateThread } from 'generated/api/feed/createThread';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
+import { Include } from 'generated/type/include';
 import { LabelType, State, TagSource } from 'generated/type/tagLabel';
-import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
@@ -47,11 +46,7 @@ import {
   removeDataModelFollower,
 } from 'rest/dataModelsAPI';
 import { postThread } from 'rest/feedsAPI';
-import {
-  getCurrentUserId,
-  getEntityMissingError,
-  getFeedCounts,
-} from 'utils/CommonUtils';
+import { getCurrentUserId, getEntityMissingError } from 'utils/CommonUtils';
 import { getSortedDataModelColumnTags } from 'utils/DataModelsUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
@@ -71,13 +66,6 @@ const DataModelsPage = () => {
   const [dataModelData, setDataModelData] = useState<DashboardDataModel>(
     {} as DashboardDataModel
   );
-
-  const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
-
-  const [, setEntityFieldTaskCount] = useState<EntityFieldThreadCount[]>([]);
 
   // get current user details
   const currentUser = useMemo(
@@ -101,16 +89,6 @@ const DataModelsPage = () => {
     };
   }, [dataModelData]);
 
-  const getEntityFeedCount = () => {
-    getFeedCounts(
-      EntityType.DASHBOARD_DATA_MODEL,
-      dashboardDataModelFQN,
-      setEntityFieldThreadCount,
-      setEntityFieldTaskCount,
-      setFeedCount
-    );
-  };
-
   const fetchResourcePermission = async (dashboardDataModelFQN: string) => {
     setIsLoading(true);
     try {
@@ -133,7 +111,6 @@ const DataModelsPage = () => {
   const createThread = async (data: CreateThread) => {
     try {
       await postThread(data);
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -148,7 +125,8 @@ const DataModelsPage = () => {
     try {
       const response = await getDataModelsByName(
         dashboardDataModelFQN,
-        'owner,tags,followers'
+        'owner,tags,followers',
+        Include.All
       );
       setDataModelData(response);
     } catch (error) {
@@ -178,7 +156,6 @@ const DataModelsPage = () => {
         description: newDescription,
         version,
       }));
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -224,7 +201,6 @@ const DataModelsPage = () => {
         tags: newTags,
         version,
       }));
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -243,7 +219,6 @@ const DataModelsPage = () => {
           owner: newOwner,
           version,
         }));
-        getEntityFeedCount();
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -272,7 +247,6 @@ const DataModelsPage = () => {
           tags: newTags,
           version,
         }));
-        getEntityFeedCount();
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -293,7 +267,6 @@ const DataModelsPage = () => {
         columns: getSortedDataModelColumnTags(newColumns),
         version,
       }));
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -311,7 +284,6 @@ const DataModelsPage = () => {
         [key]: response[key],
         version: response.version,
       }));
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -320,7 +292,6 @@ const DataModelsPage = () => {
   useEffect(() => {
     if (hasViewPermission) {
       fetchDataModelDetails(dashboardDataModelFQN);
-      getEntityFeedCount();
     }
   }, [dashboardDataModelFQN, dataModelPermissions]);
 
@@ -350,8 +321,6 @@ const DataModelsPage = () => {
       createThread={createThread}
       dataModelData={dataModelData}
       dataModelPermissions={dataModelPermissions}
-      entityFieldThreadCount={entityFieldThreadCount}
-      feedCount={feedCount}
       handleColumnUpdateDataModel={handleColumnUpdateDataModel}
       handleFollowDataModel={handleFollowDataModel}
       handleUpdateDescription={handleUpdateDescription}

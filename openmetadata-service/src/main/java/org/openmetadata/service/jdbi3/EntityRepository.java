@@ -451,11 +451,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       String beforeCursor;
       String afterCursor = null;
-      beforeCursor = after == null ? null : entities.get(0).getName();
-      if (entities.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
+      beforeCursor = after == null ? null : JsonUtils.readValue(jsons.get(0), entityClass).getName();
+      if (jsons.size() > limitParam) {
         T lastReadEntity = JsonUtils.readValue(jsons.get(limitParam), entityClass);
-        entities.remove(limitParam);
-        afterCursor = entities.get(limitParam - 1).getName();
+        entities.remove(lastReadEntity.getId());
+        afterCursor = JsonUtils.readValue(jsons.get(limitParam - 1), entityClass).getName();
         errors.forEach((key, value) -> entities.remove(key));
         // Remove the Last Json Entry if present in error, since the read was actually just till limitParam , and if
         // error
