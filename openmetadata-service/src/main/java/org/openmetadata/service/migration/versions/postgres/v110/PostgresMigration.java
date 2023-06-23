@@ -1,4 +1,4 @@
-package org.openmetadata.service.migration.versions.postgres;
+package org.openmetadata.service.migration.versions.postgres.v110;
 
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
@@ -8,9 +8,9 @@ import org.openmetadata.service.migration.MigrationFile;
 import org.openmetadata.service.migration.api.MigrationStep;
 
 @Slf4j
-@MigrationFile(name = "PostgresMigrationOneDotOne")
+@MigrationFile(name = "v110_PostgresMigration")
 @SuppressWarnings("unused")
-public class PostgresMigrationOneDotOne implements MigrationStep {
+public class PostgresMigration implements MigrationStep {
   private CollectionDAO collectionDAO;
 
   private Handle handle;
@@ -22,7 +22,7 @@ public class PostgresMigrationOneDotOne implements MigrationStep {
 
   @Override
   public String getMigrationFileName() {
-    return "PostgresMigrationOneDotOne";
+    return "v110_PostgresMigration";
   }
 
   @Override

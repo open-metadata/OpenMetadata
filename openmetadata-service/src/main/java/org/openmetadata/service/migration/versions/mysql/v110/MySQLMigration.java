@@ -1,4 +1,4 @@
-package org.openmetadata.service.migration.versions.mysql;
+package org.openmetadata.service.migration.versions.mysql.v110;
 
 import static org.openmetadata.service.migration.MigrationUtil.addInListIfToBeExecuted;
 import static org.openmetadata.service.migration.MigrationUtil.updateFQNHashForEntity;
@@ -58,9 +58,9 @@ import org.openmetadata.service.migration.api.MigrationStep;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
-@MigrationFile(name = "MySQLMigrationOneDotOne")
+@MigrationFile(name = "v110_MySQLMigration")
 @SuppressWarnings("unused")
-public class MySQLMigrationOneDotOne implements MigrationStep {
+public class MySQLMigration implements MigrationStep {
   private CollectionDAO collectionDAO;
   private MigrationDAO migrationDAO;
   private Handle handle;
@@ -72,12 +72,12 @@ public class MySQLMigrationOneDotOne implements MigrationStep {
 
   @Override
   public String getMigrationFileName() {
-    return "MySQLMigrationOneDotOne";
+    return "v110_MySQLMigration";
   }
 
   @Override
   public String getFileUuid() {
-    return "ffcc502b-d4a0-4e5f-a562-0a6d4110c76c";
+    return "ffcc502b-d4a0-4e5f-a562-0a6d4110c762";
   }
 
   @Override
