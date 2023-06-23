@@ -13,18 +13,20 @@
 import { Col, Row, Tabs } from 'antd';
 import { SummaryPanel } from 'components/DataQuality/SummaryPannel/SummaryPanel.component';
 import DataQualityTab from 'components/ProfilerDashboard/component/DataQualityTab';
-import { DataQualityTabProps } from 'components/ProfilerDashboard/profilerDashboard.interface';
-import TestSuitePipelineTab from 'components/TestSuitePipelineTab/TestSuitePipelineTab.component';
+import TestSuitePipelineTab from 'components/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
 import { EntityTabs } from 'enums/entity.enum';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { QualityTabProps } from './QualityTab.interface';
 
 export const QualityTab = ({
   isLoading,
   testCases,
   onTestCaseResultUpdate,
   onTestUpdate,
-}: DataQualityTabProps) => {
+  testSuite,
+  showTableColumn,
+}: QualityTabProps) => {
   const { t } = useTranslation();
   const tabs = useMemo(
     () => [
@@ -32,18 +34,21 @@ export const QualityTab = ({
         label: t('label.test-case-plural'),
         key: EntityTabs.TEST_CASES,
         children: (
-          <DataQualityTab
-            isLoading={isLoading}
-            testCases={testCases}
-            onTestCaseResultUpdate={onTestCaseResultUpdate}
-            onTestUpdate={onTestUpdate}
-          />
+          <div className="p-t-md">
+            <DataQualityTab
+              isLoading={isLoading}
+              showTableColumn={showTableColumn}
+              testCases={testCases}
+              onTestCaseResultUpdate={onTestCaseResultUpdate}
+              onTestUpdate={onTestUpdate}
+            />
+          </div>
         ),
       },
       {
         label: t('label.pipeline'),
         key: EntityTabs.PIPELINE,
-        children: <TestSuitePipelineTab />,
+        children: <TestSuitePipelineTab testSuite={testSuite} />,
       },
     ],
     [isLoading, testCases, onTestUpdate, onTestCaseResultUpdate]

@@ -29,12 +29,13 @@ import FilterTablePlaceHolder from 'components/common/error-with-placeholder/Fil
 import { StatusBox } from 'components/common/LastRunGraph/LastRunGraph.component';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { TestCaseStatusModal } from 'components/DataQuality/TestCaseStatusModal/TestCaseStatusModal.component';
+import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { TestCaseStatus } from 'generated/configuration/testResultNotificationConfiguration';
 import { Operation } from 'generated/entity/policies/policy';
 import { isUndefined } from 'lodash';
-import { putTestCaseResult } from 'rest/testAPI';
+import { putTestCaseResult, removeTestCaseFromTestSuite } from 'rest/testAPI';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { getTableTabPath, PAGE_SIZE } from '../../../constants/constants';
@@ -66,6 +67,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   pagingData,
   onTestUpdate,
   onTestCaseResultUpdate,
+  removeFromTestSuite,
+  showTableColumn = true,
 }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -101,11 +104,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       try {
         await putTestCaseResult(testCaseFqn, updatedResult);
 
-        onTestCaseResultUpdate &&
-          onTestCaseResultUpdate({
-            ...selectedTestCase.data,
-            testCaseResult: updatedResult,
-          });
+        onTestCaseResultUpdate?.({
+          ...selectedTestCase.data,
+          testCaseResult: updatedResult,
+        });
 
         handleCancel();
       } catch (error) {
@@ -116,13 +118,29 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     return;
   };
 
+  const handleConfirmClick = async () => {
+    if (isUndefined(removeFromTestSuite)) {
+      return;
+    }
+    try {
+      await removeTestCaseFromTestSuite(
+        selectedTestCase?.data.id ?? '',
+        removeFromTestSuite.testSuite?.id ?? ''
+      );
+      onTestUpdate?.();
+      setSelectedTestCase(undefined);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   const columns = useMemo(() => {
     const data: ColumnsType<TestCase> = [
       {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        width: 280,
+        width: 300,
         render: (name: string, record) => {
           const status = record.testCaseResult?.testCaseStatus;
 
@@ -141,38 +159,29 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           );
         },
       },
-      {
-        title: t('label.test-suite'),
-        dataIndex: 'testSuite',
-        key: 'testSuite',
-        width: 250,
-        render: (value) => {
-          return (
-            <Typography.Paragraph data-testid="test-suite-name">
-              {getEntityName(value)}
-            </Typography.Paragraph>
-          );
-        },
-      },
-      {
-        title: t('label.table'),
-        dataIndex: 'entityLink',
-        key: 'table',
-        width: 150,
-        render: (entityLink) => {
-          const tableFqn = getEntityFqnFromEntityLink(entityLink);
-          const name = getNameFromFQN(tableFqn);
+      ...(showTableColumn
+        ? [
+            {
+              title: t('label.table'),
+              dataIndex: 'entityLink',
+              key: 'table',
+              width: 150,
+              render: (entityLink: string) => {
+                const tableFqn = getEntityFqnFromEntityLink(entityLink);
+                const name = getNameFromFQN(tableFqn);
 
-          return (
-            <Link
-              data-testid="table-link"
-              to={getTableTabPath(tableFqn, 'profiler')}
-              onClick={(e) => e.stopPropagation()}>
-              {name}
-            </Link>
-          );
-        },
-      },
+                return (
+                  <Link
+                    data-testid="table-link"
+                    to={getTableTabPath(tableFqn, 'profiler')}
+                    onClick={(e) => e.stopPropagation()}>
+                    {name}
+                  </Link>
+                );
+              },
+            },
+          ]
+        : []),
       {
         title: t('label.column'),
         dataIndex: 'entityLink',
@@ -259,27 +268,51 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 />
               </Tooltip>
 
-              <Tooltip
-                placement="bottomLeft"
-                title={
-                  testCaseDeletePermission
-                    ? t('label.delete')
-                    : NO_PERMISSION_FOR_ACTION
-                }>
-                <Button
-                  className="flex-center"
-                  data-testid={`delete-${record.name}`}
-                  disabled={!testCaseDeletePermission}
-                  icon={<IconDelete width={14} />}
-                  size="small"
-                  type="text"
-                  onClick={(e) => {
-                    // preventing expand/collapse on click of delete button
-                    e.stopPropagation();
-                    setSelectedTestCase({ data: record, action: 'DELETE' });
-                  }}
-                />
-              </Tooltip>
+              {removeFromTestSuite ? (
+                <Tooltip
+                  placement="bottomLeft"
+                  title={
+                    testCaseDeletePermission
+                      ? t('label.remove')
+                      : NO_PERMISSION_FOR_ACTION
+                  }>
+                  <Button
+                    className="flex-center"
+                    data-testid={`remove-${record.name}`}
+                    disabled={!testCaseDeletePermission}
+                    icon={<IconDelete width={14} />}
+                    size="small"
+                    type="text"
+                    onClick={(e) => {
+                      // preventing expand/collapse on click of delete button
+                      e.stopPropagation();
+                      setSelectedTestCase({ data: record, action: 'DELETE' });
+                    }}
+                  />
+                </Tooltip>
+              ) : (
+                <Tooltip
+                  placement="bottomLeft"
+                  title={
+                    testCaseDeletePermission
+                      ? t('label.delete')
+                      : NO_PERMISSION_FOR_ACTION
+                  }>
+                  <Button
+                    className="flex-center"
+                    data-testid={`delete-${record.name}`}
+                    disabled={!testCaseDeletePermission}
+                    icon={<IconDelete width={14} />}
+                    size="small"
+                    type="text"
+                    onClick={(e) => {
+                      // preventing expand/collapse on click of delete button
+                      e.stopPropagation();
+                      setSelectedTestCase({ data: record, action: 'DELETE' });
+                    }}
+                  />
+                </Tooltip>
+              )}
               {status === TestCaseStatus.Failed && (
                 <Tooltip
                   placement="bottomRight"
@@ -339,7 +372,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           }}
           pagination={false}
           rowKey="name"
-          scroll={{ x: 1300 }}
+          scroll={{ x: 1000 }}
           size="small"
         />
       </Col>
@@ -347,6 +380,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         {!isUndefined(pagingData) && pagingData.paging.total > PAGE_SIZE && (
           <NextPrevious
             currentPage={pagingData.currentPage}
+            isNumberBased={pagingData.isNumberBased}
             pageSize={PAGE_SIZE}
             paging={pagingData.paging}
             pagingHandler={pagingData.onPagingClick}
@@ -369,15 +403,33 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           onSubmit={handleStatusSubmit}
         />
 
-        <DeleteWidgetModal
-          afterDeleteAction={onTestUpdate}
-          allowSoftDelete={false}
-          entityId={selectedTestCase?.data?.id ?? ''}
-          entityName={selectedTestCase?.data?.name ?? ''}
-          entityType="testCase"
-          visible={selectedTestCase?.action === 'DELETE'}
-          onCancel={handleCancel}
-        />
+        {removeFromTestSuite ? (
+          <ConfirmationModal
+            bodyText={t(
+              'message.are-you-sure-you-want-to-remove-child-from-parent',
+              {
+                child: getEntityName(selectedTestCase?.data),
+                parent: getEntityName(removeFromTestSuite.testSuite),
+              }
+            )}
+            cancelText={t('label.cancel')}
+            confirmText={t('label.remove')}
+            header={t('label.remove-entity', { entity: t('label.test-case') })}
+            visible={selectedTestCase?.action === 'DELETE'}
+            onCancel={handleCancel}
+            onConfirm={handleConfirmClick}
+          />
+        ) : (
+          <DeleteWidgetModal
+            afterDeleteAction={onTestUpdate}
+            allowSoftDelete={false}
+            entityId={selectedTestCase?.data?.id ?? ''}
+            entityName={selectedTestCase?.data?.name ?? ''}
+            entityType="testCase"
+            visible={selectedTestCase?.action === 'DELETE'}
+            onCancel={handleCancel}
+          />
+        )}
       </Col>
     </Row>
   );

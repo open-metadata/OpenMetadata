@@ -25,9 +25,7 @@ import software.amazon.awssdk.services.ssm.model.ParameterType;
 import software.amazon.awssdk.services.ssm.model.PutParameterRequest;
 
 public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
-
-  private static AWSSSMSecretsManager INSTANCE = null;
-
+  private static AWSSSMSecretsManager instance = null;
   private SsmClient ssmClient;
 
   private AWSSSMSecretsManager(SecretsManagerConfiguration config, String clusterPrefix) {
@@ -80,8 +78,8 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
   }
 
   public static AWSSSMSecretsManager getInstance(SecretsManagerConfiguration config, String clusterPrefix) {
-    if (INSTANCE == null) INSTANCE = new AWSSSMSecretsManager(config, clusterPrefix);
-    return INSTANCE;
+    if (instance == null) instance = new AWSSSMSecretsManager(config, clusterPrefix);
+    return instance;
   }
 
   @VisibleForTesting

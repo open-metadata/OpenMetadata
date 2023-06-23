@@ -19,9 +19,9 @@ import React, { useCallback, useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getTagDisplay, getTagTooltip } from 'utils/TagsUtils';
 
+import { ReactComponent as IconTag } from 'assets/svg/classification.svg';
 import { reduceColorOpacity } from 'utils/CommonUtils';
 import { ReactComponent as IconPage } from '../../../assets/svg/ic-flat-doc.svg';
-import { ReactComponent as IconTag } from '../../../assets/svg/tag-grey.svg';
 import { TagsV1Props } from './TagsV1.interface';
 import './tagsV1.less';
 
