@@ -23,7 +23,7 @@ public interface MigrationDAO {
       value = "SELECT checksum FROM SERVER_CHANGE_LOG where version = :version",
       connectionType = MYSQL)
   @ConnectionAwareSqlQuery(
-      value = "SELECT checksum FROM \"SERVER_CHANGE_LOG\" where version = :version",
+      value = "SELECT checksum FROM SERVER_CHANGE_LOG where version = :version",
       connectionType = POSTGRES)
   String getVersionMigrationChecksum(@Bind("version") String version) throws StatementException;
 
@@ -38,10 +38,10 @@ public interface MigrationDAO {
       connectionType = MYSQL)
   @ConnectionAwareSqlUpdate(
       value =
-          "INSERT INTO server_change_log (version, migration_file_name, checksum, installed_on)"
+          "INSERT INTO server_change_log (version, migrationFileName, checksum, installed_on)"
               + "VALUES (:version, :migrationFileName, :checksum, current_timestamp) "
               + "ON CONFLICT (version) DO UPDATE SET "
-              + "migration_file_name = EXCLUDED.migration_file_name, "
+              + "migrationFileName = EXCLUDED.migrationFileName, "
               + "checksum = EXCLUDED.checksum, "
               + "installed_on = EXCLUDED.installed_on",
       connectionType = POSTGRES)
@@ -75,7 +75,7 @@ public interface MigrationDAO {
       value = "SELECT checksum FROM SERVER_MIGRATION_SQL_LOGS where version = :version",
       connectionType = MYSQL)
   @ConnectionAwareSqlQuery(
-      value = "SELECT checksum FROM \"SERVER_MIGRATION_SQL_LOGS\" where version = :version",
+      value = "SELECT checksum FROM SERVER_MIGRATION_SQL_LOGS where version = :version",
       connectionType = POSTGRES)
   List<String> getServerMigrationSQLWithVersion(@Bind("version") String version);
 
