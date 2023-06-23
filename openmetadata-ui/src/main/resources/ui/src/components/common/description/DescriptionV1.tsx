@@ -147,7 +147,7 @@ const DescriptionV1 = ({
     };
 
     return !isReadOnly && hasEditAccess ? (
-      <Space className="w-full justify-end" size={12}>
+      <Space className="w-full" size={12}>
         <Icon
           component={EditIcon}
           data-testid="edit-description"
@@ -170,7 +170,7 @@ const DescriptionV1 = ({
         className="schema-description d-flex"
         direction="vertical"
         size={16}>
-        <div className="d-flex items-center justify-between">
+        <div className="d-flex items-center gap-2">
           <Text className="right-panel-label">{t('label.description')}</Text>
           {editButton()}
         </div>

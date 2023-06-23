@@ -296,6 +296,7 @@ const TagsContainerV1 = ({
               className="anticon"
               height={16}
               name="request-tags"
+              style={{ color: DE_ACTIVE_COLOR }}
               width={16}
             />
           </Popover>
@@ -319,7 +320,12 @@ const TagsContainerV1 = ({
             )
           }>
           <Space align="center" className="w-full h-full" size={2}>
-            <IconComments height={16} name="comments" width={16} />
+            <IconComments
+              color={DE_ACTIVE_COLOR}
+              height={16}
+              name="comments"
+              width={16}
+            />
           </Space>
         </Button>
       </Col>
