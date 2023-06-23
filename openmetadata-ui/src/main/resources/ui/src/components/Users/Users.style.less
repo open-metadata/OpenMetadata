@@ -13,6 +13,10 @@
 
 @import url('../../styles/variables.less');
 
+@page-height: calc(
+  100vh - 122px
+); /* navbar + tabs_height + padding = 64 + 46 + 12  */
+
 .roles-container {
   display: flex;
   justify-content: space-between;
@@ -29,6 +33,7 @@
 }
 
 .user-page-layout {
+  height: @page-height;
   .page-layout-rightpanel {
     padding-right: 0 !important;
     background-color: @white;
@@ -39,15 +44,19 @@
   }
 }
 
-.user-layout .activity-feed-tab {
-  .center-container {
-    height: calc(
-      100vh - 122px
-    ); /* navbar + tabs_height + padding = 64 + 46 + 12  */
+.user-layout {
+  .activity-feed-tab {
+    .center-container {
+      height: @page-height;
+    }
+    .right-container {
+      height: @page-height;
+    }
   }
-  .right-container {
-    height: calc(
-      100vh - 122px
-    ); /* navbar + tabs_height + padding = 64 + 46 + 12  */
+  .summary-panel-container {
+    height: @page-height;
+  }
+  .explore-search-card {
+    margin: 0 12px;
   }
 }
