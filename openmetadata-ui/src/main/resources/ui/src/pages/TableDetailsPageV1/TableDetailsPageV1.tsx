@@ -453,7 +453,10 @@ const TableDetailsPageV1 = () => {
               entityFqn={datasetFQN}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.TABLE}
-              permission={tablePermissions.EditAll || tablePermissions.EditTags}
+              permission={
+                (tablePermissions.EditAll || tablePermissions.EditTags) &&
+                !tableDetails?.deleted
+              }
               selectedTags={tableTags}
               tagType={TagSource.Classification}
               onSelectionChange={handleTagSelection}
@@ -464,7 +467,10 @@ const TableDetailsPageV1 = () => {
               entityFqn={datasetFQN}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.TABLE}
-              permission={tablePermissions.EditAll || tablePermissions.EditTags}
+              permission={
+                (tablePermissions.EditAll || tablePermissions.EditTags) &&
+                !tableDetails?.deleted
+              }
               selectedTags={tableTags}
               tagType={TagSource.Glossary}
               onSelectionChange={handleTagSelection}
