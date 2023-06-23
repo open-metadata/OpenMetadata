@@ -20,6 +20,7 @@ import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/Act
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import DbtTab from 'components/DatasetDetails/DbtTab/DbtTab.component';
@@ -37,11 +38,10 @@ import TableProfilerV1 from 'components/TableProfiler/TableProfilerV1';
 import TableQueries from 'components/TableQueries/TableQueries';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
-import { FQN_SEPARATOR_CHAR, WILD_CARD_CHAR } from 'constants/char.constants';
+import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getTableTabPath, getVersionPath, ROUTES } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { EntityTabs, EntityType, FqnPart } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
 import { CreateThread } from 'generated/api/feed/createThread';
 import { JoinedWith, Table } from 'generated/entity/data/table';
@@ -54,7 +54,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
-import { searchQuery } from 'rest/searchAPI';
+import { getQueriesList } from 'rest/queryAPI';
 import {
   addFollower,
   getTableDetailsByFQN,
@@ -74,7 +74,6 @@ import { defaultFields } from 'utils/DatasetDetailsUtils';
 import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
 import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { createQueryFilter } from 'utils/Query/QueryUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoinedTables.component';
@@ -121,17 +120,11 @@ const TableDetailsPageV1 = () => {
       return;
     }
     try {
-      const response = await searchQuery({
-        query: WILD_CARD_CHAR,
-        pageNumber: 0,
-        pageSize: 0,
-        queryFilter: createQueryFilter([], tableDetails.id),
-        searchIndex: SearchIndex.QUERY,
-        includeDeleted: false,
-        trackTotalHits: true,
-        fetchSource: false,
+      const response = await getQueriesList({
+        limit: 0,
+        entityId: tableDetails.id,
       });
-      setQueryCount(response.hits.total.value);
+      setQueryCount(response.paging.total);
     } catch (error) {
       setQueryCount(0);
     }
@@ -790,8 +783,12 @@ const TableDetailsPageV1 = () => {
     }
   };
 
-  if (loading || !tableDetails) {
+  if (loading) {
     return <Loader />;
+  }
+
+  if (!tableDetails) {
+    return <ErrorPlaceHolder className="m-0" />;
   }
 
   return (
