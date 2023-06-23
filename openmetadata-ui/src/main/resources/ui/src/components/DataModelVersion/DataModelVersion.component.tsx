@@ -274,7 +274,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
-                    isReadOnly
+                    isVersionView
                     description={description}
                     entityType={EntityType.DASHBOARD_DATA_MODEL}
                   />

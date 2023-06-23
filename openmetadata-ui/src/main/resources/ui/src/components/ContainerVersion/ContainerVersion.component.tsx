@@ -126,7 +126,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
-                    isReadOnly
+                    isVersionView
                     description={description}
                     entityType={EntityType.CONTAINER}
                   />

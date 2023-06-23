@@ -406,7 +406,7 @@ const TagsContainerV1 = ({
             />
           )}
         </div>
-        {isVersionView && (
+        {!isVersionView && (
           <Row gutter={8}>
             {requestTagElement}
             {conversationThreadElement}

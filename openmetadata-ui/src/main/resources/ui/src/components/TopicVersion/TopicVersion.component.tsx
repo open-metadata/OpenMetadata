@@ -115,7 +115,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
-                    isReadOnly
+                    isVersionView
                     description={description}
                     entityType={EntityType.TOPIC}
                   />
