@@ -158,6 +158,7 @@ export const TaskTab = ({
     updateTask(TaskOperation.RESOLVE, taskDetails?.id + '', data)
       .then(() => {
         showSuccessToast(t('server.task-resolved-successfully'));
+        rest.onUpdateEntityDetails?.();
         history.push(getEntityLink(entityType ?? '', entityFQN ?? ''));
       })
       .catch((err: AxiosError) => showErrorToast(err));

@@ -52,6 +52,7 @@ export interface ProfilerDetailsCardProps {
   showYAxisCategory?: boolean;
   chartCollection: MetricChartType;
   name: string;
+  title?: string;
   tickFormatter?: string;
   curveType?: CurveType;
 }

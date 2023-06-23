@@ -14,7 +14,12 @@
 import { Button, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
-import { GREEN_COLOR, GREEN_COLOR_OPACITY_30 } from 'constants/constants';
+import {
+  GREEN_3,
+  GREEN_3_OPACITY,
+  RED_3,
+  YELLOW_2,
+} from 'constants/Color.constants';
 import { t } from 'i18next';
 import { isEmpty, isEqual, isUndefined, round, uniqueId } from 'lodash';
 import Qs from 'qs';
@@ -118,11 +123,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     props: any
   ): ReactElement<SVGElement> => {
     const { cx = 0, cy = 0, payload } = props;
-    let fill =
-      payload.status === TestCaseStatus.Success ? '#28A745' : undefined;
+    let fill = payload.status === TestCaseStatus.Success ? GREEN_3 : undefined;
 
     if (isUndefined(fill)) {
-      fill = payload.status === TestCaseStatus.Failed ? '#CB2431' : '#EFAE2F';
+      fill = payload.status === TestCaseStatus.Failed ? RED_3 : YELLOW_2;
     }
 
     return (
@@ -165,9 +169,9 @@ const TestSummary: React.FC<TestSummaryProps> = ({
 
     return (
       <ReferenceArea
-        fill={GREEN_COLOR_OPACITY_30}
+        fill={GREEN_3_OPACITY}
         ifOverflow="extendDomain"
-        stroke={GREEN_COLOR}
+        stroke={GREEN_3}
         strokeDasharray="4"
         {...yValues}
       />
