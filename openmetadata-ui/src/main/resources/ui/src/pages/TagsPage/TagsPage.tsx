@@ -1131,14 +1131,13 @@ const TagsPage = () => {
             <Space align="center" size="small">
               <Typography.Text
                 className="text-grey-muted"
-                data-testid="mutually-exclusive-label">
+                data-testid="mutually-exclusive-classification-label">
                 {t('label.mutually-exclusive')}
               </Typography.Text>
 
               <Switch
                 checked={currentClassification?.mutuallyExclusive}
-                data-testid="mutually-exclusive-button"
-                id="mutuallyExclusive"
+                data-testid="mutually-exclusive-classification-button"
                 onChange={handleUpdateMutuallyExclusive}
               />
             </Space>
