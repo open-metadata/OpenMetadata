@@ -38,12 +38,10 @@ import { getVersionPath } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic } from '../../generated/entity/data/topic';
-import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
-  getFeedCounts,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -61,27 +59,9 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [isLoading, setLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState(false);
 
-  const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
-  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
-
   const [topicPermissions, setTopicPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-
-  const getEntityFeedCount = () => {
-    getFeedCounts(
-      EntityType.TOPIC,
-      topicFQN,
-      setEntityFieldThreadCount,
-      setEntityFieldTaskCount,
-      setFeedCount
-    );
-  };
 
   const { id: topicId, version: currentVersion } = topicDetails;
 
@@ -110,7 +90,6 @@ const TopicDetailsPage: FunctionComponent = () => {
           [key]: res[key],
         };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -181,7 +160,6 @@ const TopicDetailsPage: FunctionComponent = () => {
         ...prev,
         followers: [...(prev?.followers ?? []), ...newValue],
       }));
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -202,7 +180,6 @@ const TopicDetailsPage: FunctionComponent = () => {
           (follower) => follower.id !== oldValue[0].id
         ),
       }));
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -223,7 +200,6 @@ const TopicDetailsPage: FunctionComponent = () => {
   const createThread = async (data: CreateThread) => {
     try {
       await postThread(data);
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -241,7 +217,6 @@ const TopicDetailsPage: FunctionComponent = () => {
   useEffect(() => {
     if (topicPermissions.ViewAll || topicPermissions.ViewBasic) {
       fetchTopicDetail(topicFQN);
-      getEntityFeedCount();
     }
   }, [topicPermissions, topicFQN]);
 
@@ -262,9 +237,6 @@ const TopicDetailsPage: FunctionComponent = () => {
   return (
     <TopicDetails
       createThread={createThread}
-      entityFieldTaskCount={entityFieldTaskCount}
-      entityFieldThreadCount={entityFieldThreadCount}
-      feedCount={feedCount}
       followTopicHandler={followTopic}
       topicDetails={topicDetails}
       unFollowTopicHandler={unFollowTopic}

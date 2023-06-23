@@ -674,7 +674,8 @@ const ContainerPage = () => {
             <ActivityFeedTab
               entityType={EntityType.CONTAINER}
               fqn={containerName}
-              onFeedUpdate={() => Promise.resolve()}
+              onFeedUpdate={getEntityFeedCount}
+              onUpdateEntityDetails={() => fetchContainerDetail(containerName)}
             />
           </ActivityFeedProvider>
         ),

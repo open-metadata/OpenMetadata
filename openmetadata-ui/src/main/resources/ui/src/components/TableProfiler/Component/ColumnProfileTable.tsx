@@ -14,6 +14,7 @@
 import { Button, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import { isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -24,15 +25,12 @@ import {
   DEFAULT_TEST_VALUE,
   INITIAL_TEST_RESULT_SUMMARY,
 } from '../../../constants/profiler.constant';
-import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { ColumnProfile } from '../../../generated/entity/data/table';
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
-import { getProfilerDashboardWithFqnPath } from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import Searchbar from '../../common/searchbar/Searchbar';
 import TestIndicator from '../../common/TestIndicator/TestIndicator';
-import { ProfilerDashboardTab } from '../../ProfilerDashboard/profilerDashboard.interface';
 import {
   ColumnProfileTableProps,
   columnTestResultType,
@@ -93,7 +91,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: t('label.data-type'),
         dataIndex: 'dataTypeDisplay',
         key: 'dataType',
-        width: 250,
+        width: 150,
         render: (dataTypeDisplay: string) => {
           return (
             <Typography.Text className="break-word">
@@ -167,21 +165,20 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         render: (_, record) => (
           <Link
             data-testid={`${record.name}-test-count`}
-            to={getProfilerDashboardWithFqnPath(
-              ProfilerDashboardType.COLUMN,
-              record.fullyQualifiedName || '',
-              ProfilerDashboardTab.DATA_QUALITY
-            )}>
-            {record.testCount || 0}
+            to={{
+              search: Qs.stringify({
+                activeTab: TableProfilerTab.DATA_QUALITY,
+              }),
+            }}>
+            {record.testCount ?? 0}
           </Link>
         ),
-        sorter: (col1, col2) => (col1.testCount || 0) - (col2.testCount || 0),
+        sorter: (col1, col2) => (col1.testCount ?? 0) - (col2.testCount ?? 0),
       },
       {
         title: t('label.status'),
         dataIndex: 'dataQualityTest',
         key: 'dataQualityTest',
-        width: 120,
         render: (_, record) => {
           const summary =
             columnTestSummary?.[
@@ -270,7 +267,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
             }}
             pagination={false}
             rowKey="name"
-            scroll={{ x: 1500 }}
+            scroll={{ x: true }}
             size="small"
           />
         </>

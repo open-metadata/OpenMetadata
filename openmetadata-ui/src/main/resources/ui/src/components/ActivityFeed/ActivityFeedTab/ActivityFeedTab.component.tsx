@@ -61,6 +61,7 @@ export const ActivityFeedTab = ({
   description,
   columns,
   entityType,
+  onUpdateEntityDetails,
 }: ActivityFeedTabProps) => {
   const history = useHistory();
   const { t } = useTranslation();
@@ -395,6 +396,7 @@ export const ActivityFeedTab = ({
                   owner={owner}
                   tags={tags}
                   task={selectedThread}
+                  onUpdateEntityDetails={onUpdateEntityDetails}
                 />
               ) : (
                 <TaskTab
@@ -403,6 +405,7 @@ export const ActivityFeedTab = ({
                   owner={owner}
                   tags={tags}
                   task={selectedThread}
+                  onUpdateEntityDetails={onUpdateEntityDetails}
                 />
               )}
             </div>
