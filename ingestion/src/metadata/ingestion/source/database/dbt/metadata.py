@@ -59,14 +59,11 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.constants import (
-    NONE_KEYWORDS_LIST,
     REQUIRED_CATALOG_KEYS,
     REQUIRED_MANIFEST_KEYS,
-    CompiledQueriesEnum,
     DbtCommonEnum,
     DbtTestFailureEnum,
     DbtTestSuccessEnum,
-    RawQueriesEnum,
     SkipResourceTypeEnum,
 )
 from metadata.ingestion.source.database.dbt.dbt_service import (
@@ -315,68 +312,7 @@ class DbtSource(DbtServiceSource):
             None,
         )
 
-    def _create_data_model_link(
-        self, model_name, manifest_node, catalog_node, manifest_entities
-    ):
-        dbt_compiled_query = self.get_dbt_compiled_query(manifest_node)
-        dbt_raw_query = self.get_dbt_raw_query(manifest_node)
-        dbt_table_tags_list = None
-        if manifest_node.tags:
-            dbt_table_tags_list = get_tag_labels(
-                metadata=self.metadata,
-                tags=manifest_node.tags,
-                classification_name=self.tag_classification_name,
-                include_tags=self.source_config.includeTags,
-            )
-
-        # Get the table entity from ES
-        # TODO: Change to get_by_name once the postgres case sensitive calls is fixed
-        table_fqn = fqn.build(
-            self.metadata,
-            entity_type=Table,
-            service_name=self.config.serviceName,
-            database_name=self.get_corrected_name(manifest_node.database),
-            schema_name=self.get_corrected_name(manifest_node.schema_),
-            table_name=model_name,
-        )
-        table_entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
-            entity_list=self.metadata.es_search_from_fqn(
-                entity_type=Table, fqn_search_string=table_fqn
-            ),
-            fetch_multiple_entities=False,
-        )
-
-        if table_entity:
-            data_model_link = DataModelLink(
-                table_entity=table_entity,
-                datamodel=DataModel(
-                    modelType=ModelType.DBT,
-                    description=manifest_node.description
-                    if manifest_node.description
-                    else None,
-                    path=self.get_data_model_path(manifest_node=manifest_node),
-                    rawSql=dbt_raw_query if dbt_raw_query else "",
-                    sql=dbt_compiled_query if dbt_compiled_query else "",
-                    columns=self.parse_data_model_columns(manifest_node, catalog_node),
-                    upstream=self.parse_upstream_nodes(
-                        manifest_entities, manifest_node
-                    ),
-                    owner=self.get_dbt_owner(
-                        manifest_node=manifest_node,
-                        catalog_node=catalog_node,
-                    ),
-                    tags=dbt_table_tags_list,
-                ),
-            )
-            yield data_model_link
-            self.context.data_model_links.append(data_model_link)
-        else:
-            logger.warning(
-                f"Unable to find the table '{table_fqn}' in OpenMetadata"
-                f"Please check if the table exists and is ingested in OpenMetadata"
-                f"Also name, database, schema of the manifest node matches with the table present in OpenMetadata"
-            )
-
+    # pylint: disable=too-many-locals
     def yield_data_models(self, dbt_objects: DbtObjects) -> Iterable[DataModelLink]:
         """
         Yield the data models
@@ -424,6 +360,17 @@ class DbtSource(DbtServiceSource):
                         continue
 
                     model_name = get_dbt_model_name(manifest_node)
+
+                    # Filter the dbt models based on filter patterns
+                    filter_model = self.is_filtered(
+                        database_name=get_corrected_name(manifest_node.database),
+                        schema_name=get_corrected_name(manifest_node.schema_),
+                        table_name=model_name,
+                    )
+                    if filter_model.is_filtered:
+                        self.status.filter(filter_model.model_fqn, filter_model.message)
+                        continue
+
                     logger.debug(f"Processing DBT node: {model_name}")
 
                     catalog_node = None
@@ -451,6 +398,15 @@ class DbtSource(DbtServiceSource):
                         database_name=get_corrected_name(manifest_node.database),
                         schema_name=get_corrected_name(manifest_node.schema_),
                         table_name=model_name,
+                    )
+
+                    table_entity: Optional[
+                        Union[Table, List[Table]]
+                    ] = get_entity_from_es_result(
+                        entity_list=self.metadata.es_search_from_fqn(
+                            entity_type=Table, fqn_search_string=table_fqn
+                        ),
+                        fetch_multiple_entities=False,
                     )
 
                     if table_entity:
@@ -505,6 +461,15 @@ class DbtSource(DbtServiceSource):
             for node in dbt_node.depends_on.nodes:
                 try:
                     parent_node = manifest_entities[node]
+                    table_name = get_dbt_model_name(parent_node)
+
+                    filter_model = self.is_filtered(
+                        database_name=get_corrected_name(parent_node.database),
+                        schema_name=get_corrected_name(parent_node.schema_),
+                        table_name=table_name,
+                    )
+                    if filter_model.is_filtered:
+                        continue
 
                     # check if the node is an ephemeral node
                     # Recursively store the upstream of the ephemeral node in the upstream list
@@ -519,7 +484,7 @@ class DbtSource(DbtServiceSource):
                             service_name=self.config.serviceName,
                             database_name=get_corrected_name(parent_node.database),
                             schema_name=get_corrected_name(parent_node.schema_),
-                            table_name=get_dbt_model_name(parent_node),
+                            table_name=table_name,
                         )
 
                         # check if the parent table exists in OM before adding it to the upstream list
