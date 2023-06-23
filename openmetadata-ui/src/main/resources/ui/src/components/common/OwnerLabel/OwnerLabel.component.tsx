@@ -54,7 +54,7 @@ export const OwnerLabel = ({
   }, [owner]);
 
   return (
-    <Space size={8}>
+    <Space data-testid="owner-label" size={8}>
       {profilePicture}
 
       {displayName ? (

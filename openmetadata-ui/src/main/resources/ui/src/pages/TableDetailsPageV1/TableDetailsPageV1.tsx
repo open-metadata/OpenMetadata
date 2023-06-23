@@ -37,9 +37,11 @@ import TableProfilerV1 from 'components/TableProfiler/TableProfilerV1';
 import TableQueries from 'components/TableQueries/TableQueries';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR, WILD_CARD_CHAR } from 'constants/char.constants';
-import { getTableTabPath, getVersionPath, ROUTES } from 'constants/constants';
+import { getTableTabPath, getVersionPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
+import { mockDatasetData } from 'constants/mockTourData.constants';
 import { EntityTabs, EntityType, FqnPart } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
@@ -81,6 +83,8 @@ import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoine
 import './table-details-page-v1.less';
 
 const TableDetailsPageV1 = () => {
+  const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
+    useTourProvider();
   const [tableDetails, setTableDetails] = useState<Table>();
   const { datasetFQN, tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ datasetFQN: string; tab: string }>();
@@ -101,7 +105,7 @@ const TableDetailsPageV1 = () => {
   );
   const [queryCount, setQueryCount] = useState(0);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!isTourOpen);
 
   const fetchTableDetails = async () => {
     setLoading(true);
@@ -148,7 +152,6 @@ const TableDetailsPageV1 = () => {
     DEFAULT_ENTITY_PERMISSION
   );
 
-  const isTourPage = location.pathname.includes(ROUTES.TOUR);
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const {
     tier,
@@ -249,7 +252,7 @@ const TableDetailsPageV1 = () => {
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      if (!isTourPage) {
+      if (!isTourOpen) {
         history.push(getTableTabPath(datasetFQN, activeKey));
       }
     }
@@ -385,7 +388,7 @@ const TableDetailsPageV1 = () => {
 
   const schemaTab = useMemo(
     () => (
-      <Row gutter={[0, 16]} wrap={false}>
+      <Row gutter={[0, 16]} id="schemaDetails" wrap={false}>
         <Col className="p-t-sm m-l-lg" flex="auto">
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
@@ -751,9 +754,13 @@ const TableDetailsPageV1 = () => {
   }, [version]);
 
   useEffect(() => {
-    fetchTableDetails();
-    getEntityFeedCount();
-  }, [datasetFQN]);
+    if (isTourOpen || isTourPage) {
+      setTableDetails(mockDatasetData.tableDetails as unknown as Table);
+    } else {
+      fetchTableDetails();
+      getEntityFeedCount();
+    }
+  }, [datasetFQN, isTourOpen, isTourPage]);
 
   useEffect(() => {
     if (tableDetails) {
@@ -791,7 +798,7 @@ const TableDetailsPageV1 = () => {
       title="Table details">
       <Row gutter={[0, 12]}>
         {/* Entity Heading */}
-        <Col className="p-x-lg" span={24}>
+        <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
             dataAsset={tableDetails}
             entityType={EntityType.TABLE}
@@ -808,7 +815,11 @@ const TableDetailsPageV1 = () => {
         {/* Entity Tabs */}
         <Col span={24}>
           <Tabs
-            activeKey={activeTab ?? EntityTabs.SCHEMA}
+            activeKey={
+              isTourOpen
+                ? activeTabForTourDatasetPage
+                : activeTab ?? EntityTabs.SCHEMA
+            }
             className="table-details-page-tabs"
             data-testid="tabs"
             items={tabs}
