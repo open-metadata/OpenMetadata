@@ -28,6 +28,10 @@ import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import TableTags from 'components/TableTags/TableTags.component';
+import {
+  GlossaryTermDetailsProps,
+  TagsDetailsProps,
+} from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { CSMode } from 'enums/codemirror.enum';
 import { TagLabel, TagSource } from 'generated/type/tagLabel';
@@ -36,11 +40,13 @@ import { EntityTags, TagOption } from 'Models';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
-import { fetchGlossaryTerms, getGlossaryTermlist } from 'utils/GlossaryUtils';
-import { getFilterTags } from 'utils/TableTags/TableTags.utils';
+import {
+  getGlossaryTermHierarchy,
+  getGlossaryTermsList,
+} from 'utils/GlossaryUtils';
+import { getAllTagsList, getTagsHierarchy } from 'utils/TagsUtils';
 import { DataTypeTopic, Field } from '../../../generated/entity/data/topic';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
-import { getClassifications, getTaglist } from '../../../utils/TagsUtils';
 import {
   updateFieldDescription,
   updateFieldTags,
@@ -72,18 +78,18 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     SchemaViewType.FIELDS
   );
 
-  const [glossaryTags, setGlossaryTags] = useState<TagOption[]>([]);
-  const [classificationTags, setClassificationTags] = useState<TagOption[]>([]);
+  const [glossaryTags, setGlossaryTags] = useState<GlossaryTermDetailsProps[]>(
+    []
+  );
+  const [classificationTags, setClassificationTags] = useState<
+    TagsDetailsProps[]
+  >([]);
 
   const fetchGlossaryTags = async () => {
     setIsGlossaryLoading(true);
     try {
-      const res = await fetchGlossaryTerms();
-
-      const glossaryTerms: TagOption[] = getGlossaryTermlist(res).map(
-        (tag) => ({ fqn: tag, source: TagSource.Glossary })
-      );
-      setGlossaryTags(glossaryTerms);
+      const glossaryTermList = await getGlossaryTermsList();
+      setGlossaryTags(glossaryTermList);
     } catch {
       setTagFetchFailed(true);
     } finally {
@@ -94,15 +100,8 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   const fetchClassificationTags = async () => {
     setIsTagLoading(true);
     try {
-      const res = await getClassifications();
-      const tagList = await getTaglist(res.data);
-
-      const classificationTag: TagOption[] = map(tagList, (tag) => ({
-        fqn: tag,
-        source: TagSource.Classification,
-      }));
-
-      setClassificationTags(classificationTag);
+      const tags = await getAllTagsList();
+      setClassificationTags(tags);
     } catch {
       setTagFetchFailed(true);
     } finally {
@@ -112,13 +111,12 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   const handleFieldTagsChange = async (
     selectedTags: EntityTags[],
-    editColumnTag: Field,
-    otherTags: TagLabel[]
+    editColumnTag: Field
   ) => {
-    const newSelectedTags: TagOption[] = map(
-      [...selectedTags, ...otherTags],
-      (tag) => ({ fqn: tag.tagFQN, source: tag.source })
-    );
+    const newSelectedTags: TagOption[] = map(selectedTags, (tag) => ({
+      fqn: tag.tagFQN,
+      source: tag.source,
+    }));
 
     if (newSelectedTags && editColumnTag && !isUndefined(onUpdate)) {
       const schema = cloneDeep(messageSchema);
@@ -242,8 +240,8 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             isTagLoading={isTagLoading}
             record={record}
             tagFetchFailed={tagFetchFailed}
-            tagList={classificationTags}
-            tags={getFilterTags(tags)}
+            tagList={getTagsHierarchy(classificationTags)}
+            tags={tags}
             type={TagSource.Classification}
           />
         ),
@@ -265,8 +263,8 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             isTagLoading={isGlossaryLoading}
             record={record}
             tagFetchFailed={tagFetchFailed}
-            tagList={glossaryTags}
-            tags={getFilterTags(tags)}
+            tagList={getGlossaryTermHierarchy(glossaryTags)}
+            tags={tags}
             type={TagSource.Glossary}
           />
         ),

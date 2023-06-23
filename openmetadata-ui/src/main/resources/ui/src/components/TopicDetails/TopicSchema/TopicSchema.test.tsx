@@ -37,21 +37,14 @@ const mockProps: TopicSchemaFieldsProps = {
   hasTagEditAccess: true,
 };
 
-jest.mock('../../../utils/TagsUtils', () => ({
-  getClassifications: jest.fn().mockReturnValue([]),
-  getTaglist: jest.fn().mockReturnValue([]),
+jest.mock('utils/TagsUtils', () => ({
+  getAllTagsList: jest.fn().mockImplementation(() => Promise.resolve([])),
+  getTagsHierarchy: jest.fn().mockReturnValue([]),
 }));
 
 jest.mock('utils/GlossaryUtils', () => ({
-  fetchGlossaryTerms: jest.fn().mockReturnValue([]),
-  getGlossaryTermlist: jest.fn().mockReturnValue([]),
-}));
-
-jest.mock('utils/TableTags/TableTags.utils', () => ({
-  getFilterTags: jest.fn().mockReturnValue({
-    Classification: [],
-    Glossary: [],
-  }),
+  getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
+  getGlossaryTermsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));
 
 jest.mock('../../../utils/TopicSchema.utils', () => ({
@@ -81,6 +74,22 @@ jest.mock('components/TableTags/TableTags.component', () =>
     .fn()
     .mockImplementation(() => (
       <div data-testid="table-tag-container">Table Tag Container</div>
+    ))
+);
+
+jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="error-placeholder">ErrorPlaceHolder</div>
+    ))
+);
+
+jest.mock('components/schema-editor/SchemaEditor', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="schema-editor">SchemaEditor</div>
     ))
 );
 

@@ -632,7 +632,9 @@ const ContainerPage = () => {
                   entityFqn={containerName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.CONTAINER}
-                  permission={hasEditDescriptionPermission}
+                  permission={
+                    hasEditDescriptionPermission && !containerData?.deleted
+                  }
                   selectedTags={tags}
                   tagType={TagSource.Classification}
                   onSelectionChange={handleTagSelection}
@@ -642,7 +644,9 @@ const ContainerPage = () => {
                   entityFqn={containerName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.CONTAINER}
-                  permission={hasEditDescriptionPermission}
+                  permission={
+                    hasEditDescriptionPermission && !containerData?.deleted
+                  }
                   selectedTags={tags}
                   tagType={TagSource.Glossary}
                   onSelectionChange={handleTagSelection}
@@ -668,7 +672,8 @@ const ContainerPage = () => {
             <ActivityFeedTab
               entityType={EntityType.CONTAINER}
               fqn={containerName}
-              onFeedUpdate={() => Promise.resolve()}
+              onFeedUpdate={getEntityFeedCount}
+              onUpdateEntityDetails={() => fetchContainerDetail(containerName)}
             />
           </ActivityFeedProvider>
         ),
@@ -736,6 +741,7 @@ const ContainerPage = () => {
       },
     ],
     [
+      containerData,
       description,
       containerName,
       entityName,

@@ -10,20 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+// keeping same name as variable.less
 
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { TagsDetailsProps } from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
-import { Query } from 'generated/entity/data/query';
-
-export interface TableQueryRightPanelProps {
-  query: Query;
-  isLoading: boolean;
-  permission: OperationPermission;
-  onQueryUpdate: (updatedQuery: Query, key: keyof Query) => Promise<void>;
-}
-
-export type TagDetails = {
-  isLoading: boolean;
-  options: TagsDetailsProps[];
-  isError: boolean;
-};
+export const GREEN_3 = '#48ca9e';
+export const GREEN_3_OPACITY = '#48ca9e30';
+export const YELLOW_2 = '#ffbe0e';
+export const RED_3 = '#f24822';

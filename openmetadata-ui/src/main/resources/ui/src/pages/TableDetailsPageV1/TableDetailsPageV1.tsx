@@ -453,7 +453,10 @@ const TableDetailsPageV1 = () => {
               entityFqn={datasetFQN}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.TABLE}
-              permission={tablePermissions.EditAll || tablePermissions.EditTags}
+              permission={
+                (tablePermissions.EditAll || tablePermissions.EditTags) &&
+                !tableDetails?.deleted
+              }
               selectedTags={tableTags}
               tagType={TagSource.Classification}
               onSelectionChange={handleTagSelection}
@@ -464,7 +467,10 @@ const TableDetailsPageV1 = () => {
               entityFqn={datasetFQN}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.TABLE}
-              permission={tablePermissions.EditAll || tablePermissions.EditTags}
+              permission={
+                (tablePermissions.EditAll || tablePermissions.EditTags) &&
+                !tableDetails?.deleted
+              }
               selectedTags={tableTags}
               tagType={TagSource.Glossary}
               onSelectionChange={handleTagSelection}
@@ -510,6 +516,7 @@ const TableDetailsPageV1 = () => {
               owner={tableDetails?.owner}
               tags={tableDetails?.tags}
               onFeedUpdate={getEntityFeedCount}
+              onUpdateEntityDetails={fetchTableDetails}
             />
           </ActivityFeedProvider>
         ),
@@ -558,7 +565,10 @@ const TableDetailsPageV1 = () => {
       },
       {
         label: (
-          <TabsLabel id={EntityTabs.PROFILER} name={t('label.data-quality')} />
+          <TabsLabel
+            id={EntityTabs.PROFILER}
+            name={t('label.profiler-amp-data-quality')}
+          />
         ),
         isHidden: !(
           tablePermissions.ViewAll ||

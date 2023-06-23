@@ -34,7 +34,7 @@ import { usePermissionProvider } from 'components/PermissionProvider/PermissionP
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { TestCaseStatus } from 'generated/configuration/testResultNotificationConfiguration';
 import { Operation } from 'generated/entity/policies/policy';
-import { isUndefined } from 'lodash';
+import { isUndefined, sortBy } from 'lodash';
 import { putTestCaseResult, removeTestCaseFromTestSuite } from 'rest/testAPI';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { showErrorToast } from 'utils/ToastUtils';
@@ -89,6 +89,24 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       permissions
     );
   }, [permissions]);
+
+  const sortedData = useMemo(
+    () =>
+      sortBy(testCases, (test) => {
+        switch (test.testCaseResult?.testCaseStatus) {
+          case TestCaseStatus.Failed:
+            return 0;
+          case TestCaseStatus.Aborted:
+            return 1;
+          case TestCaseStatus.Success:
+            return 2;
+
+          default:
+            return 3;
+        }
+      }),
+    [testCases]
+  );
 
   const handleCancel = () => {
     setSelectedTestCase(undefined);
@@ -356,7 +374,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           className="test-case-table-container"
           columns={columns}
           data-testid="test-case-table"
-          dataSource={testCases}
+          dataSource={sortedData}
           expandable={{
             ...getTableExpandableConfig<TestCase>(),
             expandRowByClick: true,
