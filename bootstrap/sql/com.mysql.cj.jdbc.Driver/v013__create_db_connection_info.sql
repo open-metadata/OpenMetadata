@@ -136,19 +136,15 @@ SET json = JSON_REMOVE(json, '$.sourceUrl')
 WHERE JSON_EXTRACT(json, '$.serviceType') in ('Mode');
 
 CREATE TABLE SERVER_CHANGE_LOG (
-	installed_rank SERIAL,
     version VARCHAR(256)  PRIMARY KEY,
     migrationFileName VARCHAR(256) NOT NULL,
+    checksum VARCHAR(256) PRIMARY KEY,
     installed_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    success BOOLEAN DEFAULT false,
-    UNIQUE(version)
 );
 
-CREATE TABLE SERVER_MIGRATION_SQL_LOGS (
-    version VARCHAR(256) NOT_NULL,
-    sqlStatement VARCHAR(32768)  PRIMARY KEY,
-    checksum(256) NOT_NULL
-    executedOn TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    committed BOOLEAN DEFAULT false,
-    UNIQUE(checksum)
+CREATE TABLE IF NOT EXISTS SERVER_MIGRATION_SQL_LOGS (
+    version VARCHAR(256),
+    sqlStatement VARCHAR(10000) NOT NULL,
+    checksum VARCHAR(256) PRIMARY KEY,
+    executedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

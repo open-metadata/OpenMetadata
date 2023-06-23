@@ -55,24 +55,16 @@ public class MigrationWorkflow {
           step.initialize(transactionHandler);
 
           LOG.info(
-              "[MigrationStep] Running NonTransactionalPreDataSQLs, Version: {}, DatabaseType: {}, FileName: {}",
+              "[MigrationStep] Running PreDataSQLs, Version: {}, DatabaseType: {}, FileName: {}",
               step.getMigrationVersion(),
               step.getDatabaseConnectionType(),
               step.getMigrationFileName());
-          step.nonTransactionalPreDataMigrationSQL();
+          step.preDDL();
 
           LOG.info("[MigrationStep] Transaction Started");
 
           // Begin Transaction
           transactionHandler.begin();
-
-          // Run Database Migration for all the Migration Steps
-          LOG.info(
-              "[MigrationStep] Running TransactionalPreDataSQLs, Version: {}, DatabaseType: {}, FileName: {}",
-              step.getMigrationVersion(),
-              step.getDatabaseConnectionType(),
-              step.getMigrationFileName());
-          step.transactionalPreDataMigrationSQL();
 
           // Run Database Migration for all the Migration Steps
           LOG.info(
@@ -82,23 +74,16 @@ public class MigrationWorkflow {
               step.getMigrationFileName());
           step.runDataMigration();
 
+          LOG.info("[MigrationStep] Committing Transaction");
+          transactionHandler.commit();
+
           // Run Database Migration for all the Migration Steps
           LOG.info(
               "[MigrationStep] Running TransactionalPostDataSQLs, Version: {}, DatabaseType: {}, FileName: {}",
               step.getMigrationVersion(),
               step.getDatabaseConnectionType(),
               step.getMigrationFileName());
-          step.transactionalPostDataMigrationSQL();
-
-          transactionHandler.commit();
-          LOG.info("[MigrationStep] Committing Transaction");
-
-          LOG.info(
-              "[MigrationStep] Running NonTransactionalPostDataSQLs, Version: {}, DatabaseType: {}, FileName: {}",
-              step.getMigrationVersion(),
-              step.getDatabaseConnectionType(),
-              step.getMigrationFileName());
-          step.nonTransactionalPostDataMigrationSQL();
+          step.postDDL();
 
           // Handle Migration Closure
           LOG.info(
@@ -114,7 +99,9 @@ public class MigrationWorkflow {
         // Rollback the transaction
         LOG.error("Encountered Exception in MigrationWorkflow", e);
         LOG.info("[MigrationWorkflow] Rolling Back Transaction");
-        transactionHandler.rollback();
+        if (transactionHandler.isInTransaction()) {
+          transactionHandler.rollback();
+        }
       }
     }
   }

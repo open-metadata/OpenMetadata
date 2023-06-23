@@ -1,16 +1,14 @@
 package org.openmetadata.service.migration.versions.mysql;
 
-import java.util.ArrayList;
+import static org.openmetadata.service.migration.MigrationUtil.addInListIfToBeExecuted;
+import static org.openmetadata.service.migration.MigrationUtil.updateFQNHashForEntity;
+
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
-import org.jdbi.v3.core.statement.Batch;
-import org.jdbi.v3.core.statement.PreparedBatch;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
@@ -51,21 +49,17 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityDAO;
-import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.MigrationDAO.ServerMigrationSQLTable;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.MigrationFile;
 import org.openmetadata.service.migration.api.MigrationStep;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 @MigrationFile(name = "MySQLMigrationOneDotOne")
+@SuppressWarnings("unused")
 public class MySQLMigrationOneDotOne implements MigrationStep {
   private CollectionDAO collectionDAO;
   private MigrationDAO migrationDAO;
@@ -93,22 +87,42 @@ public class MySQLMigrationOneDotOne implements MigrationStep {
     this.migrationDAO = handle.attach(MigrationDAO.class);
   }
 
-  public static List<ServerMigrationSQLTable> addInListIfToBeExecuted(
-      String version, Set<String> lookUp, List<String> queries) {
-    List<ServerMigrationSQLTable> result = new ArrayList<>();
-    for (String query : queries) {
-      ServerMigrationSQLTable tableContent = buildServerMigrationTable(version, query);
-      if (!lookUp.contains(tableContent.getCheckSum())) {
-        result.add(tableContent);
-      } else {
-        // TODO:LOG better
-        LOG.debug("Query will be skipped in Migration Step , as this has already been executed");
-      }
-    }
-    return result;
+  @Override
+  public void preDDL() {
+    preDDLFQNHashing();
   }
 
-  private void performFQNHashingNonTransactionPreMigration() {
+  @Override
+  public void runDataMigration() {
+    // FQN Hashing Migrations
+    dataMigrationFQNHashing();
+  }
+
+  @Override
+  public void postDDL() {
+    // This SQLs cannot be part of the commit as these need some data to be committed
+    postDDLFQNHashing();
+  }
+
+  @Override
+  public void close() {}
+
+  private void performSqlExecutionAndUpdation(List<String> queryList) {
+    // These are DDL Statements and will cause an Implicit commit even if part of transaction still committed inplace
+    Set<String> executedSQLChecksums =
+        new HashSet<>(migrationDAO.getServerMigrationSQLWithVersion(String.valueOf(this.getMigrationVersion())));
+    // Execute the Statements as batch
+    List<ServerMigrationSQLTable> toBeExecuted =
+        addInListIfToBeExecuted(String.valueOf(this.getMigrationVersion()), executedSQLChecksums, queryList);
+
+    for (ServerMigrationSQLTable tableData : toBeExecuted) {
+      handle.execute(tableData.getSqlStatement());
+      migrationDAO.upsertServerMigrationSQL(
+          tableData.getVersion(), tableData.getSqlStatement(), tableData.getCheckSum());
+    }
+  }
+
+  private void preDDLFQNHashing() {
     // These are DDL Statements and will cause an Implicit commit even if part of transaction still committed inplace
     List<String> queryList =
         Arrays.asList(
@@ -153,109 +167,12 @@ public class MySQLMigrationOneDotOne implements MigrationStep {
             "ALTER TABLE web_analytic_event DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL",
             "ALTER TABLE automations_workflow DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL",
             "ALTER TABLE field_relationship ADD COLUMN fromFQNHash VARCHAR(256), ADD COLUMN toFQNHash VARCHAR(256), DROP INDEX from_index, DROP INDEX to_index, ADD INDEX from_fqnhash_index(fromFQNHash, relation), ADD INDEX to_fqnhash_index(toFQNHash, relation)",
-            "ALTER TABLE entity_extension_time_series ADD COLUMN entityFQNHash VARCHAR (256) NOT NULL");
-
+            "ALTER TABLE entity_extension_time_series ADD COLUMN entityFQNHash VARCHAR (256) NOT NULL",
+            "ALTER TABLE tag_usage ADD COLUMN tagFQNHash VARCHAR(256), ADD COLUMN targetFQNHash VARCHAR(256)");
     performSqlExecutionAndUpdation(queryList);
   }
 
-  private void performFQNHashingNonTransactionalPostMigration() {
-    // These are DDL Statements and will cause an Implicit commit even if part of transaction still committed inplace
-    List<String> queryList =
-        Arrays.asList(
-            "ALTER TABLE bot_entity ADD UNIQUE (nameHash)",
-            "ALTER TABLE chart_entity ADD UNIQUE (fqnHash)",
-            "ALTER TABLE classification ADD UNIQUE (nameHash)",
-            "ALTER TABLE storage_container_entity ADD UNIQUE (fqnHash)",
-            "ALTER TABLE dashboard_data_model_entity ADD UNIQUE (fqnHash)",
-            "ALTER TABLE dashboard_entity ADD UNIQUE (fqnHash)",
-            "ALTER TABLE dashboard_service_entity ADD UNIQUE (nameHash)",
-            "ALTER TABLE data_insight_chart ADD UNIQUE (fqnHash)",
-            "ALTER TABLE database_entity ADD UNIQUE (fqnHash)",
-            "ALTER TABLE database_schema_entity ADD UNIQUE (fqnHash)",
-            "ALTER TABLE dbservice_entity ADD UNIQUE (nameHash)",
-            "ALTER TABLE event_subscription_entity ADD UNIQUE (nameHash)",
-            "ALTER TABLE glossary_entity ADD UNIQUE (nameHash)",
-            "ALTER TABLE glossary_term_entity ADD UNIQUE (fqnHash)",
-            "ALTER TABLE ingestion_pipeline_entity ADD UNIQUE (fqnHash)",
-            "ALTER TABLE kpi_entity ADD UNIQUE (nameHash)",
-            "ALTER TABLE messaging_service_entity ADD UNIQUE (nameHash)",
-            "ALTER TABLE metadata_service_entity ADD UNIQUE (nameHash)",
-            "ALTER TABLE metric_entity ADD UNIQUE (fqnHash)",
-            "ALTER TABLE ml_model_entity ADD UNIQUE (fqnHash)",
-            "ALTER TABLE mlmodel_service_entity ADD UNIQUE (nameHash)",
-            "ALTER TABLE pipeline_entity ADD UNIQUE (fqnHash)",
-            "ALTER TABLE pipeline_service_entity ADD UNIQUE (nameHash)",
-            "ALTER TABLE policy_entity ADD UNIQUE (fqnHash)",
-            "ALTER TABLE query_entity ADD UNIQUE (nameHash)",
-            "ALTER TABLE report_entity ADD UNIQUE (fqnHash)",
-            "ALTER TABLE role_entity ADD UNIQUE (nameHash)",
-            "ALTER TABLE storage_service_entity ADD UNIQUE (nameHash)",
-            "ALTER TABLE table_entity ADD UNIQUE (fqnHash)",
-            "ALTER TABLE tag ADD UNIQUE (fqnHash)",
-            "ALTER TABLE team_entity ADD UNIQUE (nameHash)",
-            "ALTER TABLE test_case ADD UNIQUE (fqnHash)",
-            "ALTER TABLE test_connection_definition ADD UNIQUE (nameHash)",
-            "ALTER TABLE test_definition ADD UNIQUE (nameHash)",
-            "ALTER TABLE test_suite ADD UNIQUE (nameHash)",
-            "ALTER TABLE topic_entity ADD UNIQUE (fqnHash)",
-            "ALTER TABLE type_entity ADD UNIQUE (nameHash)",
-            "ALTER TABLE user_entity ADD UNIQUE (nameHash)",
-            "ALTER TABLE web_analytic_event ADD UNIQUE (fqnHash)",
-            "ALTER TABLE automations_workflow ADD UNIQUE (nameHash)",
-            "ALTER TABLE entity_extension_time_series DROP COLUMN entityFQN",
-            "ALTER TABLE field_relationship DROP KEY `PRIMARY`,ADD CONSTRAINT  `field_relationship_primary` PRIMARY KEY(fromFQNHash, toFQNHash, relation), MODIFY fromFQN VARCHAR(2096) NOT NULL, MODIFY toFQN VARCHAR(2096) NOT NULL");
-
-    performSqlExecutionAndUpdation(queryList);
-  }
-
-  private void performSqlExecutionAndUpdation(List<String> queryList) {
-    // These are DDL Statements and will cause an Implicit commit even if part of transaction still committed inplace
-    Set<String> executedSQLChecksums =
-        new HashSet<>(migrationDAO.getServerMigrationSQLWithVersion(String.valueOf(this.getMigrationVersion())));
-    // Execute the Statements as batch
-    List<ServerMigrationSQLTable> toBeExecuted =
-        addInListIfToBeExecuted(String.valueOf(this.getMigrationVersion()), executedSQLChecksums, queryList);
-    Batch batch = handle.createBatch();
-    for (ServerMigrationSQLTable tableData : toBeExecuted) {
-      batch.add(tableData.getSqlStatement());
-    }
-    batch.execute();
-
-    // Update the Statements to Database
-    String updateStatement =
-        "INSERT INTO SERVER_MIGRATION_SQL_LOGS (version, sqlStatement, checksum, executedAt)"
-            + "VALUES (:version, :sqlStatement, :checksum, CURRENT_TIMESTAMP) "
-            + "ON DUPLICATE KEY UPDATE "
-            + "version = :version, "
-            + "sqlStatement = :sqlStatement, "
-            + "executedAt = CURRENT_TIMESTAMP";
-
-    PreparedBatch upsertBatch = handle.prepareBatch(updateStatement);
-
-    for (ServerMigrationSQLTable tableData : toBeExecuted) {
-      upsertBatch
-          .bind("version", tableData.getVersion())
-          .bind("sqlStatement", tableData.getSqlStatement())
-          .bind("checksum", tableData.getCheckSum())
-          .add();
-    }
-
-    upsertBatch.execute();
-  }
-
-  @Override
-  public void nonTransactionalPreDataMigrationSQL() {
-    performFQNHashingNonTransactionPreMigration();
-    //    // TODO: tag_usage
-  }
-
-  @Override
-  public void transactionalPreDataMigrationSQL() {
-    // Nothing to do here
-  }
-
-  @Override
-  public void runDataMigration() {
+  private void dataMigrationFQNHashing() {
     // Migration for Entities
     updateFQNHashForEntity(Bot.class, collectionDAO.botDAO());
     updateFQNHashForEntity(Chart.class, collectionDAO.chartDAO());
@@ -304,29 +221,8 @@ public class MySQLMigrationOneDotOne implements MigrationStep {
     // TimeSeries
     updateFQNHashEntityExtensionTimeSeries();
 
-    // TODO: Remaining table TagUsage
-
-  }
-
-  @Override
-  public void transactionalPostDataMigrationSQL() {}
-
-  @Override
-  public void nonTransactionalPostDataMigrationSQL() {
-    // This SQLs cannot be part of the commit as these need some data to be committed
-    performFQNHashingNonTransactionalPostMigration();
-
-    // TODO: tag_Usage
-  }
-
-  @SneakyThrows
-  private static <T extends EntityInterface> void updateFQNHashForEntity(Class<T> clazz, EntityDAO<T> dao) {
-    List<String> jsons = dao.listAfter(new ListFilter(Include.ALL), Integer.MAX_VALUE, "");
-    for (String json : jsons) {
-      T entity = JsonUtils.readValue(json, clazz);
-      dao.update(
-          entity.getId(), FullyQualifiedName.buildHash(entity.getFullyQualifiedName()), JsonUtils.pojoToJson(entity));
-    }
+    // Tag Usage
+    updateFQNHashTagUsage();
   }
 
   private void updateFQNHashForFieldRelationship() {
@@ -364,20 +260,68 @@ public class MySQLMigrationOneDotOne implements MigrationStep {
   }
 
   private void updateFQNHashTagUsage() {
-    //    List<TagLabel> tagLabelList = collectionDAO.tagUsageDAO().listAll();
-    //    for (TagLabel label : tagLabelList) {
-    //      collectionDAO.tagUsageDAO().updateTagPrefix();
-    //    }
+    List<CollectionDAO.TagUsageDAO.TagLabelMigration> tagLabelMigrationList = collectionDAO.tagUsageDAO().listAll();
+    for (CollectionDAO.TagUsageDAO.TagLabelMigration tagLabel : tagLabelMigrationList) {
+      collectionDAO
+          .tagUsageDAO()
+          .upsertFQNHash(
+              tagLabel.getSource(),
+              tagLabel.getTagFQN(),
+              FullyQualifiedName.buildHash(tagLabel.getTagFQN()),
+              FullyQualifiedName.buildHash(tagLabel.getTargetFQN()),
+              tagLabel.getLabelType(),
+              tagLabel.getState(),
+              tagLabel.getTargetFQN());
+    }
   }
 
-  public static ServerMigrationSQLTable buildServerMigrationTable(String version, String statement) {
-    ServerMigrationSQLTable result = new ServerMigrationSQLTable();
-    result.setVersion(String.valueOf(version));
-    result.setSqlStatement(statement);
-    result.setCheckSum(EntityUtil.hash(statement));
-    return result;
+  private void postDDLFQNHashing() {
+    // These are DDL Statements and will cause an Implicit commit even if part of transaction still committed inplace
+    List<String> queryList =
+        Arrays.asList(
+            "ALTER TABLE bot_entity ADD UNIQUE (nameHash)",
+            "ALTER TABLE chart_entity ADD UNIQUE (fqnHash)",
+            "ALTER TABLE classification ADD UNIQUE (nameHash)",
+            "ALTER TABLE storage_container_entity ADD UNIQUE (fqnHash)",
+            "ALTER TABLE dashboard_data_model_entity ADD UNIQUE (fqnHash)",
+            "ALTER TABLE dashboard_entity ADD UNIQUE (fqnHash)",
+            "ALTER TABLE dashboard_service_entity ADD UNIQUE (nameHash)",
+            "ALTER TABLE data_insight_chart ADD UNIQUE (fqnHash)",
+            "ALTER TABLE database_entity ADD UNIQUE (fqnHash)",
+            "ALTER TABLE database_schema_entity ADD UNIQUE (fqnHash)",
+            "ALTER TABLE dbservice_entity ADD UNIQUE (nameHash)",
+            "ALTER TABLE event_subscription_entity ADD UNIQUE (nameHash)",
+            "ALTER TABLE glossary_entity ADD UNIQUE (nameHash)",
+            "ALTER TABLE glossary_term_entity ADD UNIQUE (fqnHash)",
+            "ALTER TABLE ingestion_pipeline_entity ADD UNIQUE (fqnHash)",
+            "ALTER TABLE kpi_entity ADD UNIQUE (nameHash)",
+            "ALTER TABLE messaging_service_entity ADD UNIQUE (nameHash)",
+            "ALTER TABLE metadata_service_entity ADD UNIQUE (nameHash)",
+            "ALTER TABLE metric_entity ADD UNIQUE (fqnHash)",
+            "ALTER TABLE ml_model_entity ADD UNIQUE (fqnHash)",
+            "ALTER TABLE mlmodel_service_entity ADD UNIQUE (nameHash)",
+            "ALTER TABLE pipeline_entity ADD UNIQUE (fqnHash)",
+            "ALTER TABLE pipeline_service_entity ADD UNIQUE (nameHash)",
+            "ALTER TABLE policy_entity ADD UNIQUE (fqnHash)",
+            "ALTER TABLE query_entity ADD UNIQUE (nameHash)",
+            "ALTER TABLE report_entity ADD UNIQUE (fqnHash)",
+            "ALTER TABLE role_entity ADD UNIQUE (nameHash)",
+            "ALTER TABLE storage_service_entity ADD UNIQUE (nameHash)",
+            "ALTER TABLE table_entity ADD UNIQUE (fqnHash)",
+            "ALTER TABLE tag ADD UNIQUE (fqnHash)",
+            "ALTER TABLE team_entity ADD UNIQUE (nameHash)",
+            "ALTER TABLE test_case ADD UNIQUE (fqnHash)",
+            "ALTER TABLE test_connection_definition ADD UNIQUE (nameHash)",
+            "ALTER TABLE test_definition ADD UNIQUE (nameHash)",
+            "ALTER TABLE test_suite ADD UNIQUE (nameHash)",
+            "ALTER TABLE topic_entity ADD UNIQUE (fqnHash)",
+            "ALTER TABLE type_entity ADD UNIQUE (nameHash)",
+            "ALTER TABLE user_entity ADD UNIQUE (nameHash)",
+            "ALTER TABLE web_analytic_event ADD UNIQUE (fqnHash)",
+            "ALTER TABLE automations_workflow ADD UNIQUE (nameHash)",
+            "ALTER TABLE entity_extension_time_series DROP COLUMN entityFQN",
+            "ALTER TABLE field_relationship DROP KEY `PRIMARY`,ADD CONSTRAINT  `field_relationship_primary` PRIMARY KEY(fromFQNHash, toFQNHash, relation), MODIFY fromFQN VARCHAR(2096) NOT NULL, MODIFY toFQN VARCHAR(2096) NOT NULL",
+            "ALTER TABLE tag_usage DROP index `source`, DROP COLUMN targetFQN, ADD UNIQUE KEY `tag_usage_key` (source, tagFQNHash, targetFQNHash)");
+    performSqlExecutionAndUpdation(queryList);
   }
-
-  @Override
-  public void close() {}
 }

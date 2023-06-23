@@ -183,3 +183,18 @@ where json #> '{serviceType}' in ('"DatabricksPipeline"','"Fivetran"');
 UPDATE dashboard_entity
 SET json = json::jsonb #- '{sourceUrl}'
 where json #> '{serviceType}' in ('"Mode"');
+
+CREATE TABLE SERVER_CHANGE_LOG (
+    version VARCHAR(256) PRIMARY KEY,
+    migrationFileName VARCHAR(256) NOT NULL,
+    checksum VARCHAR(256) NOT NULL,
+    installed_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS SERVER_MIGRATION_SQL_LOGS (
+    version VARCHAR(256),
+    sqlStatement VARCHAR(10000) NOT NULL,
+    checksum VARCHAR(256) NOT NULL,
+    executedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+

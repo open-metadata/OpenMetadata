@@ -9,6 +9,7 @@ import org.openmetadata.service.migration.api.MigrationStep;
 
 @Slf4j
 @MigrationFile(name = "PostgresMigrationOneDotOne")
+@SuppressWarnings("unused")
 public class PostgresMigrationOneDotOne implements MigrationStep {
   private CollectionDAO collectionDAO;
 
@@ -30,25 +31,16 @@ public class PostgresMigrationOneDotOne implements MigrationStep {
   }
 
   @Override
-  public void initialize(Handle handle) {
-    this.handle = handle;
-    this.collectionDAO = handle.attach(CollectionDAO.class);
-  }
+  public void initialize(Handle handle) {}
 
   @Override
-  public void nonTransactionalPreDataMigrationSQL() {}
-
-  @Override
-  public void transactionalPreDataMigrationSQL() {}
+  public void preDDL() {}
 
   @Override
   public void runDataMigration() {}
 
   @Override
-  public void transactionalPostDataMigrationSQL() {}
-
-  @Override
-  public void nonTransactionalPostDataMigrationSQL() {}
+  public void postDDL() {}
 
   @Override
   public void close() {}

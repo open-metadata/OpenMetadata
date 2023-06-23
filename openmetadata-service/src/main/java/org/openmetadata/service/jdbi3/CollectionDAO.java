@@ -1843,8 +1843,10 @@ public interface CollectionDAO {
         "SELECT source, tagFQN,  labelType, state FROM tag_usage WHERE targetFQNHash = :targetFQNHash ORDER BY tagFQN")
     List<TagLabel> getTagsInternal(@Bind("targetFQNHash") String targetFQNHash);
 
-    @SqlQuery("SELECT source, tagFQN, labelType, state FROM tag_usage")
-    List<TagLabel> listAll();
+    @SqlQuery("SELECT * FROM tag_usage")
+    @Deprecated(since = "Release 1.1")
+    @RegisterRowMapper(TagLabelMapperMigration.class)
+    List<TagLabelMigration> listAll();
 
     @SqlQuery(
         "SELECT COUNT(*) FROM tag_usage "
@@ -1865,28 +1867,29 @@ public interface CollectionDAO {
         "DELETE FROM tag_usage where targetFQNHash = :targetFQNHash OR targetFQNHash LIKE CONCAT(:targetFQNHash, '.%')")
     void deleteTagLabelsByTargetPrefix(@Bind("targetFQNHash") String targetFQNHash);
 
+    @Deprecated(since = "Release 1.1")
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO tag_usage(source, tagFQN, labelType, state, tagFQNHash, toType, relation, jsonSchema, json) "
-                + "VALUES (:fromFQNHash, :toFQNHash, :fromFQN, :toFQN, :fromType, :toType, :relation, :jsonSchema, :json) "
-                + "ON DUPLICATE KEY UPDATE json = :json",
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, targetFQN)"
+                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :targetFQN) "
+                + "ON DUPLICATE KEY UPDATE tagFQNHash = :tagFQNHash, targetFQNHash = :targetFQNHash",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO tag_usage(fromFQNHash, toFQNHash, fromFQN, toFQN, fromType, toType, relation, jsonSchema, json) "
-                + "VALUES (:fromFQNHash, :toFQNHash, :fromFQN, :toFQN, :fromType, :toType, :relation, :jsonSchema, (:json :: jsonb)) "
-                + "ON CONFLICT (fromFQNHash, toFQNHash, relation) DO UPDATE SET json = EXCLUDED.json",
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, targetFQN) "
+                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :targetFQN) "
+                + "ON CONFLICT (source, tagFQN, targetFQN) "
+                + "DO UPDATE SET tagFQNHash = EXCLUDED.tagFQNHash, targetFQNHash = EXCLUDED.targetFQNHash",
         connectionType = POSTGRES)
-    void upsert(
-        @Bind("fromFQNHash") String fromFQNHash,
-        @Bind("toFQNHash") String toFQNHash,
-        @Bind("fromFQN") String fromFQN,
-        @Bind("toFQN") String toFQN,
-        @Bind("fromType") String fromType,
-        @Bind("toType") String toType,
-        @Bind("relation") int relation,
-        @Bind("jsonSchema") String jsonSchema,
-        @Bind("json") String json);
+    void upsertFQNHash(
+        @Bind("source") int source,
+        @Bind("tagFQN") String tagFQN,
+        @Bind("tagFQNHash") String tagFQNHash,
+        @Bind("targetFQNHash") String targetFQNHash,
+        @Bind("labelType") int labelType,
+        @Bind("state") int state,
+        @Bind("targetFQN") String targetFQN);
+
     /** Update all the tagFQN starting with oldPrefix to start with newPrefix due to tag or glossary name change */
     default void updateTagPrefix(int source, String oldPrefix, String newPrefix) {
       String update =
@@ -1930,6 +1933,37 @@ public interface CollectionDAO {
             .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
             .withState(TagLabel.State.values()[r.getInt("state")])
             .withTagFQN(r.getString("tagFQN"));
+      }
+    }
+
+    @Getter
+    @Setter
+    @Deprecated(since = "Release 1.1")
+    class TagLabelMigration {
+      public int source;
+      public String tagFQN;
+      public String targetFQN;
+      public int labelType;
+      public int state;
+    }
+
+    @Deprecated(since = "Release 1.1")
+    class TagLabelMapperMigration implements RowMapper<TagLabelMigration> {
+      @Override
+      public TagLabelMigration map(ResultSet r, StatementContext ctx) throws SQLException {
+        TagLabelMigration tagLabel = new TagLabelMigration();
+
+        tagLabel.setSource(r.getInt("source"));
+        tagLabel.setLabelType(r.getInt("labelType"));
+        tagLabel.setState(r.getInt("state"));
+        tagLabel.setTagFQN(r.getString("tagFQN"));
+        // TODO : Ugly ,  but this is present is lower version and removed on higher version
+        try {
+          tagLabel.setTargetFQN(r.getString("targetFQN"));
+        } catch (Exception ex) {
+          // Nothing to do
+        }
+        return tagLabel;
       }
     }
   }

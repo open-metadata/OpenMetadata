@@ -16,19 +16,13 @@ public interface MigrationStep {
   void initialize(Handle handle);
 
   // Handle Non-transactional supported SQLs here Example changes in table struct (DDL
-  void nonTransactionalPreDataMigrationSQL();
-
-  // This method is to run SQL which can be part of the transaction
-  void transactionalPreDataMigrationSQL();
+  void preDDL();
 
   // This method is to run code to fix any data
   void runDataMigration();
 
   // This method is to run SQL which can be part of the transaction post data migrations
-  void transactionalPostDataMigrationSQL();
-
-  // This method is to run SQL which cannot be part of the transaction post data migrations
-  void nonTransactionalPostDataMigrationSQL();
+  void postDDL();
 
   void close();
 }
