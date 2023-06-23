@@ -519,6 +519,7 @@ const TableDetailsPageV1 = () => {
               owner={tableDetails?.owner}
               tags={tableDetails?.tags}
               onFeedUpdate={getEntityFeedCount}
+              onUpdateEntityDetails={fetchTableDetails}
             />
           </ActivityFeedProvider>
         ),

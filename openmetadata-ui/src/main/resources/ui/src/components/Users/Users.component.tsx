@@ -25,7 +25,7 @@ import { SearchedDataProps } from 'components/searched-data/SearchedData.interfa
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
 import { EntityType } from 'enums/entity.enum';
-import { isEmpty, toLower } from 'lodash';
+import { isEmpty, noop, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
   Fragment,
@@ -729,7 +729,7 @@ const Users = ({
             <ActivityFeedTab
               entityType={EntityType.USER_NAME}
               fqn={username}
-              onFeedUpdate={() => Promise.resolve()}
+              onFeedUpdate={noop}
             />
           </ActivityFeedProvider>
         );

@@ -20,6 +20,7 @@ export type TaskTabProps = {
   task: Thread;
   owner?: EntityReference;
   tags?: TagLabel[];
+  onUpdateEntityDetails?: () => void;
   description?: string;
 } & (
   | TableTaskTabProps
