@@ -17,12 +17,6 @@
       "maxLength": 128,
       "pattern": "^((?!::).)*$"
     },
-    "fullyQualifiedEntityName": {
-      "description": "A unique name that identifies a container. Built by concatenating parent & children containers: e.g., `parent1.parent2.children`.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 1024
-    },
     "containerDataModel": {
       "description": "This captures information about how the container's data is modeled, if it has a schema. ",
       "type": "object",
@@ -75,7 +69,7 @@
     },
     "fullyQualifiedName": {
       "description": "Name that uniquely identifies a container in the format 'ServiceName.ContainerName'.",
-      "$ref": "#/definitions/fullyQualifiedEntityName"
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this container.",

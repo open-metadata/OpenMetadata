@@ -17,18 +17,6 @@
       "maxLength": 512,
       "pattern": "^((?!::).)*$"
     },
-    "fullyQualifiedEntityName": {
-      "description": "A unique name that identifies a table. Example for table 'DatabaseService.Database.Schema.Table'.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 896
-    },
-    "columnFullyQualifiedEntityName": {
-      "description": "A unique name that identifies a column. Example for table 'DatabaseService.Database.Schema.Table.Column'.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 1024
-    },
     "profileSampleType": {
       "description": "Type of Profile Sample (percentage or rows)",
       "type": "string",
@@ -197,7 +185,7 @@
           "description": "List of referred columns for the constraint.",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/columnFullyQualifiedEntityName"
+            "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
           },
           "default": null
         }
@@ -282,7 +270,7 @@
           "$ref": "../../type/basic.json#/definitions/markdown"
         },
         "fullyQualifiedName": {
-          "$ref": "#/definitions/columnFullyQualifiedEntityName"
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
         },
         "tags": {
           "description": "Tags associated with the column.",
@@ -337,7 +325,7 @@
       "type": "object",
       "properties": {
         "fullyQualifiedName": {
-          "$ref": "#/definitions/fullyQualifiedEntityName"
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
         },
         "joinCount": {
           "type": "integer"
@@ -880,7 +868,7 @@
     },
     "fullyQualifiedName": {
       "description": "Fully qualified name of a table in the form `serviceName.databaseName.tableName`.",
-      "$ref": "#/definitions/fullyQualifiedEntityName"
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "description": {
       "description": "Description of a table.",

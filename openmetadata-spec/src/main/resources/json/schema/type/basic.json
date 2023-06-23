@@ -105,8 +105,7 @@
     "fullyQualifiedEntityName": {
       "description": "A unique name that identifies an entity. Example for table 'DatabaseService.Database.Schema.Table'.",
       "type": "string",
-      "minLength": 1,
-      "maxLength": 256
+      "minLength": 1
     },
     "sqlQuery": {
       "$comment" : "@om-field-type",
