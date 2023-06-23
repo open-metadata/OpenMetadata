@@ -261,7 +261,6 @@ const AssetsTabs = forwardRef(
                 handleSummaryPanelDisplay={setSelectedCard}
                 id={_id}
                 key={index}
-                showNameHeader={false}
                 showTags={false}
                 source={_source}
               />
