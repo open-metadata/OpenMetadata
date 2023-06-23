@@ -9,13 +9,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Redshift lineage module
+Oracle lineage module
 
 Execute with
 
 source:
-  type: redshift-lineage
-  serviceName: aws_redshift_demo_2
+  type: oracle-lineage
+  serviceName: oracle
   sourceConfig:
     config:
       queryLogDuration: 1
@@ -31,20 +31,15 @@ workflowConfig:
 """
 
 from metadata.ingestion.source.database.lineage_source import LineageSource
-from metadata.ingestion.source.database.redshift.queries import REDSHIFT_SQL_STATEMENT
-from metadata.ingestion.source.database.redshift.query_parser import (
-    RedshiftQueryParserSource,
+from metadata.ingestion.source.database.oracle.queries import (
+    ORACLE_QUERY_HISTORY_STATEMENT,
+)
+from metadata.ingestion.source.database.oracle.query_parser import (
+    OracleQueryParserSource,
 )
 
 
-class RedshiftLineageSource(RedshiftQueryParserSource, LineageSource):
-    filters = """
-        AND (
-          querytxt ILIKE '%%create%%table%%as%%select%%'
-          OR querytxt ILIKE '%%insert%%into%%select%%'
-          OR querytxt ILIKE '%%update%%'
-          OR querytxt ILIKE '%%merge%%'
-        )
-    """
+class OracleLineageSource(OracleQueryParserSource, LineageSource):
+    filters = "AND COMMAND_TYPE IN (1, 2)"
 
-    sql_stmt = REDSHIFT_SQL_STATEMENT
+    sql_stmt = ORACLE_QUERY_HISTORY_STATEMENT
