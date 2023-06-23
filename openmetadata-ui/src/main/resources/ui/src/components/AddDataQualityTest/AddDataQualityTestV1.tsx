@@ -76,7 +76,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       ...getEntityBreadcrumbs(table, EntityType.TABLE),
       {
         name: getEntityName(table),
-        url: getTableTabPath(table.fullyQualifiedName || '', 'profiler'),
+        url: getTableTabPath(table.fullyQualifiedName ?? '', 'profiler'),
       },
       {
         name: t('label.add-entity-test', {

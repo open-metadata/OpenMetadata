@@ -317,14 +317,14 @@ export const getLineageData = (
     }
     const cols: { [key: string]: ModifiedColumn } = {};
     columns[node.id]?.forEach((col) => {
-      cols[col.fullyQualifiedName || col.name] = {
+      cols[col.fullyQualifiedName ?? col.name] = {
         ...col,
         type:
           type === EntityLineageNodeType.LOAD_MORE
             ? type
             : isEditMode
             ? EntityLineageNodeType.DEFAULT
-            : getColumnType(lineageEdgesV1, col.fullyQualifiedName || col.name),
+            : getColumnType(lineageEdgesV1, col.fullyQualifiedName ?? col.name),
       };
     });
 
@@ -333,7 +333,7 @@ export const getLineageData = (
       sourcePosition: Position.Right,
       targetPosition: Position.Left,
       type:
-        type === EntityLineageNodeType.LOAD_MORE || !isEditMode
+        type === EntityLineageNodeType.LOAD_MORE ?? !isEditMode
           ? type
           : EntityLineageNodeType.DEFAULT,
       className: '',
@@ -360,11 +360,11 @@ export const getLineageData = (
 
   const mainCols: { [key: string]: ModifiedColumn } = {};
   columns[mainNode.id]?.forEach((col) => {
-    mainCols[col.fullyQualifiedName || col.name] = {
+    mainCols[col.fullyQualifiedName ?? col.name] = {
       ...col,
       type: isEditMode
         ? EntityLineageNodeType.DEFAULT
-        : getColumnType(lineageEdgesV1, col.fullyQualifiedName || col.name),
+        : getColumnType(lineageEdgesV1, col.fullyQualifiedName ?? col.name),
     };
   });
   const mainNodeType = getNodeType(entityLineage, mainNode.id);
@@ -563,7 +563,7 @@ export const getUpStreamDownStreamColumnLineageArr = (
   }, [] as ColumnLineage[]);
 
   return {
-    sqlQuery: lineageDetails.sqlQuery || '',
+    sqlQuery: lineageDetails.sqlQuery ?? '',
     columnsLineage: columnsLineage,
   };
 };
@@ -825,8 +825,8 @@ export const getNewLineageConnectionDetails = (
   const { source, sourceType, target, targetType } = customEdgeData;
   const updatedLineageDetails: LineageDetails = {
     ...selectedEdgeValue?.lineageDetails,
-    sqlQuery: selectedEdgeValue?.lineageDetails?.sqlQuery || '',
-    columnsLineage: selectedEdgeValue?.lineageDetails?.columnsLineage || [],
+    sqlQuery: selectedEdgeValue?.lineageDetails?.sqlQuery ?? '',
+    columnsLineage: selectedEdgeValue?.lineageDetails?.columnsLineage ?? [],
     pipeline: isUndefined(selectedPipelineId)
       ? undefined
       : {
@@ -1195,7 +1195,7 @@ export const getLineageChildParents = (
   isParent = false,
   index = 0
 ) => {
-  const edges = isParent ? obj.upstreamEdges || [] : obj.downstreamEdges || [];
+  const edges = isParent ? obj.upstreamEdges ?? [] : obj.downstreamEdges ?? [];
   const filtered = edges.filter((edge) => {
     return isParent ? edge.toEntity === id : edge.fromEntity === id;
   });

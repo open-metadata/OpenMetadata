@@ -492,7 +492,7 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
       return {
         timestampValue: data.timestamp,
         timestamp: timestamp,
-        [tiering]: ((data?.entityCountFraction || 0) * 100).toFixed(2),
+        [tiering]: ((data?.entityCountFraction ?? 0) * 100).toFixed(2),
       };
     }
 

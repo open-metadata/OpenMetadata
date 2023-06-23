@@ -161,7 +161,7 @@ const GlossaryHeader = ({
 
     updatedDetails = {
       ...selectedData,
-      name: name?.trim() || selectedData.name,
+      name: name?.trim() ?? selectedData.name,
       displayName: displayName?.trim(),
     };
 

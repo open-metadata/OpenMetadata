@@ -165,7 +165,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
 
   const referenceArea = () => {
     const yValues = data.parameterValues?.reduce((acc, curr, i) => {
-      return { ...acc, [`y${i + 1}`]: parseInt(curr.value || '') };
+      return { ...acc, [`y${i + 1}`]: parseInt(curr.value ?? '') };
     }, {});
 
     return (

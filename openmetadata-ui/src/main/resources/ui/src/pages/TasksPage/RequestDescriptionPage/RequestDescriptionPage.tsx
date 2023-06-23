@@ -70,7 +70,7 @@ const RequestDescription = () => {
 
   const getSanitizeValue = value?.replaceAll(/^"|"$/g, '') || '';
 
-  const message = `Request description for ${getSanitizeValue || entityType} ${
+  const message = `Request description for ${getSanitizeValue ?? entityType} ${
     field !== EntityField.COLUMNS ? getEntityName(entityData) : ''
   }`;
 
@@ -102,7 +102,7 @@ const RequestDescription = () => {
     if (assignees.length) {
       const data: CreateThread = {
         from: currentUser?.name as string,
-        message: value.title || message,
+        message: value.title ?? message,
         about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
         taskDetails: {
           assignees: assignees.map((assignee) => ({
@@ -152,7 +152,7 @@ const RequestDescription = () => {
       defaultAssignee = [
         {
           label: getEntityName(owner),
-          value: owner.id || '',
+          value: owner.id ?? '',
           type: owner.type,
         },
       ];

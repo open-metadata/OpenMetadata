@@ -104,48 +104,48 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       countMetricData.push({
         name: x,
         timestamp: col.timestamp,
-        distinctCount: col.distinctCount || 0,
-        nullCount: col.nullCount || 0,
-        uniqueCount: col.uniqueCount || 0,
-        valuesCount: col.valuesCount || 0,
+        distinctCount: col.distinctCount ?? 0,
+        nullCount: col.nullCount ?? 0,
+        uniqueCount: col.uniqueCount ?? 0,
+        valuesCount: col.valuesCount ?? 0,
       });
 
       sumMetricData.push({
         name: x,
-        timestamp: col.timestamp || 0,
-        sum: col.sum || 0,
+        timestamp: col.timestamp ?? 0,
+        sum: col.sum ?? 0,
       });
 
       mathMetricData.push({
         name: x,
-        timestamp: col.timestamp || 0,
-        max: col.max || 0,
-        min: col.min || 0,
-        mean: col.mean || 0,
+        timestamp: col.timestamp ?? 0,
+        max: col.max ?? 0,
+        min: col.min ?? 0,
+        mean: col.mean ?? 0,
       });
 
       proportionMetricData.push({
         name: x,
-        timestamp: col.timestamp || 0,
-        distinctProportion: Math.round((col.distinctProportion || 0) * 100),
-        nullProportion: Math.round((col.nullProportion || 0) * 100),
-        uniqueProportion: Math.round((col.uniqueProportion || 0) * 100),
+        timestamp: col.timestamp ?? 0,
+        distinctProportion: Math.round((col.distinctProportion ?? 0) * 100),
+        nullProportion: Math.round((col.nullProportion ?? 0) * 100),
+        uniqueProportion: Math.round((col.uniqueProportion ?? 0) * 100),
       });
 
       quartileMetricData.push({
         name: x,
-        timestamp: col.timestamp || 0,
-        firstQuartile: col.firstQuartile || 0,
-        thirdQuartile: col.thirdQuartile || 0,
-        interQuartileRange: col.interQuartileRange || 0,
-        median: col.median || 0,
+        timestamp: col.timestamp ?? 0,
+        firstQuartile: col.firstQuartile ?? 0,
+        thirdQuartile: col.thirdQuartile ?? 0,
+        interQuartileRange: col.interQuartileRange ?? 0,
+        median: col.median ?? 0,
       });
     });
 
     const countMetricInfo = countMetrics.information.map((item) => ({
       ...item,
       latestValue:
-        countMetricData[countMetricData.length - 1]?.[item.dataKey] || 0,
+        countMetricData[countMetricData.length - 1]?.[item.dataKey] ?? 0,
     }));
     const proportionMetricInfo = proportionMetrics.information.map((item) => ({
       ...item,
@@ -153,23 +153,23 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
         `${
           proportionMetricData[proportionMetricData.length - 1]?.[
             item.dataKey
-          ] || 0
+          ] ?? 0
         }`
       ).toFixed(2),
     }));
     const mathMetricInfo = mathMetrics.information.map((item) => ({
       ...item,
       latestValue:
-        mathMetricData[mathMetricData.length - 1]?.[item.dataKey] || 0,
+        mathMetricData[mathMetricData.length - 1]?.[item.dataKey] ?? 0,
     }));
     const sumMetricInfo = sumMetrics.information.map((item) => ({
       ...item,
-      latestValue: sumMetricData[sumMetricData.length - 1]?.[item.dataKey] || 0,
+      latestValue: sumMetricData[sumMetricData.length - 1]?.[item.dataKey] ?? 0,
     }));
     const quartileMetricInfo = quartileMetrics.information.map((item) => ({
       ...item,
       latestValue:
-        quartileMetricData[quartileMetricData.length - 1]?.[item.dataKey] || 0,
+        quartileMetricData[quartileMetricData.length - 1]?.[item.dataKey] ?? 0,
     }));
 
     setCountMetrics((pre) => ({

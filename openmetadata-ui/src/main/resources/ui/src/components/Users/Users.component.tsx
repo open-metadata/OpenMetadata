@@ -75,6 +75,511 @@ const Users = ({
     }
   };
 
+<<<<<<< HEAD
+=======
+  const handleDisplayNameChange = () => {
+    if (displayName !== userData.displayName) {
+      updateUserDetails({ displayName: displayName ?? '' });
+    }
+    setIsDisplayNameEdit(false);
+  };
+
+  const handleDescriptionChange = async (description: string) => {
+    await updateUserDetails({ description });
+
+    setIsDescriptionEdit(false);
+  };
+
+  const handleRolesChange = () => {
+    // filter out the roles , and exclude the admin one
+    const updatedRoles = selectedRoles.filter(
+      (roleId) => roleId !== toLower(TERM_ADMIN)
+    );
+
+    // get the admin role and send it as boolean value `isAdmin=Boolean(isAdmin)
+    const isAdmin = selectedRoles.find(
+      (roleId) => roleId === toLower(TERM_ADMIN)
+    );
+    updateUserDetails({
+      roles: updatedRoles.map((roleId) => {
+        const role = roles.find((r) => r.id === roleId);
+
+        return { id: roleId, type: 'role', name: role?.name ?? '' };
+      }),
+      isAdmin: Boolean(isAdmin),
+    });
+
+    setIsRolesEdit(false);
+  };
+  const handleTeamsChange = () => {
+    updateUserDetails({
+      teams: selectedTeams.map((teamId) => {
+        return { id: teamId, type: 'team' };
+      }),
+    });
+
+    setIsTeamsEdit(false);
+  };
+
+  const handleOnRolesChange = (value: string[]) => {
+    setSelectedRoles(value);
+  };
+
+  const handleOnTeamsChange = (value: string[]) => {
+    setSelectedTeams(value);
+  };
+
+  const handleChangePassword = async (data: ChangePasswordRequest) => {
+    try {
+      setIsLoading(true);
+      const sendData = {
+        ...data,
+        ...(isAdminUser &&
+          !isLoggedinUser && {
+            username: userData.name,
+            requestType: RequestType.User,
+          }),
+      };
+      await changePassword(sendData);
+      setIsChangePassword(false);
+      showSuccessToast(
+        t('server.update-entity-success', { entity: t('label.password') })
+      );
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsLoading(true);
+    }
+  };
+
+  const getDisplayNameComponent = () => {
+    if (isAdminUser || isLoggedinUser || isAuthDisabled) {
+      return (
+        <div className="w-full">
+          {isDisplayNameEdit ? (
+            <InlineEdit
+              direction="vertical"
+              onCancel={() => setIsDisplayNameEdit(false)}
+              onSave={handleDisplayNameChange}>
+              <Input
+                className="w-full"
+                data-testid="displayName"
+                id="displayName"
+                name="displayName"
+                placeholder={t('label.display-name')}
+                type="text"
+                value={displayName}
+                onChange={onDisplayNameChange}
+              />
+            </InlineEdit>
+          ) : (
+            <Fragment>
+              <span className="tw-text-base tw-font-medium tw-mr-2 tw-overflow-auto">
+                {userData.displayName ||
+                  t('label.add-entity', { entity: t('label.display-name') })}
+              </span>
+              <button
+                className="tw-ml-2 focus:tw-outline-none"
+                data-testid="edit-displayName"
+                onClick={() => setIsDisplayNameEdit(true)}>
+                <EditIcon color={DE_ACTIVE_COLOR} width={16} />
+              </button>
+            </Fragment>
+          )}
+        </div>
+      );
+    } else {
+      return (
+        <p className="tw-mt-2">
+          {getEntityName(userData as unknown as EntityReference)}
+        </p>
+      );
+    }
+  };
+
+  const getDescriptionComponent = () => {
+    if (isAdminUser || isLoggedinUser || isAuthDisabled) {
+      return (
+        <div className="flex items-center justify-between">
+          <Description
+            description={userData.description || ''}
+            entityName={getEntityName(userData as unknown as EntityReference)}
+            hasEditAccess={isAdminUser || isLoggedinUser}
+            isEdit={isDescriptionEdit}
+            onCancel={() => setIsDescriptionEdit(false)}
+            onDescriptionEdit={() => setIsDescriptionEdit(true)}
+            onDescriptionUpdate={handleDescriptionChange}
+          />
+        </div>
+      );
+    } else {
+      return (
+        <Typography.Paragraph className="m-b-0">
+          {userData.description || (
+            <span className="text-grey-muted">
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
+            </span>
+          )}
+        </Typography.Paragraph>
+      );
+    }
+  };
+
+  const getChangePasswordComponent = () => {
+    return (
+      <div>
+        <Typography.Text
+          className="text-primary text-xs cursor-pointer"
+          onClick={() => setIsChangePassword(true)}>
+          {t('label.change-entity', { entity: t('label.password-lowercase') })}
+        </Typography.Text>
+
+        <ChangePasswordForm
+          isLoading={isLoading}
+          isLoggedinUser={isLoggedinUser}
+          visible={isChangePassword}
+          onCancel={() => setIsChangePassword(false)}
+          onSave={(data) => handleChangePassword(data)}
+        />
+      </div>
+    );
+  };
+
+  const getTeamsComponent = () => {
+    const teamsElement = (
+      <Fragment>
+        {getNonDeletedTeams(userData.teams ?? []).map((team, i) => (
+          <div
+            className="tw-mb-2 d-flex tw-items-center tw-gap-2"
+            data-testid={team.name}
+            key={i}>
+            <IconTeamsGrey height={16} width={16} />
+            <Typography.Text
+              className="ant-typography-ellipsis-custom w-48"
+              ellipsis={{ tooltip: true }}>
+              {getEntityName(team)}
+            </Typography.Text>
+          </div>
+        ))}
+        {isEmpty(userData.teams) && (
+          <span className="text-grey-muted ">{t('message.no-team-found')}</span>
+        )}
+      </Fragment>
+    );
+
+    if (!isAdminUser && !isAuthDisabled) {
+      return (
+        <Card
+          className="ant-card-feed relative card-body-border-none card-padding-y-0"
+          key="teams-card"
+          style={{
+            marginTop: '20px',
+          }}
+          title={
+            <div className="d-flex tw-items-center tw-justify-between">
+              <h6 className="right-panel-label tw-mb-0">
+                {t('label.team-plural')}
+              </h6>
+            </div>
+          }>
+          <div className="tw-mb-4">{teamsElement}</div>
+        </Card>
+      );
+    } else {
+      return (
+        <Card
+          className="ant-card-feed relative card-body-border-none card-padding-y-0"
+          key="teams-card"
+          style={{
+            marginTop: '20px',
+          }}
+          title={
+            <div className="d-flex tw-items-center tw-justify-between">
+              <h6 className="right-panel-label tw-mb-0">
+                {t('label.team-plural')}
+              </h6>
+              {!isTeamsEdit && (
+                <button
+                  className="tw-ml-2 focus:tw-outline-none "
+                  data-testid="edit-teams"
+                  onClick={() => setIsTeamsEdit(true)}>
+                  <EditIcon color={DE_ACTIVE_COLOR} width={16} />
+                </button>
+              )}
+            </div>
+          }>
+          <div className="tw-mb-4">
+            {isTeamsEdit ? (
+              <InlineEdit
+                direction="vertical"
+                onCancel={() => setIsTeamsEdit(false)}
+                onSave={handleTeamsChange}>
+                <TeamsSelectable
+                  filterJoinable
+                  selectedTeams={selectedTeams}
+                  onSelectionChange={handleOnTeamsChange}
+                />
+              </InlineEdit>
+            ) : (
+              teamsElement
+            )}
+          </div>
+        </Card>
+      );
+    }
+  };
+
+  const getRolesComponent = () => {
+    const userRolesOption = roles?.map((role) => ({
+      label: getEntityName(role as unknown as EntityReference),
+      value: role.id,
+    }));
+    if (!userData.isAdmin) {
+      userRolesOption.push({
+        label: TERM_ADMIN,
+        value: toLower(TERM_ADMIN),
+      });
+    }
+
+    const rolesElement = (
+      <Fragment>
+        {userData.isAdmin && (
+          <div className="tw-mb-2 d-flex tw-items-center tw-gap-2">
+            <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
+            <span>{TERM_ADMIN}</span>
+          </div>
+        )}
+        {userData.roles?.map((role, i) => (
+          <div className="tw-mb-2 d-flex tw-items-center tw-gap-2" key={i}>
+            <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
+            <Typography.Text
+              className="ant-typography-ellipsis-custom w-48"
+              ellipsis={{ tooltip: true }}>
+              {getEntityName(role)}
+            </Typography.Text>
+          </div>
+        ))}
+        {!userData.isAdmin && isEmpty(userData.roles) && (
+          <span className="text-grey-muted ">
+            {t('message.no-roles-assigned')}
+          </span>
+        )}
+      </Fragment>
+    );
+
+    if (!isAdminUser && !isAuthDisabled) {
+      return (
+        <Card
+          className="ant-card-feed relative card-body-border-none card-padding-y-0"
+          key="roles-card "
+          style={{
+            marginTop: '20px',
+          }}
+          title={
+            <div className="d-flex tw-items-center tw-justify-between">
+              <h6 className="right-panel-label tw-mb-0">
+                {t('label.role-plural')}
+              </h6>
+            </div>
+          }>
+          <div className="roles-container">{rolesElement}</div>
+        </Card>
+      );
+    } else {
+      return (
+        <Card
+          className="ant-card-feed relative card-body-border-none card-padding-y-0"
+          key="roles-card"
+          style={{
+            marginTop: '20px',
+          }}
+          title={
+            <div className="d-flex tw-items-center tw-justify-between">
+              <h6 className="right-panel-label tw-mb-0">
+                {t('label.role-plural')}
+              </h6>
+              {!isRolesEdit && (
+                <button
+                  className="tw-ml-2 focus:tw-outline-none"
+                  data-testid="edit-roles"
+                  onClick={() => setIsRolesEdit(true)}>
+                  <EditIcon color={DE_ACTIVE_COLOR} width={16} />
+                </button>
+              )}
+            </div>
+          }>
+          <div className="tw-mb-4">
+            {isRolesEdit ? (
+              <InlineEdit
+                direction="vertical"
+                onCancel={() => setIsRolesEdit(false)}
+                onSave={handleRolesChange}>
+                <Select
+                  allowClear
+                  showSearch
+                  aria-label="Select roles"
+                  className="w-full"
+                  id="select-role"
+                  loading={isRolesLoading}
+                  mode="multiple"
+                  options={userRolesOption}
+                  placeholder={t('label.role-plural')}
+                  value={!isRolesLoading ? selectedRoles : []}
+                  onChange={handleOnRolesChange}
+                />
+              </InlineEdit>
+            ) : (
+              rolesElement
+            )}
+          </div>
+        </Card>
+      );
+    }
+  };
+
+  const getInheritedRolesComponent = () => {
+    return (
+      <Card
+        className="ant-card-feed relative card-body-border-none card-padding-y-0"
+        key="inherited-roles-card-component"
+        style={{
+          marginTop: '20px',
+        }}
+        title={
+          <div className="d-flex">
+            <h6
+              className="right-panel-label tw-mb-0"
+              data-testid="inherited-roles">
+              {t('label.inherited-role-plural')}
+            </h6>
+          </div>
+        }>
+        <Fragment>
+          {isEmpty(userData.inheritedRoles) ? (
+            <div className="tw-mb-4">
+              <span className="text-grey-muted">
+                {t('message.no-inherited-roles-found')}
+              </span>
+            </div>
+          ) : (
+            <div className="d-flex tw-justify-between flex-col">
+              {userData.inheritedRoles?.map((inheritedRole, i) => (
+                <div
+                  className="tw-mb-2 d-flex tw-items-center tw-gap-2"
+                  key={i}>
+                  <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
+
+                  <Typography.Text
+                    className="ant-typography-ellipsis-custom w-48"
+                    ellipsis={{ tooltip: true }}>
+                    {getEntityName(inheritedRole)}
+                  </Typography.Text>
+                </div>
+              ))}
+            </div>
+          )}
+        </Fragment>
+      </Card>
+    );
+  };
+
+  const image = useMemo(
+    () =>
+      getImageWithResolutionAndFallback(
+        ImageQuality['6x'],
+        userData.profile?.images
+      ),
+    [userData.profile?.images]
+  );
+
+  const fetchLeftPanel = () => {
+    return (
+      <div className="p-xs user-profile-antd-card" data-testid="left-panel">
+        <Card className="ant-card-feed relative" key="left-panel-card">
+          {isImgUrlValid ? (
+            <Image
+              alt="profile"
+              className="tw-w-full"
+              preview={false}
+              referrerPolicy="no-referrer"
+              src={image || ''}
+              onError={() => {
+                SetIsImgUrlValid(false);
+              }}
+            />
+          ) : (
+            <div style={{ width: 'inherit' }}>
+              <ProfilePicture
+                displayName={userData?.displayName || userData.name}
+                height="150"
+                id={userData?.id || ''}
+                name={userData?.name || ''}
+                textClass="tw-text-5xl"
+                width=""
+              />
+            </div>
+          )}
+          <Space className="p-sm w-full" direction="vertical" size={8}>
+            {getDisplayNameComponent()}
+            <Typography.Paragraph
+              className="m-b-0"
+              ellipsis={{ tooltip: true }}>
+              {userData.email}
+            </Typography.Paragraph>
+            {getDescriptionComponent()}
+            {isAuthProviderBasic &&
+              (isAdminUser || isLoggedinUser) &&
+              getChangePasswordComponent()}
+          </Space>
+        </Card>
+        {getTeamsComponent()}
+        {getRolesComponent()}
+        {getInheritedRolesComponent()}
+      </div>
+    );
+  };
+
+  const prepareSelectedRoles = () => {
+    const defaultRoles = [...(userData.roles?.map((role) => role.id) || [])];
+    if (userData.isAdmin) {
+      defaultRoles.push(toLower(TERM_ADMIN));
+    }
+    setSelectedRoles(defaultRoles);
+  };
+
+  const prepareSelectedTeams = () => {
+    setSelectedTeams(
+      getNonDeletedTeams(userData.teams || []).map((team) => team.id)
+    );
+  };
+
+  const fetchRoles = async () => {
+    setIsRolesLoading(true);
+    try {
+      const response = await getRoles(
+        '',
+        undefined,
+        undefined,
+        false,
+        PAGE_SIZE_LARGE
+      );
+      setRoles(response.data);
+    } catch (err) {
+      setRoles([]);
+      showErrorToast(
+        err as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.role-plural'),
+        })
+      );
+    } finally {
+      setIsRolesLoading(false);
+    }
+  };
+
+>>>>>>> a32ea905c (Fix sonar issue - Prefer using nullish coalescing operator)
   const handleSummaryPanelDisplay = useCallback(
     (details: SearchedDataProps['data'][number]['_source']) => {
       setShowSummaryPanel(true);

@@ -65,7 +65,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
             <div>
               <Paragraph className="welcome-screen-header-first-line m-b-0">
                 {t('message.hi-user-welcome-to', {
-                  user: userName || t('label.user'),
+                  user: userName ?? t('label.user'),
                 })}
               </Paragraph>
               <Paragraph className="welcome-screen-header-second-line m-b-0">

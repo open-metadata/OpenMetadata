@@ -152,12 +152,36 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [databaseSchemaPermission]
   );
 
+<<<<<<< HEAD
   const onThreadLinkSelect = useCallback(
     (link: string, threadType?: ThreadType) => {
       setThreadLink(link);
       if (threadType) {
         setThreadType(threadType);
       }
+=======
+  const extraInfo: Array<ExtraInfo> = [
+    {
+      key: 'Owner',
+      value:
+        databaseSchema?.owner?.type === 'team'
+          ? getTeamAndUserDetailsPath(
+              databaseSchema?.owner?.displayName ??
+                databaseSchema?.owner?.name ??
+                ''
+            )
+          : databaseSchema?.owner?.displayName ??
+            databaseSchema?.owner?.name ??
+            '',
+      placeholderText:
+        databaseSchema?.owner?.displayName ?? databaseSchema?.owner?.name ?? '',
+      isLink: databaseSchema?.owner?.type === 'team',
+      openInNewTab: false,
+      profileName:
+        databaseSchema?.owner?.type === OwnerType.USER
+          ? databaseSchema?.owner?.name
+          : undefined,
+>>>>>>> a32ea905c (Fix sonar issue - Prefer using nullish coalescing operator)
     },
     []
   );

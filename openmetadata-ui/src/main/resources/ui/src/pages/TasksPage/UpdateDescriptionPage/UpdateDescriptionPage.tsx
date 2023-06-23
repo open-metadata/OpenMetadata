@@ -77,7 +77,7 @@ const UpdateDescription = () => {
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
 
-  const message = `Update description for ${getSanitizeValue || entityType} ${
+  const message = `Update description for ${getSanitizeValue ?? entityType} ${
     field !== EntityField.COLUMNS ? getEntityName(entityData) : ''
   }`;
 
@@ -116,7 +116,7 @@ const UpdateDescription = () => {
   const onCreateTask: FormProps['onFinish'] = (value) => {
     const data: CreateThread = {
       from: currentUser?.name as string,
-      message: value.title || message,
+      message: value.title ?? message,
       about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
       taskDetails: {
         assignees: assignees.map((assignee) => ({
@@ -163,7 +163,7 @@ const UpdateDescription = () => {
       defaultAssignee = [
         {
           label: getEntityName(owner),
-          value: owner.id || '',
+          value: owner.id ?? '',
           type: owner.type,
         },
       ];

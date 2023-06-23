@@ -178,7 +178,7 @@ export const TaskTab = ({
     }
     if (isTaskTags) {
       const tagsData = {
-        newValue: taskDetails?.suggestion || '[]',
+        newValue: taskDetails?.suggestion ?? '[]',
       };
 
       updateTaskData(tagsData as TaskDetails);
@@ -197,7 +197,7 @@ export const TaskTab = ({
   }) => {
     if (isTaskTags) {
       const tagsData = {
-        newValue: JSON.stringify(updatedTags) || '[]',
+        newValue: JSON.stringify(updatedTags) ?? '[]',
       };
 
       updateTaskData(tagsData as TaskDetails);

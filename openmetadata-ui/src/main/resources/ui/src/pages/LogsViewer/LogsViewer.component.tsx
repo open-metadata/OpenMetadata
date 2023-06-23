@@ -212,8 +212,8 @@ const LogsViewer = () => {
 
   const logSummaries = useMemo(() => {
     return {
-      Type: ingestionDetails?.pipelineType || '--',
-      Schedule: ingestionDetails?.airflowConfig.scheduleInterval || '--',
+      Type: ingestionDetails?.pipelineType ?? '--',
+      Schedule: ingestionDetails?.airflowConfig.scheduleInterval ?? '--',
       ['Recent Runs']: ingestionDetails?.fullyQualifiedName ? (
         <IngestionRecentRuns ingestion={ingestionDetails} />
       ) : (

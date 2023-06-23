@@ -36,8 +36,8 @@ const BrandImage: FC<BrandImageProps> = ({
     useApplicationConfigProvider();
 
   const logoSource = isMonoGram
-    ? customMonogramUrlPath || MonoGram
-    : customLogoUrlPath || Logo;
+    ? customMonogramUrlPath ?? MonoGram
+    : customLogoUrlPath ?? Logo;
 
   return (
     <img

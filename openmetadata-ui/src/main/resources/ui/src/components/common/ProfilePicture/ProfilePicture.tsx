@@ -79,7 +79,7 @@ const ProfilePicture = ({
       <div
         className="d-inline-block relative"
         style={{
-          height: `${height || width}px`,
+          height: `${height ?? width}px`,
           width: `${width}px`,
         }}>
         {getAvatarByName()}
@@ -102,7 +102,7 @@ const ProfilePicture = ({
   return profilePic ? (
     <div
       className={classNames('profile-image', type, className)}
-      style={{ height: `${height || width}px`, width: `${width}px` }}>
+      style={{ height: `${height ?? width}px`, width: `${width}px` }}>
       <img
         alt="user"
         className={profileImgClasses}

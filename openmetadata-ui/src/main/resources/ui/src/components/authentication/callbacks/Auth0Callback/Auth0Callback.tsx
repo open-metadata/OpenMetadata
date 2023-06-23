@@ -24,17 +24,17 @@ const Auth0Callback: VFC = () => {
   if (isAuthenticated) {
     getIdTokenClaims()
       .then((token) => {
-        localState.setOidcToken(token?.__raw || '');
+        localState.setOidcToken(token?.__raw ?? '');
         setIsAuthenticated(true);
         const oidcUser: OidcUser = {
-          id_token: token?.__raw || '',
+          id_token: token?.__raw ?? '',
           scope: '',
           profile: {
-            email: user?.email || '',
-            name: user?.name || '',
-            picture: user?.picture || '',
-            locale: user?.locale || '',
-            sub: user?.sub || '',
+            email: user?.email ?? '',
+            name: user?.name ?? '',
+            picture: user?.picture ?? '',
+            locale: user?.locale ?? '',
+            sub: user?.sub ?? '',
           },
         };
         handleSuccessfulLogin(oidcUser);

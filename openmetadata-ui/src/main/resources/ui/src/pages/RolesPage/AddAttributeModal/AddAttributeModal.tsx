@@ -79,7 +79,7 @@ const AddAttributeModal: FC<Props> = ({
           break;
       }
 
-      const entityReferenceData: EntityReference[] = (datalist.data || []).map(
+      const entityReferenceData: EntityReference[] = (datalist.data ?? []).map(
         (record) => ({
           id: record.id,
           name: record.name,

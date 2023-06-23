@@ -75,11 +75,11 @@ function TopicSummary({
 
     return {
       value:
-        getOwnerNameWithProfilePic(owner) ||
+        getOwnerNameWithProfilePic(owner) ??
         t('label.no-entity', {
           entity: t('label.owner'),
         }),
-      url: getTeamAndUserDetailsPath(owner?.name || ''),
+      url: getTeamAndUserDetailsPath(owner?.name ?? ''),
       isLink: owner?.name ? true : false,
     };
   }, [entityDetails, topicDetails]);

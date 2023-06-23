@@ -37,7 +37,7 @@ const FormModal = ({
     e.preventDefault();
     onSave({
       ...data,
-      description: formRef?.current?.fetchMarkDownData() || '',
+      description: formRef?.current?.fetchMarkDownData() ?? '',
     });
   };
 

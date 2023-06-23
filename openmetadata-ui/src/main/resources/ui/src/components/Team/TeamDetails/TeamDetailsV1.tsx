@@ -306,7 +306,7 @@ const TeamDetailsV1 = ({
       : [
           {
             key: 'TeamType',
-            value: currentTeam.teamType || '',
+            value: currentTeam.teamType ?? '',
           },
         ]),
   ];
@@ -1165,7 +1165,7 @@ const TeamDetailsV1 = ({
                         onClick={() =>
                           setAddAttribute({
                             type: EntityType.ROLE,
-                            selectedData: currentTeam.defaultRoles || [],
+                            selectedData: currentTeam.defaultRoles ?? [],
                           })
                         }>
                         {addRole}
@@ -1222,7 +1222,7 @@ const TeamDetailsV1 = ({
                         onClick={() =>
                           setAddAttribute({
                             type: EntityType.POLICY,
-                            selectedData: currentTeam.policies || [],
+                            selectedData: currentTeam.policies ?? [],
                           })
                         }>
                         {addPolicy}

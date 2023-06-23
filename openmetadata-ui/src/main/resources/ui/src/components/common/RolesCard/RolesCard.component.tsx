@@ -51,7 +51,7 @@ const RolesCard = ({
       roles: updatedRoles.map((roleId) => {
         const role = roles.find((r) => r.id === roleId);
 
-        return { id: roleId, type: 'role', name: role?.name || '' };
+        return { id: roleId, type: 'role', name: role?.name ?? '' };
       }),
       isAdmin: Boolean(isAdmin),
     });

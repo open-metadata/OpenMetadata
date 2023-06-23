@@ -124,7 +124,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const { datasetFQN } = useParams<{ datasetFQN: string }>();
   const [table, setTable] = useState<Table>();
   const { profile, columns } = useMemo(() => {
-    return { profile: table?.profile, columns: table?.columns || [] };
+    return { profile: table?.profile, columns: table?.columns ?? [] };
   }, [table]);
   const [settingModalVisible, setSettingModalVisible] = useState(false);
   const allTests = useRef<TestCase[]>([]);
@@ -389,6 +389,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
         ...params,
         fields: 'testCaseResult, testDefinition',
         entityLink: generateEntityLink(getDecodedFqn(datasetFQN) || ''),
+
         includeAllTests: true,
         limit: API_RES_MAX_SIZE,
       });

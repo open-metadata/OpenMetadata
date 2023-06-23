@@ -1010,11 +1010,11 @@ const ConfigureIngestion = ({
               required: false,
               type: FieldTypes.SLIDER_INPUT,
               props: {
-                value: profileSample || 100,
+                value: profileSample ?? 100,
                 onChange: handleProfileSample,
               },
               formItemProps: {
-                initialValue: profileSample || 100,
+                initialValue: profileSample ?? 100,
               },
             },
           ]
@@ -1113,11 +1113,11 @@ const ConfigureIngestion = ({
               required: false,
               type: FieldTypes.SLIDER_INPUT,
               props: {
-                value: confidence || 80,
+                value: confidence ?? 80,
                 onChange: handleConfidenceScore,
               },
               formItemProps: {
-                initialValue: confidence || 80,
+                initialValue: confidence ?? 80,
               },
             },
           ]
@@ -1161,7 +1161,7 @@ const ConfigureIngestion = ({
 
   const handleNext = () => {
     onChange({
-      description: markdownRef.current?.getEditorContent() || '',
+      description: markdownRef.current?.getEditorContent() ?? '',
     });
     onNext();
   };

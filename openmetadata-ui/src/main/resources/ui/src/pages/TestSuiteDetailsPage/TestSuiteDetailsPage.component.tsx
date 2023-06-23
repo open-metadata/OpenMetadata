@@ -122,6 +122,12 @@ const TestSuiteDetailsPage = () => {
       const response = await getListTestCase({
         fields: 'testCaseResult,testDefinition,testSuite',
         testSuiteId: testSuiteId,
+<<<<<<< HEAD
+=======
+        limit: limit ?? PAGE_SIZE,
+        before: param && param.before,
+        after: param && param.after,
+>>>>>>> ad09386e8 (Fix sonar issue - Prefer using nullish coalescing operator)
         ...param,
       });
 

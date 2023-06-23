@@ -71,7 +71,7 @@ const AddGlossary = ({
         .map((d: EntityReference) => toString(d.fullyQualifiedName))
         .filter(Boolean),
       owner: selectedOwner,
-      tags: tags || [],
+      tags: tags ?? [],
       mutuallyExclusive: Boolean(mutuallyExclusive),
     };
     onSave(data);

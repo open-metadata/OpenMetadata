@@ -220,7 +220,7 @@ const TableDetailsPageV1 = () => {
       return {
         ...tableDetails,
         tier: getTierTags(tags ?? []),
-        tableTags: getTagsWithoutTier(tags || []),
+        tableTags: getTagsWithoutTier(tags ?? []),
         entityName: getEntityName(tableDetails),
         joinedTables: Object.entries(tableFQNGrouping)
           .map<JoinedWith & { name: string }>(

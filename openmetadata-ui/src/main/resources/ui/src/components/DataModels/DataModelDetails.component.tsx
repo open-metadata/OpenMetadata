@@ -93,7 +93,7 @@ const DataModelDetails = ({
         description: dataModelData?.description,
         version: dataModelData?.version,
         entityName: getEntityName(dataModelData),
-        tags: getTagsWithoutTier(dataModelData.tags || []),
+        tags: getTagsWithoutTier(dataModelData.tags ?? []),
       };
     }, [dataModelData]);
 

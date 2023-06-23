@@ -81,7 +81,7 @@ export const getEntityField = (entityLink: string) => {
 export const getFeedListWithRelativeDays = (feedList: Thread[]) => {
   const updatedFeedList = feedList.map((feed) => ({
     ...feed,
-    relativeDay: getRelativeDateByTimeStamp(feed.updatedAt || 0),
+    relativeDay: getRelativeDateByTimeStamp(feed.updatedAt ?? 0),
   }));
   const relativeDays = [...new Set(updatedFeedList.map((f) => f.relativeDay))];
 

@@ -113,9 +113,9 @@ export const getBreadCrumbsArray = (
           ),
         },
         {
-          name: serviceData?.name || '',
+          name: serviceData?.name ?? '',
           url: getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions'),
-          imgSrc: serviceTypeLogo(serviceData?.serviceType || ''),
+          imgSrc: serviceTypeLogo(serviceData?.serviceType ?? ''),
           activeTitle: true,
         },
       ]

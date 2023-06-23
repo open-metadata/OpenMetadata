@@ -405,7 +405,7 @@ export const AuthProvider = ({
     requestInterceptor = axiosClient.interceptors.request.use(async function (
       config
     ) {
-      const token: string = localState.getOidcToken() || '';
+      const token: string = localState.getOidcToken() ?? '';
       if (token) {
         if (config.headers) {
           config.headers['Authorization'] = `Bearer ${token}`;

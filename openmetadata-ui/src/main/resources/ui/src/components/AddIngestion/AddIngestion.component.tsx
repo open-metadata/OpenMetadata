@@ -188,7 +188,7 @@ const AddIngestion = ({
       gcsConfigType: showDBTConfig ? sourceTypeData.gcsType : undefined,
       chartFilterPattern:
         sourceConfig?.chartFilterPattern ?? INITIAL_FILTER_PATTERN,
-      dbtConfigSourceType: sourceTypeData.sourceType || DBT_SOURCES.local,
+      dbtConfigSourceType: sourceTypeData.sourceType ?? DBT_SOURCES.local,
       markDeletedTables: isDatabaseService
         ? Boolean(sourceConfig?.markDeletedTables ?? true)
         : undefined,

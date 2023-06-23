@@ -143,7 +143,7 @@ const MlModelPage = () => {
       const { newValue } = res.changeDescription.fieldsAdded[0];
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
-        followers: [...(mlModelDetail.followers || []), ...newValue],
+        followers: [...(mlModelDetail.followers ?? []), ...newValue],
       }));
     } catch (error) {
       showErrorToast(

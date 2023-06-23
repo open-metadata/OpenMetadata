@@ -47,8 +47,8 @@ const SamlCallback = () => {
         id_token: idToken,
         scope: '',
         profile: {
-          email: email || '',
-          name: name || '',
+          email: email ?? '',
+          name: name ?? '',
           picture: '',
           locale: '',
           sub: '',

@@ -843,8 +843,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
         if (columnConnection) {
           const allEdge = [
-            ...(updatedLineageData.downstreamEdges || []),
-            ...(updatedLineageData.upstreamEdges || []),
+            ...(updatedLineageData.downstreamEdges ?? []),
+            ...(updatedLineageData.upstreamEdges ?? []),
           ];
           const currentEdge = allEdge.find(
             (edge) => edge.fromEntity === source && edge.toEntity === target
@@ -855,8 +855,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
               sqlQuery: '',
               columnsLineage: [
                 {
-                  fromColumns: [sourceHandle || ''],
-                  toColumn: targetHandle || '',
+                  fromColumns: [sourceHandle ?? ''],
+                  toColumn: targetHandle ?? '',
                 },
               ],
             };
@@ -867,27 +867,27 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                   return {
                     ...lineage,
                     fromColumns: [
-                      ...(lineage.fromColumns || []),
-                      sourceHandle || '',
+                      ...(lineage.fromColumns ?? []),
+                      sourceHandle ?? '',
                     ],
                   };
                 }
 
                 return lineage;
-              }) || [];
+              }) ?? [];
             if (
               !updatedColumnsLineage.find(
                 (lineage) => lineage.toColumn === targetHandle
               )
             ) {
               updatedColumnsLineage.push({
-                fromColumns: [sourceHandle || ''],
-                toColumn: targetHandle || '',
+                fromColumns: [sourceHandle ?? ''],
+                toColumn: targetHandle ?? '',
               });
             }
             newEdge.edge.lineageDetails = {
               ...currentEdge,
-              sqlQuery: currentEdge.sqlQuery || '',
+              sqlQuery: currentEdge.sqlQuery ?? '',
               columnsLineage: updatedColumnsLineage,
             };
           }
@@ -896,8 +896,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             const newEdgeData = createNewEdge(
               params,
               isEditMode,
-              sourceNode?.type || '',
-              targetNode?.type || '',
+              sourceNode?.type ?? '',
+              targetNode?.type ?? '',
               true,
               onEdgeClick,
               addPipelineClick
@@ -913,8 +913,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
           const newEdgeData = createNewEdge(
             params,
             isEditMode,
-            sourceNode?.type || '',
-            targetNode?.type || '',
+            sourceNode?.type ?? '',
+            targetNode?.type ?? '',
             false,
             onEdgeClick,
             addPipelineClick
@@ -1534,7 +1534,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       setElementsHandle({
         ...lineageData,
         nodes: newNodes,
-        downstreamEdges: [...(lineageData.downstreamEdges || []), ...edges],
+        downstreamEdges: [...(lineageData.downstreamEdges ?? []), ...edges],
       });
     }
   };

@@ -120,7 +120,7 @@ const ContainerPage = () => {
       });
       setContainerData({
         ...response,
-        tags: sortTagsCaseInsensitive(response.tags || []),
+        tags: sortTagsCaseInsensitive(response.tags ?? []),
       });
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -206,8 +206,8 @@ const ContainerPage = () => {
         ({ id }: { id: string }) => id === getCurrentUserId()
       ),
       followers: containerData?.followers ?? [],
-      size: containerData?.size || 0,
-      numberOfObjects: containerData?.numberOfObjects || 0,
+      size: containerData?.size ?? 0,
+      numberOfObjects: containerData?.numberOfObjects ?? 0,
       partitioned: containerData?.dataModel?.isPartitioned,
       entityFqn: containerData?.fullyQualifiedName ?? '',
     };
@@ -297,7 +297,7 @@ const ContainerPage = () => {
 
         setContainerData((prev) => ({
           ...(prev as Container),
-          followers: (containerData?.followers || []).filter(
+          followers: (containerData?.followers ?? []).filter(
             (follower) => follower.id !== oldValue[0].id
           ),
         }));

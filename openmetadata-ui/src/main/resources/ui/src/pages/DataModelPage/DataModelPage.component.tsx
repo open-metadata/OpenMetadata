@@ -171,7 +171,7 @@ const DataModelsPage = () => {
 
         setDataModelData((prev) => ({
           ...(prev as DashboardDataModel),
-          followers: (dataModelData?.followers || []).filter(
+          followers: (dataModelData?.followers ?? []).filter(
             (follower) => follower.id !== oldValue[0].id
           ),
         }));

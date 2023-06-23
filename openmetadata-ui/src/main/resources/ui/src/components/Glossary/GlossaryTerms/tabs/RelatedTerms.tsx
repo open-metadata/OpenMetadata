@@ -140,7 +140,7 @@ const RelatedTerms = ({
     return data.map((value) => ({
       ...value,
       value: value.id,
-      label: value.displayName || value.name,
+      label: value.displayName ?? value.name,
       key: value.id,
     }));
   };

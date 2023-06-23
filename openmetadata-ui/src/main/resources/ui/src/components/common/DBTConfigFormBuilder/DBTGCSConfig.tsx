@@ -220,7 +220,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
       },
       id: 'root/GCSCredentialsPath',
       formItemProps: {
-        initialValue: dbtSecurityConfig?.gcpConfig || '',
+        initialValue: dbtSecurityConfig?.gcpConfig ?? '',
       },
     },
   ];

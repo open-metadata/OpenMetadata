@@ -126,7 +126,7 @@ function TableSummary({
     try {
       const { data } = await getListTestCase({
         fields: 'testCaseResult',
-        entityLink: generateEntityLink(entityDetails?.fullyQualifiedName || ''),
+        entityLink: generateEntityLink(entityDetails?.fullyQualifiedName ?? ''),
         includeAllTests: true,
         limit: API_RES_MAX_SIZE,
         include: Include.NonDeleted,
@@ -141,7 +141,7 @@ function TableSummary({
 
           updateTestResults(
             tableTests.results,
-            test.testCaseResult?.testCaseStatus || ''
+            test.testCaseResult?.testCaseStatus ?? ''
           );
         }
       });

@@ -219,11 +219,12 @@ const GlossaryV1 = ({
       await addGlossaryTerm({
         ...formData,
         reviewers: formData.reviewers.map(
-          (item) => item.fullyQualifiedName || ''
+          (item) => item.fullyQualifiedName ?? ''
         ),
         glossary:
           activeGlossaryTerm?.glossary?.name ||
           (selectedData.fullyQualifiedName ?? ''),
+
         parent: activeGlossaryTerm?.fullyQualifiedName,
       });
       onTermModalSuccess();

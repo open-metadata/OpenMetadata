@@ -32,7 +32,7 @@ jest.mock('rest/tableAPI', () => ({
 
 const mockProps: ProfilerSettingsModalProps = {
   tableId: MOCK_TABLE.id,
-  columns: MOCK_TABLE.columns || [],
+  columns: MOCK_TABLE.columns ?? [],
   visible: true,
   onVisibilityChange: jest.fn(),
 };

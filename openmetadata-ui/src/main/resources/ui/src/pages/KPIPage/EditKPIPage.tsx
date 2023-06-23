@@ -107,7 +107,7 @@ const EditKPIPage = () => {
       return {
         name: kpiData.name,
         displayName: kpiData.displayName,
-        dataInsightChart: chart.displayName || chart.name,
+        dataInsightChart: chart.displayName ?? chart.name,
         metricType: metric.name,
         startDate,
         endDate,

@@ -171,7 +171,7 @@ const BotDetails: FC<BotsDetailProps> = ({
 
   const handleDisplayNameChange = () => {
     if (displayName !== botData.displayName) {
-      updateBotsDetails({ displayName: displayName || '' });
+      updateBotsDetails({ displayName: displayName ?? '' });
     }
     setIsDisplayNameEdit(false);
   };
@@ -332,7 +332,7 @@ const BotDetails: FC<BotsDetailProps> = ({
                 GlobalSettingOptions.BOTS
               ),
             },
-            { name: botData.name || '', url: '', activeTitle: true },
+            { name: botData.name ?? '', url: '', activeTitle: true },
           ]}
         />
         <Card

@@ -181,7 +181,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     if (includeColumns && includeColumns?.length > 0) {
       const includeColValue = includeColumns.map((col) => {
         if (
-          isUndefined(col.metrics) ||
+          isUndefined(col.metrics) ??
           (col.metrics && col.metrics.length === 0)
         ) {
           col.metrics = ['all'];
@@ -196,7 +196,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     }
     if (partitioning) {
       handleStateChange({
-        enablePartition: partitioning.enablePartitioning || false,
+        enablePartition: partitioning.enablePartitioning ?? false,
       });
 
       form.setFieldsValue({
@@ -421,7 +421,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             form={form}
             initialValues={{
               profileSampleType: state?.selectedProfileSampleType,
-              profileSamplePercentage: state?.profileSample || 100,
+              profileSamplePercentage: state?.profileSample ?? 100,
             }}
             layout="vertical">
             <Form.Item

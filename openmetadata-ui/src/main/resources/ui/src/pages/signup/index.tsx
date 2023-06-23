@@ -44,7 +44,7 @@ const SignUp = () => {
   const [selectedTeams, setSelectedTeams] = useState<Array<string>>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [details, setDetails] = useState({
-    displayName: appState.newUser.name || '',
+    displayName: appState.newUser.name ?? '',
     ...getNameFromUserData(
       appState.newUser as UserProfile,
       jwtPrincipalClaims,

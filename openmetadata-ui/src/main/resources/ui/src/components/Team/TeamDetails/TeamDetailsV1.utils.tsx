@@ -35,7 +35,7 @@ export const getTabs = (
     },
     assets: {
       name: t('label.asset-plural'),
-      count: filterEntityAssets(currentTeam?.owns || []).length,
+      count: filterEntityAssets(currentTeam?.owns ?? []).length,
       key: TeamsPageTab.ASSETS,
     },
     roles: {

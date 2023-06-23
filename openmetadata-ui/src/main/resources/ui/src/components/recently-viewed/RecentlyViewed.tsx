@@ -36,7 +36,7 @@ const RecentlyViewed: FunctionComponent = () => {
         .map((item) => {
           return {
             serviceType: item.serviceType,
-            name: item.displayName || prepareLabel(item.entityType, item.fqn),
+            name: item.displayName ?? prepareLabel(item.entityType, item.fqn),
             fullyQualifiedName: item.fqn,
             type: item.entityType,
           };

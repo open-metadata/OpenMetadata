@@ -308,7 +308,7 @@ const RolesDetailPage = () => {
                         onClick={() =>
                           setAddAttribute({
                             type: EntityType.POLICY,
-                            selectedData: role.policies || [],
+                            selectedData: role.policies ?? [],
                           })
                         }>
                         {t('label.add-entity', {

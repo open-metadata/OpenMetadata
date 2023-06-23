@@ -38,7 +38,7 @@ const Avatar = ({
       className={classNames('flex-center flex-shrink align-middle', className)}
       data-testid="avatar"
       style={{
-        height: `${height || width}px`,
+        height: `${height ?? width}px`,
         width: `${width}px`,
         borderRadius: type === 'circle' ? '50%' : '4px',
         background: color,

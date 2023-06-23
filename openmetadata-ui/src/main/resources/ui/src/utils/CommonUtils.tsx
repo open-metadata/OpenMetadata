@@ -591,7 +591,7 @@ export const digitFormatter = (value: number) => {
 export const getTeamsUser = (
   data?: ExtraInfo
 ): Record<string, string | undefined> | undefined => {
-  if (!isUndefined(data) && !isEmpty(data?.placeholderText || data?.id)) {
+  if (!isUndefined(data) && !isEmpty(data?.placeholderText ?? data?.id)) {
     const currentUser = AppState.getCurrentUserDetails();
     const teams = currentUser?.teams;
 
@@ -601,7 +601,7 @@ export const getTeamsUser = (
 
     if (dataFound) {
       return {
-        ownerName: (currentUser?.displayName || currentUser?.name) as string,
+        ownerName: (currentUser?.displayName ?? currentUser?.name) as string,
         id: currentUser?.id as string,
       };
     }
@@ -623,7 +623,7 @@ export const getHostNameFromURL = (url: string) => {
 export const getOwnerValue = (owner?: EntityReference) => {
   switch (owner?.type) {
     case 'team':
-      return getTeamAndUserDetailsPath(owner?.name || '');
+      return getTeamAndUserDetailsPath(owner?.name ?? '');
     case 'user':
       return getUserPath(owner?.fullyQualifiedName ?? '');
     default:

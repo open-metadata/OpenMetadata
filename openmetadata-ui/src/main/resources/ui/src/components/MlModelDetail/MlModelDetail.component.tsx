@@ -125,7 +125,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     return {
       ...mlModelDetail,
       tier: getTierTags(mlModelDetail.tags ?? []),
-      mlModelTags: getTagsWithoutTier(mlModelDetail.tags || []),
+      mlModelTags: getTagsWithoutTier(mlModelDetail.tags ?? []),
       entityName: getEntityName(mlModelDetail),
       isFollowing: mlModelDetail.followers?.some(
         ({ id }: { id: string }) => id === currentUser?.id

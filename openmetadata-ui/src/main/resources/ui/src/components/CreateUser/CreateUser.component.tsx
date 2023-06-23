@@ -251,7 +251,7 @@ const CreateUser = ({
     ) as string[];
 
     const userProfile: CreateUserSchema = {
-      description: markdownRef.current?.getEditorContent() || undefined,
+      description: markdownRef.current?.getEditorContent() ?? undefined,
       name: email.split('@')[0],
       displayName: trim(displayName),
       roles: selectedRoles,

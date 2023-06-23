@@ -101,7 +101,7 @@ const AddGlossaryTermForm = ({
       relatedTerms,
     } = formObj;
 
-    const selectedOwner = owner || {
+    const selectedOwner = owner ?? {
       id: getCurrentUserId(),
       type: 'user',
     };

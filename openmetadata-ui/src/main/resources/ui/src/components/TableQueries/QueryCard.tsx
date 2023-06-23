@@ -123,7 +123,7 @@ const QueryCard: FC<QueryCardProp> = ({
     } else {
       history.push({
         search: Qs.stringify({ ...searchFilter, query: query.id }),
-        pathname: getQueryPath(datasetFQN, query.id || ''),
+        pathname: getQueryPath(datasetFQN, query.id ?? ''),
       });
     }
   };

@@ -77,7 +77,7 @@ const AlertsActivityFeedPage = () => {
   const pageHeaderData = useMemo(
     () => ({
       header: getEntityName(alert),
-      subHeader: alert?.description || '',
+      subHeader: alert?.description ?? '',
     }),
     [alert]
   );

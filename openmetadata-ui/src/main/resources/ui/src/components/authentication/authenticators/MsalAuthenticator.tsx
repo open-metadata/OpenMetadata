@@ -80,8 +80,8 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
         id_token: idToken,
         scope: scopes.join(),
         profile: {
-          email: account?.username || '',
-          name: account?.name || '',
+          email: account?.username ?? '',
+          name: account?.name ?? '',
           picture: '',
           sub: '',
         },
@@ -96,7 +96,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       shouldFallbackToPopup = false
     ): Promise<OidcUser> => {
       const tokenRequest = {
-        account: account || accounts[0], // This is an example - Select account based on your app's requirements
+        account: account ?? accounts[0], // This is an example - Select account based on your app's requirements
         scopes: msalLoginRequest.scopes,
       };
       try {

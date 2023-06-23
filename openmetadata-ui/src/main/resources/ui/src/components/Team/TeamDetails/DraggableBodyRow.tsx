@@ -29,7 +29,7 @@ const DraggableBodyRow = ({
   const [{ isOver, dropClassName }, drop] = useDrop({
     accept: DRAGGABLE_BODY_ROW,
     collect: (monitor: DragCollectProps) => {
-      const { index: dragIndex } = monitor?.getItem() || {};
+      const { index: dragIndex } = monitor?.getItem() ?? {};
       if (dragIndex === index) {
         return {};
       }

@@ -107,10 +107,10 @@ export const getEntityName = (entity?: {
   name?: string;
   displayName?: string;
 }) => {
-  return entity?.displayName || entity?.name || '';
+  return entity?.displayName ?? entity?.name ?? '';
 };
 
-export const getEntityId = (entity?: { id?: string }) => entity?.id || '';
+export const getEntityId = (entity?: { id?: string }) => entity?.id ?? '';
 
 export const getEntityTags = (
   type: string,
@@ -119,8 +119,8 @@ export const getEntityTags = (
   switch (type) {
     case EntityType.TABLE: {
       const tableTags: Array<TagLabel> = [
-        ...getTableTags((entityDetail as Table).columns || []),
-        ...(entityDetail.tags || []),
+        ...getTableTags((entityDetail as Table).columns ?? []),
+        ...(entityDetail.tags ?? []),
       ];
 
       return tableTags;
@@ -130,7 +130,7 @@ export const getEntityTags = (
     case EntityType.TOPIC:
     case EntityType.MLMODEL:
     case EntityType.DASHBOARD_DATA_MODEL: {
-      return entityDetail.tags || [];
+      return entityDetail.tags ?? [];
     }
 
     default:
@@ -186,17 +186,17 @@ export const getEntityOverview = (
         FQN_SEPARATOR_CHAR
       ).split(FQN_SEPARATOR_CHAR);
 
-      const tier = getTierFromTableTags(tags || []);
+      const tier = getTierFromTableTags(tags ?? []);
 
       const usage = !isNil(usageSummary?.weeklyStats?.percentileRank)
-        ? getUsagePercentile(usageSummary?.weeklyStats?.percentileRank || 0)
+        ? getUsagePercentile(usageSummary?.weeklyStats?.percentileRank ?? 0)
         : '-';
 
       const overview = [
         {
           name: i18next.t('label.owner'),
           value:
-            getOwnerNameWithProfilePic(owner) ||
+            getOwnerNameWithProfilePic(owner) ??
             i18next.t('label.no-entity', {
               entity: i18next.t('label.owner'),
             }),
@@ -206,7 +206,7 @@ export const getEntityOverview = (
         },
         {
           name: i18next.t('label.type'),
-          value: tableType || TableType.Regular,
+          value: tableType ?? TableType.Regular,
           isLink: false,
           visible: [
             DRAWER_NAVIGATION_OPTIONS.lineage,
@@ -215,7 +215,7 @@ export const getEntityOverview = (
         },
         {
           name: i18next.t('label.service'),
-          value: service || NO_DATA,
+          value: service ?? NO_DATA,
           url: getServiceDetailsPath(
             service,
             ServiceCategory.DATABASE_SERVICES
@@ -225,7 +225,7 @@ export const getEntityOverview = (
         },
         {
           name: i18next.t('label.database'),
-          value: database || NO_DATA,
+          value: database ?? NO_DATA,
           url: getDatabaseDetailsPath(
             getPartialNameFromTableFQN(
               fullyQualifiedName ?? '',
@@ -238,7 +238,7 @@ export const getEntityOverview = (
         },
         {
           name: i18next.t('label.schema'),
-          value: schema || NO_DATA,
+          value: schema ?? NO_DATA,
           url: getDatabaseSchemaDetailsPath(
             getPartialNameFromTableFQN(
               fullyQualifiedName ?? '',
@@ -257,13 +257,13 @@ export const getEntityOverview = (
         },
         {
           name: i18next.t('label.usage'),
-          value: usage || NO_DATA,
+          value: usage ?? NO_DATA,
           isLink: false,
           visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
         {
           name: i18next.t('label.query-plural'),
-          value: <QueryCount tableId={entityDetail.id || ''} />,
+          value: <QueryCount tableId={entityDetail.id ?? ''} />,
           isLink: false,
           visible: [
             DRAWER_NAVIGATION_OPTIONS.lineage,
@@ -293,13 +293,13 @@ export const getEntityOverview = (
     case ExplorePageTabs.PIPELINES: {
       const { owner, tags, sourceUrl, service, displayName } =
         entityDetail as Pipeline;
-      const tier = getTierFromTableTags(tags || []);
+      const tier = getTierFromTableTags(tags ?? []);
 
       const overview = [
         {
           name: i18next.t('label.owner'),
           value:
-            getOwnerNameWithProfilePic(owner) ||
+            getOwnerNameWithProfilePic(owner) ??
             i18next.t('label.no-entity', {
               entity: i18next.t('label.owner'),
             }),
@@ -312,7 +312,7 @@ export const getEntityOverview = (
             'label.url-uppercase'
           )}`,
           dataTestId: 'pipeline-url-label',
-          value: displayName || NO_DATA,
+          value: displayName ?? NO_DATA,
           url: sourceUrl,
           isLink: true,
           isExternal: true,
@@ -323,7 +323,7 @@ export const getEntityOverview = (
         },
         {
           name: i18next.t('label.service'),
-          value: (service?.name as string) || NO_DATA,
+          value: (service?.name as string) ?? NO_DATA,
           url: getServiceDetailsPath(
             service?.name as string,
             ServiceCategory.PIPELINE_SERVICES
@@ -345,13 +345,13 @@ export const getEntityOverview = (
     case ExplorePageTabs.DASHBOARDS: {
       const { owner, tags, sourceUrl, service, displayName } =
         entityDetail as Dashboard;
-      const tier = getTierFromTableTags(tags || []);
+      const tier = getTierFromTableTags(tags ?? []);
 
       const overview = [
         {
           name: i18next.t('label.owner'),
           value:
-            getOwnerNameWithProfilePic(owner) ||
+            getOwnerNameWithProfilePic(owner) ??
             i18next.t('label.no-entity', {
               entity: i18next.t('label.owner'),
             }),
@@ -363,7 +363,7 @@ export const getEntityOverview = (
           name: `${i18next.t('label.dashboard')} ${i18next.t(
             'label.url-uppercase'
           )}`,
-          value: displayName || NO_DATA,
+          value: displayName ?? NO_DATA,
           url: sourceUrl,
           isLink: true,
           isExternal: true,
@@ -374,7 +374,7 @@ export const getEntityOverview = (
         },
         {
           name: i18next.t('label.service'),
-          value: (service?.fullyQualifiedName as string) || NO_DATA,
+          value: (service?.fullyQualifiedName as string) ?? NO_DATA,
           url: getServiceDetailsPath(
             service?.name as string,
             ServiceCategory.DASHBOARD_SERVICES
@@ -404,7 +404,7 @@ export const getEntityOverview = (
         {
           name: i18next.t('label.owner'),
           value:
-            getOwnerNameWithProfilePic(owner) ||
+            getOwnerNameWithProfilePic(owner) ??
             i18next.t('label.no-entity', {
               entity: i18next.t('label.owner'),
             }),
@@ -414,7 +414,7 @@ export const getEntityOverview = (
         },
         {
           name: i18next.t('label.algorithm'),
-          value: algorithm || NO_DATA,
+          value: algorithm ?? NO_DATA,
           url: '',
           isLink: false,
           visible: [
@@ -424,7 +424,7 @@ export const getEntityOverview = (
         },
         {
           name: i18next.t('label.target'),
-          value: target || NO_DATA,
+          value: target ?? NO_DATA,
           url: '',
           isLink: false,
           visible: [
@@ -434,7 +434,7 @@ export const getEntityOverview = (
         },
         {
           name: i18next.t('label.server'),
-          value: server || NO_DATA,
+          value: server ?? NO_DATA,
           url: server,
           isLink: Boolean(server),
           isExternal: true,
@@ -445,7 +445,7 @@ export const getEntityOverview = (
         },
         {
           name: i18next.t('label.dashboard'),
-          value: getEntityName(dashboard) || NO_DATA,
+          value: getEntityName(dashboard) ?? NO_DATA,
           url: getDashboardDetailsPath(dashboard?.fullyQualifiedName as string),
           isLink: true,
           isExternal: false,
@@ -501,13 +501,13 @@ export const getEntityOverview = (
         dataModelType,
         fullyQualifiedName,
       } = entityDetail as DashboardDataModel;
-      const tier = getTierFromTableTags(tags || []);
+      const tier = getTierFromTableTags(tags ?? []);
 
       const overview = [
         {
           name: i18next.t('label.owner'),
           value:
-            getOwnerNameWithProfilePic(owner) ||
+            getOwnerNameWithProfilePic(owner) ??
             i18next.t('label.no-entity', {
               entity: i18next.t('label.owner'),
             }),
@@ -519,7 +519,7 @@ export const getEntityOverview = (
           name: `${i18next.t('label.data-model')} ${i18next.t(
             'label.url-uppercase'
           )}`,
-          value: displayName || NO_DATA,
+          value: displayName ?? NO_DATA,
           url: getDataModelDetailsPath(fullyQualifiedName ?? ''),
           isLink: true,
           visible: [
@@ -529,7 +529,7 @@ export const getEntityOverview = (
         },
         {
           name: i18next.t('label.service'),
-          value: (service?.fullyQualifiedName as string) || NO_DATA,
+          value: (service?.fullyQualifiedName as string) ?? NO_DATA,
           url: getServiceDetailsPath(
             service?.name as string,
             ServiceCategory.DASHBOARD_SERVICES

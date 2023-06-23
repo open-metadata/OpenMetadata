@@ -101,7 +101,7 @@ export const getFormattedEntityData = (
     case SummaryEntityType.MLFEATURE: {
       return (entityInfo as MlFeature[]).map((feature) => ({
         algorithm: feature.featureAlgorithm,
-        name: feature.name || '--',
+        name: feature.name ?? '--',
         title: <Text className="entity-title">{getTitleName(feature)}</Text>,
         type: feature.dataType,
         tags: feature.tags,
