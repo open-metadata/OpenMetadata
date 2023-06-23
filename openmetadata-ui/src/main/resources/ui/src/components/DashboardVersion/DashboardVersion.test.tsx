@@ -28,7 +28,7 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
     .mockImplementation(() => <div>RichTextEditorPreviewer.component</div>);
 });
 
-jest.mock('../common/description/Description', () => {
+jest.mock('components/common/description/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>Description.component</div>);
 });
 
@@ -36,12 +36,6 @@ jest.mock('../EntityVersionTimeLine/EntityVersionTimeLine', () => {
   return jest
     .fn()
     .mockImplementation(() => <div>EntityVersionTimeLine.component</div>);
-});
-
-jest.mock('../common/entityPageInfo/EntityPageInfo', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>EntityPageInfo.component</div>);
 });
 
 jest.mock('../Loader/Loader', () => {
@@ -73,10 +67,7 @@ describe('Test DashboardVersion page', () => {
     );
     const versionData = await findByTestId(container, 'version-data');
     const schemaTable = await findByTestId(container, 'schema-table');
-    const entityPageInfo = await findByText(
-      container,
-      'EntityPageInfo.component'
-    );
+
     const entityVersionTimeLine = await findByText(
       container,
       'EntityVersionTimeLine.component'
@@ -91,7 +82,6 @@ describe('Test DashboardVersion page', () => {
     expect(dashboardVersionContainer).toBeInTheDocument();
     expect(versionData).toBeInTheDocument();
     expect(schemaTable).toBeInTheDocument();
-    expect(entityPageInfo).toBeInTheDocument();
     expect(entityVersionTimeLine).toBeInTheDocument();
     expect(tabs).toBeInTheDocument();
     expect(description).toBeInTheDocument();
@@ -117,10 +107,7 @@ describe('Test DashboardVersion page', () => {
     );
     const versionData = await findByTestId(container, 'version-data');
     const schemaTable = await findByTestId(container, 'schema-table');
-    const entityPageInfo = await findByText(
-      container,
-      'EntityPageInfo.component'
-    );
+
     const entityVersionTimeLine = await findByText(
       container,
       'EntityVersionTimeLine.component'
@@ -135,7 +122,6 @@ describe('Test DashboardVersion page', () => {
     expect(dashboardVersionContainer).toBeInTheDocument();
     expect(versionData).toBeInTheDocument();
     expect(schemaTable).toBeInTheDocument();
-    expect(entityPageInfo).toBeInTheDocument();
     expect(entityVersionTimeLine).toBeInTheDocument();
     expect(tabs).toBeInTheDocument();
     expect(description).toBeInTheDocument();
@@ -159,10 +145,6 @@ describe('Test DashboardVersion page', () => {
       'dashboard-version-container'
     );
     const versionData = await findByTestId(container, 'version-data');
-    const entityPageInfo = await findByText(
-      container,
-      'EntityPageInfo.component'
-    );
     const entityVersionTimeLine = await findByText(
       container,
       'EntityVersionTimeLine.component'
@@ -172,7 +154,6 @@ describe('Test DashboardVersion page', () => {
 
     expect(dashboardVersionContainer).toBeInTheDocument();
     expect(versionData).toBeInTheDocument();
-    expect(entityPageInfo).toBeInTheDocument();
     expect(entityVersionTimeLine).toBeInTheDocument();
     expect(tabs).toBeInTheDocument();
     expect(description).toBeInTheDocument();
