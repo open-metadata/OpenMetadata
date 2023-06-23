@@ -57,7 +57,7 @@ public final class TablesInitializer {
   private static final String OPTION_CONFIG_FILE_PATH = "config";
   private static final String DISABLE_VALIDATE_ON_MIGRATE = "disable-validate-on-migrate";
   private static final Options OPTIONS;
-  private static boolean DEBUG_MODE = false;
+  private static boolean debugMode = false;
 
   static {
     OPTIONS = new Options();
@@ -108,7 +108,7 @@ public final class TablesInitializer {
       System.exit(1);
     }
     if (commandLine.hasOption(DEBUG_MODE_ENABLED)) {
-      DEBUG_MODE = true;
+      debugMode = true;
     }
     boolean isSchemaMigrationOptionSpecified = false;
     SchemaMigrationOption schemaMigrationOptionSpecified = null;
@@ -303,7 +303,7 @@ public final class TablesInitializer {
   }
 
   private static void printToConsoleInDebug(String message) {
-    if (DEBUG_MODE) {
+    if (debugMode) {
       System.out.println(message);
     }
   }

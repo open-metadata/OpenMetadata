@@ -16,16 +16,17 @@ package org.openmetadata.service.secrets;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 
 public class NoopSecretsManager extends SecretsManager {
-
-  private static NoopSecretsManager INSTANCE;
+  private static NoopSecretsManager instance;
 
   private NoopSecretsManager(String clusterPrefix, SecretsManagerProvider secretsManagerProvider) {
     super(secretsManagerProvider, clusterPrefix);
   }
 
   public static NoopSecretsManager getInstance(String clusterPrefix, SecretsManagerProvider secretsManagerProvider) {
-    if (INSTANCE == null) INSTANCE = new NoopSecretsManager(clusterPrefix, secretsManagerProvider);
-    return INSTANCE;
+    if (instance == null) {
+      instance = new NoopSecretsManager(clusterPrefix, secretsManagerProvider);
+    }
+    return instance;
   }
 
   @Override
