@@ -274,24 +274,28 @@ export const TaskTab = ({
         {getTaskLinkElement}
       </Col>
       <Col span={24}>
-        <div className="d-flex items-center gap-2">
-          <Typography.Text className="text-grey-muted">
-            {t('label.assignee-plural')}:{' '}
-          </Typography.Text>
+        <div className="d-flex justify-between">
+          <div className="flex-center gap-2">
+            <Typography.Text className="text-grey-muted">
+              {t('label.assignee-plural')}:{' '}
+            </Typography.Text>
 
-          <OwnerLabel
-            hasPermission={false}
-            owner={taskDetails?.assignees[0]}
-            onUpdate={noop}
-          />
-          <Typography.Text className="text-grey-muted">
-            {t('label.created-by')}:{' '}
-          </Typography.Text>
-          <OwnerLabel
-            hasPermission={false}
-            owner={{ name: task.createdBy, type: 'user', id: '' }}
-            onUpdate={noop}
-          />
+            <OwnerLabel
+              hasPermission={false}
+              owner={taskDetails?.assignees[0]}
+              onUpdate={noop}
+            />
+          </div>
+          <div className="flex-center gap-2">
+            <Typography.Text className="text-grey-muted">
+              {t('label.created-by')}:{' '}
+            </Typography.Text>
+            <OwnerLabel
+              hasPermission={false}
+              owner={{ name: task.createdBy, type: 'user', id: '' }}
+              onUpdate={noop}
+            />
+          </div>
         </div>
       </Col>
       <Col span={24}>
