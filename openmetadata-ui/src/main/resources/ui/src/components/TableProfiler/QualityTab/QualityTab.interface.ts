@@ -10,26 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { DataQualityTabProps } from 'components/ProfilerDashboard/profilerDashboard.interface';
+import { Table } from 'generated/entity/data/table';
 
-@import url('../../../styles/variables.less');
-
-.parameter-value-container {
-  background: @grey-1;
-  border-radius: 4px;
-  padding: 2px 8px;
-}
-
-.sql-expression-container {
-  .table-query-editor {
-    .CodeMirror {
-      border: 1px solid @border-color;
-      border-radius: 4px;
-    }
-    .CodeMirror-gutters {
-      border: none;
-    }
-    .CodeMirror-linenumber {
-      color: @text-color;
-    }
-  }
+export interface QualityTabProps extends DataQualityTabProps {
+  testSuite: Table['testSuite'];
 }

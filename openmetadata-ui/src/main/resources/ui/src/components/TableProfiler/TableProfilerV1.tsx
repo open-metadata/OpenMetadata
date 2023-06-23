@@ -25,12 +25,24 @@ import {
   Tooltip,
 } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
+import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
 import { AxiosError } from 'axios';
 import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
+import { SummaryCardProps } from 'components/common/SummaryCard/SummaryCard.interface';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import { mockDatasetData } from 'constants/mockTourData.constants';
-import { isEmpty, isEqual, isUndefined, map } from 'lodash';
+import { Column } from 'generated/entity/data/container';
+import {
+  filter,
+  find,
+  groupBy,
+  isEmpty,
+  isEqual,
+  isUndefined,
+  map,
+  toLower,
+} from 'lodash';
 import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -45,6 +57,7 @@ import { ReactComponent as TableProfileIcon } from '../../assets/svg/table-profi
 import { API_RES_MAX_SIZE, ROUTES } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import {
+  allowedServiceForOperationGraph,
   DEFAULT_RANGE_DATA,
   INITIAL_TEST_RESULT_SUMMARY,
 } from '../../constants/profiler.constant';
@@ -60,6 +73,7 @@ import PageHeader from '../header/PageHeader.component';
 import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnPickerMenu from './Component/ColumnPickerMenu';
 import ColumnProfileTable from './Component/ColumnProfileTable';
+import ColumnSummary from './Component/ColumnSummary';
 import ProfilerSettingsModal from './Component/ProfilerSettingsModal';
 import TableProfilerChart from './Component/TableProfilerChart';
 import { QualityTab } from './QualityTab/QualityTab.component';
@@ -71,9 +85,10 @@ import {
 import './tableProfiler.less';
 
 const TableProfilerV1: FC<TableProfilerProps> = ({
+  testSuite,
   isTableDeleted,
   permissions,
-}) => {
+}: TableProfilerProps) => {
   const { t } = useTranslation();
   const history = useHistory();
   const location = useLocation();
@@ -110,9 +125,21 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const [dateRangeObject, setDateRangeObject] =
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
+
+  const showOperationGraph = useMemo(() => {
+    if (table && table.serviceType) {
+      return allowedServiceForOperationGraph.includes(table.serviceType);
+    }
+
+    return false;
+  }, [table]);
+
   const isColumnProfile = activeTab === TableProfilerTab.COLUMN_PROFILE;
   const isDataQuality = activeTab === TableProfilerTab.DATA_QUALITY;
   const isTableProfile = activeTab === TableProfilerTab.TABLE_PROFILE;
+
+  const updateActiveTab = (key: string) =>
+    history.push({ search: Qs.stringify({ activeTab: key }) });
 
   const testCaseStatusOption = useMemo(() => {
     const testCaseStatus: DefaultOptionType[] = Object.values(
@@ -135,9 +162,24 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     } else if (isDataQuality) {
       return PAGE_HEADERS.DATA_QUALITY;
     } else {
-      return PAGE_HEADERS.COLUMN_PROFILE;
+      return {
+        ...PAGE_HEADERS.COLUMN_PROFILE,
+        header: isEmpty(activeColumnFqn) ? (
+          PAGE_HEADERS.COLUMN_PROFILE.header
+        ) : (
+          <Button
+            className="p-0 text-md font-medium"
+            type="link"
+            onClick={() => updateActiveTab(TableProfilerTab.COLUMN_PROFILE)}>
+            <Space>
+              <DropDownIcon className="transform-90" height={16} width={16} />
+              {PAGE_HEADERS.COLUMN_PROFILE.header}
+            </Space>
+          </Button>
+        ),
+      };
     }
-  }, [isTableProfile, isDataQuality]);
+  }, [isTableProfile, isDataQuality, activeColumnFqn]);
 
   const testCaseTypeOption = useMemo(() => {
     const testCaseStatus: DefaultOptionType[] = map(TestType, (value, key) => ({
@@ -245,9 +287,6 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
       onClick: () => handleAddTestClick(ProfilerDashboardType.COLUMN),
     },
   ];
-
-  const updateActiveTab = (key: string) =>
-    history.push({ search: Qs.stringify({ activeTab: key }) });
 
   const updateActiveColumnFqn = (key: string) =>
     history.push({ search: Qs.stringify({ activeColumnFqn: key, activeTab }) });
@@ -368,6 +407,29 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     }
   };
 
+  const selectedColumn = useMemo(() => {
+    return find(
+      columns,
+      (column: Column) => column.fullyQualifiedName === activeColumnFqn
+    );
+  }, [columns, activeColumnFqn]);
+
+  const selectedColumnTestsObj = useMemo(() => {
+    const temp = filter(
+      columnTests,
+      (test: TestCase) => test.entityFQN === activeColumnFqn
+    );
+
+    const statusDict = {
+      [TestCaseStatus.Success]: [],
+      [TestCaseStatus.Aborted]: [],
+      [TestCaseStatus.Failed]: [],
+      ...groupBy(temp, 'testCaseResult.testCaseStatus'),
+    };
+
+    return { statusDict, totalTests: temp.length };
+  }, [activeColumnFqn, columnTests]);
+
   useEffect(() => {
     if (!isUndefined(table) && viewTest && !isTourPage) {
       fetchAllTests();
@@ -481,7 +543,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
             </Col>
           </Row>
 
-          {isUndefined(profile) && (
+          {isUndefined(profile) && !isDataQuality && (
             <div
               className="tw-border d-flex tw-items-center tw-border-warning tw-rounded tw-p-2 tw-mb-4"
               data-testid="no-profiler-placeholder">
@@ -501,20 +563,42 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
             </div>
           )}
 
-          {!isDataQuality && (
-            <Space>
-              {overallSummery.map((summery) => (
-                <SummaryCard
-                  className={summery.className}
-                  key={summery.title}
-                  showProgressBar={false}
-                  title={summery.title}
-                  total={0}
-                  value={summery.value}
-                />
-              ))}
-            </Space>
-          )}
+          <Row gutter={[16, 16]}>
+            {!isUndefined(selectedColumn) && (
+              <Col span={10}>
+                <ColumnSummary column={selectedColumn} />
+              </Col>
+            )}
+            {!isDataQuality && (
+              <Col span={selectedColumn ? 14 : 24}>
+                <Row wrap gutter={[16, 16]}>
+                  {overallSummery.map((summery) => (
+                    <Col key={summery.title}>
+                      <SummaryCard
+                        className={summery.className}
+                        showProgressBar={false}
+                        title={summery.title}
+                        total={0}
+                        value={summery.value}
+                      />
+                    </Col>
+                  ))}
+                  {!isEmpty(activeColumnFqn) &&
+                    map(selectedColumnTestsObj.statusDict, (data, key) => (
+                      <Col key={key}>
+                        <SummaryCard
+                          showProgressBar
+                          title={key}
+                          total={selectedColumnTestsObj.totalTests}
+                          type={toLower(key) as SummaryCardProps['type']}
+                          value={data.length}
+                        />
+                      </Col>
+                    ))}
+                </Row>
+              </Col>
+            )}
+          </Row>
 
           {isColumnProfile && (
             <ColumnProfileTable
@@ -531,14 +615,19 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
           {isDataQuality && (
             <QualityTab
               isLoading={isTestCaseLoading}
+              showTableColumn={false}
               testCases={getFilterTestCase()}
+              testSuite={testSuite}
               onTestCaseResultUpdate={handleResultUpdate}
               onTestUpdate={fetchAllTests}
             />
           )}
 
           {isTableProfile && (
-            <TableProfilerChart dateRangeObject={dateRangeObject} />
+            <TableProfilerChart
+              dateRangeObject={dateRangeObject}
+              showOperationGraph={showOperationGraph}
+            />
           )}
 
           {settingModalVisible && (

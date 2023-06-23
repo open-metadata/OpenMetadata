@@ -34,11 +34,15 @@ jest.mock('components/AddDataQualityTest/rightPanelData', () => ({
   getRightPanelForAddTestSuitePage: jest.fn().mockReturnValue('Add test suite'),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('utils/CommonUtils', () => ({
   getCurrentUserId: jest.fn().mockReturnValue('1'),
 }));
+jest.mock('constants/TestSuite.constant', () => ({
+  STEPS_FOR_ADD_TEST_SUITE: [],
+  TEST_SUITE_STEPPER_BREADCRUMB: [],
+}));
 
-jest.mock('../../utils/RouterUtils', () => ({
+jest.mock('utils/RouterUtils', () => ({
   getTestSuitePath: jest.fn().mockReturnValue('/'),
 }));
 
@@ -46,7 +50,7 @@ jest.mock('components/AddDataQualityTest/components/RightPanel', () =>
   jest.fn().mockReturnValue(<div>RightPanel</div>)
 );
 
-jest.mock('./AddTestSuiteForm', () =>
+jest.mock('../AddTestSuiteForm/AddTestSuiteForm', () =>
   jest.fn().mockReturnValue(<div>AddTestSuiteForm</div>)
 );
 

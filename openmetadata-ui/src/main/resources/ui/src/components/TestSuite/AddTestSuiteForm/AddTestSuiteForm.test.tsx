@@ -12,9 +12,9 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
+import { MOCK_TABLE_DATA } from 'mocks/Teams.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { MOCK_TABLE_DATA } from '../../mocks/Teams.mock';
 import AddTestSuiteForm from './AddTestSuiteForm';
 
 const mockOnSubmit = jest.fn();

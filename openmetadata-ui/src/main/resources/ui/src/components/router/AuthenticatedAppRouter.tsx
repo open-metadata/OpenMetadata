@@ -27,10 +27,6 @@ const GlobalSettingPage = withSuspenseFallback(
   React.lazy(() => import('pages/GlobalSettingPage/GlobalSettingPage'))
 );
 
-const ProfilerDashboardPage = withSuspenseFallback(
-  React.lazy(() => import('pages/ProfilerDashboardPage/ProfilerDashboardPage'))
-);
-
 const MyDataPageV1 = withSuspenseFallback(
   React.lazy(() => import('pages/MyDataPage/MyDataPageV1.component'))
 );
@@ -200,10 +196,6 @@ const EditRulePage = withSuspenseFallback(
   React.lazy(() => import('pages/PoliciesPage/PoliciesDetailPage/EditRulePage'))
 );
 
-const TestSuitePage = withSuspenseFallback(
-  React.lazy(() => import('pages/TestSuitePage/TestSuitePage'))
-);
-
 const TestCaseDetailsPage = withSuspenseFallback(
   React.lazy(
     () => import('pages/TestCaseDetailsPage/TestCaseDetailsPage.component')
@@ -227,7 +219,9 @@ const EditKPIPage = withSuspenseFallback(
 );
 
 const AddTestSuitePage = withSuspenseFallback(
-  React.lazy(() => import('pages/TestSuitePage/TestSuiteStepper'))
+  React.lazy(
+    () => import('components/TestSuite/TestSuiteStepper/TestSuiteStepper')
+  )
 );
 
 const ContainerPage = withSuspenseFallback(
@@ -493,18 +487,21 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
       <Route
         exact
+        component={UserPage}
+        path={ROUTES.USER_PROFILE_WITH_SUB_TAB}
+      />
+
+      <Route exact component={MlModelPage} path={ROUTES.MLMODEL_DETAILS} />
+      <Route
+        exact
+        component={MlModelPage}
+        path={ROUTES.MLMODEL_DETAILS_WITH_SUB_TAB}
+      />
+
+      <Route
+        exact
         component={AddDataQualityTestPage}
         path={ROUTES.ADD_DATA_QUALITY_TEST_CASE}
-      />
-      <Route
-        exact
-        component={ProfilerDashboardPage}
-        path={ROUTES.PROFILER_DASHBOARD}
-      />
-      <Route
-        exact
-        component={ProfilerDashboardPage}
-        path={ROUTES.PROFILER_DASHBOARD_WITH_TAB}
       />
       <Route exact component={AddGlossaryPage} path={ROUTES.ADD_GLOSSARY} />
       <AdminProtectedRoute
@@ -633,15 +630,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={TestSuiteIngestionPage}
         path={ROUTES.TEST_SUITES_EDIT_INGESTION}
-      />
-      <AdminProtectedRoute
-        exact
-        component={TestSuitePage}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.TEST_SUITE,
-          permissions
-        )}
-        path={ROUTES.TEST_SUITES}
       />
       <AdminProtectedRoute
         exact

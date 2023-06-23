@@ -12,16 +12,30 @@
  */
 
 import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Popover, Row, Table, Tooltip } from 'antd';
+import { Button, Col, Popover, Row, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as ExternalLinkIcon } from 'assets/svg/external-links.svg';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolderIngestion from 'components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
+import { IngestionRecentRuns } from 'components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
+import Loader from 'components/Loader/Loader';
+import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
+import KillIngestionModal from 'components/Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import TestCaseCommonTabContainer from 'components/TestCaseCommonTabContainer/TestCaseCommonTabContainer.component';
 import cronstrue from 'cronstrue';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { EntityType } from 'enums/entity.enum';
+import { Table as TableType } from 'generated/entity/data/table';
+import { Operation } from 'generated/entity/policies/policy';
+import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { isEmpty } from 'lodash';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import {
   deleteIngestionPipelineById,
   deployIngestionPipelineById,
@@ -30,34 +44,26 @@ import {
   triggerIngestionPipelineById,
 } from 'rest/ingestionPipelineAPI';
 import { fetchAirflowConfig } from 'rest/miscAPI';
+import { getLoadingStatus } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
-import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-links.svg';
-import { Operation } from '../../generated/entity/policies/policy';
-import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { useAirflowStatus } from '../../hooks/useAirflowStatus';
-import { getLoadingStatus } from '../../utils/CommonUtils';
-import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
+import { checkPermission, userPermissions } from 'utils/PermissionsUtils';
 import {
   getLogsViewerPath,
   getTestSuiteIngestionPath,
-} from '../../utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import ErrorPlaceHolderIngestion from '../common/error-with-placeholder/ErrorPlaceHolderIngestion';
-import { IngestionRecentRuns } from '../Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
-import Loader from '../Loader/Loader';
-import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
-import KillIngestionModal from '../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
-import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
-import TestCaseCommonTabContainer from '../TestCaseCommonTabContainer/TestCaseCommonTabContainer.component';
+} from 'utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
-const TestSuitePipelineTab = () => {
+interface Props {
+  testSuite: TableType['testSuite'];
+}
+
+const TestSuitePipelineTab = ({ testSuite }: Props) => {
   const { isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
   const { t } = useTranslation();
-  const { testSuiteFQN } = useParams<Record<string, string>>();
+  const testSuiteFQN = testSuite?.fullyQualifiedName ?? testSuite?.name ?? '';
   const { permissions } = usePermissionProvider();
   const history = useHistory();
-  const location = useLocation();
+
   const [isLoading, setIsLoading] = useState(true);
   const [testSuitePipelines, setTestSuitePipelines] = useState<
     IngestionPipeline[]
@@ -73,11 +79,6 @@ const TestSuitePipelineTab = () => {
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [currDeployId, setCurrDeployId] = useState({ id: '', state: '' });
-
-  const testSuitePath = useMemo(
-    () => location.pathname.split('/')[1],
-    [location]
-  );
 
   const viewPermission = useMemo(
     () =>
@@ -249,8 +250,10 @@ const TestSuitePipelineTab = () => {
                 : t('message.no-permission-for-action')
             }>
             <Button
+              className="p-0"
               data-testid="run"
               disabled={!editPermission}
+              size="small"
               type="link"
               onClick={() =>
                 handleTriggerIngestion(ingestion.id as string, ingestion.name)
@@ -266,8 +269,10 @@ const TestSuitePipelineTab = () => {
                 : t('message.no-permission-for-action')
             }>
             <Button
+              className="p-0"
               data-testid="re-deploy-btn"
               disabled={!editPermission}
+              size="small"
               type="link"
               onClick={() =>
                 handleDeployIngestion(ingestion.id as string, true)
@@ -314,6 +319,7 @@ const TestSuitePipelineTab = () => {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
+        width: 300,
         render: (_, record) => {
           const name = getEntityName(record);
 
@@ -322,20 +328,20 @@ const TestSuitePipelineTab = () => {
               title={
                 viewPermission ? name : t('message.no-permission-to-view')
               }>
-              <Button type="link">
-                <a
-                  className="link-text tw-mr-2"
-                  data-testid="airflow-tree-view"
-                  href={`${airFlowEndPoint}`}
-                  rel="noopener noreferrer"
-                  target="_blank">
+              <a
+                className="link-text tw-mr-2"
+                data-testid="airflow-tree-view"
+                href={`${airFlowEndPoint}`}
+                rel="noopener noreferrer"
+                target="_blank">
+                <Space>
                   {name}
                   <ExternalLinkIcon
                     className="tw-align-middle tw-ml-1"
                     width={16}
                   />
-                </a>
-              </Button>
+                </Space>
+              </a>
             </Tooltip>
           );
         },
@@ -393,7 +399,7 @@ const TestSuitePipelineTab = () => {
         render: (_, record) => {
           return (
             <>
-              <div className="d-flex">
+              <Space align="start">
                 {record.enabled ? (
                   <Fragment>
                     {getTriggerDeployButton(record)}
@@ -405,8 +411,10 @@ const TestSuitePipelineTab = () => {
                           : t('message.no-permission-for-action')
                       }>
                       <Button
+                        className="p-0"
                         data-testid="pause"
                         disabled={!editPermission}
+                        size="small"
                         type="link"
                         onClick={() =>
                           handleEnableDisableIngestion(record.id || '')
@@ -423,8 +431,10 @@ const TestSuitePipelineTab = () => {
                         : t('message.no-permission-for-action')
                     }>
                     <Button
+                      className="p-0"
                       data-testid="unpause"
                       disabled={!editPermission}
+                      size="small"
                       type="link"
                       onClick={() =>
                         handleEnableDisableIngestion(record.id || '')
@@ -441,8 +451,10 @@ const TestSuitePipelineTab = () => {
                       : t('message.no-permission-for-action')
                   }>
                   <Button
+                    className="p-0"
                     data-testid="edit"
                     disabled={!editPermission}
+                    size="small"
                     type="link"
                     onClick={() => {
                       history.push(
@@ -463,8 +475,10 @@ const TestSuitePipelineTab = () => {
                       : t('message.no-permission-for-action')
                   }>
                   <Button
+                    className="p-0"
                     data-testid="delete"
                     disabled={!deletePermission}
+                    size="small"
                     type="link"
                     onClick={() =>
                       confirmDelete(record.id as string, record.name)
@@ -488,8 +502,10 @@ const TestSuitePipelineTab = () => {
                       : t('message.no-permission-for-action')
                   }>
                   <Button
+                    className="p-0"
                     data-testid="kill"
                     disabled={!editPermission}
+                    size="small"
                     type="link"
                     onClick={() => {
                       setIsKillModalOpen(true);
@@ -506,13 +522,15 @@ const TestSuitePipelineTab = () => {
                       : t('message.no-permission-for-action')
                   }>
                   <Button
+                    className="p-0"
                     data-testid="logs"
                     disabled={!viewPermission}
                     href={getLogsViewerPath(
-                      testSuitePath,
+                      EntityType.TEST_SUITE,
                       record.service?.name || '',
                       record.fullyQualifiedName || ''
                     )}
+                    size="small"
                     type="link"
                     onClick={() => {
                       setSelectedPipeline(record);
@@ -520,7 +538,7 @@ const TestSuitePipelineTab = () => {
                     {t('label.log-plural')}
                   </Button>
                 </Tooltip>
-              </div>
+              </Space>
 
               {isKillModalOpen &&
                 selectedPipeline &&
@@ -552,27 +570,30 @@ const TestSuitePipelineTab = () => {
   ]);
 
   const errorPlaceholder = useMemo(
-    () => (
-      <ErrorPlaceHolder
-        button={
-          <Button
-            ghost
-            className="p-x-lg"
-            data-testid="add-placeholder-button"
-            icon={<PlusOutlined />}
-            type="primary"
-            onClick={() => {
-              history.push(getTestSuiteIngestionPath(testSuiteFQN));
-            }}>
-            {t('label.add')}
-          </Button>
-        }
-        className="mt-24"
-        heading={t('label.pipeline')}
-        permission={createPermission}
-        type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
-      />
-    ),
+    () =>
+      testSuite ? (
+        <ErrorPlaceHolder
+          button={
+            <Button
+              ghost
+              className="p-x-lg"
+              data-testid="add-placeholder-button"
+              icon={<PlusOutlined />}
+              type="primary"
+              onClick={() => {
+                history.push(getTestSuiteIngestionPath(testSuiteFQN));
+              }}>
+              {t('label.add')}
+            </Button>
+          }
+          className="mt-24"
+          heading={t('label.pipeline')}
+          permission={createPermission}
+          type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
+        />
+      ) : (
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />
+      ),
     [testSuiteFQN]
   );
 
@@ -608,6 +629,7 @@ const TestSuitePipelineTab = () => {
           }))}
           pagination={false}
           rowKey="name"
+          scroll={{ x: 1200 }}
           size="small"
         />
         <EntityDeleteModal
