@@ -398,7 +398,7 @@ describe('Tags page should work', () => {
     cy.get('@count')
       .invoke('text')
       .then((text) => {
-        expect(text).to.equal('2');
+        expect(text).to.equal('1');
       });
 
     interceptURL(
