@@ -12,6 +12,7 @@
  */
 
 import { Tag, Tooltip, Typography } from 'antd';
+import { ReactComponent as IconTag } from 'assets/svg/classification.svg';
 import classNames from 'classnames';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { ROUTES } from 'constants/constants';
@@ -21,7 +22,6 @@ import { useHistory } from 'react-router-dom';
 import { getTagDisplay, getTagTooltip } from 'utils/TagsUtils';
 import { ReactComponent as IconPage } from '../../../assets/svg/ic-flat-doc.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
-import { ReactComponent as IconTag } from '../../../assets/svg/tag-grey.svg';
 
 import { TAG_START_WITH } from 'constants/Tag.constants';
 import { TagProps } from './tags.interface';

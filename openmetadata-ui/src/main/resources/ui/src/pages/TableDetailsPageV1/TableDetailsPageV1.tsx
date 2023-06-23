@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Divider, Row, Space, Tabs } from 'antd';
+import { Card, Col, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import ActivityFeedProvider, {
   useActivityFeedProvider,
@@ -445,7 +445,6 @@ const TableDetailsPageV1 = () => {
           {!isEmpty(joinedTables) ? (
             <>
               <FrequentlyJoinedTables joinedTables={joinedTables} />
-              <Divider className="m-y-sm" />
             </>
           ) : null}
 

@@ -117,7 +117,7 @@ const ActivityFeedProvider = ({ children }: Props) => {
           undefined,
           userId
         );
-        setEntityThread([...data]);
+        setEntityThread((prev) => (after ? [...prev, ...data] : [...data]));
         setEntityPaging(paging);
 
         setLoading(false);

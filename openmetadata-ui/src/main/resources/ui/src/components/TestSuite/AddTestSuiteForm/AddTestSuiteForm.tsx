@@ -14,6 +14,7 @@
 import { Button, Form, Input, Space } from 'antd';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import Loader from 'components/Loader/Loader';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -22,11 +23,14 @@ import {
   PAGE_SIZE_MEDIUM,
   ROUTES,
   VALIDATION_MESSAGES,
-} from '../../constants/constants';
-import { TestSuite } from '../../generated/tests/testSuite';
-import { AddTestSuiteFormProps } from './testSuite.interface';
+} from '../../../constants/constants';
+import { TestSuite } from '../../../generated/tests/testSuite';
+import { AddTestSuiteFormProps } from '../TestSuiteStepper/testSuite.interface';
 
-const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
+const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({
+  onSubmit,
+  testSuite,
+}) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [testSuites, setTestSuites] = useState<Array<TestSuite>>([]);
@@ -60,10 +64,11 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
     <Form
       data-testid="test-suite-form"
       form={form}
+      initialValues={testSuite}
       layout="vertical"
       name="selectTestSuite"
       validateMessages={VALIDATION_MESSAGES}
-      onFinish={(data) => onSubmit(data)}>
+      onFinish={onSubmit}>
       <Form.Item
         label={t('label.name')}
         name="name"
@@ -72,8 +77,17 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
             required: true,
           },
           {
-            pattern: /^[A-Za-z0-9_]*$/g,
-            message: t('message.special-character-not-allowed'),
+            pattern: ENTITY_NAME_REGEX,
+            message: t('message.entity-name-validation'),
+          },
+          {
+            min: 1,
+            max: 256,
+            message: `${t('message.entity-size-in-between', {
+              entity: `${t('label.name')}`,
+              max: '256',
+              min: '1',
+            })}`,
           },
           {
             validator: (_, value) => {
@@ -96,17 +110,10 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
           })}
         />
       </Form.Item>
-      <Form.Item
-        label={t('label.description')}
-        name="description"
-        rules={[
-          {
-            required: true,
-          },
-        ]}>
+      <Form.Item label={t('label.description')} name="description">
         <RichTextEditor
           data-testid="test-suite-description"
-          initialValue=""
+          initialValue={testSuite?.description ?? ''}
           onTextChange={(value) => form.setFieldsValue({ description: value })}
         />
       </Form.Item>
@@ -119,7 +126,7 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({ onSubmit }) => {
             {t('label.cancel')}
           </Button>
           <Button data-testid="submit-button" htmlType="submit" type="primary">
-            {t('label.submit')}
+            {t('label.next')}
           </Button>
         </Space>
       </Form.Item>

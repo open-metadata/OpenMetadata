@@ -15,3 +15,27 @@
 .feed-explore-heading {
   background-color: @grey-1;
 }
+
+.activity-feed-tab {
+  display: flex;
+
+  .center-container {
+    flex: 0 0 calc(50% - @left-side-panel-width / 2);
+    height: @entity-details-tab-height;
+    overflow-y: scroll;
+  }
+  .right-container {
+    flex: 0 0 calc(50% - @left-side-panel-width / 2);
+    border-left: @global-border;
+    height: @entity-details-tab-height;
+    overflow-y: scroll;
+  }
+  .left-container {
+    flex: 0 0 @left-side-panel-width;
+    border-right: @global-border;
+  }
+}
+
+.activity-feed-task {
+  background-color: @grey-1;
+}

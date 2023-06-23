@@ -32,8 +32,8 @@ import DataQualityTab from 'components/ProfilerDashboard/component/DataQualityTa
 import { EntityInfo } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { useAuth } from 'hooks/authHooks';
-import { camelCase, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
+import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -44,12 +44,12 @@ import {
   updateTestSuiteById,
 } from 'rest/testAPI';
 import { getEntityName } from 'utils/EntityUtils';
+import { getDataQualityPagePath } from 'utils/RouterUtils';
 import {
   getTeamAndUserDetailsPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
   pagingObject,
-  ROUTES,
 } from '../../constants/constants';
 import { ACTION_TYPE, ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -73,7 +73,7 @@ const TestSuiteDetailsPage = () => {
   const hasAccess = isAdminUser || isAuthDisabled;
 
   const afterDeleteAction = () => {
-    history.push(ROUTES.TEST_SUITES);
+    history.push(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
   };
   const [testSuite, setTestSuite] = useState<TestSuite>();
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
@@ -163,12 +163,10 @@ const TestSuiteDetailsPage = () => {
       setSlashedBreadCrumb([
         {
           name: t('label.test-suite-plural'),
-          url: ROUTES.TEST_SUITES,
+          url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
         },
         {
-          name: startCase(
-            camelCase(response?.fullyQualifiedName || response?.name)
-          ),
+          name: getEntityName(response),
           url: '',
         },
       ]);
@@ -362,6 +360,7 @@ const TestSuiteDetailsPage = () => {
               paging: testCasesPaging,
               onPagingClick: handleTestCasePaging,
             }}
+            removeFromTestSuite={{ testSuite: testSuite as TestSuite }}
             testCases={testCaseResult}
             onTestUpdate={afterSubmitAction}
           />
