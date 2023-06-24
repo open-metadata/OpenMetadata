@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Typography } from 'antd';
+import { Button, Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import TableDataCardBody from 'components/TableDataCardBody/TableDataCardBody';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { EntityType } from 'enums/entity.enum';
 import { OwnerType } from 'enums/user.enum';
@@ -53,7 +54,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
   ) => {
     const { t } = useTranslation();
     const { tab } = useParams<{ tab: string }>();
-
+    const { isTourOpen } = useTourProvider();
     const otherDetails = useMemo(() => {
       const tierValue = isString(source.tier)
         ? source.tier
@@ -120,24 +121,34 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             </div>
           </Col>
           <Col span={24}>
-            <Link
-              className="no-underline"
-              data-testid="entity-link"
-              target={openEntityInNewPage ? '_blank' : '_self'}
-              to={
-                source.fullyQualifiedName && source.entityType
-                  ? getEntityLinkFromType(
-                      getEncodedFqn(source.fullyQualifiedName),
-                      source.entityType as EntityType
-                    )
-                  : ''
-              }>
-              <Typography.Text
-                className="text-lg font-medium text-link-color"
-                data-testid="entity-header-display-name">
-                {stringToHTML(getEntityName(source))}
-              </Typography.Text>
-            </Link>
+            {isTourOpen ? (
+              <Button data-testid={source.fullyQualifiedName} type="link">
+                <Typography.Text
+                  className="text-lg font-medium text-link-color"
+                  data-testid="entity-header-display-name">
+                  {stringToHTML(getEntityName(source))}
+                </Typography.Text>
+              </Button>
+            ) : (
+              <Link
+                className="no-underline"
+                data-testid="entity-link"
+                target={openEntityInNewPage ? '_blank' : '_self'}
+                to={
+                  source.fullyQualifiedName && source.entityType
+                    ? getEntityLinkFromType(
+                        getEncodedFqn(source.fullyQualifiedName),
+                        source.entityType as EntityType
+                      )
+                    : ''
+                }>
+                <Typography.Text
+                  className="text-lg font-medium text-link-color"
+                  data-testid="entity-header-display-name">
+                  {stringToHTML(getEntityName(source))}
+                </Typography.Text>
+              </Link>
+            )}
           </Col>
         </Row>
       );

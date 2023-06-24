@@ -161,7 +161,8 @@ export const getSearchTableTagsWithoutTier = (
 export const getConstraintIcon = (
   constraint = '',
   className = '',
-  width = '16px'
+  width = '16px',
+  isConstraintUpdated?: boolean
 ) => {
   let title: string, icon: SvgComponent;
   switch (constraint) {
@@ -203,7 +204,12 @@ export const getConstraintIcon = (
       placement="bottom"
       title={title}
       trigger="hover">
-      <Icon alt={title} component={icon} style={{ fontSize: width }} />
+      <Icon
+        alt={title}
+        className={classNames({ 'diff-added': isConstraintUpdated })}
+        component={icon}
+        style={{ fontSize: width }}
+      />
     </Tooltip>
   );
 };
@@ -493,7 +499,8 @@ export const prepareConstraintIcon = (
   columnConstraint?: string,
   tableConstraints?: TableConstraint[],
   iconClassName?: string,
-  iconWidth?: string
+  iconWidth?: string,
+  isConstraintUpdated?: boolean
 ) => {
   // get the table constraint for column
   const tableConstraint = tableConstraints?.find((constraint) =>
@@ -502,7 +509,12 @@ export const prepareConstraintIcon = (
 
   // prepare column constraint element
   const columnConstraintEl = columnConstraint
-    ? getConstraintIcon(columnConstraint, iconClassName || 'm-r-xs', iconWidth)
+    ? getConstraintIcon(
+        columnConstraint,
+        iconClassName || 'm-r-xs',
+        iconWidth,
+        isConstraintUpdated
+      )
     : null;
 
   // prepare table constraint element

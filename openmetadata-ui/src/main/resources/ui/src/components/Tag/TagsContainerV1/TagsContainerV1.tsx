@@ -63,6 +63,7 @@ const TagsContainerV1 = ({
   tagType,
   onSelectionChange,
   onThreadLinkSelect,
+  isVersionView,
 }: TagsContainerV1Props) => {
   const history = useHistory();
   const [form] = Form.useForm();
@@ -190,12 +191,14 @@ const TagsContainerV1 = ({
 
   const handleSave = (data: string[]) => {
     const updatedTags = getUpdatedTags(data);
-    onSelectionChange([
-      ...updatedTags,
-      ...((isGlossaryType
-        ? tags?.[TagSource.Classification]
-        : tags?.[TagSource.Glossary]) ?? []),
-    ]);
+    if (onSelectionChange) {
+      onSelectionChange([
+        ...updatedTags,
+        ...((isGlossaryType
+          ? tags?.[TagSource.Classification]
+          : tags?.[TagSource.Glossary]) ?? []),
+      ]);
+    }
     form.resetFields();
     setIsEditTags(false);
   };
@@ -313,12 +316,14 @@ const TagsContainerV1 = ({
           data-testid="tag-thread"
           size="small"
           type="text"
-          onClick={() =>
-            onThreadLinkSelect(
-              entityThreadLink ??
-                getEntityFeedLink(entityType, entityFqn, 'tags')
-            )
-          }>
+          onClick={() => {
+            if (onThreadLinkSelect) {
+              onThreadLinkSelect(
+                entityThreadLink ??
+                  getEntityFeedLink(entityType, entityFqn, 'tags')
+              );
+            }
+          }}>
           <Space align="center" className="w-full h-full" size={2}>
             <IconComments
               color={DE_ACTIVE_COLOR}
@@ -361,7 +366,7 @@ const TagsContainerV1 = ({
             />
           )}
         </div>
-        {permission && (
+        {permission && !isVersionView && (
           <Row gutter={8}>
             {requestTagElement}
             {conversationThreadElement}

@@ -11,34 +11,41 @@
  *  limitations under the License.
  */
 
-import { Card, Tabs } from 'antd';
+import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
+import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import TabsLabel from 'components/TabsLabel/TabsLabel.component';
+import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
 import VersionTable from 'components/VersionTable/VersionTable.component';
-import { EntityTabs, FqnPart } from 'enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from 'enums/entity.enum';
 import {
   ChangeDescription,
   Column,
   DashboardDataModel,
 } from 'generated/entity/data/dashboardDataModel';
-import { ColumnDiffProps } from 'interface/EntityVersion.interface';
-import { cloneDeep, isEqual, isUndefined } from 'lodash';
-import { ExtraInfo } from 'Models';
-import React, { FC, useEffect, useState } from 'react';
+import { TagSource } from 'generated/type/schema';
+import { EntityDiffProps } from 'interface/EntityVersion.interface';
+import { cloneDeep, isEqual } from 'lodash';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getPartialNameFromTableFQN } from 'utils/CommonUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
-import { OwnerType } from '../../enums/user.enum';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
-  getDescriptionDiff,
+  getChangedEntityName,
+  getChangedEntityNewValue,
+  getChangedEntityOldValue,
+  getCommonExtraInfoForVersionDetails,
   getDiffByFieldName,
-  getDiffValue,
+  getEntityVersionByField,
+  getEntityVersionTags,
   getTagsDiff,
+  getTextDiff,
+  isEndsWithField,
 } from '../../utils/EntityVersionUtils';
 import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
-import Description from '../common/description/Description';
-import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import { DataModelVersionProp } from './DataModelVersion.interface';
@@ -60,12 +67,6 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
-  const tabs = [
-    {
-      label: t('label.model'),
-      key: EntityTabs.MODEL,
-    },
-  ];
 
   const getChangeColName = (name: string | undefined) => {
     const nameArr = name?.split(FQN_SEPARATOR_CHAR);
@@ -77,164 +78,25 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
     }
   };
 
-  const isEndsWithField = (name: string | undefined, checkWith: string) => {
-    return name?.endsWith(checkWith);
-  };
-
-  const getDashboardDescription = () => {
-    const descriptionDiff = getDiffByFieldName(
-      EntityField.DESCRIPTION,
-      changeDescription
-    );
-    const oldDescription =
-      descriptionDiff?.added?.oldValue ??
-      descriptionDiff?.deleted?.oldValue ??
-      descriptionDiff?.updated?.oldValue;
-    const newDescription =
-      descriptionDiff?.added?.newValue ??
-      descriptionDiff?.deleted?.newValue ??
-      descriptionDiff?.updated?.newValue;
-
-    return getDescriptionDiff(
-      oldDescription,
-      newDescription,
-      currentVersionData.description
-    );
-  };
-
-  const getExtraInfo = () => {
-    const ownerDiff = getDiffByFieldName('owner', changeDescription);
-
-    const oldOwner = JSON.parse(
-      ownerDiff?.added?.oldValue ??
-        ownerDiff?.deleted?.oldValue ??
-        ownerDiff?.updated?.oldValue ??
-        '{}'
-    );
-    const newOwner = JSON.parse(
-      ownerDiff?.added?.newValue ??
-        ownerDiff?.deleted?.newValue ??
-        ownerDiff?.updated?.newValue ??
-        '{}'
-    );
-    const ownerPlaceHolder = owner?.name ?? owner?.displayName ?? '';
-
-    const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
-    const newTier = [
-      ...JSON.parse(
-        tagsDiff?.added?.newValue ??
-          tagsDiff?.deleted?.newValue ??
-          tagsDiff?.updated?.newValue ??
-          '[]'
-      ),
-    ].find((t) => (t?.tagFQN as string).startsWith('Tier'));
-
-    const oldTier = [
-      ...JSON.parse(
-        tagsDiff?.added?.oldValue ??
-          tagsDiff?.deleted?.oldValue ??
-          tagsDiff?.updated?.oldValue ??
-          '[]'
-      ),
-    ].find((t) => (t?.tagFQN as string).startsWith('Tier'));
-
-    const extraInfo: Array<ExtraInfo> = [
-      {
-        key: 'Owner',
-        value:
-          !isUndefined(ownerDiff?.added) ||
-          !isUndefined(ownerDiff?.deleted) ||
-          !isUndefined(ownerDiff?.updated)
-            ? getDiffValue(
-                oldOwner?.displayName || oldOwner?.name || '',
-                newOwner?.displayName || newOwner?.name || ''
-              )
-            : ownerPlaceHolder
-            ? getDiffValue(ownerPlaceHolder, ownerPlaceHolder)
-            : '',
-        profileName:
-          newOwner?.type === OwnerType.USER ? newOwner?.name : undefined,
-      },
-      {
-        key: 'Tier',
-        value:
-          !isUndefined(newTier) || !isUndefined(oldTier)
-            ? getDiffValue(
-                oldTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] || '',
-                newTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] || ''
-              )
-            : tier?.tagFQN
-            ? tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
-            : '',
-      },
-    ];
-
-    return extraInfo;
-  };
-
-  const getTags = () => {
-    const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
-    const oldTags: Array<TagLabel> = JSON.parse(
-      tagsDiff?.added?.oldValue ??
-        tagsDiff?.deleted?.oldValue ??
-        tagsDiff?.updated?.oldValue ??
-        '[]'
-    );
-    const newTags: Array<TagLabel> = JSON.parse(
-      tagsDiff?.added?.newValue ??
-        tagsDiff?.deleted?.newValue ??
-        tagsDiff?.updated?.newValue ??
-        '[]'
-    );
-    const flag: { [x: string]: boolean } = {};
-    const uniqueTags: Array<TagLabelWithStatus> = [];
-
-    [
-      ...(getTagsDiff(oldTags, newTags) ?? []),
-      ...(currentVersionData.tags ?? []),
-    ].forEach((elem) => {
-      if (!flag[elem.tagFQN as string]) {
-        flag[elem.tagFQN as string] = true;
-        uniqueTags.push(elem as TagLabelWithStatus);
-      }
-    });
-
-    return [
-      ...uniqueTags.map((t) =>
-        t.tagFQN.startsWith('Tier')
-          ? { ...t, tagFQN: t.tagFQN.split(FQN_SEPARATOR_CHAR)[1] }
-          : t
-      ),
-    ];
-  };
-
-  const getColumnDiffValue = (column: ColumnDiffProps) =>
-    column?.added?.name ?? column?.deleted?.name ?? column?.updated?.name;
-
-  const getColumnDiffOldValue = (column: ColumnDiffProps) =>
-    column?.added?.oldValue ??
-    column?.deleted?.oldValue ??
-    column?.updated?.oldValue;
-
-  const getColumnDiffNewValue = (column: ColumnDiffProps) =>
-    column?.added?.newValue ??
-    column?.deleted?.newValue ??
-    column?.updated?.newValue;
+  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
+    () => getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
+    [changeDescription, owner, tier]
+  );
 
   const handleColumnDescriptionChangeDiff = (
     colList: DashboardDataModel['columns'],
-    columnsDiff: ColumnDiffProps,
+    columnsDiff: EntityDiffProps,
     changedColName: string | undefined
   ) => {
-    const oldDescription = getColumnDiffOldValue(columnsDiff);
-    const newDescription = getColumnDiffNewValue(columnsDiff);
+    const oldDescription = getChangedEntityOldValue(columnsDiff);
+    const newDescription = getChangedEntityNewValue(columnsDiff);
 
     const formatColumnData = (arr: DashboardDataModel['columns']) => {
       arr?.forEach((i) => {
         if (isEqual(i.name, changedColName)) {
-          i.description = getDescriptionDiff(
-            oldDescription,
-            newDescription,
+          i.description = getTextDiff(
+            oldDescription ?? '',
+            newDescription ?? '',
             i.description
           );
         } else {
@@ -248,14 +110,14 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
 
   const handleColumnTagChangeDiff = (
     colList: DashboardDataModel['columns'],
-    columnsDiff: ColumnDiffProps,
+    columnsDiff: EntityDiffProps,
     changedColName: string | undefined
   ) => {
     const oldTags: Array<TagLabel> = JSON.parse(
-      getColumnDiffOldValue(columnsDiff) ?? '[]'
+      getChangedEntityOldValue(columnsDiff) ?? '[]'
     );
     const newTags: Array<TagLabel> = JSON.parse(
-      getColumnDiffNewValue(columnsDiff) ?? '[]'
+      getChangedEntityNewValue(columnsDiff) ?? '[]'
     );
 
     const formatColumnData = (arr: DashboardDataModel['columns']) => {
@@ -284,7 +146,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
 
   const handleColumnDiffAdded = (
     colList: DashboardDataModel['columns'],
-    columnsDiff: ColumnDiffProps
+    columnsDiff: EntityDiffProps
   ) => {
     const newCol: Array<Column> = JSON.parse(
       columnsDiff.added?.newValue ?? '[]'
@@ -294,17 +156,9 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
         arr?.forEach((i) => {
           if (isEqual(i.name, col.name)) {
             i.tags = col.tags?.map((tag) => ({ ...tag, added: true }));
-            i.description = getDescriptionDiff(
-              undefined,
-              col.description,
-              col.description
-            );
-            i.dataTypeDisplay = getDescriptionDiff(
-              undefined,
-              col.dataTypeDisplay,
-              col.dataTypeDisplay
-            );
-            i.name = getDescriptionDiff(undefined, col.name, col.name);
+            i.description = getTextDiff('', col.description ?? '');
+            i.dataTypeDisplay = getTextDiff('', col.dataTypeDisplay ?? '');
+            i.name = getTextDiff('', col.name);
           } else {
             formatColumnData(i?.children as DashboardDataModel['columns']);
           }
@@ -314,7 +168,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
     });
   };
 
-  const handleColumnDiffDeleted = (columnsDiff: ColumnDiffProps) => {
+  const handleColumnDiffDeleted = (columnsDiff: EntityDiffProps) => {
     const newCol: Array<Column> = JSON.parse(
       columnsDiff.deleted?.oldValue ?? '[]'
     );
@@ -322,21 +176,13 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
     return newCol.map((col) => ({
       ...col,
       tags: col.tags?.map((tag) => ({ ...tag, removed: true })),
-      description: getDescriptionDiff(
-        col.description,
-        undefined,
-        col.description
-      ),
-      dataTypeDisplay: getDescriptionDiff(
-        col.dataTypeDisplay,
-        undefined,
-        col.dataTypeDisplay
-      ),
-      name: getDescriptionDiff(col.name, undefined, col.name),
+      description: getTextDiff(col.description ?? '', ''),
+      dataTypeDisplay: getTextDiff(col.dataTypeDisplay ?? '', ''),
+      name: getTextDiff(col.name, ''),
     }));
   };
 
-  const updatedColumns = (): DashboardDataModel['columns'] => {
+  const columns: DashboardDataModel['columns'] = useMemo(() => {
     const colList = cloneDeep(
       (currentVersionData as DashboardDataModel).columns || []
     );
@@ -344,16 +190,26 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
       EntityField.COLUMNS,
       changeDescription
     );
-    const changedColName = getChangeColName(getColumnDiffValue(columnsDiff));
+    const changedColName = getChangeColName(getChangedEntityName(columnsDiff));
+    const colNameWithoutQuotes = changedColName?.replaceAll(/(^")|("$)/g, '');
 
     if (
-      isEndsWithField(getColumnDiffValue(columnsDiff), EntityField.DESCRIPTION)
+      isEndsWithField(
+        EntityField.DESCRIPTION,
+        getChangedEntityName(columnsDiff)
+      )
     ) {
-      handleColumnDescriptionChangeDiff(colList, columnsDiff, changedColName);
+      handleColumnDescriptionChangeDiff(
+        colList,
+        columnsDiff,
+        colNameWithoutQuotes
+      );
 
       return colList;
-    } else if (isEndsWithField(getColumnDiffValue(columnsDiff), 'tags')) {
-      handleColumnTagChangeDiff(colList, columnsDiff, changedColName);
+    } else if (
+      isEndsWithField(EntityField.TAGS, getChangedEntityName(columnsDiff))
+    ) {
+      handleColumnTagChangeDiff(colList, columnsDiff, colNameWithoutQuotes);
 
       return colList;
     } else {
@@ -374,13 +230,93 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
 
       return [...newColumns, ...colList];
     }
-  };
+  }, [
+    currentVersionData,
+    changeDescription,
+    getChangeColName,
+    handleColumnDescriptionChangeDiff,
+  ]);
 
   useEffect(() => {
     setChangeDescription(
       currentVersionData.changeDescription as ChangeDescription
     );
   }, [currentVersionData]);
+
+  const tags = useMemo(() => {
+    return getEntityVersionTags(currentVersionData, changeDescription);
+  }, [currentVersionData, changeDescription]);
+
+  const description = useMemo(() => {
+    return getEntityVersionByField(
+      changeDescription,
+      EntityField.DESCRIPTION,
+      currentVersionData.description
+    );
+  }, [currentVersionData, changeDescription]);
+
+  const displayName = useMemo(() => {
+    return getEntityVersionByField(
+      changeDescription,
+      EntityField.DISPLAYNAME,
+      currentVersionData.displayName
+    );
+  }, [currentVersionData, changeDescription]);
+
+  const tabItems: TabsProps['items'] = useMemo(
+    () => [
+      {
+        key: EntityTabs.MODEL,
+        label: <TabsLabel id={EntityTabs.MODEL} name={t('label.model')} />,
+        children: (
+          <Row gutter={[0, 16]} wrap={false}>
+            <Col className="p-t-sm m-l-lg" flex="auto">
+              <Row gutter={[0, 16]}>
+                <Col span={24}>
+                  <DescriptionV1
+                    isVersionView
+                    description={description}
+                    entityType={EntityType.DASHBOARD_DATA_MODEL}
+                  />
+                </Col>
+                <Col span={24}>
+                  <VersionTable
+                    columnName={getPartialNameFromTableFQN(
+                      dataModelFQN,
+                      [FqnPart.Column],
+                      FQN_SEPARATOR_CHAR
+                    )}
+                    columns={columns}
+                    joins={[]}
+                  />
+                </Col>
+              </Row>
+            </Col>
+            <Col
+              className="entity-tag-right-panel-container"
+              data-testid="entity-right-panel"
+              flex="220px">
+              <Space className="w-full" direction="vertical" size="large">
+                {Object.keys(TagSource).map((tagType) => (
+                  <TagsContainerV1
+                    isVersionView
+                    showLimited
+                    entityFqn={currentVersionData.fullyQualifiedName}
+                    entityType={EntityType.DASHBOARD_DATA_MODEL}
+                    key={tagType}
+                    permission={false}
+                    selectedTags={tags}
+                    tagType={TagSource[tagType as TagSource]}
+                  />
+                ))}
+              </Space>
+            </Col>
+          </Row>
+        ),
+      },
+    ],
+    [description, dataModelFQN, columns]
+  );
 
   return (
     <>
@@ -391,44 +327,24 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
           <div
             className={classNames('version-data')}
             data-testid="version-data">
-            <EntityPageInfo
-              isVersionSelected
-              deleted={deleted}
-              displayName={currentVersionData.displayName}
-              entityName={currentVersionData.name ?? ''}
-              extraInfo={getExtraInfo()}
-              followersList={[]}
-              serviceType={currentVersionData.serviceType ?? ''}
-              tags={getTags()}
-              tier={{} as TagLabel}
-              titleLinks={slashedDataModelName}
-              version={Number(version)}
-              versionHandler={backHandler}
-            />
-            <div className="tw-mt-1 d-flex flex-col flex-grow ">
-              <Tabs activeKey={EntityTabs.MODEL} items={tabs} />
-              <Card className="m-y-md">
-                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                  <div className="tw-col-span-full">
-                    <Description
-                      isReadOnly
-                      description={getDashboardDescription()}
-                    />
-                  </div>
-                  <div className="tw-col-span-full">
-                    <VersionTable
-                      columnName={getPartialNameFromTableFQN(
-                        dataModelFQN,
-                        [FqnPart.Column],
-                        FQN_SEPARATOR_CHAR
-                      )}
-                      columns={updatedColumns()}
-                      joins={[]}
-                    />
-                  </div>
-                </div>
-              </Card>
-            </div>
+            <Row gutter={[0, 12]}>
+              <Col span={24}>
+                <DataAssetsVersionHeader
+                  breadcrumbLinks={slashedDataModelName}
+                  currentVersionData={currentVersionData}
+                  deleted={deleted}
+                  displayName={displayName}
+                  ownerDisplayName={ownerDisplayName}
+                  ownerRef={ownerRef}
+                  tierDisplayName={tierDisplayName}
+                  version={version}
+                  onVersionClick={backHandler}
+                />
+              </Col>
+              <Col span={24}>
+                <Tabs activeKey={EntityTabs.MODEL} items={tabItems} />
+              </Col>
+            </Row>
           </div>
         )}
 

@@ -130,6 +130,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   }, [topicDetails.id, getEntityPermission, setTopicPermissions]);
 
+  useEffect(() => {
+    if (topicDetails.id) {
+      fetchResourcePermission();
+    }
+  }, [topicDetails.id]);
+
   const followTopic = async () => {
     isFollowing ? await unFollowTopicHandler() : await followTopicHandler();
   };
