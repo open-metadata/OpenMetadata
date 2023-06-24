@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,22 +11,4 @@
  *  limitations under the License.
  */
 
-import { useEffect, useState } from 'react';
-import AppState from '../AppState';
-
-export const useTour = () => {
-  const [isTourOpen, setIsTourOpen] = useState<boolean>();
-
-  useEffect(() => {
-    setIsTourOpen(AppState.isTourOpen);
-  }, [AppState.isTourOpen]);
-
-  const handleIsTourOpen = (value: boolean) => {
-    AppState.isTourOpen = value;
-  };
-
-  return {
-    isTourOpen,
-    handleIsTourOpen,
-  };
-};
+export const TABLE_SCROLL_VALUE = { x: 1200 };

@@ -133,6 +133,7 @@
     "column": "Colonne",
     "column-entity": "{{entity}} Colonnes",
     "column-lowercase": "column",
+    "column-lowercase-plural": "columns",
     "column-plural": "Colonnes",
     "column-profile": "Column Profile",
     "comment": "Comment",

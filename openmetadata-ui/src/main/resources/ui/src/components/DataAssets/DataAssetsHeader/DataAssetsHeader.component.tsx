@@ -505,6 +505,7 @@ export const DataAssetsHeader = ({
                 </Button>
                 <Button
                   className="w-16 p-0"
+                  data-testid="entity-follow-button"
                   icon={
                     <Icon component={isFollowing ? StarFilledIcon : StarIcon} />
                   }

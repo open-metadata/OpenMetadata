@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, Popover, Row, Space, Typography } from 'antd';
+import { Button, Col, Form, Row, Space, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import Loader from 'components/Loader/Loader';
 import { TableTagsProps } from 'components/TableTags/TableTags.interface';
@@ -63,6 +63,7 @@ const TagsContainerV1 = ({
   tagType,
   onSelectionChange,
   onThreadLinkSelect,
+  isVersionView,
 }: TagsContainerV1Props) => {
   const history = useHistory();
   const [form] = Form.useForm();
@@ -190,12 +191,14 @@ const TagsContainerV1 = ({
 
   const handleSave = (data: string[]) => {
     const updatedTags = getUpdatedTags(data);
-    onSelectionChange([
-      ...updatedTags,
-      ...((isGlossaryType
-        ? tags?.[TagSource.Classification]
-        : tags?.[TagSource.Glossary]) ?? []),
-    ]);
+    if (onSelectionChange) {
+      onSelectionChange([
+        ...updatedTags,
+        ...((isGlossaryType
+          ? tags?.[TagSource.Classification]
+          : tags?.[TagSource.Glossary]) ?? []),
+      ]);
+    }
     form.resetFields();
     setIsEditTags(false);
   };
@@ -281,24 +284,21 @@ const TagsContainerV1 = ({
           size="small"
           type="text"
           onClick={hasTags ? handleUpdateTags : handleRequestTags}>
-          <Popover
-            destroyTooltipOnHide
-            content={
+          <Tooltip
+            placement="left"
+            title={
               hasTags
                 ? t('label.update-request-tag-plural')
                 : t('label.request-tag-plural')
-            }
-            overlayClassName="ant-popover-request-description"
-            placement="topLeft"
-            trigger="hover"
-            zIndex={9999}>
+            }>
             <IconRequest
               className="anticon"
-              height={16}
+              height={14}
               name="request-tags"
-              width={16}
+              style={{ color: DE_ACTIVE_COLOR }}
+              width={14}
             />
-          </Popover>
+          </Tooltip>
         </Button>
       </Col>
     ) : null;
@@ -312,15 +312,26 @@ const TagsContainerV1 = ({
           data-testid="tag-thread"
           size="small"
           type="text"
-          onClick={() =>
-            onThreadLinkSelect(
-              entityThreadLink ??
-                getEntityFeedLink(entityType, entityFqn, 'tags')
-            )
-          }>
-          <Space align="center" className="w-full h-full" size={2}>
-            <IconComments height={16} name="comments" width={16} />
-          </Space>
+          onClick={() => {
+            if (onThreadLinkSelect) {
+              onThreadLinkSelect(
+                entityThreadLink ??
+                  getEntityFeedLink(entityType, entityFqn, 'tags')
+              );
+            }
+          }}>
+          <Tooltip
+            placement="left"
+            title={t('label.list-entity', {
+              entity: t('label.conversation'),
+            })}>
+            <IconComments
+              height={14}
+              name="comments"
+              style={{ color: DE_ACTIVE_COLOR }}
+              width={14}
+            />
+          </Tooltip>
         </Button>
       </Col>
     ),
@@ -355,9 +366,9 @@ const TagsContainerV1 = ({
             />
           )}
         </div>
-        {permission && (
+        {permission && !isVersionView && (
           <Row gutter={8}>
-            {requestTagElement}
+            {tagType === TagSource.Classification && requestTagElement}
             {conversationThreadElement}
           </Row>
         )}

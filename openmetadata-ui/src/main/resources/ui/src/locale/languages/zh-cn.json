@@ -133,6 +133,7 @@
     "column": "列",
     "column-entity": "列{{entity}}",
     "column-lowercase": "column",
+    "column-lowercase-plural": "columns",
     "column-plural": "列",
     "column-profile": "Column Profile",
     "comment": "Comment",
