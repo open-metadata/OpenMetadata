@@ -14,6 +14,8 @@ import { Tabs } from 'antd';
 import AppState from 'AppState';
 import ActivityFeedListV1 from 'components/ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
 import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
+import { mockFeedData } from 'constants/mockTourData.constants';
 import { FeedFilter } from 'enums/mydata.enum';
 import { ThreadType } from 'generated/entity/feed/thread';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -25,6 +27,7 @@ import './feeds-widget.less';
 
 const FeedsWidget = () => {
   const { t } = useTranslation();
+  const { isTourOpen } = useTourProvider();
   const [activeTab, setActiveTab] = useState('all');
   const { loading, entityThread, getFeedData } = useActivityFeedProvider();
   const [taskCount, setTaskCount] = useState(0);
@@ -86,9 +89,9 @@ const FeedsWidget = () => {
             key: 'all',
             children: (
               <ActivityFeedListV1
-                feedList={entityThread}
+                feedList={isTourOpen ? mockFeedData : entityThread}
                 hidePopover={false}
-                isLoading={loading}
+                isLoading={loading && !isTourOpen}
                 showThread={false}
               />
             ),

@@ -63,6 +63,7 @@ const TagsContainerV1 = ({
   tagType,
   onSelectionChange,
   onThreadLinkSelect,
+  isVersionView,
 }: TagsContainerV1Props) => {
   const history = useHistory();
   const [form] = Form.useForm();
@@ -190,12 +191,14 @@ const TagsContainerV1 = ({
 
   const handleSave = (data: string[]) => {
     const updatedTags = getUpdatedTags(data);
-    onSelectionChange([
-      ...updatedTags,
-      ...((isGlossaryType
-        ? tags?.[TagSource.Classification]
-        : tags?.[TagSource.Glossary]) ?? []),
-    ]);
+    if (onSelectionChange) {
+      onSelectionChange([
+        ...updatedTags,
+        ...((isGlossaryType
+          ? tags?.[TagSource.Classification]
+          : tags?.[TagSource.Glossary]) ?? []),
+      ]);
+    }
     form.resetFields();
     setIsEditTags(false);
   };
@@ -361,7 +364,7 @@ const TagsContainerV1 = ({
             />
           )}
         </div>
-        {permission && (
+        {permission && !isVersionView && (
           <Row gutter={8}>
             {tagType === TagSource.Classification && requestTagElement}
             {conversationThreadElement}

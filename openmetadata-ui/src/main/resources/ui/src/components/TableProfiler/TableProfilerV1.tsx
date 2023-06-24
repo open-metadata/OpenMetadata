@@ -27,10 +27,12 @@ import {
 import { DefaultOptionType } from 'antd/lib/select';
 import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
 import { SummaryCardProps } from 'components/common/SummaryCard/SummaryCard.interface';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { mockDatasetData } from 'constants/mockTourData.constants';
 import { Column } from 'generated/entity/data/container';
 import {
@@ -54,7 +56,7 @@ import { ReactComponent as DataQualityIcon } from '../../assets/svg/data-quality
 import { ReactComponent as SettingIcon } from '../../assets/svg/ic-settings-primery.svg';
 import { ReactComponent as NoDataIcon } from '../../assets/svg/no-data-icon.svg';
 import { ReactComponent as TableProfileIcon } from '../../assets/svg/table-profile.svg';
-import { API_RES_MAX_SIZE, ROUTES } from '../../constants/constants';
+import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import {
   allowedServiceForOperationGraph,
@@ -92,20 +94,21 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const { t } = useTranslation();
   const history = useHistory();
   const location = useLocation();
+  const { isTourOpen } = useTourProvider();
 
-  const { activeTab = TableProfilerTab.TABLE_PROFILE, activeColumnFqn } =
-    useMemo(() => {
-      const param = location.search;
-      const searchData = Qs.parse(
-        param.startsWith('?') ? param.substring(1) : param
-      );
+  const {
+    activeTab = isTourOpen
+      ? TableProfilerTab.COLUMN_PROFILE
+      : TableProfilerTab.TABLE_PROFILE,
+    activeColumnFqn,
+  } = useMemo(() => {
+    const param = location.search;
+    const searchData = Qs.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
 
-      return searchData as { activeTab: string; activeColumnFqn: string };
-    }, [location.search]);
-  const isTourPage = useMemo(
-    () => location.pathname.includes(ROUTES.TOUR),
-    [location.pathname]
-  );
+    return searchData as { activeTab: string; activeColumnFqn: string };
+  }, [location.search, isTourOpen]);
 
   const { datasetFQN } = useParams<{ datasetFQN: string }>();
   const [table, setTable] = useState<Table>();
@@ -298,12 +301,12 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   useEffect(() => {
     if (isUndefined(activeTab)) {
       updateActiveTab(
-        isTourPage
+        isTourOpen
           ? TableProfilerTab.COLUMN_PROFILE
           : TableProfilerTab.TABLE_PROFILE
       );
     }
-  }, []);
+  }, [isTourOpen]);
 
   const handleResultUpdate = (testCase: TestCase) => {
     setTableTests((prev) => {
@@ -431,19 +434,19 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   }, [activeColumnFqn, columnTests]);
 
   useEffect(() => {
-    if (!isUndefined(table) && viewTest && !isTourPage) {
+    if (!isUndefined(table) && viewTest && !isTourOpen) {
       fetchAllTests();
     }
-  }, [table, viewTest]);
+  }, [table, viewTest, isTourOpen]);
 
   useEffect(() => {
-    if (!isTableDeleted && datasetFQN && !isTourPage) {
+    if (!isTableDeleted && datasetFQN && !isTourOpen) {
       fetchLatestProfilerData();
     }
-    if (isTourPage) {
+    if (isTourOpen) {
       setTable(mockDatasetData.tableDetails as unknown as Table);
     }
-  }, [datasetFQN]);
+  }, [datasetFQN, isTourOpen]);
 
   return (
     <Row
@@ -573,9 +576,11 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
               <Col span={selectedColumn ? 14 : 24}>
                 <Row wrap gutter={[16, 16]}>
                   {overallSummery.map((summery) => (
-                    <Col key={summery.title}>
+                    <Col
+                      key={summery.title}
+                      span={selectedColumn ? undefined : 8}>
                       <SummaryCard
-                        className={summery.className}
+                        className={classNames(summery.className, 'h-full')}
                         showProgressBar={false}
                         title={summery.title}
                         total={0}

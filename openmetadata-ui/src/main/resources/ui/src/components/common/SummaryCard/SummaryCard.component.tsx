@@ -55,7 +55,13 @@ export const SummaryCard = ({
       </div>
 
       {showProgressBar && (
-        <Progress className={type} percent={percent} type="circle" width={65} />
+        <Progress
+          className={type}
+          format={(percent) => `${percent}%`}
+          percent={percent}
+          type="circle"
+          width={65}
+        />
       )}
     </Space>
   );

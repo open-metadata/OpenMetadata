@@ -589,9 +589,7 @@ const ContainerPage = () => {
   const tabs = useMemo(
     () => [
       {
-        label: (
-          <TabsLabel id={EntityTabs.SCHEMA} name={t('label.detail-plural')} />
-        ),
+        label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
         key: EntityTabs.SCHEMA,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
@@ -674,7 +672,8 @@ const ContainerPage = () => {
             <ActivityFeedTab
               entityType={EntityType.CONTAINER}
               fqn={containerName}
-              onFeedUpdate={() => Promise.resolve()}
+              onFeedUpdate={getEntityFeedCount}
+              onUpdateEntityDetails={() => fetchContainerDetail(containerName)}
             />
           </ActivityFeedProvider>
         ),

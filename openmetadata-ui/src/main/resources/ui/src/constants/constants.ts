@@ -32,6 +32,7 @@ export const SECONDARY_COLOR = '#B02AAC';
 export const INFO_COLOR = '#2196f3';
 export const LITE_GRAY_COLOR = '#DBE0EB';
 export const TEXT_BODY_COLOR = '#37352F';
+export const TEXT_GREY_MUTED = '#757575';
 export const SUCCESS_COLOR = '#008376';
 export const DE_ACTIVE_COLOR = '#6B7280';
 export const GRAPH_BACKGROUND_COLOR = '#f5f5f5';
@@ -218,10 +219,11 @@ export const ROUTES = {
   FORGOT_PASSWORD: '/forgot-password',
   RESET_PASSWORD: '/users/password/reset',
   ACCOUNT_ACTIVATION: '/users/registrationConfirmation',
-  ENTITY_VERSION: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
 
   TABLE_DETAILS: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}`,
   TABLE_DETAILS_WITH_TAB: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  ENTITY_VERSION: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+  ENTITY_VERSION_WITH_TAB: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
   TABLE_DETAILS_WITH_SUB_TAB: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
 
   TOPIC_DETAILS: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}`,
@@ -362,6 +364,22 @@ export const getVersionPath = (
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
     .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, fqn)
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
+export const getVersionPathWithTab = (
+  entityType: string,
+  fqn: string,
+  version: string,
+  tab: string
+) => {
+  let path = ROUTES.ENTITY_VERSION_WITH_TAB;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
+    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, fqn)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version)
+    .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;
 };
