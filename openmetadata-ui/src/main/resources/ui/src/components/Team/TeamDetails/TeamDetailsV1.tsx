@@ -1077,7 +1077,7 @@ const TeamDetailsV1 = ({
               onChange={updateActiveTab}
             />
 
-            <div className="flex-grow d-flex flex-col tw-pt-4">
+            <div className="flex-grow d-flex flex-col">
               {currentTab === TeamsPageTab.TEAMS &&
                 (currentTeam.childrenCount === 0 && !searchTerm ? (
                   fetchErrorPlaceHolder({
@@ -1113,6 +1113,7 @@ const TeamDetailsV1 = ({
                             {t('label.deleted')}
                           </Typography.Text>
                         </span>
+
                         <Button
                           data-testid="add-team"
                           disabled={!createTeamPermission}

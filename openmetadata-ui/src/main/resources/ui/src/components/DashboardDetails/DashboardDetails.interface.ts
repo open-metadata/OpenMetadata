@@ -16,7 +16,6 @@ import { Operation } from 'fast-json-patch';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
-import { EntityFieldThreadCount } from '../../interface/feed.interface';
 
 export interface ChartType extends Chart {
   displayName: string;
@@ -29,9 +28,6 @@ export interface ChartsPermissions {
 export interface DashboardDetailsProps {
   charts: Array<ChartType>;
   dashboardDetails: Dashboard;
-  feedCount: number;
-  entityFieldThreadCount: EntityFieldThreadCount[];
-  entityFieldTaskCount: EntityFieldThreadCount[];
   createThread: (data: CreateThread) => void;
   followDashboardHandler: () => Promise<void>;
   unFollowDashboardHandler: () => Promise<void>;

@@ -54,6 +54,7 @@ interface Props {
   onSuggest?: (value: string) => void;
   onEntityFieldSelect?: (value: string) => void;
   wrapInCard?: boolean;
+  isVersionView?: boolean;
 }
 const DescriptionV1 = ({
   hasEditAccess,
@@ -70,6 +71,7 @@ const DescriptionV1 = ({
   entityType,
   entityFqn,
   wrapInCard = false,
+  isVersionView,
 }: Props) => {
   const descriptionThread = entityFieldThreads?.[0];
   const history = useHistory();
@@ -172,7 +174,7 @@ const DescriptionV1 = ({
         size={16}>
         <div className="d-flex items-center justify-between">
           <Text className="right-panel-label">{t('label.description')}</Text>
-          {editButton()}
+          {!isVersionView && editButton()}
         </div>
         <div>
           {description?.trim() ? (

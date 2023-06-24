@@ -20,6 +20,7 @@ import {
   GlossaryTermDetailsProps,
   TagsDetailsProps,
 } from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
+import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { LabelType, State, TagSource } from 'generated/type/schema';
 import {
   cloneDeep,
@@ -630,7 +631,7 @@ const EntityTable = ({
         }}
         pagination={false}
         rowKey="id"
-        scroll={{ x: 500 }}
+        scroll={TABLE_SCROLL_VALUE}
         size="middle"
       />
       {editColumn && (
