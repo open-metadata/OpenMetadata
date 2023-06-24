@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.json.JsonPatch;
@@ -54,6 +55,7 @@ import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
@@ -143,7 +145,19 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     if (!CommonUtil.nullOrEmpty(entityId)) {
       filter.addQueryParam("entityId", entityId.toString());
     }
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    ResultList<Query> queries =
+        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    List<Query> maskedQueries =
+        queries.getData().stream()
+            .map(
+                query -> {
+                  boolean authorizePII = authorizer.authorizePII(securityContext, query.getOwner());
+                  return PIIMasker.getQuery(query, authorizePII);
+                })
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
+    queries.setData(maskedQueries);
+    return queries;
   }
 
   @GET

@@ -4,10 +4,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.TableData;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.jdbi3.ColumnUtil;
 
 public class PIIMasker {
@@ -66,6 +68,18 @@ public class PIIMasker {
     testCase.setName(flagMaskedName(testCase.getName()));
 
     return testCase;
+  }
+
+  /*
+  Either return the query if user has permissions, or hide it completely.
+  */
+  public static Query getQuery(Query query, boolean authorized) {
+    if (authorized || !hasPiiSensitiveTag(query)) return query;
+    return null;
+  }
+
+  private static boolean hasPiiSensitiveTag(Query query) {
+    return query.getTags().stream().map(TagLabel::getTagFQN).anyMatch(SENSITIVE_PII_TAG::equals);
   }
 
   private static boolean hasPiiSensitiveTag(Column column) {

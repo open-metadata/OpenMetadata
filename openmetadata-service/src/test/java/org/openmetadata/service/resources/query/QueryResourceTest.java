@@ -4,6 +4,7 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
@@ -35,6 +36,7 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -173,5 +175,31 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     final CreateQuery request2 = createRequest(LONG_ENTITY_NAME, "description", "displayName", null);
     assertResponse(
         () -> createEntity(request2, ADMIN_AUTH_HEADERS), BAD_REQUEST, TestUtils.getEntityNameLengthError(entityClass));
+  }
+
+  @Test
+  void test_sensitivePIIQuery() throws IOException {
+    CreateQuery create = createRequest("sensitiveQuery");
+    create.withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Owner (USER1_REF) can see the results
+    ResultList<Query> queries = getQueries(10, "*", false, authHeaders(USER1_REF.getName()));
+    assertEquals(queries.getData().size(), 1);
+
+    // Another user won't have the PII query listed
+    ResultList<Query> maskedQueries = getQueries(10, "*", false, authHeaders(USER2_REF.getName()));
+    assertEquals(maskedQueries.getData().size(), 0);
+  }
+
+  public ResultList<Query> getQueries(Integer limit, String fields, Boolean includeAll, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getCollection();
+    target = limit != null ? target.queryParam("limit", limit) : target;
+    target = target.queryParam("fields", fields);
+    if (includeAll) {
+      target = target.queryParam("include", "all");
+    }
+    return TestUtils.get(target, QueryResource.QueryList.class, authHeaders);
   }
 }
