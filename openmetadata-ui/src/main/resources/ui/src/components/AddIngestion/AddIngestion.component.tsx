@@ -67,6 +67,7 @@ import {
   ModifiedDbtConfig,
 } from './addIngestion.interface';
 import ConfigureIngestion from './Steps/ConfigureIngestion';
+import DataInsightMetadataToESConfigForm from './Steps/DataInsightMetadataToESConfigForm/DataInsightMetadataToESConfigForm';
 import MetadataToESConfigForm from './Steps/MetadataToESConfigForm/MetadataToESConfigForm';
 import ScheduleInterval from './Steps/ScheduleInterval';
 
@@ -242,6 +243,9 @@ const AddIngestion = ({
         useAwsCredentials: Boolean(sourceConfig?.useAwsCredentials),
         useSSL: Boolean(sourceConfig?.useSSL),
         verifyCerts: Boolean(sourceConfig?.verifyCerts),
+        batchSize: sourceConfig?.batchSize,
+        searchIndexMappingLanguage: sourceConfig?.searchIndexMappingLanguage,
+        recreateIndex: sourceConfig?.recreateIndex,
       },
       dbtUpdateDescriptions: sourceConfig?.dbtUpdateDescriptions ?? false,
       confidence: sourceConfig?.confidence,
@@ -774,15 +778,27 @@ const AddIngestion = ({
           />
         )}
 
-        {activeIngestionStep === 3 && isServiceTypeOpenMetadata && (
-          <MetadataToESConfigForm
-            data={state}
-            handleMetadataToESConfig={handleMetadataToESConfig}
-            handleNext={handleNext}
-            handlePrev={handlePrev}
-            onFocus={onFocus}
-          />
-        )}
+        {activeIngestionStep === 3 &&
+          pipelineType === PipelineType.ElasticSearchReindex && (
+            <MetadataToESConfigForm
+              data={state}
+              handleMetadataToESConfig={handleMetadataToESConfig}
+              handleNext={handleNext}
+              handlePrev={handlePrev}
+              onFocus={onFocus}
+            />
+          )}
+
+        {activeIngestionStep === 3 &&
+          pipelineType === PipelineType.DataInsight && (
+            <DataInsightMetadataToESConfigForm
+              data={state}
+              handleMetadataToESConfig={handleMetadataToESConfig}
+              handleNext={handleNext}
+              handlePrev={handlePrev}
+              onFocus={onFocus}
+            />
+          )}
 
         {activeIngestionStep === 4 && (
           <ScheduleInterval
