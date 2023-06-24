@@ -14,12 +14,14 @@
 import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { tabsInfo } from 'constants/explore.constants';
 import {
   urlGitbookDocs,
   urlGithubRepo,
   urlJoinSlack,
 } from 'constants/URL.constants';
+import { CurrentTourPageType } from 'enums/tour.enum';
 import { isEmpty, isString, max } from 'lodash';
 import { observer } from 'mobx-react';
 import Qs from 'qs';
@@ -43,6 +45,7 @@ import {
   ROUTES,
   TERM_ADMIN,
   TERM_USER,
+  TOUR_SEARCH_TERM,
 } from '../../constants/constants';
 import {
   addToRecentSearched,
@@ -58,6 +61,8 @@ const Appbar: React.FC = (): JSX.Element => {
   const location = useLocation();
   const history = useHistory();
   const { t } = useTranslation();
+  const { isTourOpen, updateTourPage, updateTourSearch, tourSearchValue } =
+    useTourProvider();
 
   const {
     isAuthDisabled,
@@ -91,7 +96,11 @@ const Appbar: React.FC = (): JSX.Element => {
 
   const handleSearchChange = (value: string) => {
     setSearchValue(value);
-    value ? setIsOpen(true) : setIsOpen(false);
+    if (isTourOpen) {
+      updateTourSearch(value);
+    } else {
+      value ? setIsOpen(true) : setIsOpen(false);
+    }
   };
 
   const supportLink = [
@@ -327,24 +336,31 @@ const Appbar: React.FC = (): JSX.Element => {
   ];
 
   const searchHandler = (value: string) => {
-    setIsOpen(false);
-    addToRecentSearched(value);
+    if (!isTourOpen) {
+      setIsOpen(false);
+      addToRecentSearched(value);
 
-    const defaultTab: string =
-      searchCriteria !== '' ? tabsInfo[searchCriteria].path : '';
+      const defaultTab: string =
+        searchCriteria !== '' ? tabsInfo[searchCriteria].path : '';
 
-    history.push(
-      getExplorePath({
-        tab: defaultTab,
-        search: value,
-        isPersistFilters: false,
-      })
-    );
+      history.push(
+        getExplorePath({
+          tab: defaultTab,
+          search: value,
+          isPersistFilters: false,
+        })
+      );
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const target = e.target as HTMLInputElement;
     if (e.key === 'Enter') {
+      if (isTourOpen && searchValue === TOUR_SEARCH_TERM) {
+        updateTourPage(CurrentTourPageType.EXPLORE_PAGE);
+        updateTourSearch('');
+      }
+
       searchHandler(target.value);
     }
   };
@@ -376,6 +392,11 @@ const Appbar: React.FC = (): JSX.Element => {
   useEffect(() => {
     setSearchValue(searchQuery);
   }, [searchQuery]);
+  useEffect(() => {
+    if (isTourOpen) {
+      setSearchValue(tourSearchValue);
+    }
+  }, [tourSearchValue, isTourOpen]);
 
   useEffect(() => {
     if (isAuthDisabled) {
