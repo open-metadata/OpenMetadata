@@ -103,7 +103,7 @@ def get_columns_from_model(
                 displayName=getattr(field, "label_short", field.label),
                 dataType=type_,
                 # We cannot get the inner type from the sdk of .lkml
-                arrayDataType=DataType.STRING if type_ == DataType.ARRAY else None,
+                arrayDataType=DataType.UNKNOWN if type_ == DataType.ARRAY else None,
                 dataTypeDisplay=field.type,
                 description=field.description,
             )
