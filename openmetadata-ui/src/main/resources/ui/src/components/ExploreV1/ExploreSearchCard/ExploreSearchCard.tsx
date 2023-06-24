@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Checkbox, Col, Row, Typography } from 'antd';
+import { Button, Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import TableDataCardBody from 'components/TableDataCardBody/TableDataCardBody';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
@@ -48,10 +47,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       source,
       matches,
       handleSummaryPanelDisplay,
-      showCheckboxes,
-      checked,
       showTags = true,
-      showNameHeader = true,
       openEntityInNewPage,
     },
     ref
@@ -115,72 +111,46 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
     const header = useMemo(() => {
       return (
-        <>
-          {showNameHeader ? (
-            <Row wrap={false}>
-              <Col flex="auto">
-                <EntityHeader
-                  titleIsLink
-                  breadcrumb={breadcrumbs}
-                  entityData={source}
-                  entityType={source.entityType as EntityType}
-                  gutter="large"
-                  icon={serviceIcon}
-                  openEntityInNewPage={openEntityInNewPage}
-                  serviceName={source?.service?.name ?? ''}
-                />
-              </Col>
-              {showCheckboxes && (
-                <Col flex="20px">
-                  <Checkbox checked={checked} className="m-l-auto" />
-                </Col>
-              )}
-            </Row>
-          ) : (
-            <Row gutter={[8, 8]}>
-              <Col span={24}>
-                <div className="d-flex gap-2 items-center">
-                  {serviceIcon}
-                  <div
-                    className="entity-breadcrumb"
-                    data-testid="category-name">
-                    <TitleBreadcrumb titleLinks={breadcrumbs} />
-                  </div>
-                </div>
-              </Col>
-              <Col span={24}>
-                {isTourOpen ? (
-                  <Button data-testid={source.fullyQualifiedName} type="link">
-                    <Typography.Text
-                      className="text-lg font-medium text-link-color"
-                      data-testid="entity-header-display-name">
-                      {stringToHTML(getEntityName(source))}
-                    </Typography.Text>
-                  </Button>
-                ) : (
-                  <Link
-                    className="no-underline"
-                    data-testid="entity-link"
-                    target={openEntityInNewPage ? '_blank' : '_self'}
-                    to={
-                      source.fullyQualifiedName && source.entityType
-                        ? getEntityLinkFromType(
-                            getEncodedFqn(source.fullyQualifiedName),
-                            source.entityType as EntityType
-                          )
-                        : ''
-                    }>
-                    <Typography.Text
-                      className="text-lg font-medium text-link-color"
-                      data-testid="entity-header-display-name">
-                      {stringToHTML(getEntityName(source))}
-                    </Typography.Text>
-                  </Link>
-                )}
-              </Col>
-            </Row>
-          )}
-        </>
+        <Row gutter={[8, 8]}>
+          <Col span={24}>
+            <div className="d-flex gap-2 items-center">
+              {serviceIcon}
+              <div className="entity-breadcrumb" data-testid="category-name">
+                <TitleBreadcrumb titleLinks={breadcrumbs} />
+              </div>
+            </div>
+          </Col>
+          <Col span={24}>
+            {isTourOpen ? (
+              <Button data-testid={source.fullyQualifiedName} type="link">
+                <Typography.Text
+                  className="text-lg font-medium text-link-color"
+                  data-testid="entity-header-display-name">
+                  {stringToHTML(getEntityName(source))}
+                </Typography.Text>
+              </Button>
+            ) : (
+              <Link
+                className="no-underline"
+                data-testid="entity-link"
+                target={openEntityInNewPage ? '_blank' : '_self'}
+                to={
+                  source.fullyQualifiedName && source.entityType
+                    ? getEntityLinkFromType(
+                        getEncodedFqn(source.fullyQualifiedName),
+                        source.entityType as EntityType
+                      )
+                    : ''
+                }>
+                <Typography.Text
+                  className="text-lg font-medium text-link-color"
+                  data-testid="entity-header-display-name">
+                  {stringToHTML(getEntityName(source))}
+                </Typography.Text>
+              </Link>
+            )}
+          </Col>
+        </Row>
       );
     }, [breadcrumbs, source]);
 
