@@ -20,9 +20,7 @@ from metadata.data_quality.api.workflow import TestSuiteWorkflow
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineType,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataWorkflowConfig,
-)
+from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.ingestion.api.workflow import Workflow
 from metadata.profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.logger import set_loggers_level
@@ -103,11 +101,10 @@ def main():
     if pipeline_run_id:
         workflow_config["pipelineRunId"] = pipeline_run_id
 
+    logger_level = workflow_config.get("workflowConfig", {}).get("loggerLevel")
+    set_loggers_level(logger_level or LogLevels.INFO.value)
+
     workflow = workflow_class.create(workflow_config)
-
-    ometa_workflow_config: OpenMetadataWorkflowConfig = workflow.config
-    set_loggers_level(ometa_workflow_config.workflowConfig.loggerLevel.value)
-
     workflow.execute()
     workflow.raise_from_status()
     workflow.print_status()
