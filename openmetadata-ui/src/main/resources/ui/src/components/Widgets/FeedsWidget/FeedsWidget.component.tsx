@@ -17,7 +17,7 @@ import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedPro
 import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { mockFeedData } from 'constants/mockTourData.constants';
 import { FeedFilter } from 'enums/mydata.enum';
-import { ThreadType } from 'generated/entity/feed/thread';
+import { ThreadTaskStatus, ThreadType } from 'generated/entity/feed/thread';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFeedsWithFilter } from 'rest/feedsAPI';
@@ -70,7 +70,8 @@ const FeedsWidget = () => {
       currentUser?.id,
       FeedFilter.OWNER,
       undefined,
-      ThreadType.Task
+      ThreadType.Task,
+      ThreadTaskStatus.Open
     )
       .then((res) => {
         setTaskCount(res.data.length);
@@ -79,6 +80,16 @@ const FeedsWidget = () => {
         showErrorToast(err);
       });
   }, [currentUser]);
+
+  const threads = useMemo(() => {
+    if (activeTab === 'tasks') {
+      return entityThread.filter(
+        (thread) => thread.task?.status === ThreadTaskStatus.Open
+      );
+    }
+
+    return entityThread;
+  }, [activeTab, entityThread]);
 
   return (
     <div className="feeds-widget-container">
@@ -89,7 +100,7 @@ const FeedsWidget = () => {
             key: 'all',
             children: (
               <ActivityFeedListV1
-                feedList={isTourOpen ? mockFeedData : entityThread}
+                feedList={isTourOpen ? mockFeedData : threads}
                 hidePopover={false}
                 isLoading={loading && !isTourOpen}
                 showThread={false}
@@ -101,7 +112,7 @@ const FeedsWidget = () => {
             key: 'mentions',
             children: (
               <ActivityFeedListV1
-                feedList={entityThread}
+                feedList={threads}
                 hidePopover={false}
                 isLoading={loading}
                 showThread={false}
@@ -118,7 +129,7 @@ const FeedsWidget = () => {
             key: 'tasks',
             children: (
               <ActivityFeedListV1
-                feedList={entityThread}
+                feedList={threads}
                 hidePopover={false}
                 isLoading={loading}
                 showThread={false}

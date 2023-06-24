@@ -312,12 +312,14 @@ const TagsContainerV1 = ({
           data-testid="tag-thread"
           size="small"
           type="text"
-          onClick={() =>
-            onThreadLinkSelect(
-              entityThreadLink ??
-                getEntityFeedLink(entityType, entityFqn, 'tags')
-            )
-          }>
+          onClick={() => {
+            if (onThreadLinkSelect) {
+              onThreadLinkSelect(
+                entityThreadLink ??
+                  getEntityFeedLink(entityType, entityFqn, 'tags')
+              );
+            }
+          }}>
           <Tooltip
             placement="left"
             title={t('label.list-entity', {
