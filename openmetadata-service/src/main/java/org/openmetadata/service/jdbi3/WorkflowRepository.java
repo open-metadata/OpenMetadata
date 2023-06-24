@@ -25,8 +25,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
         dao.workflowDAO(),
         dao,
         PATCH_FIELDS,
-        UPDATE_FIELDS,
-        null);
+        UPDATE_FIELDS);
   }
 
   @Override
@@ -58,6 +57,12 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
 
     // Restore the relationships
     entity.withOwner(owner).withOpenMetadataServerConnection(openmetadataConnection);
+  }
+
+  /** Remove the secrets from the secret manager */
+  @Override
+  protected void postDelete(Workflow workflow) {
+    SecretsManagerFactory.getSecretsManager().deleteSecretsFromWorkflow(workflow);
   }
 
   @Override

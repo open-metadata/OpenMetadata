@@ -109,7 +109,7 @@ GRANT IMPORTED PRIVILEGES ON ALL SCHEMAS IN DATABASE SNOWFLAKE TO ROLE NEW_ROLE;
 
 ```
 
-You can find more information about the `account_usage` schema [here](https://docs.snowflake.com/en/sql-reference/account-usage.html).
+You can find more information about the `account_usage` schema [here](https://docs.snowflake.com/en/sql-reference/account-usage).
 
 ## Metadata Ingestion
 
@@ -168,6 +168,12 @@ This is a sample config for Snowflake:
 {% codeInfo srNumber=6 %}
 
 **includeTempTables**: Optional configuration for ingestion of TRANSIENT and TEMPORARY tables, By default, it will skip the TRANSIENT and TEMPORARY tables.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=43 %}
+
+**clientSessionKeepAlive**: Optional Configuration to keep the session active in case the ingestion job runs for longer duration. 
 
 {% /codeInfo %}
 
@@ -270,6 +276,9 @@ source:
 ```
 ```yaml {% srNumber=6 %}
       includeTempTables: false
+```
+```yaml {% srNumber=43 %}
+      clientSessionKeepAlive: false
 ```
 ```yaml {% srNumber=7 %}
       # privateKey: <privateKey>

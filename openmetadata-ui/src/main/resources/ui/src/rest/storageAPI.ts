@@ -15,9 +15,11 @@ import { Operation } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
 import { EntityHistory } from 'generated/type/entityHistory';
 import { EntityReference } from 'generated/type/entityReference';
+import { Include } from 'generated/type/include';
 import { Paging } from 'generated/type/paging';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { ServicePageData } from 'pages/service';
+import { getURLWithQueryFields } from 'utils/APIUtils';
 import APIClient from './index';
 
 const configOptionsForPatch = {
@@ -33,6 +35,7 @@ export const getContainers = async (args: {
   fields: string;
   paging?: PagingWithoutTotal;
   root?: boolean;
+  include: Include;
 }) => {
   const { paging, ...rest } = args;
 
@@ -51,10 +54,16 @@ export const getContainers = async (args: {
 
 export const getContainerByName = async (
   name: string,
-  fields: string | string[]
+  fields: string | string[],
+  include: Include = Include.NonDeleted
 ) => {
   const response = await APIClient.get<Container>(
-    `containers/name/${name}?fields=${fields}`
+    `containers/name/${name}?fields=${fields}`,
+    {
+      params: {
+        include,
+      },
+    }
   );
 
   return response.data;
@@ -111,6 +120,22 @@ export const getContainerVersions = async (id: string) => {
 
 export const getContainerVersion = async (id: string, version: string) => {
   const url = `/containers/${id}/versions/${version}`;
+
+  const response = await APIClient.get<Container>(url);
+
+  return response.data;
+};
+
+export const getContainerByFQN = async (
+  fqn: string,
+  arrQueryFields: string | string[],
+  include = 'all'
+) => {
+  const url = getURLWithQueryFields(
+    `/containers/name/${fqn}`,
+    arrQueryFields,
+    `include=${include}`
+  );
 
   const response = await APIClient.get<Container>(url);
 

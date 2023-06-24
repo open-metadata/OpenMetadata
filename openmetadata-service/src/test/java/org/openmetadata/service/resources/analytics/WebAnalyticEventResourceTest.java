@@ -1,6 +1,8 @@
 package org.openmetadata.service.resources.analytics;
 
-import static javax.ws.rs.core.Response.Status.*;
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -27,6 +29,7 @@ import org.openmetadata.schema.api.tests.CreateWebAnalyticEvent;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.analytics.WebAnalyticEventResource.WebAnalyticEventDataList;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -38,6 +41,7 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
         WebAnalyticEventResource.WebAnalyticEventList.class,
         "analytics/web/events",
         WebAnalyticEventResource.FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Test
@@ -191,7 +195,7 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
     target = target.queryParam("startTs", start);
     target = target.queryParam("endTs", end);
     target = target.queryParam("eventType", eventType);
-    return TestUtils.get(target, WebAnalyticEventResource.WebAnalyticEventDataList.class, authHeaders);
+    return TestUtils.get(target, WebAnalyticEventDataList.class, authHeaders);
   }
 
   private void verifyWebAnalyticEventData(

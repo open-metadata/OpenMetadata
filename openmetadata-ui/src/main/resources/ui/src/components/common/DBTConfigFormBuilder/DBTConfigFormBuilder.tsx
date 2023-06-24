@@ -12,6 +12,7 @@
  */
 
 import { Button, Form, FormProps, Space } from 'antd';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import React, { FunctionComponent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -157,6 +158,12 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
       formItemProps: {
         initialValue: ingestionName,
       },
+      rules: [
+        {
+          pattern: ENTITY_NAME_REGEX,
+          message: t('message.entity-name-validation'),
+        },
+      ],
     },
     {
       name: 'dbtConfigSource',
@@ -273,7 +280,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             dbtConfigSourceType: currentDbtConfigSourceType,
             dbtConfigSource: {
               dbtSecurityConfig: {
-                gcsConfig:
+                gcpConfig:
                   currentGcsConfigType === GCS_CONFIG.GCSValues
                     ? {
                         type: value?.type,
@@ -287,7 +294,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
                         authProviderX509CertUrl: value?.authProviderX509CertUrl,
                         clientX509CertUrl: value?.clientX509CertUrl,
                       }
-                    : value?.GCSCredentialsPath,
+                    : value?.gcpCredentialsPath,
               },
               dbtPrefixConfig: {
                 dbtBucketName: value?.dbtBucketName,

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
 import { Drawer, Typography } from 'antd';
 import { EntityType } from 'enums/entity.enum';
 import { Tag } from 'generated/entity/classification/tag';
@@ -23,7 +22,7 @@ import { get } from 'lodash';
 import React, { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getEntityLinkFromType, getEntityName } from 'utils/EntityUtils';
-import { getEncodedFqn } from 'utils/StringsUtils';
+import { getEncodedFqn, stringToHTML } from 'utils/StringsUtils';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { Topic } from '../../../generated/entity/data/topic';
@@ -40,7 +39,6 @@ import TopicSummary from './TopicSummary/TopicSummary.component';
 
 export default function EntitySummaryPanel({
   entityDetails,
-  handleClosePanel,
 }: EntitySummaryPanelProps) {
   const { tab } = useParams<{ tab: string }>();
 
@@ -95,12 +93,6 @@ export default function EntitySummaryPanel({
       open
       className="summary-panel-container"
       closable={false}
-      extra={
-        <CloseOutlined
-          data-testid="summary-panel-close-icon"
-          onClick={handleClosePanel}
-        />
-      }
       getContainer={false}
       headerStyle={{ padding: 16 }}
       mask={false}
@@ -109,8 +101,8 @@ export default function EntitySummaryPanel({
           className="no-underline"
           data-testid="entity-link"
           to={entityLink}>
-          <Typography.Text className="m-b-0 d-block entity-header-display-name">
-            {getEntityName(entityDetails.details)}
+          <Typography.Text className="m-b-0 d-block summary-panel-title">
+            {stringToHTML(getEntityName(entityDetails.details))}
           </Typography.Text>
         </Link>
       }

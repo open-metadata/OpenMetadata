@@ -78,7 +78,6 @@ import org.openmetadata.service.util.ResultList;
 public class MessagingServiceResource
     extends ServiceEntityResource<MessagingService, MessagingServiceRepository, MessagingConnection> {
   public static final String COLLECTION_PATH = "v1/services/messagingServices/";
-
   public static final String FIELDS = FIELD_OWNER;
 
   @Override
@@ -93,10 +92,7 @@ public class MessagingServiceResource
   }
 
   public static class MessagingServiceList extends ResultList<MessagingService> {
-    @SuppressWarnings("unused") /* Required for tests */
-    public MessagingServiceList() {
-      /* unused */
-    }
+    /* Required for serde */
   }
 
   @GET
@@ -236,7 +232,7 @@ public class MessagingServiceResource
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    MessagingService service = dao.addTestConnectionResult(id, testConnectionResult);
+    MessagingService service = repository.addTestConnectionResult(id, testConnectionResult);
     return decryptOrNullify(securityContext, service);
   }
 

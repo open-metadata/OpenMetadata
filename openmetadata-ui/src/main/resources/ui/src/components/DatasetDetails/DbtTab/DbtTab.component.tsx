@@ -40,7 +40,7 @@ const DbtTab = ({ dataModel }: { dataModel: Table['dataModel'] }) => {
 
   return (
     <Card
-      className="m-y-md dbt-tab-container"
+      className="m-md w-auto dbt-tab-container"
       extra={
         <Space>
           <Tag className="query-lines" data-testid="query-line">

@@ -17,6 +17,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { EntityTabs } from 'enums/entity.enum';
 import { StorageServiceType } from 'generated/entity/data/container';
 import { t } from 'i18next';
 import {
@@ -72,6 +73,7 @@ import {
   MLFLOW,
   ML_MODEL_DEFAULT,
   MODE,
+  MONGODB,
   MSSQL,
   MYSQL,
   NIFI,
@@ -87,6 +89,7 @@ import {
   REDSHIFT,
   SAGEMAKER,
   SALESFORCE,
+  SAP_HANA,
   SCIKIT,
   serviceTypes,
   SERVICE_TYPE_MAP,
@@ -203,6 +206,9 @@ export const serviceTypeLogo = (type: string) => {
     case DatabaseServiceType.Salesforce:
       return SALESFORCE;
 
+    case DatabaseServiceType.SapHana:
+      return SAP_HANA;
+
     case DatabaseServiceType.DeltaLake:
       return DELTALAKE;
 
@@ -211,6 +217,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DatabaseServiceType.Datalake:
       return DATALAKE;
+
+    case DatabaseServiceType.MongoDB:
+      return MONGODB;
 
     case MessagingServiceType.Kafka:
       return KAFKA;
@@ -912,8 +921,7 @@ export const getServicePageTabs = (
   if (serviceName !== ServiceCategory.METADATA_SERVICES) {
     tabs.push({
       name: getCountLabel(serviceName),
-      isProtected: false,
-      position: 1,
+      key: getCountLabel(serviceName).toLowerCase(),
       count: instanceCount,
     });
   }
@@ -921,8 +929,7 @@ export const getServicePageTabs = (
   if (serviceName === ServiceCategory.DASHBOARD_SERVICES) {
     tabs.push({
       name: t('label.data-model'),
-      isProtected: false,
-      position: 4,
+      key: EntityTabs.DATA_Model,
       count: dataModelCount,
     });
   }
@@ -930,19 +937,17 @@ export const getServicePageTabs = (
   tabs.push(
     {
       name: t('label.ingestion-plural'),
-      isProtected: false,
-      position: 2,
+      key: EntityTabs.INGESTIONS,
       count: ingestionCount,
     },
     {
       name: t('label.connection'),
-      isProtected: !servicePermission.EditAll,
       isHidden: !servicePermission.EditAll,
-      position: 3,
+      key: EntityTabs.CONNECTION,
     }
   );
 
-  return tabs;
+  return tabs.filter((tab) => !tab.isHidden);
 };
 
 export const getTestConnectionName = (connectionType: string) => {

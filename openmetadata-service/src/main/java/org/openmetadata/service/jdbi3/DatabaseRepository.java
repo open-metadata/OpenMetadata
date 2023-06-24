@@ -39,13 +39,17 @@ public class DatabaseRepository extends EntityRepository<Database> {
         dao.databaseDAO(),
         dao,
         DATABASE_PATCH_FIELDS,
-        DATABASE_UPDATE_FIELDS,
-        null);
+        DATABASE_UPDATE_FIELDS);
   }
 
   @Override
   public void setFullyQualifiedName(Database database) {
     database.setFullyQualifiedName(FullyQualifiedName.build(database.getService().getName(), database.getName()));
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(Database entity) {
+    return FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
   }
 
   @Override

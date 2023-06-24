@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
@@ -41,12 +40,12 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -70,15 +69,7 @@ public class UserRepository extends EntityRepository<User> {
   private final EntityReference organization;
 
   public UserRepository(CollectionDAO dao) {
-    super(
-        UserResource.COLLECTION_PATH,
-        USER,
-        User.class,
-        dao.userDAO(),
-        dao,
-        USER_PATCH_FIELDS,
-        USER_UPDATE_FIELDS,
-        listOf(MetadataOperation.EDIT_TEAMS));
+    super(UserResource.COLLECTION_PATH, USER, User.class, dao.userDAO(), dao, USER_PATCH_FIELDS, USER_UPDATE_FIELDS);
     organization = dao.teamDAO().findEntityReferenceByName(Entity.ORGANIZATION_NAME, Include.ALL);
   }
 
@@ -89,6 +80,11 @@ public class UserRepository extends EntityRepository<User> {
       return new Fields(tempFields, String.join(",", tempFields));
     }
     return new Fields(tempFields, fields);
+  }
+
+  @Override
+  public User getByName(UriInfo uriInfo, String name, Fields fields) throws IOException {
+    return super.getByName(uriInfo, EntityInterfaceUtil.quoteName(name), fields);
   }
 
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
@@ -291,7 +287,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   /* Get all the teams that user belongs to User entity */
-  private List<EntityReference> getTeams(User user) throws IOException {
+  public List<EntityReference> getTeams(User user) throws IOException {
     List<EntityRelationshipRecord> records = findFrom(user.getId(), USER, Relationship.HAS, Entity.TEAM);
     List<EntityReference> teams = EntityUtil.populateEntityReferences(records, Entity.TEAM);
     teams = teams.stream().filter(team -> !team.getDeleted()).collect(Collectors.toList()); // Filter deleted teams

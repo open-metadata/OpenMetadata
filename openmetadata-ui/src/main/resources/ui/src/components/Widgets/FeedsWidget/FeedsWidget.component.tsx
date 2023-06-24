@@ -11,37 +11,85 @@
  *  limitations under the License.
  */
 import { Tabs } from 'antd';
+import AppState from 'AppState';
 import ActivityFeedListV1 from 'components/ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
 import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
+import { mockFeedData } from 'constants/mockTourData.constants';
 import { FeedFilter } from 'enums/mydata.enum';
-import { ThreadType } from 'generated/entity/feed/thread';
-import React, { useEffect, useState } from 'react';
+import { ThreadTaskStatus, ThreadType } from 'generated/entity/feed/thread';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getFeedsWithFilter } from 'rest/feedsAPI';
+import { getCountBadge } from 'utils/CommonUtils';
+import { showErrorToast } from 'utils/ToastUtils';
 import './feeds-widget.less';
 
 const FeedsWidget = () => {
   const { t } = useTranslation();
+  const { isTourOpen } = useTourProvider();
   const [activeTab, setActiveTab] = useState('all');
   const { loading, entityThread, getFeedData } = useActivityFeedProvider();
+  const [taskCount, setTaskCount] = useState(0);
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
 
   useEffect(() => {
     if (activeTab === 'all') {
-      getFeedData(FeedFilter.OWNER).catch(() => {
-        // ignore since error is displayed in toast in the parent promise.
-        // Added block for sonar code smell
-      });
+      getFeedData(FeedFilter.OWNER, undefined, ThreadType.Conversation).catch(
+        () => {
+          // ignore since error is displayed in toast in the parent promise.
+          // Added block for sonar code smell
+        }
+      );
     } else if (activeTab === 'mentions') {
       getFeedData(FeedFilter.MENTIONS).catch(() => {
         // ignore since error is displayed in toast in the parent promise.
         // Added block for sonar code smell
       });
     } else if (activeTab === 'tasks') {
-      getFeedData(FeedFilter.OWNER, undefined, ThreadType.Task).catch(() => {
-        // ignore since error is displayed in toast in the parent promise.
-        // Added block for sonar code smell
-      });
+      getFeedData(FeedFilter.OWNER, undefined, ThreadType.Task)
+        .then((data) => {
+          setTaskCount(data.length);
+        })
+        .catch(() => {
+          // ignore since error is displayed in toast in the parent promise.
+          // Added block for sonar code smell
+        });
     }
   }, [activeTab]);
+
+  const countBadge = useMemo(() => {
+    return getCountBadge(taskCount, '', activeTab === 'tasks');
+  }, [taskCount, activeTab]);
+
+  useEffect(() => {
+    getFeedsWithFilter(
+      currentUser?.id,
+      FeedFilter.OWNER,
+      undefined,
+      ThreadType.Task,
+      ThreadTaskStatus.Open
+    )
+      .then((res) => {
+        setTaskCount(res.data.length);
+      })
+      .catch((err) => {
+        showErrorToast(err);
+      });
+  }, [currentUser]);
+
+  const threads = useMemo(() => {
+    if (activeTab === 'tasks') {
+      return entityThread.filter(
+        (thread) => thread.task?.status === ThreadTaskStatus.Open
+      );
+    }
+
+    return entityThread;
+  }, [activeTab, entityThread]);
 
   return (
     <div className="feeds-widget-container">
@@ -52,8 +100,9 @@ const FeedsWidget = () => {
             key: 'all',
             children: (
               <ActivityFeedListV1
-                feedList={entityThread}
-                isLoading={loading}
+                feedList={isTourOpen ? mockFeedData : threads}
+                hidePopover={false}
+                isLoading={loading && !isTourOpen}
                 showThread={false}
               />
             ),
@@ -63,18 +112,25 @@ const FeedsWidget = () => {
             key: 'mentions',
             children: (
               <ActivityFeedListV1
-                feedList={entityThread}
+                feedList={threads}
+                hidePopover={false}
                 isLoading={loading}
                 showThread={false}
               />
             ),
           },
           {
-            label: t('label.task-plural'),
+            label: (
+              <>
+                {`${t('label.task-plural')} `}
+                {countBadge}
+              </>
+            ),
             key: 'tasks',
             children: (
               <ActivityFeedListV1
-                feedList={entityThread}
+                feedList={threads}
+                hidePopover={false}
                 isLoading={loading}
                 showThread={false}
               />

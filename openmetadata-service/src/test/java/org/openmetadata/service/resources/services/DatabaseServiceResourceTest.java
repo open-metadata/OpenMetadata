@@ -52,6 +52,7 @@ import org.openmetadata.schema.services.connections.database.ConnectionOptions;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Schedule;
 import org.openmetadata.service.Entity;
@@ -387,9 +388,13 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     assertEquals(expectedMysqlConnection.getConnectionOptions(), actualMysqlConnection.getConnectionOptions());
     assertEquals(expectedMysqlConnection.getConnectionArguments(), actualMysqlConnection.getConnectionArguments());
     if (maskedPasswords) {
-      assertEquals(actualMysqlConnection.getPassword(), PasswordEntityMasker.PASSWORD_MASK);
+      assertEquals(
+          JsonUtils.convertValue(actualMysqlConnection.getAuthType(), basicAuth.class).getPassword(),
+          PasswordEntityMasker.PASSWORD_MASK);
     } else {
-      assertEquals(expectedMysqlConnection.getPassword(), actualMysqlConnection.getPassword());
+      assertEquals(
+          JsonUtils.convertValue(expectedMysqlConnection.getAuthType(), basicAuth.class).getPassword(),
+          JsonUtils.convertValue(actualMysqlConnection.getAuthType(), basicAuth.class).getPassword());
     }
   }
 

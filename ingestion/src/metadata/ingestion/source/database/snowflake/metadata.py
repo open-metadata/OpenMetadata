@@ -21,10 +21,6 @@ from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy.engine.reflection import Inspector
 from sqlparse.sql import Function, Identifier
 
-from metadata.generated.schema.api.classification.createClassification import (
-    CreateClassificationRequest,
-)
-from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
@@ -47,9 +43,14 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.snowflake.constants import (
+    SNOWFLAKE_REGION_ID_MAP,
+)
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_FETCH_ALL_TAGS,
     SNOWFLAKE_GET_CLUSTER_KEY,
+    SNOWFLAKE_GET_CURRENT_ACCOUNT,
+    SNOWFLAKE_GET_CURRENT_REGION,
     SNOWFLAKE_GET_DATABASE_COMMENTS,
     SNOWFLAKE_GET_DATABASES,
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
@@ -69,12 +70,11 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
+from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
-GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
-GEOMETRY = create_sqlalchemy_type("GEOMETRY")
 ischema_names["VARIANT"] = VARIANT
-ischema_names["GEOGRAPHY"] = GEOGRAPHY
-ischema_names["GEOMETRY"] = GEOMETRY
+ischema_names["GEOGRAPHY"] = create_sqlalchemy_type("GEOGRAPHY")
+ischema_names["GEOMETRY"] = create_sqlalchemy_type("GEOMETRY")
 
 logger = ingestion_logger()
 
@@ -296,19 +296,14 @@ class SnowflakeSource(CommonDbSourceService):
             for res in result:
                 row = list(res)
                 fqn_elements = [name for name in row[2:] if name]
-                yield OMetaTagAndClassification(
-                    fqn=fqn._build(  # pylint: disable=protected-access
+                yield from get_ometa_tag_and_classification(
+                    tag_fqn=fqn._build(  # pylint: disable=protected-access
                         self.context.database_service.name.__root__, *fqn_elements
                     ),
-                    classification_request=CreateClassificationRequest(
-                        name=row[0],
-                        description="SNOWFLAKE TAG NAME",
-                    ),
-                    tag_request=CreateTagRequest(
-                        classification=row[0],
-                        name=row[1],
-                        description="SNOWFLAKE TAG VALUE",
-                    ),
+                    tags=[row[1]],
+                    classification_name=row[0],
+                    tag_description="SNOWFLAKE TAG VALUE",
+                    classification_desciption="SNOWFLAKE TAG NAME",
                 )
 
     def query_table_names_and_types(
@@ -341,3 +336,60 @@ class SnowflakeSource(CommonDbSourceService):
         ]
 
         return regular_tables + external_tables
+
+    def _get_current_region(self) -> Optional[str]:
+        try:
+            res = self.engine.execute(SNOWFLAKE_GET_CURRENT_REGION).one()
+            if res:
+                return res.REGION
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.debug(f"Failed to fetch current region due to: {exc}")
+        return None
+
+    def _get_current_account(self) -> Optional[str]:
+        try:
+            res = self.engine.execute(SNOWFLAKE_GET_CURRENT_ACCOUNT).one()
+            if res:
+                return res.ACCOUNT
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.debug(f"Failed to fetch current account due to: {exc}")
+        return None
+
+    def _clean_region_name(self, region_id: Optional[str]) -> Optional[str]:
+        """
+        Region id can be a vanilla id like "AWS_US_WEST_2"
+        and in case of multi region group it can be like "PUBLIC.AWS_US_WEST_2"
+        in such cases this method will extract vanilla region id and return the
+        region name from constant map SNOWFLAKE_REGION_ID_MAP
+
+        for more info checkout this doc:
+            https://docs.snowflake.com/en/sql-reference/functions/current_region
+        """
+        if region_id:
+            clean_region_id = region_id.split(".")[-1]
+            return SNOWFLAKE_REGION_ID_MAP.get(clean_region_id.lower())
+        return None
+
+    def get_source_url(
+        self,
+        database_name: str,
+        schema_name: str,
+        table_name: str,
+        table_type: TableType,
+    ) -> Optional[str]:
+        """
+        Method to get the source url for snowflake
+        """
+        account = self._get_current_account()
+        region_id = self._get_current_region()
+        region_name = self._clean_region_name(region_id)
+        if account and region_name:
+            tab_type = "view" if table_type == TableType.View else "table"
+            return (
+                f"https://app.snowflake.com/{region_name.lower()}/{account.lower()}/#/"
+                f"data/databases/{database_name}/schemas"
+                f"/{schema_name}/{tab_type}/{table_name}"
+            )
+        return None

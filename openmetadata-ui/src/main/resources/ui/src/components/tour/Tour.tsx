@@ -12,14 +12,15 @@
  */
 
 import ReactTutorial, { TourSteps } from '@deuex-solutions/react-tour';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
+import { PRIMERY_COLOR } from 'constants/constants';
 import { observer } from 'mobx-react';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { useTour } from '../../hooks/useTour';
 import TourEndModal from '../Modals/TourEndModal/TourEndModal';
 
 const Tour = ({ steps }: { steps: TourSteps[] }) => {
-  const { isTourOpen, handleIsTourOpen } = useTour();
+  const { isTourOpen, updateIsTourOpen } = useTourProvider();
   const [showTourEndModal, setShowTourEndModal] = useState(false);
   const history = useHistory();
 
@@ -35,7 +36,7 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
           disableKeyboardNavigation
           showCloseButton
           showNumber
-          accentColor="#7147E8"
+          accentColor={PRIMERY_COLOR}
           inViewThreshold={200}
           lastStepNextButton={
             <button
@@ -57,7 +58,7 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
           playTour={isTourOpen}
           stepWaitTimer={300}
           steps={steps}
-          onRequestClose={() => handleIsTourOpen(false)}
+          onRequestClose={() => updateIsTourOpen(false)}
           onRequestSkip={handleModalSubmit}
         />
       ) : null}

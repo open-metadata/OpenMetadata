@@ -5,6 +5,14 @@ slug: /connectors/metadata/amundsen/airflow
 
 # Run Amundsen using the Airflow SDK
 
+
+| Feature                     | Status                       |
+| :----------------------     | :--------------------------- |
+| Table Metadata              | {% icon iconName="check" /%} |
+| Table Owner                 | {% icon iconName="check" /%} |
+| Classifications/Tags        | {% icon iconName="check" /%} |
+| Dashboard & Chart Metadata  | {% icon iconName="check" /%} |
+
 In this section, we provide guides and references to use the Amundsen connector.
 
 Configure and schedule Amundsen metadata and profiler workflows from the OpenMetadata UI:

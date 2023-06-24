@@ -24,6 +24,8 @@ import java.util.Properties;
 import java.util.regex.Pattern;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ServiceEntityInterface;
@@ -52,6 +54,8 @@ public abstract class PipelineServiceClient {
   protected final String hostIp;
 
   protected final boolean ingestionIpInfoEnabled;
+
+  @Getter @Setter private String platform;
 
   protected static final String AUTH_HEADER = "Authorization";
   protected static final String CONTENT_HEADER = "Content-Type";
@@ -109,7 +113,9 @@ public abstract class PipelineServiceClient {
   public static String getServerVersion() throws IOException {
     InputStream fileInput = PipelineServiceClient.class.getResourceAsStream("/catalog/VERSION");
     Properties props = new Properties();
-    props.load(fileInput);
+    if (fileInput != null) {
+      props.load(fileInput);
+    }
     return props.getProperty("version", "unknown");
   }
 
@@ -130,6 +136,27 @@ public abstract class PipelineServiceClient {
 
   public final Boolean validServerClientVersions(String clientVersion) {
     return getVersionFromString(clientVersion).equals(getVersionFromString(SERVER_VERSION));
+  }
+
+  public String buildVersionMismatchErrorMessage(String ingestionVersion, String serverVersion) {
+    if (getVersionFromString(ingestionVersion).compareTo(getVersionFromString(serverVersion)) < 0) {
+      return String.format(
+          "Ingestion version [%s] is older than Server Version [%s]. Please upgrade your ingestion client.",
+          ingestionVersion, serverVersion);
+    }
+    return String.format(
+        "Server version [%s] is older than Ingestion Version [%s]. Please upgrade your server or downgrade the ingestion client.",
+        serverVersion, ingestionVersion);
+  }
+
+  /** To build the response of getServiceStatus */
+  public Map<String, String> buildHealthyStatus(String ingestionVersion) {
+    return Map.of("status", "healthy", "version", ingestionVersion, "platform", this.getPlatform());
+  }
+
+  /** To build the response of getServiceStatus */
+  public Map<String, String> buildUnhealthyStatus(String reason) {
+    return Map.of("status", "unhealthy", "reason", reason, "platform", this.getPlatform());
   }
 
   public final Response getHostIp() {

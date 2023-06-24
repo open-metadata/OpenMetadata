@@ -262,13 +262,9 @@ describe('DataConsumer Edit policy should work properly', () => {
     }
     cy.get('body').click();
     cy.wait(200);
-    cy.get('[data-testid="add-new-tag-button"]')
-      .should('be.visible')
-      .should('be.disabled');
+    cy.get('[data-testid="add-new-tag-button"]').should('not.exist');
 
-    cy.get('[data-testid="delete-classification-or-tag"]')
-      .should('be.visible')
-      .should('be.disabled');
+    cy.get('[data-testid="manage-button"]').should('not.exist');
   });
 
   it('Check CRUD operations for settings page', () => {

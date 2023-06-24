@@ -44,14 +44,18 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         dao.databaseSchemaDAO(),
         dao,
         DATABASE_SCHEMA_PATCH_FIELDS,
-        DATABASE_SCHEMA_UPDATE_FIELDS,
-        null);
+        DATABASE_SCHEMA_UPDATE_FIELDS);
   }
 
   @Override
   public void setFullyQualifiedName(DatabaseSchema schema) {
     schema.setFullyQualifiedName(
         FullyQualifiedName.add(schema.getDatabase().getFullyQualifiedName(), schema.getName()));
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(DatabaseSchema schema) {
+    return FullyQualifiedName.buildHash(schema.getFullyQualifiedName());
   }
 
   @Override

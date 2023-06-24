@@ -14,6 +14,7 @@
 import { Form, FormProps, Input } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { compare } from 'fast-json-patch';
 import { Table } from 'generated/entity/data/table';
 import React, {
@@ -26,7 +27,6 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTestDefinitionById, updateTestCaseById } from 'rest/testAPI';
-import { CSMode } from '../../enums/codemirror.enum';
 import { TestCaseParameterValue } from '../../generated/tests/testCase';
 import {
   TestDataType,
@@ -38,7 +38,6 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import Loader from '../Loader/Loader';
-import SchemaEditor from '../schema-editor/SchemaEditor';
 import { EditTestCaseModalProps } from './AddDataQualityTest.interface';
 import ParameterForm from './components/ParameterForm';
 
@@ -52,12 +51,6 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
   const [form] = Form.useForm();
   const [selectedDefinition, setSelectedDefinition] =
     useState<TestDefinition>();
-  const [sqlQuery, setSqlQuery] = useState(
-    testCase?.parameterValues?.[0] ?? {
-      name: 'sqlExpression',
-      value: '',
-    }
-  );
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingOnSave, setIsLoadingOnSave] = useState(false);
   const [table, setTable] = useState<Table>();
@@ -70,34 +63,12 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
   );
 
   const GenerateParamsField = useCallback(() => {
-    if (selectedDefinition && selectedDefinition.parameterDefinition) {
-      const name = selectedDefinition.parameterDefinition[0]?.name;
-      if (name === 'sqlExpression') {
-        return (
-          <Form.Item
-            data-testid="sql-editor-container"
-            key={name}
-            label={t('label.sql-uppercase-query')}
-            name={name}
-            tooltip={t('message.sql-query-tooltip')}>
-            <SchemaEditor
-              className="custom-query-editor query-editor-h-200"
-              mode={{ name: CSMode.SQL }}
-              options={{
-                readOnly: false,
-              }}
-              value={sqlQuery.value || ''}
-              onChange={(value) => setSqlQuery((pre) => ({ ...pre, value }))}
-            />
-          </Form.Item>
-        );
-      }
-
+    if (selectedDefinition?.parameterDefinition) {
       return <ParameterForm definition={selectedDefinition} table={table} />;
     }
 
     return;
-  }, [testCase, selectedDefinition, sqlQuery, table]);
+  }, [testCase, selectedDefinition, table]);
 
   const fetchTestDefinitionById = async () => {
     setIsLoading(true);
@@ -120,19 +91,18 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
   }) => {
     const paramsValue = selectedDefinition?.parameterDefinition?.[0];
 
-    const parameterValues =
-      paramsValue?.name === 'sqlExpression'
-        ? [sqlQuery]
-        : Object.entries(value.params || {}).map(([key, value]) => ({
-            name: key,
-            value:
-              paramsValue?.dataType === TestDataType.Array
-                ? // need to send array as string formate
-                  JSON.stringify(
-                    (value as { value: string }[]).map((data) => data.value)
-                  )
-                : value,
-          }));
+    const parameterValues = Object.entries(value.params || {}).map(
+      ([key, value]) => ({
+        name: key,
+        value:
+          paramsValue?.dataType === TestDataType.Array
+            ? // need to send array as string formate
+              JSON.stringify(
+                (value as { value: string }[]).map((data) => data.value)
+              )
+            : value,
+      })
+    );
 
     return {
       parameterValues: parameterValues as TestCaseParameterValue[],
@@ -201,12 +171,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
           getEntityFqnFromEntityLink(testCase?.entityLink, isColumn)
         ),
       });
-      setSqlQuery(
-        testCase?.parameterValues?.[0] ?? {
-          name: 'sqlExpression',
-          value: '',
-        }
-      );
+
       const isContainsColumnName = testCase.parameterValues?.find(
         (value) => value.name === 'columnName'
       );
@@ -240,7 +205,6 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         <Form
           className="tw-h-70vh tw-overflow-auto"
           form={form}
-          initialValues={{ sqlExpression: sqlQuery.value }}
           layout="vertical"
           name="tableTestForm"
           onFinish={handleFormSubmit}>
@@ -252,7 +216,16 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
               <Input disabled />
             </Form.Item>
           )}
-          <Form.Item required label={`${t('label.name')}:`} name="name">
+          <Form.Item
+            required
+            label={`${t('label.name')}:`}
+            name="name"
+            rules={[
+              {
+                pattern: ENTITY_NAME_REGEX,
+                message: t('message.entity-name-validation'),
+              },
+            ]}>
             <Input disabled placeholder={t('message.enter-test-case-name')} />
           </Form.Item>
           <Form.Item

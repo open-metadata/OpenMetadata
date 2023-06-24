@@ -1,3 +1,18 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+"""
+Test Glue using the topology
+"""
+
 import json
 from copy import deepcopy
 from pathlib import Path
@@ -17,6 +32,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.glue.metadata import GlueSource
+from metadata.ingestion.source.database.glue.models import DatabasePage, TablePage
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"
@@ -125,10 +141,10 @@ class GlueUnitTest(TestCase):
         self.glue_source.context.__dict__["database"] = MOCK_DATABASE
         self.glue_source.context.__dict__["database_schema"] = MOCK_DATABASE_SCHEMA
         self.glue_source._get_glue_database_and_schemas = lambda: [
-            mock_data.get("mock_database_paginator")
+            DatabasePage(**mock_data.get("mock_database_paginator"))
         ]
         self.glue_source._get_glue_tables = lambda: [
-            mock_data.get("mock_table_paginator")
+            TablePage(**mock_data.get("mock_table_paginator"))
         ]
 
     def test_database_names(self):

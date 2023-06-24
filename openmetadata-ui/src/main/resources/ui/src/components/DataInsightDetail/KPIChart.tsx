@@ -12,17 +12,10 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Col,
-  Row,
-  Space,
-  Tooltip as AntdTooltip,
-  Typography,
-} from 'antd';
+import { Button, Card, Col, Row, Space, Tooltip as AntdTooltip } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageHeader from 'components/header/PageHeader.component';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -200,16 +193,12 @@ const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
       id="kpi-charts"
       loading={isLoading}
       title={
-        <Space className="w-full justify-between">
-          <div>
-            <Typography.Title level={5}>
-              {t('label.kpi-title')}
-            </Typography.Title>
-            <Typography.Text className="data-insight-label-text">
-              {t('message.kpi-subtitle')}
-            </Typography.Text>
-          </div>
-        </Space>
+        <PageHeader
+          data={{
+            header: t('label.kpi-title'),
+            subHeader: t('message.kpi-subtitle'),
+          }}
+        />
       }>
       {kpiList.length ? (
         <Row gutter={DI_STRUCTURE.rowContainerGutter}>

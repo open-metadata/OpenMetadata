@@ -60,8 +60,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
         dao.policyDAO(),
         dao,
         POLICY_PATCH_FIELDS,
-        POLICY_UPDATE_FIELDS,
-        null);
+        POLICY_UPDATE_FIELDS);
   }
 
   @Override

@@ -12,7 +12,13 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 {% /note %}
 
-# [1.0.2 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/1.0.2-release) - Latest - May 24th 2023 🎉
+# [1.0.3 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/1.0.3-release) - Latest - June 2nd 2023 🎉
+
+## What's Changed
+
+- fix: Tags can get deleted if the service name matches partially with targetFQN in [#11856](https://github.com/open-metadata/OpenMetadata/pull/11856)
+
+# [1.0.2 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/1.0.2-release) - May 24th 2023 🎉
 
 ## UI Improvements
 - Supports a separate column for Classification and Glossary in the following entities: Topic, Dashboard, Pipeline, ML Model, Container, and Data Model.

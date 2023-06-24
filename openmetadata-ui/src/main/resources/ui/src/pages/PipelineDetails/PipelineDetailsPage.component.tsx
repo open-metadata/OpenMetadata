@@ -39,7 +39,6 @@ import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
-  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -201,27 +200,6 @@ const PipelineDetailsPage = () => {
     }
   };
 
-  const onTagUpdate = async (
-    updatedPipeline: Pipeline,
-    fetchCount: () => void
-  ) => {
-    try {
-      const res = await saveUpdatedPipelineData(updatedPipeline);
-      setPipelineDetails({
-        ...res,
-        tags: sortTagsCaseInsensitive(res.tags || []),
-      });
-      fetchCount();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: t('label.tag-plural'),
-        })
-      );
-    }
-  };
-
   const onTaskUpdate = async (jsonPatch: Array<Operation>) => {
     try {
       const response = await patchPipelineDetails(pipelineId, jsonPatch);
@@ -287,9 +265,8 @@ const PipelineDetailsPage = () => {
       pipelineDetails={pipelineDetails}
       pipelineFQN={pipelineFQN}
       settingsUpdateHandler={settingsUpdateHandler}
-      tagUpdateHandler={onTagUpdate}
       taskUpdateHandler={onTaskUpdate}
-      unfollowPipelineHandler={unFollowPipeline}
+      unFollowPipelineHandler={unFollowPipeline}
       versionHandler={versionHandler}
       onExtensionUpdate={handleExtensionUpdate}
     />

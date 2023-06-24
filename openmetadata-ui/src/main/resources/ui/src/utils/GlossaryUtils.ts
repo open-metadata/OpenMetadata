@@ -13,9 +13,18 @@
 
 import { AxiosError } from 'axios';
 import { ModifiedGlossaryTerm } from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
-import { GlossaryCSVRecord } from 'components/Glossary/ImportGlossary/ImportGlossary.interface';
-import { isEmpty, isUndefined, omit } from 'lodash';
-import { ListGlossaryTermsParams } from 'rest/glossaryAPI';
+import {
+  GlossaryTermDetailsProps,
+  HierarchyTagsProps,
+} from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
+import { API_RES_MAX_SIZE, PAGE_SIZE_LARGE } from 'constants/constants';
+import { TagSource } from 'generated/type/tagLabel';
+import { isUndefined, omit } from 'lodash';
+import {
+  getGlossariesList,
+  getGlossaryTerms,
+  ListGlossaryTermsParams,
+} from 'rest/glossaryAPI';
 import { searchData } from 'rest/miscAPI';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
@@ -87,26 +96,6 @@ export const getEntityReferenceFromGlossaryTerm = (
     displayName: glossaryTerm.displayName,
     name: glossaryTerm.name,
   };
-};
-
-export const parseCSV = (csvData: string[][]) => {
-  const recordList: GlossaryCSVRecord[] = [];
-
-  if (!isEmpty(csvData)) {
-    const headers = csvData[0];
-
-    csvData.slice(1).forEach((line) => {
-      const record: GlossaryCSVRecord = {} as GlossaryCSVRecord;
-
-      headers.forEach((header, index) => {
-        record[header as keyof GlossaryCSVRecord] = line[index];
-      });
-
-      recordList.push(record);
-    });
-  }
-
-  return recordList;
 };
 
 // calculate root level glossary term
@@ -237,4 +226,87 @@ export const formatRelatedTermOptions = (
         key: value.id,
       }))
     : [];
+};
+
+export const getGlossaryTermHierarchy = (
+  data: GlossaryTermDetailsProps[]
+): HierarchyTagsProps[] => {
+  const nodes: Record<string, HierarchyTagsProps> = {};
+  const tree: HierarchyTagsProps[] = [];
+
+  data.forEach((obj) => {
+    if (obj.fqn) {
+      nodes[obj.fqn] = {
+        title: obj.name,
+        value: obj.fqn,
+        key: obj.fqn,
+        selectable: true,
+        children: [],
+      };
+      const parentNode =
+        obj.parent &&
+        obj.parent.fullyQualifiedName &&
+        nodes[obj.parent.fullyQualifiedName];
+      parentNode && nodes[obj.fqn] && parentNode.children?.push(nodes[obj.fqn]);
+
+      if (!parentNode) {
+        const glossaryName = obj.glossary.name ?? '';
+        const existInTree = tree.find((item) => item.title === glossaryName);
+
+        if (existInTree) {
+          nodes[glossaryName].children?.push(nodes[obj.fqn]);
+        } else {
+          nodes[glossaryName] = {
+            title: glossaryName,
+            value: obj.glossary.fullyQualifiedName ?? '',
+            key: obj.glossary.fullyQualifiedName ?? '',
+            selectable: false,
+            children: [],
+          };
+
+          nodes[glossaryName].children?.push(nodes[obj.fqn]);
+          tree.push(nodes[glossaryName]);
+        }
+      }
+    }
+  });
+
+  return tree;
+};
+
+export const getGlossaryTermsList = async () => {
+  try {
+    const glossaryTermList: GlossaryTermDetailsProps[] = [];
+    const { data } = await getGlossariesList({
+      limit: PAGE_SIZE_LARGE,
+    });
+
+    const promises = data.map((item) =>
+      getGlossaryTerms({
+        glossary: item.id,
+        limit: API_RES_MAX_SIZE,
+        fields: 'children,parent',
+      })
+    );
+    const response = await Promise.allSettled(promises);
+
+    response.forEach((res) => {
+      if (res.status === 'fulfilled') {
+        glossaryTermList.push(
+          ...res.value.data.map((data) => ({
+            name: data.name,
+            fqn: data.fullyQualifiedName ?? '',
+            children: data.children,
+            parent: data.parent,
+            glossary: data.glossary,
+            source: TagSource.Glossary,
+          }))
+        );
+      }
+    });
+
+    return Promise.resolve(glossaryTermList);
+  } catch (error) {
+    return Promise.reject({ data: (error as AxiosError).response });
+  }
 };

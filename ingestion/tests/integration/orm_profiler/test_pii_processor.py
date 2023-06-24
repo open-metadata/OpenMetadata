@@ -30,6 +30,9 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableData,
 )
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -286,7 +289,9 @@ class PiiProcessorTest(TestCase):
             connection=DatabaseConnection(
                 config=MysqlConnection(
                     username="username",
-                    password="password",
+                    authType=BasicAuth(
+                        password="password",
+                    ),
                     hostPort="http://localhost:1234",
                 )
             ),

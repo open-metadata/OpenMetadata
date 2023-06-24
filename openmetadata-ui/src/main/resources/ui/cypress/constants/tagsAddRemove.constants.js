@@ -18,7 +18,8 @@ export const TAGS_ADD_REMOVE_ENTITIES = [
     entity: 'tables',
     serviceName: 'sample_data',
     fieldName: 'SKU',
-    tags: ['PersonalData.Personal', 'PII.Sensitive'],
+    tags: ['Personal', 'Sensitive'],
+    entityTags: 'Personal',
   },
   {
     term: 'address_book',
@@ -26,7 +27,8 @@ export const TAGS_ADD_REMOVE_ENTITIES = [
     entity: 'topics',
     serviceName: 'sample_kafka',
     fieldName: 'AddressBook',
-    tags: ['PersonalData.Personal', 'PII.Sensitive'],
+    tags: ['Personal', 'Sensitive'],
+    entityTags: 'Personal',
   },
   {
     term: 'deck.gl Demo',
@@ -35,7 +37,8 @@ export const TAGS_ADD_REMOVE_ENTITIES = [
     insideEntity: 'charts',
     serviceName: 'sample_superset',
     fieldName: 'e3cfd274-44f8-4bf3-b75d-d40cf88869ba',
-    tags: ['PersonalData.Personal', 'PII.Sensitive'],
+    tags: ['Personal', 'Sensitive'],
+    entityTags: 'Personal',
   },
   {
     term: 'dim_address_etl',
@@ -43,7 +46,8 @@ export const TAGS_ADD_REMOVE_ENTITIES = [
     entity: 'pipelines',
     serviceName: 'sample_airflow',
     fieldName: 'dim_address_task',
-    tags: ['PersonalData.Personal', 'PII.Sensitive'],
+    tags: ['Personal', 'Sensitive'],
+    entityTags: 'Personal',
   },
   {
     term: 'eta_predictions',
@@ -51,6 +55,7 @@ export const TAGS_ADD_REMOVE_ENTITIES = [
     entity: 'mlmodels',
     serviceName: 'mlflow_svc',
     fieldName: 'sales',
-    tags: ['PersonalData.Personal', 'PII.Sensitive'],
+    tags: ['Personal', 'Sensitive'],
+    entityTags: 'Personal',
   },
 ];

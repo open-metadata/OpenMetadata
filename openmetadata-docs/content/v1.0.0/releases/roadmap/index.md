@@ -14,7 +14,7 @@ or ping us on [Slack](https://slack.open-metadata.org/) If you would like to pri
 You can check the latest release [here](/releases/all-releases).
 
 
-## 1.1 Release - June 22nd, 2023
+## 1.1 Release - June 29th, 2023
 
 {% tilesContainer %}
 
@@ -22,7 +22,7 @@ You can check the latest release [here](/releases/all-releases).
 - We will be adding support for NoSQL DB entities and Services with APIs
 - Support for Long Entity Names such as S3 paths
 - Import/Export support at all entities
-- Tag Propgation using Import/Export
+- Tag Propagation using Import/Export
 - Thumbs up & down to capture popularity of the Entities
 {% /tile %}
 
@@ -36,7 +36,7 @@ You can check the latest release [here](/releases/all-releases).
 {% /tile %}
 
 {% tile title="Alerts & Notifications" %}
-- Durable queue to store ChangeEvents guranteeing at-least once semantics
+- Durable queue to store ChangeEvents guranteeing at-least-once semantics
 - Live BulkActions on ElasticSearch to handle Tag category deletion, owner chagne propagation etc..
 - Support to get notificaitons via email when a user is mentioned 
 {% /tile %}
@@ -81,7 +81,7 @@ You can check the latest release [here](/releases/all-releases).
 {% tilesContainer %}
 
 {% tile title="Entities" %}
-- Asset Deprecation , owners can mark assets as deprecated along with a notice of whats the new asset to use. Search will exclude deprecated assets
+- Asset Deprecation, owners can mark assets as deprecated along with a notice of whats the new asset to use. Search will exclude deprecated assets
 {% /tile %}
 
 {% tile title="Data Quality" %}
@@ -99,7 +99,7 @@ You can check the latest release [here](/releases/all-releases).
 - Impact Analysis
 {% /tile %}
 
-{% tile title="Roels & Policies" %}
+{% tile title="Roles & Policies" %}
 - Simplifying Roles and Policies Evaluation in the backend
 - Adding integration into Search to filter out entities that the users do not have access to
 {% /tile %}

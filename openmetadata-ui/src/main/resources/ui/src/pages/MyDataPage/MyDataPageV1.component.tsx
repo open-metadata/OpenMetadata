@@ -16,6 +16,7 @@ import { AxiosError } from 'axios';
 import ActivityFeedProvider from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import KPIWidget from 'components/KPIWidget/KPIWidget.component';
+import { MyDataWidget } from 'components/MyData/MyDataWidget/MyDataWidget.component';
 import RightSidebar from 'components/MyData/RightSidebar/RightSidebar.component';
 import TotalDataAssetsWidget from 'components/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
 import FeedsWidget from 'components/Widgets/FeedsWidget/FeedsWidget.component';
@@ -30,7 +31,7 @@ import AppState from '../../AppState';
 import { AssetsType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
-import './myData.less';
+import './my-data.less';
 
 const MyDataPageV1 = () => {
   const { t } = useTranslation();
@@ -117,7 +118,7 @@ const MyDataPageV1 = () => {
   return (
     <ActivityFeedProvider>
       <PageLayoutV1
-        className="my-data-page p-0"
+        className="my-data-page p-0 bg-white"
         pageTitle={t('label.my-data')}
         rightPanel={
           <RightSidebar
@@ -127,12 +128,15 @@ const MyDataPageV1 = () => {
           />
         }
         rightPanelWidth={380}>
-        <div className="p-y-md p-x-xs">
-          <Row gutter={[16, 20]}>
+        <div className="p-t-xss p-b-md p-x-md">
+          <Row gutter={[16, 16]}>
             <Col span={24}>
               <FeedsWidget />
             </Col>
-            <Col span={24}>
+            <Col span={8}>
+              <MyDataWidget />
+            </Col>
+            <Col span={16}>
               <KPIWidget />
             </Col>
             <Col span={24}>

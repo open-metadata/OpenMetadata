@@ -16,8 +16,10 @@ import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import { Button } from 'antd';
 import classNames from 'classnames';
 import { ArrayFieldTemplate } from 'components/JSONSchemaTemplate/ArrayFieldTemplate';
-import { customFields } from 'components/JSONSchemaTemplate/CustomFields';
+import DescriptionFieldTemplate from 'components/JSONSchemaTemplate/DescriptionFieldTemplate';
+import { FieldErrorTemplate } from 'components/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import { ObjectFieldTemplate } from 'components/JSONSchemaTemplate/ObjectFieldTemplate';
+import PasswordWidget from 'components/JsonSchemaWidgets/PasswordWidget';
 import { ServiceCategory } from 'enums/service.enum';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { t } from 'i18next';
@@ -25,7 +27,7 @@ import { isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { getPipelineServiceHostIp } from 'rest/ingestionPipelineAPI';
-import { transformErrors } from 'utils/formUtils';
+import { customValidate, transformErrors } from 'utils/formUtils';
 import { ConfigData } from '../../../interface/service.interface';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
 import Loader from '../../Loader/Loader';
@@ -112,7 +114,7 @@ const FormBuilder: FunctionComponent<Props> = ({
       className={classNames('rjsf', props.className, {
         'no-header': !showFormHeader,
       })}
-      fields={customFields}
+      customValidate={customValidate}
       formContext={{ handleFocus: onFocus }}
       formData={localFormData}
       idSeparator="/"
@@ -122,9 +124,12 @@ const FormBuilder: FunctionComponent<Props> = ({
       templates={{
         ArrayFieldTemplate: ArrayFieldTemplate,
         ObjectFieldTemplate: ObjectFieldTemplate,
+        DescriptionFieldTemplate: DescriptionFieldTemplate,
+        FieldErrorTemplate: FieldErrorTemplate,
       }}
       transformErrors={transformErrors}
       uiSchema={uiSchema}
+      widgets={{ PasswordWidget: PasswordWidget }}
       onChange={handleFormChange}
       onFocus={onFocus}
       onSubmit={onSubmit}
@@ -143,16 +148,18 @@ const FormBuilder: FunctionComponent<Props> = ({
           </div>
         </div>
       )}
-      {!isEmpty(schema) && !isUndefined(localFormData) && (
-        <TestConnection
-          connectionType={serviceType}
-          formData={localFormData}
-          isTestingDisabled={disableTestConnection}
-          serviceCategory={serviceCategory}
-          serviceName={serviceName}
-          onValidateFormRequiredFields={handleRequiredFieldsValidation}
-        />
-      )}
+      {!isEmpty(schema) &&
+        !isUndefined(localFormData) &&
+        isAirflowAvailable && (
+          <TestConnection
+            connectionType={serviceType}
+            formData={localFormData}
+            isTestingDisabled={disableTestConnection}
+            serviceCategory={serviceCategory}
+            serviceName={serviceName}
+            onValidateFormRequiredFields={handleRequiredFieldsValidation}
+          />
+        )}
       <div className="tw-mt-6 d-flex tw-justify-between">
         <div />
         <div className="tw-text-right" data-testid="buttons">

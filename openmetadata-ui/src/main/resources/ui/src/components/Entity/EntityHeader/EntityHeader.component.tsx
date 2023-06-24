@@ -47,10 +47,10 @@ export const EntityHeader = ({
   serviceName,
 }: Props) => {
   return (
-    <div className="w-full font-medium">
+    <div className="w-full">
       <div
         className={classNames(
-          'tw-text-link tw-text-base glossary-breadcrumb',
+          'entity-breadcrumb',
           gutter === 'large' ? 'm-b-sm' : 'm-b-xss'
         )}
         data-testid="category-name">

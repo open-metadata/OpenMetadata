@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { Divider, Space } from 'antd';
+import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import { SearchIndex } from 'enums/search.enum';
 import { isEqual, isUndefined, uniqWith } from 'lodash';
 import React, { FC, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   getAdvancedFieldDefaultOptions,
   getAdvancedFieldOptions,
@@ -38,11 +37,9 @@ import { ExploreQuickFiltersProps } from './ExploreQuickFilters.interface';
 
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   fields,
-  onAdvanceSearch,
   index,
   onFieldValueSelect,
 }) => {
-  const { t } = useTranslation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
   const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
 
@@ -57,6 +54,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     const optionsArray = buckets.map((option) => ({
       key: option.key,
       label: option.key,
+      count: option.doc_count ?? 0,
     }));
 
     setOptions(uniqWith(optionsArray, isEqual));
@@ -149,7 +147,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   };
 
   return (
-    <Space wrap className="explore-quick-filters-container" size={[16, 16]}>
+    <Space wrap className="explore-quick-filters-container" size={[4, 0]}>
       {fields.map((field) => (
         <SearchDropdown
           highlight
@@ -166,15 +164,6 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           onSearch={getFilterOptions}
         />
       ))}
-      <Divider className="m-0" type="vertical" />
-      <span
-        className="tw-text-primary tw-self-center tw-cursor-pointer"
-        data-testid="advance-search-button"
-        onClick={onAdvanceSearch}>
-        {t('label.advanced-entity', {
-          entity: t('label.search'),
-        })}
-      </span>
     </Space>
   );
 };

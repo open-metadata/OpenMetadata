@@ -95,7 +95,7 @@ class UpstreamColumn(BaseModel):
 class DatasourceField(BaseModel):
     id: str
     name: str
-    upstreamColumns: Optional[List[UpstreamColumn]]
+    upstreamColumns: Optional[List[Union[UpstreamColumn, None]]]
     fullyQualifiedName: Optional[str]
     description: Optional[str]
 
@@ -160,6 +160,7 @@ class TableauDashboard(TableauBaseModel):
     class Config:
         extra = Extra.allow
 
+    project: Optional[TableauBaseModel]
     description: Optional[str]
     owner: Optional[TableauOwner]
     tags: Optional[List[TableauTag]] = []

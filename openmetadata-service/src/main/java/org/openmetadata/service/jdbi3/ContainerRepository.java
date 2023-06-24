@@ -35,8 +35,7 @@ public class ContainerRepository extends EntityRepository<Container> {
         dao.containerDAO(),
         dao,
         CONTAINER_PATCH_FIELDS,
-        CONTAINER_UPDATE_FIELDS,
-        null);
+        CONTAINER_UPDATE_FIELDS);
   }
 
   @Override
@@ -91,6 +90,11 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (container.getDataModel() != null) {
       setColumnFQN(container.getFullyQualifiedName(), container.getDataModel().getColumns());
     }
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(Container container) {
+    return FullyQualifiedName.buildHash(container.getFullyQualifiedName());
   }
 
   private void setColumnFQN(String parentFQN, List<Column> columns) {

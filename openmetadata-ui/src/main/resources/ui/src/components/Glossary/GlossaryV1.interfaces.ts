@@ -28,8 +28,3 @@ export type GlossaryV1Props = {
   onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
   isSummaryPanelOpen: boolean;
 };
-
-export enum GlossaryAction {
-  EXPORT = 'export',
-  IMPORT = 'import',
-}

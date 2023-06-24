@@ -17,20 +17,25 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 
 import java.io.IOException;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import javax.ws.rs.WebApplicationException;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.binary.Hex;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
@@ -41,11 +46,15 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.system.FailureDetails;
+import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO;
@@ -180,7 +189,7 @@ public final class EntityUtil {
     return populateEntityReferences(refs);
   }
 
-  public static EntityReference validateEntityLink(EntityLink entityLink) {
+  public static EntityReference validateEntityLink(EntityLink entityLink) throws IOException {
     String entityType = entityLink.getEntityType();
     String fqn = entityLink.getEntityFQN();
     return Entity.getEntityReferenceByName(entityType, fqn, ALL);
@@ -200,6 +209,32 @@ public final class EntityUtil {
               .withDate(RestUtil.DATE_FORMAT.format(new Date()));
     }
     return details;
+  }
+
+  public static TestSummary getTestCaseExecutionSummary(
+      CollectionDAO.EntityExtensionTimeSeriesDAO entityExtensionTimeSeriesDAO,
+      List<String> testCaseFQNs,
+      String extensionName)
+      throws IOException {
+    List<String> testCaseFQNHashes =
+        testCaseFQNs.stream().map(fqn -> FullyQualifiedName.buildHash(fqn)).collect(Collectors.toList());
+
+    if (testCaseFQNHashes.isEmpty()) return new TestSummary();
+
+    List<String> jsonList = entityExtensionTimeSeriesDAO.getLatestExtensionByFQNs(testCaseFQNHashes, extensionName);
+
+    HashMap<String, Integer> testCaseSummary = new HashMap<>();
+    for (String json : jsonList) {
+      TestCaseResult testCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
+      String status = testCaseResult.getTestCaseStatus().toString();
+      testCaseSummary.put(status, testCaseSummary.getOrDefault(status, 0) + 1);
+    }
+
+    return new TestSummary()
+        .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
+        .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
+        .withSuccess(testCaseSummary.getOrDefault(TestCaseStatus.Success.toString(), 0))
+        .withTotal(jsonList.size());
   }
 
   /** Merge two sets of tags */
@@ -513,5 +548,22 @@ public final class EntityUtil {
         throw new IllegalArgumentException("Profile sample value must be between 0 and 100");
       }
     }
+  }
+
+  @SneakyThrows
+  public static String hash(String input) {
+    if (input != null) {
+      byte[] checksum = MessageDigest.getInstance("MD5").digest(input.getBytes());
+      return Hex.encodeHexString(checksum);
+    }
+    return input;
+  }
+
+  public static boolean isDescriptionTask(TaskType taskType) {
+    return taskType == TaskType.RequestDescription || taskType == TaskType.UpdateDescription;
+  }
+
+  public static boolean isTagTask(TaskType taskType) {
+    return taskType == TaskType.RequestTag || taskType == TaskType.UpdateTag;
   }
 }

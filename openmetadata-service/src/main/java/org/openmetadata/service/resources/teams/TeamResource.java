@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.teams;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_GROUP;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_ORGANIZATION;
 
@@ -27,6 +28,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -55,7 +57,9 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -99,18 +103,23 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   }
 
   @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation(
+        "profile,owns,defaultRoles,parents,children,policies,userCount,childrenCount", MetadataOperation.VIEW_BASIC);
+    return listOf(MetadataOperation.EDIT_POLICY, MetadataOperation.EDIT_USERS);
+  }
+
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    dao.initOrganization();
+    repository.initOrganization();
   }
 
   public static class TeamList extends ResultList<Team> {
-    @SuppressWarnings("unused") /* Required for tests */
-    TeamList() {}
+    /* Required for serde */
   }
 
   public static class TeamHierarchyList extends ResultList<TeamHierarchy> {
-    @SuppressWarnings("unused") /* Required for tests */
-    TeamHierarchyList() {}
+    /* Required for serde */
   }
 
   static final String FIELDS =
@@ -145,7 +154,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           Boolean isJoinable)
       throws IOException {
     ListFilter filter = new ListFilter(Include.NON_DELETED);
-    return new ResultList<>(dao.listHierarchy(filter, limitParam, isJoinable));
+    return new ResultList<>(repository.listHierarchy(filter, limitParam, isJoinable));
   }
 
   @GET
@@ -425,7 +434,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           boolean hardDelete,
       @Parameter(description = "Name of the team", schema = @Schema(type = "string")) @PathParam("name") String name)
       throws IOException {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), false, hardDelete);
   }
 
   @PUT
@@ -518,5 +527,12 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         .withChildren(EntityUtil.toEntityReferences(ct.getChildren(), Entity.TEAM))
         .withPolicies(EntityUtil.toEntityReferences(ct.getPolicies(), Entity.POLICY))
         .withEmail(ct.getEmail());
+  }
+
+  @Override
+  public Team getByNameInternal(
+      UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include)
+      throws IOException {
+    return super.getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
   }
 }

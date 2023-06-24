@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { TestSuite } from 'generated/tests/testSuite';
+import { Paging } from 'generated/type/paging';
 import { CurveType } from 'recharts/types/shape/Curve';
 import { ListTestCaseParams } from 'rest/testAPI';
 import {
@@ -50,6 +52,7 @@ export interface ProfilerDetailsCardProps {
   showYAxisCategory?: boolean;
   chartCollection: MetricChartType;
   name: string;
+  title?: string;
   tickFormatter?: string;
   curveType?: CurveType;
 }
@@ -98,8 +101,18 @@ export interface ProfilerSummaryCardProps {
 export interface DataQualityTabProps {
   testCases: TestCase[];
   onTestUpdate?: () => void;
+  showTableColumn?: boolean;
   isLoading?: boolean;
-  deletedTable?: boolean;
+  onTestCaseResultUpdate?: (data: TestCase) => void;
+  pagingData?: {
+    paging: Paging;
+    currentPage: number;
+    onPagingClick: (cursorValue: string | number, activePage?: number) => void;
+    isNumberBased?: boolean;
+  };
+  removeFromTestSuite?: {
+    testSuite: TestSuite;
+  };
 }
 
 export interface TestSummaryProps {
@@ -112,3 +125,8 @@ export interface ProfilerLatestValueProps {
   tickFormatter?: string;
   stringValue?: boolean;
 }
+
+export type TestCaseAction = {
+  data: TestCase;
+  action: 'UPDATE' | 'DELETE' | 'UPDATE_STATUS';
+};

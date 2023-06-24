@@ -33,10 +33,6 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO.PolicyDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.RoleDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.TeamDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.UserDAO;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
@@ -70,10 +66,10 @@ public class SubjectContextTest {
 
   @BeforeAll
   public static void setup() {
-    Entity.registerEntity(User.class, Entity.USER, mock(UserDAO.class), mock(UserRepository.class), null);
-    Entity.registerEntity(Team.class, Entity.TEAM, mock(TeamDAO.class), mock(TeamRepository.class), null);
-    Entity.registerEntity(Policy.class, Entity.POLICY, mock(PolicyDAO.class), mock(PolicyRepository.class), null);
-    Entity.registerEntity(Role.class, Entity.ROLE, mock(RoleDAO.class), mock(RoleRepository.class), null);
+    Entity.registerEntity(User.class, Entity.USER, mock(UserRepository.class), null);
+    Entity.registerEntity(Team.class, Entity.TEAM, mock(TeamRepository.class), null);
+    Entity.registerEntity(Policy.class, Entity.POLICY, mock(PolicyRepository.class), null);
+    Entity.registerEntity(Role.class, Entity.ROLE, mock(RoleRepository.class), null);
     PolicyCache.initialize();
     RoleCache.initialize();
     SubjectCache.initialize();
@@ -115,7 +111,7 @@ public class SubjectContextTest {
     userRoles = getRoles("user");
     List<EntityReference> userRolesRef = toEntityReferences(userRoles);
     user = new User().withName("user").withRoles(userRolesRef).withTeams(List.of(team111.getEntityReference()));
-    SubjectCache.USER_CACHE.put("user", new SubjectContext(user));
+    SubjectCache.userCache.put("user", new SubjectContext(user));
   }
 
   @AfterAll
@@ -205,7 +201,7 @@ public class SubjectContextTest {
       String name = prefix + "_role_" + i;
       List<EntityReference> policies = toEntityReferences(getPolicies(name));
       Role role = new Role().withName(name).withId(UUID.randomUUID()).withPolicies(policies);
-      RoleCache.ROLE_CACHE_WITH_ID.put(role.getId(), role);
+      RoleCache.roleCacheWithId.put(role.getId(), role);
       roles.add(role);
     }
     return roles;
@@ -217,7 +213,7 @@ public class SubjectContextTest {
       String name = prefix + "_policy_" + i;
       Policy policy = new Policy().withName(name).withId(UUID.randomUUID()).withRules(getRules(name));
       policies.add(policy);
-      PolicyCache.POLICY_CACHE.put(policy.getId(), PolicyCache.getInstance().getRules(policy));
+      PolicyCache.policyCache.put(policy.getId(), PolicyCache.getInstance().getRules(policy));
     }
     return policies;
   }
@@ -272,7 +268,7 @@ public class SubjectContextTest {
             .withDefaultRoles(toEntityReferences(roles))
             .withPolicies(toEntityReferences(policies))
             .withParents(parentList);
-    SubjectCache.TEAM_CACHE_WITH_ID.put(team.getId(), team);
+    SubjectCache.teamCacheWithId.put(team.getId(), team);
     return team;
   }
 

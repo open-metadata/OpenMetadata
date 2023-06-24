@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Form, Input, Modal, Typography } from 'antd';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityNameModalProps } from './EntityNameModal.interface';
@@ -76,6 +77,10 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
               message: `${t('label.field-required', {
                 field: t('label.name'),
               })}`,
+            },
+            {
+              pattern: ENTITY_NAME_REGEX,
+              message: t('message.entity-name-validation'),
             },
           ]}>
           <Input

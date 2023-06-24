@@ -14,9 +14,9 @@
 import Icon from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
-import { ReactComponent as IconFlatFolder } from 'assets/svg/folder.svg';
+import { ReactComponent as ClassificationIcon } from 'assets/svg/classification.svg';
+import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
 import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
-import { ReactComponent as IconTag } from 'assets/svg/tag-grey.svg';
 import classNames from 'classnames';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
 import { t } from 'i18next';
@@ -41,6 +41,7 @@ import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
+  getContainerDetailPath,
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
@@ -71,7 +72,6 @@ import {
   getTableFQNFromColumnFQN,
   sortTagsCaseInsensitive,
 } from './CommonUtils';
-import { getContainerDetailPath } from './ContainerDetailUtils';
 import { getGlossaryPath, getSettingPath } from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import { ordinalize } from './StringsUtils';
@@ -161,7 +161,8 @@ export const getSearchTableTagsWithoutTier = (
 export const getConstraintIcon = (
   constraint = '',
   className = '',
-  width = '16px'
+  width = '16px',
+  isConstraintUpdated?: boolean
 ) => {
   let title: string, icon: SvgComponent;
   switch (constraint) {
@@ -203,7 +204,12 @@ export const getConstraintIcon = (
       placement="bottom"
       title={title}
       trigger="hover">
-      <Icon alt={title} component={icon} style={{ fontSize: width }} />
+      <Icon
+        alt={title}
+        className={classNames({ 'diff-added': isConstraintUpdated })}
+        component={icon}
+        style={{ fontSize: width }}
+      />
     </Tooltip>
   );
 };
@@ -275,16 +281,16 @@ export const getEntityLink = (
 
 export const getServiceIcon = (source: SourceType) => {
   if (source.entityType === EntityType.GLOSSARY_TERM) {
-    return (
-      <IconFlatFolder className="h-9" style={{ color: DE_ACTIVE_COLOR }} />
-    );
+    return <GlossaryIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />;
   } else if (source.entityType === EntityType.TAG) {
-    return <IconTag className="h-9" style={{ color: DE_ACTIVE_COLOR }} />;
+    return (
+      <ClassificationIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />
+    );
   } else {
     return (
       <img
         alt="service-icon"
-        className="inline h-9"
+        className="inline h-7"
         src={serviceTypeLogo(source.serviceType || '')}
       />
     );
@@ -493,7 +499,8 @@ export const prepareConstraintIcon = (
   columnConstraint?: string,
   tableConstraints?: TableConstraint[],
   iconClassName?: string,
-  iconWidth?: string
+  iconWidth?: string,
+  isConstraintUpdated?: boolean
 ) => {
   // get the table constraint for column
   const tableConstraint = tableConstraints?.find((constraint) =>
@@ -502,14 +509,19 @@ export const prepareConstraintIcon = (
 
   // prepare column constraint element
   const columnConstraintEl = columnConstraint
-    ? getConstraintIcon(columnConstraint, iconClassName || 'tw-mr-2', iconWidth)
+    ? getConstraintIcon(
+        columnConstraint,
+        iconClassName || 'm-r-xs',
+        iconWidth,
+        isConstraintUpdated
+      )
     : null;
 
   // prepare table constraint element
   const tableConstraintEl = tableConstraint
     ? getConstraintIcon(
         tableConstraint.constraintType,
-        iconClassName || 'tw-mr-2',
+        iconClassName || 'm-r-xs',
         iconWidth
       )
     : null;

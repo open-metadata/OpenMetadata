@@ -67,10 +67,7 @@ public class SystemResource {
   }
 
   public static class SettingsList extends ResultList<Settings> {
-    @SuppressWarnings("unused")
-    public SettingsList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
 
   @GET

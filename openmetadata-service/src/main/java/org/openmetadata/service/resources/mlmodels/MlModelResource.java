@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.mlmodels;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,6 +25,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -50,6 +53,7 @@ import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -69,6 +73,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "mlmodels")
 public class MlModelResource extends EntityResource<MlModel, MlModelRepository> {
   public static final String COLLECTION_PATH = "v1/mlmodels/";
+  static final String FIELDS = "owner,dashboard,followers,tags,usageSummary,extension";
 
   @Override
   public MlModel addHref(UriInfo uriInfo, MlModel mlmodel) {
@@ -84,14 +89,16 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     super(MlModel.class, new MlModelRepository(dao), authorizer);
   }
 
-  public static class MlModelList extends ResultList<MlModel> {
-    @SuppressWarnings("unused")
-    MlModelList() {
-      // Empty constructor needed for deserialization
-    }
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("dashboard", MetadataOperation.VIEW_BASIC);
+    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
+    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
   }
 
-  static final String FIELDS = "owner,dashboard,followers,tags,usageSummary,extension";
+  public static class MlModelList extends ResultList<MlModel> {
+    /* Required for serde */
+  }
 
   @GET
   @Valid
@@ -291,7 +298,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId)
       throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @DELETE
@@ -314,7 +321,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
           @PathParam("userId")
           UUID userId)
       throws IOException {
-    return dao.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+    return repository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @GET

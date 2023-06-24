@@ -42,6 +42,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Optional;
 import javax.naming.ConfigurationException;
 import javax.servlet.DispatcherType;
@@ -74,6 +75,7 @@ import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.service.elasticsearch.ElasticSearchEventPublisher;
 import org.openmetadata.service.events.EventFilter;
 import org.openmetadata.service.events.EventPubSub;
+import org.openmetadata.service.events.scheduled.PipelineServiceStatusJobHandler;
 import org.openmetadata.service.events.scheduled.ReportsHandler;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
@@ -214,6 +216,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.servlets().addServlet("static", assetServlet).addMapping(pathPattern);
 
     registerExtensions(catalogConfig, environment, jdbi);
+
+    // Handle Pipeline Service Client Status job
+    PipelineServiceStatusJobHandler pipelineServiceStatusJobHandler =
+        PipelineServiceStatusJobHandler.create(
+            catalogConfig.getPipelineServiceClientConfiguration(), catalogConfig.getClusterName());
+    pipelineServiceStatusJobHandler.addPipelineServiceStatusJob();
   }
 
   private void registerExtensions(OpenMetadataApplicationConfig catalogConfig, Environment environment, Jdbi jdbi) {
@@ -226,7 +234,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
                   .asSubclass(OpenMetadataExtension.class)
                   .getConstructor()
                   .newInstance();
-          omExtension.init(catalogConfig, environment, jdbi);
+          omExtension.init(extension, catalogConfig, environment, jdbi);
           LOG.info("[OmExtension] Registering Extension: {}", extension.getClassName());
         } catch (Exception ex) {
           LOG.error("[OmExtension] Failed in registering Extension {}", extension.getClassName());
@@ -417,6 +425,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private void registerResources(OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi) {
+    List<String> extensionResources =
+        config.getExtensionConfiguration() != null ? config.getExtensionConfiguration().getResourcePackage() : null;
+    CollectionRegistry.initialize(extensionResources);
     CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer, authenticatorHandler);
     environment.jersey().register(new JsonPatchProvider());
     ErrorPageErrorHandler eph = new ErrorPageErrorHandler();

@@ -121,7 +121,7 @@
     "license-header-fix": "license-check-and-add add --config-file .licenseheaderrc.json --regex-replacements $(date +%Y)",
     "json2ts": "sh json2ts.sh",
     "parse-conn-schema": "node parseConnectionSchema && rm -rf connTemp",
-    "js-antlr": "PWD=$(echo $PWD) antlr4 -Dlanguage=JavaScript -o src/generated/antlr $PWD/../../../../../openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4",
+    "js-antlr": "PWD=$(echo $PWD) antlr4 -Dlanguage=JavaScript -o src/generated/antlr \"$PWD\"/../../../../../openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4",
     "cypress:open": "cypress open --e2e",
     "cypress:run": "cypress run --config-file=cypress.config.ts",
     "cypress:run:record": "cypress run --config-file=cypress.config.ts --record --parallel",

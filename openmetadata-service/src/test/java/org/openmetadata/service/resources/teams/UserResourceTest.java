@@ -143,6 +143,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   public UserResourceTest() {
     super(USER, User.class, UserList.class, "users", UserResource.FIELDS);
     supportedNameCharacters = "_-.";
+    supportsSearchIndex = true;
   }
 
   public void setupUsers(TestInfo test) throws HttpResponseException {
@@ -1234,7 +1235,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   @Override
   public String getAllowedFields() {
-    List<String> allowedFields = Entity.getAllowedFields(entityClass);
+    List<String> allowedFields = Entity.getEntityFields(entityClass);
     allowedFields.removeAll(of(USER_PROTECTED_FIELDS.split(",")));
     return String.join(",", allowedFields);
   }

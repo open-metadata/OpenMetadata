@@ -41,7 +41,36 @@ Configure the dbt Workflow from the CLI.
 
 {% /multiTablesWrapper %}
 
-## OpenMetadata integrates below metadata from dbt
+## Requirements
+
+### AWS S3
+
+If we have the artifacts on the bucket `MyBucket`, the user running the ingestion should have, at least, the permissions
+from the following policy:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::MyBucket",
+                "arn:aws:s3:::MyBucket/*"
+            ]
+        }
+    ]
+}
+```
+
+Note that it's not enough to point the resource to `arn:aws:s3:::MyBucket`. We need its contents as well!
+
+
+## OpenMetadata integrates the below metadata from dbt
 
 ### 1. dbt Queries
 
@@ -96,9 +125,9 @@ Please refer [here](/connectors/ingestion/workflows/dbt/ingest-dbt-owner) for ad
 
 ### 5. dbt Descriptions
 
-Descriptions from dbt models can be imported and assigned to respective tables and columns.
+Descriptions from dbt `manifest.json` and `catalog.json` can be imported and assigned to respective tables and columns.
 
-By default descriptions from `manifest.json` will be imported. Descriptions from `catalog.json` will only be updated if catalog file is passed.
+For more information and to control how the table and column descriptions are updated from dbt please take a look [here](/connectors/ingestion/workflows/dbt/ingest-dbt-descriptions)
 
 {% image
   src="/images/v1.0.0/features/ingestion/workflows/dbt/dbt-features/dbt-descriptions.png"

@@ -416,8 +416,6 @@ site_menu:
     url: /connectors/dashboard/mode/cli
   - category: Connectors / Dashboard / PowerBI
     url: /connectors/dashboard/powerbi
-  - category: Connectors / Dashboard / PowerBI / PowerBI Account Setup
-    url: /connectors/dashboard/powerbi/powerbi-account-setup
   - category: Connectors / Dashboard / PowerBI / Airflow
     url: /connectors/dashboard/powerbi/airflow
   - category: Connectors / Dashboard / PowerBI / CLI
@@ -483,6 +481,8 @@ site_menu:
     url: /connectors/pipeline/airflow/lineage-backend
   - category: Connectors / Pipeline / Airflow / Lineage Operator
     url: /connectors/pipeline/airflow/lineage-operator
+  - category: Connectors / Pipeline / Airflow / Configuring DAG Lineage
+    url: /connectors/pipeline/airflow/configuring-lineage
   - category: Connectors / Pipeline / Airbyte
     url: /connectors/pipeline/airbyte
   - category: Connectors / Pipeline / Airbyte / Airflow
@@ -525,12 +525,6 @@ site_menu:
     url: /connectors/pipeline/domo-pipeline/airflow
   - category: Connectors / Pipeline / Domo Pipeline / CLI
     url: /connectors/pipeline/domo-pipeline/cli
-  - category: Connectors / Pipeline / Spline
-    url: /connectors/pipeline/spline
-  - category: Connectors / Pipeline / Spline / Airflow
-    url: /connectors/pipeline/spline/airflow
-  - category: Connectors / Pipeline / Spline / CLI
-    url: /connectors/pipeline/spline/cli
 
   - category: Connectors / ML Model
     url: /connectors/ml-model
@@ -605,6 +599,8 @@ site_menu:
     url: /connectors/ingestion/workflows/dbt/ingest-dbt-cli
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Owner
     url: /connectors/ingestion/workflows/dbt/ingest-dbt-owner
+  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Descriptions
+    url: /connectors/ingestion/workflows/dbt/ingest-dbt-descriptions
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Tags
     url: /connectors/ingestion/workflows/dbt/ingest-dbt-tags
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Lineage
@@ -1192,6 +1188,16 @@ site_menu:
     url: /developers/contribute/ux-style-guide
   - category: Developers / Webhooks
     url: /developers/webhooks
+  - category: Developers / APIs
+    url: /developers/apis
+  - category: Developers / APIs / Implementation Notes
+    url: /developers/apis/implementation-notes
+  - category: Developers / APIs / API Organization
+    url: /developers/apis/api-organization
+  - category: Developers / Schemas
+    url: /developers/schemas
+  - category: Developers / Schemas / Schema Language
+    url: /developers/schemas/schema-language
 
   - category: SDK
     url: /sdk

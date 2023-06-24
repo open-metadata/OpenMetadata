@@ -40,3 +40,13 @@ WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
 BIGQUERY_TEST_STATEMENT = textwrap.dedent(
     """SELECT query FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT limit 1"""
 )
+
+
+BIGQUERY_SCHEMA_DESCRIPTION = textwrap.dedent(
+    """
+    SELECT option_value as schema_description FROM
+    {project_id}.region-{region}.INFORMATION_SCHEMA.SCHEMATA_OPTIONS 
+    where schema_name = '{schema_name}' and option_name = 'description' 
+    and option_value is not null
+    """
+)

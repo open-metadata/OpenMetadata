@@ -9,19 +9,34 @@ slug: /deployment/security/okta/bare-metal
 
 Once the `Client Id` and `Client Secret` are generated add the `Client Id` in `openmetadata.yaml` file in `client_id` field.
 
+{% note noteType="Warning" %}
+
+It is important to leave the publicKeys configuration to have both Okta public keys URL and OpenMetadata public keys URL. 
+
+1. Okta SSO Public Keys are used to authenticate User's login
+2. OpenMetadata JWT keys are used to authenticate Bot's login
+3. Important to update the URLs documented in below configuration. The below config reflects a setup where all dependencies are hosted in a single host. Example openmetadata:8585 might not be the same domain you may be using in your installation.
+4. OpenMetadata ships default public/private key, These must be changed in your production deployment to avoid any security issues.
+
+For more details, follow [Enabling JWT Authenticaiton](deployment/security/enable-jwt-tokens)
+
+{% /note %}
+
+
 ```yaml
 authenticationConfiguration:
   provider: "okta"
   publicKeyUrls:
     - "{ISSUER_URL}/v1/keys"
+    - "http://openmetadata:8585/api/v1/system/config/jwks"
   authority: "{ISSUER_URL}"
   clientId: "{CLIENT_ID - SPA APP}"
   callbackUrl: "http://localhost:8585/callback"
 ```
 
-Then, 
-- Update `authorizerConfiguration` to add login names of the admin users in `adminPrincipals` section as shown below.
-- Update the `principalDomain` to your company domain name.
+- Update `authorizerConfiguration` to add login names of the admin users in  section as shown below. Make sure you configure the name from email, example: xyz@helloworld.com, initialAdmins username will be ```xyz``
+- Update the `principalDomain` to your company domain name.  Example from above, principalDomain should be ```helloworld.com```
+
 
 ```yaml
 authorizerConfiguration:
@@ -34,37 +49,6 @@ authorizerConfiguration:
   principalDomain: "open-metadata.org"
 ```
 
-In `0.12.1` the `className` and `containerRequestFilter` must replace `org.openmetadata.catalog` by `org.openmetadata.service`.
-
-Finally, update the Airflow information:
-
-**Before 0.12.1**
-
-```yaml
-airflowConfiguration:
-  apiEndpoint: ${AIRFLOW_HOST:-http://localhost:8080}
-  username: ${AIRFLOW_USERNAME:-admin}
-  password: ${AIRFLOW_PASSWORD:-admin}
-  metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
-  authProvider: okta
-  authConfig:
-    okta:
-      clientId: ${OM_AUTH_AIRFLOW_OKTA_CLIENT_ID:-""}
-      orgURL: ${OM_AUTH_AIRFLOW_OKTA_ORGANIZATION_URL:-""}
-      privateKey: ${OM_AUTH_AIRFLOW_OKTA_PRIVATE_KEY:-""}
-      email: ${OM_AUTH_AIRFLOW_OKTA_SA_EMAIL:-""}
-      scopes: ${OM_AUTH_AIRFLOW_OKTA_SCOPES:-[]}
-```
-
-**After 0.12.1**
-
-```yaml
-airflowConfiguration:
-  apiEndpoint: ${AIRFLOW_HOST:-http://localhost:8080}
-  username: ${AIRFLOW_USERNAME:-admin}
-  password: ${AIRFLOW_PASSWORD:-admin}
-  metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
-```
-
-**Note:** Follow [this](/how-to-guides/feature-configurations/bots) guide to configure the `ingestion-bot` credentials for
-ingesting data from Airflow.
+{% note noteType="Tip" %}
+ Follow [this guide](/how-to-guides/feature-configurations/bots) to configure the `ingestion-bot` credentials for ingesting data using Connectors.
+{% /note %}
