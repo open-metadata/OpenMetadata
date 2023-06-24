@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button, Popover } from 'antd';
+import { Button, Tooltip } from 'antd';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import classNames from 'classnames';
 import TagsContainerEntityTable from 'components/Tag/TagsContainerEntityTable/TagsContainerEntityTable.component';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { EntityType } from 'enums/entity.enum';
 import { ThreadType } from 'generated/entity/feed/thread';
+import { TagSource } from 'generated/type/tagLabel';
 import { EntityFieldThreads } from 'interface/feed.interface';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -84,24 +86,23 @@ const TableTags = <T extends TableUnion>({
     const hasTags = !isEmpty(record.tags || []);
 
     return (
-      <Popover
+      <Tooltip
         destroyTooltipOnHide
-        content={
+        overlayClassName="ant-popover-request-description"
+        title={
           hasTags
             ? t('label.update-request-tag-plural')
             : t('label.request-tag-plural')
-        }
-        overlayClassName="ant-popover-request-description"
-        trigger="hover"
-        zIndex={9999}>
+        }>
         <Button
           className="p-0 w-7 h-7 flex-center m-r-xss link-text hover-cell-icon"
           data-testid="request-tags"
           icon={
             <IconRequest
-              height={16}
+              height={14}
               name={t('label.request-tag-plural')}
-              width={16}
+              style={{ color: DE_ACTIVE_COLOR }}
+              width={14}
             />
           }
           type="text"
@@ -111,7 +112,7 @@ const TableTags = <T extends TableUnion>({
               : onRequestTagsHandler?.(record)
           }
         />
-      </Popover>
+      </Tooltip>
     );
   }, [record, onUpdateTagsHandler, onRequestTagsHandler]);
 
@@ -146,7 +147,12 @@ const TableTags = <T extends TableUnion>({
                 className="p-0 w-7 h-7 flex-center text-primary hover-cell-icon"
                 data-testid="edit-button"
                 icon={
-                  <IconEdit height={16} name={t('label.edit')} width={16} />
+                  <IconEdit
+                    height={14}
+                    name={t('label.edit')}
+                    style={{ color: DE_ACTIVE_COLOR }}
+                    width={14}
+                  />
                 }
                 size="small"
                 type="text"
@@ -157,7 +163,8 @@ const TableTags = <T extends TableUnion>({
             {hasTagOperationAccess && (
               <>
                 {/*  Request and Update tags */}
-                {getRequestTagsElement}
+
+                {type === TagSource.Classification && getRequestTagsElement}
 
                 {/*  List Conversation */}
                 {getFieldThreadElement(

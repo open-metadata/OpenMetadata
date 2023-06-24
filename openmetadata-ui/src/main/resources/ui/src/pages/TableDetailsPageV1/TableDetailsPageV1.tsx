@@ -40,7 +40,7 @@ import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { getTableTabPath, getVersionPath, ROUTES } from 'constants/constants';
+import { getTableTabPath, getVersionPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { mockDatasetData } from 'constants/mockTourData.constants';
 import { EntityTabs, EntityType, FqnPart } from 'enums/entity.enum';
