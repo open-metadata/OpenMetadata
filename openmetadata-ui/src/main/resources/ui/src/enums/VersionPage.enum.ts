@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,16 +11,9 @@
  *  limitations under the License.
  */
 
-import {
-  ColumnJoins,
-  Table,
-  TableConstraint,
-} from '../../generated/entity/data/table';
-
-export interface VersionTableProps {
-  columnName: string;
-  columns: Table['columns'];
-  joins: Array<ColumnJoins>;
-  constraintUpdatedColumns?: string[];
-  tableConstraints?: Array<TableConstraint>;
+export enum EntityChangeOperations {
+  ADDED = 'added',
+  DELETED = 'deleted',
+  UPDATED = 'updated',
+  NORMAL = 'normal',
 }
