@@ -160,7 +160,10 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
         <Form.Item
           label={t('label.email')}
           name="email"
-          rules={[{ type: 'email' }]}>
+          rules={[{
+            required: true,
+            type: 'email'
+          }]}>
           <Input
             data-testid="email"
             placeholder={t('label.enter-entity', {
