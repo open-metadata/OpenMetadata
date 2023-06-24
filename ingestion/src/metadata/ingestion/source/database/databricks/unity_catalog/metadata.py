@@ -14,7 +14,6 @@ Databricks Unity Catalog Source source methods.
 import traceback
 from typing import Dict, Iterable, List, Optional, Tuple
 
-from databricks.sdk.service._internal import _from_dict
 from databricks.sdk.service.catalog import ColumnInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
 from databricks.sdk.service.catalog import TableConstraintList
@@ -59,12 +58,11 @@ from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.db_utils import get_view_lineage
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
-from metadata.utils.helpers import clean_up_starting_ending_double_quotes_in_string
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-
+# pylint: disable=invalid-name,not-callable
 @classmethod
 def from_dict(cls, d: Dict[str, any]) -> "TableConstraintList":
     return cls(
@@ -296,6 +294,9 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
             self.status.failed(table_name, error, traceback.format_exc())
 
     def add_table_constraint_to_context(self, constraints: TableConstraintList) -> None:
+        """
+        Function to handle table constraint for the current table and add it to context
+        """
         if constraints and constraints.table_constraints:
             primary_constraints = []
             foreign_constraints = []
