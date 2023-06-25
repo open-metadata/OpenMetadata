@@ -132,10 +132,6 @@ public class PIIMasker {
     return ColumnUtil.getAllTags(column).stream().anyMatch(SENSITIVE_PII_TAG::equals);
   }
 
-  private static boolean hasPiiSensitiveTag(Field field) {
-    return getAllFieldTags(field).stream().anyMatch(SENSITIVE_PII_TAG::equals);
-  }
-
   private static boolean hasPiiSensitiveTag(Table table) {
     return table.getTags().stream().map(TagLabel::getTagFQN).anyMatch(SENSITIVE_PII_TAG::equals);
   }
