@@ -29,7 +29,7 @@ import {
   ProfileSampleType,
 } from '../generated/entity/data/table';
 import { TestCaseStatus } from '../generated/tests/testCase';
-import { GREEN_3, RED_3 } from './Color.constants';
+import { GREEN_3, PURPLE_2, RED_3 } from './Color.constants';
 import { JSON_TAB_SIZE } from './constants';
 
 export const excludedMetrics = [
@@ -273,7 +273,7 @@ export const INITIAL_OPERATION_METRIC_VALUE = {
     {
       title: t('label.update'),
       dataKey: DMLOperationType.Update,
-      color: '#7147e8',
+      color: PURPLE_2,
     },
     {
       title: t('label.delete'),

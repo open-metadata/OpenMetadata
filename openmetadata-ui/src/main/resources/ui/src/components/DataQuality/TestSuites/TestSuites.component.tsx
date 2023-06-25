@@ -83,7 +83,7 @@ export const TestSuites = () => {
         dataIndex: 'name',
         key: 'name',
         render: (_, record) => {
-          return tab === DataQualityPageTabs.TABLES ? (
+          return record.executable ? (
             <Link
               to={{
                 pathname: getTableTabPath(
