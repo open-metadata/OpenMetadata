@@ -31,6 +31,13 @@ ES_SOURCE_TO_ES_OBJ_ARGS = {
     "verifyCerts": "verify_certs",
 }
 
+ES_SOURCE_IGNORE_KEYS = {
+    "searchIndexMappingLanguage",
+    "batchSize",
+    "recreateIndex",
+    "type",
+}
+
 QUERY_WITH_OM_VERSION = '/* {"app": "OpenMetadata"'
 
 QUERY_WITH_DBT = '/* {"app": "dbt"'

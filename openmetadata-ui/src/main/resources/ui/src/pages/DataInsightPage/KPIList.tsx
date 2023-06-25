@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Space, Table, Tooltip, Typography } from 'antd';
+import { Button, Col, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -124,7 +125,7 @@ const KPIList = () => {
         key: 'actions',
         render: (_, record) => {
           return (
-            <Space>
+            <div className="d-flex items-center">
               <Tooltip
                 placement="left"
                 title={
@@ -133,15 +134,10 @@ const KPIList = () => {
                     : t('message.no-permission-for-action')
                 }>
                 <Button
+                  className="flex-center"
                   data-testid={`edit-action-${getEntityName(record)}`}
                   disabled={!isAdminUser}
-                  icon={
-                    <SVGIcons
-                      alt={t('label.edit')}
-                      icon={Icons.EDIT}
-                      width="18px"
-                    />
-                  }
+                  icon={<EditIcon width="16px" />}
                   type="text"
                   onClick={() => history.push(getKpiPath(record.name))}
                 />
@@ -157,13 +153,13 @@ const KPIList = () => {
                   data-testid={`delete-action-${getEntityName(record)}`}
                   disabled={!isAdminUser}
                   icon={
-                    <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />
+                    <SVGIcons alt="delete" icon={Icons.DELETE} width="16px" />
                   }
                   type="text"
                   onClick={() => setSelectedKpi(record)}
                 />
               </Tooltip>
-            </Space>
+            </div>
           );
         },
       },

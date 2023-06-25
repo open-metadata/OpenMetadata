@@ -13,7 +13,7 @@
 import { Button, Popover, Space, Tabs, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { WILD_CARD_CHAR } from 'constants/char.constants';
-import { PAGE_SIZE_MEDIUM } from 'constants/constants';
+import { DE_ACTIVE_COLOR, PAGE_SIZE_MEDIUM } from 'constants/constants';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { EntityReference } from 'generated/entity/data/table';
@@ -299,7 +299,7 @@ export const UserTeamSelectableList = ({
             <Button
               className="flex-center p-0"
               data-testid="edit-owner"
-              icon={<EditIcon width="14px" />}
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
               size="small"
               type="text"
               onClick={() => setPopupVisible(true)}

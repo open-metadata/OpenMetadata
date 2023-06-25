@@ -18,7 +18,6 @@ import classNames from 'classnames';
 import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
 import React, { FC, ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -166,7 +165,7 @@ const ManageButton: FC<Props> = ({
                 description={t('message.update-displayName-entity', {
                   entity: entityName,
                 })}
-                icon={<EditIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                icon={<EditIcon width="18px" />}
                 id="rename-button"
                 name={t('label.rename')}
               />
