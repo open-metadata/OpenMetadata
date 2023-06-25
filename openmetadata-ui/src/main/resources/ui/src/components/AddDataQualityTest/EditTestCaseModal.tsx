@@ -112,14 +112,22 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
 
   const handleFormSubmit: FormProps['onFinish'] = async (value) => {
     const { parameterValues, description } = createTestCaseObj(value);
-    const updatedTestCase = { ...testCase, parameterValues, description };
+    const updatedTestCase = {
+      ...testCase,
+      parameterValues,
+      description,
+      name: value.name,
+    };
     const jsonPatch = compare(testCase, updatedTestCase);
 
     if (jsonPatch.length) {
       try {
         setIsLoadingOnSave(true);
-        await updateTestCaseById(testCase.id || '', jsonPatch);
-        onUpdate && onUpdate();
+        const updateRes = await updateTestCaseById(
+          testCase.id || '',
+          jsonPatch
+        );
+        onUpdate && onUpdate(updateRes);
         showSuccessToast(
           t('server.update-entity-success', { entity: t('label.test-case') })
         );
