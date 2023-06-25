@@ -78,6 +78,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -246,6 +247,7 @@ public class TableRepository extends EntityRepository<Table> {
     if (!authorizePII) {
       getColumnTags(true, table.getColumns());
       table.setTags(getTags(table.getFullyQualifiedName()));
+      return PIIMasker.getSampleData(table);
     }
 
     return table;
@@ -475,7 +477,10 @@ public class TableRepository extends EntityRepository<Table> {
     setColumnProfile(table.getColumns());
 
     // Set the column tags. Will be used to hide the data
-    if (!authorizePII) getColumnTags(true, table.getColumns());
+    if (!authorizePII) {
+      getColumnTags(true, table.getColumns());
+      return PIIMasker.getTableProfile(table);
+    }
 
     return table;
   }

@@ -3,23 +3,31 @@ package org.openmetadata.service.security.mask;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.jdbi3.TopicRepository.getAllFieldTags;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import javax.ws.rs.core.SecurityContext;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.topic.TopicSampleData;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ColumnUtil;
+import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.ResultList;
 
 public class PIIMasker {
 
@@ -27,9 +35,7 @@ public class PIIMasker {
   public static final String MASKED_VALUE = "********";
   public static final String MASKED_NAME = "[MASKED]";
 
-  public static Table getSampleData(Table table, boolean authorized) {
-    if (authorized) return table;
-
+  public static Table getSampleData(Table table) {
     TableData sampleData = table.getSampleData();
 
     // If we don't have sample data, there's nothing to do
@@ -75,9 +81,7 @@ public class PIIMasker {
   mask the full TopicSampleData list of messages, since we cannot
   easily pick up the specific key containing the sample data.
   */
-  public static Topic getSampleData(Topic topic, boolean authorized) {
-    if (authorized) return topic;
-
+  public static Topic getSampleData(Topic topic) {
     TopicSampleData sampleData = topic.getSampleData();
 
     // If we don't have sample data, there's nothing to do
@@ -93,8 +97,7 @@ public class PIIMasker {
     return topic;
   }
 
-  public static Table getTableProfile(Table table, boolean authorized) {
-    if (authorized) return table;
+  public static Table getTableProfile(Table table) {
     for (Column column : table.getColumns()) {
       if (hasPiiSensitiveTag(column)) {
         column.setProfile(null);
@@ -104,8 +107,8 @@ public class PIIMasker {
     return table;
   }
 
-  public static TestCase getTestCase(Column column, TestCase testCase, boolean authorized) {
-    if (authorized || !hasPiiSensitiveTag(column)) return testCase;
+  private static TestCase getTestCase(Column column, TestCase testCase) {
+    if (!hasPiiSensitiveTag(column)) return testCase;
 
     testCase.setTestCaseResult(null);
     testCase.setParameterValues(null);
@@ -115,13 +118,67 @@ public class PIIMasker {
     return testCase;
   }
 
+  public static ResultList<TestCase> getTestCases(
+      ResultList<TestCase> testCases, Authorizer authorizer, SecurityContext securityContext) {
+    List<TestCase> maskedTests =
+        testCases.getData().stream()
+            .map(
+                testCase -> {
+                  try {
+                    MessageParser.EntityLink testCaseLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+                    Table table =
+                        Entity.getEntityByName(
+                            Entity.TABLE, testCaseLink.getEntityFQN(), "owner,tags", Include.NON_DELETED);
+
+                    // Ignore table tests
+                    if (testCaseLink.getFieldName() == null) return testCase;
+
+                    Optional<Column> referencedColumn =
+                        table.getColumns().stream()
+                            .filter(
+                                col -> testCaseLink.getFullyQualifiedFieldValue().equals(col.getFullyQualifiedName()))
+                            .findFirst();
+
+                    if (referencedColumn.isPresent()) {
+                      Column col = referencedColumn.get();
+                      // We need the table owner to know if we can authorize the access
+                      boolean authorizePII = authorizer.authorizePII(securityContext, table.getOwner());
+                      if (!authorizePII) return PIIMasker.getTestCase(col, testCase);
+                      return testCase;
+                    }
+                    return testCase;
+                  } catch (IOException e) {
+                    throw new RuntimeException(e);
+                  }
+                })
+            .collect(Collectors.toList());
+
+    testCases.setData(maskedTests);
+    return testCases;
+  }
+
   /*
   Either return the query if user has permissions, or hide it completely.
   */
-  public static Query getQuery(Query query, boolean authorized) {
-    if (authorized || !hasPiiSensitiveTag(query)) return query;
+  private static Query getQuery(Query query) {
+    if (!hasPiiSensitiveTag(query)) return query;
     query.setQuery(MASKED_VALUE);
     return query;
+  }
+
+  public static ResultList<Query> getQueries(
+      ResultList<Query> queries, Authorizer authorizer, SecurityContext securityContext) {
+    List<Query> maskedQueries =
+        queries.getData().stream()
+            .map(
+                query -> {
+                  boolean authorizePII = authorizer.authorizePII(securityContext, query.getOwner());
+                  if (!authorizePII) return PIIMasker.getQuery(query);
+                  return query;
+                })
+            .collect(Collectors.toList());
+    queries.setData(maskedQueries);
+    return queries;
   }
 
   private static boolean hasPiiSensitiveTag(Query query) {

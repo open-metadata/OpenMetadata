@@ -146,16 +146,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     }
     ResultList<Query> queries =
         super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
-    List<Query> maskedQueries =
-        queries.getData().stream()
-            .map(
-                query -> {
-                  boolean authorizePII = authorizer.authorizePII(securityContext, query.getOwner());
-                  return PIIMasker.getQuery(query, authorizePII);
-                })
-            .collect(Collectors.toList());
-    queries.setData(maskedQueries);
-    return queries;
+    return PIIMasker.getQueries(queries, authorizer, securityContext);
   }
 
   @GET

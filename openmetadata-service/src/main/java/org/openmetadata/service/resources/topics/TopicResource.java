@@ -62,7 +62,6 @@ import org.openmetadata.service.jdbi3.TopicRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.ResultList;
@@ -371,8 +370,8 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
 
-    Topic maskedTopic = PIIMasker.getSampleData(repository.getSampleData(id, authorizePII), authorizePII);
-    return addHref(uriInfo, maskedTopic);
+    Topic topic = repository.getSampleData(id, authorizePII);
+    return addHref(uriInfo, topic);
   }
 
   @PUT
