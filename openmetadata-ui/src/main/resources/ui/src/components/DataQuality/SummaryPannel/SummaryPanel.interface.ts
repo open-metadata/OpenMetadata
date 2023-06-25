@@ -10,31 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import url('../../../styles/variables.less');
-
-.test-case-table-container {
-  .resolution {
-    width: max-content;
-    &.ack {
-      background-color: @blue-1;
-      border: 1px solid @blue-2;
-      .ant-typography {
-        color: @blue-2;
-      }
-    }
-    &.new {
-      background-color: @purple-1;
-      border: 1px solid @purple-2;
-      .ant-typography {
-        color: @purple-2;
-      }
-    }
-    &.resolved {
-      background-color: @green-4;
-      border: 1px solid @green-5;
-      .ant-typography {
-        color: @green-5;
-      }
-    }
-  }
+export interface SummaryPanelProps {
+  testSuiteId?: string;
 }
