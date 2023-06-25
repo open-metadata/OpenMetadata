@@ -443,7 +443,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   }
 
   private GlossaryTerm getGlossaryTerm(CreateGlossaryTerm create, String user) throws IOException {
-    // TODO fix this
     return copy(new GlossaryTerm(), create, user)
         .withSynonyms(create.getSynonyms())
         .withGlossary(getEntityReference(Entity.GLOSSARY, create.getGlossary()))

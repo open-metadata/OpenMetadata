@@ -13,6 +13,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration.SearchType;
 import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
@@ -57,13 +58,9 @@ public class IndexUtil {
   }
 
   public static SearchClient getSearchClient(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
-    SearchClient client;
-    if (esConfig.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
-      client = new OpenSearchClientImpl(esConfig, dao);
-    } else {
-      client = new ElasticSearchClientImpl(esConfig, dao);
-    }
-    return client;
+    return esConfig.getSearchType().equals(SearchType.OPENSEARCH)
+        ? new OpenSearchClientImpl(esConfig, dao)
+        : new ElasticSearchClientImpl(esConfig, dao);
   }
 
   /**
@@ -135,13 +132,11 @@ public class IndexUtil {
 
   public static SSLContext createElasticSearchSSLContext(ElasticSearchConfiguration elasticSearchConfiguration)
       throws KeyStoreException {
-
-    if (elasticSearchConfiguration.getScheme().equals("https")) {
-      return SSLUtil.createSSLContext(
-          elasticSearchConfiguration.getTruststorePath(),
-          elasticSearchConfiguration.getTruststorePassword(),
-          "ElasticSearch");
-    }
-    return null;
+    return elasticSearchConfiguration.getScheme().equals("https")
+        ? SSLUtil.createSSLContext(
+            elasticSearchConfiguration.getTruststorePath(),
+            elasticSearchConfiguration.getTruststorePassword(),
+            "ElasticSearch")
+        : null;
   }
 }

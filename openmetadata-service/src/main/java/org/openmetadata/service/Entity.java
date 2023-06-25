@@ -129,6 +129,11 @@ public final class Entity {
   public static final String INGESTION_PIPELINE = "ingestionPipeline";
 
   //
+  // Domain related entities
+  //
+  public static final String DOMAIN = "domain";
+
+  //
   // Reserved names in OpenMetadata
   //
   public static final String ADMIN_USER_NAME = "admin";

@@ -459,12 +459,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       WebSocketUpgradeFilter.configure(environment.getApplicationContext());
       NativeWebSocketServletContainerInitializer.configure(
           environment.getApplicationContext(),
-          (context, container) -> {
-            container.addMapping(
-                new ServletPathSpec(pathSpec),
-                (servletUpgradeRequest, servletUpgradeResponse) ->
-                    new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
-          });
+          (context, container) ->
+              container.addMapping(
+                  new ServletPathSpec(pathSpec),
+                  (servletUpgradeRequest, servletUpgradeResponse) ->
+                      new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer())));
     } catch (ServletException ex) {
       LOG.error("Websocket Upgrade Filter error : " + ex.getMessage());
     }
