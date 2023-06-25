@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -134,6 +135,68 @@ public interface EntityDAO<T extends EntityInterface> {
 
   @SqlQuery("SELECT count(*) FROM <table> <cond>")
   int listCount(@Define("table") String table, @Define("nameColumn") String nameColumn, @Define("cond") String cond);
+
+  @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table> <mysqlCond>", connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table> <postgresCond>", connectionType = POSTGRES)
+  int listCount(
+      @Define("table") String table,
+      @Define("nameColumn") String nameColumn,
+      @Define("mysqlCond") String mysqlCond,
+      @Define("postgresCond") String postgresCond);
+
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT <selectColumnStmt> FROM ("
+              + "SELECT <nameColumn>, json FROM <table> <mysqlCond> AND "
+              + "<nameColumn> < :before "
+              + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
+              "ORDER BY <nameColumn> DESC "
+              + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have fqn)
+              "LIMIT :limit"
+              + ") last_rows_subquery ORDER BY <nameColumn>",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT <selectColumnStmt> FROM ("
+              + "SELECT <nameColumn>, json FROM <table> <postgresCond> AND "
+              + "<nameColumn> < :before "
+              + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
+              "ORDER BY <nameColumn> DESC "
+              + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have fqn)
+              "LIMIT :limit"
+              + ") last_rows_subquery ORDER BY <nameColumn>",
+      connectionType = POSTGRES)
+  List<String> listBefore(
+      @Define("table") String table,
+      @Define("nameColumn") String nameColumn,
+      @Define("selectColumnStmt") String selectColumnStmt,
+      @Define("mysqlCond") String mysqlCond,
+      @Define("postgresCond") String postgresCond,
+      @Bind("limit") int limit,
+      @Bind("before") String before);
+
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT <selectColumnStmt> FROM <table> <mysqlCond> AND "
+              + "<nameColumn> > :after "
+              + "ORDER BY <nameColumn> "
+              + "LIMIT :limit",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT <selectColumnStmt> FROM <table> <postgresCond> AND "
+              + "<nameColumn> > :after "
+              + "ORDER BY <nameColumn> "
+              + "LIMIT :limit",
+      connectionType = POSTGRES)
+  List<String> listAfter(
+      @Define("table") String table,
+      @Define("nameColumn") String nameColumn,
+      @Define("selectColumnStmt") String selectColumnStmt,
+      @Define("mysqlCond") String mysqlCond,
+      @Define("postgresCond") String postgresCond,
+      @Bind("limit") int limit,
+      @Bind("after") String after);
 
   @SqlQuery("SELECT count(*) FROM <table>")
   int listTotalCount(@Define("table") String table, @Define("nameColumn") String nameColumn);
