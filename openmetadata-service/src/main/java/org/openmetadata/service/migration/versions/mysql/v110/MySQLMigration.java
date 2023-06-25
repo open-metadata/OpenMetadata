@@ -2,6 +2,7 @@ package org.openmetadata.service.migration.versions.mysql.v110;
 
 import static org.openmetadata.service.migration.MigrationUtil.dataMigrationFQNHashing;
 import static org.openmetadata.service.migration.MigrationUtil.performSqlExecutionAndUpdation;
+import static org.openmetadata.service.migration.MigrationUtil.testSuitesMigration;
 
 import java.util.Arrays;
 import java.util.List;
@@ -63,6 +64,7 @@ public class MySQLMigration implements MigrationStep {
   public void postDDL() {
     // This SQLs cannot be part of the commit as these need some data to be committed
     postDDLFQNHashing();
+    testSuitesMigration(collectionDAO);
   }
 
   @Override

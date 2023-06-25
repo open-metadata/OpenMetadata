@@ -1945,6 +1945,8 @@ public interface CollectionDAO {
       public String targetFQN;
       public int labelType;
       public int state;
+      private String tagFQNHash;
+      public String targetFQNHash;
     }
 
     @Deprecated(since = "Release 1.1")
@@ -1959,7 +1961,18 @@ public interface CollectionDAO {
         tagLabel.setTagFQN(r.getString("tagFQN"));
         // TODO : Ugly ,  but this is present is lower version and removed on higher version
         try {
+          // This field is removed in latest
           tagLabel.setTargetFQN(r.getString("targetFQN"));
+        } catch (Exception ex) {
+          // Nothing to do
+        }
+        try {
+          tagLabel.setTagFQNHash(r.getString("tagFQNHash"));
+        } catch (Exception ex) {
+          // Nothing to do
+        }
+        try {
+          tagLabel.setTargetFQNHash(r.getString("targetFQNHash"));
         } catch (Exception ex) {
           // Nothing to do
         }

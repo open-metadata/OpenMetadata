@@ -1,14 +1,22 @@
 package org.openmetadata.service.migration;
 
+import static org.openmetadata.service.Entity.TEST_CASE;
+import static org.openmetadata.service.Entity.TEST_SUITE;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
+import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.entity.Bot;
@@ -48,12 +56,20 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MigrationDAO;
+import org.openmetadata.service.jdbi3.TableRepository;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.migration.api.MigrationStep;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -150,49 +166,55 @@ public class MigrationUtil {
     List<CollectionDAO.FieldRelationshipDAO.FieldRelationship> fieldRelationships =
         collectionDAO.fieldRelationshipDAO().listAll();
     for (CollectionDAO.FieldRelationshipDAO.FieldRelationship fieldRelationship : fieldRelationships) {
-      collectionDAO
-          .fieldRelationshipDAO()
-          .upsertFQNHash(
-              FullyQualifiedName.buildHash(fieldRelationship.getFromFQN()),
-              FullyQualifiedName.buildHash(fieldRelationship.getToFQN()),
-              fieldRelationship.getFromFQN(),
-              fieldRelationship.getToFQN(),
-              fieldRelationship.getFromType(),
-              fieldRelationship.getToType(),
-              fieldRelationship.getRelation(),
-              fieldRelationship.getJsonSchema(),
-              fieldRelationship.getJson());
+      if (CommonUtil.nullOrEmpty(fieldRelationship.getFromFQNHash())
+          && CommonUtil.nullOrEmpty(fieldRelationship.getToFQNHash())) {
+        collectionDAO
+            .fieldRelationshipDAO()
+            .upsertFQNHash(
+                FullyQualifiedName.buildHash(fieldRelationship.getFromFQN()),
+                FullyQualifiedName.buildHash(fieldRelationship.getToFQN()),
+                fieldRelationship.getFromFQN(),
+                fieldRelationship.getToFQN(),
+                fieldRelationship.getFromType(),
+                fieldRelationship.getToType(),
+                fieldRelationship.getRelation(),
+                fieldRelationship.getJsonSchema(),
+                fieldRelationship.getJson());
+      }
     }
   }
 
   private static void updateFQNHashEntityExtensionTimeSeries(CollectionDAO collectionDAO) {
     List<CollectionDAO.EntityExtensionTimeSeriesDAO.EntityExtensionTimeSeriesTable> timeSeriesTables =
         collectionDAO.entityExtensionTimeSeriesDao().listAll();
-    for (CollectionDAO.EntityExtensionTimeSeriesDAO.EntityExtensionTimeSeriesTable fieldRelationship :
-        timeSeriesTables) {
-      collectionDAO
-          .entityExtensionTimeSeriesDao()
-          .updateEntityFQNHash(
-              FullyQualifiedName.buildHash(fieldRelationship.getEntityFQN()),
-              fieldRelationship.getEntityFQN(),
-              fieldRelationship.getExtension(),
-              fieldRelationship.getTimestamp());
+    for (CollectionDAO.EntityExtensionTimeSeriesDAO.EntityExtensionTimeSeriesTable timeSeries : timeSeriesTables) {
+      if (CommonUtil.nullOrEmpty(timeSeries.getEntityFQNHash())) {
+        collectionDAO
+            .entityExtensionTimeSeriesDao()
+            .updateEntityFQNHash(
+                FullyQualifiedName.buildHash(timeSeries.getEntityFQN()),
+                timeSeries.getEntityFQN(),
+                timeSeries.getExtension(),
+                timeSeries.getTimestamp());
+      }
     }
   }
 
   public static void updateFQNHashTagUsage(CollectionDAO collectionDAO) {
     List<CollectionDAO.TagUsageDAO.TagLabelMigration> tagLabelMigrationList = collectionDAO.tagUsageDAO().listAll();
     for (CollectionDAO.TagUsageDAO.TagLabelMigration tagLabel : tagLabelMigrationList) {
-      collectionDAO
-          .tagUsageDAO()
-          .upsertFQNHash(
-              tagLabel.getSource(),
-              tagLabel.getTagFQN(),
-              FullyQualifiedName.buildHash(tagLabel.getTagFQN()),
-              FullyQualifiedName.buildHash(tagLabel.getTargetFQN()),
-              tagLabel.getLabelType(),
-              tagLabel.getState(),
-              tagLabel.getTargetFQN());
+      if (CommonUtil.nullOrEmpty(tagLabel.getTagFQNHash()) && CommonUtil.nullOrEmpty(tagLabel.getTargetFQNHash())) {
+        collectionDAO
+            .tagUsageDAO()
+            .upsertFQNHash(
+                tagLabel.getSource(),
+                tagLabel.getTagFQN(),
+                FullyQualifiedName.buildHash(tagLabel.getTagFQN()),
+                FullyQualifiedName.buildHash(tagLabel.getTargetFQN()),
+                tagLabel.getLabelType(),
+                tagLabel.getState(),
+                tagLabel.getTargetFQN());
+      }
     }
   }
 
@@ -209,6 +231,112 @@ public class MigrationUtil {
       handle.execute(tableData.getSqlStatement());
       migrationDAO.upsertServerMigrationSQL(
           tableData.getVersion(), tableData.getSqlStatement(), tableData.getCheckSum());
+    }
+  }
+
+  public static TestSuite getTestSuite(CollectionDAO dao, CreateTestSuite create, String user) throws IOException {
+    TestSuite testSuite =
+        copy(new TestSuite(), create, user)
+            .withDescription(create.getDescription())
+            .withDisplayName(create.getDisplayName())
+            .withName(create.getName());
+    if (create.getExecutableEntityReference() != null) {
+      TableRepository tableRepository = new TableRepository(dao);
+      Table table =
+          JsonUtils.readValue(
+              tableRepository.getDao().findJsonByFqn(create.getExecutableEntityReference(), Include.ALL), Table.class);
+      EntityReference entityReference =
+          new EntityReference()
+              .withId(table.getId())
+              .withFullyQualifiedName(table.getFullyQualifiedName())
+              .withName(table.getName())
+              .withType(Entity.TABLE);
+      testSuite.setExecutableEntityReference(entityReference);
+    }
+    return testSuite;
+  }
+
+  public static TestSuite copy(TestSuite entity, CreateEntity request, String updatedBy) throws IOException {
+    entity.setId(UUID.randomUUID());
+    entity.setName(request.getName());
+    entity.setDisplayName(request.getDisplayName());
+    entity.setDescription(request.getDescription());
+    entity.setExtension(request.getExtension());
+    entity.setUpdatedBy(updatedBy);
+    entity.setOwner(null);
+    entity.setUpdatedAt(System.currentTimeMillis());
+    return entity;
+  }
+
+  @SneakyThrows
+  public static void testSuitesMigration(CollectionDAO collectionDAO) {
+    TestSuiteRepository testSuiteRepository = new TestSuiteRepository(collectionDAO);
+    TestCaseRepository testCaseRepository = new TestCaseRepository(collectionDAO);
+    List<TestSuite> testSuites =
+        testSuiteRepository.listAll(new EntityUtil.Fields(List.of("id")), new ListFilter(Include.ALL));
+    List<TestCase> testCases =
+        testCaseRepository.listAll(new EntityUtil.Fields(List.of("id")), new ListFilter(Include.ALL));
+    List<CollectionDAO.EntityRelationshipRecord> testSuiteRelationShipToBeDeleted = new ArrayList<>();
+    for (TestCase test : testCases) {
+      testSuiteRelationShipToBeDeleted =
+          collectionDAO
+              .relationshipDAO()
+              .findFrom(test.getId().toString(), TEST_CASE, Relationship.CONTAINS.ordinal(), TEST_SUITE);
+    }
+
+    for (TestCase test : testCases) {
+
+      // Create New Executable Test Suites
+      MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(test.getEntityLink());
+      // Create new Logical Test Suite
+      String testSuiteFqn = entityLink.getEntityFQN() + ".testSuite";
+      try {
+        // Check if the test Suite Exists, this brings the data on nameHash basis
+        TestSuite stored =
+            testSuiteRepository.getByName(
+                null, FullyQualifiedName.quoteName(testSuiteFqn), new EntityUtil.Fields(List.of("id")), Include.ALL);
+        testSuiteRepository.addRelationship(stored.getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+      } catch (EntityNotFoundException ex) {
+        // TODO: Need to update the executable field as well
+        TestSuite newExecutableTestSuite =
+            getTestSuite(
+                    collectionDAO,
+                    new CreateTestSuite()
+                        .withName(testSuiteFqn)
+                        .withExecutableEntityReference(entityLink.getEntityFQN()),
+                    "ingestion-bot")
+                .withExecutable(false);
+        TestSuite testSuitePutResponse = testSuiteRepository.create(null, newExecutableTestSuite);
+        // Here we aer manually adding executable relationship since the table Repository is not registered and result
+        // into null for entity type table
+        testSuiteRepository.addRelationship(
+            newExecutableTestSuite.getExecutableEntityReference().getId(),
+            newExecutableTestSuite.getId(),
+            Entity.TABLE,
+            TEST_SUITE,
+            Relationship.CONTAINS);
+
+        // add relationship from testSuite to TestCases
+        testSuiteRepository.addRelationship(
+            newExecutableTestSuite.getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+
+        // Not a good approach but executable cannot be set true before
+        TestSuite temp =
+            testSuiteRepository
+                .getDao()
+                .findEntityByName(FullyQualifiedName.quoteName(newExecutableTestSuite.getName()));
+        temp.setExecutable(true);
+        testSuiteRepository.getDao().update(temp);
+      }
+
+      // Set the flag for existing old test suites to
+      for (CollectionDAO.EntityRelationshipRecord record : testSuiteRelationShipToBeDeleted) {
+        TestSuite temp = testSuiteRepository.getDao().findEntityById(record.getId());
+        if (Boolean.FALSE.equals(temp.getExecutable())) {
+          temp.setExecutable(false);
+          testSuiteRepository.getDao().update(temp);
+        }
+      }
     }
   }
 }

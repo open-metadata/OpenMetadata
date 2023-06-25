@@ -2,6 +2,7 @@ package org.openmetadata.service.migration.versions.postgres.v110;
 
 import static org.openmetadata.service.migration.MigrationUtil.dataMigrationFQNHashing;
 import static org.openmetadata.service.migration.MigrationUtil.performSqlExecutionAndUpdation;
+import static org.openmetadata.service.migration.MigrationUtil.testSuitesMigration;
 
 import java.util.Arrays;
 import java.util.List;
@@ -62,6 +63,7 @@ public class PostgresMigration implements MigrationStep {
   @Override
   public void postDDL() {
     postDDLFQNHashing();
+    testSuitesMigration(collectionDAO);
   }
 
   @Override
@@ -168,8 +170,8 @@ public class PostgresMigration implements MigrationStep {
             "ALTER TABLE user_entity ADD UNIQUE (nameHash), ALTER COLUMN nameHash SET NOT NULL",
             "ALTER TABLE web_analytic_event ADD UNIQUE (fqnHash), ALTER COLUMN fqnHash SET NOT NULL",
             "ALTER TABLE automations_workflow ADD UNIQUE (nameHash), ALTER COLUMN nameHash SET NOT NULL",
-            // field_relationshio
-            "ALTER TABLE field_relationship DROP CONSTRAINT field_relationship_pkey, ADD CONSTRAINT  field_relationship_pkey PRIMARY KEY(fromFQNHash, toFQNHash, relation), ALTER fromFQN TYPE VARCHAR(2096), ALTER toFQN TYPE VARCHAR(2096)",
+            // field_relationship
+            "ALTER TABLE field_relationship DROP CONSTRAINT field_relationship_pkey, ADD CONSTRAINT field_relationship_pkey PRIMARY KEY(fromFQNHash, toFQNHash, relation), ALTER fromFQN TYPE VARCHAR(2096), ALTER toFQN TYPE VARCHAR(2096)",
             // entity_extension_time_series
             "ALTER TABLE entity_extension_time_series DROP COLUMN entityFQN, ALTER COLUMN entityFQNHash SET NOT NULL",
             // tag_usage
