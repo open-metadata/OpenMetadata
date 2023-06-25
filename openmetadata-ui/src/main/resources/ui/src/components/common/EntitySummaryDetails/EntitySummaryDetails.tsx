@@ -17,6 +17,7 @@ import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import classNames from 'classnames';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { isString, isUndefined, lowerCase, noop, toLower } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -178,7 +179,11 @@ const EntitySummaryDetails = ({
               {updateTier && !deleted ? (
                 <TierCard currentTier={tier?.tagFQN} updateTier={updateTier}>
                   <span data-testid="edit-tier">
-                    <EditIcon className="tw-cursor-pointer" width={14} />
+                    <EditIcon
+                      className="tw-cursor-pointer"
+                      color={DE_ACTIVE_COLOR}
+                      width={14}
+                    />
                   </span>
                 </TierCard>
               ) : null}
@@ -312,7 +317,11 @@ const EntitySummaryDetails = ({
               {updateTier && !deleted ? (
                 <TierCard currentTier={tier?.tagFQN} updateTier={updateTier}>
                   <span data-testid="edit-tier">
-                    <EditIcon className="cursor-pointer" width={14} />
+                    <EditIcon
+                      className="cursor-pointer"
+                      color={DE_ACTIVE_COLOR}
+                      width={14}
+                    />
                   </span>
                 </TierCard>
               ) : null}
