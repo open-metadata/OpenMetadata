@@ -100,7 +100,7 @@ export interface ProfilerSummaryCardProps {
 
 export interface DataQualityTabProps {
   testCases: TestCase[];
-  onTestUpdate?: () => void;
+  onTestUpdate?: (testCase?: TestCase) => void;
   showTableColumn?: boolean;
   isLoading?: boolean;
   onTestCaseResultUpdate?: (data: TestCase) => void;

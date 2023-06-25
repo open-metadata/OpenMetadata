@@ -33,7 +33,6 @@ import { getListTestCase, ListTestCaseParams } from 'rest/testAPI';
 import { showErrorToast } from 'utils/ToastUtils';
 import { DataQualitySearchParams } from '../DataQuality.interface';
 import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
-import './test-cases.style.less';
 
 export const TestCases = () => {
   const history = useHistory();
@@ -66,6 +65,18 @@ export const TestCases = () => {
     history.push({
       search: QueryString.stringify({ ...params, [key]: value }),
     });
+  };
+
+  const handleTestCaseUpdate = (data?: TestCase) => {
+    if (data) {
+      setTestCase((prev) => {
+        const updatedTestCase = prev.data.map((test) =>
+          test.id === data.id ? { ...test, ...data } : test
+        );
+
+        return { ...prev, data: updatedTestCase };
+      });
+    }
   };
 
   const fetchTestCases = async (params?: ListTestCaseParams) => {
@@ -172,6 +183,7 @@ export const TestCases = () => {
           }}
           testCases={testCase.data}
           onTestCaseResultUpdate={handleStatusSubmit}
+          onTestUpdate={handleTestCaseUpdate}
         />
       </Col>
     </Row>
