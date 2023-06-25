@@ -55,7 +55,6 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlHyperParameter,
     MlStore,
 )
-from metadata.generated.schema.entity.data.topic import TopicSampleData
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
@@ -64,6 +63,7 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
     TableProfile,
 )
+from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
     CustomDatabaseConnection,
@@ -87,7 +87,6 @@ from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameter
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.type.schema import Topic as TopicSchema
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source
