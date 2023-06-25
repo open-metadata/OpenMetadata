@@ -46,6 +46,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { updateTask } from 'rest/feedsAPI';
+import { getNameFromFQN } from 'utils/CommonUtils';
 import { ENTITY_LINK_SEPARATOR } from 'utils/EntityUtils';
 import { getEntityField, getEntityFQN, prepareFeedLink } from 'utils/FeedUtils';
 import { getEntityLink } from 'utils/TableUtils';
@@ -56,7 +57,6 @@ import {
   TASK_ACTION_LIST,
 } from 'utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
-import Fqn from './../../../utils/Fqn';
 import { TaskTabProps } from './TaskTab.interface';
 import { ReactComponent as TaskCloseIcon } from '/assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '/assets/svg/ic-open-task.svg';
@@ -144,7 +144,7 @@ export const TaskTab = ({
             data-testid="entitylink"
             to={prepareFeedLink(entityType, entityFQN)}
             onClick={(e) => e.stopPropagation()}>
-            {Fqn.split(entityFQN).join('  >  ')}
+            {getNameFromFQN(entityFQN)}
           </Link>
         </EntityPopOverCard>
       </>
@@ -247,13 +247,11 @@ export const TaskTab = ({
 
   const onTaskReject = () => {
     if (comment && taskDetails?.id) {
-      //   setIsLoadingOnSave(true);
       updateTask(TaskOperation.REJECT, taskDetails?.id + '', {
         comment,
       } as unknown as TaskDetails)
         .then(() => {
           showSuccessToast(t('server.task-closed-successfully'));
-          //   setModalVisible(false);
         })
         .catch((err: AxiosError) => showErrorToast(err));
     } else {
@@ -277,23 +275,29 @@ export const TaskTab = ({
         {getTaskLinkElement}
       </Col>
       <Col span={24}>
-        <Typography.Text className="text-grey-muted">
-          {t('label.assignee-plural')}:{' '}
-        </Typography.Text>
+        <div className="d-flex justify-between">
+          <div className="flex-center gap-2">
+            <Typography.Text className="text-grey-muted">
+              {t('label.assignee-plural')}:{' '}
+            </Typography.Text>
 
-        <OwnerLabel
-          hasPermission={false}
-          owner={taskDetails?.assignees[0]}
-          onUpdate={noop}
-        />
-        <Typography.Text className="text-grey-muted">
-          {t('label.created-by')}:{' '}
-        </Typography.Text>
-        <OwnerLabel
-          hasPermission={false}
-          owner={{ name: task.createdBy, type: 'user', id: '' }}
-          onUpdate={noop}
-        />
+            <OwnerLabel
+              hasPermission={false}
+              owner={taskDetails?.assignees[0]}
+              onUpdate={noop}
+            />
+          </div>
+          <div className="flex-center gap-2">
+            <Typography.Text className="text-grey-muted">
+              {t('label.created-by')}:{' '}
+            </Typography.Text>
+            <OwnerLabel
+              hasPermission={false}
+              owner={{ name: task.createdBy, type: 'user', id: '' }}
+              onUpdate={noop}
+            />
+          </div>
+        </div>
       </Col>
       <Col span={24}>
         {isTaskDescription && (

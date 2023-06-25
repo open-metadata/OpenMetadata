@@ -38,15 +38,19 @@
   box-shadow: none;
 }
 
+.lineage-node {
+  border: @global-border;
+  border-radius: 4px;
+}
+
 .react-flow__node-default,
 .react-flow__node-group,
 .react-flow__node-input,
 .react-flow__node-output {
   padding: 0 !important;
-  border-color: @border-color !important;
-  border-radius: 4px !important;
+  border: none !important;
   box-shadow: none !important;
-  background-color: @grey-1 !important;
+  background-color: @white !important;
 }
 
 .react-flow__node-load-more {
@@ -85,7 +89,9 @@
 .react-flow__node-load-more.selectable.selected,
 .react-flow__node-load-more.selectable:focus,
 .react-flow__node-load-more.selectable:focus-visible {
-  border-color: @primary-color !important;
+  .lineage-node {
+    border-color: @primary-color !important;
+  }
   .lineage-node-handle {
     border-color: @primary-color;
   }
@@ -95,9 +101,6 @@
   .column-container {
     background: @primary-color-hover;
     border-top: 1px solid @border-color;
-  }
-  .custom-node-header-tracing {
-    border: none;
   }
 }
 
@@ -128,8 +131,8 @@
   border-radius: 0;
   border-color: @border-color;
   background: @white;
-  top: 0;
-  height: 27px;
+  top: 1px;
+  height: 25px;
   transform: none;
   border: none;
   &.react-flow__handle-left {
@@ -144,4 +147,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  background-color: @white;
 }

@@ -292,7 +292,7 @@ const Appbar: React.FC = (): JSX.Element => {
             {name}
           </Typography.Paragraph>
         </Link>
-        <hr className="tw-my-1.5" />
+        <hr className="m-y-sm" />
         {roles.length > 0 ? getUsersRoles(roles, t('label.role-plural')) : null}
         {inheritedRoles.length > 0
           ? getUsersRoles(inheritedRoles, t('label.inherited-role-plural'))
@@ -321,6 +321,7 @@ const Appbar: React.FC = (): JSX.Element => {
             ) : null}
           </div>
         ) : null}
+        <hr className="m-t-sm" />
       </div>
     );
   };
@@ -332,6 +333,12 @@ const Appbar: React.FC = (): JSX.Element => {
       disabled: false,
       icon: <></>,
       isText: true,
+    },
+    {
+      name: t('label.logout'),
+      to: '',
+      disabled: false,
+      method: onLogoutHandler,
     },
   ];
 

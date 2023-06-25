@@ -29,6 +29,7 @@ import {
 } from 'components/searched-data/SearchedData.interface';
 import { EntityField } from 'constants/Feeds.constants';
 import { ExplorePageTabs } from 'enums/Explore.enum';
+import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
@@ -1001,7 +1002,7 @@ export const getEntityBreadcrumbs = (
       // eslint-disable-next-line no-case-declarations
       const fqnList = Fqn.split((entity as GlossaryTerm).fullyQualifiedName);
       // eslint-disable-next-line no-case-declarations
-      const tree = fqnList.slice(1, fqnList.length - 1);
+      const tree = fqnList.slice(1, fqnList.length);
 
       return [
         {
@@ -1018,11 +1019,14 @@ export const getEntityBreadcrumbs = (
         })),
       ];
     case EntityType.TAG:
+      // eslint-disable-next-line no-case-declarations
+      const fqnTagList = Fqn.split((entity as Tag).fullyQualifiedName);
+
       return [
-        {
-          name: entity.name,
+        ...fqnTagList.map((fqn) => ({
+          name: fqn,
           url: getTagsDetailsPath(entity?.fullyQualifiedName ?? ''),
-        },
+        })),
       ];
 
     case EntityType.TOPIC:

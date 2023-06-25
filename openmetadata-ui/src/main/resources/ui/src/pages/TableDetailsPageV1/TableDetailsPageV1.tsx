@@ -525,9 +525,7 @@ const TableDetailsPageV1 = () => {
           />
         ),
         isHidden: !(
-          tablePermissions.ViewAll ||
-          tablePermissions.ViewBasic ||
-          tablePermissions.ViewSampleData
+          tablePermissions.ViewAll || tablePermissions.ViewSampleData
         ),
         key: EntityTabs.SAMPLE_DATA,
         children: (
@@ -598,21 +596,18 @@ const TableDetailsPageV1 = () => {
           </Card>
         ),
       },
-      ...(tableDetails?.dataModel
-        ? [
-            {
-              label: (
-                <TabsLabel
-                  id={EntityTabs.DBT}
-                  name={t('label.dbt-lowercase')}
-                />
-              ),
-              // isHidden: !(dataModel?.sql ?? dataModel?.rawSql),
-              key: EntityTabs.DBT,
-              children: <DbtTab dataModel={tableDetails?.dataModel} />,
-            },
-          ]
-        : []),
+
+      {
+        label: (
+          <TabsLabel id={EntityTabs.DBT} name={t('label.dbt-lowercase')} />
+        ),
+        isHidden: !(
+          tableDetails?.dataModel?.sql ?? tableDetails?.dataModel?.rawSql
+        ),
+        key: EntityTabs.DBT,
+        children: <DbtTab dataModel={tableDetails?.dataModel} />,
+      },
+
       {
         label: (
           <TabsLabel
@@ -645,6 +640,7 @@ const TableDetailsPageV1 = () => {
     entityName,
     onExtensionUpdate,
     getEntityFeedCount,
+    tableDetails?.dataModel,
   ]);
 
   const onTierUpdate = useCallback(

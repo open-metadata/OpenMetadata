@@ -104,7 +104,6 @@ const SearchedData: React.FC<SearchedDataProps> = ({
             handleSummaryPanelDisplay={handleSummaryPanelDisplay}
             id={`tabledatacard${index}`}
             matches={matches}
-            showNameHeader={false}
             showTags={false}
             source={{ ...table, name, description: tDesc, displayName }}
           />
