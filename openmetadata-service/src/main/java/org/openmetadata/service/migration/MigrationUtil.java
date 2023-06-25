@@ -1,5 +1,6 @@
 package org.openmetadata.service.migration;
 
+import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 
@@ -63,6 +64,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
+import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.TableRepository;
@@ -270,19 +272,11 @@ public class MigrationUtil {
 
   @SneakyThrows
   public static void testSuitesMigration(CollectionDAO collectionDAO) {
+    IngestionPipelineRepository ingestionPipelineRepository = new IngestionPipelineRepository(collectionDAO);
     TestSuiteRepository testSuiteRepository = new TestSuiteRepository(collectionDAO);
     TestCaseRepository testCaseRepository = new TestCaseRepository(collectionDAO);
-    List<TestSuite> testSuites =
-        testSuiteRepository.listAll(new EntityUtil.Fields(List.of("id")), new ListFilter(Include.ALL));
     List<TestCase> testCases =
         testCaseRepository.listAll(new EntityUtil.Fields(List.of("id")), new ListFilter(Include.ALL));
-    List<CollectionDAO.EntityRelationshipRecord> testSuiteRelationShipToBeDeleted = new ArrayList<>();
-    for (TestCase test : testCases) {
-      testSuiteRelationShipToBeDeleted =
-          collectionDAO
-              .relationshipDAO()
-              .findFrom(test.getId().toString(), TEST_CASE, Relationship.CONTAINS.ordinal(), TEST_SUITE);
-    }
 
     for (TestCase test : testCases) {
 
@@ -328,14 +322,38 @@ public class MigrationUtil {
         temp.setExecutable(true);
         testSuiteRepository.getDao().update(temp);
       }
+    }
 
-      // Set the flag for existing old test suites to
-      for (CollectionDAO.EntityRelationshipRecord record : testSuiteRelationShipToBeDeleted) {
-        TestSuite temp = testSuiteRepository.getDao().findEntityById(record.getId());
-        if (Boolean.FALSE.equals(temp.getExecutable())) {
-          temp.setExecutable(false);
-          testSuiteRepository.getDao().update(temp);
+    // Update Test Suites
+    ListFilter filter = new ListFilter(Include.ALL);
+    filter.addQueryParam("testSuiteType", "logical");
+    List<TestSuite> testSuites = testSuiteRepository.listAll(new EntityUtil.Fields(List.of("id")), filter);
+
+    for (TestSuite testSuiteRecord : testSuites) {
+      TestSuite temp = testSuiteRepository.getDao().findEntityById(testSuiteRecord.getId());
+      if (Boolean.FALSE.equals(temp.getExecutable())) {
+        temp.setExecutable(false);
+        testSuiteRepository.getDao().update(temp);
+      }
+
+      // get Ingestion Pipelines
+      try {
+        List<CollectionDAO.EntityRelationshipRecord> ingestionPipelineRecords =
+            collectionDAO
+                .relationshipDAO()
+                .findTo(
+                    testSuiteRecord.getId().toString(),
+                    TEST_SUITE,
+                    Relationship.CONTAINS.ordinal(),
+                    INGESTION_PIPELINE);
+        for (CollectionDAO.EntityRelationshipRecord ingestionRecord : ingestionPipelineRecords) {
+          // remove relationship
+          collectionDAO.relationshipDAO().deleteAll(ingestionRecord.getId().toString(), INGESTION_PIPELINE);
+          // Cannot use Delete directly it uses other repos internally
+          ingestionPipelineRepository.getDao().delete(ingestionRecord.getId().toString());
         }
+      } catch (EntityNotFoundException ex) {
+        // Already Removed
       }
     }
   }
