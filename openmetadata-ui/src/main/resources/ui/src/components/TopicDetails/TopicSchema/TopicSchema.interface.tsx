@@ -27,7 +27,9 @@ export interface TopicSchemaFieldsProps
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
   isReadOnly: boolean;
-  onUpdate: (updatedMessageSchema: Topic['messageSchema']) => Promise<void>;
+  defaultExpandAllRows?: boolean;
+  showSchemaDisplayTypeSwitch?: boolean;
+  onUpdate?: (updatedMessageSchema: Topic['messageSchema']) => Promise<void>;
 }
 
 export enum SchemaViewType {

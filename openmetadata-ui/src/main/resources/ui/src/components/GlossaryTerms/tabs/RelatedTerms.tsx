@@ -16,13 +16,21 @@ import { Button, Select, Space, Spin, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconFlatDoc } from 'assets/svg/ic-flat-doc.svg';
 import TagButton from 'components/TagButton/TagButton.component';
+import { EntityField } from 'constants/Feeds.constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
+import { ChangeDescription } from 'generated/entity/type';
 import { t } from 'i18next';
-import { cloneDeep, debounce, includes } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import { cloneDeep, debounce, includes, isEmpty } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
 import { getEntityName } from 'utils/EntityUtils';
+import {
+  getChangedEntityNewValue,
+  getChangedEntityOldValue,
+  getDiffByFieldName,
+} from 'utils/EntityVersionUtils';
+import { VersionStatus } from 'utils/EntityVersionUtils.interface';
 import { getGlossaryPath } from 'utils/RouterUtils';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import {
@@ -38,12 +46,14 @@ import { getEntityReferenceFromGlossary } from '../../../utils/GlossaryUtils';
 import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 
 interface RelatedTermsProps {
+  isVersionView?: boolean;
   permissions: OperationPermission;
   glossaryTerm: GlossaryTerm;
   onGlossaryTermUpdate: (data: GlossaryTerm) => void;
 }
 
 const RelatedTerms = ({
+  isVersionView,
   glossaryTerm,
   permissions,
   onGlossaryTermUpdate,
@@ -135,6 +145,113 @@ const RelatedTerms = ({
     }
   }, [glossaryTerm]);
 
+  const getRelatedTermElement = useCallback(
+    (entity: EntityReference, versionStatus?: VersionStatus) => (
+      <TagButton
+        className="cursor-pointer"
+        icon={<IconFlatDoc height={12} name="folder" />}
+        key={entity.fullyQualifiedName}
+        label={getEntityName(entity)}
+        tooltip={
+          <div className="p-xss">
+            <strong>{entity.fullyQualifiedName}</strong>
+            <div>{entity.description}</div>
+          </div>
+        }
+        versionData={versionStatus}
+        onClick={() => {
+          handleRelatedTermClick(entity.fullyQualifiedName || '');
+        }}
+      />
+    ),
+    []
+  );
+
+  const getVersionRelatedTerms = useCallback(() => {
+    const changeDescription = glossaryTerm.changeDescription;
+    const relatedTermsDiff = getDiffByFieldName(
+      EntityField.RELATEDTERMS,
+      changeDescription as ChangeDescription
+    );
+
+    const addedRelatedTerms: EntityReference[] = JSON.parse(
+      getChangedEntityNewValue(relatedTermsDiff) ?? '[]'
+    );
+    const deletedRelatedTerms: EntityReference[] = JSON.parse(
+      getChangedEntityOldValue(relatedTermsDiff) ?? '[]'
+    );
+
+    const unchangedRelatedTerms = glossaryTerm.relatedTerms
+      ? glossaryTerm.relatedTerms.filter(
+          (relatedTerm) =>
+            !addedRelatedTerms.find(
+              (addedRelatedTerm: EntityReference) =>
+                addedRelatedTerm.id === relatedTerm.id
+            )
+        )
+      : [];
+
+    const noSynonyms =
+      isEmpty(unchangedRelatedTerms) &&
+      isEmpty(addedRelatedTerms) &&
+      isEmpty(deletedRelatedTerms);
+
+    if (noSynonyms) {
+      return <div>{NO_DATA_PLACEHOLDER}</div>;
+    }
+
+    return (
+      <div className="d-flex flex-wrap">
+        {unchangedRelatedTerms.map((relatedTerm) =>
+          getRelatedTermElement(relatedTerm)
+        )}
+        {addedRelatedTerms.map((relatedTerm) =>
+          getRelatedTermElement(relatedTerm, { added: true })
+        )}
+        {deletedRelatedTerms.map((relatedTerm) =>
+          getRelatedTermElement(relatedTerm, { removed: true })
+        )}
+      </div>
+    );
+  }, [glossaryTerm]);
+
+  const relatedTermsContainer = useMemo(
+    () =>
+      isVersionView ? (
+        getVersionRelatedTerms()
+      ) : (
+        <div className="d-flex flex-wrap">
+          {permissions.EditAll && selectedOption.length === 0 && (
+            <TagButton
+              className="tw-text-primary cursor-pointer"
+              dataTestId="related-term-add-button"
+              icon={<PlusIcon height={16} name="plus" width={16} />}
+              label={t('label.add')}
+              tooltip=""
+              onClick={() => {
+                setIsIconVisible(false);
+              }}
+            />
+          )}
+
+          {selectedOption.map((entity: EntityReference) =>
+            getRelatedTermElement(entity)
+          )}
+
+          {!permissions.EditAll && selectedOption.length === 0 && (
+            <div>{NO_DATA_PLACEHOLDER}</div>
+          )}
+        </div>
+      ),
+    [
+      permissions,
+      selectedOption,
+      isVersionView,
+      getVersionRelatedTerms,
+      getRelatedTermElement,
+    ]
+  );
+
   return (
     <div className="flex flex-col" data-testid="related-term-container">
       <div className="d-flex items-center">
@@ -160,42 +277,7 @@ const RelatedTerms = ({
       </div>
 
       {isIconVisible ? (
-        <div className="d-flex flex-wrap">
-          {permissions.EditAll && selectedOption.length === 0 && (
-            <TagButton
-              className="tw-text-primary cursor-pointer"
-              dataTestId="related-term-add-button"
-              icon={<PlusIcon height={16} name="plus" width={16} />}
-              label={t('label.add')}
-              tooltip=""
-              onClick={() => {
-                setIsIconVisible(false);
-              }}
-            />
-          )}
-
-          {selectedOption.map((entity: EntityReference) => (
-            <TagButton
-              className="cursor-pointer"
-              icon={<IconFlatDoc height={12} name="folder" />}
-              key={entity.fullyQualifiedName}
-              label={getEntityName(entity)}
-              tooltip={
-                <div className="p-xss">
-                  <strong>{entity.fullyQualifiedName}</strong>
-                  <div>{entity.description}</div>
-                </div>
-              }
-              onClick={() => {
-                handleRelatedTermClick(entity.fullyQualifiedName || '');
-              }}
-            />
-          ))}
-
-          {!permissions.EditAll && selectedOption.length === 0 && (
-            <div>{NO_DATA_PLACEHOLDER}</div>
-          )}
-        </div>
+        relatedTermsContainer
       ) : (
         <>
           <Space className="justify-end w-full m-b-xs" size={8}>

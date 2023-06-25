@@ -17,3 +17,8 @@ export interface TagLabelWithStatus extends TagLabel {
   added: boolean | undefined;
   removed: boolean | undefined;
 }
+
+export interface VersionStatus {
+  added?: boolean;
+  removed?: boolean;
+}

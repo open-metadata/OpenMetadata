@@ -252,10 +252,7 @@ const updateTags = (inTerm) => {
     .scrollIntoView()
     .should('be.visible')
     .type('personal');
-  cy.get('.ant-select-item-option-content')
-    .contains('Personal')
-    .should('be.visible')
-    .click();
+  cy.get('[role="tree"] [title="Personal"]').click();
   // to close popup
   cy.clickOutside();
 
@@ -492,7 +489,7 @@ describe('Glossary page should work properly', () => {
 
   it('Verify and Remove Tags from Glossary', () => {
     // Verify Tags which is added at the time of creating glossary
-    cy.get('[data-testid="tag-container"]')
+    cy.get('[data-testid="tags-container"]')
       .contains('Personal')
       .should('be.visible');
 

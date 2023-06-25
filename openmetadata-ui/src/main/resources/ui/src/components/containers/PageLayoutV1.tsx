@@ -51,7 +51,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   pageTitle,
   header,
   center = false,
-  leftPanelWidth = 284,
+  leftPanelWidth = 230,
   rightPanelWidth = 284,
 }: PageLayoutProp) => {
   const contentWidth = useMemo(() => {

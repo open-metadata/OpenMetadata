@@ -623,7 +623,9 @@ export const addNewTagToEntity = (entityObj, term) => {
     entityObj.entity
   );
   cy.wait(500);
-  cy.get('[data-testid="entity-tags"] [data-testid="add-tag"]')
+  cy.get(
+    '[data-testid="classification-tags-0"] [data-testid="entity-tags"] [data-testid="add-tag"]'
+  )
     .eq(0)
     .should('be.visible')
     .scrollIntoView()
@@ -640,34 +642,8 @@ export const addNewTagToEntity = (entityObj, term) => {
     .scrollIntoView()
     .should('be.visible')
     .click();
-  cy.get('[data-testid="tags-container"] [data-testid="entity-tags"]')
+  cy.get('[data-testid="classification-tags-0"] [data-testid="tags-container"]')
     .scrollIntoView()
-    .should('be.visible')
-    .contains(term);
-
-  cy.get('[data-testid="classification-tags-0"] [data-testid="tag-container"]')
-    .scrollIntoView()
-    .contains('Add')
-    .should('be.visible')
-    .click();
-
-  cy.get('[data-testid="tag-selector"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .type(term);
-  cy.wait(500);
-  cy.get('.ant-select-item-option-content')
-    .contains(term)
-    .should('be.visible')
-    .click();
-  // to close popup
-  cy.clickOutside();
-
-  cy.get('[data-testid="saveAssociatedTag"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .click();
-  cy.get('[data-testid="classification-tags-0"] [data-testid="tag-container"]')
     .contains(term)
     .should('exist');
 };

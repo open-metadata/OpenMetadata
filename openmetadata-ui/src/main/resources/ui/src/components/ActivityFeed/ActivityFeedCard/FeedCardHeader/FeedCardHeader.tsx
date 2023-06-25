@@ -13,7 +13,7 @@
 
 import { Tooltip } from 'antd';
 import classNames from 'classnames';
-import { isUndefined, toString } from 'lodash';
+import { isUndefined } from 'lodash';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
@@ -43,13 +43,14 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   entityField,
   isEntityFeed,
   feedType,
-  taskDetails,
+  task,
 }) => {
   const { t } = useTranslation();
   const history = useHistory();
   const onTitleClickHandler = (name: string) => {
     history.push(getUserPath(name));
   };
+  const { task: taskDetails } = task;
 
   const entityCheck = !isUndefined(entityFQN) && !isUndefined(entityType);
 
@@ -81,7 +82,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
       <span className="tw-mx-1">{t('label.created-a-task-lowercase')}</span>
       <Link
         data-testid="tasklink"
-        to={getTaskDetailPath(toString(taskDetails?.id)).pathname}
+        to={getTaskDetailPath(task)}
         onClick={(e) => e.stopPropagation()}>
         <span>
           {`#${taskDetails?.id} `}

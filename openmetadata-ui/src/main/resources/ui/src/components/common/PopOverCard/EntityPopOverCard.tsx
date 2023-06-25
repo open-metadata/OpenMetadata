@@ -126,7 +126,6 @@ const PopoverContent: React.FC<{
   return (
     <ExploreSearchCard
       id="tabledatacard"
-      showNameHeader={false}
       showTags={false}
       source={{
         ...entityData,

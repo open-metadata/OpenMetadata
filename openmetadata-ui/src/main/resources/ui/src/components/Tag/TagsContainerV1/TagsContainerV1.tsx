@@ -11,17 +11,7 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  Form,
-  FormProps,
-  Popover,
-  Row,
-  Space,
-  Typography,
-} from 'antd';
+import { Button, Col, Form, Row, Space, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import Loader from 'components/Loader/Loader';
 import { TableTagsProps } from 'components/TableTags/TableTags.interface';
@@ -43,7 +33,11 @@ import { getGlossariesList, getGlossaryTerms } from 'rest/glossaryAPI';
 import { getEntityFeedLink } from 'utils/EntityUtils';
 import { getGlossaryTermHierarchy } from 'utils/GlossaryUtils';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
-import { getAllTagsForOptions, getTagsHierarchy } from 'utils/TagsUtils';
+import {
+  getAllTagsForOptions,
+  getTagPlaceholder,
+  getTagsHierarchy,
+} from 'utils/TagsUtils';
 import {
   getRequestTagsPath,
   getUpdateTagsPath,
@@ -51,6 +45,7 @@ import {
 } from 'utils/TasksUtils';
 import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
+import TagTree from '../TagsTree/TagsTreeForm.component';
 import TagsViewer from '../TagsViewer/tags-viewer';
 import {
   GlossaryDetailsProps,
@@ -58,7 +53,6 @@ import {
   TagDetailsProps,
   TagsContainerV1Props,
 } from './TagsContainerV1.interface';
-import TagTree from './TagsTree.component';
 
 const TagsContainerV1 = ({
   permission,
@@ -69,6 +63,7 @@ const TagsContainerV1 = ({
   tagType,
   onSelectionChange,
   onThreadLinkSelect,
+  isVersionView,
 }: TagsContainerV1Props) => {
   const history = useHistory();
   const [form] = Form.useForm();
@@ -94,18 +89,6 @@ const TagsContainerV1 = ({
     [tagType]
   );
 
-  const searchPlaceholder = useMemo(
-    () =>
-      isGlossaryType
-        ? t('label.search-entity', {
-            entity: t('label.glossary-term-plural'),
-          })
-        : t('label.search-entity', {
-            entity: t('label.tag-plural'),
-          }),
-    [isGlossaryType]
-  );
-
   const showAddTagButton = useMemo(
     () => permission && isEmpty(tags?.[tagType]),
     [permission, tags?.[tagType]]
@@ -116,7 +99,7 @@ const TagsContainerV1 = ({
     [tags, tagType]
   );
 
-  const getTreeData = useMemo(() => {
+  const treeData = useMemo(() => {
     const tags = getTagsHierarchy(tagDetails.options);
     const glossary = getGlossaryTermHierarchy(glossaryDetails.options);
 
@@ -206,14 +189,16 @@ const TagsContainerV1 = ({
     return updatedTags;
   };
 
-  const handleSave: FormProps['onFinish'] = (data) => {
-    const updatedTags = getUpdatedTags(data.tags);
-    onSelectionChange([
-      ...updatedTags,
-      ...((isGlossaryType
-        ? tags?.[TagSource.Classification]
-        : tags?.[TagSource.Glossary]) ?? []),
-    ]);
+  const handleSave = (data: string[]) => {
+    const updatedTags = getUpdatedTags(data);
+    if (onSelectionChange) {
+      onSelectionChange([
+        ...updatedTags,
+        ...((isGlossaryType
+          ? tags?.[TagSource.Classification]
+          : tags?.[TagSource.Glossary]) ?? []),
+      ]);
+    }
     form.resetFields();
     setIsEditTags(false);
   };
@@ -263,46 +248,20 @@ const TagsContainerV1 = ({
     return tagDetails.isLoading || glossaryDetails.isLoading ? (
       <Loader size="small" />
     ) : (
-      <Form form={form} name="tagsForm" onFinish={handleSave}>
-        <Row gutter={[0, 8]}>
-          <Col className="gutter-row d-flex justify-end" span={24}>
-            <Space align="center">
-              <Button
-                className="p-x-05"
-                data-testid="cancelAssociatedTag"
-                icon={<CloseOutlined size={12} />}
-                size="small"
-                onClick={handleCancel}
-              />
-              <Button
-                className="p-x-05"
-                data-testid="saveAssociatedTag"
-                htmlType="submit"
-                icon={<CheckOutlined size={12} />}
-                size="small"
-                type="primary"
-              />
-            </Space>
-          </Col>
-
-          <Col className="gutter-row" span={24}>
-            <Form.Item noStyle name="tags">
-              <TagTree
-                defaultValue={selectedTagsInternal ?? []}
-                placeholder={searchPlaceholder}
-                treeData={getTreeData}
-              />
-            </Form.Item>
-          </Col>
-        </Row>
-      </Form>
+      <TagTree
+        defaultValue={selectedTagsInternal ?? []}
+        placeholder={getTagPlaceholder(isGlossaryType)}
+        treeData={treeData}
+        onCancel={handleCancel}
+        onSubmit={handleSave}
+      />
     );
   }, [
-    searchPlaceholder,
+    isGlossaryType,
     selectedTagsInternal,
     glossaryDetails,
     tagDetails,
-    getTreeData,
+    treeData,
     handleCancel,
     handleSave,
   ]);
@@ -325,24 +284,21 @@ const TagsContainerV1 = ({
           size="small"
           type="text"
           onClick={hasTags ? handleUpdateTags : handleRequestTags}>
-          <Popover
-            destroyTooltipOnHide
-            content={
+          <Tooltip
+            placement="left"
+            title={
               hasTags
                 ? t('label.update-request-tag-plural')
                 : t('label.request-tag-plural')
-            }
-            overlayClassName="ant-popover-request-description"
-            placement="topLeft"
-            trigger="hover"
-            zIndex={9999}>
+            }>
             <IconRequest
               className="anticon"
-              height={16}
+              height={14}
               name="request-tags"
-              width={16}
+              style={{ color: DE_ACTIVE_COLOR }}
+              width={14}
             />
-          </Popover>
+          </Tooltip>
         </Button>
       </Col>
     ) : null;
@@ -356,15 +312,26 @@ const TagsContainerV1 = ({
           data-testid="tag-thread"
           size="small"
           type="text"
-          onClick={() =>
-            onThreadLinkSelect(
-              entityThreadLink ??
-                getEntityFeedLink(entityType, entityFqn, 'tags')
-            )
-          }>
-          <Space align="center" className="w-full h-full" size={2}>
-            <IconComments height={16} name="comments" width={16} />
-          </Space>
+          onClick={() => {
+            if (onThreadLinkSelect) {
+              onThreadLinkSelect(
+                entityThreadLink ??
+                  getEntityFeedLink(entityType, entityFqn, 'tags')
+              );
+            }
+          }}>
+          <Tooltip
+            placement="left"
+            title={t('label.list-entity', {
+              entity: t('label.conversation'),
+            })}>
+            <IconComments
+              height={14}
+              name="comments"
+              style={{ color: DE_ACTIVE_COLOR }}
+              width={14}
+            />
+          </Tooltip>
         </Button>
       </Col>
     ),
@@ -392,7 +359,6 @@ const TagsContainerV1 = ({
             <Button
               className="cursor-pointer flex-center m-l-xss"
               data-testid="edit-button"
-              disabled={!permission}
               icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
               size="small"
               type="text"
@@ -400,10 +366,12 @@ const TagsContainerV1 = ({
             />
           )}
         </div>
-        <Row gutter={8}>
-          {requestTagElement}
-          {conversationThreadElement}
-        </Row>
+        {permission && !isVersionView && (
+          <Row gutter={8}>
+            {tagType === TagSource.Classification && requestTagElement}
+            {conversationThreadElement}
+          </Row>
+        )}
       </div>
 
       {!isEditTags && (

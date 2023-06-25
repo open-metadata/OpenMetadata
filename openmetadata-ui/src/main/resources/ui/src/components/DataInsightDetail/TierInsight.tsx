@@ -13,6 +13,7 @@
 
 import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import PageHeader from 'components/header/PageHeader.component';
 import { isEmpty, uniqueId } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -119,16 +120,14 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
       id={DataInsightChartType.TotalEntitiesByTier}
       loading={isLoading}
       title={
-        <>
-          <Typography.Title level={5}>
-            {t('label.data-insight-tier-summary')}
-          </Typography.Title>
-          <Typography.Text className="data-insight-label-text">
-            {t('message.field-insight', {
+        <PageHeader
+          data={{
+            header: t('label.data-insight-tier-summary'),
+            subHeader: t('message.field-insight', {
               field: t('label.tier'),
-            })}
-          </Typography.Text>
-        </>
+            }),
+          }}
+        />
       }>
       {data.length ? (
         <Row gutter={DI_STRUCTURE.rowContainerGutter}>

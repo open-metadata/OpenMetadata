@@ -13,7 +13,7 @@
 
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { camelCase, isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -39,7 +39,6 @@ import {
   replaceSpaceWith_,
   Transi18next,
 } from '../../utils/CommonUtils';
-import { getTestSuitePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
@@ -48,7 +47,6 @@ import TestSuiteScheduler from './components/TestSuiteScheduler';
 
 const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   ingestionPipeline,
-  table,
   testSuite,
   onCancel,
 }) => {
@@ -126,13 +124,14 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       name: `${updatedName}_${PipelineType.TestSuite}`,
       pipelineType: PipelineType.TestSuite,
       service: {
-        id: table?.service?.id ?? '',
-        type: table?.service?.type ?? '',
+        id: testSuite.id || '',
+        type: camelCase(PipelineType.TestSuite),
       },
       sourceConfig: {
         config: {
           type: ConfigType.TestSuite,
-          entityFullyQualifiedName: table?.fullyQualifiedName,
+          entityFullyQualifiedName:
+            testSuite.executableEntityReference?.fullyQualifiedName,
         },
       },
     };
@@ -205,8 +204,8 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   );
 
   const handleViewTestSuiteClick = useCallback(() => {
-    history.push(getTestSuitePath(testSuite?.fullyQualifiedName || ''));
-  }, [history, testSuite]);
+    history.goBack();
+  }, [history]);
 
   const handleDeployClick = () => {
     setShowDeployModal(true);

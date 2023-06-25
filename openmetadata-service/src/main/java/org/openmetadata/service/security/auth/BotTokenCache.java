@@ -24,7 +24,7 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 public class BotTokenCache {
   public static final String EMPTY_STRING = "";
-  private static BotTokenCache INSTANCE;
+  private static BotTokenCache instance;
   private final LoadingCache<String, String> BOTS_TOKEN_CACHE;
 
   public BotTokenCache() {
@@ -52,10 +52,10 @@ public class BotTokenCache {
   }
 
   public static BotTokenCache getInstance() {
-    if (INSTANCE == null) {
-      INSTANCE = new BotTokenCache();
+    if (instance == null) {
+      instance = new BotTokenCache();
     }
-    return INSTANCE;
+    return instance;
   }
 
   static class BotTokenLoader extends CacheLoader<String, String> {

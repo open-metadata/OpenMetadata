@@ -76,7 +76,7 @@ const NotificationBox = ({
           entityType={entityType as string}
           feedType={feed.type || ThreadType.Conversation}
           key={`${mainFeed.from} ${idx}`}
-          taskDetails={feed.task}
+          task={feed}
           timestamp={mainFeed.postTs}
         />
       );

@@ -15,16 +15,27 @@ import { Button, Space, Tag, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as ExternalLinkIcon } from 'assets/svg/external-links.svg';
 import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
+import classNames from 'classnames';
 import TagButton from 'components/TagButton/TagButton.component';
 import {
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
+  SUCCESS_COLOR,
   TEXT_BODY_COLOR,
+  TEXT_GREY_MUTED,
 } from 'constants/constants';
+import { EntityField } from 'constants/Feeds.constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
+import { ChangeDescription } from 'generated/entity/type';
 import { t } from 'i18next';
-import { cloneDeep, isEqual } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import { cloneDeep, isEmpty, isEqual } from 'lodash';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  getChangedEntityNewValue,
+  getChangedEntityOldValue,
+  getDiffByFieldName,
+} from 'utils/EntityVersionUtils';
+import { VersionStatus } from 'utils/EntityVersionUtils.interface';
 import {
   GlossaryTerm,
   TermReference,
@@ -32,7 +43,8 @@ import {
 import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 import GlossaryTermReferencesModal from '../GlossaryTermReferencesModal.component';
 
-interface GlossaryTermReferences {
+interface GlossaryTermReferencesProps {
+  isVersionView?: boolean;
   glossaryTerm: GlossaryTerm;
   permissions: OperationPermission;
   onGlossaryTermUpdate: (glossaryTerm: GlossaryTerm) => void;
@@ -42,7 +54,8 @@ const GlossaryTermReferences = ({
   glossaryTerm,
   permissions,
   onGlossaryTermUpdate,
-}: GlossaryTermReferences) => {
+  isVersionView,
+}: GlossaryTermReferencesProps) => {
   const [references, setReferences] = useState<TermReference[]>([]);
   const [isViewMode, setIsViewMode] = useState<boolean>(true);
 
@@ -80,6 +93,97 @@ const GlossaryTermReferences = ({
     setReferences(glossaryTerm.references ? glossaryTerm.references : []);
   }, [glossaryTerm.references]);
 
+  const getReferenceElement = useCallback(
+    (ref: TermReference, versionStatus?: VersionStatus) => {
+      let iconColor: string;
+      let textClassName: string;
+      if (versionStatus?.added) {
+        iconColor = SUCCESS_COLOR;
+        textClassName = 'text-success';
+      } else if (versionStatus?.removed) {
+        iconColor = TEXT_GREY_MUTED;
+        textClassName = 'text-grey-muted';
+      } else {
+        iconColor = TEXT_BODY_COLOR;
+        textClassName = 'text-body';
+      }
+
+      return (
+        <Tag
+          className={classNames(
+            'm-r-xs m-t-xs d-flex items-center term-reference-tag bg-white',
+            { 'diff-added': versionStatus?.added },
+            { 'diff-removed ': versionStatus?.removed }
+          )}
+          key={ref.name}>
+          <Tooltip placement="bottomLeft" title={ref.name}>
+            <a
+              data-testid="owner-link"
+              href={ref?.endpoint}
+              rel="noopener noreferrer"
+              target="_blank">
+              <div className="d-flex items-center">
+                <ExternalLinkIcon
+                  className="m-r-xss"
+                  color={iconColor}
+                  width="12px"
+                />
+                <span className={textClassName}>{ref.name}</span>
+              </div>
+            </a>
+          </Tooltip>
+        </Tag>
+      );
+    },
+    []
+  );
+
+  const getVersionReferenceElements = useCallback(() => {
+    const changeDescription = glossaryTerm.changeDescription;
+    const referencesDiff = getDiffByFieldName(
+      EntityField.REFERENCES,
+      changeDescription as ChangeDescription
+    );
+
+    const addedReferences: TermReference[] = JSON.parse(
+      getChangedEntityNewValue(referencesDiff) ?? '[]'
+    );
+    const deletedReferences: TermReference[] = JSON.parse(
+      getChangedEntityOldValue(referencesDiff) ?? '[]'
+    );
+
+    const unchangedReferences = glossaryTerm.references
+      ? glossaryTerm.references.filter(
+          (reference) =>
+            !addedReferences.find(
+              (addedReference: TermReference) =>
+                addedReference.name === reference.name
+            )
+        )
+      : [];
+
+    const noSynonyms =
+      isEmpty(unchangedReferences) &&
+      isEmpty(addedReferences) &&
+      isEmpty(deletedReferences);
+
+    if (noSynonyms) {
+      return <div>{NO_DATA_PLACEHOLDER}</div>;
+    }
+
+    return (
+      <div className="d-flex flex-wrap">
+        {unchangedReferences.map((reference) => getReferenceElement(reference))}
+        {addedReferences.map((reference) =>
+          getReferenceElement(reference, { added: true })
+        )}
+        {deletedReferences.map((reference) =>
+          getReferenceElement(reference, { removed: true })
+        )}
+      </div>
+    );
+  }, [glossaryTerm]);
+
   return (
     <div data-testid="references-container">
       <div className="w-full">
@@ -111,45 +215,28 @@ const GlossaryTermReferences = ({
           </div>
         </Space>
         <>
-          <div className="d-flex flex-wrap">
-            {references.map((ref) => (
-              <Tag
-                className="m-r-xs m-t-xs d-flex items-center term-reference-tag bg-white"
-                key={ref.name}>
-                <Tooltip placement="bottomLeft" title={ref.name}>
-                  <a
-                    data-testid="owner-link"
-                    href={ref?.endpoint}
-                    rel="noopener noreferrer"
-                    target="_blank">
-                    <div className="d-flex items-center">
-                      <ExternalLinkIcon
-                        className="m-r-xss"
-                        color={TEXT_BODY_COLOR}
-                        width="12px"
-                      />
-                      <span className="text-body">{ref?.name}</span>
-                    </div>
-                  </a>
-                </Tooltip>
-              </Tag>
-            ))}
-            {permissions.EditAll && references.length === 0 && (
-              <TagButton
-                className="tw-text-primary cursor-pointer"
-                dataTestId="term-references-add-button"
-                icon={<PlusIcon height={16} name="plus" width={16} />}
-                label={t('label.add')}
-                tooltip=""
-                onClick={() => {
-                  setIsViewMode(false);
-                }}
-              />
-            )}
-            {!permissions.EditAll && references.length === 0 && (
-              <div>{NO_DATA_PLACEHOLDER}</div>
-            )}
-          </div>
+          {isVersionView ? (
+            getVersionReferenceElements()
+          ) : (
+            <div className="d-flex flex-wrap">
+              {references.map((ref) => getReferenceElement(ref))}
+              {permissions.EditAll && references.length === 0 && (
+                <TagButton
+                  className="tw-text-primary cursor-pointer"
+                  dataTestId="term-references-add-button"
+                  icon={<PlusIcon height={16} name="plus" width={16} />}
+                  label={t('label.add')}
+                  tooltip=""
+                  onClick={() => {
+                    setIsViewMode(false);
+                  }}
+                />
+              )}
+              {!permissions.EditAll && references.length === 0 && (
+                <div>{NO_DATA_PLACEHOLDER}</div>
+              )}
+            </div>
+          )}
         </>
       </div>
 
