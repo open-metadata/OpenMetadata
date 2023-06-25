@@ -114,6 +114,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
+      @Parameter(description = "Filter Disabled Classifications") @QueryParam("disabled") String disabled,
       @Parameter(description = "Limit the number classifications returned. (1 to 1000000, default = " + "10) ")
           @DefaultValue("10")
           @Min(0)
@@ -133,7 +134,7 @@ public class ClassificationResource extends EntityResource<Classification, Class
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    ListFilter filter = new ListFilter(include);
+    ListFilter filter = new ListFilter(include).addQueryParam("disabled", disabled);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
