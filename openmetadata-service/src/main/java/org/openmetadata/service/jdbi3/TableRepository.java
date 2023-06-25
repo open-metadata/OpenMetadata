@@ -243,7 +243,10 @@ public class TableRepository extends EntityRepository<Table> {
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
 
     // Set the column tags. Will be used to mask the sample data
-    if (!authorizePII) getColumnTags(true, table.getColumns());
+    if (!authorizePII) {
+      getColumnTags(true, table.getColumns());
+      table.setTags(getTags(table.getFullyQualifiedName()));
+    }
 
     return table;
   }

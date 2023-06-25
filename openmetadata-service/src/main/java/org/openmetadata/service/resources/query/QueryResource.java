@@ -13,7 +13,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.json.JsonPatch;
@@ -154,7 +153,6 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
                   boolean authorizePII = authorizer.authorizePII(securityContext, query.getOwner());
                   return PIIMasker.getQuery(query, authorizePII);
                 })
-            .filter(Objects::nonNull)
             .collect(Collectors.toList());
     queries.setData(maskedQueries);
     return queries;

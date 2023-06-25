@@ -186,10 +186,12 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     // Owner (USER1_REF) can see the results
     ResultList<Query> queries = getQueries(10, "*", false, authHeaders(USER1_REF.getName()));
     assertEquals(queries.getData().size(), 1);
+    assertEquals(queries.getData().get(0).getQuery(), QUERY);
 
-    // Another user won't have the PII query listed
+    // Another user won't see the PII query body
     ResultList<Query> maskedQueries = getQueries(10, "*", false, authHeaders(USER2_REF.getName()));
-    assertEquals(maskedQueries.getData().size(), 0);
+    assertEquals(maskedQueries.getData().size(), 1);
+    assertEquals(maskedQueries.getData().get(0).getQuery(), "********");
   }
 
   public ResultList<Query> getQueries(Integer limit, String fields, Boolean includeAll, Map<String, String> authHeaders)
