@@ -161,7 +161,7 @@ export const EntityListWithV1: FunctionComponent<AntdEntityListProp> = ({
       <>
         <Row className="m-b-xs" justify="space-between">
           <Col>
-            <Typography.Text className="right-panel-heading">
+            <Typography.Text className="right-panel-label">
               {headerTextLabel}
             </Typography.Text>
           </Col>

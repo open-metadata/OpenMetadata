@@ -196,8 +196,9 @@ const RequestDescription = () => {
 
   useEffect(() => {
     const owner = entityData.owner;
+    let defaultAssignee: Option[] = [];
     if (owner) {
-      const defaultAssignee = [
+      defaultAssignee = [
         {
           label: getEntityName(owner),
           value: owner.id || '',
@@ -207,7 +208,10 @@ const RequestDescription = () => {
       setAssignees(defaultAssignee);
       setOptions(defaultAssignee);
     }
-    form.setFieldsValue({ title: message.trimEnd() });
+    form.setFieldsValue({
+      title: message.trimEnd(),
+      assignees: defaultAssignee,
+    });
   }, [entityData]);
 
   return (

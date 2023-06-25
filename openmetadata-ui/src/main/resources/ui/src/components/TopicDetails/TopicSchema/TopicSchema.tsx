@@ -32,6 +32,7 @@ import {
   GlossaryTermDetailsProps,
   TagsDetailsProps,
 } from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
+import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { CSMode } from 'enums/codemirror.enum';
 import { TagLabel, TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, isEmpty, isUndefined, map } from 'lodash';
@@ -65,6 +66,8 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   isReadOnly,
   onUpdate,
   hasTagEditAccess,
+  defaultExpandAllRows = false,
+  showSchemaDisplayTypeSwitch = true,
 }) => {
   const { t } = useTranslation();
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
@@ -115,7 +118,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       source: tag.source,
     }));
 
-    if (newSelectedTags && editColumnTag) {
+    if (newSelectedTags && editColumnTag && !isUndefined(onUpdate)) {
       const schema = cloneDeep(messageSchema);
       updateFieldTags(
         schema?.schemaFields,
@@ -127,7 +130,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   };
 
   const handleFieldDescriptionChange = async (updatedDescription: string) => {
-    if (!isUndefined(editFieldDescription)) {
+    if (!isUndefined(editFieldDescription) && !isUndefined(onUpdate)) {
       const schema = cloneDeep(messageSchema);
       updateFieldDescription(
         schema?.schemaFields,
@@ -182,15 +185,23 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        ellipsis: true,
+        accessor: 'name',
+        fixed: 'left',
         width: 220,
         render: (_, record: Field) => (
-          <Popover
-            destroyTooltipOnHide
-            content={getEntityName(record)}
-            trigger="hover">
-            <Typography.Text>{getEntityName(record)}</Typography.Text>
-          </Popover>
+          <Space
+            align="start"
+            className="w-max-90 vertical-align-inherit"
+            size={2}>
+            <Popover
+              destroyTooltipOnHide
+              content={getEntityName(record)}
+              trigger="hover">
+              <Typography.Text className="break-word">
+                {getEntityName(record)}
+              </Typography.Text>
+            </Popover>
+          </Space>
         ),
       },
       {
@@ -293,18 +304,19 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         <ErrorPlaceHolder />
       ) : (
         <>
-          {!isEmpty(messageSchema?.schemaFields) && (
-            <Col span={24}>
-              <Radio.Group value={viewType} onChange={handleViewChange}>
-                <Radio.Button value={SchemaViewType.FIELDS}>
-                  {t('label.field-plural')}
-                </Radio.Button>
-                <Radio.Button value={SchemaViewType.TEXT}>
-                  {t('label.text')}
-                </Radio.Button>
-              </Radio.Group>
-            </Col>
-          )}
+          {!isEmpty(messageSchema?.schemaFields) &&
+            showSchemaDisplayTypeSwitch && (
+              <Col span={24}>
+                <Radio.Group value={viewType} onChange={handleViewChange}>
+                  <Radio.Button value={SchemaViewType.FIELDS}>
+                    {t('label.field-plural')}
+                  </Radio.Button>
+                  <Radio.Button value={SchemaViewType.TEXT}>
+                    {t('label.text')}
+                  </Radio.Button>
+                </Radio.Group>
+              </Col>
+            )}
           <Col span={24}>
             {viewType === SchemaViewType.TEXT ||
             isEmpty(messageSchema?.schemaFields) ? (
@@ -328,10 +340,11 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
                 expandable={{
                   ...getTableExpandableConfig<Field>(),
                   rowExpandable: (record) => !isEmpty(record.children),
+                  defaultExpandAllRows,
                 }}
                 pagination={false}
                 rowKey="name"
-                scroll={{ x: 1200 }}
+                scroll={TABLE_SCROLL_VALUE}
                 size="small"
               />
             )}

@@ -1182,9 +1182,12 @@ const ServicePage: FunctionComponent = () => {
             entity: getEntityName(serviceDetails),
           })}>
           {servicePermission.ViewAll || servicePermission.ViewBasic ? (
-            <Row className="page-container" data-testid="service-page">
+            <Row
+              className="page-container"
+              data-testid="service-page"
+              gutter={[0, 8]}>
               {serviceDetails && (
-                <Row className="w-full m-b-xs" wrap={false}>
+                <Row className="w-full" wrap={false}>
                   <Col flex="auto">
                     <EntityHeader
                       breadcrumb={slashedTableName}

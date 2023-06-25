@@ -57,7 +57,7 @@ const RightSidebar = ({
       {announcements.length > 0 && (
         <>
           <div className="p-md p-b-xss">
-            <Typography.Paragraph className="right-panel-heading m-b-sm">
+            <Typography.Paragraph className="right-panel-label m-b-sm">
               {t('label.recent-announcement-plural')}
             </Typography.Paragraph>
             <div className="announcement-container-list">
@@ -99,8 +99,6 @@ const RightSidebar = ({
               })}
             </div>
           </div>
-
-          {/* <Divider className="m-0" /> */}
         </>
       )}
 
@@ -130,7 +128,6 @@ const RightSidebar = ({
           testIDText="Following data"
         />
       </div>
-      {/* <Divider className="m-0" /> */}
       <div className="p-md" data-testid="recently-viewed-container">
         <RecentlyViewed />
       </div>

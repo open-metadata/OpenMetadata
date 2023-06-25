@@ -133,6 +133,7 @@
     "column": "カラム",
     "column-entity": "カラム {{entity}}",
     "column-lowercase": "column",
+    "column-lowercase-plural": "columns",
     "column-plural": "カラム",
     "column-profile": "Column Profile",
     "comment": "Comment",

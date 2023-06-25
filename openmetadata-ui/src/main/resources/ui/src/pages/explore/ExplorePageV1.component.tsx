@@ -23,6 +23,8 @@ import {
 } from 'components/Explore/explore.interface';
 import ExploreV1 from 'components/ExploreV1/ExploreV1.component';
 import { withAdvanceSearch } from 'components/router/withAdvanceSearch';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
+import { mockSearchData } from 'constants/mockTourData.constants';
 import { SORT_ORDER } from 'enums/common.enum';
 import { get, isEmpty, isNil, isString, isUndefined } from 'lodash';
 import Qs from 'qs';
@@ -63,6 +65,7 @@ import {
 const ExplorePageV1: FunctionComponent = () => {
   const location = useLocation();
   const history = useHistory();
+  const { isTourOpen } = useTourProvider();
 
   const { tab } = useParams<UrlParams>();
 
@@ -438,10 +441,14 @@ const ExplorePageV1: FunctionComponent = () => {
     <ExploreV1
       aggregations={updatedAggregations}
       facetFilters={facetFilters}
-      loading={isLoading}
+      loading={isLoading && !isTourOpen}
       quickFilters={advancesSearchQuickFilters}
       searchIndex={searchIndex}
-      searchResults={searchResults}
+      searchResults={
+        isTourOpen
+          ? (mockSearchData as unknown as SearchResponse<ExploreSearchIndex>)
+          : searchResults
+      }
       showDeleted={showDeleted}
       sortOrder={sortOrder}
       sortValue={sortValue}

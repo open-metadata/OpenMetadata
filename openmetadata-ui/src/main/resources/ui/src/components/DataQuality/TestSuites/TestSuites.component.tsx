@@ -83,20 +83,25 @@ export const TestSuites = () => {
         dataIndex: 'name',
         key: 'name',
         render: (_, record) => {
-          const path =
-            tab === DataQualityPageTabs.TABLES
-              ? {
-                  pathname: getTableTabPath(
-                    record.executableEntityReference?.fullyQualifiedName ?? '',
-                    EntityTabs.PROFILER
-                  ),
-                  search: QueryString.stringify({
-                    activeTab: TableProfilerTab.DATA_QUALITY,
-                  }),
-                }
-              : getTestSuitePath(record.fullyQualifiedName ?? record.name);
-
-          return <Link to={path}>{getEntityName(record)}</Link>;
+          return record.executable ? (
+            <Link
+              to={{
+                pathname: getTableTabPath(
+                  record.executableEntityReference?.fullyQualifiedName ?? '',
+                  EntityTabs.PROFILER
+                ),
+                search: QueryString.stringify({
+                  activeTab: TableProfilerTab.DATA_QUALITY,
+                }),
+              }}>
+              {getEntityName(record.executableEntityReference)}
+            </Link>
+          ) : (
+            <Link
+              to={getTestSuitePath(record.fullyQualifiedName ?? record.name)}>
+              {getEntityName(record)}
+            </Link>
+          );
         },
       },
       {

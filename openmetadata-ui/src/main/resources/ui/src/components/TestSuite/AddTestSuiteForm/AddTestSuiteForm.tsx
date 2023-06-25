@@ -15,13 +15,14 @@ import { Button, Form, Input, Space } from 'antd';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import Loader from 'components/Loader/Loader';
 import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
+import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { getListTestSuites } from 'rest/testAPI';
+import { getDataQualityPagePath } from 'utils/RouterUtils';
 import {
   PAGE_SIZE_MEDIUM,
-  ROUTES,
   VALIDATION_MESSAGES,
 } from '../../../constants/constants';
 import { TestSuite } from '../../../generated/tests/testSuite';
@@ -50,6 +51,10 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCancelClick = () => {
+    history.push(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
   };
 
   useEffect(() => {
@@ -120,9 +125,7 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({
 
       <Form.Item noStyle>
         <Space className="w-full justify-end" size={16}>
-          <Button
-            data-testid="cancel-button"
-            onClick={() => history.push(ROUTES.DATA_QUALITY)}>
+          <Button data-testid="cancel-button" onClick={handleCancelClick}>
             {t('label.cancel')}
           </Button>
           <Button data-testid="submit-button" htmlType="submit" type="primary">
