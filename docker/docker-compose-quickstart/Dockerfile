@@ -11,7 +11,7 @@
 
 # Build stage
 FROM alpine:3.15 AS build
-ENV RELEASE_URL="https://github.com/open-metadata/OpenMetadata/releases/download/1.0.0-alpha-release/openmetadata-1.0.0-alpha.tar.gz"
+ENV RELEASE_URL="https://github.com/open-metadata/OpenMetadata/releases/download/1.1.0-beta-release/openmetadata-1.1.0-beta.tar.gz"
 RUN mkdir -p /opt/openmetadata && \
     wget ${RELEASE_URL} && \
     tar zxvf openmetadata-*.tar.gz -C /opt/openmetadata --strip-components 1 && \
