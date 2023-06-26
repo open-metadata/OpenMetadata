@@ -13,6 +13,7 @@
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { TestSummary } from 'generated/tests/testSuite';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +24,8 @@ import { SummaryPanelProps } from './SummaryPanel.interface';
 
 export const SummaryPanel = ({ testSuiteId }: SummaryPanelProps) => {
   const { t } = useTranslation();
+  const { permissions } = usePermissionProvider();
+  const { testCase: testCasePermission } = permissions;
 
   const [summary, setSummary] = useState<TestSummary>();
   const [isLoading, setIsLoading] = useState(true);
@@ -40,8 +43,10 @@ export const SummaryPanel = ({ testSuiteId }: SummaryPanelProps) => {
   };
 
   useEffect(() => {
-    fetchTestSummary();
-  }, [testSuiteId]);
+    if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
+      fetchTestSummary();
+    }
+  }, [testSuiteId, testCasePermission]);
 
   return (
     <Row wrap gutter={[16, 16]}>

@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space } from 'antd';
+import { Button, Col, Modal, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { AddTestCaseModal } from 'components/AddTestCaseModal/AddTestCaseModal.component';
+import { AddTestCaseList } from 'components/AddTestCaseList/AddTestCaseList.component';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import Description from 'components/common/description/Description';
 import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
@@ -38,6 +38,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
+  addTestCaseToLogicalTestSuite,
   getListTestCase,
   getTestSuiteByName,
   ListTestCaseParams,
@@ -152,6 +153,19 @@ const TestSuiteDetailsPage = () => {
 
   const afterSubmitAction = () => {
     fetchTestCases();
+  };
+
+  const handleAddTestCaseSubmit = async (testCaseIds: string[]) => {
+    try {
+      await addTestCaseToLogicalTestSuite({
+        testCaseIds,
+        testSuiteId: testSuite?.id ?? '',
+      });
+      setIsTestCaseModalOpen(false);
+      fetchTestCases();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const fetchTestSuiteByName = async () => {
@@ -309,11 +323,16 @@ const TestSuiteDetailsPage = () => {
               titleLinks={slashedBreadCrumb}
             />
             <Space>
-              <Button
-                type="primary"
-                onClick={() => setIsTestCaseModalOpen(true)}>
-                {t('label.add-entity', { entity: t('label.test-case-plural') })}
-              </Button>
+              {(testSuitePermissions.EditAll ||
+                testSuitePermissions.EditTests) && (
+                <Button
+                  type="primary"
+                  onClick={() => setIsTestCaseModalOpen(true)}>
+                  {t('label.add-entity', {
+                    entity: t('label.test-case-plural'),
+                  })}
+                </Button>
+              )}
               <ManageButton
                 isRecursiveDelete
                 afterDeleteAction={afterDeleteAction}
@@ -366,13 +385,22 @@ const TestSuiteDetailsPage = () => {
           />
         </Col>
         <Col span={24}>
-          <AddTestCaseModal
-            existingTest={testSuite?.tests ?? []}
+          <Modal
+            centered
+            destroyOnClose
+            closable={false}
+            footer={null}
             open={isTestCaseModalOpen}
-            testSuiteId={testSuite?.id ?? ''}
-            onCancel={() => setIsTestCaseModalOpen(false)}
-            onSubmit={afterSubmitAction}
-          />
+            title={t('label.add-entity', {
+              entity: t('label.test-case-plural'),
+            })}
+            width={750}>
+            <AddTestCaseList
+              existingTest={testSuite?.tests ?? []}
+              onCancel={() => setIsTestCaseModalOpen(false)}
+              onSubmit={handleAddTestCaseSubmit}
+            />
+          </Modal>
         </Col>
       </Row>
     </PageLayoutV1>
