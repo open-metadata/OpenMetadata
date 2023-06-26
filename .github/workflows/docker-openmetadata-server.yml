@@ -58,7 +58,7 @@ jobs:
     steps:
       - name: Check trigger type
         id: check_trigger
-        run: echo "DOCKER_RELEASE_TAG=1.0.0-alpha" >> $GITHUB_OUTPUT
+        run: echo "DOCKER_RELEASE_TAG=1.1.0-beta" >> $GITHUB_OUTPUT
         
       - name: Download application from Artifiact
         uses: actions/download-artifact@v2
@@ -113,17 +113,17 @@ jobs:
   push_to_docker_hub:
     runs-on: ubuntu-latest
     env:
-      - name: Set build arguments
-        run: |
-          echo "BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
-      DOCKER_RELEASE_TAG: ${{ github.event.inputs.DOCKER_RELEASE_TAG }}
+        DOCKER_RELEASE_TAG: ${{ github.event.inputs.DOCKER_RELEASE_TAG }}
     if: ${{ always() && contains(join(needs.*.result, ','), 'success') }}
     needs: [release-project-event-workflow_dispatch, release-project-event-release]  
     steps:
+      - name: Set build arguments
+        run: |
+          echo "BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
       - name: Check trigger type
         id: check_trigger
         if: ${{ env.DOCKER_RELEASE_TAG == '' }} 
-        run: echo "DOCKER_RELEASE_TAG=1.0.0-alpha" >> $GITHUB_ENV
+        run: echo "DOCKER_RELEASE_TAG=1.1.0-beta" >> $GITHUB_ENV
 
       - name: Check out the Repo
         uses: actions/checkout@v3
