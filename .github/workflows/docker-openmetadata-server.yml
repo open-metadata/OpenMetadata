@@ -113,6 +113,9 @@ jobs:
   push_to_docker_hub:
     runs-on: ubuntu-latest
     env:
+      - name: Set build arguments
+        run: |
+          echo "BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
       DOCKER_RELEASE_TAG: ${{ github.event.inputs.DOCKER_RELEASE_TAG }}
     if: ${{ always() && contains(join(needs.*.result, ','), 'success') }}
     needs: [release-project-event-workflow_dispatch, release-project-event-release]  
@@ -156,3 +159,6 @@ jobs:
           push: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
           tags: ${{ steps.input_check.outputs.tags }}
           file: ./docker/docker-compose-quickstart/Dockerfile
+          build-args: |
+            BUILD_DATE=${{ env.BUILD_DATE }}
+            COMMIT_ID=${{ env.github.sha }}
