@@ -84,7 +84,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
   @Override
   public void storeRelationships(EventSubscription entity) {
-    storeOwner(entity, entity.getOwner());
+    // No relationships to store beyond what is stored in the super class
   }
 
   @Override

@@ -108,12 +108,6 @@ public class QueryRepository extends EntityRepository<Query> {
             entityRef.getId(), queryEntity.getId(), entityRef.getType(), Entity.QUERY, Relationship.MENTIONED_IN);
       }
     }
-
-    // Add table owner relationship
-    storeOwner(queryEntity, queryEntity.getOwner());
-
-    // Add tag to table relationship
-    applyTags(queryEntity);
   }
 
   @Override
