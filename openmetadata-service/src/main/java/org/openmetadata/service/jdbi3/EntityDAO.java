@@ -146,22 +146,22 @@ public interface EntityDAO<T extends EntityInterface> {
 
   @ConnectionAwareSqlQuery(
       value =
-          "SELECT <selectColumnStmt> FROM ("
-              + "SELECT <nameColumn>, json FROM <table> <mysqlCond> AND "
-              + "<nameColumn> < :before "
+          "SELECT json FROM ("
+              + "SELECT <table>.<nameColumn>, <table>.json FROM <table> <mysqlCond> AND "
+              + "<table>.<nameColumn> < :before "
               + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
-              "ORDER BY <nameColumn> DESC "
+              "ORDER BY <table>.<nameColumn> DESC "
               + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have fqn)
               "LIMIT :limit"
               + ") last_rows_subquery ORDER BY <nameColumn>",
       connectionType = MYSQL)
   @ConnectionAwareSqlQuery(
       value =
-          "SELECT <selectColumnStmt> FROM ("
-              + "SELECT <nameColumn>, json FROM <table> <postgresCond> AND "
-              + "<nameColumn> < :before "
+          "SELECT json FROM ("
+              + "SELECT <table>.<nameColumn>, <table>.json FROM <table> <postgresCond> AND "
+              + "<table>.<nameColumn> < :before "
               + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
-              "ORDER BY <nameColumn> DESC "
+              "ORDER BY <table>.<nameColumn> DESC "
               + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have fqn)
               "LIMIT :limit"
               + ") last_rows_subquery ORDER BY <nameColumn>",
@@ -169,7 +169,6 @@ public interface EntityDAO<T extends EntityInterface> {
   List<String> listBefore(
       @Define("table") String table,
       @Define("nameColumn") String nameColumn,
-      @Define("selectColumnStmt") String selectColumnStmt,
       @Define("mysqlCond") String mysqlCond,
       @Define("postgresCond") String postgresCond,
       @Bind("limit") int limit,
@@ -177,22 +176,21 @@ public interface EntityDAO<T extends EntityInterface> {
 
   @ConnectionAwareSqlQuery(
       value =
-          "SELECT <selectColumnStmt> FROM <table> <mysqlCond> AND "
-              + "<nameColumn> > :after "
-              + "ORDER BY <nameColumn> "
+          "SELECT <table>.json FROM <table> <mysqlCond> AND "
+              + "<table>.<nameColumn> > :after "
+              + "ORDER BY <table>.<nameColumn> "
               + "LIMIT :limit",
       connectionType = MYSQL)
   @ConnectionAwareSqlQuery(
       value =
-          "SELECT <selectColumnStmt> FROM <table> <postgresCond> AND "
-              + "<nameColumn> > :after "
-              + "ORDER BY <nameColumn> "
+          "SELECT <table>.json FROM <table> <postgresCond> AND "
+              + "<table>.<nameColumn> > :after "
+              + "ORDER BY <table>.<nameColumn> "
               + "LIMIT :limit",
       connectionType = POSTGRES)
   List<String> listAfter(
       @Define("table") String table,
       @Define("nameColumn") String nameColumn,
-      @Define("selectColumnStmt") String selectColumnStmt,
       @Define("mysqlCond") String mysqlCond,
       @Define("postgresCond") String postgresCond,
       @Bind("limit") int limit,
