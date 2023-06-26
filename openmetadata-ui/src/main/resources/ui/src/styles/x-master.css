@@ -25,10 +25,6 @@ p {
   margin-bottom: 0px;
 }
 
-pre {
-  font-family: 'Source Code Pro', sans-serif;
-}
-
 /* Bootstrap Extended */
 .form-control:focus,
 .btn.focus,
