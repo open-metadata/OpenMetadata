@@ -13,7 +13,7 @@
 
 import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
-import TagsContainerInfiniteScroll from 'components/Tag/TagsContainerInfiniteScroll/TagsContainerInfiniteScroll';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { EntityType } from 'enums/entity.enum';
@@ -100,7 +100,7 @@ const TableTags = <T extends TableUnion>({
       <div
         className={classNames('d-flex justify-content flex-col items-start')}
         data-testid="tags-wrapper">
-        <TagsContainerInfiniteScroll
+        <TagsContainerV2
           showBottomEditButton
           permission={hasTagEditAccess && !isReadOnly}
           selectedTags={tags}
@@ -147,7 +147,7 @@ const TableTags = <T extends TableUnion>({
               </div>
             )}
           </>
-        </TagsContainerInfiniteScroll>
+        </TagsContainerV2>
       </div>
     </div>
   );

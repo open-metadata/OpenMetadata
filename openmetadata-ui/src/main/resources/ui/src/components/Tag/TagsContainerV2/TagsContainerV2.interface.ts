@@ -16,7 +16,7 @@ import { TagSource } from 'generated/type/tagLabel';
 import { EntityTags } from 'Models';
 import { ReactElement } from 'react';
 
-export type TagsContainerInfiniteScrollProps = {
+export type TagsContainerV2Props = {
   permission: boolean;
   selectedTags: EntityTags[];
   entityType?: string;

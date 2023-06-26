@@ -15,7 +15,6 @@ import { Button, Col, Form, Row, Space, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import { TableTagsProps } from 'components/TableTags/TableTags.interface';
-import Tags from 'components/Tag/Tags/tags';
 import { DE_ACTIVE_COLOR, PAGE_SIZE } from 'constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
 import { EntityType } from 'enums/entity.enum';
@@ -44,10 +43,11 @@ import {
 import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
 import TagSelectForm from '../TagsSelectForm/TagsSelectForm.component';
+import TagsV1 from '../TagsV1/TagsV1.component';
 import TagsViewer from '../TagsViewer/tags-viewer';
-import { TagsContainerInfiniteScrollProps } from './TagsContainerInfiniteScroll.interface';
+import { TagsContainerV2Props } from './TagsContainerV2.interface';
 
-const TagsContainerInfiniteScroll = ({
+const TagsContainerV2 = ({
   permission,
   selectedTags,
   entityType,
@@ -60,7 +60,7 @@ const TagsContainerInfiniteScroll = ({
   onSelectionChange,
   onThreadLinkSelect,
   children,
-}: TagsContainerInfiniteScrollProps) => {
+}: TagsContainerV2Props) => {
   const history = useHistory();
   const [form] = Form.useForm();
   const { t } = useTranslation();
@@ -79,7 +79,7 @@ const TagsContainerInfiniteScroll = ({
   );
 
   const selectedTagsInternal = useMemo(
-    () => tags?.[tagType].map(({ tagFQN }) => tagFQN as string),
+    () => tags?.[tagType].map(({ tagFQN }) => tagFQN),
     [tags, tagType]
   );
 
@@ -204,12 +204,7 @@ const TagsContainerInfiniteScroll = ({
     () =>
       showAddTagButton ? (
         <span onClick={handleAddClick}>
-          <Tags
-            className="tw-font-semibold tw-text-primary"
-            startWith={TAG_START_WITH.PLUS}
-            tag={TAG_CONSTANT}
-            type="border"
-          />
+          <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
         </span>
       ) : null,
     [showAddTagButton]
@@ -293,8 +288,7 @@ const TagsContainerInfiniteScroll = ({
           size="small"
           type="text"
           onClick={() =>
-            onThreadLinkSelect &&
-            onThreadLinkSelect(
+            onThreadLinkSelect?.(
               entityThreadLink ??
                 getEntityFeedLink(entityType, entityFqn, 'tags')
             )
@@ -326,7 +320,7 @@ const TagsContainerInfiniteScroll = ({
   const header = useMemo(() => {
     return (
       showHeader && (
-        <div className="d-flex justify-between m-b-xs">
+        <div className="d-flex justify-between m-b-xss">
           <div className="d-flex items-center">
             <Typography.Text className="right-panel-label">
               {isGlossaryType
@@ -348,7 +342,7 @@ const TagsContainerInfiniteScroll = ({
           {permission && (
             <Row gutter={8}>
               {tagType === TagSource.Classification && requestTagElement}
-              {conversationThreadElement}
+              {onThreadLinkSelect && conversationThreadElement}
             </Row>
           )}
         </div>
@@ -414,4 +408,4 @@ const TagsContainerInfiniteScroll = ({
   );
 };
 
-export default TagsContainerInfiniteScroll;
+export default TagsContainerV2;

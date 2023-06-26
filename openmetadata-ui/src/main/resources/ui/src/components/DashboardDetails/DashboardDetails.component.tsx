@@ -26,7 +26,7 @@ import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAss
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import TableTags from 'components/TableTags/TableTags.component';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerInfiniteScroll from 'components/Tag/TagsContainerInfiniteScroll/TagsContainerInfiniteScroll';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { getDashboardDetailsPath } from 'constants/constants';
 import { compare } from 'fast-json-patch';
 import { TagSource } from 'generated/type/schema';
@@ -598,7 +598,7 @@ const DashboardDetails = ({
               data-testid="entity-right-panel"
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
-                <TagsContainerInfiniteScroll
+                <TagsContainerV2
                   entityFqn={dashboardDetails.fullyQualifiedName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.DASHBOARD}
@@ -613,7 +613,7 @@ const DashboardDetails = ({
                   onThreadLinkSelect={onThreadLinkSelect}
                 />
 
-                <TagsContainerInfiniteScroll
+                <TagsContainerV2
                   entityFqn={dashboardDetails.fullyQualifiedName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.DASHBOARD}

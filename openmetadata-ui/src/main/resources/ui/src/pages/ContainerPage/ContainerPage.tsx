@@ -42,7 +42,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerInfiniteScroll from 'components/Tag/TagsContainerInfiniteScroll/TagsContainerInfiniteScroll';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { getContainerDetailPath, getVersionPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
@@ -628,7 +628,7 @@ const ContainerPage = () => {
               data-testid="entity-right-panel"
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
-                <TagsContainerInfiniteScroll
+                <TagsContainerV2
                   entityFqn={containerName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.CONTAINER}
@@ -640,7 +640,7 @@ const ContainerPage = () => {
                   onSelectionChange={handleTagSelection}
                   onThreadLinkSelect={onThreadLinkSelect}
                 />
-                <TagsContainerInfiniteScroll
+                <TagsContainerV2
                   entityFqn={containerName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.CONTAINER}

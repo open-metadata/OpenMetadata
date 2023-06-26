@@ -29,7 +29,7 @@ import ExecutionsTab from 'components/Execution/Execution.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import TableTags from 'components/TableTags/TableTags.component';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerInfiniteScroll from 'components/Tag/TagsContainerInfiniteScroll/TagsContainerInfiniteScroll';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import TasksDAGView from 'components/TasksDAGView/TasksDAGView';
 import { EntityField } from 'constants/Feeds.constants';
 import { compare } from 'fast-json-patch';
@@ -593,7 +593,7 @@ const PipelineDetails = ({
               data-testid="entity-right-panel"
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
-                <TagsContainerInfiniteScroll
+                <TagsContainerV2
                   entityFqn={pipelineFQN}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.PIPELINE}
@@ -608,7 +608,7 @@ const PipelineDetails = ({
                   onThreadLinkSelect={onThreadLinkSelect}
                 />
 
-                <TagsContainerInfiniteScroll
+                <TagsContainerV2
                   entityFqn={pipelineFQN}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.PIPELINE}

@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Select, Space, Spin, Tooltip, Typography } from 'antd';
+import { Select, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import Loader from 'components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { Paging } from 'generated/type/paging';
 import { debounce } from 'lodash';
@@ -47,9 +48,10 @@ const InfiniteSelectScroll: FC<InfiniteSelectScrollProps> = ({
         setOptions(res.data);
         setPaging(res.paging);
         setSearchValue(value);
-        setIsLoading(false);
       } catch (error) {
         showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
       }
     },
     [fetchOptions]
@@ -109,22 +111,22 @@ const InfiniteSelectScroll: FC<InfiniteSelectScrollProps> = ({
     }
   };
 
+  const dropdownRender = (menu: React.ReactElement) => (
+    <>
+      {menu}
+      {hasContentLoading ? <Loader size="small" /> : null}
+    </>
+  );
+
   return (
     <Select
       autoFocus
       showSearch
       data-testid="tag-selector"
-      dropdownRender={(menu) => (
-        <>
-          {menu}
-          {hasContentLoading ? (
-            <Spin size="small" style={{ padding: '0 12px' }} />
-          ) : null}
-        </>
-      )}
+      dropdownRender={dropdownRender}
       filterOption={false}
       mode={mode}
-      notFoundContent={isLoading ? <Spin size="small" /> : null}
+      notFoundContent={isLoading ? <Loader size="small" /> : null}
       optionLabelProp="label"
       style={{ width: '100%' }}
       tagRender={tagRender}
