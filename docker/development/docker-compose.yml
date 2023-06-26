@@ -37,6 +37,8 @@ services:
       interval: 15s
       timeout: 10s
       retries: 10
+    volumes:
+     - ./docker-volume/db-data:/var/lib/mysql
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.16.0
