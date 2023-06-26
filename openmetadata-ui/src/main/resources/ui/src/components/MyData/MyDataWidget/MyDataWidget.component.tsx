@@ -120,7 +120,7 @@ const MyDataWidgetInternal = () => {
                     </div>
                   );
                 })
-              : t('server.no-owned-entities')}
+              : t('message.no-owned-data')}
           </div>
         </>
       </EntityListSkeleton>
