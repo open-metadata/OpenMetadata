@@ -63,6 +63,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/topics")
@@ -76,7 +77,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "topics")
 public class TopicResource extends EntityResource<Topic, TopicRepository> {
   public static final String COLLECTION_PATH = "v1/topics/";
-  static final String FIELDS = "owner,followers,tags,sampleData,extension";
+  static final String FIELDS = "owner,followers,tags,extension";
 
   @Override
   public Topic addHref(UriInfo uriInfo, Topic topic) {
@@ -344,6 +345,32 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Topic topic = repository.addSampleData(id, sampleData);
+    return addHref(uriInfo, topic);
+  }
+
+  @GET
+  @Path("/{id}/sampleData")
+  @Operation(
+      operationId = "getSampleData",
+      summary = "Get sample data",
+      description = "Get sample data from the topic.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully obtained the Topic",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class)))
+      })
+  public Topic getSampleData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
+    ResourceContext resourceContext = getResourceContextById(id);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+
+    Topic topic = repository.getSampleData(id, authorizePII);
     return addHref(uriInfo, topic);
   }
 
