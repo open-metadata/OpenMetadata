@@ -16,7 +16,6 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
-import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.elasticSearch.ElasticSearchClientImpl;
 import org.openmetadata.service.search.openSearch.OpenSearchClientImpl;
@@ -83,51 +82,40 @@ public class IndexUtil {
     }
   }
 
-  public static ElasticSearchIndexDefinition.ElasticSearchIndexType getIndexMappingByEntityType(String type) {
-    if (type.equalsIgnoreCase(Entity.TABLE)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.TABLE_SEARCH_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.DASHBOARD)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.PIPELINE)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.PIPELINE_SEARCH_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.TOPIC)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.TOPIC_SEARCH_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.USER)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.USER_SEARCH_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.TEAM)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.TEAM_SEARCH_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.GLOSSARY)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.MLMODEL)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.MLMODEL_SEARCH_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.GLOSSARY_TERM)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.TAG)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.TAG_SEARCH_INDEX;
-    } else if (type.equalsIgnoreCase(ENTITY_REPORT_DATA)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.ENTITY_REPORT_DATA_INDEX;
-    } else if (type.equalsIgnoreCase(WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX;
-    } else if (type.equalsIgnoreCase(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.CONTAINER)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.CONTAINER_SEARCH_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.QUERY)) {
-      return ElasticSearchIndexDefinition.ElasticSearchIndexType.QUERY_SEARCH_INDEX;
-    }
-    throw new EventPublisherException("Failed to find index doc for type " + type);
-  }
-
-  public static Set<String> getIndexFields(String entityType, IndexMappingLanguage lang) {
-    Set<String> fields = INDEX_TO_MAPPING_FIELDS_MAP.get(getIndexMappingByEntityType(entityType));
-    if (fields != null) {
-      return fields;
-    } else {
-      populateEsFieldsForIndexes(getIndexMappingByEntityType(entityType), lang);
-      fields = INDEX_TO_MAPPING_FIELDS_MAP.get(getIndexMappingByEntityType(entityType));
-    }
-    return fields;
-  }
+  //  public static ElasticSearchIndexDefinition.ElasticSearchIndexType getIndexMappingByEntityType(String type) {
+  //    if (type.equalsIgnoreCase(Entity.TABLE)) {
+  //      return ElasticSearchIndexDefinition.ElasticSearchIndexType.TABLE_SEARCH_INDEX;
+  //    } else if (type.equalsIgnoreCase(Entity.DASHBOARD)) {
+  //      return ElasticSearchIndexDefinition.ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX;
+  //    } else if (type.equalsIgnoreCase(Entity.PIPELINE)) {
+  //      return ElasticSearchIndexDefinition.ElasticSearchIndexType.PIPELINE_SEARCH_INDEX;
+  //    } else if (type.equalsIgnoreCase(Entity.TOPIC)) {
+  //      return ElasticSearchIndexDefinition.ElasticSearchIndexType.TOPIC_SEARCH_INDEX;
+  //    } else if (type.equalsIgnoreCase(Entity.USER)) {
+  //      return ElasticSearchIndexDefinition.ElasticSearchIndexType.USER_SEARCH_INDEX;
+  //    } else if (type.equalsIgnoreCase(Entity.TEAM)) {
+  //      return ElasticSearchIndexDefinition.ElasticSearchIndexType.TEAM_SEARCH_INDEX;
+  //    } else if (type.equalsIgnoreCase(Entity.GLOSSARY)) {
+  //      return ElasticSearchIndexDefinition.ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
+  //    } else if (type.equalsIgnoreCase(Entity.MLMODEL)) {
+  //      return ElasticSearchIndexDefinition.ElasticSearchIndexType.MLMODEL_SEARCH_INDEX;
+  //    } else if (type.equalsIgnoreCase(Entity.GLOSSARY_TERM)) {
+  //      return ElasticSearchIndexDefinition.ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
+  //    } else if (type.equalsIgnoreCase(Entity.TAG)) {
+  //      return ElasticSearchIndexDefinition.ElasticSearchIndexType.TAG_SEARCH_INDEX;
+  //    } else if (type.equalsIgnoreCase(ENTITY_REPORT_DATA)) {
+  //      return ElasticSearchIndexDefinition.ElasticSearchIndexType.ENTITY_REPORT_DATA_INDEX;
+  //    } else if (type.equalsIgnoreCase(WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA)) {
+  //      return ElasticSearchIndexDefinition.ElasticSearchIndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX;
+  //    } else if (type.equalsIgnoreCase(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)) {
+  //      return ElasticSearchIndexDefinition.ElasticSearchIndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX;
+  //    } else if (type.equalsIgnoreCase(Entity.CONTAINER)) {
+  //      return ElasticSearchIndexDefinition.ElasticSearchIndexType.CONTAINER_SEARCH_INDEX;
+  //    } else if (type.equalsIgnoreCase(Entity.QUERY)) {
+  //      return ElasticSearchIndexDefinition.ElasticSearchIndexType.QUERY_SEARCH_INDEX;
+  //    }
+  //    throw new EventPublisherException("Failed to find index doc for type " + type);
+  //  }
 
   public static String getContext(String type, String info) {
     return String.format("Failed While : %s %n Additional Info:  %s ", type, info);

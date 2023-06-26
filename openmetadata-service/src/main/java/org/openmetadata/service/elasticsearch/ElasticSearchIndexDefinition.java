@@ -1,13 +1,5 @@
 package org.openmetadata.service.elasticsearch;
 
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
@@ -17,6 +9,15 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchClient;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
 @Slf4j
 public class ElasticSearchIndexDefinition {
@@ -76,6 +77,9 @@ public class ElasticSearchIndexDefinition {
         ENTITY_REPORT_DATA, "entity_report_data_index", "/elasticsearch/entity_report_data_index.json"),
     TEST_CASE_SEARCH_INDEX(
         Entity.TEST_CASE, "test_case_search_index", "/elasticsearch/%s/test_case_index_mapping.json"),
+
+    TEST_SUITE_SEARCH_INDEX(
+        Entity.TEST_SUITE, "test_suite_search_index", "/elasticsearch/%s/test_suite_index_mapping.json"),
     WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX(
         Entity.WEB_ANALYTIC_EVENT,
         "web_analytic_entity_view_report_data_index",
@@ -171,8 +175,10 @@ public class ElasticSearchIndexDefinition {
       return ElasticSearchIndexType.CONTAINER_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.QUERY)) {
       return ElasticSearchIndexType.QUERY_SEARCH_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.TEST_SUITE) || type.equalsIgnoreCase(Entity.TEST_CASE)) {
+    } else if (type.equalsIgnoreCase(Entity.TEST_CASE)) {
       return ElasticSearchIndexType.TEST_CASE_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.TEST_SUITE)) {
+      return ElasticSearchIndexType.TEST_SUITE_SEARCH_INDEX;
     }
     throw new EventPublisherException("Failed to find index doc for type " + type);
   }
