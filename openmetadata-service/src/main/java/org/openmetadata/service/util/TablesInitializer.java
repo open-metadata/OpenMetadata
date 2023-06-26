@@ -50,10 +50,10 @@ import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.MigrationFile;
 import org.openmetadata.service.migration.api.MigrationStep;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
-import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -278,7 +278,8 @@ public final class TablesInitializer {
       case MIGRATE:
         flyway.migrate();
         // Validate and Run System Data Migrations
-        validateAndRunSystemDataMigrations(jdbi, config, ignoreServerFileChecksum);
+        validateAndRunSystemDataMigrations(
+            jdbi, ConnectionType.from(config.getDataSourceFactory().getDriverClass()), ignoreServerFileChecksum);
         break;
       case INFO:
         printToConsoleMandatory(dumpToAsciiTable(flyway.info().all()));
@@ -328,21 +329,18 @@ public final class TablesInitializer {
     }
   }
 
-  private static void validateAndRunSystemDataMigrations(
-      Jdbi jdbi, OpenMetadataApplicationConfig config, boolean ignoreFileChecksum) {
-    DatasourceConfig.initialize(config);
-    List<MigrationStep> loadedMigrationFiles = getServerMigrationFiles();
-    MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi, DatasourceConfig.getInstance().getDatabaseConnectionType(), loadedMigrationFiles, ignoreFileChecksum);
+  public static void validateAndRunSystemDataMigrations(
+      Jdbi jdbi, ConnectionType connType, boolean ignoreFileChecksum) {
+    List<MigrationStep> loadedMigrationFiles = getServerMigrationFiles(connType);
+    MigrationWorkflow workflow = new MigrationWorkflow(jdbi, loadedMigrationFiles, ignoreFileChecksum);
     workflow.runMigrationWorkflows();
   }
 
-  private static List<MigrationStep> getServerMigrationFiles() {
+  private static List<MigrationStep> getServerMigrationFiles(ConnectionType connType) {
     List<MigrationStep> migrations = new ArrayList<>();
     try {
       String prefix =
-          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+          connType.equals(ConnectionType.MYSQL)
               ? "org.openmetadata.service.migration.versions.mysql"
               : "org.openmetadata.service.migration.versions.postgres";
       Reflections reflections = new Reflections(prefix);

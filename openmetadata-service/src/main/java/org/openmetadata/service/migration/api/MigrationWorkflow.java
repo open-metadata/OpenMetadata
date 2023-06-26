@@ -7,42 +7,23 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.service.jdbi3.MigrationDAO;
-import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 @Slf4j
 public class MigrationWorkflow {
   private final List<MigrationStep> migrations;
   private final MigrationDAO migrationDAO;
   private final Jdbi jdbi;
-  private final ConnectionType workflowDatabaseConnectionType;
-
   private boolean ignoreFileChecksum = false;
 
-  public MigrationWorkflow(
-      Jdbi jdbi, ConnectionType type, List<MigrationStep> migrationSteps, boolean ignoreFileChecksum) {
+  public MigrationWorkflow(Jdbi jdbi, List<MigrationStep> migrationSteps, boolean ignoreFileChecksum) {
     this.jdbi = jdbi;
-    this.workflowDatabaseConnectionType = type;
     this.migrationDAO = jdbi.onDemand(MigrationDAO.class);
     this.ignoreFileChecksum = ignoreFileChecksum;
-
-    // Validate Migration
-    validateMigrations(migrationSteps);
-
     // Sort Migration on the basis of version
     migrationSteps.sort(Comparator.comparing(MigrationStep::getMigrationVersion));
 
     // Filter Migrations to Be Run
     this.migrations = filterAndGetMigrationsToRun(migrationSteps);
-  }
-
-  private void validateMigrations(List<MigrationStep> migrationSteps) {
-    for (MigrationStep step : migrationSteps) {
-      if (!step.getDatabaseConnectionType().equals(this.workflowDatabaseConnectionType)) {
-        throw new IllegalArgumentException(
-            String.format(
-                "Provided Migration File is for Database Connection %s", step.getDatabaseConnectionType().toString()));
-      }
-    }
   }
 
   private List<MigrationStep> filterAndGetMigrationsToRun(List<MigrationStep> migrations) {
