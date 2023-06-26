@@ -12,7 +12,7 @@
 Airflow source to extract metadata from OM UI
 """
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Iterable, List, Optional, cast
 
 from airflow.models import BaseOperator, DagRun, TaskInstance
@@ -50,7 +50,9 @@ from metadata.ingestion.source.pipeline.airflow.models import (
     AirflowDagDetails,
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.utils.constants import TIMEDELTA
 from metadata.utils.helpers import clean_uri, datetime_to_ts
+from metadata.utils.importer import import_from_module
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -249,6 +251,38 @@ class AirflowSource(PipelineServiceSource):
                 " Skipping status ingestion."
             )
 
+    def get_schedule_interval(self, pipeline_data) -> Optional[str]:
+        """
+        Fetch Schedule Intervals from Airflow Dags
+        """
+        schedule_interval_timetable_val = pipeline_data.get("timetable", {}).get(
+            "__var", {}
+        )
+        if schedule_interval_timetable_val:
+            # Fetch Cron as String
+            return schedule_interval_timetable_val.get("expression", None)
+        schedule_interval_val = pipeline_data.get("schedule_interval", {})
+        if schedule_interval_val:
+            type_value = schedule_interval_val.get("__type", {})
+            if type_value == TIMEDELTA:
+                var_value = schedule_interval_val.get("__var", {})
+                # types of schedule interval with timedelta
+                # timedelta(days=1) = `1 day, 0:00:00`
+                return str(timedelta(seconds=var_value))
+
+        try:
+            # If the Schedule interval is a const value like @once, @yearly etc
+            # __type sends the module path, and once instantiated
+            return import_from_module(
+                pipeline_data.get("timetable", {}).get("__type", {})
+            )().summary
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Couldn't fetch schedule interval for dag {pipeline_data.get('_dag_id')}"
+            )
+        return None
+
     def get_pipelines_list(self) -> Iterable[OMSerializedDagDetails]:
         """
         List all DAGs from the metadata db.
@@ -262,7 +296,6 @@ class AirflowSource(PipelineServiceSource):
             if hasattr(SerializedDagModel, "_data")
             else SerializedDagModel.data  # For 2.2.5 and 2.1.4
         )
-
         for serialized_dag in self.session.query(
             SerializedDagModel.dag_id,
             json_data_column,
@@ -278,10 +311,10 @@ class AirflowSource(PipelineServiceSource):
                     description=data.get("_description", None),
                     start_date=data.get("start_date", None),
                     tasks=data.get("tasks", []),
-                    owners=data.get("default_args", [])["__var"].get("email", [])
-                    if data.get("default_args")
-                    else None,
+                    schedule_interval=self.get_schedule_interval(data),
+                    owners=self.fetch_owners(data),
                 )
+
                 yield dag
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
@@ -291,6 +324,14 @@ class AirflowSource(PipelineServiceSource):
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Wild error yielding dag {serialized_dag} - {err}")
+
+    def fetch_owners(self, data) -> Optional[str]:
+        try:
+            if self.source_config.includeOwners and data.get("default_args"):
+                return data.get("default_args", [])["__var"].get("email", [])
+        except TypeError:
+            pass
+        return None
 
     def get_pipeline_name(self, pipeline_details: SerializedDAG) -> str:
         """
@@ -379,6 +420,7 @@ class AirflowSource(PipelineServiceSource):
                 ),
                 service=self.context.pipeline_service.fullyQualifiedName.__root__,
                 owner=self.get_owner(pipeline_details.owners),
+                scheduleInterval=pipeline_details.schedule_interval,
             )
             yield pipeline_request
             self.register_record(pipeline_request=pipeline_request)

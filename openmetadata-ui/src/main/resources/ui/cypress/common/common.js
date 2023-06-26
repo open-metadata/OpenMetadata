@@ -514,7 +514,7 @@ export const editOwnerforCreatedService = (
 
   verifyResponseStatusCode('@searchOwner', 200);
 
-  cy.get('[data-testid="owner-name"]')
+  cy.get('[data-testid="owner-link"]')
     .invoke('text')
     .then((text) => {
       expect(text).equal(ADMIN);
@@ -623,7 +623,9 @@ export const addNewTagToEntity = (entityObj, term) => {
     entityObj.entity
   );
   cy.wait(500);
-  cy.get('[data-testid="tags"] [data-testid="add-tag"]')
+  cy.get(
+    '[data-testid="classification-tags-0"] [data-testid="entity-tags"] [data-testid="add-tag"]'
+  )
     .eq(0)
     .should('be.visible')
     .scrollIntoView()
@@ -631,37 +633,17 @@ export const addNewTagToEntity = (entityObj, term) => {
 
   cy.get('[data-testid="tag-selector"] input').should('be.visible').type(term);
 
-  cy.get('.ant-select-item-option-content')
-    .contains(term)
-    .should('be.visible')
-    .click();
+  cy.get(`[title="${term}"]`).should('be.visible').click();
+  // to close popup
+  cy.clickOutside();
+
   cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(term);
-  cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
-  cy.get('[data-testid="entity-tags"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .contains(term);
-
-  cy.get('[data-testid="classification-tags-0"] [data-testid="tag-container"]')
-    .scrollIntoView()
-    .contains('Add')
-    .should('be.visible')
-    .click();
-
-  cy.get('[data-testid="tag-selector"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .type(term);
-  cy.wait(500);
-  cy.get('.ant-select-item-option-content')
-    .contains(term)
-    .should('be.visible')
-    .click();
   cy.get('[data-testid="saveAssociatedTag"]')
     .scrollIntoView()
     .should('be.visible')
     .click();
-  cy.get('[data-testid="classification-tags-0"] [data-testid="tag-container"]')
+  cy.get('[data-testid="classification-tags-0"] [data-testid="tags-container"]')
+    .scrollIntoView()
     .contains(term)
     .should('exist');
 };
@@ -1121,6 +1103,11 @@ export const addTeam = (TEAM_DETAILS, index) => {
 
 export const retryIngestionRun = () => {
   interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
+  interceptURL(
+    'GET',
+    '/api/v1/services/ingestionPipelines/*/pipelineStatus/*',
+    'pipelineStatus'
+  );
   let timer = BASE_WAIT_TIME;
   let retryCount = 0;
   const testIngestionsTab = () => {
@@ -1138,11 +1125,6 @@ export const retryIngestionRun = () => {
   const checkSuccessState = () => {
     testIngestionsTab();
     retryCount++;
-    cy.get('body').then(($body) => {
-      if ($body.find('.ant-skeleton-input').length) {
-        cy.wait(1000);
-      }
-    });
 
     // the latest run should be success
     cy.get('[data-testid="pipeline-status"]').then(($ingestionStatus) => {
@@ -1152,6 +1134,7 @@ export const retryIngestionRun = () => {
         timer *= 2;
         cy.reload();
         verifyResponseStatusCode('@serviceDetails', 200);
+        verifyResponseStatusCode('@pipelineStatus', 200);
         checkSuccessState();
       } else {
         cy.get('[data-testid="pipeline-status"]').should(

@@ -39,7 +39,6 @@ import {
   replaceSpaceWith_,
   Transi18next,
 } from '../../utils/CommonUtils';
-import { getTestSuitePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
@@ -131,6 +130,8 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       sourceConfig: {
         config: {
           type: ConfigType.TestSuite,
+          entityFullyQualifiedName:
+            testSuite.executableEntityReference?.fullyQualifiedName,
         },
       },
     };
@@ -203,8 +204,8 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   );
 
   const handleViewTestSuiteClick = useCallback(() => {
-    history.push(getTestSuitePath(testSuite?.fullyQualifiedName || ''));
-  }, [history, testSuite]);
+    history.goBack();
+  }, [history]);
 
   const handleDeployClick = () => {
     setShowDeployModal(true);

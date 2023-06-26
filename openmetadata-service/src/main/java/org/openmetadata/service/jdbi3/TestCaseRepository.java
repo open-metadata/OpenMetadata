@@ -26,7 +26,6 @@ import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
-import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -60,7 +59,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public TestCase setFields(TestCase test, Fields fields) throws IOException {
-    test.setTestSuite(fields.contains(TEST_SUITE_FIELD) ? getTestSuite(test) : null);
+    test.setTestSuites(fields.contains("testSuites") ? getTestSuites(test) : null);
+    test.setTestSuite(fields.contains("testSuite") ? getTestSuite(test) : null);
     test.setTestDefinition(fields.contains("testDefinition") ? getTestDefinition(test) : null);
     return test.withTestCaseResult(fields.contains(TEST_CASE_RESULT_FIELD) ? getTestCaseResult(test) : null);
   }
@@ -119,7 +119,34 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private EntityReference getTestSuite(TestCase test) throws IOException {
-    return getFromEntityRef(test.getId(), Relationship.CONTAINS, TEST_SUITE, true);
+    // `testSuite` field returns the executable `testSuite` linked to that testCase
+    List<CollectionDAO.EntityRelationshipRecord> records =
+        findFrom(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
+    ensureSingleRelationship(entityType, test.getId(), records, Relationship.CONTAINS.value(), true);
+    for (CollectionDAO.EntityRelationshipRecord record : records) {
+      TestSuite testSuite = Entity.getEntity(TEST_SUITE, record.getId(), "", Include.ALL);
+      if (testSuite.getExecutable()) {
+        return testSuite.getEntityReference();
+      }
+    }
+    return null;
+  }
+
+  private List<TestSuite> getTestSuites(TestCase test) throws IOException {
+    // `testSuites` field returns all the `testSuite` (executable and logical) linked to that testCase
+    List<CollectionDAO.EntityRelationshipRecord> records =
+        findFrom(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
+    ensureSingleRelationship(entityType, test.getId(), records, Relationship.CONTAINS.value(), true);
+    return records.stream()
+        .map(
+            record -> {
+              try {
+                return Entity.<TestSuite>getEntity(TEST_SUITE, record.getId(), "", Include.ALL);
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+            })
+        .collect(Collectors.toList());
   }
 
   private EntityReference getTestDefinition(TestCase test) throws IOException {
@@ -306,32 +333,21 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.DeleteResponse<>(testCase, RestUtil.ENTITY_DELETED);
   }
 
-  public TestSummary getTestSummary() throws IOException {
-    List<TestCase> testCases = listAll(Fields.EMPTY_FIELDS, new ListFilter());
-    List<String> testCaseFQNHashes =
-        testCases.stream()
-            .map(testCase -> FullyQualifiedName.buildHash(testCase.getFullyQualifiedName()))
-            .collect(Collectors.toList());
-
-    if (testCaseFQNHashes.isEmpty()) return new TestSummary();
-
-    List<String> jsonList =
-        daoCollection
-            .entityExtensionTimeSeriesDao()
-            .getLatestExtensionByFQNs(testCaseFQNHashes, TESTCASE_RESULT_EXTENSION);
-
-    HashMap<String, Integer> testCaseSummary = new HashMap<>();
-    for (String json : jsonList) {
-      TestCaseResult testCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
-      String status = testCaseResult.getTestCaseStatus().toString();
-      testCaseSummary.put(status, testCaseSummary.getOrDefault(status, 0) + 1);
+  public TestSummary getTestSummary(UUID testSuiteId) throws IOException {
+    List<String> testCaseFQNs;
+    if (testSuiteId == null) {
+      List<TestCase> testCases = listAll(Fields.EMPTY_FIELDS, new ListFilter());
+      testCaseFQNs = testCases.stream().map(TestCase::getFullyQualifiedName).collect(Collectors.toList());
+    } else {
+      List<CollectionDAO.EntityRelationshipRecord> testCases =
+          findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+      List<EntityReference> testCasesEntityReferences = EntityUtil.getEntityReferences(testCases);
+      testCaseFQNs =
+          testCasesEntityReferences.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.toList());
     }
 
-    return new TestSummary()
-        .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
-        .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
-        .withSuccess(testCaseSummary.getOrDefault(TestCaseStatus.Success.toString(), 0))
-        .withTotal(testCaseFQNHashes.size());
+    return EntityUtil.getTestCaseExecutionSummary(
+        daoCollection.entityExtensionTimeSeriesDao(), testCaseFQNs, TESTCASE_RESULT_EXTENSION);
   }
 
   @Override

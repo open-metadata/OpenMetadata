@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Table as AntdTable, Typography } from 'antd';
+import { Space, Table as AntdTable, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { ROUTES } from 'constants/constants';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { mockDatasetData } from 'constants/mockTourData.constants';
 import { t } from 'i18next';
 import { isEmpty, lowerCase } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
 import { getSampleDataByTableId } from 'rest/tableAPI';
 import { WORKFLOWS_PROFILER_DOCS } from '../../constants/docs.constants';
 import { Table } from '../../generated/entity/data/table';
@@ -34,16 +33,11 @@ import {
   SampleDataType,
 } from './sample.interface';
 import './SampleDataTable.style.less';
-
 const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
-  const location = useLocation();
+  const { isTourOpen } = useTourProvider();
+
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);
-
-  const isTourActive = useMemo(
-    () => location.pathname.includes(ROUTES.TOUR),
-    [location.pathname]
-  );
 
   const getSampleDataWithType = (table: Table) => {
     const { sampleData, columns } = table;
@@ -56,7 +50,7 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
         title: (
           <Space direction="vertical" size={0}>
             <Typography.Text> {column}</Typography.Text>
-            <Typography.Text className="text-grey-muted">{`(${lowerCase(
+            <Typography.Text className="text-grey-muted text-xs font-normal">{`(${lowerCase(
               matchedColumn?.dataType ?? ''
             )})`}</Typography.Text>
           </Space>
@@ -96,12 +90,12 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
 
   useEffect(() => {
     setIsLoading(true);
-    if (!isTableDeleted && tableId && !isTourActive) {
+    if (!isTableDeleted && tableId && !isTourOpen) {
       fetchSampleData();
     } else {
       setIsLoading(false);
     }
-    if (isTourActive) {
+    if (isTourOpen) {
       setSampleData(
         getSampleDataWithType({
           columns: mockDatasetData.tableDetails.columns,
@@ -139,20 +133,18 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
   }
 
   return (
-    <Card className="m-y-md h-full" id="sampleDataDetails">
-      <div data-testid="sample-data">
-        <AntdTable
-          bordered
-          columns={sampleData?.columns}
-          data-testid="sample-data-table"
-          dataSource={sampleData?.rows}
-          pagination={false}
-          rowKey="name"
-          scroll={{ x: true }}
-          size="small"
-        />
-      </div>
-    </Card>
+    <div className="m-md" data-testid="sample-data" id="sampleDataDetails">
+      <AntdTable
+        bordered
+        columns={sampleData?.columns}
+        data-testid="sample-data-table"
+        dataSource={sampleData?.rows}
+        pagination={false}
+        rowKey="name"
+        scroll={{ x: true }}
+        size="small"
+      />
+    </div>
   );
 };
 

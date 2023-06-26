@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Redshift usage module
+Redshift lineage module
 
 Execute with
 
@@ -23,11 +23,11 @@ sink:
   type: metadata-rest
   config: {}
 workflowConfig:
-  loggerLevel: INFO
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
-    authProvider: no-auth
-
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "token"
 """
 
 from metadata.ingestion.source.database.lineage_source import LineageSource

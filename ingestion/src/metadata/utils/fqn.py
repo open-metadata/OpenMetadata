@@ -377,7 +377,7 @@ def _(
     database_name: str,
     schema_name: str,
     table_name: str,
-    column_name: str,
+    column_name: Optional[str],
     test_case_name: str,
 ) -> str:
     if column_name:

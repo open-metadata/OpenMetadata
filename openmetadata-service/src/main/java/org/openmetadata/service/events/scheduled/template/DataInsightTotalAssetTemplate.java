@@ -31,7 +31,7 @@ public class DataInsightTotalAssetTemplate {
     }
     completeMessage =
         String.format(
-            "In the past week, the Total Data Assets changed by a total of <span style=\"color: %s; font-weight: bold;\">%s%%</span>",
+            "In the past week, the Total Data Assets changed by a total of <span style=\"color: %s; font-weight: bold;\">%.2f%%</span>",
             color, percentChangeTotalAssets);
   }
 

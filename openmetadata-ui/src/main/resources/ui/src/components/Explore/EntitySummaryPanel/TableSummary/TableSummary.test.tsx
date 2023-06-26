@@ -67,6 +67,7 @@ describe('TableSummary component tests', () => {
 
     const profilerHeader = screen.getByTestId('profiler-header');
     const schemaHeader = screen.getByTestId('schema-header');
+    const tagsHeader = screen.getByTestId('tags-header');
     const typeLabel = screen.getByTestId('label.type-label');
     const queriesLabel = screen.getByTestId('label.query-plural-label');
     const columnsLabel = screen.getByTestId('label.column-plural-label');
@@ -79,6 +80,7 @@ describe('TableSummary component tests', () => {
 
     expect(profilerHeader).toBeInTheDocument();
     expect(schemaHeader).toBeInTheDocument();
+    expect(tagsHeader).toBeInTheDocument();
     expect(typeLabel).toBeInTheDocument();
     expect(queriesLabel).toBeInTheDocument();
     expect(columnsLabel).toBeInTheDocument();

@@ -16,6 +16,11 @@ import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import TableTags from 'components/TableTags/TableTags.component';
+import {
+  GlossaryTermDetailsProps,
+  TagsDetailsProps,
+} from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
+import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { LabelType, State, TagSource } from 'generated/type/schema';
 import {
   cloneDeep,
@@ -31,7 +36,11 @@ import { EntityTags, TagOption } from 'Models';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { getFilterTags } from 'utils/TableTags/TableTags.utils';
+import {
+  getGlossaryTermHierarchy,
+  getGlossaryTermsList,
+} from 'utils/GlossaryUtils';
+import { getAllTagsList, getTagsHierarchy } from 'utils/TagsUtils';
 import { ReactComponent as IconRequest } from '../../assets/svg/request-icon.svg';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
@@ -48,16 +57,11 @@ import {
 } from '../../utils/EntityUtils';
 import { getFieldThreadElement } from '../../utils/FeedElementUtils';
 import {
-  fetchGlossaryTerms,
-  getGlossaryTermlist,
-} from '../../utils/GlossaryUtils';
-import {
   getDataTypeString,
   getTableExpandableConfig,
   makeData,
   prepareConstraintIcon,
 } from '../../utils/TableUtils';
-import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import {
   getRequestDescriptionPath,
   getRequestTagsPath,
@@ -87,8 +91,12 @@ const EntityTable = ({
   const { t } = useTranslation();
 
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
-  const [glossaryTags, setGlossaryTags] = useState<TagOption[]>([]);
-  const [classificationTags, setClassificationTags] = useState<TagOption[]>([]);
+  const [glossaryTags, setGlossaryTags] = useState<GlossaryTermDetailsProps[]>(
+    []
+  );
+  const [classificationTags, setClassificationTags] = useState<
+    TagsDetailsProps[]
+  >([]);
 
   const sortByOrdinalPosition = useMemo(
     () => sortBy(tableColumns, 'ordinalPosition'),
@@ -112,12 +120,8 @@ const EntityTable = ({
   const fetchGlossaryTags = async () => {
     setIsGlossaryLoading(true);
     try {
-      const res = await fetchGlossaryTerms();
-
-      const glossaryTerms: TagOption[] = getGlossaryTermlist(res).map(
-        (tag) => ({ fqn: tag, source: TagSource.Glossary })
-      );
-      setGlossaryTags(glossaryTerms);
+      const glossaryTermList = await getGlossaryTermsList();
+      setGlossaryTags(glossaryTermList);
     } catch {
       setTagFetchFailed(true);
     } finally {
@@ -128,15 +132,8 @@ const EntityTable = ({
   const fetchClassificationTags = async () => {
     setIsTagLoading(true);
     try {
-      const res = await getClassifications();
-      const tagList = await getTaglist(res.data);
-
-      const classificationTag: TagOption[] = map(tagList, (tag) => ({
-        fqn: tag,
-        source: TagSource.Classification,
-      }));
-
-      setClassificationTags(classificationTag);
+      const tags = await getAllTagsList();
+      setClassificationTags(tags);
     } catch {
       setTagFetchFailed(true);
     } finally {
@@ -233,13 +230,12 @@ const EntityTable = ({
 
   const handleTagSelection = async (
     selectedTags: EntityTags[],
-    editColumnTag: Column,
-    otherTags: TagLabel[]
+    editColumnTag: Column
   ) => {
-    const newSelectedTags: TagOption[] = map(
-      [...selectedTags, ...otherTags],
-      (tag) => ({ fqn: tag.tagFQN, source: tag.source })
-    );
+    const newSelectedTags: TagOption[] = map(selectedTags, (tag) => ({
+      fqn: tag.tagFQN,
+      source: tag.source,
+    }));
     if (newSelectedTags && editColumnTag) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnTags(
@@ -492,7 +488,7 @@ const EntityTable = ({
         dataIndex: 'name',
         key: 'name',
         accessor: 'name',
-        width: 220,
+        width: 180,
         fixed: 'left',
         render: (name: Column['name'], record: Column) => (
           <Space
@@ -510,7 +506,7 @@ const EntityTable = ({
         key: 'dataTypeDisplay',
         accessor: 'dataTypeDisplay',
         ellipsis: true,
-        width: 220,
+        width: 180,
         render: renderDataTypeDisplay,
       },
       {
@@ -518,7 +514,7 @@ const EntityTable = ({
         dataIndex: 'description',
         key: 'description',
         accessor: 'description',
-        width: 400,
+        width: 320,
         render: renderDescription,
       },
       {
@@ -526,7 +522,7 @@ const EntityTable = ({
         dataIndex: 'tags',
         key: 'tags',
         accessor: 'tags',
-        width: 300,
+        width: 250,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             dataTestId="classification-tags"
@@ -543,8 +539,8 @@ const EntityTable = ({
             isTagLoading={isTagLoading}
             record={record}
             tagFetchFailed={tagFetchFailed}
-            tagList={classificationTags}
-            tags={getFilterTags(tags)}
+            tagList={getTagsHierarchy(classificationTags)}
+            tags={tags}
             type={TagSource.Classification}
             onRequestTagsHandler={onRequestTagsHandler}
             onThreadLinkSelect={onThreadLinkSelect}
@@ -557,7 +553,7 @@ const EntityTable = ({
         dataIndex: 'tags',
         key: 'tags',
         accessor: 'tags',
-        width: 300,
+        width: 250,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             dataTestId="glossary-tags"
@@ -574,8 +570,8 @@ const EntityTable = ({
             isTagLoading={isGlossaryLoading}
             record={record}
             tagFetchFailed={tagFetchFailed}
-            tagList={glossaryTags}
-            tags={getFilterTags(tags)}
+            tagList={getGlossaryTermHierarchy(glossaryTags)}
+            tags={tags}
             type={TagSource.Glossary}
             onRequestTagsHandler={onRequestTagsHandler}
             onThreadLinkSelect={onThreadLinkSelect}
@@ -598,7 +594,6 @@ const EntityTable = ({
       fetchGlossaryTags,
       getColumnName,
       handleTagSelection,
-      getFilterTags,
       hasTagEditAccess,
       isReadOnly,
       tagFetchFailed,
@@ -623,7 +618,7 @@ const EntityTable = ({
     <>
       <Table
         bordered
-        className="vertical-top-align-td"
+        className="m-b-sm"
         columns={columns}
         data-testid="entity-table"
         dataSource={data}
@@ -636,8 +631,8 @@ const EntityTable = ({
         }}
         pagination={false}
         rowKey="id"
-        scroll={{ x: 1200 }}
-        size="small"
+        scroll={TABLE_SCROLL_VALUE}
+        size="middle"
       />
       {editColumn && (
         <ModalWithMarkdownEditor

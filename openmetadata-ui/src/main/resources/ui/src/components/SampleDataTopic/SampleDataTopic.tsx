@@ -33,7 +33,7 @@ const MessageCard = ({ message }: { message: string }) => {
 
   return (
     <div
-      className="tw-bg-white tw-shadow tw-rounded tw-p-2 tw-mb-6 tw-border tw-border-main"
+      className="bg-white tw-shadow tw-rounded tw-p-2 tw-mb-6 tw-border tw-border-main"
       data-testid="message-card"
       onClick={() => setIsExpanded((pre) => !pre)}>
       <div className="d-flex">

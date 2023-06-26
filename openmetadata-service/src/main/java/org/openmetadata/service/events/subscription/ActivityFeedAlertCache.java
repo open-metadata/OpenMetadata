@@ -16,20 +16,20 @@ import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 @Slf4j
 public class ActivityFeedAlertCache {
   private static final ActivityFeedAlertCache INSTANCE = new ActivityFeedAlertCache();
-  private static volatile boolean INITIALIZED = false;
-  protected static LoadingCache<String, EventSubscription> EVENT_SUB_CACHE;
-  protected static EventSubscriptionRepository EVENT_SUB_REPOSITORY;
+  private static volatile boolean initialized = false;
+  protected static LoadingCache<String, EventSubscription> eventSubCache;
+  protected static EventSubscriptionRepository eventSubscriptionRepository;
   private static String activityFeedAlertName;
 
   public static void initialize(String alertName, EventSubscriptionRepository repo) {
-    if (!INITIALIZED) {
-      EVENT_SUB_CACHE =
+    if (!initialized) {
+      eventSubCache =
           CacheBuilder.newBuilder()
               .maximumSize(1000)
               .expireAfterWrite(3, TimeUnit.MINUTES)
               .build(new ActivityFeedAlertLoader());
-      EVENT_SUB_REPOSITORY = repo;
-      INITIALIZED = true;
+      eventSubscriptionRepository = repo;
+      initialized = true;
       activityFeedAlertName = alertName;
     }
   }
@@ -40,7 +40,7 @@ public class ActivityFeedAlertCache {
 
   public EventSubscription getActivityFeedAlert() throws EntityNotFoundException {
     try {
-      return EVENT_SUB_CACHE.get(activityFeedAlertName);
+      return eventSubCache.get(activityFeedAlertName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
       throw new EntityNotFoundException(ex.getMessage());
     }
@@ -49,7 +49,8 @@ public class ActivityFeedAlertCache {
   static class ActivityFeedAlertLoader extends CacheLoader<String, EventSubscription> {
     @Override
     public EventSubscription load(@CheckForNull String alertName) throws IOException {
-      EventSubscription alert = EVENT_SUB_REPOSITORY.getByName(null, alertName, EVENT_SUB_REPOSITORY.getFields("*"));
+      EventSubscription alert =
+          eventSubscriptionRepository.getByName(null, alertName, eventSubscriptionRepository.getFields("*"));
       LOG.debug("Loaded Alert {}", alert);
       return alert;
     }

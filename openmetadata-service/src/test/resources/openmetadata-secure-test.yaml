@@ -204,6 +204,7 @@ pipelineServiceClientConfiguration:
   metadataApiEndpoint: http://localhost:8585/api
   apiEndpoint: http://localhost:8080
   hostIp: ""
+  healthCheckInterval: 300
   verifySSL: "no-ssl"
   authProvider: "openmetadata"
 

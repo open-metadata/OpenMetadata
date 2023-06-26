@@ -118,7 +118,7 @@ const MyDataPageV1 = () => {
   return (
     <ActivityFeedProvider>
       <PageLayoutV1
-        className="my-data-page p-0"
+        className="my-data-page p-0 bg-white"
         pageTitle={t('label.my-data')}
         rightPanel={
           <RightSidebar
@@ -128,8 +128,8 @@ const MyDataPageV1 = () => {
           />
         }
         rightPanelWidth={380}>
-        <div className="p-y-md p-x-xs">
-          <Row gutter={[16, 20]}>
+        <div className="p-t-xss p-b-md p-x-md">
+          <Row gutter={[16, 16]}>
             <Col span={24}>
               <FeedsWidget />
             </Col>

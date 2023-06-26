@@ -24,7 +24,7 @@ const PageNotFound = () => {
 
   return (
     <div
-      className="page-not-found-container tw-relative"
+      className="page-not-found-container relative"
       data-testid="no-page-found">
       <div className="flex-center tw-hw-full tw-absolute tw-inset-0">
         <img alt={t('label.not-found-lowercase')} src={notFoundNumber} />

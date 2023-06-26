@@ -87,6 +87,7 @@ services such as:
 - [Clickhouse](/connectors/database/clickhouse)
 - [Postgres](/connectors/database/postgres)
 - [Databricks](/connectors/database/databricks)
+- [Oracle](/connectors/database/oracle)
 
 There are specific workflows (Usage & Lineage) that will use the query log information. An alternative for sources not
 listed here is to run the workflow by providing the Query Logs that you have previously exported and then running

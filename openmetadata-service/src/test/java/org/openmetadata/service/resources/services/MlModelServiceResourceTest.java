@@ -52,6 +52,7 @@ public class MlModelServiceResourceTest extends EntityResourceTest<MlModelServic
   public MlModelServiceResourceTest() {
     super(Entity.MLMODEL_SERVICE, MlModelService.class, MlModelServiceList.class, "services/mlmodelServices", "owner");
     this.supportsPatch = false;
+    supportsSearchIndex = true;
   }
 
   public void setupMlModelServices(TestInfo test) throws HttpResponseException {

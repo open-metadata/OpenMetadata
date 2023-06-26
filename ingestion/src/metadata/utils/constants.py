@@ -19,6 +19,8 @@ UTF_8 = "utf-8"
 CHUNKSIZE = 200000
 DEFAULT_DATABASE = "default"
 BUILDER_PASSWORD_ATTR = "password"
+TIMEDELTA = "timedelta"
+COMPLEX_COLUMN_SEPARATOR = "_##"
 
 ES_SOURCE_TO_ES_OBJ_ARGS = {
     "caCerts": "ca_certs",
@@ -27,6 +29,13 @@ ES_SOURCE_TO_ES_OBJ_ARGS = {
     "useAwsCredentials": "use_AWS_credentials",
     "useSSL": "use_ssl",
     "verifyCerts": "verify_certs",
+}
+
+ES_SOURCE_IGNORE_KEYS = {
+    "searchIndexMappingLanguage",
+    "batchSize",
+    "recreateIndex",
+    "type",
 }
 
 QUERY_WITH_OM_VERSION = '/* {"app": "OpenMetadata"'

@@ -75,6 +75,7 @@ import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.service.elasticsearch.ElasticSearchEventPublisher;
 import org.openmetadata.service.events.EventFilter;
 import org.openmetadata.service.events.EventPubSub;
+import org.openmetadata.service.events.scheduled.PipelineServiceStatusJobHandler;
 import org.openmetadata.service.events.scheduled.ReportsHandler;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
@@ -215,6 +216,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.servlets().addServlet("static", assetServlet).addMapping(pathPattern);
 
     registerExtensions(catalogConfig, environment, jdbi);
+
+    // Handle Pipeline Service Client Status job
+    PipelineServiceStatusJobHandler pipelineServiceStatusJobHandler =
+        PipelineServiceStatusJobHandler.create(
+            catalogConfig.getPipelineServiceClientConfiguration(), catalogConfig.getClusterName());
+    pipelineServiceStatusJobHandler.addPipelineServiceStatusJob();
   }
 
   private void registerExtensions(OpenMetadataApplicationConfig catalogConfig, Environment environment, Jdbi jdbi) {

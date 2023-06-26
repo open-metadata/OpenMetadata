@@ -82,7 +82,7 @@ import org.openmetadata.service.util.ResultList;
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
 
-  static final String FIELDS = "owner,testSuite,testDefinition";
+  static final String FIELDS = "owner,testSuite,testDefinition,testSuites";
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {
@@ -118,7 +118,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       description =
           "Get a list of test. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
-              + "entries in the list using `limit` and `before` or `after` query params.",
+              + "entries in the list using `limit` and `before` or `after` query params."
+              + "Use the `testSuite` field to get the executable Test Suite linked to this test case "
+              + "or use the `testSuites` field to list test suites (executable and logical) linked.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -689,6 +691,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     }
     List<UUID> testCaseIds = createLogicalTestCases.getTestCaseIds();
 
+    if (testCaseIds == null || testCaseIds.isEmpty()) {
+      return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, RestUtil.ENTITY_NO_CHANGE).toResponse();
+    }
+
     int existingTestCaseCount = repository.getTestCaseCount(testCaseIds);
     if (existingTestCaseCount != testCaseIds.size()) {
       throw new IllegalArgumentException("You are trying to add one or more test cases that do not exist.");
@@ -708,12 +714,19 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             description = "Tests Execution Summary",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSummary.class)))
       })
-  public TestSummary getTestsExecutionSummary(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
+  public TestSummary getTestsExecutionSummary(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "get summary for a specific test suite",
+              schema = @Schema(type = "String", format = "uuid"))
+          @QueryParam("testSuiteId")
+          UUID testSuiteId)
       throws IOException {
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().build();
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.getTestSummary();
+    return repository.getTestSummary(testSuiteId);
   }
 
   @Override

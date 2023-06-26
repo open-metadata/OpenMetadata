@@ -735,7 +735,7 @@ body .list-option.rdw-option-active {
 }
 
 .slick-dots li.slick-active button:before {
-  color: #7147e8 !important;
+  color: #0968da !important;
   opacity: 1 !important;
 }
 
@@ -842,7 +842,6 @@ body .list-option.rdw-option-active {
   display: none;
   border-right: 1px solid #d9ceee;
   transition: transform 0.3s ease-out;
-  margin-left: -16px;
 }
 
 .entity-lineage.sidebar.open {

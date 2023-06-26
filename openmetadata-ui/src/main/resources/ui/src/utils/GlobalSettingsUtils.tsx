@@ -133,7 +133,7 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: <TableIcon className="side-panel-icons" />,
         },
         {
-          label: i18next.t('label.messaging'),
+          label: i18next.t('label.messaging-plural'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.MESSAGING_SERVICE,
             permissions
@@ -185,7 +185,6 @@ export const getGlobalSettingsMenuWithPermission = (
           ),
           key: 'services.storages',
           icon: <StorageIcon className="side-panel-icons w-4 h-4" />,
-          isBeta: Boolean,
         },
       ],
     },
@@ -377,7 +376,7 @@ export const getGlobalSettingMenuItem = (args: {
     label: isBeta ? (
       <Badge
         className={classNames({ 'text-xs text-grey-muted': !isChildren })}
-        color="#7147e8"
+        color="#0968da"
         count="beta"
         offset={[30, 8]}
         size="small">
