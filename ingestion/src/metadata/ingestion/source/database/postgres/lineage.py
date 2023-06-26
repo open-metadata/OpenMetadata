@@ -13,6 +13,10 @@ Postgres lineage module
 """
 from typing import Iterable
 
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import PostgresConnection, PostgresScheme
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import OpenMetadataConnection
+from metadata.generated.schema.metadataIngestion.workflow import Source as WorkflowSource
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
@@ -40,6 +44,19 @@ class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
                 )
             """
 
+    @classmethod
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: PostgresConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, PostgresConnection):
+            raise InvalidSourceException(
+                f"Expected PostgresConnection, but got {connection}"
+            )
+        if connection.scheme == PostgresScheme.pgspider_psycopg2:
+            from metadata.ingestion.source.database.postgres.pgspider.lineage import PgspiderLineageSource
+            return PgspiderLineageSource(config, metadata_config)
+        return PostgresLineageSource(config, metadata_config)
+       
     def next_record(self) -> Iterable[AddLineageRequest]:
         """
         Based on the query logs, prepare the lineage

@@ -16,11 +16,10 @@ from typing import Iterable
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.ingestion.source.database.lineage_source import LineageSource
-from metadata.ingestion.source.database.pgspider.queries import (
+from metadata.ingestion.source.database.postgres.pgspider.queries import (
     PGSPIDER_GET_MULTI_TENANT_TABLES,
     PGSPIDER_GET_CHILD_TABLES
 )
-from metadata.ingestion.source.database.pgspider.query_parser import PGSpiderQueryParserSource
 from metadata.ingestion.source.database.postgres.lineage import PostgresLineageSource
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.lineage.sql_lineage import search_table_entities
@@ -32,7 +31,7 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityReference import EntityReference
 
 
-class PgspiderLineageSource(PGSpiderQueryParserSource, PostgresLineageSource, LineageSource):
+class PgspiderLineageSource(PostgresLineageSource, LineageSource):
     """
     Implements the necessary methods to extract Lineage information
     for multi-tenant tables and foreign table from PGSpider Source
@@ -115,7 +114,6 @@ class PgspiderLineageSource(PGSpiderQueryParserSource, PostgresLineageSource, Li
                             columnsLineage=column_lineages,
                         )
                         yield AddLineageRequest(
-                            description="Lineage Request: source = " + source_table + ", target = " + target_table,
                             edge=EntitiesEdge(
                                 fromEntity=EntityReference(id=source_entity.id, type="table"),
                                 toEntity=EntityReference(id=target_entity.id, type="table"),
