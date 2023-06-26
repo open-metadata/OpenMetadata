@@ -23,20 +23,11 @@ import {
 } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import TableTags from 'components/TableTags/TableTags.component';
-import {
-  GlossaryTermDetailsProps,
-  TagsDetailsProps,
-} from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
 import { TagSource } from 'generated/type/schema';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  getGlossaryTermHierarchy,
-  getGlossaryTermsList,
-} from 'utils/GlossaryUtils';
-import { getAllTagsList, getTagsHierarchy } from 'utils/TagsUtils';
 import { MlFeature } from '../../generated/entity/data/mlmodel';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
@@ -56,16 +47,7 @@ const MlModelFeaturesList = ({
     {} as MlFeature
   );
   const [editDescription, setEditDescription] = useState<boolean>(false);
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-  const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
-  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
 
-  const [glossaryTags, setGlossaryTags] = useState<GlossaryTermDetailsProps[]>(
-    []
-  );
-  const [classificationTags, setClassificationTags] = useState<
-    TagsDetailsProps[]
-  >([]);
   const hasEditPermission = useMemo(
     () => permissions.EditTags || permissions.EditAll,
     [permissions]
@@ -118,30 +100,6 @@ const MlModelFeaturesList = ({
         }
       });
       await handleFeaturesUpdate(updatedFeatures);
-    }
-  };
-
-  const fetchGlossaryTags = async () => {
-    setIsGlossaryLoading(true);
-    try {
-      const glossaryTermList = await getGlossaryTermsList();
-      setGlossaryTags(glossaryTermList);
-    } catch {
-      setTagFetchFailed(true);
-    } finally {
-      setIsGlossaryLoading(false);
-    }
-  };
-
-  const fetchClassificationTags = async () => {
-    setIsTagLoading(true);
-    try {
-      const tags = await getAllTagsList();
-      setClassificationTags(tags);
-    } catch {
-      setTagFetchFailed(true);
-    } finally {
-      setIsTagLoading(false);
     }
   };
 
@@ -204,16 +162,11 @@ const MlModelFeaturesList = ({
                         <Col flex="auto">
                           <TableTags<MlFeature>
                             showInlineEditTagButton
-                            dataTestId="glossary-tags"
-                            fetchTags={fetchGlossaryTags}
                             handleTagSelection={handleTagsChange}
                             hasTagEditAccess={hasEditPermission}
                             index={index}
                             isReadOnly={isDeleted}
-                            isTagLoading={isGlossaryLoading}
                             record={feature}
-                            tagFetchFailed={tagFetchFailed}
-                            tagList={getGlossaryTermHierarchy(glossaryTags)}
                             tags={feature.tags ?? []}
                             type={TagSource.Glossary}
                           />
@@ -231,16 +184,11 @@ const MlModelFeaturesList = ({
                         <Col flex="auto">
                           <TableTags<MlFeature>
                             showInlineEditTagButton
-                            dataTestId="classification-tags"
-                            fetchTags={fetchClassificationTags}
                             handleTagSelection={handleTagsChange}
                             hasTagEditAccess={hasEditPermission}
                             index={index}
                             isReadOnly={isDeleted}
-                            isTagLoading={isTagLoading}
                             record={feature}
-                            tagFetchFailed={tagFetchFailed}
-                            tagList={getTagsHierarchy(classificationTags)}
                             tags={feature.tags ?? []}
                             type={TagSource.Classification}
                           />
