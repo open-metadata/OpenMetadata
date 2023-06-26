@@ -79,7 +79,7 @@ class SQAValidatorMixin:
 
         if res is None:
             raise ValueError(
-                f"Query on table/column {column.name if column else ''} returned None"
+                f"Query on table/column {column.name if column is not None else ''} returned None"
             )
 
         return res
