@@ -1814,7 +1814,6 @@ public interface CollectionDAO {
     @Override
     default int listCount(ListFilter filter) {
       boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
-      String parent = filter.getQueryParam("parent");
       String condition =
           String.format(
               "INNER JOIN entity_relationship er ON tag.id=er.toId AND er.relation=%s AND er.fromEntity='%s'  "
@@ -1850,7 +1849,6 @@ public interface CollectionDAO {
 
     @Override
     default List<String> listBefore(ListFilter filter, int limit, String before) {
-      String parent = filter.getQueryParam("parent");
       boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
       String condition =
           String.format(
@@ -2190,8 +2188,7 @@ public interface CollectionDAO {
 
       // Quoted name is stored in fullyQualifiedName column and not in the name column
       before = getNameColumn().equals("name") ? FullyQualifiedName.unquoteName(before) : before;
-      return listBefore(
-          getTableName(), getNameColumn(),  mySqlCondition, postgresCondition, limit, before);
+      return listBefore(getTableName(), getNameColumn(), mySqlCondition, postgresCondition, limit, before);
     }
 
     @Override
@@ -2225,8 +2222,7 @@ public interface CollectionDAO {
 
       // Quoted name is stored in fullyQualifiedName column and not in the name column
       after = getNameColumn().equals("name") ? FullyQualifiedName.unquoteName(after) : after;
-      return listAfter(
-          getTableName(), getNameColumn(),  mySqlCondition, postgresCondition, limit, after);
+      return listAfter(getTableName(), getNameColumn(), mySqlCondition, postgresCondition, limit, after);
     }
 
     default List<String> listTeamsUnderOrganization(String teamId) {
