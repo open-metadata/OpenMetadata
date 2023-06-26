@@ -400,7 +400,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           />
         ),
         key: EntityTabs.SAMPLE_DATA,
-        children: <SampleDataTopic topicFQN={topicFQN} />,
+        children: <SampleDataTopic topicId={topicDetails.id} />,
       },
       {
         label: <TabsLabel id={EntityTabs.CONFIG} name={t('label.config')} />,

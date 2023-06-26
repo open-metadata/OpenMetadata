@@ -73,7 +73,6 @@ import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -553,8 +552,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
 
-    Table maskedTable = PIIMasker.getSampleData(repository.getSampleData(id, authorizePII), authorizePII);
-    return addHref(uriInfo, maskedTable);
+    Table table = repository.getSampleData(id, authorizePII);
+    return addHref(uriInfo, table);
   }
 
   @DELETE
@@ -673,7 +672,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
 
-    return PIIMasker.getTableProfile(repository.getLatestTableProfile(fqn, authorizePII), authorizePII);
+    return repository.getLatestTableProfile(fqn, authorizePII);
   }
 
   @GET
