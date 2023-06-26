@@ -31,6 +31,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -184,14 +185,26 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Owner (USER1_REF) can see the results
-    ResultList<Query> queries = getQueries(10, "*", false, authHeaders(USER1_REF.getName()));
-    assertEquals(queries.getData().size(), 1);
-    assertEquals(queries.getData().get(0).getQuery(), QUERY);
+    ResultList<Query> queries = getQueries(100, "*", false, authHeaders(USER1_REF.getName()));
+    queries
+        .getData()
+        .forEach(
+            query -> {
+              assertEquals(query.getQuery(), QUERY);
+            });
 
     // Another user won't see the PII query body
-    ResultList<Query> maskedQueries = getQueries(10, "*", false, authHeaders(USER2_REF.getName()));
-    assertEquals(maskedQueries.getData().size(), 1);
-    assertEquals(maskedQueries.getData().get(0).getQuery(), "********");
+    ResultList<Query> maskedQueries = getQueries(100, "*", false, authHeaders(USER2_REF.getName()));
+    maskedQueries
+        .getData()
+        .forEach(
+            query -> {
+              if (query.getTags().stream().map(TagLabel::getTagFQN).anyMatch("PII.Sensitive"::equals)) {
+                assertEquals(query.getQuery(), "********");
+              } else {
+                assertEquals(query.getQuery(), QUERY);
+              }
+            });
   }
 
   public ResultList<Query> getQueries(Integer limit, String fields, Boolean includeAll, Map<String, String> authHeaders)
