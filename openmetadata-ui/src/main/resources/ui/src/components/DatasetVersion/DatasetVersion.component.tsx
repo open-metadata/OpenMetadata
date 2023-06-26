@@ -134,8 +134,8 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
     return changedColumnsList;
   }, [changeDescription]);
 
-  const tabItems: TabsProps['items'] = useMemo(() => {
-    const allTabs = [
+  const tabItems: TabsProps['items'] = useMemo(
+    () => [
       {
         key: EntityTabs.SCHEMA,
         label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
@@ -197,8 +197,9 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
             name={t('label.custom-property-plural')}
           />
         ),
-        isHidden: !entityPermissions.ViewAll,
-        children: (
+        children: !entityPermissions.ViewAll ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <CustomPropertyTable
             isVersionView
             entityDetails={
@@ -209,17 +210,16 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
           />
         ),
       },
-    ];
-
-    return allTabs.filter((data) => !data.isHidden);
-  }, [
-    description,
-    datasetFQN,
-    columns,
-    constraintUpdatedColumns,
-    currentVersionData,
-    entityPermissions,
-  ]);
+    ],
+    [
+      description,
+      datasetFQN,
+      columns,
+      constraintUpdatedColumns,
+      currentVersionData,
+      entityPermissions,
+    ]
+  );
 
   if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;

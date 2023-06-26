@@ -564,11 +564,13 @@ const TableDetailsPageV1 = () => {
             name={t('label.sample-data')}
           />
         ),
-        isHidden: !(
-          tablePermissions.ViewAll || tablePermissions.ViewSampleData
-        ),
+
         key: EntityTabs.SAMPLE_DATA,
-        children: (
+        children: !(
+          tablePermissions.ViewAll || tablePermissions.ViewSampleData
+        ) ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <SampleDataTableComponent
             isTableDeleted={tableDetails?.deleted}
             tableId={tableDetails?.id ?? ''}
@@ -584,9 +586,12 @@ const TableDetailsPageV1 = () => {
             name={t('label.query-plural')}
           />
         ),
-        isHidden: !(tablePermissions.ViewAll || tablePermissions.ViewQueries),
         key: EntityTabs.TABLE_QUERIES,
-        children: (
+        children: !(
+          tablePermissions.ViewAll || tablePermissions.ViewQueries
+        ) ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <TableQueries
             isTableDeleted={tableDetails?.deleted}
             tableId={tableDetails?.id ?? ''}
@@ -600,13 +605,14 @@ const TableDetailsPageV1 = () => {
             name={t('label.profiler-amp-data-quality')}
           />
         ),
-        isHidden: !(
+        key: EntityTabs.PROFILER,
+        children: !(
           tablePermissions.ViewAll ||
           tablePermissions.ViewDataProfile ||
           tablePermissions.ViewTests
-        ),
-        key: EntityTabs.PROFILER,
-        children: (
+        ) ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <TableProfilerV1
             isTableDeleted={tableDetails?.deleted}
             permissions={tablePermissions}
@@ -651,8 +657,9 @@ const TableDetailsPageV1 = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        isHidden: !tablePermissions.ViewAll,
-        children: (
+        children: !tablePermissions.ViewAll ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <CustomPropertyTable
             entityDetails={tableDetails as CustomPropertyProps['entityDetails']}
             entityType={EntityType.TABLE}

@@ -226,45 +226,49 @@ const EntityVersionPage: FunctionComponent = () => {
 
   const fetchEntityPermissions = async () => {
     setIsLoading(true);
-    switch (entityType) {
-      case EntityType.TABLE: {
-        fetchResourcePermission(ResourceEntity.TABLE);
+    try {
+      switch (entityType) {
+        case EntityType.TABLE: {
+          fetchResourcePermission(ResourceEntity.TABLE);
 
-        break;
-      }
-      case EntityType.TOPIC: {
-        fetchResourcePermission(ResourceEntity.TOPIC);
+          break;
+        }
+        case EntityType.TOPIC: {
+          fetchResourcePermission(ResourceEntity.TOPIC);
 
-        break;
-      }
-      case EntityType.DASHBOARD: {
-        fetchResourcePermission(ResourceEntity.DASHBOARD);
+          break;
+        }
+        case EntityType.DASHBOARD: {
+          fetchResourcePermission(ResourceEntity.DASHBOARD);
 
-        break;
-      }
-      case EntityType.PIPELINE: {
-        fetchResourcePermission(ResourceEntity.PIPELINE);
+          break;
+        }
+        case EntityType.PIPELINE: {
+          fetchResourcePermission(ResourceEntity.PIPELINE);
 
-        break;
-      }
-      case EntityType.MLMODEL: {
-        fetchResourcePermission(ResourceEntity.ML_MODEL);
+          break;
+        }
+        case EntityType.MLMODEL: {
+          fetchResourcePermission(ResourceEntity.ML_MODEL);
 
-        break;
-      }
-      case EntityType.CONTAINER: {
-        fetchResourcePermission(ResourceEntity.CONTAINER);
+          break;
+        }
+        case EntityType.CONTAINER: {
+          fetchResourcePermission(ResourceEntity.CONTAINER);
 
-        break;
-      }
-      case EntityType.DASHBOARD_DATA_MODEL: {
-        fetchResourcePermission(ResourceEntity.DASHBOARD_DATA_MODEL);
+          break;
+        }
+        case EntityType.DASHBOARD_DATA_MODEL: {
+          fetchResourcePermission(ResourceEntity.DASHBOARD_DATA_MODEL);
 
-        break;
+          break;
+        }
+        default: {
+          break;
+        }
       }
-      default: {
-        break;
-      }
+    } finally {
+      setIsLoading(false);
     }
   };
 

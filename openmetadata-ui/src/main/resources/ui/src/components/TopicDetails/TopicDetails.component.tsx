@@ -18,12 +18,14 @@ import ActivityFeedProvider, {
 } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
 import { getTopicDetailsPath } from 'constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { TagLabel } from 'generated/type/schema';
 import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { EntityTags } from 'Models';
@@ -262,8 +264,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   }, [topicPermissions, topicFQN]);
 
-  const tabs = useMemo(() => {
-    const allTabs = [
+  const tabs = useMemo(
+    () => [
       {
         label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
         key: EntityTabs.SCHEMA,
@@ -368,11 +370,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             name={t('label.sample-data')}
           />
         ),
-        isHidden: !(
-          topicPermissions.ViewAll || topicPermissions.ViewSampleData
-        ),
         key: EntityTabs.SAMPLE_DATA,
-        children: <SampleDataTopic topicId={topicDetails.id} />,
+        children: !(
+          topicPermissions.ViewAll || topicPermissions.ViewSampleData
+        ) ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
+          <SampleDataTopic topicId={topicDetails.id} />
+        ),
       },
       {
         label: <TabsLabel id={EntityTabs.CONFIG} name={t('label.config')} />,
@@ -423,21 +428,21 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           />
         ),
       },
-    ];
+    ],
 
-    return allTabs.filter((data) => !data.isHidden);
-  }, [
-    activeTab,
-    feedCount,
-    topicDetails,
-    entityFieldTaskCount,
-    entityFieldThreadCount,
-    topicPermissions,
-    isEdit,
-    entityName,
-    topicFQN,
-    topicPermissions,
-  ]);
+    [
+      activeTab,
+      feedCount,
+      topicDetails,
+      entityFieldTaskCount,
+      entityFieldThreadCount,
+      topicPermissions,
+      isEdit,
+      entityName,
+      topicFQN,
+      topicPermissions,
+    ]
+  );
 
   return (
     <PageLayoutV1
