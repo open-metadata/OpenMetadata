@@ -24,7 +24,6 @@ from metadata.generated.schema.type.tagLabel import (
     TagSource,
 )
 from metadata.ingestion.source.database.database_service import DataModelLink
-from metadata.ingestion.source.database.dbt.dbt_config import DbtFiles, DbtObjects
 from metadata.ingestion.source.database.dbt.dbt_utils import (
     generate_entity_link,
     get_corrected_name,
@@ -33,6 +32,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_dbt_raw_query,
 )
 from metadata.ingestion.source.database.dbt.metadata import DbtSource
+from metadata.ingestion.source.database.dbt.models import DbtFiles, DbtObjects
 from metadata.utils.tag_utils import get_tag_labels
 
 mock_dbt_config = {
