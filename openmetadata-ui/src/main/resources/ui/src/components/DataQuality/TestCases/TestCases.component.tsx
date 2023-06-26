@@ -29,7 +29,11 @@ import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchQuery } from 'rest/searchAPI';
-import { getListTestCase, ListTestCaseParams } from 'rest/testAPI';
+import {
+  getListTestCase,
+  getTestCaseById,
+  ListTestCaseParams,
+} from 'rest/testAPI';
 import { showErrorToast } from 'utils/ToastUtils';
 import { DataQualitySearchParams } from '../DataQuality.interface';
 import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
@@ -115,16 +119,31 @@ export const TestCases = () => {
         pageSize: PAGE_SIZE,
         searchIndex: SearchIndex.TEST_CASE,
         query: searchValue,
+        fetchSource: false,
       });
-      const hits = (
+      const promise = (
         response.hits.hits as SearchHitBody<
           SearchIndex.TEST_CASE,
           TestCaseSearchSource
         >[]
-      ).map((value) => value._source);
+      ).map((value) =>
+        getTestCaseById(value._id ?? '', {
+          fields: 'testDefinition,testCaseResult,testSuite',
+        })
+      );
+
+      const value = await Promise.allSettled(promise);
+
+      const testSuites = value.reduce((prev, curr) => {
+        if (curr.status === 'fulfilled') {
+          return [...prev, curr.value.data];
+        }
+
+        return prev;
+      }, [] as TestCase[]);
 
       setTestCase({
-        data: hits,
+        data: testSuites,
         paging: { total: response.hits.total.value ?? 0 },
       });
     } catch (error) {

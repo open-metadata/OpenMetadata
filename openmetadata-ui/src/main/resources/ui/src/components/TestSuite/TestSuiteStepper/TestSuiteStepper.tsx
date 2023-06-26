@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, Row, Select, Space, Typography } from 'antd';
+import { Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import RightPanel from 'components/AddDataQualityTest/components/RightPanel';
 import { getRightPanelForAddTestSuitePage } from 'components/AddDataQualityTest/rightPanelData';
+import { AddTestCaseList } from 'components/AddTestCaseList/AddTestCaseList.component';
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import SuccessScreen from 'components/common/success-screen/SuccessScreen';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
@@ -29,7 +30,7 @@ import { FormSubmitType } from 'enums/form.enum';
 import { OwnerType } from 'enums/user.enum';
 import { TestCase } from 'generated/tests/testCase';
 import { TestSuite } from 'generated/tests/testSuite';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import {
@@ -38,7 +39,6 @@ import {
   getListTestCase,
 } from 'rest/testAPI';
 import { getCurrentUserId } from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
 import { getTestSuitePath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import AddTestSuiteForm from '../AddTestSuiteForm/AddTestSuiteForm';
@@ -60,7 +60,7 @@ const TestSuiteStepper = () => {
     setActiveServiceStep(2);
   };
 
-  const onSubmit = async (data: { testCase: string[] }) => {
+  const onSubmit = async (data: string[]) => {
     try {
       const owner = {
         id: getCurrentUserId(),
@@ -74,7 +74,7 @@ const TestSuiteStepper = () => {
       });
       setTestSuiteResponse(response);
       await addTestCaseToLogicalTestSuite({
-        testCaseIds: data.testCase,
+        testCaseIds: data,
         testSuiteId: response.id ?? '',
       });
       setActiveServiceStep(3);
@@ -113,48 +113,14 @@ const TestSuiteStepper = () => {
     fetchTestCases();
   }, []);
 
-  const selectTestCase = useMemo(() => {
-    return (
-      <Form
-        data-testid="test-case-form"
-        initialValues={{ testCase: selectedTestCase }}
-        layout="vertical"
-        name="selectTestCase"
-        onFinish={onSubmit}
-        onValuesChange={({ testCase }) => setSelectedTestCase(testCase)}>
-        <Form.Item label={t('label.test-case-plural')} name="testCase">
-          <Select
-            mode="multiple"
-            placeholder={t('label.please-select-entity', {
-              entity: t('label.test-case-plural'),
-            })}>
-            {testCases.map((test) => (
-              <Select.Option key={test.id}>{getEntityName(test)}</Select.Option>
-            ))}
-          </Select>
-        </Form.Item>
-        <Form.Item noStyle>
-          <Space className="w-full justify-end" size={16}>
-            <Button
-              data-testid="back-button"
-              onClick={() => setActiveServiceStep(1)}>
-              {t('label.back')}
-            </Button>
-            <Button
-              data-testid="submit-button"
-              htmlType="submit"
-              type="primary">
-              {t('label.submit')}
-            </Button>
-          </Space>
-        </Form.Item>
-      </Form>
-    );
-  }, [testCases, selectedTestCase, testSuiteResponse]);
-
   const RenderSelectedTab = useCallback(() => {
     if (activeServiceStep === 2) {
-      return selectTestCase;
+      return (
+        <AddTestCaseList
+          onCancel={() => setActiveServiceStep(1)}
+          onSubmit={onSubmit}
+        />
+      );
     } else if (activeServiceStep === 3) {
       return (
         <SuccessScreen
