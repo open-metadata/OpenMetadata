@@ -26,6 +26,7 @@ export enum ActivityFeedTabs {
 export interface ActivityFeedTabBasicProps {
   fqn: string;
   onFeedUpdate: () => void;
+  onUpdateEntityDetails?: () => void;
   owner?: EntityReference;
   tags?: TagLabel[];
   description?: string;

@@ -23,6 +23,15 @@ import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
+export type ListDataModelParams = {
+  service?: string;
+  fields?: string;
+  after?: string;
+  before?: string;
+  include?: Include;
+  limit?: number;
+};
+
 export const getDashboardVersions = async (id: string) => {
   const url = `/dashboards/${id}/versions`;
 
@@ -133,21 +142,11 @@ export const restoreDashboard = async (id: string) => {
   return response.data;
 };
 
-export const getDataModels = async (
-  service: string,
-  fields: string,
-  paging?: PagingWithoutTotal,
-  include: Include = Include.NonDeleted
-) => {
+export const getDataModels = async (params?: ListDataModelParams) => {
   const response = await APIClient.get<PagingResponse<ServicePageData[]>>(
     `/dashboard/datamodels`,
     {
-      params: {
-        service,
-        fields,
-        ...paging,
-        include,
-      },
+      params,
     }
   );
 

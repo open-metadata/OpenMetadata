@@ -32,7 +32,10 @@ import {
 } from 'rest/miscAPI';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import {
+  FQN_SEPARATOR_CHAR,
+  WILD_CARD_CHAR,
+} from '../constants/char.constants';
 import {
   entityLinkRegEx,
   EntityRegEx,
@@ -65,7 +68,7 @@ import { showErrorToast } from './ToastUtils';
 export const getEntityType = (entityLink: string) => {
   const match = EntityRegEx.exec(entityLink);
 
-  return match?.[1];
+  return match?.[1] as EntityType;
 };
 export const getEntityFQN = (entityLink: string) => {
   const match = EntityRegEx.exec(entityLink);
@@ -177,7 +180,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
   if (mentionChar === '@') {
     let atValues = [];
     if (!searchTerm) {
-      const data = await getSearchedUsers('*', 0, 5);
+      const data = await getSearchedUsers(WILD_CARD_CHAR, 1, 5);
       const hits = data.data.hits.hits;
 
       atValues = hits.map((hit) => {

@@ -11,10 +11,16 @@
  *  limitations under the License.
  */
 
-import { ColumnJoins, Table } from '../../generated/entity/data/table';
+import {
+  ColumnJoins,
+  Table,
+  TableConstraint,
+} from '../../generated/entity/data/table';
 
 export interface VersionTableProps {
   columnName: string;
   columns: Table['columns'];
   joins: Array<ColumnJoins>;
+  constraintUpdatedColumns?: string[];
+  tableConstraints?: Array<TableConstraint>;
 }

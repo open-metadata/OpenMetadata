@@ -14,6 +14,7 @@
 import { Form, FormProps, Input } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { compare } from 'fast-json-patch';
 import { Table } from 'generated/entity/data/table';
 import React, {
@@ -111,14 +112,22 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
 
   const handleFormSubmit: FormProps['onFinish'] = async (value) => {
     const { parameterValues, description } = createTestCaseObj(value);
-    const updatedTestCase = { ...testCase, parameterValues, description };
+    const updatedTestCase = {
+      ...testCase,
+      parameterValues,
+      description,
+      name: value.name,
+    };
     const jsonPatch = compare(testCase, updatedTestCase);
 
     if (jsonPatch.length) {
       try {
         setIsLoadingOnSave(true);
-        await updateTestCaseById(testCase.id || '', jsonPatch);
-        onUpdate && onUpdate();
+        const updateRes = await updateTestCaseById(
+          testCase.id || '',
+          jsonPatch
+        );
+        onUpdate && onUpdate(updateRes);
         showSuccessToast(
           t('server.update-entity-success', { entity: t('label.test-case') })
         );
@@ -215,7 +224,16 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
               <Input disabled />
             </Form.Item>
           )}
-          <Form.Item required label={`${t('label.name')}:`} name="name">
+          <Form.Item
+            required
+            label={`${t('label.name')}:`}
+            name="name"
+            rules={[
+              {
+                pattern: ENTITY_NAME_REGEX,
+                message: t('message.entity-name-validation'),
+              },
+            ]}>
             <Input disabled placeholder={t('message.enter-test-case-name')} />
           </Form.Item>
           <Form.Item

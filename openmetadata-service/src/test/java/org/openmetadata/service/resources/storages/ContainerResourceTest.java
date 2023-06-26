@@ -44,7 +44,12 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.entity.data.Container;
-import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.ContainerDataModel;
+import org.openmetadata.schema.type.ContainerFileFormat;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -72,6 +77,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
 
   public ContainerResourceTest() {
     super(Entity.CONTAINER, Container.class, ContainerList.class, "containers", ContainerResource.FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Test

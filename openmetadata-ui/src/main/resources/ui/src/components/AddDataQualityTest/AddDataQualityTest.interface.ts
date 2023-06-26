@@ -38,7 +38,6 @@ export interface TestCaseFormProps {
 export interface TestSuiteIngestionProps {
   testSuite: TestSuite;
   ingestionPipeline?: IngestionPipeline;
-  table?: Table;
   onCancel: () => void;
 }
 
@@ -71,5 +70,5 @@ export interface EditTestCaseModalProps {
   visible: boolean;
   testCase: TestCase;
   onCancel: () => void;
-  onUpdate?: () => void;
+  onUpdate?: (testCase: TestCase) => void;
 }

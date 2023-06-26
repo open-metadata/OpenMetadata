@@ -8,19 +8,19 @@ slug: /connectors/database/oracle/cli
 {% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- | :--------------------------- |
+| :----------------- |:-----------------------------|
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | Partially via Views          |
+| Lineage            | {% icon iconName="check" /%} |
 | DBT                | {% icon iconName="check" /%} |
-| Supported Versions | --                           |
+| Supported Versions | 12c, 18c, 19c, and 21c       |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
-| Lineage      | Partially via Views          |
+| Lineage      | {% icon iconName="check" /%} |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |
 
@@ -34,6 +34,7 @@ Configure and schedule Oracle metadata and profiler workflows from the OpenMetad
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
+- [Lineage](#lineage)
 - [dbt Integration](#dbt-integration)
 
 ## Requirements
@@ -520,6 +521,10 @@ metadata profile -c <path-to-yaml>
 ```
 
 Note now instead of running `ingest`, we are using the `profile` command to select the Profiler workflow.
+
+## Lineage
+
+You can learn more about how to ingest lineage [here](/connectors/ingestion/workflows/lineage).
 
 ## dbt Integration
 

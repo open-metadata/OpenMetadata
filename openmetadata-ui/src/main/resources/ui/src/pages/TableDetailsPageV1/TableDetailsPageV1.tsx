@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Divider, Row, Space, Tabs } from 'antd';
+import { Card, Col, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import ActivityFeedProvider, {
   useActivityFeedProvider,
@@ -20,6 +20,7 @@ import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/Act
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import DbtTab from 'components/DatasetDetails/DbtTab/DbtTab.component';
@@ -37,11 +38,12 @@ import TableProfilerV1 from 'components/TableProfiler/TableProfilerV1';
 import TableQueries from 'components/TableQueries/TableQueries';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
-import { FQN_SEPARATOR_CHAR, WILD_CARD_CHAR } from 'constants/char.constants';
-import { getTableTabPath, getVersionPath, ROUTES } from 'constants/constants';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
+import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
+import { getTableTabPath, getVersionPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
+import { mockDatasetData } from 'constants/mockTourData.constants';
 import { EntityTabs, EntityType, FqnPart } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
 import { CreateThread } from 'generated/api/feed/createThread';
 import { JoinedWith, Table } from 'generated/entity/data/table';
@@ -54,7 +56,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
-import { searchQuery } from 'rest/searchAPI';
+import { getQueriesList } from 'rest/queryAPI';
 import {
   addFollower,
   getTableDetailsByFQN,
@@ -74,13 +76,14 @@ import { defaultFields } from 'utils/DatasetDetailsUtils';
 import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
 import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { createQueryFilter } from 'utils/Query/QueryUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import './table-details-page-v1.less';
 
 const TableDetailsPageV1 = () => {
+  const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
+    useTourProvider();
   const [tableDetails, setTableDetails] = useState<Table>();
   const { datasetFQN, tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ datasetFQN: string; tab: string }>();
@@ -101,7 +104,7 @@ const TableDetailsPageV1 = () => {
   );
   const [queryCount, setQueryCount] = useState(0);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!isTourOpen);
 
   const fetchTableDetails = async () => {
     setLoading(true);
@@ -121,17 +124,11 @@ const TableDetailsPageV1 = () => {
       return;
     }
     try {
-      const response = await searchQuery({
-        query: WILD_CARD_CHAR,
-        pageNumber: 0,
-        pageSize: 0,
-        queryFilter: createQueryFilter([], tableDetails.id),
-        searchIndex: SearchIndex.QUERY,
-        includeDeleted: false,
-        trackTotalHits: true,
-        fetchSource: false,
+      const response = await getQueriesList({
+        limit: 0,
+        entityId: tableDetails.id,
       });
-      setQueryCount(response.hits.total.value);
+      setQueryCount(response.paging.total);
     } catch (error) {
       setQueryCount(0);
     }
@@ -148,7 +145,6 @@ const TableDetailsPageV1 = () => {
     DEFAULT_ENTITY_PERMISSION
   );
 
-  const isTourPage = location.pathname.includes(ROUTES.TOUR);
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const {
     tier,
@@ -249,7 +245,7 @@ const TableDetailsPageV1 = () => {
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      if (!isTourPage) {
+      if (!isTourOpen) {
         history.push(getTableTabPath(datasetFQN, activeKey));
       }
     }
@@ -385,7 +381,7 @@ const TableDetailsPageV1 = () => {
 
   const schemaTab = useMemo(
     () => (
-      <Row gutter={[0, 16]} wrap={false}>
+      <Row gutter={[0, 16]} id="schemaDetails" wrap={false}>
         <Col className="p-t-sm m-l-lg" flex="auto">
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
@@ -445,7 +441,6 @@ const TableDetailsPageV1 = () => {
           {!isEmpty(joinedTables) ? (
             <>
               <FrequentlyJoinedTables joinedTables={joinedTables} />
-              <Divider className="m-y-sm" />
             </>
           ) : null}
 
@@ -454,7 +449,10 @@ const TableDetailsPageV1 = () => {
               entityFqn={datasetFQN}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.TABLE}
-              permission={tablePermissions.EditAll || tablePermissions.EditTags}
+              permission={
+                (tablePermissions.EditAll || tablePermissions.EditTags) &&
+                !tableDetails?.deleted
+              }
               selectedTags={tableTags}
               tagType={TagSource.Classification}
               onSelectionChange={handleTagSelection}
@@ -465,7 +463,10 @@ const TableDetailsPageV1 = () => {
               entityFqn={datasetFQN}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.TABLE}
-              permission={tablePermissions.EditAll || tablePermissions.EditTags}
+              permission={
+                (tablePermissions.EditAll || tablePermissions.EditTags) &&
+                !tableDetails?.deleted
+              }
               selectedTags={tableTags}
               tagType={TagSource.Glossary}
               onSelectionChange={handleTagSelection}
@@ -511,6 +512,7 @@ const TableDetailsPageV1 = () => {
               owner={tableDetails?.owner}
               tags={tableDetails?.tags}
               onFeedUpdate={getEntityFeedCount}
+              onUpdateEntityDetails={fetchTableDetails}
             />
           </ActivityFeedProvider>
         ),
@@ -523,9 +525,7 @@ const TableDetailsPageV1 = () => {
           />
         ),
         isHidden: !(
-          tablePermissions.ViewAll ||
-          tablePermissions.ViewBasic ||
-          tablePermissions.ViewSampleData
+          tablePermissions.ViewAll || tablePermissions.ViewSampleData
         ),
         key: EntityTabs.SAMPLE_DATA,
         children: (
@@ -559,7 +559,10 @@ const TableDetailsPageV1 = () => {
       },
       {
         label: (
-          <TabsLabel id={EntityTabs.PROFILER} name={t('label.data-quality')} />
+          <TabsLabel
+            id={EntityTabs.PROFILER}
+            name={t('label.profiler-amp-data-quality')}
+          />
         ),
         isHidden: !(
           tablePermissions.ViewAll ||
@@ -593,21 +596,18 @@ const TableDetailsPageV1 = () => {
           </Card>
         ),
       },
-      ...(tableDetails?.dataModel
-        ? [
-            {
-              label: (
-                <TabsLabel
-                  id={EntityTabs.DBT}
-                  name={t('label.dbt-lowercase')}
-                />
-              ),
-              // isHidden: !(dataModel?.sql ?? dataModel?.rawSql),
-              key: EntityTabs.DBT,
-              children: <DbtTab dataModel={tableDetails?.dataModel} />,
-            },
-          ]
-        : []),
+
+      {
+        label: (
+          <TabsLabel id={EntityTabs.DBT} name={t('label.dbt-lowercase')} />
+        ),
+        isHidden: !(
+          tableDetails?.dataModel?.sql ?? tableDetails?.dataModel?.rawSql
+        ),
+        key: EntityTabs.DBT,
+        children: <DbtTab dataModel={tableDetails?.dataModel} />,
+      },
+
       {
         label: (
           <TabsLabel
@@ -640,6 +640,7 @@ const TableDetailsPageV1 = () => {
     entityName,
     onExtensionUpdate,
     getEntityFeedCount,
+    tableDetails?.dataModel,
   ]);
 
   const onTierUpdate = useCallback(
@@ -752,9 +753,13 @@ const TableDetailsPageV1 = () => {
   }, [version]);
 
   useEffect(() => {
-    fetchTableDetails();
-    getEntityFeedCount();
-  }, [datasetFQN]);
+    if (isTourOpen || isTourPage) {
+      setTableDetails(mockDatasetData.tableDetails as unknown as Table);
+    } else {
+      fetchTableDetails();
+      getEntityFeedCount();
+    }
+  }, [datasetFQN, isTourOpen, isTourPage]);
 
   useEffect(() => {
     if (tableDetails) {
@@ -781,8 +786,12 @@ const TableDetailsPageV1 = () => {
     }
   };
 
-  if (loading || !tableDetails) {
+  if (loading) {
     return <Loader />;
+  }
+
+  if (!tableDetails) {
+    return <ErrorPlaceHolder className="m-0" />;
   }
 
   return (
@@ -792,7 +801,7 @@ const TableDetailsPageV1 = () => {
       title="Table details">
       <Row gutter={[0, 12]}>
         {/* Entity Heading */}
-        <Col className="p-x-lg" span={24}>
+        <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
             dataAsset={tableDetails}
             entityType={EntityType.TABLE}
@@ -809,7 +818,11 @@ const TableDetailsPageV1 = () => {
         {/* Entity Tabs */}
         <Col span={24}>
           <Tabs
-            activeKey={activeTab ?? EntityTabs.SCHEMA}
+            activeKey={
+              isTourOpen
+                ? activeTabForTourDatasetPage
+                : activeTab ?? EntityTabs.SCHEMA
+            }
             className="table-details-page-tabs"
             data-testid="tabs"
             items={tabs}

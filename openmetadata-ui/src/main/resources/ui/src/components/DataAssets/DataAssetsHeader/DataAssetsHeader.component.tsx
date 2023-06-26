@@ -31,7 +31,7 @@ import TierCard from 'components/common/TierCard/TierCard';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { getDashboardDetailsPath } from 'constants/constants';
+import { DE_ACTIVE_COLOR, getDashboardDetailsPath } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
@@ -62,7 +62,7 @@ import {
 import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { bytesToSize } from 'utils/StringsUtils';
 import { getTierTags, getUsagePercentile } from 'utils/TableUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import { showErrorToast, showInfoToast } from 'utils/ToastUtils';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
@@ -417,6 +417,11 @@ export const DataAssetsHeader = ({
     );
   };
 
+  const handleShareButtonClick = async () => {
+    await onCopyToClipBoard();
+    showInfoToast(`Link copied to clipboard`, 2000);
+  };
+
   return (
     <>
       <Row gutter={[8, 12]}>
@@ -469,7 +474,7 @@ export const DataAssetsHeader = ({
                         disabled={
                           !(permissions.EditAll || permissions.EditTags)
                         }
-                        icon={<EditIcon width="14px" />}
+                        icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
                         size="small"
                         type="text"
                       />
@@ -500,6 +505,7 @@ export const DataAssetsHeader = ({
                 </Button>
                 <Button
                   className="w-16 p-0"
+                  data-testid="entity-follow-button"
                   icon={
                     <Icon component={isFollowing ? StarFilledIcon : StarIcon} />
                   }
@@ -508,7 +514,7 @@ export const DataAssetsHeader = ({
                 </Button>
                 <Button
                   icon={<Icon component={ShareIcon} />}
-                  onClick={onCopyToClipBoard}
+                  onClick={handleShareButtonClick}
                 />
                 <ManageButton
                   allowSoftDelete={!dataAsset.deleted}
@@ -521,7 +527,7 @@ export const DataAssetsHeader = ({
                   entityFQN={dataAsset.fullyQualifiedName}
                   entityId={dataAsset.id}
                   entityName={entityName}
-                  entityType={EntityType.TABLE}
+                  entityType={entityType}
                   onAnnouncementClick={
                     permissions?.EditAll
                       ? () => setIsAnnouncementDrawer(true)

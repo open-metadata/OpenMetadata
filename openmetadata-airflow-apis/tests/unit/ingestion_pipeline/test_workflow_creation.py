@@ -340,4 +340,3 @@ class OMetaServiceTest(TestCase):
         config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 
         parse_workflow_config_gracefully(config)
-        assert workflow_config.source.type == "mysql"

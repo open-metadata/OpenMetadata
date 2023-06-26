@@ -171,6 +171,12 @@ This is a sample config for Snowflake:
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=43 %}
+
+**clientSessionKeepAlive**: Optional Configuration to keep the session active in case the ingestion job runs for longer duration. 
+
+{% /codeInfo %}
+
 {% codeInfo srNumber=7 %}
 
 **privateKey**: If you have configured the key pair authentication for the given user you will have to pass the private key associated with the user in this field. You can checkout [this](https://docs.snowflake.com/en/user-guide/key-pair-auth) doc to get more details about key-pair authentication.
@@ -270,6 +276,9 @@ source:
 ```
 ```yaml {% srNumber=6 %}
       includeTempTables: false
+```
+```yaml {% srNumber=43 %}
+      clientSessionKeepAlive: false
 ```
 ```yaml {% srNumber=7 %}
       # privateKey: <privateKey>

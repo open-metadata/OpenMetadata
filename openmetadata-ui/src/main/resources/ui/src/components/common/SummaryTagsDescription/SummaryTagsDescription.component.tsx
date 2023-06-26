@@ -16,7 +16,6 @@ import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { TagLabel } from 'generated/type/tagLabel';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as TagIcon } from '../../../assets/svg/tag-grey.svg';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 
 const SummaryTagsDescription = ({
@@ -30,7 +29,7 @@ const SummaryTagsDescription = ({
 
   return (
     <>
-      <Row className="m-md" gutter={[0, 16]}>
+      <Row className="m-md" gutter={[0, 8]}>
         <Col span={24}>
           <Typography.Text className="summary-panel-section-title">
             {t('label.tag-plural')}
@@ -39,14 +38,6 @@ const SummaryTagsDescription = ({
         <Col span={24}>
           {tags.length > 0 ? (
             <Row>
-              <Col span={1}>
-                <TagIcon
-                  className="m-t-xs"
-                  data-testid="tag-grey-icon"
-                  height={14}
-                  width={14}
-                />
-              </Col>
               <Col span={23}>
                 <TagsViewer sizeCap={-1} tags={tags} />
               </Col>
@@ -61,7 +52,7 @@ const SummaryTagsDescription = ({
 
       <Divider className="m-y-xs" />
 
-      <Row className="m-md" gutter={[0, 16]}>
+      <Row className="m-md" gutter={[0, 8]}>
         <Col span={24}>
           <Typography.Text
             className="summary-panel-section-title"
@@ -72,7 +63,10 @@ const SummaryTagsDescription = ({
         <Col span={24}>
           <div>
             {entityDetail.description?.trim() ? (
-              <RichTextEditorPreviewer markdown={entityDetail.description} />
+              <RichTextEditorPreviewer
+                markdown={entityDetail.description}
+                maxLength={80}
+              />
             ) : (
               <Typography className="text-grey-body">
                 {t('label.no-data-found')}

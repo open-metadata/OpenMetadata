@@ -1,7 +1,5 @@
 package org.openmetadata.service.resources.dataInsight;
 
-import static javax.ws.rs.core.Response.Status.OK;
-
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +11,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
@@ -38,10 +37,6 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestHighLevelClient;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.dataInsight.CreateDataInsightChart;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
@@ -57,9 +52,10 @@ import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.search.IndexUtil;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.util.ElasticSearchClientUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -71,7 +67,8 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "analytics")
 public class DataInsightChartResource extends EntityResource<DataInsightChart, DataInsightChartRepository> {
-  private RestHighLevelClient client;
+  private static SearchClient searchClient;
+  private static CollectionDAO collectionDao;
   public static final String COLLECTION_PATH = DataInsightChartRepository.COLLECTION_PATH;
   public static final String FIELDS = "owner";
 
@@ -84,6 +81,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
 
   public DataInsightChartResource(CollectionDAO dao, Authorizer authorizer) {
     super(DataInsightChart.class, new DataInsightChartRepository(dao), authorizer);
+    this.collectionDao = dao;
   }
 
   public static class DataInsightChartList extends ResultList<DataInsightChart> {
@@ -95,10 +93,12 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   }
 
   @Override
-  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+  public void initialize(OpenMetadataApplicationConfig config)
+      throws IOException, ClassNotFoundException, NoSuchMethodException, InvocationTargetException,
+          InstantiationException, IllegalAccessException {
     // instantiate an elasticsearch client
     if (config.getElasticSearchConfiguration() != null) {
-      this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
+      this.searchClient = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), collectionDao);
     }
     // Find the existing webAnalyticEventTypes and add them from json files
     List<DataInsightChart> dataInsightCharts = repository.getEntitiesFromSeedData(".*json/data/dataInsight/.*\\.json$");
@@ -464,13 +464,9 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
     OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
 
-    SearchRequest searchRequest =
-        repository.buildSearchRequest(startTs, endTs, tier, team, dataInsightChartName, dataReportIndex);
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-
-    return Response.status(OK)
-        .entity(repository.processDataInsightChartResult(searchResponse, dataInsightChartName))
-        .build();
+    Response response =
+        searchClient.listDataInsightChartResult(startTs, endTs, tier, team, dataInsightChartName, dataReportIndex);
+    return response;
   }
 
   private DataInsightChart getDataInsightChart(CreateDataInsightChart create, String user) throws IOException {

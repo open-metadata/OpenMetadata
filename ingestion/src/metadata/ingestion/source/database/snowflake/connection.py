@@ -98,6 +98,9 @@ def get_connection(connection: SnowflakeConnection) -> Engine:
     """
     Create connection
     """
+    if not connection.connectionArguments:
+        connection.connectionArguments = init_empty_connection_arguments()
+
     if connection.privateKey:
         snowflake_private_key_passphrase = (
             connection.snowflakePrivatekeyPassphrase.get_secret_value()
@@ -120,10 +123,12 @@ def get_connection(connection: SnowflakeConnection) -> Engine:
             encryption_algorithm=serialization.NoEncryption(),
         )
 
-        if connection.privateKey:
-            if not connection.connectionArguments:
-                connection.connectionArguments = init_empty_connection_arguments()
-            connection.connectionArguments.__root__["private_key"] = pkb
+        connection.connectionArguments.__root__["private_key"] = pkb
+
+    if connection.clientSessionKeepAlive:
+        connection.connectionArguments.__root__[
+            "client_session_keep_alive"
+        ] = connection.clientSessionKeepAlive
 
     return create_generic_db_connection(
         connection=connection,

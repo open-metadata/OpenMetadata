@@ -13,7 +13,8 @@
 
 import i18next from 'i18next';
 import { StepperStepType } from 'Models';
-import { ROUTES } from './constants';
+import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
+import { getDataQualityPagePath } from 'utils/RouterUtils';
 
 const TEST_SUITE_LABEL = i18next.t('label.test-suite');
 const ADD_TEST_SUITE_LABEL = i18next.t('label.add-entity', {
@@ -26,8 +27,14 @@ export const STEPS_FOR_ADD_TEST_SUITE: Array<StepperStepType> = [
     step: 1,
   },
   {
-    name: i18next.t('label.test-suite-status'),
+    name: i18next.t('label.add-entity', {
+      entity: i18next.t('label.test-case'),
+    }),
     step: 2,
+  },
+  {
+    name: i18next.t('label.test-suite-status'),
+    step: 3,
   },
 ];
 
@@ -41,7 +48,7 @@ export const TEST_SUITE_BREADCRUMB = [
 export const TEST_SUITE_STEPPER_BREADCRUMB = [
   {
     name: TEST_SUITE_LABEL,
-    url: ROUTES.TEST_SUITES,
+    url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
     activeTitle: false,
   },
   {
@@ -51,4 +58,4 @@ export const TEST_SUITE_STEPPER_BREADCRUMB = [
   },
 ];
 
-export const PROGRESS_BAR_COLOR = '#4E8C9C';
+export const PROGRESS_BAR_COLOR = '#48ca9e';

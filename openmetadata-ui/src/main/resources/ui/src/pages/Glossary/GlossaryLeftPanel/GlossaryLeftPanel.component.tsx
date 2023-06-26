@@ -13,7 +13,7 @@
 
 import { Button, Col, Menu, MenuProps, Row, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { ReactComponent as IconFolder } from 'assets/svg/folder.svg';
+import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
 import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
 import LeftPanelCard from 'components/common/LeftPanelCard/LeftPanelCard';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -56,7 +56,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
         {
           key: glossary.name,
           label: getEntityName(glossary),
-          icon: <IconFolder height={16} width={16} />,
+          icon: <GlossaryIcon height={16} width={16} />,
         },
       ];
     }, [] as ItemType[]);

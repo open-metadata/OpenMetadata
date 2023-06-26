@@ -93,7 +93,7 @@ RUN pip freeze | grep "apache-airflow-providers" | grep -v "docker\|http" | xarg
 # because the psycopg2-binary generates a architecture specific error 
 # while authrenticating connection with the airflow, psycopg2 solves this error 
 RUN pip uninstall psycopg2-binary -y
-RUN pip install psycopg2 mysqlclient
+RUN pip install psycopg2 mysqlclient==2.1.1
 # Make required folders for openmetadata-airflow-apis
 RUN mkdir -p /opt/airflow/dag_generated_configs
 # This is required as it's responsible to create airflow.cfg file

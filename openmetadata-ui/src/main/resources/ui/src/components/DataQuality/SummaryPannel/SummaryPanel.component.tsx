@@ -19,8 +19,9 @@ import { useTranslation } from 'react-i18next';
 import { getTestCaseExecutionSummary } from 'rest/testAPI';
 import {} from 'utils/CommonUtils';
 import { showErrorToast } from 'utils/ToastUtils';
+import { SummaryPanelProps } from './SummaryPanel.interface';
 
-export const SummaryPanel = () => {
+export const SummaryPanel = ({ testSuiteId }: SummaryPanelProps) => {
   const { t } = useTranslation();
 
   const [summary, setSummary] = useState<TestSummary>();
@@ -29,7 +30,7 @@ export const SummaryPanel = () => {
   const fetchTestSummary = async () => {
     setIsLoading(true);
     try {
-      const response = await getTestCaseExecutionSummary();
+      const response = await getTestCaseExecutionSummary(testSuiteId);
       setSummary(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -40,7 +41,7 @@ export const SummaryPanel = () => {
 
   useEffect(() => {
     fetchTestSummary();
-  }, []);
+  }, [testSuiteId]);
 
   return (
     <Row wrap gutter={[16, 16]}>
@@ -49,7 +50,7 @@ export const SummaryPanel = () => {
           className="h-full"
           isLoading={isLoading}
           showProgressBar={false}
-          title={t('label.total-entity', { entity: t('label.test') })}
+          title={t('label.total-entity', { entity: t('label.test-plural') })}
           total={summary?.total ?? 0}
           value={summary?.total ?? 0}
         />
@@ -78,7 +79,7 @@ export const SummaryPanel = () => {
           title={t('label.failed')}
           total={summary?.total ?? 0}
           type="failed"
-          value={summary?.aborted ?? 0}
+          value={summary?.failed ?? 0}
         />
       </Col>
     </Row>

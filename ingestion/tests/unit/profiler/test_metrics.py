@@ -27,7 +27,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
-from metadata.profiler.interface.sqlalchemy.sqa_profiler_interface import (
+from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
 from metadata.profiler.metrics.core import add_props
