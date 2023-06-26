@@ -59,7 +59,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public TestCase setFields(TestCase test, Fields fields) throws IOException {
-    test.setTestSuite(fields.contains(TEST_SUITE_FIELD) ? getTestSuite(test) : null);
+    test.setTestSuites(fields.contains("testSuites") ? getTestSuites(test) : null);
+    test.setTestSuite(fields.contains("testSuite") ? getTestSuite(test) : null);
     test.setTestDefinition(fields.contains("testDefinition") ? getTestDefinition(test) : null);
     return test.withTestCaseResult(fields.contains(TEST_CASE_RESULT_FIELD) ? getTestCaseResult(test) : null);
   }
@@ -118,7 +119,34 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private EntityReference getTestSuite(TestCase test) throws IOException {
-    return getFromEntityRef(test.getId(), Relationship.CONTAINS, TEST_SUITE, true);
+    // `testSuite` field returns the executable `testSuite` linked to that testCase
+    List<CollectionDAO.EntityRelationshipRecord> records =
+        findFrom(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
+    ensureSingleRelationship(entityType, test.getId(), records, Relationship.CONTAINS.value(), true);
+    for (CollectionDAO.EntityRelationshipRecord record : records) {
+      TestSuite testSuite = Entity.getEntity(TEST_SUITE, record.getId(), "", Include.ALL);
+      if (testSuite.getExecutable()) {
+        return testSuite.getEntityReference();
+      }
+    }
+    return null;
+  }
+
+  private List<TestSuite> getTestSuites(TestCase test) throws IOException {
+    // `testSuites` field returns all the `testSuite` (executable and logical) linked to that testCase
+    List<CollectionDAO.EntityRelationshipRecord> records =
+        findFrom(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
+    ensureSingleRelationship(entityType, test.getId(), records, Relationship.CONTAINS.value(), true);
+    return records.stream()
+        .map(
+            record -> {
+              try {
+                return Entity.<TestSuite>getEntity(TEST_SUITE, record.getId(), "", Include.ALL);
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+            })
+        .collect(Collectors.toList());
   }
 
   private EntityReference getTestDefinition(TestCase test) throws IOException {

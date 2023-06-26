@@ -52,7 +52,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   onConfirmation,
   updateThreadHandler,
   onReply,
-  taskDetails,
+  task,
   announcementDetails,
   editAnnouncementPermission,
   showUserAvatar = true,
@@ -216,7 +216,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
                 entityType={entityType as string}
                 feedType={feedType}
                 isEntityFeed={isEntityFeed}
-                taskDetails={taskDetails}
+                task={task}
                 timeStamp={feedDetail.postTs}
               />
               <FeedCardBody

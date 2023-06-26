@@ -22,12 +22,14 @@ import { CSMode } from '../enums/codemirror.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
   ColumnProfilerConfig,
+  DatabaseServiceType,
   DataType,
   PartitionIntervalType,
   PartitionIntervalUnit,
   ProfileSampleType,
 } from '../generated/entity/data/table';
 import { TestCaseStatus } from '../generated/tests/testCase';
+import { GREEN_3, PURPLE_2, RED_3 } from './Color.constants';
 import { JSON_TAB_SIZE } from './constants';
 
 export const excludedMetrics = [
@@ -255,7 +257,7 @@ export const INITIAL_ROW_METRIC_VALUE = {
         entity: t('label.row'),
       }),
       dataKey: 'rowCount',
-      color: '#43a047',
+      color: GREEN_3,
     },
   ],
   data: [],
@@ -266,17 +268,17 @@ export const INITIAL_OPERATION_METRIC_VALUE = {
     {
       title: t('label.insert'),
       dataKey: DMLOperationType.Insert,
-      color: '#7147e8',
+      color: GREEN_3,
     },
     {
       title: t('label.update'),
       dataKey: DMLOperationType.Update,
-      color: '#43a047',
+      color: PURPLE_2,
     },
     {
       title: t('label.delete'),
       dataKey: DMLOperationType.Delete,
-      color: '#ff7c50',
+      color: RED_3,
     },
   ],
   data: [],
@@ -392,4 +394,10 @@ export const PROFILER_MODAL_LABEL_STYLE = {
 export const TIME_BASED_PARTITION = [
   PartitionIntervalType.IngestionTime,
   PartitionIntervalType.TimeUnit,
+];
+
+export const allowedServiceForOperationGraph = [
+  DatabaseServiceType.BigQuery,
+  DatabaseServiceType.Redshift,
+  DatabaseServiceType.Snowflake,
 ];

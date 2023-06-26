@@ -42,9 +42,6 @@ pre {
 .table th {
   padding: 0.75em;
 }
-.text-success {
-  color: #28a745 !important;
-}
 .text-danger {
   color: #cb2431 !important;
 }
@@ -691,11 +688,6 @@ body .profiler-graph .recharts-active-dot circle {
 .react-flow__node {
   min-width: max-content;
 }
-.react-flow__background {
-  background-image: url('../assets/img/graph-bg.png');
-  background-repeat: repeat;
-}
-
 .leaf-node .react-flow__handle {
   background-color: #6b7280;
 }
@@ -1156,7 +1148,7 @@ div.ant-typography-ellipsis-custom {
 
 .ant-dropdown-menu-item-selected {
   color: #0968da;
-  background-color: #7147e825;
+  background-color: #e6f4ff;
 }
 
 .table-query-editor pre.CodeMirror-line {

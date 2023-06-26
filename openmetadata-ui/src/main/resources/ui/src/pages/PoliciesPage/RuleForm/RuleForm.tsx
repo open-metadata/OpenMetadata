@@ -25,7 +25,7 @@ import {
   validateRuleCondition,
 } from 'rest/rolesAPIV1';
 import { ALL_TYPE_RESOURCE_LIST } from 'utils/PermissionsUtils';
-import { allowedNameRegEx } from '../../../constants/regex.constants';
+import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import {
   Effect,
   Operation,
@@ -208,20 +208,15 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
             required: true,
             max: 128,
             min: 1,
-            message: t('label.field-required', { field: t('label.rule-name') }),
+            message: `${t('message.entity-size-in-between', {
+              entity: `${t('label.name')}`,
+              max: '128',
+              min: '1',
+            })}`,
           },
           {
-            validator: (_, value) => {
-              if (allowedNameRegEx.test(value)) {
-                return Promise.reject(
-                  t('message.field-text-is-invalid', {
-                    fieldText: t('label.rule-name'),
-                  })
-                );
-              }
-
-              return Promise.resolve();
-            },
+            pattern: ENTITY_NAME_REGEX,
+            message: t('message.entity-name-validation'),
           },
         ]}>
         <Input

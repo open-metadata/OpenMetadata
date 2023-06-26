@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button, Popover } from 'antd';
+import { Button, Tooltip } from 'antd';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import classNames from 'classnames';
-import TagsContainer from 'components/Tag/TagsContainer/tags-container';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import TagsContainerEntityTable from 'components/Tag/TagsContainerEntityTable/TagsContainerEntityTable.component';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { EntityType } from 'enums/entity.enum';
 import { ThreadType } from 'generated/entity/feed/thread';
-import { TagSource } from 'generated/type/schema';
+import { TagSource } from 'generated/type/tagLabel';
 import { EntityFieldThreads } from 'interface/feed.interface';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -54,14 +54,9 @@ const TableTags = <T extends TableUnion>({
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState<boolean>(false);
 
-  const isGlossaryType = useMemo(() => type === TagSource.Glossary, [type]);
-
   const showEditTagButton = useMemo(
     () =>
-      tags[type].length &&
-      hasTagEditAccess &&
-      !isEdit &&
-      !showInlineEditTagButton,
+      tags.length && hasTagEditAccess && !isEdit && !showInlineEditTagButton,
     [tags, type, hasTagEditAccess, isEdit, showInlineEditTagButton]
   );
 
@@ -79,26 +74,6 @@ const TableTags = <T extends TableUnion>({
     ]
   );
 
-  const otherTags = useMemo(
-    () =>
-      isGlossaryType
-        ? tags[TagSource.Classification]
-        : tags[TagSource.Glossary],
-    [tags, isGlossaryType]
-  );
-
-  const searchPlaceholder = useMemo(
-    () =>
-      isGlossaryType
-        ? t('label.search-entity', {
-            entity: t('label.glossary-term-plural'),
-          })
-        : t('label.search-entity', {
-            entity: t('label.tag-plural'),
-          }),
-    [isGlossaryType]
-  );
-
   const addButtonHandler = useCallback(() => {
     setIsEdit(true);
     // Fetch Classification or Glossary only once
@@ -109,25 +84,25 @@ const TableTags = <T extends TableUnion>({
 
   const getRequestTagsElement = useMemo(() => {
     const hasTags = !isEmpty(record.tags || []);
-    const text = hasTags
-      ? t('label.update-request-tag-plural')
-      : t('label.request-tag-plural');
 
     return (
-      <Popover
+      <Tooltip
         destroyTooltipOnHide
-        content={text}
         overlayClassName="ant-popover-request-description"
-        trigger="hover"
-        zIndex={9999}>
+        title={
+          hasTags
+            ? t('label.update-request-tag-plural')
+            : t('label.request-tag-plural')
+        }>
         <Button
           className="p-0 w-7 h-7 flex-center m-r-xss link-text hover-cell-icon"
           data-testid="request-tags"
           icon={
             <IconRequest
-              height={16}
+              height={14}
               name={t('label.request-tag-plural')}
-              width={16}
+              style={{ color: DE_ACTIVE_COLOR }}
+              width={14}
             />
           }
           type="text"
@@ -137,48 +112,47 @@ const TableTags = <T extends TableUnion>({
               : onRequestTagsHandler?.(record)
           }
         />
-      </Popover>
+      </Tooltip>
     );
   }, [record, onUpdateTagsHandler, onRequestTagsHandler]);
 
   return (
     <div className="hover-icon-group" data-testid={`${dataTestId}-${index}`}>
-      {isReadOnly ? (
-        <TagsViewer sizeCap={-1} tags={tags[type]} type="border" />
-      ) : (
-        <div
-          className={classNames(
-            `d-flex justify-content`,
-            isEdit || !isEmpty(tags) ? 'flex-col items-start' : 'items-center'
-          )}
-          data-testid="tags-wrapper">
-          <TagsContainer
-            className="w-min-13"
-            editable={isEdit}
-            isLoading={isTagLoading && isEdit}
-            placeholder={searchPlaceholder}
-            selectedTags={tags[type]}
-            showAddTagButton={hasTagEditAccess && isEmpty(tags[type])}
-            showEditTagButton={showInlineEditTagButton}
-            size="small"
-            tagList={tagList}
-            type="label"
-            onAddButtonClick={addButtonHandler}
-            onCancel={() => setIsEdit(false)}
-            onEditButtonClick={addButtonHandler}
-            onSelectionChange={async (selectedTags) => {
-              await handleTagSelection(selectedTags, record, otherTags);
-              setIsEdit(false);
-            }}
-          />
+      <div
+        className={classNames(
+          `d-flex justify-content`,
+          isEdit || !isEmpty(tags) ? 'flex-col items-start' : 'items-center'
+        )}
+        data-testid="tags-wrapper">
+        <TagsContainerEntityTable
+          isEditing={isEdit}
+          isLoading={isTagLoading}
+          permission={hasTagEditAccess && !isReadOnly}
+          selectedTags={tags}
+          showEditButton={showInlineEditTagButton}
+          tagType={type}
+          treeData={tagList}
+          onAddButtonClick={addButtonHandler}
+          onCancel={() => setIsEdit(false)}
+          onSelectionChange={async (selectedTags) => {
+            await handleTagSelection(selectedTags, record);
+            setIsEdit(false);
+          }}
+        />
 
+        {!isReadOnly && (
           <div className="m-t-xss d-flex items-center">
             {showEditTagButton ? (
               <Button
                 className="p-0 w-7 h-7 flex-center text-primary hover-cell-icon"
                 data-testid="edit-button"
                 icon={
-                  <IconEdit height={16} name={t('label.edit')} width={16} />
+                  <IconEdit
+                    height={14}
+                    name={t('label.edit')}
+                    style={{ color: DE_ACTIVE_COLOR }}
+                    width={14}
+                  />
                 }
                 size="small"
                 type="text"
@@ -189,7 +163,8 @@ const TableTags = <T extends TableUnion>({
             {hasTagOperationAccess && (
               <>
                 {/*  Request and Update tags */}
-                {getRequestTagsElement}
+
+                {type === TagSource.Classification && getRequestTagsElement}
 
                 {/*  List Conversation */}
                 {getFieldThreadElement(
@@ -218,8 +193,8 @@ const TableTags = <T extends TableUnion>({
               </>
             )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

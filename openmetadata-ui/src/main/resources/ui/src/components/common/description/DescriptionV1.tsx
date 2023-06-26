@@ -13,7 +13,6 @@
 
 import Icon from '@ant-design/icons';
 import { Card, Space, Tooltip, Typography } from 'antd';
-import { ReactComponent as AddChatIcon } from 'assets/svg/add-chat.svg';
 import { ReactComponent as CommentIcon } from 'assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as RequestIcon } from 'assets/svg/request-icon.svg';
@@ -21,7 +20,7 @@ import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { EntityType } from 'enums/entity.enum';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
-import React, { Fragment } from 'react';
+import React from 'react';
 import { useHistory } from 'react-router';
 import {
   getRequestDescriptionPath,
@@ -54,6 +53,8 @@ interface Props {
   onSuggest?: (value: string) => void;
   onEntityFieldSelect?: (value: string) => void;
   wrapInCard?: boolean;
+  isVersionView?: boolean;
+  showCommentsIcon?: boolean;
 }
 const DescriptionV1 = ({
   hasEditAccess,
@@ -70,6 +71,8 @@ const DescriptionV1 = ({
   entityType,
   entityFqn,
   wrapInCard = false,
+  isVersionView,
+  showCommentsIcon = true,
 }: Props) => {
   const descriptionThread = entityFieldThreads?.[0];
   const history = useHistory();
@@ -87,33 +90,29 @@ const DescriptionV1 = ({
   };
 
   const editButton = () => {
-    const extraIcons = !isUndefined(descriptionThread) ? (
+    const isDescriptionThread = !isUndefined(descriptionThread);
+    const extraIcons = showCommentsIcon && (
       <Icon
         component={CommentIcon}
-        data-testid="description-thread"
+        data-testid={
+          isDescriptionThread
+            ? 'description-thread'
+            : 'start-description-thread'
+        }
         style={{ color: DE_ACTIVE_COLOR }}
         width={20}
-        onClick={() => onThreadLinkSelect?.(descriptionThread.entityLink)}
-      />
-    ) : (
-      <Fragment>
-        {description?.trim() && onThreadLinkSelect ? (
-          <Icon
-            component={AddChatIcon}
-            data-testid="start-description-thread"
-            style={{ color: DE_ACTIVE_COLOR }}
-            onClick={() =>
-              onThreadLinkSelect?.(
+        onClick={() => {
+          isDescriptionThread
+            ? onThreadLinkSelect?.(descriptionThread?.entityLink ?? '')
+            : onThreadLinkSelect?.(
                 getEntityFeedLink(
                   entityType,
                   entityFqn,
                   EntityField.DESCRIPTION
                 )
-              )
-            }
-          />
-        ) : null}
-      </Fragment>
+              );
+        }}
+      />
     );
 
     const taskAction = () => {
@@ -147,7 +146,7 @@ const DescriptionV1 = ({
     };
 
     return !isReadOnly && hasEditAccess ? (
-      <Space className="w-full justify-end" size={12}>
+      <Space className="w-full" size={12}>
         <Icon
           component={EditIcon}
           data-testid="edit-description"
@@ -170,10 +169,10 @@ const DescriptionV1 = ({
         className="schema-description d-flex"
         direction="vertical"
         size={16}>
-        <div className="d-flex items-center justify-between">
+        <Space size="middle">
           <Text className="right-panel-label">{t('label.description')}</Text>
-          {editButton()}
-        </div>
+          {!isVersionView && editButton()}
+        </Space>
         <div>
           {description?.trim() ? (
             <RichTextEditorPreviewer

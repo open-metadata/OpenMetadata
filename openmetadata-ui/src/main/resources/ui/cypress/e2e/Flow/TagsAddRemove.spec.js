@@ -18,20 +18,14 @@ import {
 } from '../../common/common';
 import { TAGS_ADD_REMOVE_ENTITIES } from '../../constants/tagsAddRemove.constants';
 
-const addTags = (tag, parent) => {
+const addTags = (tag) => {
   cy.get('[data-testid="tag-selector"]')
     .scrollIntoView()
     .should('be.visible')
     .click()
     .type(tag);
 
-  if (parent) {
-    cy.get(`[title="${tag}"]`).should('be.visible').click();
-  } else {
-    cy.get('.ant-select-item-option-content')
-      .should('be.visible')
-      .click({ multiple: true });
-  }
+  cy.get(`[title="${tag}"]`).should('be.visible').click();
   cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
 };
 
@@ -40,18 +34,22 @@ const checkTags = (tag, checkForParentEntity) => {
     cy.get(
       '[data-testid="entity-right-panel"]  [data-testid="tags-container"] [data-testid="entity-tags"] '
     )
-
       .scrollIntoView()
-      .should('be.visible')
       .contains(tag);
   } else {
-    cy.get(`[data-testid="tag-${tag}"]`).should('be.visible');
+    cy.get(
+      '[data-testid="classification-tags-0"]  [data-testid="tags-container"] [data-testid="entity-tags"] '
+    )
+      .scrollIntoView()
+      .contains(tag);
   }
 };
 
 const removeTags = (checkForParentEntity) => {
   if (checkForParentEntity) {
-    cy.get('[data-testid="entity-right-panel"] [data-testid="edit-button"]')
+    cy.get(
+      '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="edit-button"]'
+    )
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -93,7 +91,7 @@ describe('Check if tags addition and removal flow working properly from tables',
         .should('be.visible')
         .click();
 
-      addTags(entityDetails.entityTags, true);
+      addTags(entityDetails.entityTags);
 
       interceptURL('PATCH', `/api/v1/${entityDetails.entity}/*`, 'tagsChange');
 
@@ -113,9 +111,8 @@ describe('Check if tags addition and removal flow working properly from tables',
           .click();
       } else {
         cy.get(
-          `.ant-table-tbody [data-testid="tag-container"] [data-testid="add-tag"]`
+          `.ant-table-tbody [data-testid="classification-tags-0"] [data-testid="tags-container"] [data-testid="entity-tags"]`
         )
-          .eq(0)
           .scrollIntoView()
           .should('be.visible')
           .click();

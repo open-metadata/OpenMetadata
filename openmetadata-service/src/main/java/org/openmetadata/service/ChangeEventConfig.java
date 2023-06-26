@@ -4,17 +4,17 @@ import org.openmetadata.api.configuration.ChangeEventConfiguration;
 
 public class ChangeEventConfig {
 
-  private static ChangeEventConfiguration INSTANCE;
-  private static volatile boolean INITIALIZED = false;
+  private static ChangeEventConfiguration instance;
+  private static volatile boolean initialized = false;
 
   public static void initialize(OpenMetadataApplicationConfig config) {
-    if (!INITIALIZED) {
-      INSTANCE = config.getChangeEventConfiguration();
-      INITIALIZED = true;
+    if (!initialized) {
+      instance = config.getChangeEventConfiguration();
+      initialized = true;
     }
   }
 
   public static ChangeEventConfiguration getInstance() {
-    return INSTANCE;
+    return instance;
   }
 }

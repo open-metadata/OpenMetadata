@@ -57,6 +57,18 @@
       "description": "Custom OpenMetadata Classification name for dbt tags.",
       "type": "string",
       "default": "dbtTags"
+    },
+    "schemaFilterPattern": {
+      "description": "Regex to only fetch tables or databases that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "tableFilterPattern": {
+      "description": "Regex exclude tables or databases that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "description": "Regex to only fetch databases that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
     }
   },
   "additionalProperties": false

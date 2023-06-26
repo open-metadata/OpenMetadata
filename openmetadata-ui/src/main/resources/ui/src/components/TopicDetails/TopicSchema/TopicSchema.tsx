@@ -28,6 +28,11 @@ import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import TableTags from 'components/TableTags/TableTags.component';
+import {
+  GlossaryTermDetailsProps,
+  TagsDetailsProps,
+} from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
+import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { CSMode } from 'enums/codemirror.enum';
 import { TagLabel, TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, isEmpty, isUndefined, map } from 'lodash';
@@ -35,11 +40,13 @@ import { EntityTags, TagOption } from 'Models';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
-import { fetchGlossaryTerms, getGlossaryTermlist } from 'utils/GlossaryUtils';
-import { getFilterTags } from 'utils/TableTags/TableTags.utils';
+import {
+  getGlossaryTermHierarchy,
+  getGlossaryTermsList,
+} from 'utils/GlossaryUtils';
+import { getAllTagsList, getTagsHierarchy } from 'utils/TagsUtils';
 import { DataTypeTopic, Field } from '../../../generated/entity/data/topic';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
-import { getClassifications, getTaglist } from '../../../utils/TagsUtils';
 import {
   updateFieldDescription,
   updateFieldTags,
@@ -59,6 +66,8 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   isReadOnly,
   onUpdate,
   hasTagEditAccess,
+  defaultExpandAllRows = false,
+  showSchemaDisplayTypeSwitch = true,
 }) => {
   const { t } = useTranslation();
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
@@ -69,18 +78,18 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     SchemaViewType.FIELDS
   );
 
-  const [glossaryTags, setGlossaryTags] = useState<TagOption[]>([]);
-  const [classificationTags, setClassificationTags] = useState<TagOption[]>([]);
+  const [glossaryTags, setGlossaryTags] = useState<GlossaryTermDetailsProps[]>(
+    []
+  );
+  const [classificationTags, setClassificationTags] = useState<
+    TagsDetailsProps[]
+  >([]);
 
   const fetchGlossaryTags = async () => {
     setIsGlossaryLoading(true);
     try {
-      const res = await fetchGlossaryTerms();
-
-      const glossaryTerms: TagOption[] = getGlossaryTermlist(res).map(
-        (tag) => ({ fqn: tag, source: TagSource.Glossary })
-      );
-      setGlossaryTags(glossaryTerms);
+      const glossaryTermList = await getGlossaryTermsList();
+      setGlossaryTags(glossaryTermList);
     } catch {
       setTagFetchFailed(true);
     } finally {
@@ -91,15 +100,8 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   const fetchClassificationTags = async () => {
     setIsTagLoading(true);
     try {
-      const res = await getClassifications();
-      const tagList = await getTaglist(res.data);
-
-      const classificationTag: TagOption[] = map(tagList, (tag) => ({
-        fqn: tag,
-        source: TagSource.Classification,
-      }));
-
-      setClassificationTags(classificationTag);
+      const tags = await getAllTagsList();
+      setClassificationTags(tags);
     } catch {
       setTagFetchFailed(true);
     } finally {
@@ -109,15 +111,14 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   const handleFieldTagsChange = async (
     selectedTags: EntityTags[],
-    editColumnTag: Field,
-    otherTags: TagLabel[]
+    editColumnTag: Field
   ) => {
-    const newSelectedTags: TagOption[] = map(
-      [...selectedTags, ...otherTags],
-      (tag) => ({ fqn: tag.tagFQN, source: tag.source })
-    );
+    const newSelectedTags: TagOption[] = map(selectedTags, (tag) => ({
+      fqn: tag.tagFQN,
+      source: tag.source,
+    }));
 
-    if (newSelectedTags && editColumnTag) {
+    if (newSelectedTags && editColumnTag && !isUndefined(onUpdate)) {
       const schema = cloneDeep(messageSchema);
       updateFieldTags(
         schema?.schemaFields,
@@ -129,7 +130,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   };
 
   const handleFieldDescriptionChange = async (updatedDescription: string) => {
-    if (!isUndefined(editFieldDescription)) {
+    if (!isUndefined(editFieldDescription) && !isUndefined(onUpdate)) {
       const schema = cloneDeep(messageSchema);
       updateFieldDescription(
         schema?.schemaFields,
@@ -184,15 +185,23 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        ellipsis: true,
+        accessor: 'name',
+        fixed: 'left',
         width: 220,
         render: (_, record: Field) => (
-          <Popover
-            destroyTooltipOnHide
-            content={getEntityName(record)}
-            trigger="hover">
-            <Typography.Text>{getEntityName(record)}</Typography.Text>
-          </Popover>
+          <Space
+            align="start"
+            className="w-max-90 vertical-align-inherit"
+            size={2}>
+            <Popover
+              destroyTooltipOnHide
+              content={getEntityName(record)}
+              trigger="hover">
+              <Typography.Text className="break-word">
+                {getEntityName(record)}
+              </Typography.Text>
+            </Popover>
+          </Space>
         ),
       },
       {
@@ -231,8 +240,8 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             isTagLoading={isTagLoading}
             record={record}
             tagFetchFailed={tagFetchFailed}
-            tagList={classificationTags}
-            tags={getFilterTags(tags)}
+            tagList={getTagsHierarchy(classificationTags)}
+            tags={tags}
             type={TagSource.Classification}
           />
         ),
@@ -254,8 +263,8 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             isTagLoading={isGlossaryLoading}
             record={record}
             tagFetchFailed={tagFetchFailed}
-            tagList={glossaryTags}
-            tags={getFilterTags(tags)}
+            tagList={getGlossaryTermHierarchy(glossaryTags)}
+            tags={tags}
             type={TagSource.Glossary}
           />
         ),
@@ -295,18 +304,19 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         <ErrorPlaceHolder />
       ) : (
         <>
-          {!isEmpty(messageSchema?.schemaFields) && (
-            <Col span={24}>
-              <Radio.Group value={viewType} onChange={handleViewChange}>
-                <Radio.Button value={SchemaViewType.FIELDS}>
-                  {t('label.field-plural')}
-                </Radio.Button>
-                <Radio.Button value={SchemaViewType.TEXT}>
-                  {t('label.text')}
-                </Radio.Button>
-              </Radio.Group>
-            </Col>
-          )}
+          {!isEmpty(messageSchema?.schemaFields) &&
+            showSchemaDisplayTypeSwitch && (
+              <Col span={24}>
+                <Radio.Group value={viewType} onChange={handleViewChange}>
+                  <Radio.Button value={SchemaViewType.FIELDS}>
+                    {t('label.field-plural')}
+                  </Radio.Button>
+                  <Radio.Button value={SchemaViewType.TEXT}>
+                    {t('label.text')}
+                  </Radio.Button>
+                </Radio.Group>
+              </Col>
+            )}
           <Col span={24}>
             {viewType === SchemaViewType.TEXT ||
             isEmpty(messageSchema?.schemaFields) ? (
@@ -330,10 +340,11 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
                 expandable={{
                   ...getTableExpandableConfig<Field>(),
                   rowExpandable: (record) => !isEmpty(record.children),
+                  defaultExpandAllRows,
                 }}
                 pagination={false}
                 rowKey="name"
-                scroll={{ x: 1200 }}
+                scroll={TABLE_SCROLL_VALUE}
                 size="small"
               />
             )}

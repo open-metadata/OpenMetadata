@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown, Space } from 'antd';
+import { Button, Dropdown, Space, Typography } from 'antd';
 import { ReactComponent as DropdownIcon } from 'assets/svg/DropDown.svg';
 import { Column } from 'generated/entity/data/container';
 import { find, map } from 'lodash';
@@ -33,7 +33,13 @@ const ColumnPickerMenu: FC<ColumnPickerMenuProps> = ({
 
   const items = useMemo(() => {
     return map(columns, (column) => ({
-      label: getEntityName(column),
+      label: (
+        <Space>
+          {getEntityName(column)}
+
+          <Typography.Text className="text-xs text-grey-muted">{`(${column.dataType})`}</Typography.Text>
+        </Space>
+      ),
       key: column.fullyQualifiedName || '',
     }));
   }, [columns]);

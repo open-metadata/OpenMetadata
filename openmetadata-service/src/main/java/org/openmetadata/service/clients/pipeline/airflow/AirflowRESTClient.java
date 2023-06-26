@@ -22,6 +22,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.security.KeyStoreException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import javax.net.ssl.SSLContext;
@@ -219,10 +220,11 @@ public class AirflowRESTClient extends PipelineServiceClient {
     } catch (Exception e) {
       throw PipelineServiceClientException.byMessage(ingestionPipeline.getName(), e.getMessage());
     }
-    throw PipelineServiceClientException.byMessage(
-        ingestionPipeline.getName(),
-        "Failed to fetch ingestion pipeline runs",
-        Response.Status.fromStatusCode(response.statusCode()));
+    // Return an empty list. We'll just show the stored status from the Ingestion Pipeline
+    LOG.error(
+        String.format(
+            "Got status code [%s] trying to get queued statuses: [%s]", response.statusCode(), response.body()));
+    return new ArrayList<>();
   }
 
   /**

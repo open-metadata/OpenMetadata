@@ -22,8 +22,8 @@ import { isUndefined, noop } from 'lodash';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getNameFromFQN } from 'utils/CommonUtils';
 import {
-  entityDisplayName,
   getEntityFieldDisplay,
   getEntityFQN,
   getEntityType,
@@ -100,7 +100,7 @@ const TaskFeedCard = ({
               data-testid="entitylink"
               to={prepareFeedLink(entityType, entityFQN)}
               onClick={(e) => e.stopPropagation()}>
-              {entityDisplayName(entityType, entityFQN)}
+              {getNameFromFQN(entityFQN)}
             </Link>
           </EntityPopOverCard>
         </>

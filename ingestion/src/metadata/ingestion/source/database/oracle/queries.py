@@ -83,3 +83,24 @@ ORACLE_GET_COLUMNS = """
         WHERE col.table_name = CAST(:table_name AS VARCHAR2(128))
         AND col.hidden_column = 'NO'
     """
+
+ORACLE_QUERY_HISTORY_STATEMENT = """
+SELECT 
+  NULL AS user_name,
+  NULL AS database_name,
+  NULL AS schema_name,
+  NULL AS aborted,
+  SQL_FULLTEXT AS query_text,
+  TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') AS start_time,
+  ELAPSED_TIME AS duration,
+  TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000, 'SECOND') AS end_time
+FROM gv$sql
+WHERE OBJECT_STATUS = 'VALID' 
+  {filters}
+  AND SQL_FULLTEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+  AND SQL_FULLTEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+  AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') >= TO_TIMESTAMP('{start_time}', 'yy-MM-dd HH24:MI:SS')
+  AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000, 'SECOND') < TO_TIMESTAMP('{end_time}', 'yy-MM-dd HH24:MI:SS')
+ORDER BY FIRST_LOAD_TIME DESC 
+OFFSET 0 ROWS FETCH NEXT {result_limit} ROWS ONLY
+"""

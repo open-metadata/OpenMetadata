@@ -18,7 +18,7 @@ import { LOADING_STATE } from 'enums/common.enum';
 import { Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { EntityHistory } from 'generated/type/entityHistory';
-import { noop } from 'lodash';
+import { noop, toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
@@ -71,7 +71,7 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
     }
   };
 
-  const onVersionHandler = (selectedVersion: string) => {
+  const onVersionChange = (selectedVersion: string) => {
     const path = isGlossary
       ? getGlossaryVersionsPath(glossaryName, selectedVersion)
       : getGlossaryTermsVersionsPath(glossaryName, selectedVersion);
@@ -106,8 +106,8 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
       </div>
       <EntityVersionTimeLine
         show
-        currentVersion={version}
-        versionHandler={onVersionHandler}
+        currentVersion={toString(version)}
+        versionHandler={onVersionChange}
         versionList={versionList}
         onBack={onBackHandler}
       />

@@ -347,8 +347,9 @@ export const SERVICE_TYPE_MAP = {
 };
 
 export const BETA_SERVICES = [
-  DatabaseServiceType.Impala,
+  DatabaseServiceType.SapHana,
   PipelineServiceType.Spline,
+  DatabaseServiceType.MongoDB,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
