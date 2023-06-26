@@ -21,23 +21,17 @@ import SuccessScreen from 'components/common/success-screen/SuccessScreen';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import IngestionStepper from 'components/IngestionStepper/IngestionStepper.component';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
-import { PAGE_SIZE_LARGE } from 'constants/constants';
 import {
   STEPS_FOR_ADD_TEST_SUITE,
   TEST_SUITE_STEPPER_BREADCRUMB,
 } from 'constants/TestSuite.constant';
 import { FormSubmitType } from 'enums/form.enum';
 import { OwnerType } from 'enums/user.enum';
-import { TestCase } from 'generated/tests/testCase';
 import { TestSuite } from 'generated/tests/testSuite';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import {
-  addTestCaseToLogicalTestSuite,
-  createTestSuites,
-  getListTestCase,
-} from 'rest/testAPI';
+import { addTestCaseToLogicalTestSuite, createTestSuites } from 'rest/testAPI';
 import { getCurrentUserId } from 'utils/CommonUtils';
 import { getTestSuitePath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
@@ -48,11 +42,9 @@ const TestSuiteStepper = () => {
   const history = useHistory();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [testSuiteResponse, setTestSuiteResponse] = useState<TestSuite>();
-  const [testCases, setTestCases] = useState<TestCase[]>([]);
-  const [selectedTestCase, setSelectedTestCase] = useState<string[]>([]);
 
   const handleViewTestSuiteClick = () => {
-    history.push(getTestSuitePath(testSuiteResponse?.fullyQualifiedName || ''));
+    history.push(getTestSuitePath(testSuiteResponse?.fullyQualifiedName ?? ''));
   };
 
   const handleTestSuitNextClick = (data: TestSuite) => {
@@ -100,23 +92,11 @@ const TestSuiteStepper = () => {
     }
   };
 
-  const fetchTestCases = async () => {
-    try {
-      const response = await getListTestCase({ limit: PAGE_SIZE_LARGE });
-      setTestCases(response.data);
-    } catch (error) {
-      setTestCases([]);
-    }
-  };
-
-  useEffect(() => {
-    fetchTestCases();
-  }, []);
-
   const RenderSelectedTab = useCallback(() => {
     if (activeServiceStep === 2) {
       return (
         <AddTestCaseList
+          cancelText={t('label.back')}
           onCancel={() => setActiveServiceStep(1)}
           onSubmit={onSubmit}
         />

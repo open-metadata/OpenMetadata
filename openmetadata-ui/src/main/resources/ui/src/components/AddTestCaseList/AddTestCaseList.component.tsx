@@ -48,6 +48,8 @@ export const AddTestCaseList = ({
   onCancel,
   existingTest,
   onSubmit,
+  cancelText,
+  submitText,
 }: AddTestCaseModalProps) => {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -226,10 +228,10 @@ export const AddTestCaseList = ({
       </Col>
       <Col className="d-flex justify-end items-center p-y-xss" span={24}>
         <Button type="link" onClick={onCancel}>
-          {t('label.cancel')}
+          {cancelText ?? t('label.cancel')}
         </Button>
         <Button loading={isLoading} type="primary" onClick={handleSubmit}>
-          {t('label.submit')}
+          {submitText ?? t('label.submit')}
         </Button>
       </Col>
     </Row>

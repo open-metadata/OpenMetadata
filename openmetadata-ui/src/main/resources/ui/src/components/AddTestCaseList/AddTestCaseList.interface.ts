@@ -16,4 +16,6 @@ export interface AddTestCaseModalProps {
   onCancel?: () => void;
   onSubmit: (testCaseIds: string[]) => void;
   existingTest?: EntityReference[];
+  cancelText?: string;
+  submitText?: string;
 }
