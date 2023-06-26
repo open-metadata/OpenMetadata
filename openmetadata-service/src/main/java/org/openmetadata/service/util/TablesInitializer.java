@@ -268,7 +268,7 @@ public final class TablesInitializer {
       case MIGRATE:
         flyway.migrate();
         // Validate and Run System Data Migrations
-        validateAndRunSystemDataMigrations(jdbi);
+        validateAndRunSystemDataMigrations(jdbi, config);
         break;
       case INFO:
         printToConsoleMandatory(dumpToAsciiTable(flyway.info().all()));
@@ -318,7 +318,8 @@ public final class TablesInitializer {
     }
   }
 
-  private static void validateAndRunSystemDataMigrations(Jdbi jdbi) {
+  private static void validateAndRunSystemDataMigrations(Jdbi jdbi, OpenMetadataApplicationConfig config) {
+    DatasourceConfig.initialize(config);
     List<MigrationStep> loadedMigrationFiles = getServerMigrationFiles();
     MigrationWorkflow workflow =
         new MigrationWorkflow(jdbi, DatasourceConfig.getInstance().getDatabaseConnectionType(), loadedMigrationFiles);
