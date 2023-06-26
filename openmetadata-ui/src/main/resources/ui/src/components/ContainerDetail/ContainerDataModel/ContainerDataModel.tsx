@@ -21,6 +21,7 @@ import {
   GlossaryTermDetailsProps,
   TagsDetailsProps,
 } from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
+import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { Column, TagLabel } from 'generated/entity/data/container';
 import { TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, isEmpty, isUndefined, map, toLower } from 'lodash';
@@ -165,6 +166,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         dataIndex: 'name',
         key: 'name',
         accessor: 'name',
+        fixed: 'left',
         width: 300,
         render: (_, record: Column) => (
           <Popover
@@ -291,7 +293,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         }}
         pagination={false}
         rowKey="name"
-        scroll={{ x: 1200 }}
+        scroll={TABLE_SCROLL_VALUE}
         size="small"
       />
       {editContainerColumnDescription && (

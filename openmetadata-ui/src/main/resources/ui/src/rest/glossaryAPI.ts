@@ -94,6 +94,17 @@ export const getGlossariesByName = async (
   return response.data;
 };
 
+export const getGlossariesById = async (
+  id: string,
+  arrQueryFields?: string | string[]
+) => {
+  const url = getURLWithQueryFields(`/glossaries/${id}`, arrQueryFields);
+
+  const response = await APIClient.get<Glossary>(url);
+
+  return response.data;
+};
+
 export const getGlossaryTerms = async (params: ListGlossaryTermsParams) => {
   const response = await APIClient.get<PagingResponse<GlossaryTerm[]>>(
     '/glossaryTerms',
@@ -105,16 +116,18 @@ export const getGlossaryTerms = async (params: ListGlossaryTermsParams) => {
   return response.data;
 };
 
-export const getGlossaryTermsById = (
+export const getGlossaryTermsById = async (
   glossaryTermId = '',
   arrQueryFields = ''
-): Promise<AxiosResponse> => {
+) => {
   const url = getURLWithQueryFields(
     `/glossaryTerms/${glossaryTermId}`,
     arrQueryFields
   );
 
-  return APIClient.get(url);
+  const response = await APIClient.get<GlossaryTerm>(url);
+
+  return response.data;
 };
 
 export const getGlossaryTermByFQN = async (

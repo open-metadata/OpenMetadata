@@ -14,29 +14,20 @@
 import { EntityTabs } from 'enums/entity.enum';
 import i18next from 'i18next';
 import React from 'react';
-import AppState from '../AppState';
 import { CurrentTourPageType } from '../enums/tour.enum';
 import { Transi18next } from './CommonUtils';
 
-export const getSteps = (value: string, clearSearchTerm: () => void) => {
-  const { updateActiveTabForTourDatasetPage, updateCurrentTourPage } = AppState;
+interface ArgObject {
+  searchTerm: string;
+  updateTourPage: (value: CurrentTourPageType) => void;
+  updateActiveTab: (value: EntityTabs) => void;
+  clearSearchTerm: () => void;
+}
+
+export const getTourSteps = (args: ArgObject) => {
+  const { searchTerm, clearSearchTerm, updateActiveTab, updateTourPage } = args;
 
   return [
-    {
-      content: () => (
-        <p>
-          <Transi18next
-            i18nKey="message.tour-step-discover-all-assets-at-one-place"
-            renderElement={<strong />}
-            values={{
-              text: i18next.t('label.open-metadata'),
-            }}
-          />
-        </p>
-      ),
-      stepInteraction: false,
-      selector: '#assetStatsCount',
-    },
     {
       content: () => (
         <p>
@@ -76,23 +67,23 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
             i18nKey="message.tour-step-type-search-term"
             renderElement={<strong />}
             values={{
-              text: value,
+              text: searchTerm,
               enterText: i18next.t('label.enter'),
             }}
           />
         </p>
       ),
       actionType: 'enter',
-      userTypeText: value,
+      userTypeText: searchTerm,
       selector: '#searchBox',
       beforeNext: () => {
         clearSearchTerm();
-        updateCurrentTourPage(CurrentTourPageType.EXPLORE_PAGE);
+        updateTourPage(CurrentTourPageType.EXPLORE_PAGE);
       },
     },
     {
       beforePrev: () => {
-        updateCurrentTourPage(CurrentTourPageType.MY_DATA_PAGE);
+        updateTourPage(CurrentTourPageType.MY_DATA_PAGE);
       },
       content: () => (
         <p>
@@ -118,14 +109,14 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
         </p>
       ),
       actionType: 'click',
-      selector: '[data-testid="sample_data-dim_address"]',
+      selector: '[data-testid="sample_data.ecommerce_db.shopify.dim_address"]',
       beforeNext: () => {
-        updateCurrentTourPage(CurrentTourPageType.DATASET_PAGE);
+        updateTourPage(CurrentTourPageType.DATASET_PAGE);
       },
     },
     {
       beforePrev: () => {
-        updateCurrentTourPage(CurrentTourPageType.EXPLORE_PAGE);
+        updateTourPage(CurrentTourPageType.EXPLORE_PAGE);
       },
       content: () => (
         <p>
@@ -139,7 +130,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
         </p>
       ),
       stepInteraction: false,
-      selector: '[data-testid="entity-page-info"]',
+      selector: '[data-testid="entity-page-header"]',
     },
     {
       content: () => (
@@ -154,7 +145,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
         </p>
       ),
       stepInteraction: false,
-      selector: '[data-testid="owner-link"]',
+      selector: '[data-testid="owner-label"]',
     },
     {
       content: () => (
@@ -188,7 +179,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
     },
     {
       beforePrev: () => {
-        updateActiveTabForTourDatasetPage(EntityTabs.SCHEMA);
+        updateActiveTab(EntityTabs.SCHEMA);
       },
       actionType: 'click',
       content: () => (
@@ -204,7 +195,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
       ),
       selector: `[data-testid="${EntityTabs.SAMPLE_DATA}"]`,
       beforeNext: () => {
-        updateActiveTabForTourDatasetPage(EntityTabs.SAMPLE_DATA);
+        updateActiveTab(EntityTabs.SAMPLE_DATA);
       },
     },
     {
@@ -219,14 +210,14 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           />
         </p>
       ),
-      selector: '#tab-details',
+      selector: '[data-testid="sample-data-table"]',
     },
     {
       beforePrev: () => {
-        updateActiveTabForTourDatasetPage(EntityTabs.SAMPLE_DATA);
+        updateActiveTab(EntityTabs.SAMPLE_DATA);
       },
       beforeNext: () => {
-        updateActiveTabForTourDatasetPage(EntityTabs.PROFILER);
+        updateActiveTab(EntityTabs.PROFILER);
       },
       actionType: 'click',
       content: () => (
@@ -257,14 +248,14 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
         </p>
       ),
       stepInteraction: false,
-      selector: '#tab-details',
+      selector: '#profilerDetails',
     },
     {
       beforePrev: () => {
-        updateActiveTabForTourDatasetPage(EntityTabs.PROFILER);
+        updateActiveTab(EntityTabs.PROFILER);
       },
       beforeNext: () => {
-        updateActiveTabForTourDatasetPage(EntityTabs.LINEAGE);
+        updateActiveTab(EntityTabs.LINEAGE);
       },
       actionType: 'click',
       content: () => (
@@ -293,7 +284,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
         </p>
       ),
       stepInteraction: false,
-      selector: '#tab-details',
+      selector: '#lineageDetails',
     },
   ];
 };

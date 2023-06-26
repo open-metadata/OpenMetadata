@@ -691,6 +691,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     }
     List<UUID> testCaseIds = createLogicalTestCases.getTestCaseIds();
 
+    if (testCaseIds == null || testCaseIds.isEmpty()) {
+      return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, RestUtil.ENTITY_NO_CHANGE).toResponse();
+    }
+
     int existingTestCaseCount = repository.getTestCaseCount(testCaseIds);
     if (existingTestCaseCount != testCaseIds.size()) {
       throw new IllegalArgumentException("You are trying to add one or more test cases that do not exist.");

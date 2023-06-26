@@ -19,7 +19,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 )
 from metadata.generated.schema.metadataIngestion.workflow import Sink
 from metadata.generated.schema.type.basic import ComponentConfig
-from metadata.utils.constants import ES_SOURCE_TO_ES_OBJ_ARGS
+from metadata.utils.constants import ES_SOURCE_IGNORE_KEYS, ES_SOURCE_TO_ES_OBJ_ARGS
 
 
 def build_elasticsearch_sink(
@@ -42,7 +42,7 @@ def build_elasticsearch_sink(
     elasticsearch_source_config_dict = {
         ES_SOURCE_TO_ES_OBJ_ARGS[key]: value
         for key, value in ingestion_pipeline.sourceConfig.config.dict().items()
-        if value and key != "type"
+        if value and key not in ES_SOURCE_IGNORE_KEYS
     }
 
     return Sink(

@@ -572,7 +572,9 @@ const PipelineDetails = ({
   const tabs = useMemo(
     () => [
       {
-        label: <TabsLabel id={EntityTabs.TASKS} name={t('label.schema')} />,
+        label: (
+          <TabsLabel id={EntityTabs.TASKS} name={t('label.task-plural')} />
+        ),
         key: EntityTabs.TASKS,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
@@ -700,7 +702,7 @@ const PipelineDetails = ({
             <ActivityFeedTab
               entityType={EntityType.PIPELINE}
               fqn={pipelineDetails?.fullyQualifiedName ?? ''}
-              onFeedUpdate={() => Promise.resolve()}
+              onFeedUpdate={getEntityFeedCount}
             />
           </ActivityFeedProvider>
         ),

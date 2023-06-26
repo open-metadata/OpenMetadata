@@ -24,17 +24,28 @@ import {
   getUserPath,
   NO_DATA_PLACEHOLDER,
 } from 'constants/constants';
+import { EntityField } from 'constants/Feeds.constants';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
+import { ChangeDescription } from 'generated/entity/type';
 import { EntityReference } from 'generated/type/entityReference';
 import { t } from 'i18next';
-import { cloneDeep, includes, isEqual } from 'lodash';
-import React, { useMemo } from 'react';
+import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
+import React, { ReactNode, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
+import {
+  getChangedEntityNewValue,
+  getChangedEntityOldValue,
+  getDiffByFieldName,
+  getDiffValue,
+  getEntityVersionTags,
+} from 'utils/EntityVersionUtils';
 import { Glossary, TagLabel } from '../../generated/entity/data/glossary';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
+import GlossaryReviewers from './GlossaryReviewers';
 
 type props = {
+  isVersionView?: boolean;
   permissions: OperationPermission;
   selectedData: Glossary | GlossaryTerm;
   isGlossary: boolean;
@@ -46,6 +57,7 @@ const GlossaryDetailsRightPanel = ({
   selectedData,
   isGlossary,
   onUpdate,
+  isVersionView,
 }: props) => {
   const hasEditReviewerAccess = useMemo(() => {
     return permissions.EditAll || permissions.EditReviewers;
@@ -90,6 +102,98 @@ const GlossaryDetailsRightPanel = ({
     onUpdate(updatedData);
   };
 
+  const getOwner = useCallback(
+    (ownerDisplayName: string | ReactNode, owner?: EntityReference) => {
+      if (owner) {
+        return (
+          <>
+            <ProfilePicture
+              displayName={getEntityName(owner)}
+              id={owner?.id || ''}
+              name={owner?.name ?? ''}
+              textClass="text-xs"
+              width="20"
+            />
+            <Link
+              to={
+                owner.type === 'team'
+                  ? getTeamAndUserDetailsPath(owner.name ?? '')
+                  : getUserPath(owner.name ?? '')
+              }>
+              {ownerDisplayName}
+            </Link>
+          </>
+        );
+      }
+      if (!(permissions.EditOwner || permissions.EditAll)) {
+        return <div>{NO_DATA_PLACEHOLDER}</div>;
+      }
+
+      return null;
+    },
+    [permissions]
+  );
+
+  const getUserNames = useCallback(
+    (glossaryData: Glossary | GlossaryTerm) => {
+      if (isVersionView) {
+        const ownerDiff = getDiffByFieldName(
+          EntityField.OWNER,
+          glossaryData.changeDescription as ChangeDescription
+        );
+
+        const oldOwner = JSON.parse(
+          getChangedEntityOldValue(ownerDiff) ?? '{}'
+        );
+        const newOwner = JSON.parse(
+          getChangedEntityNewValue(ownerDiff) ?? '{}'
+        );
+
+        const shouldShowDiff =
+          !isEmpty(ownerDiff.added) ||
+          !isEmpty(ownerDiff.deleted) ||
+          !isEmpty(ownerDiff.updated);
+
+        if (shouldShowDiff) {
+          if (!isEmpty(ownerDiff.added)) {
+            const ownerName = getDiffValue('', getEntityName(newOwner));
+
+            return getOwner(ownerName, newOwner);
+          }
+
+          if (!isEmpty(ownerDiff.deleted)) {
+            const ownerName = getDiffValue(getEntityName(oldOwner), '');
+
+            return getOwner(ownerName, oldOwner);
+          }
+
+          if (!isEmpty(ownerDiff.updated)) {
+            const ownerName = getDiffValue(
+              getEntityName(oldOwner),
+              getEntityName(newOwner)
+            );
+
+            return getOwner(ownerName, newOwner);
+          }
+        }
+      }
+
+      return getOwner(getEntityName(glossaryData.owner), glossaryData.owner);
+    },
+    [isVersionView]
+  );
+
+  const tags = useMemo(
+    () =>
+      isVersionView
+        ? getEntityVersionTags(
+            selectedData,
+            selectedData.changeDescription as ChangeDescription
+          )
+        : selectedData.tags,
+    [isVersionView, selectedData]
+  );
+
   return (
     <Card>
       <Row gutter={[0, 40]}>
@@ -115,25 +219,9 @@ const GlossaryDetailsRightPanel = ({
               )}
           </div>
 
-          {selectedData.owner && getEntityName(selectedData.owner) && (
-            <Space className="m-r-xss" size={4}>
-              <ProfilePicture
-                displayName={getEntityName(selectedData.owner)}
-                id={selectedData.owner?.id || ''}
-                name={selectedData.owner?.name || ''}
-                textClass="text-xs"
-                width="20"
-              />
-              <Link
-                to={
-                  selectedData.owner.type === 'team'
-                    ? getTeamAndUserDetailsPath(selectedData.owner.name ?? '')
-                    : getUserPath(selectedData.owner.name ?? '')
-                }>
-                {getEntityName(selectedData.owner)}
-              </Link>
-            </Space>
-          )}
+          <Space className="m-r-xss" size={4}>
+            {getUserNames(selectedData)}
+          </Space>
 
           {!selectedData.owner &&
             (permissions.EditOwner || permissions.EditAll) && (
@@ -148,11 +236,6 @@ const GlossaryDetailsRightPanel = ({
                   tooltip=""
                 />
               </UserTeamSelectableList>
-            )}
-
-          {!selectedData.owner &&
-            !(permissions.EditOwner || permissions.EditAll) && (
-              <div>{NO_DATA_PLACEHOLDER}</div>
             )}
         </Col>
         <Col span="24">
@@ -186,24 +269,11 @@ const GlossaryDetailsRightPanel = ({
               )}
           </div>
           <div>
-            {selectedData.reviewers && selectedData.reviewers.length > 0 && (
-              <Space wrap data-testid="glossary-reviewer-name" size={6}>
-                {selectedData.reviewers.map((reviewer) => (
-                  <Space className="m-r-xss" key={reviewer.id} size={4}>
-                    <ProfilePicture
-                      displayName={getEntityName(reviewer)}
-                      id={reviewer.id || ''}
-                      name={reviewer.name || ''}
-                      textClass="text-xs"
-                      width="20"
-                    />
-                    <Link to={getUserPath(reviewer.name ?? '')}>
-                      {getEntityName(reviewer)}
-                    </Link>
-                  </Space>
-                ))}
-              </Space>
-            )}
+            <GlossaryReviewers
+              editPermission={hasEditReviewerAccess}
+              glossaryData={selectedData}
+              isVersionView={isVersionView}
+            />
 
             {hasEditReviewerAccess && noReviewersSelected && (
               <UserSelectableList
@@ -219,10 +289,6 @@ const GlossaryDetailsRightPanel = ({
                 />
               </UserSelectableList>
             )}
-
-            {!hasEditReviewerAccess && noReviewersSelected && (
-              <div>{NO_DATA_PLACEHOLDER}</div>
-            )}
           </div>
         </Col>
         <Col span="24">
@@ -230,7 +296,8 @@ const GlossaryDetailsRightPanel = ({
             {isGlossary && (
               <TagsInput
                 editable={permissions.EditAll || permissions.EditTags}
-                tags={selectedData.tags}
+                isVersionView={isVersionView}
+                tags={tags}
                 onTagsUpdate={handleTagsUpdate}
               />
             )}

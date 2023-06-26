@@ -741,7 +741,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                   <ActivityFeedTab
                     entityType={EntityType.DATABASE_SCHEMA}
                     fqn={databaseSchema?.fullyQualifiedName ?? ''}
-                    onFeedUpdate={() => Promise.resolve()}
+                    onFeedUpdate={getEntityFeedCount}
+                    onUpdateEntityDetails={getDetailsByFQN}
                   />
                 </ActivityFeedProvider>
               )}

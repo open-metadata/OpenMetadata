@@ -15,10 +15,16 @@ import DescriptionV1 from 'components/common/description/DescriptionV1';
 import GlossaryDetailsRightPanel from 'components/GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import TagsInput from 'components/TagsInput/TagsInput.component';
+import { EntityField } from 'constants/Feeds.constants';
 import { EntityType } from 'enums/entity.enum';
 import { Glossary, TagLabel } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
+import { ChangeDescription } from 'generated/entity/type';
 import React, { useMemo, useState } from 'react';
+import {
+  getEntityVersionByField,
+  getEntityVersionTags,
+} from 'utils/EntityVersionUtils';
 import GlossaryTermReferences from './GlossaryTermReferences';
 import GlossaryTermSynonyms from './GlossaryTermSynonyms';
 import RelatedTerms from './RelatedTerms';
@@ -28,6 +34,7 @@ type Props = {
   permissions: OperationPermission;
   onUpdate: (data: GlossaryTerm | Glossary) => void;
   isGlossary: boolean;
+  isVersionView?: boolean;
 };
 
 const GlossaryOverviewTab = ({
@@ -35,6 +42,7 @@ const GlossaryOverviewTab = ({
   permissions,
   onUpdate,
   isGlossary,
+  isVersionView,
 }: Props) => {
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
@@ -56,6 +64,18 @@ const GlossaryOverviewTab = ({
     return permissions.EditAll || permissions.EditTags;
   }, [permissions]);
 
+  const glossaryDescription = useMemo(() => {
+    if (isVersionView) {
+      return getEntityVersionByField(
+        selectedData.changeDescription as ChangeDescription,
+        EntityField.DESCRIPTION,
+        selectedData.description
+      );
+    } else {
+      return selectedData.description;
+    }
+  }, [selectedData, isVersionView]);
+
   const handleTagsUpdate = async (updatedTags: TagLabel[]) => {
     if (updatedTags) {
       const updatedData = {
@@ -67,6 +87,17 @@ const GlossaryOverviewTab = ({
     }
   };
 
+  const tags = useMemo(
+    () =>
+      isVersionView
+        ? getEntityVersionTags(
+            selectedData,
+            selectedData.changeDescription as ChangeDescription
+          )
+        : selectedData.tags,
+    [isVersionView, selectedData]
+  );
+
   return (
     <Row className="glossary-overview-tab" gutter={[16, 16]}>
       <Col data-testid="updated-by-container" span={18}>
@@ -74,7 +105,7 @@ const GlossaryOverviewTab = ({
           <Row gutter={[0, 32]}>
             <Col span={24}>
               <DescriptionV1
-                description={selectedData?.description || ''}
+                description={glossaryDescription}
                 entityName={selectedData?.displayName ?? selectedData?.name}
                 entityType={EntityType.GLOSSARY}
                 hasEditAccess={
@@ -93,6 +124,7 @@ const GlossaryOverviewTab = ({
                     <Col span={12}>
                       <GlossaryTermSynonyms
                         glossaryTerm={selectedData as GlossaryTerm}
+                        isVersionView={isVersionView}
                         permissions={permissions}
                         onGlossaryTermUpdate={onUpdate}
                       />
@@ -100,6 +132,7 @@ const GlossaryOverviewTab = ({
                     <Col span={12}>
                       <RelatedTerms
                         glossaryTerm={selectedData as GlossaryTerm}
+                        isVersionView={isVersionView}
                         permissions={permissions}
                         onGlossaryTermUpdate={onUpdate}
                       />
@@ -107,6 +140,7 @@ const GlossaryOverviewTab = ({
                     <Col span={12}>
                       <GlossaryTermReferences
                         glossaryTerm={selectedData as GlossaryTerm}
+                        isVersionView={isVersionView}
                         permissions={permissions}
                         onGlossaryTermUpdate={onUpdate}
                       />
@@ -118,7 +152,8 @@ const GlossaryOverviewTab = ({
                   <Space className="w-full" direction="vertical">
                     <TagsInput
                       editable={hasEditTagsPermissions}
-                      tags={selectedData.tags}
+                      isVersionView={isVersionView}
+                      tags={tags}
                       onTagsUpdate={handleTagsUpdate}
                     />
                   </Space>
@@ -131,6 +166,7 @@ const GlossaryOverviewTab = ({
       <Col span={6}>
         <GlossaryDetailsRightPanel
           isGlossary={false}
+          isVersionView={isVersionView}
           permissions={permissions}
           selectedData={selectedData}
           onUpdate={onUpdate}

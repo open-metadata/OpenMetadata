@@ -894,7 +894,7 @@ const DatabaseDetails: FunctionComponent = () => {
                       <ActivityFeedTab
                         entityType={EntityType.DATABASE}
                         fqn={database?.fullyQualifiedName ?? ''}
-                        onFeedUpdate={() => Promise.resolve()}
+                        onFeedUpdate={getEntityFeedCount}
                       />
                     </ActivityFeedProvider>
                   )}

@@ -16,14 +16,18 @@ import DescriptionV1 from 'components/common/description/DescriptionV1';
 import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import GlossaryDetailsRightPanel from 'components/GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
+import { EntityField } from 'constants/Feeds.constants';
 import { EntityType } from 'enums/entity.enum';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import React, { useState } from 'react';
+import { ChangeDescription } from 'generated/entity/type';
+import React, { useMemo, useState } from 'react';
+import { getEntityVersionByField } from 'utils/EntityVersionUtils';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import './GlossaryDetails.style.less';
 
 type props = {
+  isVersionView?: boolean;
   permissions: OperationPermission;
   glossary: Glossary;
   glossaryTerms: GlossaryTerm[];
@@ -45,6 +49,7 @@ const GlossaryDetails = ({
   refreshGlossaryTerms,
   onAddGlossaryTerm,
   onEditGlossaryTerm,
+  isVersionView,
 }: props) => {
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
@@ -62,6 +67,45 @@ const GlossaryDetails = ({
     }
   };
 
+  const description = useMemo(
+    () =>
+      isVersionView
+        ? getEntityVersionByField(
+            glossary.changeDescription as ChangeDescription,
+            EntityField.DESCRIPTION,
+            glossary.description
+          )
+        : glossary.description,
+
+    [glossary, isVersionView]
+  );
+
+  const name = useMemo(
+    () =>
+      isVersionView
+        ? getEntityVersionByField(
+            glossary.changeDescription as ChangeDescription,
+            EntityField.NAME,
+            glossary.name
+          )
+        : glossary.name,
+
+    [glossary, isVersionView]
+  );
+
+  const displayName = useMemo(
+    () =>
+      isVersionView
+        ? getEntityVersionByField(
+            glossary.changeDescription as ChangeDescription,
+            EntityField.DISPLAYNAME,
+            glossary.displayName
+          )
+        : glossary.displayName,
+
+    [glossary, isVersionView]
+  );
+
   return (
     <Row
       className="glossary-details"
@@ -70,8 +114,9 @@ const GlossaryDetails = ({
       <Col span={24}>
         <GlossaryHeader
           isGlossary
+          isVersionView={isVersionView}
           permissions={permissions}
-          selectedData={glossary}
+          selectedData={{ ...glossary, displayName, name }}
           onAddGlossaryTerm={onAddGlossaryTerm}
           onDelete={handleGlossaryDelete}
           onUpdate={updateGlossary}
@@ -84,8 +129,8 @@ const GlossaryDetails = ({
             <Space className="w-full" direction="vertical" size={24}>
               <DescriptionV1
                 wrapInCard
-                description={glossary?.description || ''}
-                entityName={glossary?.displayName ?? glossary?.name}
+                description={description}
+                entityName={glossary.displayName ?? glossary.name}
                 entityType={EntityType.GLOSSARY}
                 hasEditAccess={
                   permissions.EditDescription || permissions.EditAll
@@ -110,6 +155,7 @@ const GlossaryDetails = ({
           <Col span={6}>
             <GlossaryDetailsRightPanel
               isGlossary
+              isVersionView={isVersionView}
               permissions={permissions}
               selectedData={glossary}
               onUpdate={updateGlossary}

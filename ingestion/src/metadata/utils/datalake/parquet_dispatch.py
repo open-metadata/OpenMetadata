@@ -18,8 +18,6 @@ from Parquet file formats
 from functools import singledispatch
 from typing import Any
 
-import pandas as pd
-
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
 )
@@ -95,6 +93,8 @@ def _(_: S3Config, key: str, bucket_name: str, connection_kwargs, **kwargs):
 
 @read_parquet_dispatch.register
 def _(config_source: AzureConfig, key: str, bucket_name: str, **kwargs):
+    import pandas as pd  # pylint: disable=import-outside-toplevel
+
     storage_options = return_azure_storage_options(config_source)
     account_url = AZURE_PATH.format(
         bucket_name=bucket_name,

@@ -35,6 +35,7 @@ import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider
 import { TestCaseStatus } from 'generated/configuration/testResultNotificationConfiguration';
 import { Operation } from 'generated/entity/policies/policy';
 import { isUndefined, sortBy } from 'lodash';
+import QueryString from 'qs';
 import { putTestCaseResult, removeTestCaseFromTestSuite } from 'rest/testAPI';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { showErrorToast } from 'utils/ToastUtils';
@@ -51,11 +52,15 @@ import {
   getEntityFqnFromEntityLink,
   getTableExpandableConfig,
 } from '../../../utils/TableUtils';
-import { getFormattedDateFromSeconds } from '../../../utils/TimeUtils';
+import {
+  getFormattedDateFromMilliSeconds,
+  getFormattedDateFromSeconds,
+} from '../../../utils/TimeUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import Loader from '../../Loader/Loader';
 import {
   DataQualityTabProps,
+  TableProfilerTab,
   TestCaseAction,
 } from '../profilerDashboard.interface';
 import './DataQualityTab.style.less';
@@ -191,7 +196,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 return (
                   <Link
                     data-testid="table-link"
-                    to={getTableTabPath(tableFqn, 'profiler')}
+                    to={{
+                      pathname: getTableTabPath(tableFqn, 'profiler'),
+                      search: QueryString.stringify({
+                        activeTab: TableProfilerTab.DATA_QUALITY,
+                      }),
+                    }}
                     onClick={(e) => e.stopPropagation()}>
                     {name}
                   </Link>
@@ -242,12 +252,33 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         width: 100,
         render: (value: TestCaseResult) => {
           const label = value?.testCaseFailureStatus?.testCaseFailureStatusType;
+          const failureStatus = value?.testCaseFailureStatus;
 
           return label ? (
-            <AppBadge
-              className={classNames('resolution', label.toLocaleLowerCase())}
-              label={label}
-            />
+            <Tooltip
+              placement="bottom"
+              title={
+                failureStatus?.updatedAt &&
+                `${getFormattedDateFromMilliSeconds(
+                  failureStatus.updatedAt,
+                  'MMM dd, yyyy HH:mm'
+                )}
+                    ${
+                      failureStatus.updatedBy
+                        ? 'by ' + failureStatus.updatedBy
+                        : ''
+                    }`
+              }>
+              <div>
+                <AppBadge
+                  className={classNames(
+                    'resolution',
+                    label.toLocaleLowerCase()
+                  )}
+                  label={label}
+                />
+              </div>
+            </Tooltip>
           ) : (
             '--'
           );

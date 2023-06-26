@@ -57,10 +57,13 @@ export type GlossaryTermDetailsProps = {
 };
 
 export type TagsContainerV1Props = {
+  isVersionView?: boolean;
   permission: boolean;
   selectedTags: Array<EntityTags>;
-  onSelectionChange: (selectedTags: Array<EntityTags>) => void;
-  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
+  onSelectionChange?: (selectedTags: Array<EntityTags>) => void;
+  placeholder?: string;
+  showLimited?: boolean;
+  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   entityType?: string;
   entityThreadLink?: string;
   entityFqn?: string;

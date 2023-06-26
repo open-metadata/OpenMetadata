@@ -22,6 +22,8 @@ import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer
 import { PropertyInput } from './PropertyInput';
 
 interface Props {
+  versionDataKeys?: string[];
+  isVersionView?: boolean;
   propertyName: string;
   propertyType: EntityReference;
   extension: Table['extension'];
@@ -39,6 +41,8 @@ const EditIcon = ({ onShowInput }: { onShowInput: () => void }) => (
 );
 
 export const PropertyValue: FC<Props> = ({
+  isVersionView,
+  versionDataKeys,
   propertyName,
   extension,
   propertyType,
@@ -103,6 +107,16 @@ export const PropertyValue: FC<Props> = ({
   };
 
   const getPropertyValue = () => {
+    if (isVersionView) {
+      const isKeyAdded = versionDataKeys?.includes(propertyName);
+
+      return (
+        <RichTextEditorPreviewer
+          className={isKeyAdded ? 'diff-added' : ''}
+          markdown={String(value) || ''}
+        />
+      );
+    }
     switch (propertyType.name) {
       case 'markdown':
         return <RichTextEditorPreviewer markdown={value || ''} />;

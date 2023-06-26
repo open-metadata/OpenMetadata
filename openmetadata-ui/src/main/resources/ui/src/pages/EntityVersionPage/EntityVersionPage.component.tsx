@@ -70,11 +70,17 @@ import {
   getDataModelDetailsPath,
   getMlModelDetailsPath,
   getPipelineDetailsPath,
-  getTableDetailsPath,
+  getTableTabPath,
   getTopicDetailsPath,
   getVersionPath,
+  getVersionPathWithTab,
 } from '../../constants/constants';
-import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  FqnPart,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Table } from '../../generated/entity/data/table';
@@ -91,6 +97,7 @@ import { defaultFields as MlModelFields } from '../../utils/MlModelDetailsUtils'
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import './EntityVersionPage.less';
 
 export type VersionData =
   | Table
@@ -103,6 +110,7 @@ export type VersionData =
 
 const EntityVersionPage: FunctionComponent = () => {
   const { t } = useTranslation();
+  const { tab } = useParams<{ tab: EntityTabs }>();
   const history = useHistory();
   const [tier, setTier] = useState<TagLabel>();
   const [owner, setOwner] = useState<
@@ -112,10 +120,8 @@ const EntityVersionPage: FunctionComponent = () => {
     {} as VersionData
   );
 
-  const { entityType, version, entityFQN } = useParams() as Record<
-    string,
-    string
-  >;
+  const { entityType, version, entityFQN } =
+    useParams<{ entityType: string; version: string; entityFQN: string }>();
 
   const [isLoading, setIsloading] = useState<boolean>(false);
   const [versionList, setVersionList] = useState<EntityHistory>(
@@ -129,36 +135,36 @@ const EntityVersionPage: FunctionComponent = () => {
   const backHandler = () => {
     switch (entityType) {
       case EntityType.TABLE:
-        history.push(getTableDetailsPath(entityFQN));
+        history.push(getTableTabPath(entityFQN, tab));
 
         break;
 
       case EntityType.TOPIC:
-        history.push(getTopicDetailsPath(entityFQN));
+        history.push(getTopicDetailsPath(entityFQN, tab));
 
         break;
 
       case EntityType.DASHBOARD:
-        history.push(getDashboardDetailsPath(entityFQN));
+        history.push(getDashboardDetailsPath(entityFQN, tab));
 
         break;
 
       case EntityType.PIPELINE:
-        history.push(getPipelineDetailsPath(entityFQN));
+        history.push(getPipelineDetailsPath(entityFQN, tab));
 
         break;
 
       case EntityType.MLMODEL:
-        history.push(getMlModelDetailsPath(entityFQN));
+        history.push(getMlModelDetailsPath(entityFQN, tab));
 
         break;
 
       case EntityType.CONTAINER:
-        history.push(getContainerDetailPath(entityFQN));
+        history.push(getContainerDetailPath(entityFQN, tab));
 
         break;
       case EntityType.DASHBOARD_DATA_MODEL:
-        history.push(getDataModelDetailsPath(entityFQN));
+        history.push(getDataModelDetailsPath(entityFQN, tab));
 
         break;
 
@@ -168,7 +174,11 @@ const EntityVersionPage: FunctionComponent = () => {
   };
 
   const versionHandler = (v = version) => {
-    history.push(getVersionPath(entityType, entityFQN, v as string));
+    if (tab) {
+      history.push(getVersionPathWithTab(entityType, entityFQN, v, tab));
+    } else {
+      history.push(getVersionPath(entityType, entityFQN, v));
+    }
   };
 
   const setEntityState = (
@@ -422,11 +432,8 @@ const EntityVersionPage: FunctionComponent = () => {
       case EntityType.CONTAINER: {
         try {
           const response = await getContainerByName(
-            getPartialNameFromFQN(
-              entityFQN,
-              ['service', 'database'],
-              FQN_SEPARATOR_CHAR
-            ),
+            entityFQN,
+
             'dataModel,owner,tags'
           );
           const { id, owner, tags = [] } = response;
@@ -730,11 +737,7 @@ const EntityVersionPage: FunctionComponent = () => {
       case EntityType.CONTAINER: {
         try {
           const response = await getContainerByName(
-            getPartialNameFromFQN(
-              entityFQN,
-              ['service', 'database'],
-              FQN_SEPARATOR_CHAR
-            ),
+            entityFQN,
             'dataModel,owner,tags'
           );
           const { id } = response;
@@ -819,7 +822,7 @@ const EntityVersionPage: FunctionComponent = () => {
             owner={owner}
             slashedTableName={slashedEntityName}
             tier={tier as TagLabel}
-            version={Number(version)}
+            version={version}
             versionHandler={versionHandler}
             versionList={versionList}
           />
@@ -907,7 +910,7 @@ const EntityVersionPage: FunctionComponent = () => {
             isVersionLoading={isVersionLoading}
             owner={owner}
             tier={tier as TagLabel}
-            version={Number(version)}
+            version={version}
             versionHandler={versionHandler}
             versionList={versionList}
           />
@@ -948,12 +951,11 @@ const EntityVersionPage: FunctionComponent = () => {
 
   return (
     <PageLayoutV1
+      className="version-page-container"
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(currentVersionData),
       })}>
-      <div className="page-container">
-        {isLoading ? <Loader /> : versionComponent()}
-      </div>
+      {isLoading ? <Loader /> : versionComponent()}
     </PageLayoutV1>
   );
 };
