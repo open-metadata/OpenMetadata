@@ -136,6 +136,7 @@ const GlossaryDetails = ({
                   permissions.EditDescription || permissions.EditAll
                 }
                 isEdit={isDescriptionEditable}
+                showCommentsIcon={false}
                 onCancel={() => setIsDescriptionEditable(false)}
                 onDescriptionEdit={() => setIsDescriptionEditable(true)}
                 onDescriptionUpdate={onDescriptionUpdate}

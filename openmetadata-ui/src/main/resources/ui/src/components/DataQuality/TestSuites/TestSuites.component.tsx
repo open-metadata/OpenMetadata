@@ -17,6 +17,7 @@ import FilterTablePlaceHolder from 'components/common/error-with-placeholder/Fil
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import Searchbar from 'components/common/searchbar/Searchbar';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from 'components/TableProfiler/Component/ProfilerProgressWidget';
 import {
@@ -55,6 +56,8 @@ export const TestSuites = () => {
     useParams<{ tab: DataQualityPageTabs }>();
   const history = useHistory();
   const location = useLocation();
+  const { permissions } = usePermissionProvider();
+  const { testSuite: testSuitePermission } = permissions;
 
   const [testSuites, setTestSuites] = useState<PagingResponse<TestSuite[]>>({
     data: [],
@@ -177,8 +180,10 @@ export const TestSuites = () => {
   };
 
   useEffect(() => {
-    fetchTestSuites();
-  }, [tab]);
+    if (testSuitePermission?.ViewAll || testSuitePermission?.ViewBasic) {
+      fetchTestSuites();
+    }
+  }, [tab, testSuitePermission]);
 
   return (
     <Row className="p-x-lg p-t-md" gutter={[16, 16]}>
@@ -192,13 +197,14 @@ export const TestSuites = () => {
             />
           </Col>
           <Col>
-            {tab === DataQualityPageTabs.TEST_SUITES && (
-              <Link to={ROUTES.ADD_TEST_SUITES}>
-                <Button type="primary">
-                  {t('label.add-entity', { entity: t('label.test-suite') })}
-                </Button>
-              </Link>
-            )}
+            {tab === DataQualityPageTabs.TEST_SUITES &&
+              testSuitePermission?.Create && (
+                <Link to={ROUTES.ADD_TEST_SUITES}>
+                  <Button type="primary">
+                    {t('label.add-entity', { entity: t('label.test-suite') })}
+                  </Button>
+                </Link>
+              )}
           </Col>
         </Row>
       </Col>
