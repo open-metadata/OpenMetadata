@@ -16,10 +16,14 @@ public class MigrationWorkflow {
   private final Jdbi jdbi;
   private final ConnectionType workflowDatabaseConnectionType;
 
-  public MigrationWorkflow(Jdbi jdbi, ConnectionType type, List<MigrationStep> migrationSteps) {
+  private boolean ignoreFileChecksum = false;
+
+  public MigrationWorkflow(
+      Jdbi jdbi, ConnectionType type, List<MigrationStep> migrationSteps, boolean ignoreFileChecksum) {
     this.jdbi = jdbi;
     this.workflowDatabaseConnectionType = type;
     this.migrationDAO = jdbi.onDemand(MigrationDAO.class);
+    this.ignoreFileChecksum = ignoreFileChecksum;
 
     // Validate Migration
     validateMigrations(migrationSteps);
@@ -53,7 +57,7 @@ public class MigrationWorkflow {
         if (maxMigration.compareTo(step.getMigrationVersion()) < 0) {
           // This a new Step file
           result.add(step);
-        } else if (!checksum.equals(step.getFileUuid())) {
+        } else if (ignoreFileChecksum || !checksum.equals(step.getFileUuid())) {
           // This migration step was ran already, if checksum is equal this step can be ignored
           LOG.warn(
               "[Migration Workflow] You are changing an older Migration File. This is not advised. Add your changes to latest Migrations.");

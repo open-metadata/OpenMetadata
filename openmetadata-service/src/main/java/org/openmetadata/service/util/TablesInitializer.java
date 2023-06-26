@@ -63,15 +63,22 @@ public final class TablesInitializer {
   private static final String DEBUG_MODE_ENABLED = "debug_mode";
   private static final String OPTION_SCRIPT_ROOT_PATH = "script-root";
   private static final String OPTION_CONFIG_FILE_PATH = "config";
+  private static final String OPTION_IGNORE_SERVER_FILE_CHECKSUM = "ignoreCheckSum";
   private static final String DISABLE_VALIDATE_ON_MIGRATE = "disable-validate-on-migrate";
   private static final Options OPTIONS;
   private static boolean debugMode = false;
+  private static boolean ignoreServerFileChecksum = false;
 
   static {
     OPTIONS = new Options();
     OPTIONS.addOption("debug", DEBUG_MODE_ENABLED, false, "Enable Debug Mode");
     OPTIONS.addOption("s", OPTION_SCRIPT_ROOT_PATH, true, "Root directory of script path");
     OPTIONS.addOption("c", OPTION_CONFIG_FILE_PATH, true, "Config file path");
+    OPTIONS.addOption(
+        "ignoreCheckSum",
+        OPTION_IGNORE_SERVER_FILE_CHECKSUM,
+        true,
+        "Ignore the server checksum and rerun same file in migrate");
     OPTIONS.addOption(null, SchemaMigrationOption.CREATE.toString(), false, "Run sql migrations from scratch");
     OPTIONS.addOption(null, SchemaMigrationOption.DROP.toString(), false, "Drop all the tables in the target database");
     OPTIONS.addOption(
@@ -117,6 +124,9 @@ public final class TablesInitializer {
     }
     if (commandLine.hasOption(DEBUG_MODE_ENABLED)) {
       debugMode = true;
+    }
+    if (commandLine.hasOption(OPTION_IGNORE_SERVER_FILE_CHECKSUM)) {
+      ignoreServerFileChecksum = Boolean.parseBoolean(commandLine.getOptionValue(OPTION_IGNORE_SERVER_FILE_CHECKSUM));
     }
     boolean isSchemaMigrationOptionSpecified = false;
     SchemaMigrationOption schemaMigrationOptionSpecified = null;
@@ -268,7 +278,7 @@ public final class TablesInitializer {
       case MIGRATE:
         flyway.migrate();
         // Validate and Run System Data Migrations
-        validateAndRunSystemDataMigrations(jdbi, config);
+        validateAndRunSystemDataMigrations(jdbi, config, ignoreServerFileChecksum);
         break;
       case INFO:
         printToConsoleMandatory(dumpToAsciiTable(flyway.info().all()));
@@ -318,11 +328,13 @@ public final class TablesInitializer {
     }
   }
 
-  private static void validateAndRunSystemDataMigrations(Jdbi jdbi, OpenMetadataApplicationConfig config) {
+  private static void validateAndRunSystemDataMigrations(
+      Jdbi jdbi, OpenMetadataApplicationConfig config, boolean ignoreFileChecksum) {
     DatasourceConfig.initialize(config);
     List<MigrationStep> loadedMigrationFiles = getServerMigrationFiles();
     MigrationWorkflow workflow =
-        new MigrationWorkflow(jdbi, DatasourceConfig.getInstance().getDatabaseConnectionType(), loadedMigrationFiles);
+        new MigrationWorkflow(
+            jdbi, DatasourceConfig.getInstance().getDatabaseConnectionType(), loadedMigrationFiles, ignoreFileChecksum);
     workflow.runMigrationWorkflows();
   }
 
