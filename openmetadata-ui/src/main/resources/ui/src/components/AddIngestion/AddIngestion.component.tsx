@@ -569,6 +569,9 @@ const AddIngestion = ({
           dbtUpdateDescriptions: dbtConfigSource?.dbtUpdateDescriptions,
           includeTags: dbtConfigSource?.includeTags,
           dbtClassificationName: dbtConfigSource?.dbtClassificationName,
+          databaseFilterPattern: databaseFilterPattern,
+          schemaFilterPattern: schemaFilterPattern,
+          tableFilterPattern: tableFilterPattern,
         };
       }
 
@@ -770,6 +773,9 @@ const AddIngestion = ({
             cancelText={t('label.cancel')}
             data={state}
             formType={status}
+            getExcludeValue={getExcludeValue}
+            getIncludeValue={getIncludeValue}
+            handleShowFilter={handleShowFilter}
             okText={t('label.next')}
             onCancel={handleCancelClick}
             onChange={handleStateChange}

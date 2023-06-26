@@ -27,7 +27,6 @@ import {
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { DbtPipelineClass } from '../../generated/metadataIngestion/dbtPipeline';
-
 import {
   DBT_SOURCES,
   GCS_CONFIG,
@@ -92,7 +91,12 @@ export type ScheduleIntervalProps = {
 export type ModifiedDbtConfig = DbtConfig &
   Pick<
     DbtPipelineClass,
-    'dbtUpdateDescriptions' | 'dbtClassificationName' | 'includeTags'
+    | 'dbtUpdateDescriptions'
+    | 'dbtClassificationName'
+    | 'includeTags'
+    | 'databaseFilterPattern'
+    | 'schemaFilterPattern'
+    | 'tableFilterPattern'
   >;
 
 export interface AddIngestionState {
