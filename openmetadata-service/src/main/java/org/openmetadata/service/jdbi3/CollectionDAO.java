@@ -34,6 +34,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
@@ -1197,6 +1198,31 @@ public interface CollectionDAO {
         @Bind("jsonSchema") String jsonSchema,
         @Bind("json") String json);
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO field_relationship(fromFQNHash, toFQNHash, fromFQN, toFQN, fromType, toType, relation, jsonSchema, json) "
+                + "VALUES (:fromFQNHash, :toFQNHash, :fromFQN, :toFQN, :fromType, :toType, :relation, :jsonSchema, :json) "
+                + "ON DUPLICATE KEY UPDATE fromFQNHash = :fromFQNHash,"
+                + "toFQNHash = :toFQNHash",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO field_relationship(fromFQNHash, toFQNHash, fromFQN, toFQN, fromType, toType, relation, jsonSchema, json) "
+                + "VALUES (:fromFQNHash, :toFQNHash, :fromFQN, :toFQN, :fromType, :toType, :relation, :jsonSchema, (:json :: jsonb)) "
+                + "ON CONFLICT (fromFQN, toFQN, relation) DO UPDATE SET fromFQNHash = EXCLUDED.fromFQNHash,"
+                + "toFQNHash = EXCLUDED.toFQNHash",
+        connectionType = POSTGRES)
+    void upsertFQNHash(
+        @Bind("fromFQNHash") String fromFQNHash,
+        @Bind("toFQNHash") String toFQNHash,
+        @Bind("fromFQN") String fromFQN,
+        @Bind("toFQN") String toFQN,
+        @Bind("fromType") String fromType,
+        @Bind("toType") String toType,
+        @Bind("relation") int relation,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") String json);
+
     @SqlQuery(
         "SELECT json FROM field_relationship WHERE "
             + "fromFQNHash = :fromFQNHash AND toFQNHash = :toFQNHash AND fromType = :fromType "
@@ -1218,6 +1244,10 @@ public interface CollectionDAO {
         @Bind("fromType") String fromType,
         @Bind("toType") String toType,
         @Bind("relation") int relation);
+
+    @SqlQuery("SELECT * FROM field_relationship")
+    @RegisterRowMapper(FieldRelationShipMapper.class)
+    List<FieldRelationship> listAll();
 
     @SqlQuery(
         "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
@@ -1271,6 +1301,37 @@ public interface CollectionDAO {
       public Triple<String, String, String> map(ResultSet rs, StatementContext ctx) throws SQLException {
         return Triple.of(rs.getString("fromFQN"), rs.getString("toFQN"), rs.getString("json"));
       }
+    }
+
+    class FieldRelationShipMapper implements RowMapper<FieldRelationship> {
+      @Override
+      public FieldRelationship map(ResultSet rs, StatementContext ctx) throws SQLException {
+        FieldRelationship result = new FieldRelationship();
+        result.setFromFQNHash(rs.getString("fromFQNHash"));
+        result.setToFQNHash(rs.getString("toFQNHash"));
+        result.setFromFQN(rs.getString("fromFQN"));
+        result.setToFQN(rs.getString("toFQN"));
+        result.setFromType(rs.getString("fromType"));
+        result.setToType(rs.getString("toType"));
+        result.setRelation(rs.getInt("relation"));
+        result.setJsonSchema(rs.getString("jsonSchema"));
+        result.setJson(rs.getString("json"));
+        return result;
+      }
+    }
+
+    @Getter
+    @Setter
+    class FieldRelationship {
+      private String fromFQNHash;
+      private String toFQNHash;
+      private String fromFQN;
+      private String toFQN;
+      private String fromType;
+      private String toType;
+      private int relation;
+      private String jsonSchema;
+      private String json;
     }
   }
 
@@ -1348,7 +1409,7 @@ public interface CollectionDAO {
   interface MetricsDAO extends EntityDAO<Metrics> {
     @Override
     default String getTableName() {
-      return "metrics_entity";
+      return "metric_entity";
     }
 
     @Override
@@ -1782,6 +1843,11 @@ public interface CollectionDAO {
         "SELECT source, tagFQN,  labelType, state FROM tag_usage WHERE targetFQNHash = :targetFQNHash ORDER BY tagFQN")
     List<TagLabel> getTagsInternal(@Bind("targetFQNHash") String targetFQNHash);
 
+    @SqlQuery("SELECT * FROM tag_usage")
+    @Deprecated(since = "Release 1.1")
+    @RegisterRowMapper(TagLabelMapperMigration.class)
+    List<TagLabelMigration> listAll();
+
     @SqlQuery(
         "SELECT COUNT(*) FROM tag_usage "
             + "WHERE (tagFQNHash LIKE CONCAT(:tagFqnHash, '.%') OR tagFQNHash = :tagFqnHash) "
@@ -1800,6 +1866,29 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE FROM tag_usage where targetFQNHash = :targetFQNHash OR targetFQNHash LIKE CONCAT(:targetFQNHash, '.%')")
     void deleteTagLabelsByTargetPrefix(@Bind("targetFQNHash") String targetFQNHash);
+
+    @Deprecated(since = "Release 1.1")
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, targetFQN)"
+                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :targetFQN) "
+                + "ON DUPLICATE KEY UPDATE tagFQNHash = :tagFQNHash, targetFQNHash = :targetFQNHash",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, targetFQN) "
+                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :targetFQN) "
+                + "ON CONFLICT (source, tagFQN, targetFQN) "
+                + "DO UPDATE SET tagFQNHash = EXCLUDED.tagFQNHash, targetFQNHash = EXCLUDED.targetFQNHash",
+        connectionType = POSTGRES)
+    void upsertFQNHash(
+        @Bind("source") int source,
+        @Bind("tagFQN") String tagFQN,
+        @Bind("tagFQNHash") String tagFQNHash,
+        @Bind("targetFQNHash") String targetFQNHash,
+        @Bind("labelType") int labelType,
+        @Bind("state") int state,
+        @Bind("targetFQN") String targetFQN);
 
     /** Update all the tagFQN starting with oldPrefix to start with newPrefix due to tag or glossary name change */
     default void updateTagPrefix(int source, String oldPrefix, String newPrefix) {
@@ -1844,6 +1933,50 @@ public interface CollectionDAO {
             .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
             .withState(TagLabel.State.values()[r.getInt("state")])
             .withTagFQN(r.getString("tagFQN"));
+      }
+    }
+
+    @Getter
+    @Setter
+    @Deprecated(since = "Release 1.1")
+    class TagLabelMigration {
+      public int source;
+      public String tagFQN;
+      public String targetFQN;
+      public int labelType;
+      public int state;
+      private String tagFQNHash;
+      public String targetFQNHash;
+    }
+
+    @Deprecated(since = "Release 1.1")
+    class TagLabelMapperMigration implements RowMapper<TagLabelMigration> {
+      @Override
+      public TagLabelMigration map(ResultSet r, StatementContext ctx) throws SQLException {
+        TagLabelMigration tagLabel = new TagLabelMigration();
+
+        tagLabel.setSource(r.getInt("source"));
+        tagLabel.setLabelType(r.getInt("labelType"));
+        tagLabel.setState(r.getInt("state"));
+        tagLabel.setTagFQN(r.getString("tagFQN"));
+        // TODO : Ugly ,  but this is present is lower version and removed on higher version
+        try {
+          // This field is removed in latest
+          tagLabel.setTargetFQN(r.getString("targetFQN"));
+        } catch (Exception ex) {
+          // Nothing to do
+        }
+        try {
+          tagLabel.setTagFQNHash(r.getString("tagFQNHash"));
+        } catch (Exception ex) {
+          // Nothing to do
+        }
+        try {
+          tagLabel.setTargetFQNHash(r.getString("targetFQNHash"));
+        } catch (Exception ex) {
+          // Nothing to do
+        }
+        return tagLabel;
       }
     }
   }
@@ -2832,6 +2965,20 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlUpdate(
         value =
+            "UPDATE entity_extension_time_series set entityFQNHash = :entityFQNHash where entityFQN=:entityFQN and extension=:extension and timestamp=:timestamp",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE entity_extension_time_series set entityFQNHash = :entityFQNHash  where entityFQN=:entityFQN and extension=:extension and timestamp=:timestamp",
+        connectionType = POSTGRES)
+    void updateEntityFQNHash(
+        @Bind("entityFQNHash") String entityFQNHash,
+        @Bind("entityFQN") String entityFQN,
+        @Bind("extension") String extension,
+        @Bind("timestamp") Long timestamp);
+
+    @ConnectionAwareSqlUpdate(
+        value =
             "UPDATE entity_extension_time_series set json = :json where entityFQNHash=:entityFQNHash and extension=:extension and timestamp=:timestamp and json -> '$.operation' = :operation",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
@@ -3097,6 +3244,40 @@ public interface CollectionDAO {
           throw new RuntimeException(e);
         }
         return new ReportDataRow(rowNumber, reportData);
+      }
+    }
+
+    @SqlQuery("select * from entity_extension_time_series")
+    @RegisterRowMapper(EntityExtensionTimeSeries.class)
+    List<EntityExtensionTimeSeriesTable> listAll();
+
+    @Getter
+    @Setter
+    class EntityExtensionTimeSeriesTable {
+      private String entityFQN;
+      private String extension;
+      private String jsonSchema;
+      private String json;
+      private long timestamp;
+      private String entityFQNHash;
+    }
+
+    class EntityExtensionTimeSeries implements RowMapper<EntityExtensionTimeSeriesTable> {
+      @Override
+      public EntityExtensionTimeSeriesTable map(ResultSet rs, StatementContext ctx) throws SQLException {
+        EntityExtensionTimeSeriesTable result = new EntityExtensionTimeSeriesTable();
+        // TODO : Ugly , after migration this is removed
+        try {
+          result.setEntityFQN(rs.getString("entityFQN"));
+        } catch (Exception ex) {
+          // Nothing
+        }
+        result.setExtension(rs.getString("extension"));
+        result.setJsonSchema(rs.getString("jsonSchema"));
+        result.setJson(rs.getString("json"));
+        result.setTimestamp(rs.getLong("timestamp"));
+        result.setEntityFQNHash(rs.getString("entityFQNHash"));
+        return result;
       }
     }
   }
