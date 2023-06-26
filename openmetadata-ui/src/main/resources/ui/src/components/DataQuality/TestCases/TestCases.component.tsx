@@ -13,6 +13,7 @@
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import Searchbar from 'components/common/searchbar/Searchbar';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import DataQualityTab from 'components/ProfilerDashboard/component/DataQualityTab';
 import { INITIAL_PAGING_VALUE, PAGE_SIZE } from 'constants/constants';
 import { SearchIndex } from 'enums/search.enum';
@@ -42,6 +43,8 @@ export const TestCases = () => {
   const history = useHistory();
   const location = useLocation();
   const { tab } = useParams<{ tab: DataQualityPageTabs }>();
+  const { permissions } = usePermissionProvider();
+  const { testCase: testCasePermission } = permissions;
 
   const params = useMemo(() => {
     const search = location.search;
@@ -170,14 +173,16 @@ export const TestCases = () => {
   };
 
   useEffect(() => {
-    if (tab === DataQualityPageTabs.TEST_CASES) {
-      if (searchValue) {
-        searchTestCases();
-      } else {
-        fetchTestCases();
+    if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
+      if (tab === DataQualityPageTabs.TEST_CASES) {
+        if (searchValue) {
+          searchTestCases();
+        } else {
+          fetchTestCases();
+        }
       }
     }
-  }, [tab, searchValue]);
+  }, [tab, searchValue, testCasePermission]);
 
   return (
     <Row className="p-x-lg p-t-md" gutter={[16, 16]}>

@@ -323,11 +323,16 @@ const TestSuiteDetailsPage = () => {
               titleLinks={slashedBreadCrumb}
             />
             <Space>
-              <Button
-                type="primary"
-                onClick={() => setIsTestCaseModalOpen(true)}>
-                {t('label.add-entity', { entity: t('label.test-case-plural') })}
-              </Button>
+              {(testSuitePermissions.EditAll ||
+                testSuitePermissions.EditTests) && (
+                <Button
+                  type="primary"
+                  onClick={() => setIsTestCaseModalOpen(true)}>
+                  {t('label.add-entity', {
+                    entity: t('label.test-case-plural'),
+                  })}
+                </Button>
+              )}
               <ManageButton
                 isRecursiveDelete
                 afterDeleteAction={afterDeleteAction}
