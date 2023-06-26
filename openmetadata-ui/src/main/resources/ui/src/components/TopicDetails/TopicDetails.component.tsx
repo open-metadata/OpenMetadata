@@ -43,18 +43,12 @@ import {
   refreshPage,
 } from '../../utils/CommonUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
-import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../PermissionProvider/PermissionProvider.interface';
 import SampleDataTopic from '../SampleDataTopic/SampleDataTopic';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import { TopicDetailsProps } from './TopicDetails.interface';
@@ -66,8 +60,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   unFollowTopicHandler,
   versionHandler,
   createThread,
-
   onTopicUpdate,
+  topicPermissions,
 }: TopicDetailsProps) => {
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
@@ -88,11 +82,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     ThreadType.Conversation
   );
 
-  const [topicPermissions, setTopicPermissions] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
-
-  const { getEntityPermission } = usePermissionProvider();
   const {
     owner,
     description,
@@ -115,26 +104,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       followersCount: followers?.length ?? 0,
     };
   }, [followers]);
-
-  const fetchResourcePermission = useCallback(async () => {
-    try {
-      const permissions = await getEntityPermission(
-        ResourceEntity.TOPIC,
-        topicDetails.id
-      );
-      setTopicPermissions(permissions);
-    } catch (error) {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', { entity: t('label.topic') })
-      );
-    }
-  }, [topicDetails.id, getEntityPermission, setTopicPermissions]);
-
-  useEffect(() => {
-    if (topicDetails.id) {
-      fetchResourcePermission();
-    }
-  }, [topicDetails.id]);
 
   const followTopic = async () => {
     isFollowing ? await unFollowTopicHandler() : await followTopicHandler();
@@ -293,8 +262,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   }, [topicPermissions, topicFQN]);
 
-  const tabs = useMemo(
-    () => [
+  const tabs = useMemo(() => {
+    const allTabs = [
       {
         label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
         key: EntityTabs.SCHEMA,
@@ -399,6 +368,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             name={t('label.sample-data')}
           />
         ),
+        isHidden: !(
+          topicPermissions.ViewAll || topicPermissions.ViewSampleData
+        ),
         key: EntityTabs.SAMPLE_DATA,
         children: <SampleDataTopic topicId={topicDetails.id} />,
       },
@@ -451,25 +423,21 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           />
         ),
       },
-    ],
-    [
-      activeTab,
-      feedCount,
-      topicDetails,
-      entityFieldTaskCount,
-      entityFieldThreadCount,
-      topicPermissions,
-      isEdit,
-      entityName,
-      topicFQN,
-    ]
-  );
+    ];
 
-  useEffect(() => {
-    if (topicDetails.id) {
-      fetchResourcePermission();
-    }
-  }, [topicDetails.id]);
+    return allTabs.filter((data) => !data.isHidden);
+  }, [
+    activeTab,
+    feedCount,
+    topicDetails,
+    entityFieldTaskCount,
+    entityFieldThreadCount,
+    topicPermissions,
+    isEdit,
+    entityName,
+    topicFQN,
+    topicPermissions,
+  ]);
 
   return (
     <PageLayoutV1

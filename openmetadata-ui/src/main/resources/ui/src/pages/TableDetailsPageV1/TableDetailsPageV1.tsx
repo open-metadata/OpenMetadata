@@ -43,7 +43,13 @@ import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getTableTabPath, getVersionPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { mockDatasetData } from 'constants/mockTourData.constants';
-import { EntityTabs, EntityType, FqnPart } from 'enums/entity.enum';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import {
+  EntityTabs,
+  EntityType,
+  FqnPart,
+  TabSpecificField,
+} from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { CreateThread } from 'generated/api/feed/createThread';
 import { JoinedWith, Table } from 'generated/entity/data/table';
@@ -112,6 +118,40 @@ const TableDetailsPageV1 = () => {
       const details = await getTableDetailsByFQN(datasetFQN, defaultFields);
 
       setTableDetails(details);
+    } catch (error) {
+      // Error here
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUsageDetails = async () => {
+    setLoading(true);
+    try {
+      const { usageSummary } = await getTableDetailsByFQN(
+        datasetFQN,
+        TabSpecificField.USAGE_SUMMARY
+      );
+
+      setTableDetails((table) =>
+        table ? { ...table, usageSummary } : undefined
+      );
+    } catch (error) {
+      // Error here
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchTestSuiteDetails = async () => {
+    setLoading(true);
+    try {
+      const { testSuite } = await getTableDetailsByFQN(
+        datasetFQN,
+        TabSpecificField.TESTSUITE
+      );
+
+      setTableDetails((table) => (table ? { ...table, testSuite } : undefined));
     } catch (error) {
       // Error here
     } finally {
@@ -544,11 +584,7 @@ const TableDetailsPageV1 = () => {
             name={t('label.query-plural')}
           />
         ),
-        isHidden: !(
-          tablePermissions.ViewAll ||
-          tablePermissions.ViewBasic ||
-          tablePermissions.ViewQueries
-        ),
+        isHidden: !(tablePermissions.ViewAll || tablePermissions.ViewQueries),
         key: EntityTabs.TABLE_QUERIES,
         children: (
           <TableQueries
@@ -566,7 +602,6 @@ const TableDetailsPageV1 = () => {
         ),
         isHidden: !(
           tablePermissions.ViewAll ||
-          tablePermissions.ViewBasic ||
           tablePermissions.ViewDataProfile ||
           tablePermissions.ViewTests
         ),
@@ -616,6 +651,7 @@ const TableDetailsPageV1 = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
+        isHidden: !tablePermissions.ViewAll,
         children: (
           <CustomPropertyTable
             entityDetails={tableDetails as CustomPropertyProps['entityDetails']}
@@ -758,6 +794,12 @@ const TableDetailsPageV1 = () => {
     } else {
       fetchTableDetails();
       getEntityFeedCount();
+      if (tablePermissions.ViewUsage) {
+        fetchUsageDetails();
+      }
+      if (tablePermissions.ViewTests) {
+        fetchTestSuiteDetails();
+      }
     }
   }, [datasetFQN, isTourOpen, isTourPage]);
 
@@ -788,6 +830,10 @@ const TableDetailsPageV1 = () => {
 
   if (loading) {
     return <Loader />;
+  }
+
+  if (!(tablePermissions.ViewAll || tablePermissions.ViewBasic)) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
   if (!tableDetails) {
