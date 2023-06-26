@@ -202,7 +202,7 @@ class PowerbiSource(DashboardServiceSource):
                 ):
                     self.status.filter(
                         dashboard_name,
-                        "Dashboard Fltered Out",
+                        "Dashboard Filtered Out",
                     )
                     continue
                 yield dashboard_details
@@ -614,7 +614,8 @@ class PowerbiSource(DashboardServiceSource):
                     ),
                     None,
                 )
-                return dataset_data
+                if dataset_data:
+                    return dataset_data
         return None
 
     def _fetch_report_from_workspace(
@@ -633,7 +634,8 @@ class PowerbiSource(DashboardServiceSource):
                     ),
                     None,
                 )
-                return report_data
+                if report_data:
+                    return report_data
         return None
 
     def _fetch_dataset_workspace(self, dataset_id: Optional[str]) -> Optional[str]:
