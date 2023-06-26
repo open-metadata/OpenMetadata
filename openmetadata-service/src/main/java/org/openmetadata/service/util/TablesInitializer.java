@@ -29,7 +29,10 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
+import java.util.Set;
 import javax.validation.Validator;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -47,23 +50,35 @@ import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.migration.MigrationFile;
+import org.openmetadata.service.migration.api.MigrationStep;
+import org.openmetadata.service.migration.api.MigrationWorkflow;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.reflections.Reflections;
 
 public final class TablesInitializer {
   private static final String DEBUG_MODE_ENABLED = "debug_mode";
   private static final String OPTION_SCRIPT_ROOT_PATH = "script-root";
   private static final String OPTION_CONFIG_FILE_PATH = "config";
+  private static final String OPTION_IGNORE_SERVER_FILE_CHECKSUM = "ignoreCheckSum";
   private static final String DISABLE_VALIDATE_ON_MIGRATE = "disable-validate-on-migrate";
   private static final Options OPTIONS;
   private static boolean debugMode = false;
+  private static boolean ignoreServerFileChecksum = false;
 
   static {
     OPTIONS = new Options();
     OPTIONS.addOption("debug", DEBUG_MODE_ENABLED, false, "Enable Debug Mode");
     OPTIONS.addOption("s", OPTION_SCRIPT_ROOT_PATH, true, "Root directory of script path");
     OPTIONS.addOption("c", OPTION_CONFIG_FILE_PATH, true, "Config file path");
+    OPTIONS.addOption(
+        "ignoreCheckSum",
+        OPTION_IGNORE_SERVER_FILE_CHECKSUM,
+        true,
+        "Ignore the server checksum and rerun same file in migrate");
     OPTIONS.addOption(null, SchemaMigrationOption.CREATE.toString(), false, "Run sql migrations from scratch");
     OPTIONS.addOption(null, SchemaMigrationOption.DROP.toString(), false, "Drop all the tables in the target database");
     OPTIONS.addOption(
@@ -109,6 +124,9 @@ public final class TablesInitializer {
     }
     if (commandLine.hasOption(DEBUG_MODE_ENABLED)) {
       debugMode = true;
+    }
+    if (commandLine.hasOption(OPTION_IGNORE_SERVER_FILE_CHECKSUM)) {
+      ignoreServerFileChecksum = Boolean.parseBoolean(commandLine.getOptionValue(OPTION_IGNORE_SERVER_FILE_CHECKSUM));
     }
     boolean isSchemaMigrationOptionSpecified = false;
     SchemaMigrationOption schemaMigrationOptionSpecified = null;
@@ -259,6 +277,8 @@ public final class TablesInitializer {
         break;
       case MIGRATE:
         flyway.migrate();
+        // Validate and Run System Data Migrations
+        validateAndRunSystemDataMigrations(jdbi, config, ignoreServerFileChecksum);
         break;
       case INFO:
         printToConsoleMandatory(dumpToAsciiTable(flyway.info().all()));
@@ -306,6 +326,37 @@ public final class TablesInitializer {
     if (debugMode) {
       System.out.println(message);
     }
+  }
+
+  private static void validateAndRunSystemDataMigrations(
+      Jdbi jdbi, OpenMetadataApplicationConfig config, boolean ignoreFileChecksum) {
+    DatasourceConfig.initialize(config);
+    List<MigrationStep> loadedMigrationFiles = getServerMigrationFiles();
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi, DatasourceConfig.getInstance().getDatabaseConnectionType(), loadedMigrationFiles, ignoreFileChecksum);
+    workflow.runMigrationWorkflows();
+  }
+
+  private static List<MigrationStep> getServerMigrationFiles() {
+    List<MigrationStep> migrations = new ArrayList<>();
+    try {
+      String prefix =
+          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+              ? "org.openmetadata.service.migration.versions.mysql"
+              : "org.openmetadata.service.migration.versions.postgres";
+      Reflections reflections = new Reflections(prefix);
+      Set<Class<?>> migrationClasses = reflections.getTypesAnnotatedWith(MigrationFile.class);
+      for (Class<?> clazz : migrationClasses) {
+        MigrationStep step =
+            Class.forName(clazz.getCanonicalName()).asSubclass(MigrationStep.class).getConstructor().newInstance();
+        migrations.add(step);
+      }
+    } catch (Exception ex) {
+      printToConsoleMandatory("Failure in list System Migration Files");
+      throw new RuntimeException(ex);
+    }
+    return migrations;
   }
 
   private static void printError(String message) {

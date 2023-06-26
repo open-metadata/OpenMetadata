@@ -52,6 +52,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -297,6 +298,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     Entity.getEntityByName(Entity.TABLE, create.getExecutableEntityReference(), null, null); // check if entity exists
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
     testSuite.setExecutable(true);
+    testSuite = setExecutableTestSuiteName(testSuite);
     return create(uriInfo, securityContext, testSuite);
   }
 
@@ -536,6 +538,16 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       testSuite.setExecutableEntityReference(entityReference);
     }
     return testSuite;
+  }
+
+  private TestSuite setExecutableTestSuiteName(TestSuite testSuite) {
+    if (!testSuite.getExecutable()) {
+      return testSuite;
+    }
+    String name = testSuite.getName();
+    String hashedName = FullyQualifiedName.buildHash(name + ".testSuite");
+
+    return testSuite.withDisplayName(name).withName(hashedName);
   }
 
   @Override
