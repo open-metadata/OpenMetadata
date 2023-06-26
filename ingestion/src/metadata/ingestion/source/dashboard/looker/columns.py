@@ -96,11 +96,14 @@ def get_columns_from_model(
     columns = []
     all_fields = (model.fields.dimensions or []) + (model.fields.measures or [])
     for field in cast(Sequence[LookmlModelExploreField], all_fields):
+        type_ = LOOKER_TYPE_MAP.get(field.type, DataType.UNKNOWN)
         columns.append(
             Column(
                 name=field.name,
                 displayName=getattr(field, "label_short", field.label),
-                dataType=LOOKER_TYPE_MAP.get(field.type, DataType.UNKNOWN),
+                dataType=type_,
+                # We cannot get the inner type from the sdk of .lkml
+                arrayDataType=DataType.UNKNOWN if type_ == DataType.ARRAY else None,
                 dataTypeDisplay=field.type,
                 description=field.description,
             )

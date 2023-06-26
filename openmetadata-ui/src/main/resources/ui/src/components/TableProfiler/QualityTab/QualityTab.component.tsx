@@ -57,7 +57,7 @@ export const QualityTab = ({
   return (
     <Row gutter={[0, 16]}>
       <Col span={24}>
-        <SummaryPanel />
+        <SummaryPanel testSuiteId={testSuite?.id} />
       </Col>
       <Col span={24}>
         <Tabs items={tabs} />
