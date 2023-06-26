@@ -10,11 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Checkbox, Col, List, Modal, Row, Space, Typography } from 'antd';
-import { AxiosError } from 'axios';
+import { Button, Checkbox, Col, List, Row, Space, Typography } from 'antd';
 import Searchbar from 'components/common/searchbar/Searchbar';
 import Loader from 'components/Loader/Loader';
-import { getTableTabPath, PAGE_SIZE_MEDIUM } from 'constants/constants';
+import { getTableTabPath, PAGE_SIZE } from 'constants/constants';
 import { SearchIndex } from 'enums/search.enum';
 import { TestCase } from 'generated/tests/testCase';
 import {
@@ -26,13 +25,11 @@ import React, { UIEventHandler, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { searchQuery } from 'rest/searchAPI';
-import { addTestCaseToLogicalTestSuite } from 'rest/testAPI';
 import { getNameFromFQN } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { getEntityFqnFromEntityLink } from 'utils/TableUtils';
-import { showErrorToast } from 'utils/ToastUtils';
-import { AddTestCaseModalProps } from './AddTestCaseModal.interface';
+import { AddTestCaseModalProps } from './AddTestCaseList.interface';
 
 // Todo: need to help from backend guys for ES query
 // export const getQueryFilterToExcludeTest = (testCase: EntityReference[]) => ({
@@ -47,12 +44,12 @@ import { AddTestCaseModalProps } from './AddTestCaseModal.interface';
 //   },
 // });
 
-export const AddTestCaseModal = ({
-  open,
+export const AddTestCaseList = ({
   onCancel,
   existingTest,
-  testSuiteId,
   onSubmit,
+  cancelText,
+  submitText,
 }: AddTestCaseModalProps) => {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -74,7 +71,7 @@ export const AddTestCaseModal = ({
         setIsLoading(true);
         const res = await searchQuery({
           pageNumber: page,
-          pageSize: PAGE_SIZE_MEDIUM,
+          pageSize: PAGE_SIZE,
           searchIndex: SearchIndex.TEST_CASE,
           query: searchText,
           // queryFilter: getQueryFilterToExcludeTest(existingTest),
@@ -100,17 +97,8 @@ export const AddTestCaseModal = ({
     const testCaseIds = [...(selectedItems?.values() ?? [])].map(
       (test) => test.id ?? ''
     );
-
-    try {
-      await addTestCaseToLogicalTestSuite({ testCaseIds, testSuiteId });
-
-      onSubmit();
-      onCancel();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
+    onSubmit(testCaseIds);
+    setIsLoading(false);
   };
 
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
@@ -126,7 +114,7 @@ export const AddTestCaseModal = ({
           });
       }
     },
-    [searchTerm, totalCount, items]
+    [searchTerm, totalCount, items, isLoading]
   );
 
   const handleCardClick = (details: TestCase) => {
@@ -160,99 +148,92 @@ export const AddTestCaseModal = ({
     }
   };
   useEffect(() => {
-    if (open) {
-      fetchTestCases({ searchText: searchTerm });
-    }
-  }, [open, searchTerm]);
+    fetchTestCases({ searchText: searchTerm });
+  }, [searchTerm]);
 
   return (
-    <Modal
-      centered
-      destroyOnClose
-      closable={false}
-      okButtonProps={{
-        loading: isLoading,
-      }}
-      open={open}
-      title={t('label.add-entity', { entity: t('label.test-case-plural') })}
-      width={750}
-      onCancel={onCancel}
-      onOk={handleSubmit}>
-      <Row gutter={[0, 16]}>
-        <Col span={24}>
-          <Searchbar
-            removeMargin
-            showClearSearch
-            showLoadingStatus
-            placeholder={t('label.search-entity', {
-              entity: t('label.test-case-plural'),
-            })}
-            searchValue={searchTerm}
-            onSearch={handleSearch}
-          />
-        </Col>
-        <Col span={24}>
-          <List loading={{ spinning: false, indicator: <Loader /> }}>
-            <VirtualList
-              data={items}
-              height={500}
-              itemKey="id"
-              onScroll={onScroll}>
-              {({ _source: test }) => {
-                const tableFqn = getEntityFqnFromEntityLink(test.entityLink);
-                const tableName = getNameFromFQN(tableFqn);
-                const isColumn = test.entityLink.includes('::columns::');
+    <Row gutter={[0, 16]}>
+      <Col span={24}>
+        <Searchbar
+          removeMargin
+          showClearSearch
+          showLoadingStatus
+          placeholder={t('label.search-entity', {
+            entity: t('label.test-case-plural'),
+          })}
+          searchValue={searchTerm}
+          onSearch={handleSearch}
+        />
+      </Col>
+      <Col span={24}>
+        <List loading={{ spinning: false, indicator: <Loader /> }}>
+          <VirtualList
+            data={items}
+            height={500}
+            itemKey="id"
+            onScroll={onScroll}>
+            {({ _source: test }) => {
+              const tableFqn = getEntityFqnFromEntityLink(test.entityLink);
+              const tableName = getNameFromFQN(tableFqn);
+              const isColumn = test.entityLink.includes('::columns::');
 
-                return (
-                  <Space
-                    className="m-b-md border rounded-4 p-sm cursor-pointer"
-                    direction="vertical"
-                    onClick={() => handleCardClick(test)}>
-                    <Space className="justify-between w-full">
-                      <Typography.Paragraph
-                        className="m-0 font-medium text-base"
-                        data-testid={test.name}>
-                        {getEntityName(test)}
-                      </Typography.Paragraph>
+              return (
+                <Space
+                  className="m-b-md border rounded-4 p-sm cursor-pointer"
+                  direction="vertical"
+                  onClick={() => handleCardClick(test)}>
+                  <Space className="justify-between w-full">
+                    <Typography.Paragraph
+                      className="m-0 font-medium text-base"
+                      data-testid={test.name}>
+                      {getEntityName(test)}
+                    </Typography.Paragraph>
 
-                      <Checkbox checked={selectedItems?.has(test.id ?? '')} />
-                    </Space>
-                    <Typography.Paragraph className="m-0">
-                      {getEntityName(test.testDefinition)}
-                    </Typography.Paragraph>
-                    <Typography.Paragraph className="m-0">
-                      <Link
-                        data-testid="table-link"
-                        to={getTableTabPath(tableFqn, 'profiler')}
-                        onClick={(e) => e.stopPropagation()}>
-                        {tableName}
-                      </Link>
-                    </Typography.Paragraph>
-                    {isColumn && (
-                      <Space>
-                        <Typography.Text className="font-medium text-xs">{`${t(
-                          'label.column'
-                        )}:`}</Typography.Text>
-                        <Typography.Text className="text-grey-muted text-xs">
-                          {getNameFromFQN(
-                            getDecodedFqn(
-                              getEntityFqnFromEntityLink(
-                                test.entityLink,
-                                isColumn
-                              ),
-                              true
-                            )
-                          ) ?? '--'}
-                        </Typography.Text>
-                      </Space>
-                    )}
+                    <Checkbox checked={selectedItems?.has(test.id ?? '')} />
                   </Space>
-                );
-              }}
-            </VirtualList>
-          </List>
-        </Col>
-      </Row>
-    </Modal>
+                  <Typography.Paragraph className="m-0">
+                    {getEntityName(test.testDefinition)}
+                  </Typography.Paragraph>
+                  <Typography.Paragraph className="m-0">
+                    <Link
+                      data-testid="table-link"
+                      to={getTableTabPath(tableFqn, 'profiler')}
+                      onClick={(e) => e.stopPropagation()}>
+                      {tableName}
+                    </Link>
+                  </Typography.Paragraph>
+                  {isColumn && (
+                    <Space>
+                      <Typography.Text className="font-medium text-xs">{`${t(
+                        'label.column'
+                      )}:`}</Typography.Text>
+                      <Typography.Text className="text-grey-muted text-xs">
+                        {getNameFromFQN(
+                          getDecodedFqn(
+                            getEntityFqnFromEntityLink(
+                              test.entityLink,
+                              isColumn
+                            ),
+                            true
+                          )
+                        ) ?? '--'}
+                      </Typography.Text>
+                    </Space>
+                  )}
+                </Space>
+              );
+            }}
+          </VirtualList>
+        </List>
+      </Col>
+      <Col className="d-flex justify-end items-center p-y-xss" span={24}>
+        <Button type="link" onClick={onCancel}>
+          {cancelText ?? t('label.cancel')}
+        </Button>
+        <Button loading={isLoading} type="primary" onClick={handleSubmit}>
+          {submitText ?? t('label.submit')}
+        </Button>
+      </Col>
+    </Row>
   );
 };

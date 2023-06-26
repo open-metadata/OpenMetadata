@@ -13,9 +13,9 @@
 import { EntityReference } from 'generated/tests/testCase';
 
 export interface AddTestCaseModalProps {
-  open: boolean;
-  onCancel: () => void;
-  onSubmit: () => void;
-  existingTest: EntityReference[];
-  testSuiteId: string;
+  onCancel?: () => void;
+  onSubmit: (testCaseIds: string[]) => void;
+  existingTest?: EntityReference[];
+  cancelText?: string;
+  submitText?: string;
 }
