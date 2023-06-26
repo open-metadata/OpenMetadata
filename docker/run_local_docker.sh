@@ -21,7 +21,7 @@ helpFunction()
    printf "\t-s Skip maven build: [true, false]. Default [false]\n"
    printf "\t-x Open JVM debug port on 5005: [true, false]. Default [false]\n"
    printf "\t-h For usage help\n"
-   printf "\t-r For Cleaning DB Volumes"
+   printf "\t-r For Cleaning DB Volumes. [true, false]. Default [true]\n"
    exit 1 # Exit script after printing help
 }
 
@@ -71,14 +71,10 @@ if [[ $debugOM == "true" ]]; then
  export OPENMETADATA_DEBUG=true
 fi
 
-echo "SKIP DB CLEAN VOLUME LOOP"
-
 if [[ $cleanDbVolumes == "true" ]]
 then
-  echo "Entered in LOOP OF CLEANING DB"
   if [[ -d "$PWD/docker/development/docker-volume/" ]]
   then
-      echo "PATH that will be cleaned is $PWD/docker/development/docker-volume/"
       rm -rf $PWD/docker/development/docker-volume
     fi
 fi
