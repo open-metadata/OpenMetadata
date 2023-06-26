@@ -54,6 +54,7 @@ interface Props {
   onEntityFieldSelect?: (value: string) => void;
   wrapInCard?: boolean;
   isVersionView?: boolean;
+  showCommentsIcon?: boolean;
 }
 const DescriptionV1 = ({
   hasEditAccess,
@@ -71,6 +72,7 @@ const DescriptionV1 = ({
   entityFqn,
   wrapInCard = false,
   isVersionView,
+  showCommentsIcon = true,
 }: Props) => {
   const descriptionThread = entityFieldThreads?.[0];
   const history = useHistory();
@@ -89,7 +91,7 @@ const DescriptionV1 = ({
 
   const editButton = () => {
     const isDescriptionThread = !isUndefined(descriptionThread);
-    const extraIcons = (
+    const extraIcons = showCommentsIcon && (
       <Icon
         component={CommentIcon}
         data-testid={
