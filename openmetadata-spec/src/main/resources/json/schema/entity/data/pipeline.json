@@ -253,7 +253,12 @@
       "description": "Scheduler Interval for the pipeline in cron format.",
       "type": "string",
       "default": null
+    },
+    "domain" : {
+      "description": "Domain the Pipeline belongs to. When not set, the pipeline inherits the domain from the Pipeline service it belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
+
   },
   "required": ["id", "name", "service"],
   "additionalProperties": false

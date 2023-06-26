@@ -80,6 +80,10 @@
         "$ref": "../../type/basic.json#/definitions/uuid"
       },
       "default": null
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Team belongs to.",
+      "type": "string"
     }
   },
   "required": ["name", "teamType"],

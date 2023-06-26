@@ -1,37 +1,22 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/domains/domain.json",
+  "$id": "https://open-metadata.org/schema/entity/domains/dataProduct.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Domain",
-  "description": "A `Domain` is a bounded context that is aligned with a Business Unit or a function within an organization.",
+  "title": "DataProduct",
+  "description": "A `Data Product` or `Data as a Product` is a logical unit that contains all components to process and store domain data for analytical or data-intensive use cases made available to data consumers.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.entity.domains.Domain",
+  "javaType": "org.openmetadata.schema.entity.domains.DataProduct",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
-  "definitions": {
-    "domainType" : {
-      "description" : "Type of a domain",
-      "type" : "string",
-      "enum": [
-        "Source-aligned",
-        "Consumer-aligned",
-        "Aggregate"
-      ]
-    }
-  },
   "properties": {
     "id": {
-      "description": "Unique ID of the Domain",
+      "description": "Unique ID of the Data Product",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
-    "domainType": {
-      "description": "Domain type",
-      "$ref": "#/definitions/domainType"
-    },
     "name": {
-      "description": "A unique name of the Domain",
+      "description": "A unique name of the Data Product",
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
-      "description": "FullyQualifiedName same as `name`.",
+      "description": "FullyQualifiedName is `domain.dataProductName` or `sub-domain.dataProductName`.",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
@@ -39,7 +24,7 @@
       "type": "string"
     },
     "description": {
-      "description": "Description of the Domain.",
+      "description": "Description of the Data Product.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
@@ -58,28 +43,24 @@
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "parent" : {
-      "description" : "Parent domains. When 'null' or not set, indicates that this is the top level domain.",
-      "$ref" : "../../type/entityReference.json"
-    },
-    "children" : {
-      "description" : "Children domains or sub-domains.",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
-    },
     "owner": {
-      "description": "Owner of this Domain.",
+      "description": "Owner of this Data Product.",
       "$ref": "../../type/entityReference.json"
     },
     "experts": {
-      "description": "List of of users who are experts in this Domain.",
+      "description": "List of of users who are experts for this Data Product.",
       "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList",
       "default" : null
+    },
+    "domain": {
+      "description": "Domain or sub-domain to which this Data Product belongs to.",
+      "$ref": "../../type/entityReference.json"
     },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     }
   },
-  "required": ["id", "name", "description", "domainType, ","href"],
+  "required": ["id", "name", "description", "domain", "href"],
   "additionalProperties": false
 }
