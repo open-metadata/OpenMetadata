@@ -16,7 +16,7 @@
       {
         "name": "maxValueForStdDevInCol",
         "displayName": "Max",
-        "description": "Expected std. dev value for the column to be greater or equal than",
+        "description": "Expected std. dev value for the column to be lower or equal than",
         "dataType": "INT"
       }
     ]
