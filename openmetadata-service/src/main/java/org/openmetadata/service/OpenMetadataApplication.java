@@ -41,11 +41,9 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import javax.naming.ConfigurationException;
 import javax.servlet.DispatcherType;
 import javax.servlet.FilterRegistration;
@@ -88,9 +86,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationConfiguration;
-import org.openmetadata.service.migration.MigrationFile;
-import org.openmetadata.service.migration.api.MigrationStep;
-import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.monitoring.EventMonitor;
 import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
@@ -121,7 +116,6 @@ import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.openmetadata.service.workflows.searchIndex.SearchIndexEvent;
 import org.quartz.SchedulerException;
-import org.reflections.Reflections;
 
 /** Main catalog application */
 @Slf4j
@@ -165,9 +159,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Validate flyway Migrations
     validateMigrations(jdbi, catalogConfig.getMigrationConfiguration());
-
-    // Validate and Run System Data Migrations
-    validateAndRunSystemDataMigrations(jdbi);
 
     // Register Authorizer
     registerAuthorizer(catalogConfig, environment);
@@ -347,34 +338,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
               + " You can find more information on upgrading OpenMetadata at"
               + " https://docs.open-metadata.org/deployment/upgrade ");
     }
-  }
-
-  private void validateAndRunSystemDataMigrations(Jdbi jdbi) throws IOException {
-    // TODO: Add validation and migration if required
-    List<MigrationStep> loadedMigrationFiles = getServerMigrationFiles();
-    MigrationWorkflow workflow =
-        new MigrationWorkflow(jdbi, DatasourceConfig.getInstance().getDatabaseConnectionType(), loadedMigrationFiles);
-    workflow.runMigrationWorkflows();
-  }
-
-  private List<MigrationStep> getServerMigrationFiles() {
-    List<MigrationStep> migrations = new ArrayList<>();
-    try {
-      String prefix =
-          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
-              ? "org.openmetadata.service.migration.versions.mysql"
-              : "org.openmetadata.service.migration.versions.postgres";
-      Reflections reflections = new Reflections(prefix);
-      Set<Class<?>> migrationClasses = reflections.getTypesAnnotatedWith(MigrationFile.class);
-      for (Class<?> clazz : migrationClasses) {
-        MigrationStep step =
-            Class.forName(clazz.getCanonicalName()).asSubclass(MigrationStep.class).getConstructor().newInstance();
-        migrations.add(step);
-      }
-    } catch (Exception ex) {
-      LOG.error("Failure in list System Migration Files.", ex);
-    }
-    return migrations;
   }
 
   private void validateConfiguration(OpenMetadataApplicationConfig catalogConfig) throws ConfigurationException {

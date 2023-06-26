@@ -29,7 +29,10 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
+import java.util.Set;
 import javax.validation.Validator;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -47,9 +50,14 @@ import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.migration.MigrationFile;
+import org.openmetadata.service.migration.api.MigrationStep;
+import org.openmetadata.service.migration.api.MigrationWorkflow;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.reflections.Reflections;
 
 public final class TablesInitializer {
   private static final String DEBUG_MODE_ENABLED = "debug_mode";
@@ -259,6 +267,8 @@ public final class TablesInitializer {
         break;
       case MIGRATE:
         flyway.migrate();
+        // Validate and Run System Data Migrations
+        validateAndRunSystemDataMigrations(jdbi);
         break;
       case INFO:
         printToConsoleMandatory(dumpToAsciiTable(flyway.info().all()));
@@ -306,6 +316,34 @@ public final class TablesInitializer {
     if (debugMode) {
       System.out.println(message);
     }
+  }
+
+  private static void validateAndRunSystemDataMigrations(Jdbi jdbi) {
+    List<MigrationStep> loadedMigrationFiles = getServerMigrationFiles();
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(jdbi, DatasourceConfig.getInstance().getDatabaseConnectionType(), loadedMigrationFiles);
+    workflow.runMigrationWorkflows();
+  }
+
+  private static List<MigrationStep> getServerMigrationFiles() {
+    List<MigrationStep> migrations = new ArrayList<>();
+    try {
+      String prefix =
+          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+              ? "org.openmetadata.service.migration.versions.mysql"
+              : "org.openmetadata.service.migration.versions.postgres";
+      Reflections reflections = new Reflections(prefix);
+      Set<Class<?>> migrationClasses = reflections.getTypesAnnotatedWith(MigrationFile.class);
+      for (Class<?> clazz : migrationClasses) {
+        MigrationStep step =
+            Class.forName(clazz.getCanonicalName()).asSubclass(MigrationStep.class).getConstructor().newInstance();
+        migrations.add(step);
+      }
+    } catch (Exception ex) {
+      printToConsoleMandatory("Failure in list System Migration Files");
+      throw new RuntimeException(ex);
+    }
+    return migrations;
   }
 
   private static void printError(String message) {
