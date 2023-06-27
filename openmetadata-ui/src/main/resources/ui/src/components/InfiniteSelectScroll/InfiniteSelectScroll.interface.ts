@@ -11,11 +11,23 @@
  *  limitations under the License.
  */
 
-import { TAG_START_WITH } from 'constants/Tag.constants';
-import { TagLabel } from '../../../generated/type/tagLabel';
+import { Paging } from 'generated/type/paging';
 
-export type TagsV1Props = {
-  tag: TagLabel;
-  startWith: TAG_START_WITH;
-  showOnlyName?: boolean;
+export type SelectOption = {
+  label: string;
+  value: string;
 };
+
+export interface InfiniteSelectScrollProps {
+  mode?: 'multiple';
+  placeholder?: string;
+  debounceTimeout?: number;
+  onChange?: (newValue: string | string[]) => void;
+  fetchOptions: (
+    search: string,
+    page: number
+  ) => Promise<{
+    data: SelectOption[];
+    paging: Paging;
+  }>;
+}
