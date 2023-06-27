@@ -484,7 +484,7 @@ const EntityVersionPage: FunctionComponent = () => {
 
           const currentVersion = await getTableVersion(id, version);
 
-          const { owner, tags } = currentVersion;
+          const { owner, tags = [] } = currentVersion;
 
           setEntityState(
             tags,
