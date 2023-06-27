@@ -15,26 +15,23 @@ import { Button, Card, Form, FormProps, Input, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
+import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import { capitalize, isNil } from 'lodash';
+import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
 import { observer } from 'mobx-react';
-import { EntityTags } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
 import { getEntityDetailLink } from 'utils/CommonUtils';
 import AppState from '../../../AppState';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
   CreateThread,
   TaskType,
 } from '../../../generated/api/feed/createThread';
-import { Table } from '../../../generated/entity/data/table';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import {
@@ -42,12 +39,10 @@ import {
   getEntityFeedLink,
   getEntityName,
 } from '../../../utils/EntityUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
   getBreadCrumbList,
-  getColumnObject,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
@@ -71,18 +66,6 @@ const RequestTag = () => {
   const [assignees, setAssignees] = useState<Option[]>([]);
   const [suggestion] = useState<TagLabel[]>([]);
 
-  const entityTier = useMemo(() => {
-    const tierFQN = getTierTags(entityData.tags || [])?.tagFQN;
-
-    return tierFQN?.split(FQN_SEPARATOR_CHAR)[1];
-  }, [entityData.tags]);
-
-  const entityTags = useMemo(() => {
-    const tags: EntityTags[] = getTagsWithoutTier(entityData.tags || []) || [];
-
-    return tags.map((tag) => `#${tag.tagFQN}`).join(' ');
-  }, [entityData.tags]);
-
   const getSanitizeValue = value?.replaceAll(/^"|"$/g, '') || '';
 
   const message = `Request tags for ${getSanitizeValue || entityType} ${
@@ -96,32 +79,6 @@ const RequestTag = () => {
   );
 
   const back = () => history.goBack();
-
-  const getColumnDetails = useCallback(() => {
-    if (!isNil(field) && !isNil(value) && field === EntityField.COLUMNS) {
-      const column = getSanitizeValue.split(FQN_SEPARATOR_CHAR).slice(-1);
-
-      const columnObject = getColumnObject(
-        column[0],
-        (entityData as Table).columns || []
-      );
-
-      return (
-        <div data-testid="column-details">
-          <p className="tw-font-semibold">
-            {t('label.column-entity', { entity: t('label.detail-plural') })}
-          </p>
-          <p>
-            <span className="text-grey-muted">{`${t('label.type')}:`}</span>{' '}
-            <span>{columnObject.dataTypeDisplay}</span>
-          </p>
-          <p>{columnObject?.tags?.map((tag) => `#${tag.tagFQN}`)?.join(' ')}</p>
-        </div>
-      );
-    } else {
-      return null;
-    }
-  }, [(entityData as Table).columns]);
 
   const onSearch = (query: string) => {
     fetchOptions(query, setOptions);
@@ -199,146 +156,128 @@ const RequestTag = () => {
   }, [entityData]);
 
   return (
-    <PageLayoutV1 center pageTitle={t('label.task')}>
-      <Space className="w-full" direction="vertical" size="middle">
-        <TitleBreadcrumb
-          titleLinks={[
-            ...getBreadCrumbList(entityData, entityType as EntityType),
-            {
-              name: t('label.create-entity', {
+    <ResizablePanels
+      firstPanel={{
+        minWidth: 700,
+        flex: 0.6,
+        children: (
+          <div className="max-width-md w-9/10 m-x-auto m-y-md d-grid gap-4">
+            <TitleBreadcrumb
+              titleLinks={[
+                ...getBreadCrumbList(entityData, entityType as EntityType),
+                {
+                  name: t('label.create-entity', {
+                    entity: t('label.task'),
+                  }),
+                  activeTitle: true,
+                  url: '',
+                },
+              ]}
+            />
+            <Card
+              className="m-t-0 request-tags"
+              key="request-tags"
+              title={t('label.create-entity', {
                 entity: t('label.task'),
-              }),
-              activeTitle: true,
-              url: '',
-            },
-          ]}
-        />
-        <Card
-          className="m-t-0 request-tags"
-          key="request-tags"
-          title={t('label.create-entity', {
-            entity: t('label.task'),
-          })}>
-          <Form
-            form={form}
-            initialValues={{
-              suggestTags: [],
-            }}
-            layout="vertical"
-            onFinish={onCreateTask}>
-            <Form.Item
-              data-testid="title"
-              label={`${t('label.task-entity', {
-                entity: t('label.title'),
-              })}:`}
-              name="title">
-              <Input
-                disabled
-                placeholder={`${t('label.task-entity', {
-                  entity: t('label.title'),
-                })}`}
-              />
-            </Form.Item>
-            <Form.Item
-              data-testid="assignees"
-              label={`${t('label.assignee-plural')}:`}
-              name="assignees"
-              rules={[
-                {
-                  required: true,
-                  message: t('message.field-text-is-required', {
-                    fieldText: t('label.assignee-plural'),
-                  }),
-                },
-              ]}>
-              <Assignees
-                options={options}
-                value={assignees}
-                onChange={setAssignees}
-                onSearch={onSearch}
-              />
-            </Form.Item>
-            <Form.Item
-              data-testid="tags-label"
-              label={`${t('label.suggest-entity', {
-                entity: t('label.tag-plural'),
-              })}:`}
-              name="suggestTags"
-              rules={[
-                {
-                  required: true,
-                  message: t('message.field-text-is-required', {
-                    fieldText: t('label.suggest-entity', {
-                      entity: t('label.tag-plural'),
-                    }),
-                  }),
-                },
-              ]}>
-              <TagSuggestion />
-            </Form.Item>
+              })}>
+              <Form
+                form={form}
+                initialValues={{
+                  suggestTags: [],
+                }}
+                layout="vertical"
+                onFinish={onCreateTask}>
+                <Form.Item
+                  data-testid="title"
+                  label={`${t('label.task-entity', {
+                    entity: t('label.title'),
+                  })}:`}
+                  name="title">
+                  <Input
+                    disabled
+                    placeholder={`${t('label.task-entity', {
+                      entity: t('label.title'),
+                    })}`}
+                  />
+                </Form.Item>
+                <Form.Item
+                  data-testid="assignees"
+                  label={`${t('label.assignee-plural')}:`}
+                  name="assignees"
+                  rules={[
+                    {
+                      required: true,
+                      message: t('message.field-text-is-required', {
+                        fieldText: t('label.assignee-plural'),
+                      }),
+                    },
+                  ]}>
+                  <Assignees
+                    options={options}
+                    value={assignees}
+                    onChange={setAssignees}
+                    onSearch={onSearch}
+                  />
+                </Form.Item>
+                <Form.Item
+                  data-testid="tags-label"
+                  label={`${t('label.suggest-entity', {
+                    entity: t('label.tag-plural'),
+                  })}:`}
+                  name="suggestTags"
+                  rules={[
+                    {
+                      required: true,
+                      message: t('message.field-text-is-required', {
+                        fieldText: t('label.suggest-entity', {
+                          entity: t('label.tag-plural'),
+                        }),
+                      }),
+                    },
+                  ]}>
+                  <TagSuggestion />
+                </Form.Item>
 
-            <Form.Item>
-              <Space
-                className="w-full justify-end"
-                data-testid="cta-buttons"
-                size={16}>
-                <Button type="link" onClick={back}>
-                  {t('label.back')}
-                </Button>
-                <Button
-                  data-testid="submit-tag-request"
-                  htmlType="submit"
-                  type="primary">
-                  {suggestion ? t('label.suggest') : t('label.submit')}
-                </Button>
-              </Space>
-            </Form.Item>
-          </Form>
-        </Card>
-      </Space>
-
-      <div className="m-t-xlg p-x-lg w-500" data-testid="entity-details">
-        <h6 className="tw-text-base">
-          {capitalize(entityType)} {t('label.detail-plural')}
-        </h6>
-        <div className="d-flex tw-mb-4">
-          <span className="text-grey-muted">{`${t('label.owner')}:`}</span>{' '}
-          <span>
-            {entityData.owner ? (
-              <span className="d-flex tw-ml-1">
-                <ProfilePicture
-                  displayName={getEntityName(entityData.owner)}
-                  id=""
-                  name={getEntityName(entityData.owner)}
-                  width="20"
-                />
-                <span className="tw-ml-1">
-                  {getEntityName(entityData.owner)}
-                </span>
-              </span>
-            ) : (
-              <span className="text-grey-muted tw-ml-1">
-                {t('label.no-entity', { entity: t('label.owner') })}
-              </span>
-            )}
-          </span>
-        </div>
-
-        <p data-testid="tier">
-          {entityTier ? (
-            entityTier
-          ) : (
-            <span className="text-grey-muted">
-              {t('label.no-entity', { entity: t('label.tier') })}
-            </span>
-          )}
-        </p>
-
-        <p data-testid="tags">{entityTags}</p>
-
-        {getColumnDetails()}
-      </div>
-    </PageLayoutV1>
+                <Form.Item>
+                  <Space
+                    className="w-full justify-end"
+                    data-testid="cta-buttons"
+                    size={16}>
+                    <Button type="link" onClick={back}>
+                      {t('label.back')}
+                    </Button>
+                    <Button
+                      data-testid="submit-tag-request"
+                      htmlType="submit"
+                      type="primary">
+                      {suggestion ? t('label.suggest') : t('label.submit')}
+                    </Button>
+                  </Space>
+                </Form.Item>
+              </Form>
+            </Card>
+          </div>
+        ),
+      }}
+      pageTitle={t('label.task')}
+      secondPanel={{
+        minWidth: 60,
+        flex: 0.4,
+        children: (
+          <ExploreSearchCard
+            hideBreadcrumbs
+            showTags
+            id={entityData.id ?? ''}
+            source={
+              {
+                ...entityData,
+                entityType,
+              } as SearchedDataProps['data'][number]['_source']
+            }
+          />
+        ),
+      }}
+    />
   );
 };
 
