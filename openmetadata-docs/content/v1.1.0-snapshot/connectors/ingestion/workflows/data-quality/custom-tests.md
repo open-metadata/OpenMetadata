@@ -196,13 +196,13 @@ class ColumnEntropyToBeBetweenValidator(BaseTestValidator):
 Once you have completed A) and B) you should only need to `pip install` your package in the environment where openmetadata python SDK is install.
 
 {% image
-  src="/images/v1.1.0-snapshot/features/ingestion/workflows/data-quality/custom-test-definition.png"
+  src="/images/v1.1.0/features/ingestion/workflows/data-quality/custom-test-definition.png"
   alt="Create test case"
   caption="Create test case"
  /%}
 
  {% image
-  src="/images/v1.1.0-snapshot/features/ingestion/workflows/data-quality/custom-test-result.png"
+  src="/images/v1.1.0/features/ingestion/workflows/data-quality/custom-test-result.png"
   alt="Create test case"
   caption="Create test case"
  /%}
