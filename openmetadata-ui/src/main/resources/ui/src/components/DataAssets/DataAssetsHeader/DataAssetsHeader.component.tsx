@@ -30,6 +30,7 @@ import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from 'components/common/TierCard/TierCard';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR, getDashboardDetailsPath } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
@@ -119,6 +120,7 @@ export const DataAssetsHeader = ({
   onDisplayNameUpdate,
 }: DataAssetsHeaderProps) => {
   const USERId = getCurrentUserId();
+  const { isTourPage } = useTourProvider();
   const { onCopyToClipBoard } = useClipboard(window.location.href);
   const [taskCount, setTaskCount] = useState(0);
   const history = useHistory();
@@ -180,8 +182,10 @@ export const DataAssetsHeader = ({
   };
 
   useEffect(() => {
-    fetchActiveAnnouncement();
-    fetchTaskCount();
+    if (!isTourPage) {
+      fetchActiveAnnouncement();
+      fetchTaskCount();
+    }
   }, [dataAsset.fullyQualifiedName]);
 
   const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(() => {
