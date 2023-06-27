@@ -1805,7 +1805,8 @@ public interface CollectionDAO {
                 mySqlCondition);
         postgresCondition =
             String.format(
-                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean) = TRUE)", postgresCondition);
+                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean) = TRUE)",
+                postgresCondition);
       } else {
         mySqlCondition =
             String.format(
@@ -1844,7 +1845,8 @@ public interface CollectionDAO {
                 mySqlCondition);
         postgresCondition =
             String.format(
-                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean) = TRUE)", postgresCondition);
+                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean) = TRUE)",
+                postgresCondition);
       } else {
         mySqlCondition =
             String.format(
