@@ -27,12 +27,12 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
   const history = useHistory();
 
   const handleModalSubmit = () => {
+    updateTourPage(CurrentTourPageType.MY_DATA_PAGE);
     history.push('/');
   };
 
   const handleRequestClose = () => {
     updateIsTourOpen(false);
-    updateTourPage(CurrentTourPageType.MY_DATA_PAGE);
   };
 
   return (

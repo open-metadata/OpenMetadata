@@ -120,7 +120,7 @@ export const DataAssetsHeader = ({
   onDisplayNameUpdate,
 }: DataAssetsHeaderProps) => {
   const USERId = getCurrentUserId();
-  const { isTourOpen, isTourPage } = useTourProvider();
+  const { isTourPage } = useTourProvider();
   const { onCopyToClipBoard } = useClipboard(window.location.href);
   const [taskCount, setTaskCount] = useState(0);
   const history = useHistory();
@@ -182,7 +182,7 @@ export const DataAssetsHeader = ({
   };
 
   useEffect(() => {
-    if (!isTourOpen && !isTourPage) {
+    if (!isTourPage) {
       fetchActiveAnnouncement();
       fetchTaskCount();
     }

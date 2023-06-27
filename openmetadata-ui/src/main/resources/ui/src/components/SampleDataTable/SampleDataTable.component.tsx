@@ -35,7 +35,7 @@ import {
 } from './sample.interface';
 import './SampleDataTable.style.less';
 const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
-  const { isTourOpen, isTourPage } = useTourProvider();
+  const { isTourPage } = useTourProvider();
 
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);
@@ -91,12 +91,12 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
 
   useEffect(() => {
     setIsLoading(true);
-    if (!isTableDeleted && tableId && !isTourOpen) {
+    if (!isTableDeleted && tableId && !isTourPage) {
       fetchSampleData();
     } else {
       setIsLoading(false);
     }
-    if (isTourOpen) {
+    if (isTourPage) {
       setSampleData(
         getSampleDataWithType({
           columns: mockDatasetData.tableDetails.columns,
@@ -136,7 +136,7 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
   return (
     <div
       className={classNames('m-md', {
-        'h-70vh overflow-hidden': isTourOpen || isTourPage,
+        'h-70vh overflow-hidden': isTourPage,
       })}
       data-testid="sample-data"
       id="sampleDataDetails">

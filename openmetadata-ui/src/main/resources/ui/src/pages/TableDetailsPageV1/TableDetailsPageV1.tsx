@@ -384,7 +384,7 @@ const TableDetailsPageV1 = () => {
     () => (
       <Row
         className={classNames({
-          'h-70vh overflow-hidden': isTourOpen || isTourPage,
+          'h-70vh overflow-hidden': isTourPage,
         })}
         gutter={[0, 16]}
         id="schemaDetails"
