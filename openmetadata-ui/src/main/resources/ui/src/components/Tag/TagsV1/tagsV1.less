@@ -13,20 +13,28 @@
 
 @import url('../../../styles/variables.less');
 
-.tag-container-style-v1 {
+.tag-chip {
   display: flex;
   gap: 4px;
   align-items: center;
   font-size: 12px;
   font-weight: 500;
-  cursor: pointer;
   justify-content: center;
+  border-radius: 4px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.tag-chip-content {
   margin: 0 5px 4px 0;
   border: none;
   padding: 0;
   background: rgba(0, 0, 0, 0.03);
-  border-radius: 4px;
-  overflow: hidden;
+}
+
+.tag-chip-add-button {
+  padding: 3px 8px;
+  background: @white;
 }
 
 .tag-color-bar {
