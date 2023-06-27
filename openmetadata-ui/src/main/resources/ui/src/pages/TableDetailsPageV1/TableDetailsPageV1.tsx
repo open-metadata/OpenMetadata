@@ -12,6 +12,7 @@
  */
 import { Card, Col, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import ActivityFeedProvider, {
   useActivityFeedProvider,
 } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -381,7 +382,13 @@ const TableDetailsPageV1 = () => {
 
   const schemaTab = useMemo(
     () => (
-      <Row gutter={[0, 16]} id="schemaDetails" wrap={false}>
+      <Row
+        className={classNames({
+          'h-70vh overflow-hidden': isTourPage,
+        })}
+        gutter={[0, 16]}
+        id="schemaDetails"
+        wrap={false}>
         <Col className="p-t-sm m-l-lg" flex="auto">
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
