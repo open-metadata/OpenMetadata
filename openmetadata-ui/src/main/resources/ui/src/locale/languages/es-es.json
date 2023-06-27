@@ -1256,7 +1256,7 @@
     "no-mentions": "There are no instances where you or your team have been referenced in any activities",
     "no-notification-found": "No se encontraron notificaciones",
     "no-open-task": "No hay tareas abiertas",
-    "no-owned-data": "It appears that you or your team do not have any Data Assets under your ownership. To rectify this, kindly click on the \"Explore\" option to uncover and take ownership of available data assets.",
+    "no-owned-data": "It appears that you or your team do not have any Data Assets under your ownership. To rectify this, kindly click on the \"Explore\" on your menu to discover.",
     "no-permission-for-action": "No tiene los permisos necesarios para realizar esta acción.",
     "no-permission-to-view": "No tiene los permisos necesarios para ver estos datos.",
     "no-profiler-enabled-summary-message": "El profiler no está habilitado para esta tabla.",

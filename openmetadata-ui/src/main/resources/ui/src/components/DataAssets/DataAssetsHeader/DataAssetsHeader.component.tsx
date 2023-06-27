@@ -30,6 +30,7 @@ import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from 'components/common/TierCard/TierCard';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR, getDashboardDetailsPath } from 'constants/constants';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
@@ -119,6 +120,7 @@ export const DataAssetsHeader = ({
 }: DataAssetsHeaderProps) => {
   const USERId = getCurrentUserId();
   const { t } = useTranslation();
+  const { isTourPage } = useTourProvider();
   const { onCopyToClipBoard } = useClipboard(window.location.href);
   const [taskCount, setTaskCount] = useState(0);
   const history = useHistory();
@@ -180,7 +182,7 @@ export const DataAssetsHeader = ({
   };
 
   useEffect(() => {
-    if (dataAsset.fullyQualifiedName) {
+    if (dataAsset.fullyQualifiedName && !isTourPage) {
       fetchActiveAnnouncement();
       fetchTaskCount();
     }
