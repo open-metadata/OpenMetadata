@@ -101,7 +101,7 @@ const TagsContainerV2 = ({
         searchIndex: SearchIndex.TAG,
       });
 
-      return Promise.resolve({
+      return {
         data: formatSearchTagsResponse(tagResponse.hits.hits ?? []).map(
           (item) => ({
             label: item.fullyQualifiedName ?? '',
@@ -111,7 +111,7 @@ const TagsContainerV2 = ({
         paging: {
           total: tagResponse.hits.total.value,
         },
-      });
+      };
     },
     [getTags]
   );
@@ -135,7 +135,7 @@ const TagsContainerV2 = ({
         searchIndex: SearchIndex.GLOSSARY,
       });
 
-      return Promise.resolve({
+      return {
         data: formatSearchGlossaryTermResponse(
           glossaryResponse.hits.hits ?? []
         ).map((item) => ({
@@ -145,7 +145,7 @@ const TagsContainerV2 = ({
         paging: {
           total: glossaryResponse.hits.total.value,
         },
-      });
+      };
     },
     [searchQuery, getGlossaryTerms, formatSearchGlossaryTermResponse]
   );
