@@ -1256,7 +1256,7 @@
     "no-mentions": "There are no instances where you or your team have been referenced in any activities",
     "no-notification-found": "未找到通知",
     "no-open-task": "无未完成任务",
-    "no-owned-data": "It appears that you or your team do not have any Data Assets under your ownership. To rectify this, kindly click on the \"Explore\" option to uncover and take ownership of available data assets.",
+    "no-owned-data": "It appears that you or your team do not have any Data Assets under your ownership. To rectify this, kindly click on the \"Explore\" on your menu to discover.",
     "no-permission-for-action": "您没有执行此操作所需的必要权限",
     "no-permission-to-view": "您没有查看此数据所需的必要权限",
     "no-profiler-enabled-summary-message": "该数据表未启用数据分析工具",
