@@ -1001,6 +1001,7 @@
     "version-plural-history": "Historique des Versions",
     "view": "Vue",
     "view-all": "Voir Tout",
+    "view-definition": "View Definition",
     "view-entity": "Voir {{entity}}",
     "view-more": "Voir plus",
     "view-new-count": "Voir {{count}} nouveau",

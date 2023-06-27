@@ -1001,6 +1001,7 @@
     "version-plural-history": "版本历史",
     "view": "查看",
     "view-all": "查看全部",
+    "view-definition": "View Definition",
     "view-entity": "查看{{entity}}",
     "view-more": "查看更多",
     "view-new-count": "查看{{count}}个新的",

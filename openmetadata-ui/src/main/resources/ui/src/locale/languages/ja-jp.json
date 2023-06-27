@@ -1001,6 +1001,7 @@
     "version-plural-history": "バージョン履歴",
     "view": "見る",
     "view-all": "全てを見る",
+    "view-definition": "View Definition",
     "view-entity": "{{entity}}を見る",
     "view-more": "もっと見る",
     "view-new-count": "View {{count}} new",
