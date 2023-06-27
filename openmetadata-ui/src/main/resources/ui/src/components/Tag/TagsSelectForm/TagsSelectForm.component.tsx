@@ -13,7 +13,7 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Col, Form, Row, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import InfiniteSelectScroll from 'components/InfiniteSelectScroll/InfiniteSelectScroll';
+import AsyncSelectList from 'components/AsyncSelectList/AsyncSelectList';
 import React, { useState } from 'react';
 import { TagsSelectFormProps } from './TagsSelectForm.interface';
 
@@ -61,7 +61,7 @@ const TagSelectForm = ({
 
         <Col className="gutter-row" span={24}>
           <Form.Item noStyle name="tags">
-            <InfiniteSelectScroll
+            <AsyncSelectList
               fetchOptions={fetchApi}
               mode="multiple"
               placeholder={placeholder}
