@@ -36,7 +36,7 @@ This section will show you how to configure and run Data Quality pipelines with 
 
 ## Main Concepts
 ### Test Suite
-Test Suites are containers allowing you to group related Test Cases together. Once configured, a Test Suite can easily be deployed to execute all the Test Cases it contains. 
+Test Suites are logical container allowing you to group related Test Cases together from different tables. 
 
 ### Test Definition
 Test Definitions are generic tests definition elements specific to a test such as:
@@ -47,52 +47,78 @@ Test Definitions are generic tests definition elements specific to a test such a
 ### Test Cases
 Test Cases specify a Test Definition. It will define what condition a test must meet to be successful (e.g. `max=n`, etc.). One Test Definition can be linked to multiple Test Cases.
 
-## Adding Tests Through the UI
+## Adding Test Cases to an Entity
+Tests cases are actual test that will be ran and executed against your entity. This is where you will define the excution time and logic of these tests
+**Note:** you will need to make sure you have the right permission in OpenMetadata to create a test.
 
+## Step 1: Creating a Test Case
+Navigate to the entity you want to add a test (we currently support quality test only for database entity). Go to `Profiler & Data Quality` tab. From there, click on the `Add Test` button in the upper right corner and select the type of test you want to implement
+
+{% image
+  src="/images/v1.1.0/features/ingestion/workflows/data-quality/add-test-case.png"
+  alt="Write your first test"
+  caption="Write your first test"
+ /%}
+
+## Step 2: Select the Test Definition
+Select the type of test you want to run and set the parameters (if any) for your test case. If you have select a `column` test, you will need to select which column you want to execute your test against. Give it a name and then submit it.
+
+**Note:** if you have a profiler workflow running, you will be able to visualize some context around your column or table data.
+
+{% image
+  src="/images/v1.1.0/features/ingestion/workflows/data-quality/add-test-defintion.png"
+  alt="Write your first test"
+  caption="Write your first test"
+ /%}
+
+## Step 3: Set an Execution Schedule (Optional)
+If it is the first test you are creating for this entity, you'll need to set an execution time. click on `Add Ingestion` button and select a schedule. Note that the time is shown in UTC.
+
+{% image
+  src="/images/v1.1.0/features/ingestion/workflows/data-quality/add-ingestion.png"
+  alt="Write your first test"
+  caption="Write your first test"
+ /%}
+
+{% image
+  src="/images/v1.1.0/features/ingestion/workflows/data-quality/ingestion-page.png"
+  alt="Write your first test"
+  caption="Write your first test"
+ /%}
+
+## Adding Test Suites Through the UI
+Test Suites are logical container allowing you to group related Test Cases together from different tables. 
 **Note:** you will need to make sure you have the right permission in OpenMetadata to create a test.
 
 ### Step 1: Creating a Test Suite
-From your table service click on the `profiler` tab. From there you will be able to create table tests by clicking on the purple background `Add Test` top button or column tests by clicking on the white background `Add Test` button.
+From the vertical navigation bar, click on `Quality` and navigate to the `By Test Suites` tab. From there click on `Add Test Suite` button on the top right corner.
 
 {% image
-  src="/images/v1.0.0/features/ingestion/workflows/data-quality/profiler-tab-view.png"
+  src="/images/v1.1.0/features/ingestion/workflows/data-quality/profiler-tab-view.png"
   alt="Write your first test"
   caption="Write your first test"
  /%}
 
 
-On the next page you will be able to either select an existing Test Suite or Create a new one. If you select an existing one your Test Case will automatically be added to the Test Suite
+On the next page, enter the name and description (optional) of your test suite.
 
 {% image
-  src="/images/v1.0.0/features/ingestion/workflows/data-quality/test-suite-page.png"
+  src="/images/v1.1.0/features/ingestion/workflows/data-quality/test-suite-page.png"
   alt="Create test suite"
   caption="Create test suite"
  /%}
 
 
-### Step 2: Create a Test Case
-On the next page, you will create a Test Case. You will need to select a Test Definition from the drop down menu and specify the parameters of your Test Case.
+### Step 2: Add Test Cases
+On the next page, you will be able to add existing test cases from different entity to your test suite. This allows you to group together test cases from different entities
 
 **Note:** Test Case name needs to be unique across the whole platform. A warning message will show if your Test Case name is not unique.
 
 {% image
-  src="/images/v1.0.0/features/ingestion/workflows/data-quality/test-case-page.png"
+  src="/images/v1.1.0/features/ingestion/workflows/data-quality/test-case-page.png"
   alt="Create test case"
   caption="Create test case"
  /%}
-
-
-### Step 3: Add Ingestion Workflow
-If you have created a new test suite you will see a purple background `Add Ingestion` button after clicking `submit`. This will allow you to schedule the execution of your Test Suite. If you have selected an existing Test Suite you are all set.
-
-After clicking `Add Ingestion` you will be able to select an execution schedule for your Test Suite (note that you can edit this later). Once you have selected the desired scheduling time, click submit and you are all set.
-
-{% image
-  src="/images/v1.0.0/features/ingestion/workflows/data-quality/ingestion-page.png"
-  alt="Create ingestion workflow"
-  caption="Create ingestion workflow"
- /%}
-
 
 
 ## Adding Tests with the YAML Config
@@ -104,28 +130,40 @@ source:
   sourceConfig:
     config:
       type: TestSuite
+      entityFullyQualifiedName: <entityFqn>
 ```
-The only section you need to modify here is the `serviceName` key. Note that this name needs to be unique across OM platform Test Suite name.
+The only sections you need to modify here are the `serviceName` (this name needs to be unique) and `entityFullyQualifiedName` (the entity for which we'll be executing tests against) keys.
 
 Once you have defined your source configuration you'll need to define te processor configuration. 
 ```yaml
 processor:
   type: "orm-test-runner"
   config:
-    testSuites:
-      - name: [test_suite_name]
-        description: [test suite description]
-        testCases:
-          - name: [test_case_name]
-            description: [test case description]
-            testDefinitionName: [test definition name*]
-            entityLink: ["<#E::table::fqn> or <#E::table::fqn::columns::column_name>"]
-            parameterValues:
-              - name: [column parameter name]
-                value: [value]
-              - ...
+    forceUpdate: <false|true>
+    testCases:
+      - name: <testCaseName>
+        testDefinitionName: columnValueLengthsToBeBetween
+        columnName: <columnName>
+        parameterValues:
+          - name: minLength
+            value: 10
+          - name: maxLength
+            value: 25
+      - name: <testCaseName>
+        testDefinitionName: tableRowCountToEqual
+        parameterValues:
+          - name: value
+            value: 10
 ```
 The processor type should be set to ` "orm-test-runner"`. For accepted test definition names and parameter value names refer to the [tests page](/connectors/ingestion/workflows/data-quality/tests).
+
+### Key referece:
+- `forceUpdate`: if the test case exists (base on the test case name) for the entity, implements the strategy to follow when running the test (i.e. whether or not to update parameters)
+- `testCases`: list of test cases to execute against the entity referenced
+- `name`: test case name
+- `testDefinitionName`: test definition
+- `columnName`: only applies to column test. The name of the column to run the test against
+- `parameterValues`: parameter values of the test
 
 
 `sink` and `workflowConfig` will have the same settings than the ingestion and profiler workflow.
@@ -139,23 +177,26 @@ source:
   sourceConfig:
     config:
       type: TestSuite
-    
+      entityFullyQualifiedName: MySQL.default.openmetadata_db.tag_usage
+
 processor:
   type: "orm-test-runner"
   config:
-    testSuites:
-      - name: test_suite_one
-        description: this is a test testSuite to confirm test suite workflow works as expected
-        testCases:
-          - name: a_column_test
-            description: A test case
-            testDefinitionName: columnValuesToBeBetween
-            entityLink: "<#E::table::local_redshift.dev.dbt_jaffle.customers::columns::number_of_orders>"     
-            parameterValues:
-              - name: minValue
-                value: 2
-              - name: maxValue
-                value: 20
+    forceUpdate: false
+    testCases:
+      - name: column_value_lenght_tagFQN
+        testDefinitionName: columnValueLengthsToBeBetween
+        columnName: tagFQN
+        parameterValues:
+          - name: minLength
+            value: 10
+          - name: maxLength
+            value: 25
+      - name: table_row_count_test
+        testDefinitionName: tableRowCountToEqual
+        parameterValues:
+          - name: value
+            value: 10
 
 sink:
   type: metadata-rest
@@ -235,198 +276,72 @@ Note how we are using the `TestSuiteWorkflow` class to load and execute the test
 configurations specified above.
 
 ## How to Visualize Test Results
-### From the Test Suite View
-From the home page click on the Test Suite menu in the left pannel.
+### From the Quality Page
+From the home page click on the `Quality` menu item on the vertical navigation. This will bring you to the quality page where you'll be able to see your test cases either by:
+- entity
+- test suite
+- test cases
+
+If you want to look at your tests grouped by Test Suites, navigate to the `By Test Suites` tab. This will bring you to the Test Suite page where you can select a specific Test Suite.
 
 {% image
-  src="/images/v1.0.0/features/ingestion/workflows/data-quality/test-suite-home-page.png"
+  src="/images/v1.1.0/features/ingestion/workflows/data-quality/test-suite-home-page.png"
   alt="Test suite home page"
   caption="Test suite home page"
- /%}
-
-
-This will bring you to the Test Suite page where you can select a specific Test Suite.
-
-{% image
-  src="/images/v1.0.0/features/ingestion/workflows/data-quality/test-suite-landing.png"
-  alt="Test suite landing page"
-  caption="Test suite landing page"
  /%}
 
 
 From there you can select a Test Suite and visualize the results associated with this specific Test Suite.
 
 {% image
-  src="/images/v1.0.0/features/ingestion/workflows/data-quality/test-suite-results.png"
+  src="/images/v1.1.0/features/ingestion/workflows/data-quality/test-suite-results.png"
   alt="Test suite results page"
   caption="Test suite results page"
  /%}
 
 
 ### From a Table Entity
-Navigate to your table and click on the `profiler` tab. From there you'll be able to see test results at the table or column level.
+Navigate to your table and click on the `profiler & Data Quality` tab. From there you'll be able to see test results at the table or column level.
 #### Table Level Test Results
 In the top pannel, click on the white background `Data Quality` button. This will bring you to a summary of all your quality tests at the table level
 
 {% image
-  src="/images/v1.0.0/features/ingestion/workflows/data-quality/table-results-entity.png"
+  src="/images/v1.1.0/features/ingestion/workflows/data-quality/table-results-entity.png"
   alt="Test suite results table"
   caption="Test suite results table"
  /%}
 
-
-#### Column Level Test Results
-On the profiler page, click on a specific column name. This will bring you to a new page where you can click the white background `Quality Test` button to see all the tests results related to your column.
+ ## Test Case Resolution Workflow
+ In v1.1.0 we introduce the ability for user to flag the resolution status of failed test cases. When a test case fail, it will automatically be marked as new. It indicates that a new failure has happened.
 
 {% image
-  src="/images/v1.0.0/features/ingestion/workflows/data-quality/colum-level-test-results.png"
+  src="/images/v1.1.0/features/ingestion/workflows/data-quality/resolution-workflow-new.png"
   alt="Test suite results table"
   caption="Test suite results table"
  /%}
 
+The next step for a user is to mark the new failure as `ack` (acknowledged) signifying to users that someone is looking into test failure resolution. When hovering over the resolution status user will be able to see the time (UTC) and the user who acknowledge the failure
 
-## Adding Custom Tests
-While OpenMetadata provides out of the box tests, you may want to write your test results from your own custom quality test suite. This is very easy to do using the API.
-### Creating a `TestDefinition`
-First, you'll need to create a Test Definition for your test. You can use the following endpoint `/api/v1/testDefinition` using a POST protocol to create your Test Definition. You will need to pass the following data in the body your request at minimum.
+{% image
+  src="/images/v1.1.0/features/ingestion/workflows/data-quality/resolution-workflow-ack-form.png"
+  alt="Test suite results table"
+  caption="Test suite results table"
+ /%}
+{% image
+  src="/images/v1.1.0/features/ingestion/workflows/data-quality/resolution-workflow-ack.png"
+  alt="Test suite results table"
+  caption="Test suite results table"
+ /%}
 
-```json
-{
-    "description": "<you test definition description>",
-    "entityType": "<TABLE or COLUMN>",
-    "name": "<your_test_name>",
-    "testPlatforms": ["<any of OpenMetadata,GreatExpectations, dbt, Deequ, Soda, Other>"],
-    "parameterDefinition": [
-      {
-        "name": "<name>"
-      },
-      {
-        "name": "<name>"
-      }
-    ]
-}
-```
+ Then user are able to mark a test as `resolved`. We made it mandatory for users to 1) select a reason and 2) add a comment when resolving failed test so that knowdledge can be maintain inside the platform.
 
-Here is a complete CURL request
-
-```bash
-curl --request POST 'http://localhost:8585/api/v1/testDefinition' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "description": "A demo custom test",
-    "entityType": "TABLE",
-    "name": "demo_test_definition",
-    "testPlatforms": ["Soda", "dbt"],
-    "parameterDefinition": [{
-        "name": "ColumnOne"
-    }]
-}'
-```
-
-Make sure to keep the `UUID` from the response as you will need it to create the Test Case.
-
-### Creating a `TestSuite`
-You'll also need to create a Test Suite for your Test Case -- note that you can also use an existing one if you want to. You can use the following endpoint `/api/v1/testSuite` using a POST protocol to create your Test Definition. You will need to pass the following data in the body your request at minimum.
-
-```json
-{
-  "name": "<test_suite_name>",
-  "description": "<test suite description>"
-}
-```
-
-Here is a complete CURL request
-
-```bash
-curl --request POST 'http://localhost:8585/api/v1/testSuite' \
---header 'Content-Type: application/json' \
---data-raw '{
-  "name": "<test_suite_name>",
-  "description": "<test suite description>"
-}'
-```
-
-Make sure to keep the `UUID` from the response as you will need it to create the Test Case.
-
-
-### Creating a `TestCase`
-Once you have your Test Definition created you can create a Test Case -- which is a specification of your Test Definition. You can use the following endpoint `/api/v1/testCase` using a POST protocol to create your Test Case. You will need to pass the following data in the body your request at minimum.
-
-```json
-{
-    "entityLink": "<#E::table::fqn> or <#E::table::fqn::columns::column name>",
-    "name": "<test_case_name>",
-    "testDefinition": {
-        "id": "<test definition UUID>",
-        "type": "testDefinition"
-    },
-    "testSuite": {
-        "id": "<test suite UUID>",
-        "type": "testSuite"
-    }
-}
-```
-**Important:** for `entityLink` make sure to include the starting and ending `<>`
-
-Here is a complete CURL request
-
-```bash
-curl --request POST 'http://localhost:8585/api/v1/testCase' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "entityLink": "<#E::table::local_redshift.dev.dbt_jaffle.customers>",
-    "name": "custom_test_Case",
-    "testDefinition": {
-        "id": "1f3ce6f5-67be-45db-8314-2ee42d73239f",
-        "type": "testDefinition"
-    },
-    "testSuite": {
-        "id": "3192ed9b-5907-475d-a623-1b3a1ef4a2f6",
-        "type": "testSuite"
-    },
-    "parameterValues": [
-        {
-            "name": "colName",
-            "value": 10
-        }
-    ]
-}'
-```
-
-Make sure to keep the `UUID` from the response as you will need it to create the Test Case.
-
-
-### Writing `TestCaseResults`
-Once you have your Test Case created you can write your results to it. You can use the following endpoint `/api/v1/testCase/{test FQN}/testCaseResult` using a PUT protocol to add Test Case Results. You will need to pass the following data in the body your request at minimum.
-
-```json
-{
-    "result": "<result message>",
-    "testCaseStatus": "<Success or Failed or Aborted>",
-    "timestamp": <Unix timestamp>,
-    "testResultValue": [
-      {
-        "value": "<value>"
-      }
-    ]
-}
-```
-
-Here is a complete CURL request
-
-```bash
-curl --location --request PUT 'http://localhost:8585/api/v1/testCase/local_redshift.dev.dbt_jaffle.customers.custom_test_Case/testCaseResult' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "result": "found 1 values expected n",
-    "testCaseStatus": "Success",
-    "timestamp": 1662129151,
-    "testResultValue": [{
-        "value": "10"
-    }]
-}'
-```
-
-You will now be able to see your test in the Test Suite or the table entity.
-
-
+{% image
+  src="/images/v1.1.0/features/ingestion/workflows/data-quality/resolution-workflow-resolved-form.png.png"
+  alt="Test suite results table"
+  caption="Test suite results table"
+ /%}
+{% image
+  src="/images/v1.1.0/features/ingestion/workflows/data-quality/resolution-workflow-resolved.png.png"
+  alt="Test suite results table"
+  caption="Test suite results table"
+ /%}
