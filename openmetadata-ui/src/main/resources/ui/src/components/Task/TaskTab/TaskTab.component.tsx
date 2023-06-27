@@ -42,6 +42,7 @@ import {
   TaskAction,
   TaskActionMode,
 } from 'pages/TasksPage/TasksPage.interface';
+import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
@@ -82,6 +83,16 @@ export const TaskTab = ({
   const isTaskClosed = isEqual(taskDetails?.status, ThreadTaskStatus.Closed);
   const [showEditTaskModel, setShowEditTaskModel] = useState(false);
   const [comment, setComment] = useState('');
+
+  useEffect(() => {
+    if (
+      (taskDetails?.type === 'RequestDescription' ||
+        taskDetails?.type === 'RequestTag') &&
+      isEmpty(taskDetails.suggestion)
+    ) {
+      setTaskAction(TASK_ACTION_LIST[1]);
+    }
+  }, [taskDetails]);
 
   // get current user details
   const currentUser = useMemo(
@@ -165,6 +176,17 @@ export const TaskTab = ({
   };
 
   const onTaskResolve = () => {
+    if (isEmpty(taskDetails?.suggestion)) {
+      showErrorToast(
+        t('message.field-text-is-required', {
+          fieldText: isTaskTags
+            ? t('label.tag-plural')
+            : t('label.description'),
+        })
+      );
+
+      return;
+    }
     if (isTaskTags) {
       const tagsData = {
         newValue: taskDetails?.suggestion || '[]',
@@ -344,7 +366,7 @@ export const TaskTab = ({
             <Button onClick={onTaskReject}>{t('label.close')}</Button>
           )}
 
-          {!isTaskClosed && (
+          {!isTaskClosed && hasTaskUpdateAccess() && (
             <>
               <Dropdown.Button
                 menu={{
@@ -354,7 +376,11 @@ export const TaskTab = ({
                   onClick: handleMenuItemClick,
                 }}
                 type="primary"
-                onClick={onTaskResolve}>
+                onClick={() =>
+                  taskAction.key === TaskActionMode.EDIT
+                    ? handleMenuItemClick({ key: taskAction.key } as MenuInfo)
+                    : onTaskResolve()
+                }>
                 {taskAction.label}
               </Dropdown.Button>
             </>

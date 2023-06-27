@@ -19,7 +19,6 @@ import '@fontsource/source-code-pro'; // Font 400
 import 'react-awesome-query-builder/lib/css/styles.css';
 import 'reactflow/dist/base.css';
 import 'reactflow/dist/style.css';
-// import 'tailwindcss/tailwind.css';
 import './antd-master.less';
 import './app.less';
 import './components/badge.less';
@@ -37,7 +36,6 @@ import './components/step.less';
 import './fonts.less';
 import './modal.less';
 import './myDataDetailsTemp.css';
-import './slick-carousel.scss';
 import './tailwind.css';
 import './temp.css';
 import './tree.less';
