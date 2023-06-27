@@ -213,11 +213,8 @@ const BasicSignUp = () => {
               src={loginBG}
             />
           </div>
-          <div className="relative">
-            <div className="d-flex justify-center mt-44 mb-10">
-              <LoginCarousel />
-            </div>
-          </div>
+
+          <LoginCarousel />
         </div>
       </div>
     </div>
