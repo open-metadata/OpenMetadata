@@ -99,6 +99,7 @@ export enum TabSpecificField {
   EXECUTIONS = 'executions',
   SCHEDULE_INTERVAL = 'scheduleInterval',
   TESTSUITE = 'testSuite',
+  VIEW_DEFINITION = 'viewDefinition',
 }
 
 export enum FqnPart {
@@ -141,6 +142,7 @@ export enum EntityTabs {
   PROFILER = 'profiler',
   LINEAGE = 'lineage',
   DBT = 'dbt',
+  VIEW_DEFINITION = 'view_definition',
   CUSTOM_PROPERTIES = 'custom_properties',
   MODEL = 'model',
   FEATURES = 'features',

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row, Space, Tabs } from 'antd';
+import { Card, Col, Row, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import ActivityFeedProvider, {
@@ -22,9 +22,9 @@ import { CustomPropertyTable } from 'components/common/CustomPropertyTable/Custo
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import QueryViewer from 'components/common/QueryViewer/QueryViewer.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import DbtTab from 'components/DatasetDetails/DbtTab/DbtTab.component';
 import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
 import Loader from 'components/Loader/Loader';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
@@ -51,7 +51,7 @@ import { JoinedWith, Table } from 'generated/entity/data/table';
 import { ThreadType } from 'generated/entity/feed/thread';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { EntityFieldThreadCount } from 'interface/feed.interface';
-import { isEmpty, isEqual } from 'lodash';
+import { isEmpty, isEqual, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -612,9 +612,37 @@ const TableDetailsPageV1 = () => {
           tableDetails?.dataModel?.sql || tableDetails?.dataModel?.rawSql
         ),
         key: EntityTabs.DBT,
-        children: <DbtTab dataModel={tableDetails?.dataModel} />,
+        children: (
+          <QueryViewer
+            sqlQuery={
+              tableDetails?.dataModel?.sql ??
+              tableDetails?.dataModel?.rawSql ??
+              ''
+            }
+            title={
+              <Space className="p-y-xss">
+                <Typography.Text className="text-grey-muted">
+                  {`${t('label.path')}:`}
+                </Typography.Text>
+                <Typography.Text>
+                  {tableDetails?.dataModel?.path}
+                </Typography.Text>
+              </Space>
+            }
+          />
+        ),
       },
-
+      {
+        label: (
+          <TabsLabel
+            id={EntityTabs.VIEW_DEFINITION}
+            name={t('label.view-definition')}
+          />
+        ),
+        isHidden: isUndefined(tableDetails?.viewDefinition),
+        key: EntityTabs.VIEW_DEFINITION,
+        children: <QueryViewer sqlQuery={tableDetails?.viewDefinition ?? ''} />,
+      },
       {
         label: (
           <TabsLabel
@@ -825,6 +853,7 @@ const TableDetailsPageV1 = () => {
         {/* Entity Tabs */}
         <Col span={24}>
           <Tabs
+            destroyInactiveTabPane
             activeKey={
               isTourOpen
                 ? activeTabForTourDatasetPage
