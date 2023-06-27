@@ -297,7 +297,6 @@
     "edit-entity-name": "Editer {{entityType}}: \"{{entityName}}\"",
     "edit-glossary-display-name": "Editer le Nom d'Affichage du Glossaire",
     "edit-glossary-name": "Editer le Nom du Glossaire",
-    "edit-task": "Edit task",
     "edit-workflow-ingestion": "Editer le {{workflow}} Ingestion",
     "edited": "Edité",
     "effect": "Effet",
