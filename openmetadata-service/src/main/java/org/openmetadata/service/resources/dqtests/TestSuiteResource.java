@@ -52,6 +52,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
@@ -143,7 +145,14 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       throws IOException {
     ListFilter filter = new ListFilter(include);
     filter.addQueryParam("testSuiteType", testSuiteType);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    EntityUtil.Fields fields = getFields(fieldsParam);
+
+    ResourceContext resourceContext;
+    resourceContext = getResourceContext(entityType, repository).build();
+    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+
+    return super.listInternal(
+        uriInfo, securityContext, fields, filter, limitParam, before, after, operationContext, resourceContext);
   }
 
   @GET
@@ -298,6 +307,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     Entity.getEntityByName(Entity.TABLE, create.getExecutableEntityReference(), null, null); // check if entity exists
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
     testSuite.setExecutable(true);
+    testSuite = setExecutableTestSuiteOwner(testSuite);
     testSuite = setExecutableTestSuiteName(testSuite);
     return create(uriInfo, securityContext, testSuite);
   }
@@ -548,6 +558,17 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     String hashedName = FullyQualifiedName.buildHash(name + ".testSuite");
 
     return testSuite.withDisplayName(name).withName(hashedName);
+  }
+
+  private TestSuite setExecutableTestSuiteOwner(TestSuite testSuite) throws IOException {
+    Table tableEntity =
+        Entity.getEntity(
+            testSuite.getExecutableEntityReference().getType(),
+            testSuite.getExecutableEntityReference().getId(),
+            "owner",
+            ALL);
+    EntityReference ownerReference = tableEntity.getOwner();
+    return testSuite.withOwner(ownerReference);
   }
 
   @Override
