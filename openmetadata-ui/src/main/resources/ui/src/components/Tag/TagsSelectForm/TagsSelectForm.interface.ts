@@ -11,11 +11,20 @@
  *  limitations under the License.
  */
 
-import { TAG_START_WITH } from 'constants/Tag.constants';
-import { TagLabel } from '../../../generated/type/tagLabel';
+import { SelectOption } from 'components/InfiniteSelectScroll/InfiniteSelectScroll.interface';
+import { Paging } from 'generated/type/paging';
 
-export type TagsV1Props = {
-  tag: TagLabel;
-  startWith: TAG_START_WITH;
-  showOnlyName?: boolean;
+export type TagsSelectFormProps = {
+  placeholder: string;
+  defaultValue: string[];
+  onChange?: (value: string[]) => void;
+  onSubmit: (tags: string[]) => Promise<void>;
+  onCancel: () => void;
+  fetchApi: (
+    search: string,
+    page: number
+  ) => Promise<{
+    data: SelectOption[];
+    paging: Paging;
+  }>;
 };

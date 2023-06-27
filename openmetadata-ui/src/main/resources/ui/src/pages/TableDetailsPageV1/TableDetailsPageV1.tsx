@@ -37,7 +37,7 @@ import SchemaTab from 'components/SchemaTab/SchemaTab.component';
 import TableProfilerV1 from 'components/TableProfiler/TableProfilerV1';
 import TableQueries from 'components/TableQueries/TableQueries';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getTableTabPath, getVersionPath } from 'constants/constants';
@@ -445,7 +445,7 @@ const TableDetailsPageV1 = () => {
           ) : null}
 
           <Space className="w-full" direction="vertical" size="large">
-            <TagsContainerV1
+            <TagsContainerV2
               entityFqn={datasetFQN}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.TABLE}
@@ -459,7 +459,7 @@ const TableDetailsPageV1 = () => {
               onThreadLinkSelect={onThreadLinkSelect}
             />
 
-            <TagsContainerV1
+            <TagsContainerV2
               entityFqn={datasetFQN}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.TABLE}
