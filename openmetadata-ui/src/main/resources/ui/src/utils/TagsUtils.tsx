@@ -417,13 +417,7 @@ export const tagRender = (customTagProps: CustomTagProps) => {
         placement="topLeft"
         title={getTagTooltip(label as string)}
         trigger="hover">
-        <Typography.Paragraph
-          className="m-0"
-          style={{
-            display: 'inline-block',
-            whiteSpace: 'normal',
-            wordBreak: 'break-all',
-          }}>
+        <Typography.Paragraph className="m-0 d-inline-block break-all whitespace-normal">
           {tagLabel}
         </Typography.Paragraph>
       </Tooltip>

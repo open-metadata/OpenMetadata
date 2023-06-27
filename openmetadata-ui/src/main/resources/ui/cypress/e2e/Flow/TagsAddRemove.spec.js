@@ -56,7 +56,10 @@ const removeTags = (checkForParentEntity) => {
 
     cy.get('[data-testid="remove-tags"]').should('be.visible').click();
 
-    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+    cy.get('[data-testid="saveAssociatedTag"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
   } else {
     cy.get('[data-testid="Classification-tags-0"] [data-testid="edit-button"]')
       .scrollIntoView()
@@ -95,7 +98,10 @@ describe('Check if tags addition and removal flow working properly from tables',
 
       interceptURL('PATCH', `/api/v1/${entityDetails.entity}/*`, 'tagsChange');
 
-      cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+      cy.get('[data-testid="saveAssociatedTag"]')
+        .scrollIntoView()
+        .should('be.visible')
+        .click();
 
       verifyResponseStatusCode('@tagsChange', 200);
 

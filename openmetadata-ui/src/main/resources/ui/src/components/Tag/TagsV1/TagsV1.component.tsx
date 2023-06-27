@@ -83,7 +83,7 @@ const TagsV1 = ({ tag, startWith, showOnlyName = false }: TagsV1Props) => {
       color ? (
         <div className="tag-color-bar" style={{ background: color }} />
       ) : null,
-    []
+    [color]
   );
 
   const tagContent = useMemo(
@@ -100,7 +100,7 @@ const TagsV1 = ({ tag, startWith, showOnlyName = false }: TagsV1Props) => {
         </span>
       </div>
     ),
-    [startIcon, tagName, tag.tagFQN]
+    [startIcon, tagName, tag.tagFQN, tagColorBar]
   );
 
   const tagChip = useMemo(
@@ -113,7 +113,7 @@ const TagsV1 = ({ tag, startWith, showOnlyName = false }: TagsV1Props) => {
         {tagContent}
       </Tag>
     ),
-    []
+    [color, tagContent]
   );
 
   const addTagChip = useMemo(
@@ -128,7 +128,7 @@ const TagsV1 = ({ tag, startWith, showOnlyName = false }: TagsV1Props) => {
         </Typography.Paragraph>
       </Tag>
     ),
-    []
+    [tagName]
   );
 
   return startWith === TAG_START_WITH.PLUS ? (
