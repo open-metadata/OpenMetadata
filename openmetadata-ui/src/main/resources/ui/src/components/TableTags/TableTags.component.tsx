@@ -12,9 +12,8 @@
  */
 
 import { Button, Tooltip } from 'antd';
-import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import classNames from 'classnames';
-import TagsContainerEntityTable from 'components/Tag/TagsContainerEntityTable/TagsContainerEntityTable.component';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { EntityType } from 'enums/entity.enum';
@@ -22,7 +21,7 @@ import { ThreadType } from 'generated/entity/feed/thread';
 import { TagSource } from 'generated/type/tagLabel';
 import { EntityFieldThreads } from 'interface/feed.interface';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFieldThreadElement } from 'utils/FeedElementUtils';
 import { ReactComponent as IconRequest } from '../../assets/svg/request-icon.svg';
@@ -32,33 +31,21 @@ const TableTags = <T extends TableUnion>({
   tags,
   record,
   index,
+  type,
+  entityFqn,
   isReadOnly,
-  isTagLoading,
   hasTagEditAccess,
-  onUpdateTagsHandler,
-  onRequestTagsHandler,
-  getColumnName,
+  entityFieldThreads,
   getColumnFieldFQN,
   entityFieldTasks,
-  onThreadLinkSelect,
-  entityFieldThreads,
-  entityFqn,
-  tagList,
-  handleTagSelection,
-  type,
-  fetchTags,
-  tagFetchFailed,
-  dataTestId,
   showInlineEditTagButton,
+  getColumnName,
+  onUpdateTagsHandler,
+  onRequestTagsHandler,
+  onThreadLinkSelect,
+  handleTagSelection,
 }: TableTagsComponentProps<T>) => {
   const { t } = useTranslation();
-  const [isEdit, setIsEdit] = useState<boolean>(false);
-
-  const showEditTagButton = useMemo(
-    () =>
-      tags.length && hasTagEditAccess && !isEdit && !showInlineEditTagButton,
-    [tags, type, hasTagEditAccess, isEdit, showInlineEditTagButton]
-  );
 
   const hasTagOperationAccess = useMemo(
     () =>
@@ -73,14 +60,6 @@ const TableTags = <T extends TableUnion>({
       onRequestTagsHandler,
     ]
   );
-
-  const addButtonHandler = useCallback(() => {
-    setIsEdit(true);
-    // Fetch Classification or Glossary only once
-    if (isEmpty(tagList) || tagFetchFailed) {
-      fetchTags();
-    }
-  }, [tagList, tagFetchFailed, fetchTags]);
 
   const getRequestTagsElement = useMemo(() => {
     const hasTags = !isEmpty(record.tags || []);
@@ -117,83 +96,58 @@ const TableTags = <T extends TableUnion>({
   }, [record, onUpdateTagsHandler, onRequestTagsHandler]);
 
   return (
-    <div className="hover-icon-group" data-testid={`${dataTestId}-${index}`}>
+    <div className="hover-icon-group" data-testid={`${type}-tags-${index}`}>
       <div
-        className={classNames(
-          `d-flex justify-content`,
-          isEdit || !isEmpty(tags) ? 'flex-col items-start' : 'items-center'
-        )}
+        className={classNames('d-flex justify-content flex-col items-start')}
         data-testid="tags-wrapper">
-        <TagsContainerEntityTable
-          isEditing={isEdit}
-          isLoading={isTagLoading}
+        <TagsContainerV2
+          showBottomEditButton
           permission={hasTagEditAccess && !isReadOnly}
           selectedTags={tags}
-          showEditButton={showInlineEditTagButton}
+          showHeader={false}
+          showInlineEditButton={showInlineEditTagButton}
           tagType={type}
-          treeData={tagList}
-          onAddButtonClick={addButtonHandler}
-          onCancel={() => setIsEdit(false)}
           onSelectionChange={async (selectedTags) => {
             await handleTagSelection(selectedTags, record);
-            setIsEdit(false);
-          }}
-        />
+          }}>
+          <>
+            {!isReadOnly && (
+              <div className="d-flex items-center">
+                {hasTagOperationAccess && (
+                  <>
+                    {/*  Request and Update tags */}
+                    {type === TagSource.Classification && getRequestTagsElement}
 
-        {!isReadOnly && (
-          <div className="m-t-xss d-flex items-center">
-            {showEditTagButton ? (
-              <Button
-                className="p-0 w-7 h-7 flex-center text-primary hover-cell-icon"
-                data-testid="edit-button"
-                icon={
-                  <IconEdit
-                    height={14}
-                    name={t('label.edit')}
-                    style={{ color: DE_ACTIVE_COLOR }}
-                    width={14}
-                  />
-                }
-                size="small"
-                type="text"
-                onClick={addButtonHandler}
-              />
-            ) : null}
+                    {/*  List Conversation */}
+                    {getFieldThreadElement(
+                      getColumnName?.(record) ?? '',
+                      EntityField.TAGS,
+                      entityFieldThreads as EntityFieldThreads[],
+                      onThreadLinkSelect,
+                      EntityType.TABLE,
+                      entityFqn,
+                      getColumnFieldFQN,
+                      Boolean(record?.name?.length)
+                    )}
 
-            {hasTagOperationAccess && (
-              <>
-                {/*  Request and Update tags */}
-
-                {type === TagSource.Classification && getRequestTagsElement}
-
-                {/*  List Conversation */}
-                {getFieldThreadElement(
-                  getColumnName?.(record) ?? '',
-                  EntityField.TAGS,
-                  entityFieldThreads as EntityFieldThreads[],
-                  onThreadLinkSelect,
-                  EntityType.TABLE,
-                  entityFqn,
-                  getColumnFieldFQN,
-                  Boolean(record?.name?.length)
+                    {/*  List Task */}
+                    {getFieldThreadElement(
+                      getColumnName?.(record) ?? '',
+                      EntityField.TAGS,
+                      entityFieldTasks as EntityFieldThreads[],
+                      onThreadLinkSelect,
+                      EntityType.TABLE,
+                      entityFqn,
+                      getColumnFieldFQN,
+                      Boolean(record?.name),
+                      ThreadType.Task
+                    )}
+                  </>
                 )}
-
-                {/*  List Task */}
-                {getFieldThreadElement(
-                  getColumnName?.(record) ?? '',
-                  EntityField.TAGS,
-                  entityFieldTasks as EntityFieldThreads[],
-                  onThreadLinkSelect,
-                  EntityType.TABLE,
-                  entityFqn,
-                  getColumnFieldFQN,
-                  Boolean(record?.name),
-                  ThreadType.Task
-                )}
-              </>
+              </div>
             )}
-          </div>
-        )}
+          </>
+        </TagsContainerV2>
       </div>
     </div>
   );

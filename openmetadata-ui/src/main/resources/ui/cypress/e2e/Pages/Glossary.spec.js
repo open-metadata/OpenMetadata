@@ -45,7 +45,6 @@ const visitGlossaryTermPage = (termName, fqn, fetchPermission) => {
     '/api/v1/permissions/glossaryTerm/*',
     'waitForTermPermission'
   );
-  interceptURL('GET', '/api/v1/tags*', 'getTagsList');
 
   cy.get(`[data-row-key="${fqn}"]`)
     .scrollIntoView()
@@ -55,7 +54,6 @@ const visitGlossaryTermPage = (termName, fqn, fetchPermission) => {
     .click();
 
   verifyResponseStatusCode('@getGlossaryTerms', 200);
-  verifyResponseStatusCode('@getTagsList', 200);
   // verifyResponseStatusCode('@glossaryAPI', 200);
   if (fetchPermission) {
     verifyResponseStatusCode('@waitForTermPermission', 200);
@@ -244,15 +242,23 @@ const updateSynonyms = (uSynonyms) => {
 };
 
 const updateTags = (inTerm) => {
+  // visit glossary page
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?q=%2A&index=tag_search_index&from=0&size=10&query_filter=%7B%7D`,
+    'tags'
+  );
   cy.get(
     '[data-testid="tags-input-container"] [data-testid="add-tag"]'
   ).click();
+
+  verifyResponseStatusCode('@tags', 200);
 
   cy.get('[data-testid="tag-selector"]')
     .scrollIntoView()
     .should('be.visible')
     .type('personal');
-  cy.get('[role="tree"] [title="Personal"]').click();
+  cy.get('[data-testid="tag-PersonalData.Personal"]').click();
   // to close popup
   cy.clickOutside();
 
@@ -558,10 +564,6 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Updating data of glossary should work properly', () => {
-    // visit glossary page
-    interceptURL('GET', `/api/v1/tags?limit=*`, 'tags');
-    verifyResponseStatusCode('@tags', 200);
-
     // updating tags
     updateTags(false);
 
@@ -578,16 +580,12 @@ describe('Glossary page should work properly', () => {
     // visit glossary page
     interceptURL('GET', `/api/v1/glossaryTerms?glossary=*`, 'glossaryTerm');
     interceptURL('GET', `/api/v1/permissions/glossary/*`, 'permissions');
-    interceptURL('GET', `/api/v1/tags?limit=*`, 'tags');
 
     cy.get('.ant-menu-item')
       .contains(NEW_GLOSSARY_1.name)
       .should('be.visible')
       .click();
-    verifyMultipleResponseStatusCode(
-      ['@glossaryTerm', '@permissions', '@tags'],
-      200
-    );
+    verifyMultipleResponseStatusCode(['@glossaryTerm', '@permissions'], 200);
 
     // visit glossary term page
     interceptURL(
@@ -606,12 +604,7 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click();
     verifyMultipleResponseStatusCode(
-      [
-        '@glossaryTermDetails',
-        '@listGlossaryTerm',
-        '@glossaryTermPermission',
-        '@tags',
-      ],
+      ['@glossaryTermDetails', '@listGlossaryTerm', '@glossaryTermPermission'],
       200
     );
     cy.wait(5000); // adding manual wait as edit icon takes time to appear on screen
