@@ -70,7 +70,7 @@ ON
 LIMIT 1
 """
 
-FETCH_COLUMN = """        
+FETCH_COLUMN = """
 select 
 	tc.id, 
     table_name ,
@@ -85,5 +85,4 @@ on
 	t.id=tc.table_id  
 where 
 	table_name= '{table_name}'; 
-
 """

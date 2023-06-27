@@ -16,13 +16,7 @@ import traceback
 from typing import Iterable, List, Optional
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.dashboard import (
-    Dashboard as Lineage_Dashboard,
-)
-from metadata.generated.schema.entity.data.dashboardDataModel import (
-    DashboardDataModel,
-    DataModelType,
-)
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
@@ -40,11 +34,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.dashboard.superset.models import (
-    DashboradResult,
-    DataSourceResult,
-    SupersetDatasource,
-)
+from metadata.ingestion.source.dashboard.superset.models import SupersetDatasource
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 

@@ -21,21 +21,15 @@ from metadata.generated.schema.api.data.createDashboardDataModel import (
     CreateDashboardDataModelRequest,
 )
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.chart import Chart, ChartType
-from metadata.generated.schema.entity.data.dashboardDataModel import (
-    DashboardDataModel,
-    DataModelType,
-)
-from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.dashboardDataModel import DataModelType
+from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
-from metadata.ingestion.source.dashboard.superset.models import (
-    DataSourceResult,
-    SupersetDatasource,
-)
+from metadata.ingestion.source.dashboard.superset.models import DataSourceResult
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart, filter_by_datamodel
+from metadata.utils.filters import filter_by_datamodel
 from metadata.utils.helpers import (
     clean_uri,
     get_database_name_for_lineage,
@@ -64,8 +58,8 @@ class SupersetAPISource(SupersetSourceMixin):
             charts = self.client.fetch_charts(current_page, page_size)
             current_page += 1
 
-            for index in range(len(charts.result)):
-                self.all_charts[charts.ids[index]] = charts.result[index]
+            for index, chart_result in enumerate(charts.result):
+                self.all_charts[charts.ids[index]] = chart_result
 
     def get_dashboards_list(self) -> Optional[List[object]]:
         """
@@ -224,15 +218,19 @@ class SupersetAPISource(SupersetSourceMixin):
             try:
                 parsed_fields = {
                     "dataTypeDisplay": field.type,
-                    "dataType": ColumnTypeParser._parse_datatype_string(
+                    "dataType": ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                         field.type if field.type else None
-                    )["dataType"],
+                    )[
+                        "dataType"
+                    ],
                     "name": field.id,
                     "displayName": field.column_name,
                     "description": field.description,
-                    "dataLength": ColumnTypeParser._parse_datatype_string(
+                    "dataLength": ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                         field.type if field.type else None
-                    )["dataLength"],
+                    )[
+                        "dataLength"
+                    ],
                 }
                 datasource_columns.append(Column(**parsed_fields))
             except Exception as exc:

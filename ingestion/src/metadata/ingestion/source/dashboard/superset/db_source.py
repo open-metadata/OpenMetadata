@@ -15,7 +15,7 @@ Superset source module
 import traceback
 from typing import Iterable, List, Optional
 
-from sqlalchemy import sql, util
+from sqlalchemy import sql
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.url import make_url
 
@@ -25,12 +25,9 @@ from metadata.generated.schema.api.data.createDashboardDataModel import (
     CreateDashboardDataModelRequest,
 )
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.chart import Chart, ChartType
-from metadata.generated.schema.entity.data.dashboardDataModel import (
-    DashboardDataModel,
-    DataModelType,
-)
-from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.dashboardDataModel import DataModelType
+from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -51,7 +48,7 @@ from metadata.ingestion.source.dashboard.superset.queries import (
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart, filter_by_datamodel
+from metadata.utils.filters import filter_by_datamodel
 from metadata.utils.helpers import (
     clean_uri,
     get_database_name_for_lineage,
@@ -241,15 +238,19 @@ class SupersetDBSource(SupersetSourceMixin):
             try:
                 parsed_fields = {
                     "dataTypeDisplay": field.type,
-                    "dataType": ColumnTypeParser._parse_datatype_string(
+                    "dataType": ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                         field.type if field.type else None
-                    )["dataType"],
+                    )[
+                        "dataType"
+                    ],
                     "name": field.id,
                     "displayName": field.column_name,
                     "description": field.description,
-                    "dataLength": ColumnTypeParser._parse_datatype_string(
+                    "dataLength": ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                         field.type if field.type else None
-                    )["dataLength"],
+                    )[
+                        "dataLength"
+                    ],
                 }
 
                 datasource_columns.append(Column(**parsed_fields))

@@ -20,12 +20,9 @@ from metadata.generated.schema.entity.services.connections.dashboard.supersetCon
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.dashboard.superset.models import (
-    DataSourceResult,
     ListDatabaseResult,
     SupersetChart,
-    SupersetDashboard,
     SupersetDashboardCount,
-    SupersetDashboardList,
     SupersetDatasource,
 )
 from metadata.utils.logger import ometa_logger
