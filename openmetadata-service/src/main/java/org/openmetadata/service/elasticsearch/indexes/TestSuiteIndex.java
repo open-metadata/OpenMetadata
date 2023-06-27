@@ -13,9 +13,6 @@ public class TestSuiteIndex implements ElasticSearchIndex {
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(testSuite);
-    if (doc.containsKey("testSuite")) {
-      doc.remove("testSuite"); // we won't update testSuite on testCase update
-    }
     return doc;
   }
 }

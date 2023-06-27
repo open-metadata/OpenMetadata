@@ -118,6 +118,17 @@ public class IndexUtil {
     throw new EventPublisherException("Failed to find index doc for type " + type);
   }
 
+  public static Set<String> getIndexFields(String entityType, IndexMappingLanguage lang) {
+    Set<String> fields = INDEX_TO_MAPPING_FIELDS_MAP.get(getIndexMappingByEntityType(entityType));
+    if (fields != null) {
+      return fields;
+    } else {
+      populateEsFieldsForIndexes(getIndexMappingByEntityType(entityType), lang);
+      fields = INDEX_TO_MAPPING_FIELDS_MAP.get(getIndexMappingByEntityType(entityType));
+    }
+    return fields;
+  }
+
   public static String getContext(String type, String info) {
     return String.format("Failed While : %s %n Additional Info:  %s ", type, info);
   }

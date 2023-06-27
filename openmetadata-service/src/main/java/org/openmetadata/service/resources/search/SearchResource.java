@@ -261,7 +261,6 @@ public class SearchResource {
       @Context SecurityContext securityContext,
       @DefaultValue("table_search_index") @QueryParam("index") String index,
       @Parameter(description = "Field in an entity.") @QueryParam("field") String fieldName,
-      @Parameter(description = "After key.") @DefaultValue("") @QueryParam("after") String after,
       @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
           @DefaultValue("10")
           @QueryParam("size")
@@ -269,7 +268,7 @@ public class SearchResource {
       @DefaultValue("false") @QueryParam("deleted") String deleted)
       throws IOException {
 
-    return searchClient.aggregate(index, fieldName, after);
+    return searchClient.aggregate(index, fieldName);
   }
 
   @GET

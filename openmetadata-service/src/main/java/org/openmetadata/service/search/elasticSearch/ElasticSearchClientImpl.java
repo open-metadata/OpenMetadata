@@ -347,7 +347,7 @@ public class ElasticSearchClientImpl implements SearchClient {
   }
 
   @Override
-  public Response aggregate(String index, String fieldName, String after) throws IOException {
+  public Response aggregate(String index, String fieldName) throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder
         .aggregation(
@@ -789,20 +789,7 @@ public class ElasticSearchClientImpl implements SearchClient {
   }
 
   private static SearchSourceBuilder searchBuilder(QueryBuilder queryBuilder, HighlightBuilder hb, int from, int size) {
-    //    List<CompositeValuesSourceBuilder<?>> sources = new ArrayList<>();
-    //    sources.add(new TermsValuesSourceBuilder("unique_test_suites")
-    //        .field("testSuite.name.keyword"));
-    //    CompositeAggregationBuilder compositeAggregationBuilder = new CompositeAggregationBuilder(
-    //        "unique_values", sources)
-    //        .size(size);
-    //    SearchSourceBuilder builder = new SearchSourceBuilder().
-    //        query(QueryBuilders.wildcardQuery("testSuite.name.keyword", "*suite*"))
-    //        .from(from).size(size);
-
     SearchSourceBuilder builder = new SearchSourceBuilder().query(queryBuilder).from(from).size(size);
-
-    builder.fetchSource(new String[] {"testSuite.id", "testSuite.executable", "testSuite.description"}, null);
-
     if (hb != null) {
       hb.preTags(EntityBuilderConstant.PRE_TAG);
       hb.postTags(EntityBuilderConstant.POST_TAG);

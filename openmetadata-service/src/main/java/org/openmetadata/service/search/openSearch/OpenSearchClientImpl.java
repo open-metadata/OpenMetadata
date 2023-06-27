@@ -346,7 +346,7 @@ public class OpenSearchClientImpl implements SearchClient {
     return Response.status(OK).entity(response).build();
   }
 
-  public Response aggregate(String index, String fieldName, String after) throws IOException {
+  public Response aggregate(String index, String fieldName) throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder
         .aggregation(
