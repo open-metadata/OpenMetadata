@@ -21,11 +21,11 @@ import { tagRender } from 'utils/TagsUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import Fqn from '../../utils/Fqn';
 import {
-  InfiniteSelectScrollProps,
+  AsyncSelectListProps,
   SelectOption,
-} from './InfiniteSelectScroll.interface';
+} from './AsyncSelectList.interface';
 
-const InfiniteSelectScroll: FC<InfiniteSelectScrollProps> = ({
+const AsyncSelectList: FC<AsyncSelectListProps> = ({
   mode,
   onChange,
   fetchOptions,
@@ -44,10 +44,11 @@ const InfiniteSelectScroll: FC<InfiniteSelectScrollProps> = ({
       setOptions([]);
       setIsLoading(true);
       try {
-        const res = await fetchOptions(value, currentPage);
+        const res = await fetchOptions(value, 1);
         setOptions(res.data);
         setPaging(res.paging);
         setSearchValue(value);
+        setCurrentPage(1);
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -156,4 +157,4 @@ const InfiniteSelectScroll: FC<InfiniteSelectScrollProps> = ({
   );
 };
 
-export default InfiniteSelectScroll;
+export default AsyncSelectList;
