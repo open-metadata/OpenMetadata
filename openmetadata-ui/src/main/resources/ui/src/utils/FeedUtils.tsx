@@ -224,7 +224,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
   } else {
     let hashValues = [];
     if (!searchTerm) {
-      const data = await searchData('*', 0, 5, '', '', '', SearchIndex.TABLE);
+      const data = await searchData('*', 1, 5, '', '', '', SearchIndex.TABLE);
       const hits = data.data.hits.hits;
 
       hashValues = hits.map((hit) => {

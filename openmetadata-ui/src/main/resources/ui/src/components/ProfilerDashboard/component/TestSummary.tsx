@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Typography } from 'antd';
+import { Button, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
 import {
   GREEN_3,
@@ -97,13 +98,13 @@ const TestSummary: React.FC<TestSummaryProps> = ({
       const values = result.testResultValue?.reduce((acc, curr) => {
         return {
           ...acc,
-          [curr.name || 'value']: round(parseFloat(curr.value ?? ''), 2) || 0,
+          [curr.name ?? 'value']: round(parseFloat(curr.value ?? ''), 2) || 0,
         };
       }, {});
 
       chartData.push({
         name: getFormattedDateFromSeconds(result.timestamp as number),
-        status: result.testCaseStatus || '',
+        status: result.testCaseStatus ?? '',
         ...values,
       });
     });
@@ -111,9 +112,9 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     setChartData({
       information:
         currentData[0]?.testResultValue?.map((info, i) => ({
-          label: info.name || '',
+          label: info.name ?? '',
           color: COLORS[i],
-        })) || [],
+        })) ?? [],
       data: chartData,
     });
   };
@@ -251,13 +252,16 @@ const TestSummary: React.FC<TestSummaryProps> = ({
 
     if (isSqlQuery) {
       return (
-        <Row className="sql-expression-container" gutter={8} key={param.name}>
-          <Col span={showExpandIcon ? 2 : 3}>
+        <Row
+          className="sql-expression-container"
+          gutter={[8, 8]}
+          key={param.name}>
+          <Col span={24}>
             <Typography.Text className="text-grey-muted">
               {`${param.name}:`}
             </Typography.Text>
           </Col>
-          <Col span={showExpandIcon ? 22 : 21}>
+          <Col span={24}>
             <SchemaEditor
               editorClass="table-query-editor"
               mode={{ name: CSMode.SQL }}
@@ -344,30 +348,37 @@ const TestSummary: React.FC<TestSummaryProps> = ({
         )}
       </Col>
       <Col span={24}>
-        {showParameters && (
-          <Row align="top" data-testid="params-container" gutter={16}>
+        <Row align="top" data-testid="params-container" gutter={[16, 16]}>
+          {showParameters && (
             <Col>
               <Typography.Text className="text-grey-muted">
                 {`${t('label.parameter')}:`}
               </Typography.Text>
-            </Col>
-            <Col>
               {!isEmpty(parameterValuesWithoutSqlExpression) ? (
                 <Row className="parameter-value-container" gutter={[4, 4]}>
                   {parameterValuesWithoutSqlExpression?.map(showParamsData)}
                 </Row>
               ) : (
-                <Typography.Text type="secondary">
+                <Typography.Text className="m-l-xs" type="secondary">
                   {t('label.no-parameter-available')}
                 </Typography.Text>
               )}
             </Col>
-          </Row>
-        )}
-
-        {!isUndefined(parameterValuesWithSqlExpression)
-          ? parameterValuesWithSqlExpression.map(showParamsData)
-          : null}
+          )}
+          {!isUndefined(parameterValuesWithSqlExpression) ? (
+            <Col>{parameterValuesWithSqlExpression.map(showParamsData)}</Col>
+          ) : null}
+          {data.description && (
+            <Col>
+              <Space direction="vertical" size={4}>
+                <Typography.Text className="text-grey-muted">
+                  {`${t('label.description')}:`}
+                </Typography.Text>
+                <RichTextEditorPreviewer markdown={data.description} />
+              </Space>
+            </Col>
+          )}
+        </Row>
       </Col>
     </Row>
   );

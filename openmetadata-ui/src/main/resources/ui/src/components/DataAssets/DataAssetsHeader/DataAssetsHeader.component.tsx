@@ -62,7 +62,7 @@ import {
 import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { bytesToSize } from 'utils/StringsUtils';
 import { getTierTags, getUsagePercentile } from 'utils/TableUtils';
-import { showErrorToast, showInfoToast } from 'utils/ToastUtils';
+import { showErrorToast } from 'utils/ToastUtils';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
@@ -129,6 +129,7 @@ export const DataAssetsHeader = ({
       ) : null,
     [dataAsset]
   );
+  const [copyTooltip, setCopyTooltip] = useState<string>();
 
   const { entityName, tier, isFollowing, version, followers } = useMemo(
     () => ({
@@ -419,7 +420,8 @@ export const DataAssetsHeader = ({
 
   const handleShareButtonClick = async () => {
     await onCopyToClipBoard();
-    showInfoToast(`Link copied to clipboard`, 2000);
+    setCopyTooltip(t('message.copy-to-clipboard'));
+    setTimeout(() => setCopyTooltip(''), 2000);
   };
 
   return (
@@ -512,10 +514,15 @@ export const DataAssetsHeader = ({
                   onClick={onFollowClick}>
                   <Typography.Text>{followers}</Typography.Text>
                 </Button>
-                <Button
-                  icon={<Icon component={ShareIcon} />}
-                  onClick={handleShareButtonClick}
-                />
+                <Tooltip
+                  placement="bottomRight"
+                  title={copyTooltip}
+                  visible={!isEmpty(copyTooltip)}>
+                  <Button
+                    icon={<Icon component={ShareIcon} />}
+                    onClick={handleShareButtonClick}
+                  />
+                </Tooltip>
                 <ManageButton
                   allowSoftDelete={!dataAsset.deleted}
                   canDelete={permissions.Delete}

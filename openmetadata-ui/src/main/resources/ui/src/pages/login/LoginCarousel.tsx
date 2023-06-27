@@ -15,32 +15,30 @@ import { Carousel } from 'antd';
 import { t } from 'i18next';
 import { uniqueId } from 'lodash';
 import React from 'react';
-import {
-  LOGIN_CAROUSEL_SETTINGS,
-  LOGIN_SLIDE,
-} from '../../constants/Login.constants';
+import { LOGIN_SLIDE } from '../../constants/Login.constants';
 
 const LoginCarousel = () => {
   return (
-    <div data-testid="carousel-container" style={{ width: '85%' }}>
-      <Carousel {...LOGIN_CAROUSEL_SETTINGS}>
+    <div className="carousal-container" data-testid="carousel-container">
+      <Carousel autoplay dots autoplaySpeed={1500}>
         {LOGIN_SLIDE.map((data) => (
-          <div data-testid="slider-container" key={uniqueId()}>
-            <div>
-              <img
-                alt="slider"
-                className="w-full"
-                loading="lazy"
-                src={data.image}
-              />
-            </div>
-            <div className="mt-24 mb-11">
-              <p
-                className="text-center carousal-description font-medium text-white text-xl"
-                data-testid="carousel-slide-description">
-                {t(`message.${data.descriptionKey}`)}
-              </p>
-            </div>
+          <div
+            className="text-center"
+            data-testid="slider-container"
+            key={uniqueId()}>
+            <img
+              alt="slider"
+              loading="lazy"
+              src={data.image}
+              style={{ display: 'initial' }}
+              width="750px"
+            />
+
+            <p
+              className="text-center m-t-md carousal-description font-medium text-white text-xl"
+              data-testid="carousel-slide-description">
+              {t(`message.${data.descriptionKey}`)}
+            </p>
           </div>
         ))}
       </Carousel>
