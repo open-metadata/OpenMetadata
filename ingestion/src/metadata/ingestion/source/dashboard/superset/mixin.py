@@ -19,6 +19,10 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as Lineage_Dashboard,
 )
+from metadata.generated.schema.entity.data.dashboardDataModel import (
+    DashboardDataModel,
+    DataModelType,
+)
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
@@ -36,6 +40,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.ingestion.source.dashboard.superset.models import (
+    DashboradResult,
+    DataSourceResult,
+    SupersetDatasource,
+)
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
@@ -67,13 +76,13 @@ class SupersetSourceMixin(DashboardServiceSource):
             )
         return cls(config, metadata_config)
 
-    def get_dashboard_name(self, dashboard: dict) -> str:
+    def get_dashboard_name(self, dashboard) -> str:
         """
         Get Dashboard Name
         """
-        return dashboard["dashboard_title"]
+        return dashboard.dashboard_title
 
-    def get_dashboard_details(self, dashboard: dict) -> dict:
+    def get_dashboard_details(self, dashboard) -> dict:
         """
         Get Dashboard Details
         """
@@ -88,12 +97,13 @@ class SupersetSourceMixin(DashboardServiceSource):
         return None
 
     def get_owner_details(self, dashboard_details: dict) -> EntityReference:
-        for owner in dashboard_details.get("owners", []):
-            user = self._get_user_by_email(owner.get("email"))
-            if user:
-                return user
-        if dashboard_details.get("email"):
-            user = self._get_user_by_email(dashboard_details["email"])
+        for owner in dashboard_details.owners:
+            if owner.email:
+                user = self._get_user_by_email(owner.email)
+                if user:
+                    return user
+        if dashboard_details.email:
+            user = self._get_user_by_email(dashboard_details.email)
             if user:
                 return user
         return None
@@ -102,7 +112,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         """
         Method to fetch chart ids linked to dashboard
         """
-        raw_position_data = dashboard_details.get("position_json", {})
+        raw_position_data = dashboard_details.position_json
         if raw_position_data:
             position_data = json.loads(raw_position_data)
             return [
@@ -116,7 +126,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         self, dashboard_details: dict, db_service_name: str
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
-        Get lineage between dashboard and data sources
+        Get lineage between datamodel and table
         """
         db_service_entity = self.metadata.get_by_name(
             entity=DatabaseService, fqn=db_service_name
@@ -135,16 +145,17 @@ class SupersetSourceMixin(DashboardServiceSource):
                         fqn=datasource_fqn,
                     )
                     try:
-                        dashboard_fqn = fqn.build(
+                        datamodel_fqn = fqn.build(
                             self.metadata,
-                            entity_type=Lineage_Dashboard,
+                            entity_type=DashboardDataModel,
                             service_name=self.config.serviceName,
-                            dashboard_name=str(dashboard_details["id"]),
+                            data_model_name=str(chart_json.datasource_id),
                         )
                         to_entity = self.metadata.get_by_name(
-                            entity=Lineage_Dashboard,
-                            fqn=dashboard_fqn,
+                            entity=DashboardDataModel,
+                            fqn=datamodel_fqn,
                         )
+
                         if from_entity and to_entity:
                             yield self._get_add_lineage_request(
                                 to_entity=to_entity, from_entity=from_entity
@@ -154,3 +165,22 @@ class SupersetSourceMixin(DashboardServiceSource):
                         logger.error(
                             f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}"
                         )
+
+    def _get_datamodel(
+        self, datamodel: SupersetDatasource
+    ) -> Optional[DashboardDataModel]:
+        """
+        Get the datamodel entity for lineage
+        """
+        datamodel_fqn = fqn.build(
+            self.metadata,
+            entity_type=DashboardDataModel,
+            service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
+            data_model_name=datamodel.id,
+        )
+        if datamodel_fqn:
+            return self.metadata.get_by_name(
+                entity=DashboardDataModel,
+                fqn=datamodel_fqn,
+            )
+        return None
