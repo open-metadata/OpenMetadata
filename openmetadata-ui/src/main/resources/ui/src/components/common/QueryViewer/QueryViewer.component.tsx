@@ -10,30 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Space, Tag, Typography } from 'antd';
+import { Button, Card, Space, Tag } from 'antd';
+import classNames from 'classnames';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import { CSMode } from 'enums/codemirror.enum';
-import { Table } from 'generated/entity/data/table';
 import { useClipboard } from 'hooks/useClipBoard';
 import { split } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import './dbt-tab.style.less';
+import './query-viewer.style.less';
 import { ReactComponent as CopyIcon } from '/assets/svg/icon-copy.svg';
 
-const DbtTab = ({ dataModel }: { dataModel: Table['dataModel'] }) => {
+const QueryViewer = ({
+  title,
+  sqlQuery,
+}: {
+  title?: React.ReactNode;
+  sqlQuery: string;
+}) => {
   const { t } = useTranslation();
 
-  const sqlQuery = useMemo(
-    () => dataModel?.sql ?? dataModel?.rawSql ?? '',
-    [dataModel]
-  );
-  const queryLine = useMemo(() => {
+  const { queryLine, lineCount } = useMemo(() => {
     const lineCount = split(sqlQuery, '\n').length;
 
-    return `${lineCount} ${
-      lineCount > 1 ? t('label.line-plural') : t('label.line')
-    }`;
+    return {
+      queryLine: `${lineCount} ${
+        lineCount > 1 ? t('label.line-plural') : t('label.line')
+      }`,
+      lineCount,
+    };
   }, [sqlQuery]);
 
   const { onCopyToClipBoard } = useClipboard(sqlQuery);
@@ -42,7 +47,7 @@ const DbtTab = ({ dataModel }: { dataModel: Table['dataModel'] }) => {
     <Card
       className="m-md w-auto dbt-tab-container"
       extra={
-        <Space>
+        <Space className="m-y-xs">
           <Tag className="query-lines" data-testid="query-line">
             {queryLine}
           </Tag>
@@ -54,22 +59,18 @@ const DbtTab = ({ dataModel }: { dataModel: Table['dataModel'] }) => {
           />
         </Space>
       }
-      title={
-        <Space className="p-y-xss">
-          <Typography.Text className="text-grey-muted">
-            {`${t('label.path')}:`}
-          </Typography.Text>
-          <Typography.Text>{dataModel?.path}</Typography.Text>
-        </Space>
-      }>
+      title={title}>
       <SchemaEditor
         className="custom-code-mirror-theme"
-        editorClass="table-query-editor"
+        editorClass={classNames(
+          lineCount > 4 ? 'table-query-editor' : 'query-editor-h-200'
+        )}
         mode={{ name: CSMode.SQL }}
+        options={{ readOnly: true }}
         value={sqlQuery}
       />
     </Card>
   );
 };
 
-export default DbtTab;
+export default QueryViewer;
