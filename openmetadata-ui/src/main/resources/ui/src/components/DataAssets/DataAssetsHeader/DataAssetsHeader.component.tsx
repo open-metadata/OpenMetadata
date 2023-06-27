@@ -12,7 +12,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Col, Divider, Row, Space, Typography } from 'antd';
+import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
@@ -33,6 +33,13 @@ import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderT
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR, getDashboardDetailsPath } from 'constants/constants';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
+import { Container } from 'generated/entity/data/container';
+import { Dashboard } from 'generated/entity/data/dashboard';
+import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
+import { Mlmodel } from 'generated/entity/data/mlmodel';
+import { Pipeline } from 'generated/entity/data/pipeline';
+import { Table } from 'generated/entity/data/table';
+import { Topic } from 'generated/entity/data/topic';
 import {
   Thread,
   ThreadTaskStatus,
@@ -186,20 +193,21 @@ export const DataAssetsHeader = ({
     };
     switch (entityType) {
       case EntityType.TOPIC:
+        const topicDetails = dataAsset as Topic;
         returnData.breadcrumbs =
-          getBreadcrumbForEntitiesWithServiceOnly(dataAsset);
+          getBreadcrumbForEntitiesWithServiceOnly(topicDetails);
         returnData.extraInfo = (
           <>
-            {Boolean(dataAsset?.partitions) && (
+            {topicDetails?.partitions && (
               <ExtraInfoLabel
                 label={t('label.partition-plural')}
-                value={dataAsset.partitions}
+                value={topicDetails.partitions}
               />
             )}
-            {dataAsset?.replicationFactor && (
+            {topicDetails?.replicationFactor && (
               <ExtraInfoLabel
                 label={t('label.replication-factor')}
-                value={dataAsset.replicationFactor}
+                value={topicDetails.replicationFactor}
               />
             )}
           </>
@@ -208,80 +216,85 @@ export const DataAssetsHeader = ({
         break;
 
       case EntityType.DASHBOARD:
+        const dashboardDetails = dataAsset as Dashboard;
+
         returnData.extraInfo = (
           <>
-            {dataAsset.sourceUrl && (
+            {dashboardDetails.sourceUrl && (
               <ExtraInfoLink
-                href={dataAsset.sourceUrl}
+                href={dashboardDetails.sourceUrl}
                 label={entityName}
-                value={dataAsset.sourceUrl}
+                value={dashboardDetails.sourceUrl}
               />
             )}
-            {dataAsset.dashboardType && (
+            {dashboardDetails.dashboardType && (
               <ExtraInfoLabel
                 label={t('label.entity-type-plural', {
                   entity: t('label.dashboard'),
                 })}
-                value={dataAsset.dashboardType}
+                value={dashboardDetails.dashboardType}
               />
             )}
-            {dataAsset.project && (
+            {dashboardDetails.project && (
               <ExtraInfoLabel
                 label={t('label.project')}
-                value={dataAsset.project}
+                value={dashboardDetails.project}
               />
             )}
           </>
         );
 
         returnData.breadcrumbs =
-          getBreadcrumbForEntitiesWithServiceOnly(dataAsset);
+          getBreadcrumbForEntitiesWithServiceOnly(dashboardDetails);
 
         break;
-
       case EntityType.PIPELINE:
+        const pipelineDetails = dataAsset as Pipeline;
+
         returnData.extraInfo = (
           <>
-            {dataAsset.sourceUrl && (
+            {pipelineDetails.sourceUrl && (
               <ExtraInfoLink
-                href={dataAsset.sourceUrl}
+                href={pipelineDetails.sourceUrl}
                 label=""
-                value={dataAsset.sourceUrl}
+                value={pipelineDetails.sourceUrl}
               />
             )}
           </>
         );
 
         returnData.breadcrumbs =
-          getBreadcrumbForEntitiesWithServiceOnly(dataAsset);
+          getBreadcrumbForEntitiesWithServiceOnly(pipelineDetails);
 
         break;
       case EntityType.MLMODEL:
+        const mlModelDetail = dataAsset as Mlmodel;
+
         returnData.extraInfo = (
           <>
-            {dataAsset.algorithm && (
+            {mlModelDetail.algorithm && (
               <ExtraInfoLabel
                 label={t('label.algorithm')}
-                value={dataAsset.algorithm}
+                value={mlModelDetail.algorithm}
               />
             )}
-            {dataAsset.target && (
+            {mlModelDetail.target && (
               <ExtraInfoLabel
                 label={t('label.target')}
-                value={dataAsset.target}
+                value={mlModelDetail.target}
               />
             )}
-            {dataAsset.server && (
+            {mlModelDetail.server && (
               <ExtraInfoLink
-                href={dataAsset.server}
+                href={mlModelDetail.server}
                 label={t('label.server')}
-                value={dataAsset.server}
+                value={mlModelDetail.server}
               />
             )}
-            {dataAsset.dashboard && (
+            {mlModelDetail.dashboard && (
               <ExtraInfoLink
                 href={getDashboardDetailsPath(
-                  dataAsset.dashboard?.fullyQualifiedName as string
+                  mlModelDetail.dashboard?.fullyQualifiedName as string
                 )}
                 label={t('label.dashboard')}
                 value={entityName}
@@ -291,95 +304,100 @@ export const DataAssetsHeader = ({
         );
 
         returnData.breadcrumbs =
-          getBreadcrumbForEntitiesWithServiceOnly(dataAsset);
+          getBreadcrumbForEntitiesWithServiceOnly(mlModelDetail);
 
         break;
-
       case EntityType.CONTAINER:
+        const containerDetails = dataAsset as Container;
+
         returnData.extraInfo = (
           <>
-            {!isUndefined(dataAsset?.dataModel?.isPartitioned) && (
+            {!isUndefined(containerDetails?.dataModel?.isPartitioned) && (
               <ExtraInfoLabel
                 label=""
                 value={
-                  dataAsset?.dataModel?.isPartitioned
-                    ? t('label.partitioned')
-                    : t('label.non-partitioned')
+                  containerDetails?.dataModel?.isPartitioned
+                    ? (t('label.partitioned') as string)
+                    : (t('label.non-partitioned') as string)
                 }
               />
             )}
-            {dataAsset.numberOfObjects && (
+            {containerDetails.numberOfObjects && (
               <ExtraInfoLabel
                 label={t('label.number-of-object-plural')}
-                value={dataAsset.numberOfObjects}
+                value={containerDetails.numberOfObjects}
               />
             )}
-            {dataAsset.size && (
+            {containerDetails.size && (
               <ExtraInfoLabel
                 label={t('label.size')}
-                value={bytesToSize(dataAsset.size)}
+                value={bytesToSize(containerDetails.size)}
               />
             )}
           </>
         );
 
         returnData.breadcrumbs =
-          getBreadcrumbForEntitiesWithServiceOnly(dataAsset);
+          getBreadcrumbForEntitiesWithServiceOnly(containerDetails);
 
         break;
 
       case EntityType.DASHBOARD_DATA_MODEL:
+        const dataModelDetails = dataAsset as DashboardDataModel;
+
         returnData.extraInfo = (
           <>
-            {dataAsset.dataModelType && (
+            {dataModelDetails.dataModelType && (
               <ExtraInfoLabel
                 label={t('label.data-model-type')}
-                value={dataAsset.dataModelType}
+                value={dataModelDetails.dataModelType}
               />
             )}
           </>
         );
 
         returnData.breadcrumbs =
-          getBreadcrumbForEntitiesWithServiceOnly(dataAsset);
+          getBreadcrumbForEntitiesWithServiceOnly(dataModelDetails);
 
         break;
 
       case EntityType.TABLE:
       default:
+        const tableDetails = dataAsset as Table;
+
         returnData.extraInfo = (
           <>
-            {dataAsset.tableType && (
+            {tableDetails.tableType && (
               <ExtraInfoLabel
                 label={t('label.type')}
-                value={dataAsset.tableType}
+                value={tableDetails.tableType}
               />
             )}
-            {dataAsset?.usageSummary && (
+            {tableDetails?.usageSummary && (
               <ExtraInfoLabel
                 label={t('label.usage')}
                 value={getUsagePercentile(
-                  dataAsset.usageSummary?.weeklyStats?.percentileRank ?? 0,
+                  tableDetails.usageSummary?.weeklyStats?.percentileRank || 0,
                   false
                 )}
               />
             )}
-            {dataAsset?.profile?.columnCount && (
+            {tableDetails?.profile?.columnCount && (
               <ExtraInfoLabel
                 label={t('label.column-plural')}
-                value={dataAsset.profile?.columnCount}
+                value={tableDetails.profile?.columnCount}
               />
             )}
-            {dataAsset?.profile?.rowCount && (
+            {tableDetails?.profile?.rowCount && (
               <ExtraInfoLabel
                 label={t('label.row-plural')}
-                value={dataAsset.profile?.rowCount}
+                value={tableDetails.profile?.rowCount}
               />
             )}
           </>
         );
 
-        returnData.breadcrumbs = getBreadcrumbForTable(dataAsset);
+        returnData.breadcrumbs = getBreadcrumbForTable(tableDetails);
 
         break;
     }
