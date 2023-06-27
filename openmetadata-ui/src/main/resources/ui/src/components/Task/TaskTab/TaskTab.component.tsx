@@ -392,7 +392,9 @@ export const TaskTab = ({
         closable={false}
         closeIcon={null}
         open={showEditTaskModel}
-        title={`Edit task #${taskDetails?.id}`}
+        title={`${t('label.edit-entity', {
+          entity: t('label.task-lowercase'),
+        })} #${taskDetails?.id} ${task.message}`}
         width={768}
         onCancel={() => setShowEditTaskModel(false)}
         onOk={() => form.submit()}>
