@@ -13,6 +13,7 @@
 
 import { Space, Table as AntdTable, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { mockDatasetData } from 'constants/mockTourData.constants';
 import { t } from 'i18next';
@@ -34,7 +35,7 @@ import {
 } from './sample.interface';
 import './SampleDataTable.style.less';
 const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
-  const { isTourOpen } = useTourProvider();
+  const { isTourOpen, isTourPage } = useTourProvider();
 
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);
@@ -133,7 +134,12 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
   }
 
   return (
-    <div className="m-md" data-testid="sample-data" id="sampleDataDetails">
+    <div
+      className={classNames('m-md', {
+        'h-70vh overflow-hidden': isTourOpen || isTourPage,
+      })}
+      data-testid="sample-data"
+      id="sampleDataDetails">
       <AntdTable
         bordered
         columns={sampleData?.columns}
