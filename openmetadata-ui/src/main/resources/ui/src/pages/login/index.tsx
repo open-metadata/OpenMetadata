@@ -317,11 +317,8 @@ const SigninPage = () => {
               src={loginBG}
             />
           </div>
-          <div className="relative">
-            <div className="flex justify-center mt-44 mb-10">
-              <LoginCarousel />
-            </div>
-          </div>
+
+          <LoginCarousel />
         </Col>
       </Row>
     </div>

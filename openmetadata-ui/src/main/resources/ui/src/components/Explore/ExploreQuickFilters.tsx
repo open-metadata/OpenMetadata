@@ -22,6 +22,7 @@ import {
   getTagSuggestions,
   getUserSuggestions,
 } from 'rest/miscAPI';
+import { getTags } from 'rest/tagAPI';
 import {
   MISC_FIELDS,
   OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY,
@@ -47,7 +48,12 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     index: SearchIndex | SearchIndex[],
     key: string
   ) => {
-    const res = await getAdvancedFieldDefaultOptions(index, key);
+    const [res, tierTags] = await Promise.all([
+      getAdvancedFieldDefaultOptions(index, key),
+      key === 'tier.tagFQN'
+        ? getTags({ parent: 'Tier' })
+        : Promise.resolve(null),
+    ]);
 
     const buckets = res.data.aggregations[`sterms#${key}`].buckets;
 
@@ -57,7 +63,24 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       count: option.doc_count ?? 0,
     }));
 
-    setOptions(uniqWith(optionsArray, isEqual));
+    let options;
+    if (key === 'tier.tagFQN' && tierTags) {
+      options = tierTags.data.map((option) => {
+        const bucketItem = buckets.find(
+          (item) => item.key === option.fullyQualifiedName
+        );
+
+        return {
+          key: option.fullyQualifiedName ?? '',
+          label: option.name,
+          count: bucketItem?.doc_count ?? 0,
+        };
+      });
+    } else {
+      options = optionsArray;
+    }
+
+    setOptions(uniqWith(options, isEqual));
   };
 
   const getInitialOptions = async (key: string) => {

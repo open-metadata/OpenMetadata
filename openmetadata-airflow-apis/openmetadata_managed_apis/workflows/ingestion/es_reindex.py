@@ -14,6 +14,7 @@ ElasticSearch reindex DAG function builder
 from airflow import DAG
 from openmetadata_managed_apis.workflows.ingestion.common import (
     ClientInitializationError,
+    GetServiceException,
     build_dag,
     metadata_ingestion_workflow,
 )
@@ -56,9 +57,7 @@ def build_es_reindex_workflow_config(
         entity=MetadataService, fqn=ingestion_pipeline.service.fullyQualifiedName
     )
     if not openmetadata_service:
-        raise ValueError(
-            "Could not retrieve the OpenMetadata service! This should not happen."
-        )
+        raise GetServiceException(service_type="metadata", service_name="OpenMetadata")
 
     sink = Sink(type="metadata-rest", config={})
 

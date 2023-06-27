@@ -12,38 +12,32 @@
  */
 
 import Tour from 'components/tour/Tour';
-import { EntityTabs } from 'enums/entity.enum';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { observer } from 'mobx-react';
 import ExplorePageV1Component from 'pages/explore/ExplorePageV1.component';
 import MyDataPageV1 from 'pages/MyDataPage/MyDataPageV1.component';
 import TableDetailsPageV1 from 'pages/TableDetailsPageV1/TableDetailsPageV1';
-import React, { useEffect, useState } from 'react';
-import AppState from '../../AppState';
+import React, { useEffect } from 'react';
 import { TOUR_SEARCH_TERM } from '../../constants/constants';
 import { CurrentTourPageType } from '../../enums/tour.enum';
-import { useTour } from '../../hooks/useTour';
-import { getSteps } from '../../utils/TourUtils';
+import { getTourSteps } from '../../utils/TourUtils';
 
 const TourPage = () => {
-  const { handleIsTourOpen } = useTour();
-  const [currentPage, setCurrentPage] = useState<CurrentTourPageType>(
-    AppState.currentTourPage
-  );
-  const [, setSearchValue] = useState('');
+  const {
+    updateIsTourOpen,
+    currentTourPage,
+    updateActiveTab,
+    updateTourPage,
+    updateTourSearch,
+  } = useTourProvider();
 
   const clearSearchTerm = () => {
-    setSearchValue('');
+    updateTourSearch('');
   };
 
   useEffect(() => {
-    handleIsTourOpen(true);
-    AppState.currentTourPage = CurrentTourPageType.MY_DATA_PAGE;
-    AppState.activeTabforTourDatasetPage = EntityTabs.SCHEMA;
+    updateIsTourOpen(true);
   }, []);
-
-  useEffect(() => {
-    setCurrentPage(AppState.currentTourPage);
-  }, [AppState.currentTourPage]);
 
   const getCurrentPage = (page: CurrentTourPageType) => {
     switch (page) {
@@ -63,8 +57,15 @@ const TourPage = () => {
 
   return (
     <>
-      <Tour steps={getSteps(TOUR_SEARCH_TERM, clearSearchTerm)} />
-      {getCurrentPage(currentPage)}
+      <Tour
+        steps={getTourSteps({
+          searchTerm: TOUR_SEARCH_TERM,
+          clearSearchTerm,
+          updateActiveTab,
+          updateTourPage,
+        })}
+      />
+      {getCurrentPage(currentTourPage)}
     </>
   );
 };

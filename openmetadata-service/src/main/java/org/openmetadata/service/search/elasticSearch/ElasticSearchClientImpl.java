@@ -1229,26 +1229,6 @@ public class ElasticSearchClientImpl implements SearchClient {
         }
         break;
     }
-
-    //    if (event.getEventType() == ENTITY_DELETED) {
-    //      if (testSuite.getExecutable()) {
-    //        DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexType.indexName);
-    //        deleteByQueryRequest.setQuery(new MatchQueryBuilder("testSuite.id", testSuiteId.toString()));
-    //        deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
-    //      } else {
-    //        UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexType.indexName);
-    //        updateByQueryRequest.setQuery(new MatchQueryBuilder("testSuite.id", testSuiteId.toString()));
-    //        String scriptTxt =
-    //            "for (int i = 0; i < ctx._source.testSuite.length; i++) { if (ctx._source.testSuite[i].id == '%s') {
-    // ctx._source.testSuite.remove(i) }}";
-    //        Script script =
-    //            new Script(
-    //                ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, String.format(scriptTxt, testSuiteId), new
-    // HashMap<>());
-    //        updateByQueryRequest.setScript(script);
-    //        updateElasticSearchByQuery(updateByQueryRequest);
-    //      }
-    //    }
   }
 
   private void updateElasticSearchByQuery(UpdateByQueryRequest updateByQueryRequest) throws IOException {
@@ -1278,7 +1258,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     if (event.getEventType() == ENTITY_UPDATED) {
       for (EntityReference testcaseReference : testCaseReferences) {
         UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, testcaseReference.getId().toString());
-        String scripText = "ctx._source.testSuite.add(params)";
+        String scripText = "ctx._source.testSuites.add(params)";
         Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scripText, testSuiteDoc);
         updateRequest.script(script);
         updateElasticSearch(updateRequest);

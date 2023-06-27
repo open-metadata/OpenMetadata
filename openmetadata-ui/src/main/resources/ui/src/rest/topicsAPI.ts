@@ -138,3 +138,9 @@ export const restoreTopic = async (id: string) => {
 
   return response.data;
 };
+
+export const getSampleDataByTopicId = async (id: string) => {
+  const response = await APIClient.get<Topic>(`/topics/${id}/sampleData`);
+
+  return response.data;
+};

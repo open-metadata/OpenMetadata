@@ -21,11 +21,11 @@ helpFunction()
    printf "\t-s Skip maven build: [true, false]. Default [false]\n"
    printf "\t-x Open JVM debug port on 5005: [true, false]. Default [false]\n"
    printf "\t-h For usage help\n"
-   printf "\t-r For Cleaning DB Volumes"
+   printf "\t-r For Cleaning DB Volumes. [true, false]. Default [true]\n"
    exit 1 # Exit script after printing help
 }
 
-while getopts "m:d:s:x:h" opt
+while getopts "m:d:s:x:r:h" opt
 do
    case "$opt" in
       m ) mode="$OPTARG" ;;
@@ -43,8 +43,9 @@ database="${database:=mysql}"
 skipMaven="${skipMaven:=false}"
 debugOM="${debugOM:=false}"
 authorizationToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+cleanDbVolumes="${cleanDbVolumes:=true}"
 
-echo "Running local docker using mode [$mode] database [$database] and skipping maven build [$skipMaven]"
+echo "Running local docker using mode [$mode] database [$database] and skipping maven build [$skipMaven] with cleanDB as [$cleanDbVolumes]"
 
 cd ../
 
@@ -76,9 +77,9 @@ fi
 
 if [[ $cleanDbVolumes == "true" ]]
 then
-  if [[ -d "/docker-volume" ]]
+  if [[ -d "$PWD/docker/development/docker-volume/" ]]
   then
-      rm -rf $PWD/docker-volume
+      rm -rf $PWD/docker/development/docker-volume
     fi
 fi
 

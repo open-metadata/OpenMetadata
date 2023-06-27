@@ -79,6 +79,21 @@ source:
       #   dbtPrefixConfig:
       #     dbtBucketName: bucket
       #     dbtObjectPrefix: "dbt/"
+      # databaseFilterPattern:
+      #   includes:
+      #     - .*db.*
+      #   excludes:
+      #     - .*demo.*
+      # schemaFilterPattern:
+      #   includes:
+      #     - .*schema.*
+      #   excludes:
+      #     - .*demo.*
+      # tableFilterPattern:
+      #   includes:
+      #     - .*table.*
+      #   excludes:
+      #     - .*demo.*
 sink:
   type: metadata-rest
   config: {}

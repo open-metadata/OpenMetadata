@@ -13,22 +13,29 @@
 import { Button, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { TagDetails } from 'components/TableQueries/TableQueryRightPanel/TableQueryRightPanel.interface';
-import TagsContainer from 'components/Tag/TagsContainer/tags-container';
+import TagsContainerEntityTable from 'components/Tag/TagsContainerEntityTable/TagsContainerEntityTable.component';
+import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { getAllTagsForOptions } from 'utils/TagsUtils';
+import { getAllTagsList, getTagsHierarchy } from 'utils/TagsUtils';
 
 type Props = {
+  isVersionView?: boolean;
   editable: boolean;
   tags?: TagLabel[];
   onTagsUpdate: (updatedTags: TagLabel[]) => Promise<void>;
 };
 
-const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
+const TagsInput: React.FC<Props> = ({
+  tags = [],
+  editable,
+  onTagsUpdate,
+  isVersionView,
+}) => {
   const [isEditTags, setIsEditTags] = useState(false);
   const [tagDetails, setTagDetails] = useState<TagDetails>({
     isLoading: false,
@@ -68,15 +75,10 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
     setTagDetails((pre) => ({ ...pre, isLoading: true }));
 
     try {
-      const tags = await getAllTagsForOptions();
+      const tags = await getAllTagsList();
       setTagDetails((pre) => ({
         ...pre,
-        options: tags.map((tag) => {
-          return {
-            fqn: tag.fullyQualifiedName ?? tag.name,
-            source: TagSource.Classification,
-          };
-        }),
+        options: tags,
       }));
     } catch (_error) {
       setTagDetails((pre) => ({ ...pre, isError: true, options: [] }));
@@ -114,19 +116,22 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
           />
         )}
       </div>
-      <TagsContainer
-        className="glossary-select"
-        editable={isEditTags}
-        isLoading={tagDetails.isLoading}
-        selectedTags={getSelectedTags()}
-        showAddTagButton={editable && isEmpty(tags)}
-        size="small"
-        tagList={tagDetails.options}
-        type="label"
-        onAddButtonClick={addButtonHandler}
-        onCancel={() => setIsEditTags(false)}
-        onSelectionChange={handleTagSelection}
-      />
+
+      {isVersionView ? (
+        <TagsViewer sizeCap={-1} tags={tags} type="border" />
+      ) : (
+        <TagsContainerEntityTable
+          isEditing={isEditTags}
+          isLoading={tagDetails.isLoading}
+          permission={editable}
+          selectedTags={getSelectedTags()}
+          tagType={TagSource.Classification}
+          treeData={getTagsHierarchy(tagDetails.options)}
+          onAddButtonClick={addButtonHandler}
+          onCancel={() => setIsEditTags(false)}
+          onSelectionChange={handleTagSelection}
+        />
+      )}
     </div>
   );
 };

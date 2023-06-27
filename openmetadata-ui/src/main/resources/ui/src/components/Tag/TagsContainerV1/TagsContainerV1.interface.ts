@@ -28,14 +28,16 @@ export interface HierarchyTagsProps extends TagsTreeProps {
   children: TagsTreeProps[];
 }
 
+export interface TagsDetailsProps {
+  name: string;
+  fqn: string;
+  classification: Tag['classification'];
+  source: TagSource;
+}
+
 export type TagDetailsProps = {
   isLoading: boolean;
-  options: {
-    name: string;
-    fqn: string;
-    classification: Tag['classification'];
-    source: TagSource;
-  }[];
+  options: TagsDetailsProps[];
   isError: boolean;
 };
 
@@ -55,10 +57,13 @@ export type GlossaryTermDetailsProps = {
 };
 
 export type TagsContainerV1Props = {
+  isVersionView?: boolean;
   permission: boolean;
   selectedTags: Array<EntityTags>;
-  onSelectionChange: (selectedTags: Array<EntityTags>) => void;
-  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
+  onSelectionChange?: (selectedTags: Array<EntityTags>) => void;
+  placeholder?: string;
+  showLimited?: boolean;
+  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   entityType?: string;
   entityThreadLink?: string;
   entityFqn?: string;
@@ -70,4 +75,6 @@ export type TagsTreeComponentProps = {
   treeData: HierarchyTagsProps[];
   defaultValue: string[];
   onChange?: (value: string[]) => void;
+  onSubmit: (tags: string[]) => void;
+  onCancel: () => void;
 };

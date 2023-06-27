@@ -12,7 +12,7 @@
  */
 
 import { Button } from 'antd';
-import React, { Fragment } from 'react';
+import React, { Fragment, useCallback } from 'react';
 import { EdgeProps, getBezierPath } from 'reactflow';
 import { ReactComponent as FunctionIcon } from '../../assets/svg/ic-function.svg';
 import { ReactComponent as PipelineIcon } from '../../assets/svg/pipeline-grey.svg';
@@ -87,11 +87,22 @@ export const CustomEdge = ({
     targetPosition,
   });
 
-  const isTableToTableEdge = () => {
-    const { sourceType, targetType } = data;
-
-    return sourceType === EntityType.TABLE && targetType === EntityType.TABLE;
+  const isPipelineEdgeAllowed = (
+    sourceType: EntityType,
+    targetType: EntityType
+  ) => {
+    return (
+      [EntityType.TABLE, EntityType.TOPIC].indexOf(sourceType) > -1 &&
+      [EntityType.TABLE, EntityType.TOPIC].indexOf(targetType) > -1
+    );
   };
+
+  const isColumnLineageAllowed =
+    !data.isColumnLineage &&
+    isPipelineEdgeAllowed(data.sourceType, data.targetType);
+  const hasLabel = data.label;
+  const isSelectedEditMode = selected && data.isEditMode;
+  const isSelected = selected;
 
   const getInvisiblePath = (path: string) => {
     return (
@@ -106,6 +117,61 @@ export const CustomEdge = ({
     );
   };
 
+  const getLineageEdgeIcon = useCallback(
+    (icon: React.ReactNode, dataTestId: string) => {
+      return (
+        <LineageEdgeIcon offset={3} x={edgeCenterX} y={edgeCenterY}>
+          <Button
+            className="d-flex justify-center items-center custom-edge-pipeline-button"
+            data-testid={dataTestId}
+            icon={icon}
+            type="primary"
+            onClick={(event) =>
+              data.isEditMode &&
+              data.addPipelineClick?.(event, rest as CustomEdgeData)
+            }
+          />
+        </LineageEdgeIcon>
+      );
+    },
+    [edgeCenterX, edgeCenterY, rest, data]
+  );
+
+  const getEditLineageIcon = useCallback(
+    (
+      dataTestId: string,
+      rotate: boolean,
+      onClick:
+        | ((
+            event: React.MouseEvent<HTMLElement, MouseEvent>,
+            data: CustomEdgeData
+          ) => void)
+        | undefined
+    ) => {
+      return (
+        <LineageEdgeIcon offset={offset} x={edgeCenterX} y={edgeCenterY}>
+          <Button
+            className="tw-cursor-pointer d-flex tw-z-9999"
+            data-testid={dataTestId}
+            icon={
+              <SVGIcons
+                alt="times-circle"
+                icon="icon-times-circle"
+                width="16px"
+              />
+            }
+            style={{
+              transform: rotate ? 'rotate(45deg)' : 'none',
+            }}
+            type="link"
+            onClick={(event) => onClick?.(event, rest as CustomEdgeData)}
+          />
+        </LineageEdgeIcon>
+      );
+    },
+    [offset, edgeCenterX, edgeCenterY, rest, data]
+  );
+
   return (
     <Fragment>
       <path
@@ -119,80 +185,20 @@ export const CustomEdge = ({
       {getInvisiblePath(invisibleEdgePath)}
       {getInvisiblePath(invisibleEdgePath1)}
 
-      {!data.isColumnLineage && isTableToTableEdge() ? (
-        data.label ? (
-          <LineageEdgeIcon offset={3} x={edgeCenterX} y={edgeCenterY}>
-            <Button
-              className="d-flex justify-center items-center custom-edge-pipeline-button"
-              data-testid="pipeline-label"
-              icon={<PipelineIcon />}
-              type="primary"
-              onClick={(event) =>
-                data.isEditMode &&
-                addPipelineClick?.(event, rest as CustomEdgeData)
-              }
-            />
-          </LineageEdgeIcon>
-        ) : (
-          selected &&
-          data.isEditMode && (
-            <LineageEdgeIcon offset={offset} x={edgeCenterX} y={edgeCenterY}>
-              <Button
-                className="tw-cursor-pointer d-flex tw-z-9999"
-                data-testid="add-pipeline"
-                icon={
-                  <SVGIcons
-                    alt="times-circle"
-                    icon="icon-times-circle"
-                    width="16px"
-                  />
-                }
-                style={{
-                  transform: 'rotate(45deg)',
-                }}
-                type="link"
-                onClick={(event) =>
-                  addPipelineClick?.(event, rest as CustomEdgeData)
-                }
-              />
-            </LineageEdgeIcon>
-          )
-        )
-      ) : data.isEditMode ? (
-        selected && (
-          <LineageEdgeIcon offset={offset} x={edgeCenterX} y={edgeCenterY}>
-            <Button
-              className="tw-cursor-pointer d-flex tw-z-9999"
-              data-testid="delete-button"
-              icon={
-                <SVGIcons
-                  alt="times-circle"
-                  icon="icon-times-circle"
-                  width="16px"
-                />
-              }
-              type="link"
-              onClick={(event) => onEdgeClick?.(event, rest as CustomEdgeData)}
-            />
-          </LineageEdgeIcon>
-        )
-      ) : (
+      {isColumnLineageAllowed &&
+        hasLabel &&
+        getLineageEdgeIcon(<PipelineIcon />, 'pipeline-label')}
+      {isColumnLineageAllowed &&
+        isSelectedEditMode &&
+        getEditLineageIcon('add-pipeline', true, addPipelineClick)}
+      {!isColumnLineageAllowed &&
+        isSelectedEditMode &&
+        isSelected &&
+        getEditLineageIcon('delete-button', false, onEdgeClick)}
+      {!isColumnLineageAllowed &&
         data.columnFunctionValue &&
-        data.isExpanded && (
-          <LineageEdgeIcon offset={3} x={edgeCenterX} y={edgeCenterY}>
-            <Button
-              className="d-flex justify-center items-center custom-edge-pipeline-button"
-              data-tesid="function-icon"
-              icon={<FunctionIcon />}
-              type="primary"
-              onClick={(event) =>
-                data.isEditMode &&
-                addPipelineClick?.(event, rest as CustomEdgeData)
-              }
-            />
-          </LineageEdgeIcon>
-        )
-      )}
+        data.isExpanded &&
+        getLineageEdgeIcon(<FunctionIcon />, 'function-icon')}
     </Fragment>
   );
 };

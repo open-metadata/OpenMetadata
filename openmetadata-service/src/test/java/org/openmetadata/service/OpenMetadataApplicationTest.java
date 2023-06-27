@@ -14,6 +14,7 @@
 package org.openmetadata.service;
 
 import static java.lang.String.format;
+import static org.openmetadata.service.util.TablesInitializer.validateAndRunSystemDataMigrations;
 
 import io.dropwizard.jersey.jackson.JacksonFeature;
 import io.dropwizard.testing.ConfigOverride;
@@ -30,11 +31,16 @@ import org.flywaydb.core.Flyway;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.HttpUrlConnectorProvider;
 import org.glassfish.jersey.client.JerseyClientBuilder;
+import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.SqlObjectPlugin;
+import org.jdbi.v3.sqlobject.SqlObjects;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.events.WebhookCallbackResource;
 import org.openmetadata.service.resources.tags.TagLabelCache;
@@ -139,6 +145,13 @@ public abstract class OpenMetadataApplicationTest {
     configOverrides.add(ConfigOverride.config("migrationConfiguration.path", migrationScripsLocation));
     ConfigOverride[] configOverridesArray = configOverrides.toArray(new ConfigOverride[configOverrides.size()]);
     APP = new DropwizardAppExtension<>(OpenMetadataApplication.class, CONFIG_PATH, configOverridesArray);
+
+    // Run System Migrations
+    final Jdbi jdbi = Jdbi.create(sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword());
+    jdbi.installPlugin(new SqlObjectPlugin());
+    jdbi.getConfig(SqlObjects.class)
+        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(sqlContainer.getDriverClassName()));
+    validateAndRunSystemDataMigrations(jdbi, ConnectionType.from(sqlContainer.getDriverClassName()), false);
 
     APP.before();
   }

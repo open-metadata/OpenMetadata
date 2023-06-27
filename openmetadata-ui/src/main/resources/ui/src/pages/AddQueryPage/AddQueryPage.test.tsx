@@ -46,9 +46,14 @@ jest.mock('components/common/rich-text-editor/RichTextEditor', () => {
 jest.mock('components/AsyncSelect/AsyncSelect', () => ({
   AsyncSelect: jest.fn().mockImplementation(() => <div>AsyncSelect</div>),
 }));
-jest.mock('components/containers/PageLayoutV1', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
-});
+jest.mock('components/common/ResizablePanels/ResizablePanels', () =>
+  jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <>
+      <div>{firstPanel.children}</div>
+      <div>{secondPanel.children}</div>
+    </>
+  ))
+);
 jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {

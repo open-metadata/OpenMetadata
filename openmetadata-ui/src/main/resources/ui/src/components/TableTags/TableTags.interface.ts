@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { HierarchyTagsProps } from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
 import { MlFeature } from 'generated/entity/data/mlmodel';
 import { Task } from 'generated/entity/data/pipeline';
 import { Field } from 'generated/entity/data/topic';
@@ -22,19 +23,18 @@ import { Column } from '../../generated/entity/data/table';
 import { EntityFieldThreads } from '../../interface/feed.interface';
 
 export interface TableTagsComponentProps<T> {
-  tags: TableTagsProps;
-  tagList: TagOption[];
+  tags: TagLabel[];
+  tagList: HierarchyTagsProps[];
   onUpdateTagsHandler?: (cell: T) => void;
   isReadOnly?: boolean;
   entityFqn?: string;
   record: T;
   index: number;
   isTagLoading: boolean;
-  hasTagEditAccess?: boolean;
+  hasTagEditAccess: boolean;
   handleTagSelection: (
-    selectedTags: Array<EntityTags>,
-    editColumnTag: T,
-    otherTags: TagLabel[]
+    selectedTags: EntityTags[],
+    editColumnTag: T
   ) => Promise<void>;
   onRequestTagsHandler?: (cell: T) => void;
   getColumnName?: (cell: T) => string;

@@ -379,7 +379,7 @@ export const MOCK_TEST_CASE = [
     ],
     testCaseResult: {
       timestamp: 1677046336,
-      testCaseStatus: 'Success',
+      testCaseStatus: 'Failed',
       result:
         'Found 99 value(s) matching regex pattern vs 99 value(s) in the column.',
       testResultValue: [

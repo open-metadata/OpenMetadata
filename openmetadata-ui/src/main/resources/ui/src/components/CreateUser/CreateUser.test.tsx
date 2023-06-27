@@ -55,7 +55,7 @@ describe('Test CreateUser component', () => {
       container,
       /MarkdownWithPreview component/i
     );
-    const dropdown = await findByText(container, /Dropdown component/i);
+
     const teamsSelectable = await findByText(
       container,
       /TeamsSelectable component/i
@@ -64,7 +64,6 @@ describe('Test CreateUser component', () => {
     expect(email).toBeInTheDocument();
     expect(admin).toBeInTheDocument();
     expect(description).toBeInTheDocument();
-    expect(dropdown).toBeInTheDocument();
     expect(teamsSelectable).toBeInTheDocument();
     expect(cancelButton).toBeInTheDocument();
     expect(saveButton).toBeInTheDocument();

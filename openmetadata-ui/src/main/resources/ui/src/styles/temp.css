@@ -842,7 +842,6 @@ body .list-option.rdw-option-active {
   display: none;
   border-right: 1px solid #d9ceee;
   transition: transform 0.3s ease-out;
-  margin-left: -16px;
 }
 
 .entity-lineage.sidebar.open {

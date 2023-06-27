@@ -223,21 +223,27 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       data-testid="profiler-tab-container"
       gutter={[16, 16]}>
       <Col span={24}>
-        <ProfilerDetailsCard chartCollection={countMetrics} name="count" />
+        <ProfilerDetailsCard
+          chartCollection={countMetrics}
+          name="count"
+          title={t('label.data-count-plural')}
+        />
       </Col>
       <Col span={24}>
         <ProfilerDetailsCard
           chartCollection={proportionMetrics}
           name="proportion"
           tickFormatter="%"
+          title={t('label.data-proportion-plural')}
         />
       </Col>
       <Col span={24}>
         <ProfilerDetailsCard
           chartCollection={mathMetrics}
           name="math"
-          // only min/max category can be string
           showYAxisCategory={isMinMaxStringData}
+          // only min/max category can be string
+          title={t('label.data-aggregation')}
         />
       </Col>
       <Col span={24}>
@@ -247,6 +253,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
         <ProfilerDetailsCard
           chartCollection={quartileMetrics}
           name="quartile"
+          title={t('label.data-quartile-plural')}
         />
       </Col>
       <Col span={24}>
@@ -254,14 +261,12 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
           className="shadow-none global-border-radius"
           data-testid="histogram-metrics">
           <Row gutter={[16, 16]}>
-            <Col span={4}>
-              <Typography.Text
-                className="text-grey-body"
-                data-testid="data-distribution-title">
+            <Col span={24}>
+              <Typography.Title data-testid="data-distribution-title" level={5}>
                 {t('label.data-distribution')}
-              </Typography.Text>
+              </Typography.Title>
             </Col>
-            <Col span={20}>
+            <Col span={24}>
               <DataDistributionHistogram
                 data={{ firstDayData: firstDay, currentDayData: currentDay }}
               />
