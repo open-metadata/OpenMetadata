@@ -83,8 +83,8 @@ class MetadataRestSink(Sink[Entity]):
         self.metadata.close()
 
     def write_record(self, record: ProfilerResponse) -> None:
+        log = f"{type(record.table).__name__} [{record.table.name.__root__}]"
         try:
-            log = f"{type(record.table).__name__} [{record.table.name.__root__}]"
             self.metadata.ingest_profile_data(
                 table=record.table,
                 profile_request=self.clean_up_profile_columns(record.profile),
