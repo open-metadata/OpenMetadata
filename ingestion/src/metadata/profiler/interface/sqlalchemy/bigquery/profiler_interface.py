@@ -1,3 +1,19 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+"""
+Interfaces with database for BigQuery engine
+supporting sqlalchemy abstraction layer
+"""
+
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
@@ -13,31 +29,9 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
 
     def __init__(
         self,
-        service_connection_config,
-        ometa_client,
-        entity,
-        profile_sample_config,
-        source_config,
-        sample_query,
-        table_partition_config,
-        sqa_metadata=None,
-        timeout_seconds=43200,
-        thread_count=5,
         **kwargs,
     ):
-        super().__init__(
-            service_connection_config,
-            ometa_client,
-            entity,
-            profile_sample_config,
-            source_config,
-            sample_query,
-            table_partition_config,
-            sqa_metadata,
-            timeout_seconds,
-            thread_count,
-            **kwargs,
-        )
+        super().__init__(**kwargs)
 
     def _instantiate_sampler(
         self,

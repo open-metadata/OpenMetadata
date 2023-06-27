@@ -1,38 +1,37 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 """
 Helper module to handle BigQuery data sampling
 for the profiler
 """
-from typing import Dict, List, Optional
-
-from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.generated.schema.entity.data.table import ProfileSampleType, TableData
+from metadata.profiler.processor.sqlalchemy.sampler import Sampler
 from metadata.profiler.source.bigquery.queries import BIGQUERY_TABLESAMPLE
-from metadata.profiler.api.models import ProfileSampleConfig
-from metadata.profiler.processor.sampler import Sampler
 
 
 class BigQuerySampler(Sampler):
+    """
+    Generates a sample of the BigQuery to not
+    run the query in the whole table.
+    """
+
     sample_stmt = BIGQUERY_TABLESAMPLE
     default_percent = 10
 
     def __init__(
         self,
-        session: Optional[Session],
-        table: DeclarativeMeta,
-        sample_columns: List[str],
-        profile_sample_config: Optional[ProfileSampleConfig] = None,
-        partition_details: Optional[Dict] = None,
-        profile_sample_query: Optional[str] = None,
+        **kwargs,
     ):
-        super().__init__(
-            session,
-            table,
-            sample_columns,
-            profile_sample_config,
-            partition_details,
-            profile_sample_query,
-        )
+        super().__init__(**kwargs)
 
     def get_sample_query(self) -> str:
         """get query for sample data"""
@@ -67,6 +66,6 @@ class BigQuerySampler(Sampler):
 
         bq_sample = self.session.execute(self.get_sample_query())
         return TableData(
-            columns=[column for column in self.sample_columns],
+            columns=list(self.sample_columns),
             rows=[list(row) for row in bq_sample],
         )

@@ -15,14 +15,19 @@ Bigquery Profiler source
 
 from copy import deepcopy
 from typing import Optional, Union
-from metadata.generated.schema.entity.data.table import Table
 
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
+)
+from metadata.generated.schema.security.credentials.gcpValues import (
+    GcpCredentialsValues,
+    MultipleProjectId,
+    SingleProjectId,
 )
 from metadata.profiler.api.models import TableConfig
 from metadata.profiler.interface.pandas.profiler_interface import (
@@ -31,12 +36,6 @@ from metadata.profiler.interface.pandas.profiler_interface import (
 from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
-)
-
-from metadata.generated.schema.security.credentials.gcpValues import (
-    GcpCredentialsValues,
-    MultipleProjectId,
-    SingleProjectId,
 )
 from metadata.profiler.source.base_profiler_source import BaseProfilerSource
 
