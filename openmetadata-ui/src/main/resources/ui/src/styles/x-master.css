@@ -25,10 +25,6 @@ p {
   margin-bottom: 0px;
 }
 
-pre {
-  font-family: 'Source Code Pro', sans-serif;
-}
-
 /* Bootstrap Extended */
 .form-control:focus,
 .btn.focus,
@@ -1148,7 +1144,7 @@ div.ant-typography-ellipsis-custom {
 
 .ant-dropdown-menu-item-selected {
   color: #0968da;
-  background-color: #7147e825;
+  background-color: #e6f4ff;
 }
 
 .table-query-editor pre.CodeMirror-line {

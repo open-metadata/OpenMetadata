@@ -643,7 +643,7 @@ const TableDetailsPageV1 = () => {
           <TabsLabel id={EntityTabs.DBT} name={t('label.dbt-lowercase')} />
         ),
         isHidden: !(
-          tableDetails?.dataModel?.sql ?? tableDetails?.dataModel?.rawSql
+          tableDetails?.dataModel?.sql || tableDetails?.dataModel?.rawSql
         ),
         key: EntityTabs.DBT,
         children: <DbtTab dataModel={tableDetails?.dataModel} />,

@@ -138,16 +138,18 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
             : value,
       })
     );
+    const name =
+      value.testName?.trim() ||
+      `${columnName ? columnName : table.name}_${snakeCase(
+        selectedTestType
+      )}_${cryptoRandomString({
+        length: 4,
+        type: 'alphanumeric',
+      })}`;
 
     return {
-      name:
-        value.testName?.trim() ||
-        `${columnName ? columnName : table.name}_${snakeCase(
-          selectedTestType
-        )}_${cryptoRandomString({
-          length: 4,
-          type: 'alphanumeric',
-        })}`,
+      name,
+      displayName: name,
       entityLink: generateEntityLink(
         isColumnFqn ? `${decodedEntityFQN}.${columnName}` : decodedEntityFQN,
         isColumnFqn

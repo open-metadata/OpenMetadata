@@ -9,7 +9,7 @@
       {
         "name": "columnNames",
         "displayName": "Column Names",
-        "description": "Expected columns names of the table to match the ones in {Column Names} -- should be a coma seperated string",
+        "description": "Expected columns names of the table to match the ones in {Column Names} -- should be a coma separated string",
         "dataType": "STRING",
         "required": "true"
       },
