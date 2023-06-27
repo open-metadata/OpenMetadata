@@ -136,7 +136,12 @@ class DataSource(BaseModel):
 
 
 class TableauDatasources(BaseModel):
-    embeddedDatasources: Optional[List[DataSource]]
+    nodes: Optional[List[DataSource]]
+    totalCount: Optional[int]
+
+
+class TableauDatasourcesConnection(BaseModel):
+    embeddedDatasourcesConnection: Optional[TableauDatasources]
 
 
 class TableauChart(TableauBaseModel):

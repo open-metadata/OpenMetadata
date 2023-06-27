@@ -108,7 +108,7 @@ class TableauSource(DashboardServiceSource):
                     chart for chart in charts if chart.workbook.id == workbook.id
                 ]
 
-                for data_model in data_models.embeddedDatasources:
+                for data_model in data_models or []:
                     for downstream_workbooks in data_model.downstreamWorkbooks or []:
                         if downstream_workbooks.luid == workbook.id:
                             workbook.dataModels.append(data_model)
