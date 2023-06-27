@@ -1,5 +1,13 @@
 package org.openmetadata.service.elasticsearch;
 
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
@@ -9,15 +17,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchClient;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
 @Slf4j
 public class ElasticSearchIndexDefinition {

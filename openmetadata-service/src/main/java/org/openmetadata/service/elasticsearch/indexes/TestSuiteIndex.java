@@ -1,9 +1,8 @@
 package org.openmetadata.service.elasticsearch.indexes;
 
+import java.util.Map;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.service.util.JsonUtils;
-
-import java.util.Map;
 
 public class TestSuiteIndex implements ElasticSearchIndex {
   TestSuite testSuite;
