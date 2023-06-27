@@ -346,7 +346,6 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
                 return None
 
         except Exception as exc:
-
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
         if row:
@@ -388,7 +387,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
     ):
         """Create thread safe runner"""
         if not hasattr(thread_local, "sampler"):
-            thread_local.sampler = Sampler(
+            thread_local.sampler = self._instantiate_sampler(
                 session=session,
                 table=table,
                 sample_columns=self._get_sample_columns(),
@@ -522,7 +521,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         Returns:
             TableData: sample table data
         """
-        sampler = Sampler(
+        sampler = self._instantiate_sampler(
             session=self.session,
             table=table,
             sample_columns=self._get_sample_columns(),
@@ -565,7 +564,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         Returns:
             dictionnary of results
         """
-        sampler = Sampler(
+        sampler = self._instantiate_sampler(
             session=self.session,
             table=kwargs.get("table"),
             sample_columns=self._get_sample_columns(),
@@ -581,6 +580,24 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
             logger.warning(f"Unexpected exception computing metrics: {exc}")
             self.session.rollback()
             return None
+
+    def _instantiate_sampler(
+        self,
+        session,
+        table,
+        sample_columns,
+        profile_sample_config,
+        partition_details,
+        profile_sample_query,
+    ):
+        return Sampler(
+            session=session,
+            table=table,
+            sample_columns=sample_columns,
+            profile_sample_config=profile_sample_config,
+            partition_details=partition_details,
+            profile_sample_query=profile_sample_query,
+        )
 
     def close(self):
         """Clean up session"""
