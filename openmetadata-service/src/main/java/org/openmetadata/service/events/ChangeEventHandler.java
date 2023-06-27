@@ -14,6 +14,7 @@
 package org.openmetadata.service.events;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getChangeEventFromResponseContext;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -88,7 +89,7 @@ public class ChangeEventHandler implements EventHandler {
             String jsonThread = mapper.writeValueAsString(thread);
             WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonThread);
             if (changeEvent.getEventType().equals(EventType.ENTITY_DELETED)) {
-              deleteAllConversationsRelatedToEntity((EntityInterface) changeEvent.getEntity());
+              deleteAllConversationsRelatedToEntity(getEntity(changeEvent));
             }
           }
         }
