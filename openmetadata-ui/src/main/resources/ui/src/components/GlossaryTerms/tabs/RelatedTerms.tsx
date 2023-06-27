@@ -14,7 +14,6 @@
 import { Button, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconFlatDoc } from 'assets/svg/ic-flat-doc.svg';
-import { AxiosError } from 'axios';
 import TagSelectForm from 'components/Tag/TagsSelectForm/TagsSelectForm.component';
 import TagButton from 'components/TagButton/TagButton.component';
 import { EntityField } from 'constants/Feeds.constants';
@@ -108,38 +107,34 @@ const RelatedTerms = ({
     }[];
     paging: Paging;
   }> => {
-    try {
-      const res = await searchData(
-        searchText,
-        page,
-        PAGE_SIZE,
-        '',
-        '',
-        '',
-        SearchIndex.GLOSSARY
-      );
+    const res = await searchData(
+      searchText,
+      page,
+      PAGE_SIZE,
+      '',
+      '',
+      '',
+      SearchIndex.GLOSSARY
+    );
 
-      const termResult = formatSearchGlossaryTermResponse(
-        res.data.hits.hits
-      ).filter(
-        (item) => item.fullyQualifiedName !== glossaryTerm.fullyQualifiedName
-      );
+    const termResult = formatSearchGlossaryTermResponse(
+      res.data.hits.hits
+    ).filter(
+      (item) => item.fullyQualifiedName !== glossaryTerm.fullyQualifiedName
+    );
 
-      const results = termResult.map(getEntityReferenceFromGlossary);
-      setOptions((prev) => [...prev, ...results]);
+    const results = termResult.map(getEntityReferenceFromGlossary);
+    setOptions((prev) => [...prev, ...results]);
 
-      return Promise.resolve({
-        data: results.map((item) => ({
-          label: item.fullyQualifiedName ?? '',
-          value: item.fullyQualifiedName ?? '',
-        })),
-        paging: {
-          total: res.data.hits.total.value,
-        },
-      });
-    } catch (error) {
-      return Promise.reject({ data: (error as AxiosError).response });
-    }
+    return {
+      data: results.map((item) => ({
+        label: item.fullyQualifiedName ?? '',
+        value: item.fullyQualifiedName ?? '',
+      })),
+      paging: {
+        total: res.data.hits.total.value,
+      },
+    };
   };
 
   const formatOptions = (data: EntityReference[]) => {
