@@ -1267,7 +1267,7 @@ public class OpenSearchClientImpl implements SearchClient {
     if (event.getEventType() == ENTITY_UPDATED) {
       for (EntityReference testcaseReference : testCaseReferences) {
         UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, testcaseReference.getId().toString());
-        String scripText = "ctx._source.testSuite.add(params)";
+        String scripText = "ctx._source.testSuites.add(params)";
         Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scripText, testSuiteDoc);
         updateRequest.script(script);
         updateElasticSearch(updateRequest);

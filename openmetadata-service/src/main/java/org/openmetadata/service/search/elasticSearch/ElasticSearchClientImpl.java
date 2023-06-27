@@ -758,8 +758,10 @@ public class ElasticSearchClientImpl implements SearchClient {
     hb.field(highlightTestCaseName);
     hb.field(highlightTestSuiteName);
     hb.field(highlightTestSuiteDescription);
+
     hb.preTags(EntityBuilderConstant.PRE_TAG);
     hb.postTags(EntityBuilderConstant.POST_TAG);
+
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
