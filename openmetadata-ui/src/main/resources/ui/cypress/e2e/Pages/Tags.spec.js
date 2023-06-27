@@ -234,7 +234,7 @@ describe('Tags page should work', () => {
 
   it('Use newly created tag to any entity should work', () => {
     const entity = SEARCH_ENTITY_TABLE.table_3;
-    addNewTagToEntity(entity, `${NEW_TAG.name}`);
+    addNewTagToEntity(entity, NEW_TAG);
   });
 
   it('Add tag at DatabaseSchema level should work', () => {

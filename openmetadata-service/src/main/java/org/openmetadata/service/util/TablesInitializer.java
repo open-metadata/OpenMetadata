@@ -274,6 +274,8 @@ public final class TablesInitializer {
           }
         }
         flyway.migrate();
+        validateAndRunSystemDataMigrations(
+            jdbi, ConnectionType.from(config.getDataSourceFactory().getDriverClass()), ignoreServerFileChecksum);
         break;
       case MIGRATE:
         flyway.migrate();

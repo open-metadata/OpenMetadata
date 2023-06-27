@@ -16,10 +16,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import TableTags from 'components/TableTags/TableTags.component';
-import {
-  GlossaryTermDetailsProps,
-  TagsDetailsProps,
-} from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { LabelType, State, TagSource } from 'generated/type/schema';
 import {
@@ -36,11 +33,6 @@ import { EntityTags, TagOption } from 'Models';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import {
-  getGlossaryTermHierarchy,
-  getGlossaryTermsList,
-} from 'utils/GlossaryUtils';
-import { getAllTagsList, getTagsHierarchy } from 'utils/TagsUtils';
 import { ReactComponent as IconRequest } from '../../assets/svg/request-icon.svg';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
@@ -91,12 +83,6 @@ const EntityTable = ({
   const { t } = useTranslation();
 
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
-  const [glossaryTags, setGlossaryTags] = useState<GlossaryTermDetailsProps[]>(
-    []
-  );
-  const [classificationTags, setClassificationTags] = useState<
-    TagsDetailsProps[]
-  >([]);
 
   const sortByOrdinalPosition = useMemo(
     () => sortBy(tableColumns, 'ordinalPosition'),
@@ -112,34 +98,6 @@ const EntityTable = ({
     column: Column;
     index: number;
   }>();
-
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-  const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
-  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
-
-  const fetchGlossaryTags = async () => {
-    setIsGlossaryLoading(true);
-    try {
-      const glossaryTermList = await getGlossaryTermsList();
-      setGlossaryTags(glossaryTermList);
-    } catch {
-      setTagFetchFailed(true);
-    } finally {
-      setIsGlossaryLoading(false);
-    }
-  };
-
-  const fetchClassificationTags = async () => {
-    setIsTagLoading(true);
-    try {
-      const tags = await getAllTagsList();
-      setClassificationTags(tags);
-    } catch {
-      setTagFetchFailed(true);
-    } finally {
-      setIsTagLoading(false);
-    }
-  };
 
   const handleEditColumn = (column: Column, index: number): void => {
     setEditColumn({ column, index });
@@ -355,9 +313,10 @@ const EntityTable = ({
           trigger="hover"
           zIndex={9999}>
           <IconRequest
-            height={16}
+            height={14}
             name={t('message.request-description')}
-            width={16}
+            style={{ color: DE_ACTIVE_COLOR }}
+            width={14}
           />
         </Popover>
       </Button>
@@ -425,13 +384,14 @@ const EntityTable = ({
                   {hasDescriptionEditAccess && (
                     <>
                       <Button
-                        className="p-0 tw-self-start flex-center w-7 h-7 text-primary d-flex-none hover-cell-icon"
+                        className="p-0 tw-self-start flex-center w-7 h-7 d-flex-none hover-cell-icon"
                         type="text"
                         onClick={() => handleUpdate(record, index)}>
                         <IconEdit
-                          height={16}
+                          height={14}
                           name={t('label.edit')}
-                          width={16}
+                          style={{ color: DE_ACTIVE_COLOR }}
+                          width={14}
                         />
                       </Button>
                     </>
@@ -525,21 +485,16 @@ const EntityTable = ({
         width: 250,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            dataTestId="classification-tags"
             entityFieldTasks={entityFieldTasks}
             entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
-            fetchTags={fetchClassificationTags}
             getColumnFieldFQN={getColumnFieldFQN(record)}
             getColumnName={getColumnName}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}
             index={index}
             isReadOnly={isReadOnly}
-            isTagLoading={isTagLoading}
             record={record}
-            tagFetchFailed={tagFetchFailed}
-            tagList={getTagsHierarchy(classificationTags)}
             tags={tags}
             type={TagSource.Classification}
             onRequestTagsHandler={onRequestTagsHandler}
@@ -556,21 +511,16 @@ const EntityTable = ({
         width: 250,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            dataTestId="glossary-tags"
             entityFieldTasks={entityFieldTasks}
             entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
-            fetchTags={fetchGlossaryTags}
             getColumnFieldFQN={getColumnFieldFQN(record)}
             getColumnName={getColumnName}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}
             index={index}
             isReadOnly={isReadOnly}
-            isTagLoading={isGlossaryLoading}
             record={record}
-            tagFetchFailed={tagFetchFailed}
-            tagList={getGlossaryTermHierarchy(glossaryTags)}
             tags={tags}
             type={TagSource.Glossary}
             onRequestTagsHandler={onRequestTagsHandler}
@@ -581,27 +531,21 @@ const EntityTable = ({
       },
     ],
     [
+      entityFqn,
+      isReadOnly,
       entityFieldTasks,
       entityFieldThreads,
-      entityFqn,
       tableConstraints,
-      isTagLoading,
-      isGlossaryLoading,
+      hasTagEditAccess,
       handleUpdate,
       handleTagSelection,
       renderDataTypeDisplay,
       renderDescription,
-      fetchGlossaryTags,
       getColumnName,
       handleTagSelection,
-      hasTagEditAccess,
-      isReadOnly,
-      tagFetchFailed,
-      glossaryTags,
       onRequestTagsHandler,
       onUpdateTagsHandler,
       onThreadLinkSelect,
-      classificationTags,
     ]
   );
 
