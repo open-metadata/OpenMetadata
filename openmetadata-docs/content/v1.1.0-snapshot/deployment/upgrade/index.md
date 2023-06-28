@@ -65,6 +65,15 @@ OpenMetadata 1.1 is a stable release. Please check the [release notes](/releases
 
 If you are upgrading production this is the recommended version to upgrade to.
 
+## Deprecation Notice
+
+- The 1.1 Release will be the last one with support for Python 3.7 since it is already [EOL](https://devguide.python.org/versions/).
+  OpenMetadata 1.2 will support Python version 3.8 to 3.10.
+- In 1.2 we will completely remove the Bots configured with SSO. Only JWT will be available then. Please, upgrade your
+  bots if you haven't done so. Note that the UI already does not allow creating bots with SSO.
+- 1.1 is the last release that will allow ingesting Impala from the Hive connector. In the next release we will
+  only support the Impala scheme from the Impala Connector.
+
 ## Breaking Changes for 1.1 Stable Release
 
 ### Pipeline Service Client Configuration
@@ -109,3 +118,109 @@ workflowConfig:
 ```
 
 You can find further details on this configuration [here](/deployment/secrets-manager/supported-implementations/aws-secrets-manager).
+
+## Service Connection Changes
+
+### MySQL and Postgres Connection
+
+Adding IAM role support for their auth requires a slight change on their JSON Schemas:
+
+#### From
+
+```yaml
+...
+  serviceConnection:
+    config: Mysql # or Postgres
+    password: Password
+```
+
+#### To
+
+If we want to use the basic authentication:
+
+```yaml
+...
+  serviceConnection:
+    config: Mysql # or Postgres
+    authType:
+      password: Password
+```
+
+Or if we want to use the IAM auth:
+
+```yaml
+...
+  serviceConnection:
+    config: Mysql # or Postgres
+    authType:
+      awsConfig:
+        awsAccessKeyId: ...
+        wsSecretAccessKey: ...
+        awsRegion: ...
+```
+
+### Looker Connection
+
+Now support GitHub and BitBucket as repositories for LookML models.
+
+#### From
+
+```yaml
+...
+  serviceConnection:
+    config:
+      type: Looker
+      clientId: ...
+      clientSecret: ...
+      hostPort: ...
+      githubCredentials:
+        repositoryOwner: ...
+        repositoryName: ...
+        token: ...
+```
+
+#### To
+
+```yaml
+...
+  serviceConnection:
+    config:
+      type: Looker
+      clientId: ...
+      clientSecret: ...
+      hostPort: ...
+      gitCredentials:
+        type: GitHub # or BitBucket
+        repositoryOwner: ...
+        repositoryName: ...
+        token: ...
+```
+
+### From GCS to GCP
+
+We are renaming the `gcsConfig` to `gcpConfig` to properly define their role as generic Google Cloud configurations. This
+impacts BigQuery, Datalake and any other source where you are directly passing the GCP credentials to connect to.
+
+#### From
+
+```yaml
+...
+  credentials:
+    gcsConfig:
+...
+```
+
+#### To
+
+```yaml
+...
+  credentials:
+    gcpConfig:
+...
+```
+
+### Other changes
+
+- Glue now supports custom database names via `databaseName`.
+- Snowflake supports the `clientSessionKeepAlive` parameter to keep the session open for long processes.
+- Kafka and Redpanda now have the `saslMechanism` based on enum values `["PLAIN", "GSSAPI", "SCRAM-SHA-256", "SCRAM-SHA-512", "OAUTHBEARER"]`.

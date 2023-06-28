@@ -143,7 +143,7 @@ const MlModelPage = () => {
       const { oldValue } = res.changeDescription.fieldsDeleted[0];
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
-        followers: (mlModelDetail.followers || []).filter(
+        followers: (mlModelDetail.followers ?? []).filter(
           (follower) => follower.id !== oldValue[0].id
         ),
       }));
@@ -162,7 +162,7 @@ const MlModelPage = () => {
       const res = await saveUpdatedMlModelData(updatedMlModel);
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
-        tags: sortTagsCaseInsensitive(res.tags || []),
+        tags: sortTagsCaseInsensitive(res.tags ?? []),
       }));
       setCurrentVersion(res.version?.toString());
     } catch (error) {
