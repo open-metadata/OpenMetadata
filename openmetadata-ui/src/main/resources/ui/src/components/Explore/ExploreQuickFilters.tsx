@@ -54,7 +54,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   ) => {
     let buckets: Bucket[] = [];
 
-    if (aggregations && aggregations[key] && key !== 'tier.tagFQN') {
+    if (aggregations?.[key] && key !== 'tier.tagFQN') {
       buckets = aggregations[key].buckets;
     } else {
       const [res, tierTags] = await Promise.all([
@@ -111,76 +111,69 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     setIsOptionsLoading(true);
     setOptions([]);
     try {
-      if (value) {
-        if (aggregations && aggregations[key] && key !== 'tier.tagFQN') {
-          const defaultOptions = getOptionsFromAggregationBucket(
-            aggregations[key].buckets
-          );
-          const filteredOptions = defaultOptions.filter((option) => {
-            return option.label.toLowerCase().includes(value.toLowerCase());
-          });
-          setOptions(filteredOptions);
-        } else if (key === 'tier.tagFQN') {
-          const filteredOptions = tierOptions?.filter((option) => {
-            return option.label.toLowerCase().includes(value.toLowerCase());
-          });
-          setOptions(filteredOptions);
-        } else {
-          if (!MISC_FIELDS.includes(key)) {
-            const advancedField = getAdvancedField(key);
-            const res = await getAdvancedFieldOptions(
-              value,
-              index,
-              advancedField
-            );
-
-            const suggestOptions =
-              res.data.suggest['metadata-suggest'][0].options ?? [];
-
-            const formattedSuggestions = suggestOptions.map((option) => {
-              const optionsText = getOptionTextFromKey(index, option, key);
-
-              return {
-                key: optionsText,
-                label: optionsText,
-              };
-            });
-
-            setOptions(uniqWith(formattedSuggestions, isEqual));
-          } else {
-            if (key === 'tags.tagFQN') {
-              const res = await getTagSuggestions(value);
-
-              const suggestOptions =
-                res.data.suggest['metadata-suggest'][0].options ?? [];
-
-              const formattedSuggestions = suggestOptions
-                .filter((op) => !isUndefined(op._source.fullyQualifiedName))
-                .map((op) => op._source.fullyQualifiedName as string);
-
-              const optionsArray = formattedSuggestions.map((op) => ({
-                key: op,
-                label: op,
-              }));
-
-              setOptions(uniqWith(optionsArray, isEqual));
-            } else {
-              const res = await getUserSuggestions(value);
-
-              const suggestOptions =
-                res.data.suggest['metadata-suggest'][0].options ?? [];
-
-              const formattedSuggestions = suggestOptions.map((op) => ({
-                key: op._source.displayName ?? op._source.name,
-                label: op._source.displayName ?? op._source.name,
-              }));
-
-              setOptions(uniqWith(formattedSuggestions, isEqual));
-            }
-          }
-        }
-      } else {
+      if (!value) {
         getInitialOptions(key);
+
+        return;
+      }
+      if (aggregations?.[key] && key !== 'tier.tagFQN') {
+        const defaultOptions = getOptionsFromAggregationBucket(
+          aggregations[key].buckets
+        );
+        const filteredOptions = defaultOptions.filter((option) => {
+          return option.label.toLowerCase().includes(value.toLowerCase());
+        });
+        setOptions(filteredOptions);
+      } else if (key === 'tier.tagFQN') {
+        const filteredOptions = tierOptions?.filter((option) => {
+          return option.label.toLowerCase().includes(value.toLowerCase());
+        });
+        setOptions(filteredOptions);
+      } else if (!MISC_FIELDS.includes(key)) {
+        const advancedField = getAdvancedField(key);
+        const res = await getAdvancedFieldOptions(value, index, advancedField);
+
+        const suggestOptions =
+          res.data.suggest['metadata-suggest'][0].options ?? [];
+
+        const formattedSuggestions = suggestOptions.map((option) => {
+          const optionsText = getOptionTextFromKey(index, option, key);
+
+          return {
+            key: optionsText,
+            label: optionsText,
+          };
+        });
+
+        setOptions(uniqWith(formattedSuggestions, isEqual));
+      } else if (key === 'tags.tagFQN') {
+        const res = await getTagSuggestions(value);
+
+        const suggestOptions =
+          res.data.suggest['metadata-suggest'][0].options ?? [];
+
+        const formattedSuggestions = suggestOptions
+          .filter((op) => !isUndefined(op._source.fullyQualifiedName))
+          .map((op) => op._source.fullyQualifiedName as string);
+
+        const optionsArray = formattedSuggestions.map((op) => ({
+          key: op,
+          label: op,
+        }));
+
+        setOptions(uniqWith(optionsArray, isEqual));
+      } else {
+        const res = await getUserSuggestions(value);
+
+        const suggestOptions =
+          res.data.suggest['metadata-suggest'][0].options ?? [];
+
+        const formattedSuggestions = suggestOptions.map((op) => ({
+          key: op._source.displayName ?? op._source.name,
+          label: op._source.displayName ?? op._source.name,
+        }));
+
+        setOptions(uniqWith(formattedSuggestions, isEqual));
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
