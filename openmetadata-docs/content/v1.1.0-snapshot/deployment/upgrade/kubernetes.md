@@ -44,7 +44,7 @@ Then, follow the next steps to create a virtual environment and install the late
 - ```bash
      python -m venv venv
      source venv/bin/activate
-     pip install openmetadata-ingestion~=1.0.0
+     pip install openmetadata-ingestion~=1.1.0
      ```
 - Validate the installed `metadata` version with 
      ```python -m metadata --version```
@@ -63,7 +63,7 @@ Then, follow the next steps to create a virtual environment and install the late
 
 You can get changes from artifact hub of [openmetadata helm chart](https://artifacthub.io/packages/helm/open-metadata/openmetadata) release. Click on Default Values >> Compare to Version.
 
-{% image src="/images/v1.0.0/deployment/upgrade/artifact-hub-compare-to-version.png" alt="Helm Chart Release Comparison" /%}
+{% image src="/images/v1.1.0/deployment/upgrade/artifact-hub-compare-to-version.png" alt="Helm Chart Release Comparison" /%}
 
 ## Upgrade Helm Repository with a new release
 
@@ -128,12 +128,12 @@ You might need to pass your own `values.yaml` with the `--values` flag
 
 ### Re-index all your metadata
 
-Go to Settings -> OpenMetadta -> Elasticsearch
-{% image src="/images/v1.0.0/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Create a New Project" /%}
+Go to Settings -> OpenMetadata -> Elasticsearch
+{% image src="/images/v1.1.0/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Create a New Project" /%}
 
 Click on reindex all
 in the dialog box choose Recreate Indexes to All
-{% image src="/images/v1.0.0/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex" /%}
+{% image src="/images/v1.1.0/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex" /%}
 
 ## Troubleshooting
 
