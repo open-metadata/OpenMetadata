@@ -251,8 +251,11 @@ source:
 ```
 ```yaml {% srNumber=4 %}
       hostPort: <hostPort>
+```
+```yaml {% srNumber=5 %}
       databaseSchema: schema
 ```
+
 ```yaml {% srNumber=6 %}
       # connectionOptions:
       #   key: value
