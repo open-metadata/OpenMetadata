@@ -18,10 +18,20 @@
             "om_stemmer"
           ]
         },
+        "om_analyzer_jp" : {
+          "tokenizer" : "kuromoji_tokenizer",
+          "type" : "custom",
+          "filter" : [
+            "kuromoji_baseform",
+            "kuromoji_part_of_speech",
+            "kuromoji_number",
+            "kuromoji_stemmer"
+          ]
+        },
         "om_ngram": {
           "tokenizer": "ngram",
-          "min_gram": 2,
-          "max_gram": 3,
+          "min_gram": 1,
+          "max_gram": 2,
           "filter": [
             "lowercase"
           ]
@@ -42,7 +52,7 @@
       },
       "name": {
         "type": "text",
-        "analyzer": "om_analyzer",
+        "analyzer": "om_analyzer_jp",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -60,7 +70,7 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer",
+        "analyzer": "om_analyzer_jp",
         "fields": {
           "ngram": {
             "type": "text",
@@ -70,7 +80,7 @@
       },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer",
+        "analyzer": "om_analyzer_jp",
         "fields": {
           "keyword": {
             "type": "keyword",

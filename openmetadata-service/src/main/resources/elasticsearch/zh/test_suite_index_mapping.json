@@ -42,7 +42,7 @@
       },
       "name": {
         "type": "text",
-        "analyzer": "om_analyzer",
+        "analyzer": "ik_max_word",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -60,7 +60,7 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer",
+        "analyzer": "ik_max_word",
         "fields": {
           "ngram": {
             "type": "text",
@@ -70,7 +70,7 @@
       },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer",
+        "analyzer": "ik_max_word",
         "fields": {
           "keyword": {
             "type": "keyword",
