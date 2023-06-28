@@ -119,11 +119,6 @@ a[href].link-text-grey,
 .border-t-0 {
   border-top-width: 0px;
 }
-.border-t-1 {
-  border-top-width: 1px;
-  border-style: solid;
-  border-color: @border-color;
-}
 .border-main {
   border-color: @border-color;
 }
@@ -434,6 +429,8 @@ a[href].link-text-grey,
   }
 }
 .entity-tag-right-panel-container {
+  height: calc(100vh - 236px);
+  overflow-y: scroll;
   border-left: @global-border;
   margin-left: 20px;
   padding: 12px 8px 0 8px;

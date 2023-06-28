@@ -82,7 +82,8 @@ export const TestSuites = () => {
                   activeTab: TableProfilerTab.DATA_QUALITY,
                 }),
               }}>
-              {getEntityName(record.executableEntityReference)}
+              {record.executableEntityReference?.fullyQualifiedName ??
+                record.executableEntityReference?.name}
             </Link>
           ) : (
             <Link

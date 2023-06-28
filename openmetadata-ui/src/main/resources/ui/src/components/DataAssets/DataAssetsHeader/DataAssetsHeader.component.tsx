@@ -33,7 +33,6 @@ import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderT
 import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR, getDashboardDetailsPath } from 'constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
@@ -48,9 +47,9 @@ import {
   ThreadType,
 } from 'generated/entity/feed/thread';
 import { useClipboard } from 'hooks/useClipBoard';
-import { t } from 'i18next';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { getActiveAnnouncement, getFeedCount } from 'rest/feedsAPI';
 import { getCurrentUserId, getEntityDetailLink } from 'utils/CommonUtils';
@@ -120,6 +119,7 @@ export const DataAssetsHeader = ({
   onDisplayNameUpdate,
 }: DataAssetsHeaderProps) => {
   const USERId = getCurrentUserId();
+  const { t } = useTranslation();
   const { isTourPage } = useTourProvider();
   const { onCopyToClipBoard } = useClipboard(window.location.href);
   const [taskCount, setTaskCount] = useState(0);
@@ -182,7 +182,7 @@ export const DataAssetsHeader = ({
   };
 
   useEffect(() => {
-    if (!isTourPage) {
+    if (dataAsset.fullyQualifiedName && !isTourPage) {
       fetchActiveAnnouncement();
       fetchTaskCount();
     }
@@ -194,46 +194,6 @@ export const DataAssetsHeader = ({
       breadcrumbs: [],
     };
     switch (entityType) {
-      default:
-      case EntityType.TABLE:
-        const tableDetails = dataAsset as Table;
-
-        returnData.extraInfo = (
-          <>
-            {tableDetails.tableType && (
-              <ExtraInfoLabel
-                label={t('label.type')}
-                value={tableDetails.tableType}
-              />
-            )}
-            {tableDetails?.usageSummary && (
-              <ExtraInfoLabel
-                label={t('label.usage')}
-                value={getUsagePercentile(
-                  tableDetails.usageSummary?.weeklyStats?.percentileRank || 0,
-                  false
-                )}
-              />
-            )}
-            {tableDetails?.profile?.columnCount && (
-              <ExtraInfoLabel
-                label={t('label.column-plural')}
-                value={tableDetails.profile?.columnCount}
-              />
-            )}
-            {tableDetails?.profile?.rowCount && (
-              <ExtraInfoLabel
-                label={t('label.row-plural')}
-                value={tableDetails.profile?.rowCount}
-              />
-            )}
-          </>
-        );
-
-        returnData.breadcrumbs = getBreadcrumbForTable(tableDetails);
-
-        break;
-
       case EntityType.TOPIC:
         const topicDetails = dataAsset as Topic;
         returnData.breadcrumbs =
@@ -402,6 +362,46 @@ export const DataAssetsHeader = ({
           getBreadcrumbForEntitiesWithServiceOnly(dataModelDetails);
 
         break;
+
+      case EntityType.TABLE:
+      default:
+        const tableDetails = dataAsset as Table;
+
+        returnData.extraInfo = (
+          <>
+            {tableDetails.tableType && (
+              <ExtraInfoLabel
+                label={t('label.type')}
+                value={tableDetails.tableType}
+              />
+            )}
+            {tableDetails?.usageSummary && (
+              <ExtraInfoLabel
+                label={t('label.usage')}
+                value={getUsagePercentile(
+                  tableDetails.usageSummary?.weeklyStats?.percentileRank || 0,
+                  false
+                )}
+              />
+            )}
+            {tableDetails?.profile?.columnCount && (
+              <ExtraInfoLabel
+                label={t('label.column-plural')}
+                value={tableDetails.profile?.columnCount}
+              />
+            )}
+            {tableDetails?.profile?.rowCount && (
+              <ExtraInfoLabel
+                label={t('label.row-plural')}
+                value={tableDetails.profile?.rowCount}
+              />
+            )}
+          </>
+        );
+
+        returnData.breadcrumbs = getBreadcrumbForTable(tableDetails);
+
+        break;
     }
 
     return returnData;
@@ -467,13 +467,8 @@ export const DataAssetsHeader = ({
                         })}
                       </span>
                     )}
-                    <Tooltip
-                      placement="topRight"
-                      title={
-                        permissions.EditAll || permissions.EditTags
-                          ? ''
-                          : NO_PERMISSION_FOR_ACTION
-                      }>
+
+                    {(permissions.EditAll || permissions.EditTags) && (
                       <Button
                         className="flex-center p-0"
                         data-testid="edit-tier"
@@ -484,7 +479,7 @@ export const DataAssetsHeader = ({
                         size="small"
                         type="text"
                       />
-                    </Tooltip>
+                    )}
                   </Space>
                 </TierCard>
                 {extraInfo}
@@ -565,8 +560,8 @@ export const DataAssetsHeader = ({
       {isAnnouncementDrawerOpen && (
         <AnnouncementDrawer
           createPermission={permissions?.EditAll}
-          entityFQN={dataAsset.fullyQualifiedName || ''}
-          entityName={entityName || ''}
+          entityFQN={dataAsset.fullyQualifiedName ?? ''}
+          entityName={entityName ?? ''}
           entityType={entityType}
           open={isAnnouncementDrawerOpen}
           onClose={() => setIsAnnouncementDrawer(false)}
