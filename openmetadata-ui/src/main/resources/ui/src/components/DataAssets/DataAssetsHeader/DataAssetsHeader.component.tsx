@@ -30,6 +30,7 @@ import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from 'components/common/TierCard/TierCard';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR, getDashboardDetailsPath } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
@@ -62,7 +63,7 @@ import {
 import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { bytesToSize } from 'utils/StringsUtils';
 import { getTierTags, getUsagePercentile } from 'utils/TableUtils';
-import { showErrorToast, showInfoToast } from 'utils/ToastUtils';
+import { showErrorToast } from 'utils/ToastUtils';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
@@ -119,6 +120,7 @@ export const DataAssetsHeader = ({
   onDisplayNameUpdate,
 }: DataAssetsHeaderProps) => {
   const USERId = getCurrentUserId();
+  const { isTourPage } = useTourProvider();
   const { onCopyToClipBoard } = useClipboard(window.location.href);
   const [taskCount, setTaskCount] = useState(0);
   const history = useHistory();
@@ -129,6 +131,7 @@ export const DataAssetsHeader = ({
       ) : null,
     [dataAsset]
   );
+  const [copyTooltip, setCopyTooltip] = useState<string>();
 
   const { entityName, tier, isFollowing, version, followers } = useMemo(
     () => ({
@@ -179,8 +182,10 @@ export const DataAssetsHeader = ({
   };
 
   useEffect(() => {
-    fetchActiveAnnouncement();
-    fetchTaskCount();
+    if (!isTourPage) {
+      fetchActiveAnnouncement();
+      fetchTaskCount();
+    }
   }, [dataAsset.fullyQualifiedName]);
 
   const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(() => {
@@ -419,7 +424,8 @@ export const DataAssetsHeader = ({
 
   const handleShareButtonClick = async () => {
     await onCopyToClipBoard();
-    showInfoToast(`Link copied to clipboard`, 2000);
+    setCopyTooltip(t('message.copy-to-clipboard'));
+    setTimeout(() => setCopyTooltip(''), 2000);
   };
 
   return (
@@ -512,10 +518,15 @@ export const DataAssetsHeader = ({
                   onClick={onFollowClick}>
                   <Typography.Text>{followers}</Typography.Text>
                 </Button>
-                <Button
-                  icon={<Icon component={ShareIcon} />}
-                  onClick={handleShareButtonClick}
-                />
+                <Tooltip
+                  placement="bottomRight"
+                  title={copyTooltip}
+                  visible={!isEmpty(copyTooltip)}>
+                  <Button
+                    icon={<Icon component={ShareIcon} />}
+                    onClick={handleShareButtonClick}
+                  />
+                </Tooltip>
                 <ManageButton
                   allowSoftDelete={!dataAsset.deleted}
                   canDelete={permissions.Delete}

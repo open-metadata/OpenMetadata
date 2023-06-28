@@ -116,7 +116,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       ...testCase,
       parameterValues,
       description,
-      name: value.name,
+      displayName: value.displayName,
     };
     const jsonPatch = compare(testCase, updatedTestCase);
 
@@ -124,10 +124,10 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       try {
         setIsLoadingOnSave(true);
         const updateRes = await updateTestCaseById(
-          testCase.id || '',
+          testCase.id ?? '',
           jsonPatch
         );
-        onUpdate && onUpdate(updateRes);
+        onUpdate?.(updateRes);
         showSuccessToast(
           t('server.update-entity-success', { entity: t('label.test-case') })
         );
@@ -216,17 +216,17 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
           layout="vertical"
           name="tableTestForm"
           onFinish={handleFormSubmit}>
-          <Form.Item required label={`${t('label.table')}:`} name="table">
+          <Form.Item required label={`${t('label.table')}`} name="table">
             <Input disabled />
           </Form.Item>
           {isColumn && (
-            <Form.Item required label={`${t('label.column')}:`} name="column">
+            <Form.Item required label={`${t('label.column')}`} name="column">
               <Input disabled />
             </Form.Item>
           )}
           <Form.Item
             required
-            label={`${t('label.name')}:`}
+            label={`${t('label.name')}`}
             name="name"
             rules={[
               {
@@ -235,6 +235,9 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
               },
             ]}>
             <Input disabled placeholder={t('message.enter-test-case-name')} />
+          </Form.Item>
+          <Form.Item label={t('label.display-name')} name="displayName">
+            <Input placeholder={t('message.enter-test-case-name')} />
           </Form.Item>
           <Form.Item
             required
@@ -247,7 +250,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
 
           {GenerateParamsField()}
 
-          <Form.Item label={`${t('label.description')}:`} name="description">
+          <Form.Item label={`${t('label.description')}`} name="description">
             <RichTextEditor
               height="200px"
               initialValue={testCase?.description || ''}

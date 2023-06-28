@@ -312,7 +312,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     Topic putResponse = putSampleData(topic.getId(), topicSampleData, ADMIN_AUTH_HEADERS);
     assertEquals(topicSampleData, putResponse.getSampleData());
 
-    topic = getEntity(topic.getId(), "sampleData", ADMIN_AUTH_HEADERS);
+    topic = getSampleData(topic.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(topicSampleData, topic.getSampleData());
     messages =
         Arrays.asList(
@@ -321,7 +321,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     topicSampleData.withMessages(messages);
     putResponse = putSampleData(topic.getId(), topicSampleData, ADMIN_AUTH_HEADERS);
     assertEquals(topicSampleData, putResponse.getSampleData());
-    topic = getEntity(topic.getId(), "sampleData", ADMIN_AUTH_HEADERS);
+    topic = getSampleData(topic.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(topicSampleData, topic.getSampleData());
   }
 
@@ -411,6 +411,11 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
       throws HttpResponseException {
     WebTarget target = getResource(topicId).path("/sampleData");
     return TestUtils.put(target, data, Topic.class, OK, authHeaders);
+  }
+
+  public Topic getSampleData(UUID topicId, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource(topicId).path("/sampleData");
+    return TestUtils.get(target, Topic.class, authHeaders);
   }
 
   private static Field getField(String name, FieldDataType fieldDataType, TagLabel tag) {

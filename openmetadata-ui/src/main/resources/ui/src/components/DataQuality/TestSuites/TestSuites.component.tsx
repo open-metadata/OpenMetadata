@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import Searchbar from 'components/common/searchbar/Searchbar';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from 'components/TableProfiler/Component/ProfilerProgressWidget';
 import {
@@ -37,7 +37,7 @@ import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface
 import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import {
   getListTestSuites,
   ListTestSuitePrams,
@@ -46,15 +46,15 @@ import {
 import { getEntityName } from 'utils/EntityUtils';
 import { getTestSuitePath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
-import { DataQualitySearchParams } from '../DataQuality.interface';
 import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
 
 export const TestSuites = () => {
   const { t } = useTranslation();
   const { tab = DataQualityPageTabs.TABLES } =
     useParams<{ tab: DataQualityPageTabs }>();
-  const history = useHistory();
-  const location = useLocation();
+
+  const { permissions } = usePermissionProvider();
+  const { testSuite: testSuitePermission } = permissions;
 
   const [testSuites, setTestSuites] = useState<PagingResponse<TestSuite[]>>({
     data: [],
@@ -63,18 +63,6 @@ export const TestSuites = () => {
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  const params = useMemo(() => {
-    const search = location.search;
-
-    const params = QueryString.parse(
-      search.startsWith('?') ? search.substring(1) : search
-    );
-
-    return params as DataQualitySearchParams;
-  }, [location]);
-
-  const { searchValue = '' } = params;
 
   const columns = useMemo(() => {
     const data: ColumnsType<TestSuite> = [
@@ -137,15 +125,6 @@ export const TestSuites = () => {
     return data;
   }, []);
 
-  const handleSearchParam = (
-    value: string | boolean,
-    key: keyof DataQualitySearchParams
-  ) => {
-    history.push({
-      search: QueryString.stringify({ ...params, [key]: value }),
-    });
-  };
-
   const fetchTestSuites = async (params?: ListTestSuitePrams) => {
     setIsLoading(true);
     try {
@@ -177,28 +156,24 @@ export const TestSuites = () => {
   };
 
   useEffect(() => {
-    fetchTestSuites();
-  }, [tab]);
+    if (testSuitePermission?.ViewAll || testSuitePermission?.ViewBasic) {
+      fetchTestSuites();
+    }
+  }, [tab, testSuitePermission]);
 
   return (
     <Row className="p-x-lg p-t-md" gutter={[16, 16]}>
       <Col span={24}>
-        <Row justify="space-between">
-          <Col span={8}>
-            <Searchbar
-              removeMargin
-              searchValue={searchValue}
-              onSearch={(value) => handleSearchParam(value, 'searchValue')}
-            />
-          </Col>
+        <Row justify="end">
           <Col>
-            {tab === DataQualityPageTabs.TEST_SUITES && (
-              <Link to={ROUTES.ADD_TEST_SUITES}>
-                <Button type="primary">
-                  {t('label.add-entity', { entity: t('label.test-suite') })}
-                </Button>
-              </Link>
-            )}
+            {tab === DataQualityPageTabs.TEST_SUITES &&
+              testSuitePermission?.Create && (
+                <Link to={ROUTES.ADD_TEST_SUITES}>
+                  <Button type="primary">
+                    {t('label.add-entity', { entity: t('label.test-suite') })}
+                  </Button>
+                </Link>
+              )}
           </Col>
         </Row>
       </Col>

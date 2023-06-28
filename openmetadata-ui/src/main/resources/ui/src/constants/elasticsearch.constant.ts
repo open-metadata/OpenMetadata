@@ -72,6 +72,10 @@ export const ELASTIC_SEARCH_INDEX_ENTITIES = [
     value: 'query',
     label: t('label.query'),
   },
+  {
+    value: 'testCase',
+    label: t('label.test-case'),
+  },
 ];
 
 export const ELASTIC_SEARCH_INITIAL_VALUES = {

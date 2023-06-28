@@ -14,10 +14,9 @@ Hosts the singledispatch to get DBT files
 import json
 import traceback
 from functools import singledispatch
-from typing import Any, Optional, Tuple
+from typing import Optional, Tuple
 
 import requests
-from pydantic import BaseModel
 
 from metadata.generated.schema.metadataIngestion.dbtconfig.dbtAzureConfig import (
     DbtAzureConfig,
@@ -37,26 +36,16 @@ from metadata.generated.schema.metadataIngestion.dbtconfig.dbtLocalConfig import
 from metadata.generated.schema.metadataIngestion.dbtconfig.dbtS3Config import (
     DbtS3Config,
 )
+from metadata.ingestion.source.database.dbt.constants import (
+    DBT_CATALOG_FILE_NAME,
+    DBT_MANIFEST_FILE_NAME,
+    DBT_RUN_RESULTS_FILE_NAME,
+)
+from metadata.ingestion.source.database.dbt.models import DbtFiles
 from metadata.utils.credentials import set_google_credentials
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
-
-DBT_CATALOG_FILE_NAME = "catalog.json"
-DBT_MANIFEST_FILE_NAME = "manifest.json"
-DBT_RUN_RESULTS_FILE_NAME = "run_results.json"
-
-
-class DbtFiles(BaseModel):
-    dbt_catalog: Optional[dict]
-    dbt_manifest: dict
-    dbt_run_results: Optional[dict]
-
-
-class DbtObjects(BaseModel):
-    dbt_catalog: Optional[Any]
-    dbt_manifest: Any
-    dbt_run_results: Optional[Any]
 
 
 class DBTConfigException(Exception):
