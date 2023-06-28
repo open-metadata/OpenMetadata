@@ -270,6 +270,11 @@ const updateTags = (inTerm) => {
 };
 
 const updateTerms = (newTerm) => {
+  interceptURL(
+    'GET',
+    '/api/v1/search/query?q=**&from=0&size=10&index=glossary_search_index',
+    'getGlossaryTerm'
+  );
   cy.get('[data-testid="related-term-container"]')
     .scrollIntoView()
     .should('be.visible');
@@ -277,11 +282,6 @@ const updateTerms = (newTerm) => {
     .scrollIntoView()
     .should('be.visible')
     .click({ force: true });
-  interceptURL(
-    'GET',
-    '/api/v1/search/query?q=*&from=0&size=10&index=glossary_search_index',
-    'getGlossaryTerm'
-  );
   cy.get('.ant-select-selection-overflow').should('be.visible').click();
   verifyResponseStatusCode('@getGlossaryTerm', 200);
   cy.get('.ant-select-item-option-content')
