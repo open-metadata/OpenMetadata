@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 
-import { Space, Switch, Typography } from 'antd';
+import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import { SearchIndex } from 'enums/search.enum';
 import { isEqual, isUndefined, uniqWith } from 'lodash';
 import React, { FC, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   getAdvancedFieldDefaultOptions,
   getAdvancedFieldOptions,
   getTagSuggestions,
   getUserSuggestions,
 } from 'rest/miscAPI';
+import { getTags } from 'rest/tagAPI';
 import {
   MISC_FIELDS,
   OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY,
@@ -38,13 +38,9 @@ import { ExploreQuickFiltersProps } from './ExploreQuickFilters.interface';
 
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   fields,
-  onAdvanceSearch,
   index,
   onFieldValueSelect,
-  showDeleted,
-  onChangeShowDeleted,
 }) => {
-  const { t } = useTranslation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
   const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
 
@@ -52,16 +48,39 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     index: SearchIndex | SearchIndex[],
     key: string
   ) => {
-    const res = await getAdvancedFieldDefaultOptions(index, key);
+    const [res, tierTags] = await Promise.all([
+      getAdvancedFieldDefaultOptions(index, key),
+      key === 'tier.tagFQN'
+        ? getTags({ parent: 'Tier' })
+        : Promise.resolve(null),
+    ]);
 
     const buckets = res.data.aggregations[`sterms#${key}`].buckets;
 
     const optionsArray = buckets.map((option) => ({
       key: option.key,
       label: option.key,
+      count: option.doc_count ?? 0,
     }));
 
-    setOptions(uniqWith(optionsArray, isEqual));
+    let options;
+    if (key === 'tier.tagFQN' && tierTags) {
+      options = tierTags.data.map((option) => {
+        const bucketItem = buckets.find(
+          (item) => item.key === option.fullyQualifiedName
+        );
+
+        return {
+          key: option.fullyQualifiedName ?? '',
+          label: option.name,
+          count: bucketItem?.doc_count ?? 0,
+        };
+      });
+    } else {
+      options = optionsArray;
+    }
+
+    setOptions(uniqWith(options, isEqual));
   };
 
   const getInitialOptions = async (key: string) => {
@@ -151,7 +170,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   };
 
   return (
-    <Space wrap className="explore-quick-filters-container" size={[4, 16]}>
+    <Space wrap className="explore-quick-filters-container" size={[4, 0]}>
       {fields.map((field) => (
         <SearchDropdown
           highlight
@@ -168,25 +187,6 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           onSearch={getFilterOptions}
         />
       ))}
-
-      <span>
-        <Switch
-          checked={showDeleted}
-          data-testid="show-deleted"
-          onChange={onChangeShowDeleted}
-        />
-        <Typography.Text className="p-l-xs">
-          {t('label.show-deleted')}
-        </Typography.Text>
-      </span>
-      <span
-        className="text-primary self-center cursor-pointer p-l-xs"
-        data-testid="advance-search-button"
-        onClick={onAdvanceSearch}>
-        {t('label.advanced-entity', {
-          entity: t('label.search'),
-        })}
-      </span>
     </Space>
   );
 };

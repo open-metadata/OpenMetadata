@@ -22,6 +22,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.security.KeyStoreException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import javax.net.ssl.SSLContext;
@@ -43,6 +44,7 @@ import org.openmetadata.service.util.SSLUtil;
 @Slf4j
 public class AirflowRESTClient extends PipelineServiceClient {
 
+  private static final String PLATFORM = "Airflow";
   private static final String USERNAME_KEY = "username";
   private static final String PASSWORD_KEY = "password";
   private static final String TIMEOUT_KEY = "timeout";
@@ -59,6 +61,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
   public AirflowRESTClient(PipelineServiceClientConfiguration config) throws KeyStoreException {
 
     super(config);
+
+    this.setPlatform(PLATFORM);
 
     this.username = (String) config.getParameters().getAdditionalProperties().get(USERNAME_KEY);
     this.password = (String) config.getParameters().getAdditionalProperties().get(PASSWORD_KEY);
@@ -216,10 +220,11 @@ public class AirflowRESTClient extends PipelineServiceClient {
     } catch (Exception e) {
       throw PipelineServiceClientException.byMessage(ingestionPipeline.getName(), e.getMessage());
     }
-    throw PipelineServiceClientException.byMessage(
-        ingestionPipeline.getName(),
-        "Failed to fetch ingestion pipeline runs",
-        Response.Status.fromStatusCode(response.statusCode()));
+    // Return an empty list. We'll just show the stored status from the Ingestion Pipeline
+    LOG.error(
+        String.format(
+            "Got status code [%s] trying to get queued statuses: [%s]", response.statusCode(), response.body()));
+    return new ArrayList<>();
   }
 
   /**
@@ -264,7 +269,10 @@ public class AirflowRESTClient extends PipelineServiceClient {
       }
 
     } catch (Exception e) {
-      throw PipelineServiceClientException.byMessage("Failed to get REST status.", e.getMessage());
+      Map<String, String> status =
+          buildUnhealthyStatus(String.format("Failed to get REST status due to [%s].", e.getMessage()));
+
+      return Response.ok(status, MediaType.APPLICATION_JSON_TYPE).build();
     }
     throw new PipelineServiceClientException(String.format("Failed to get REST status due to %s.", response.body()));
   }

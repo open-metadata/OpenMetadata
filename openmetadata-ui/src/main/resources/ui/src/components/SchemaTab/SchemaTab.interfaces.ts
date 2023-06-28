@@ -26,7 +26,7 @@ export type Props = {
   tableConstraints: Table['tableConstraints'];
   sampleData?: TableData;
   hasDescriptionEditAccess?: boolean;
-  hasTagEditAccess?: boolean;
+  hasTagEditAccess: boolean;
   isReadOnly?: boolean;
   entityFqn?: string;
   entityFieldThreads?: EntityFieldThreads[];

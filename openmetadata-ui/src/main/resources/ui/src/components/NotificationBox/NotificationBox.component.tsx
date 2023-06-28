@@ -76,7 +76,7 @@ const NotificationBox = ({
           entityType={entityType as string}
           feedType={feed.type || ThreadType.Conversation}
           key={`${mainFeed.from} ${idx}`}
-          taskDetails={feed.task}
+          task={feed}
           timestamp={mainFeed.postTs}
         />
       );
@@ -187,7 +187,7 @@ const NotificationBox = ({
   );
 
   return (
-    <div className="tw-bg-white tw-border tw-border-gray-100 tw-rounded d-flex flex-col tw-justify-between tw-shadow-lg notification-box">
+    <div className="bg-white tw-border tw-border-gray-100 tw-rounded d-flex flex-col tw-justify-between tw-shadow-lg notification-box">
       <Typography.Title
         className="tw-px-4 tw-pt-3 tw-pb-1"
         data-testid="notification-heading"

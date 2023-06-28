@@ -633,6 +633,8 @@ site_menu:
     url: /connectors/ingestion/workflows/data-quality
   - category: Connectors / Ingestion / Workflows / Data Quality / Tests
     url: /connectors/ingestion/workflows/data-quality/tests
+  - category: Connectors / Ingestion / Workflows / Data Quality / Custom Tests
+    url: /connectors/ingestion/workflows/data-quality/custom-tests
   - category: Connectors / Ingestion / Lineage
     url: /connectors/ingestion/lineage
   - category: Connectors / Ingestion / Lineage / Edit Data Lineage Manually

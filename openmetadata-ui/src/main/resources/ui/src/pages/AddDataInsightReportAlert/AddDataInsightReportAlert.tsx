@@ -27,6 +27,7 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from 'constants/GlobalSettings.constants';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import {
   AlertType,
   EventSubscription,
@@ -167,7 +168,13 @@ const AddDataInsightReportAlert = () => {
               label={t('label.name')}
               labelCol={{ span: 24 }}
               name="name"
-              rules={[{ required: true }]}>
+              rules={[
+                { required: true },
+                {
+                  pattern: ENTITY_NAME_REGEX,
+                  message: t('message.entity-name-validation'),
+                },
+              ]}>
               <Input data-testid="name" disabled={isEditMode} />
             </Form.Item>
 

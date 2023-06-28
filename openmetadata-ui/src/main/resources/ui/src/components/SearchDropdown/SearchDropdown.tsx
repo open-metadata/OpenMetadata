@@ -70,9 +70,15 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   // derive menu props from options and selected keys
   const menuOptions: MenuProps['items'] = useMemo(() => {
     // Separating selected options to show on top
+
+    // Filtering out selected options
+    const selectedOptionsObj = options.filter((option) =>
+      selectedOptions.find((selectedOpt) => option.key === selectedOpt.key)
+    );
+
     const selectedOptionKeys =
       getSearchDropdownLabels(
-        selectedOptions,
+        selectedOptionsObj,
         true,
         highlight ? searchText : '',
         showProfilePicture
@@ -147,7 +153,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
 
   useEffect(() => {
     setSelectedOptions(selectedKeys);
-  }, [isDropDownOpen, selectedKeys]);
+  }, [isDropDownOpen, selectedKeys, options]);
 
   const getDropdownBody = useCallback(
     (menuNode: ReactNode) => {

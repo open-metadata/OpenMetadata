@@ -44,6 +44,8 @@ VERSIONS = {
     "pyodbc": "pyodbc>=4.0.35,<5",
     "scikit-learn": "scikit-learn~=1.0",  # Python 3.7 only goes up to 1.0.2
     "packaging": "packaging==21.3",
+    "azure-storage-blob": "azure-storage-blob~=12.14",
+    "azure-identity": "azure-identity~=1.12",
 }
 
 COMMONS = {
@@ -142,12 +144,14 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["boto3"],
         VERSIONS["google-cloud-storage"],
         "dbt-artifacts-parser",
+        VERSIONS["azure-storage-blob"],
+        VERSIONS["azure-identity"],
     },
     "db2": {"ibm-db-sa~=0.3"},
     "databricks": {"sqlalchemy-databricks~=0.1", "databricks-sdk~=0.1"},
     "datalake-azure": {
-        "azure-storage-blob~=12.14",
-        "azure-identity~=1.12",
+        VERSIONS["azure-storage-blob"],
+        VERSIONS["azure-identity"],
         "adlfs>=2022.2.0",  # Python 3.7 does only support up to 2022.2.0
         *COMMONS["datalake"],
     },

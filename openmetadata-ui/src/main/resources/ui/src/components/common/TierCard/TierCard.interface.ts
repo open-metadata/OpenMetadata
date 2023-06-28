@@ -23,12 +23,11 @@ export type CardWithListItems = {
 
 export interface TierCardProps {
   currentTier?: string;
-  updateTier?: (value: string) => void;
+  updateTier?: (value?: string) => void;
   onSave?: (
     owner?: EntityReference,
     tier?: TableDetail['tier'],
     isJoinable?: boolean
   ) => Promise<void>;
-  removeTier?: () => void;
   children?: ReactNode;
 }

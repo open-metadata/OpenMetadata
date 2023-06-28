@@ -59,6 +59,12 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
     entity.withOwner(owner).withOpenMetadataServerConnection(openmetadataConnection);
   }
 
+  /** Remove the secrets from the secret manager */
+  @Override
+  protected void postDelete(Workflow workflow) {
+    SecretsManagerFactory.getSecretsManager().deleteSecretsFromWorkflow(workflow);
+  }
+
   @Override
   public void storeRelationships(Workflow entity) {
     storeOwner(entity, entity.getOwner());

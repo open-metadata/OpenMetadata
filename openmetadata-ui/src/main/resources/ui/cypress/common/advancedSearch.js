@@ -297,14 +297,14 @@ export const addOwner = (searchTerm, ownerName) => {
     });
 };
 
-export const addTier = (tier) => {
+export const addTier = () => {
   visitEntityDetailsPage(
     SEARCH_ENTITY_TABLE.table_2.term,
     SEARCH_ENTITY_TABLE.table_2.serviceName,
     SEARCH_ENTITY_TABLE.table_2.entity
   );
 
-  cy.get('[data-testid="edit-Tier-icon"]')
+  cy.get('[data-testid="edit-tier"]')
     .scrollIntoView()
     .should('exist')
     .should('be.visible')
@@ -340,6 +340,9 @@ export const addTag = (tag) => {
     .contains(tag)
     .should('be.visible')
     .click();
+
+  // to close popup
+  cy.clickOutside();
 
   cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
 

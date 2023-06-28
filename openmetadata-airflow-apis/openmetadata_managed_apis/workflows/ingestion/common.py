@@ -15,7 +15,7 @@ import json
 import uuid
 from datetime import datetime, timedelta
 from functools import partial
-from typing import Callable, cast
+from typing import Callable
 
 import airflow
 from airflow import DAG
@@ -83,9 +83,11 @@ class GetServiceException(Exception):
 
     def __init__(self, service_type: str, service_name: str):
         self.message = (
-            f"Could not get service from type {service_type}. This means that the"
+            f"Could not get service from type [{service_type}]. This means that the"
             " OpenMetadata client running in the Airflow host had issues getting"
-            f" the service {service_name}. Validate your ingestion-bot authentication."
+            f" the service [{service_name}]. Make sure the ingestion-bot JWT token"
+            " is valid and that the Workflow is deployed with the latest one. If this error"
+            " persists, recreate the JWT token and redeploy the Workflow."
         )
         super().__init__(self.message)
 
@@ -119,6 +121,16 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
 
     entity_class = None
     try:
+        if service_type == "testSuite":
+            # check we can access OM server
+            metadata.health_check()
+            return WorkflowSource(
+                type=service_type,
+                serviceName=ingestion_pipeline.service.name,
+                sourceConfig=ingestion_pipeline.sourceConfig,
+                serviceConnection=None,  # retrieved from the test suite workflow using the `sourceConfig.config.entityFullyQualifiedName`
+            )
+
         if service_type == "databaseService":
             entity_class = DatabaseService
             service: DatabaseService = metadata.get_by_name(
@@ -153,24 +165,6 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
             entity_class = StorageService
             service: StorageService = metadata.get_by_name(
                 entity=entity_class, fqn=ingestion_pipeline.service.name
-            )
-        elif service_type == "testSuite":
-            entity_class = DatabaseService
-            ingestion_pipeline.sourceConfig.config = cast(
-                TestSuitePipeline, ingestion_pipeline.sourceConfig.config
-            )
-            split_fqn = split(
-                ingestion_pipeline.sourceConfig.config.entityFullyQualifiedName.__root__
-            )
-            try:
-                service_fqn = split_fqn[0]
-            except IndexError:
-                raise ParsingConfigurationError(
-                    "Invalid fully qualified name "
-                    f"{ingestion_pipeline.sourceConfig.config.entityFullyQualifiedName.__root__}"
-                )
-            service: DatabaseService = metadata.get_by_name(
-                entity=entity_class, fqn=service_fqn
             )
         else:
             raise InvalidServiceException(f"Invalid Service Type: {service_type}")

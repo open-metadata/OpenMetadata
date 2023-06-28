@@ -22,19 +22,16 @@ import { Column } from '../../generated/entity/data/table';
 import { EntityFieldThreads } from '../../interface/feed.interface';
 
 export interface TableTagsComponentProps<T> {
-  tags: TableTagsProps;
-  tagList: TagOption[];
+  tags: TagLabel[];
   onUpdateTagsHandler?: (cell: T) => void;
   isReadOnly?: boolean;
   entityFqn?: string;
   record: T;
   index: number;
-  isTagLoading: boolean;
-  hasTagEditAccess?: boolean;
+  hasTagEditAccess: boolean;
   handleTagSelection: (
-    selectedTags: Array<EntityTags>,
-    editColumnTag: T,
-    otherTags: TagLabel[]
+    selectedTags: EntityTags[],
+    editColumnTag: T
   ) => Promise<void>;
   onRequestTagsHandler?: (cell: T) => void;
   getColumnName?: (cell: T) => string;
@@ -42,10 +39,7 @@ export interface TableTagsComponentProps<T> {
   entityFieldTasks?: EntityFieldThreads[];
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   entityFieldThreads?: EntityFieldThreads[];
-  tagFetchFailed: boolean;
   type: TagSource;
-  fetchTags: () => Promise<void>;
-  dataTestId: string;
   showInlineEditTagButton?: boolean;
 }
 

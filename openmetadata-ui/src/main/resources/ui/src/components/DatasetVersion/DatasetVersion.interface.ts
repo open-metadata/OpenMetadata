@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 import { Table } from '../../generated/entity/data/table';
 import { EntityHistory } from '../../generated/type/entityHistory';
@@ -18,7 +19,7 @@ import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface DatasetVersionProp {
-  version: number;
+  version: string;
   currentVersionData: VersionData;
   isVersionLoading: boolean;
   owner: Table['owner'];
@@ -29,4 +30,5 @@ export interface DatasetVersionProp {
   deleted?: boolean;
   backHandler: () => void;
   versionHandler: (v: string) => void;
+  entityPermissions: OperationPermission;
 }

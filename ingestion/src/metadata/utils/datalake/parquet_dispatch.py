@@ -18,8 +18,6 @@ from Parquet file formats
 from functools import singledispatch
 from typing import Any
 
-import pandas as pd
-
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
 )
@@ -29,7 +27,12 @@ from metadata.generated.schema.entity.services.connections.database.datalake.gcs
 from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
     S3Config,
 )
-from metadata.utils.datalake.datalake_utils import DatalakeFileFormatException
+from metadata.utils.datalake.common import (
+    AZURE_PATH,
+    DatalakeFileFormatException,
+    dataframe_to_chunks,
+    return_azure_storage_options,
+)
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -49,8 +52,6 @@ def _(_: GCSConfig, key: str, bucket_name: str, **kwargs):
     from gcsfs import GCSFileSystem
     from pyarrow.parquet import ParquetFile
 
-    from metadata.utils.datalake.datalake_utils import dataframe_to_chunks
-
     gcs = GCSFileSystem()
     file = gcs.open(f"gs://{bucket_name}/{key}")
     dataframe_response = (
@@ -67,8 +68,6 @@ def _(_: S3Config, key: str, bucket_name: str, connection_kwargs, **kwargs):
     # pylint: disable=import-outside-toplevel
     import s3fs
     from pyarrow.parquet import ParquetDataset
-
-    from metadata.utils.datalake.datalake_utils import dataframe_to_chunks
 
     client_kwargs = {}
     client = connection_kwargs
@@ -94,11 +93,7 @@ def _(_: S3Config, key: str, bucket_name: str, connection_kwargs, **kwargs):
 
 @read_parquet_dispatch.register
 def _(config_source: AzureConfig, key: str, bucket_name: str, **kwargs):
-    from metadata.utils.datalake.datalake_utils import (
-        AZURE_PATH,
-        dataframe_to_chunks,
-        return_azure_storage_options,
-    )
+    import pandas as pd  # pylint: disable=import-outside-toplevel
 
     storage_options = return_azure_storage_options(config_source)
     account_url = AZURE_PATH.format(

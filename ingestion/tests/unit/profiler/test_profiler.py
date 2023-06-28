@@ -43,7 +43,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteScheme,
 )
 from metadata.ingestion.source import sqa_types
-from metadata.profiler.interface.sqlalchemy.sqa_profiler_interface import (
+from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
 from metadata.profiler.metrics.core import MetricTypes, add_props

@@ -61,6 +61,12 @@
       "type": "string",
       "default": "tableau_prod"
     },
+    "paginationLimit": {
+      "title": "Pagination Limit",
+      "description": "Pagination limit used while querying the tableau metadata API for getting data sources",
+      "type": "integer",
+      "default": 10
+    },
     "verifySSL": {
       "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
       "default": "no-ssl"

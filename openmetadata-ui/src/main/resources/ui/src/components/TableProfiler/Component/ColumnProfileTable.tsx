@@ -11,54 +11,59 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Table, Tooltip, Typography } from 'antd';
+import { Button, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
-import { isUndefined } from 'lodash';
+import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
+import { isEmpty, isUndefined } from 'lodash';
+import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import {
-  NO_DATA_PLACEHOLDER,
-  PRIMERY_COLOR,
-  SECONDARY_COLOR,
-  SUCCESS_COLOR,
-} from '../../../constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { Link, useHistory, useLocation } from 'react-router-dom';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
   DEFAULT_TEST_VALUE,
   INITIAL_TEST_RESULT_SUMMARY,
 } from '../../../constants/profiler.constant';
-import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { ColumnProfile } from '../../../generated/entity/data/table';
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
-import {
-  getAddDataQualityTableTestPath,
-  getProfilerDashboardWithFqnPath,
-} from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import Searchbar from '../../common/searchbar/Searchbar';
 import TestIndicator from '../../common/TestIndicator/TestIndicator';
-import { ProfilerDashboardTab } from '../../ProfilerDashboard/profilerDashboard.interface';
 import {
   ColumnProfileTableProps,
   columnTestResultType,
   ModifiedColumn,
 } from '../TableProfiler.interface';
 import ProfilerProgressWidget from './ProfilerProgressWidget';
+import SingleColumnProfile from './SingleColumnProfile';
 
 const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
   columnTests,
-  hasEditAccess,
   columns = [],
+  dateRangeObject,
 }) => {
+  const location = useLocation();
   const { t } = useTranslation();
+  const history = useHistory();
+
   const [searchText, setSearchText] = useState<string>('');
   const [data, setData] = useState<ModifiedColumn[]>(columns);
   const [columnTestSummary, setColumnTestSummary] =
     useState<columnTestResultType>();
+
+  const { activeColumnFqn, activeTab } = useMemo(() => {
+    const param = location.search;
+    const searchData = Qs.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return searchData as { activeColumnFqn: string; activeTab: string };
+  }, [location.search]);
+
+  const updateActiveColumnFqn = (key: string) =>
+    history.push({ search: Qs.stringify({ activeColumnFqn: key, activeTab }) });
 
   const tableColumn: ColumnsType<ModifiedColumn> = useMemo(() => {
     return [
@@ -70,14 +75,14 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         fixed: 'left',
         render: (name: string, record) => {
           return (
-            <Link
-              className="break-word"
-              to={getProfilerDashboardWithFqnPath(
-                ProfilerDashboardType.COLUMN,
-                record.fullyQualifiedName || ''
-              )}>
+            <Button
+              className="break-word p-0"
+              type="link"
+              onClick={() =>
+                updateActiveColumnFqn(record.fullyQualifiedName || '')
+              }>
               {name}
-            </Link>
+            </Button>
           );
         },
         sorter: (col1, col2) => col1.name.localeCompare(col2.name),
@@ -86,7 +91,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: t('label.data-type'),
         dataIndex: 'dataTypeDisplay',
         key: 'dataType',
-        width: 250,
+        width: 150,
         render: (dataTypeDisplay: string) => {
           return (
             <Typography.Text className="break-word">
@@ -104,7 +109,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         render: (profile: ColumnProfile) => {
           return (
             <ProfilerProgressWidget
-              strokeColor={PRIMERY_COLOR}
+              strokeColor="#351b8e"
               value={profile?.nullProportion || 0}
             />
           );
@@ -120,7 +125,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         width: 200,
         render: (profile: ColumnProfile) => (
           <ProfilerProgressWidget
-            strokeColor={SECONDARY_COLOR}
+            strokeColor="#7147e8"
             value={profile?.uniqueProportion || 0}
           />
         ),
@@ -135,7 +140,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         width: 200,
         render: (profile: ColumnProfile) => (
           <ProfilerProgressWidget
-            strokeColor={SUCCESS_COLOR}
+            strokeColor="#4E8B9C"
             value={profile?.distinctProportion || 0}
           />
         ),
@@ -157,26 +162,23 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         title: t('label.test-plural'),
         dataIndex: 'testCount',
         key: 'Tests',
-        fixed: 'right',
         render: (_, record) => (
           <Link
             data-testid={`${record.name}-test-count`}
-            to={getProfilerDashboardWithFqnPath(
-              ProfilerDashboardType.COLUMN,
-              record.fullyQualifiedName || '',
-              ProfilerDashboardTab.DATA_QUALITY
-            )}>
-            {record.testCount || 0}
+            to={{
+              search: Qs.stringify({
+                activeTab: TableProfilerTab.DATA_QUALITY,
+              }),
+            }}>
+            {record.testCount ?? 0}
           </Link>
         ),
-        sorter: (col1, col2) => (col1.testCount || 0) - (col2.testCount || 0),
+        sorter: (col1, col2) => (col1.testCount ?? 0) - (col2.testCount ?? 0),
       },
       {
         title: t('label.status'),
         dataIndex: 'dataQualityTest',
         key: 'dataQualityTest',
-        width: 120,
-        fixed: 'right',
         render: (_, record) => {
           const summary =
             columnTestSummary?.[
@@ -201,41 +203,6 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
             <Typography.Text> {NO_DATA_PLACEHOLDER} </Typography.Text>
           );
         },
-      },
-      {
-        title: t('label.action-plural'),
-        dataIndex: 'actions',
-        key: 'actions',
-        fixed: 'right',
-        render: (_, record) => (
-          <Tooltip
-            placement="left"
-            title={
-              hasEditAccess
-                ? t('label.add-entity', { entity: t('label.test') })
-                : NO_PERMISSION_FOR_ACTION
-            }>
-            <Link
-              to={getAddDataQualityTableTestPath(
-                ProfilerDashboardType.COLUMN,
-                record.fullyQualifiedName || ''
-              )}>
-              <Button
-                className="flex-center"
-                data-testid={`add-test-${record.name}`}
-                disabled={!hasEditAccess}
-                icon={
-                  <SVGIcons
-                    alt="add test"
-                    className="tw-h-4"
-                    icon={Icons.ADD_TEST}
-                  />
-                }
-                type="link"
-              />
-            </Link>
-          </Tooltip>
-        ),
       },
     ];
   }, [columns, columnTestSummary]);
@@ -280,27 +247,36 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
 
   return (
     <div data-testid="column-profile-table-container">
-      <div className="tw-w-2/6">
-        <Searchbar
-          placeholder={t('message.find-in-table')}
-          searchValue={searchText}
-          typingInterval={500}
-          onSearch={handleSearchAction}
-        />
-      </div>
+      {isEmpty(activeColumnFqn) ? (
+        <>
+          <div className="tw-w-2/6">
+            <Searchbar
+              placeholder={t('message.find-in-table')}
+              searchValue={searchText}
+              typingInterval={500}
+              onSearch={handleSearchAction}
+            />
+          </div>
 
-      <Table
-        bordered
-        columns={tableColumn}
-        dataSource={data}
-        locale={{
-          emptyText: <FilterTablePlaceHolder />,
-        }}
-        pagination={false}
-        rowKey="name"
-        scroll={{ x: 1500 }}
-        size="small"
-      />
+          <Table
+            bordered
+            columns={tableColumn}
+            dataSource={data}
+            locale={{
+              emptyText: <FilterTablePlaceHolder />,
+            }}
+            pagination={false}
+            rowKey="name"
+            scroll={{ x: true }}
+            size="small"
+          />
+        </>
+      ) : (
+        <SingleColumnProfile
+          activeColumnFqn={activeColumnFqn}
+          dateRangeObject={dateRangeObject}
+        />
+      )}
     </div>
   );
 };

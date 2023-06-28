@@ -63,7 +63,7 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
 
         return (
           <Row key={name}>
-            <Col className="d-flex items-center" span={4}>
+            <Col className="flex-center" span={24}>
               <div
                 className="kpi-days-section"
                 style={{
@@ -77,10 +77,8 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                   {t('label.day-left', { day: 'days' })}
                 </Typography.Text>
               </div>
-            </Col>
-            <Col span={20}>
               <div className="m-l-sm">
-                <Typography.Text>
+                <Typography.Text className="text-xs">
                   {resultData.displayName ?? name}
                 </Typography.Text>
                 <Progress
@@ -91,13 +89,13 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                 />
                 <div className="d-flex justify-space-between">
                   <div className="flex-1">
-                    <Typography.Text>
+                    <Typography.Text className="text-xs">
                       {targetPercentValue}
                       {suffix}
                     </Typography.Text>
                   </div>
                   <div>
-                    <Typography.Text>
+                    <Typography.Text className="text-xs">
                       {targetMetPercentValue}
                       {suffix}
                     </Typography.Text>

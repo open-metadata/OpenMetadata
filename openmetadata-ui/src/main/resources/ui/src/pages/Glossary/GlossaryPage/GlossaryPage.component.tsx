@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
@@ -266,6 +265,7 @@ const GlossaryPage = () => {
 
   return (
     <PageLayoutV1
+      className="glossary-page-layout"
       leftPanel={<GlossaryLeftPanel glossaries={glossaries} />}
       pageTitle={t('label.glossary')}
       rightPanel={
@@ -280,22 +280,18 @@ const GlossaryPage = () => {
       {isRightPanelLoading ? (
         <Loader />
       ) : (
-        <Row gutter={[16, 0]} wrap={false}>
-          <Col flex="auto">
-            <GlossaryV1
-              deleteStatus={deleteStatus}
-              isGlossaryActive={isGlossaryActive}
-              isSummaryPanelOpen={Boolean(previewAsset)}
-              isVersionsView={false}
-              selectedData={selectedData as Glossary}
-              updateGlossary={updateGlossary}
-              onAssetClick={handleAssetClick}
-              onGlossaryDelete={handleGlossaryDelete}
-              onGlossaryTermDelete={handleGlossaryTermDelete}
-              onGlossaryTermUpdate={handleGlossaryTermUpdate}
-            />
-          </Col>
-        </Row>
+        <GlossaryV1
+          deleteStatus={deleteStatus}
+          isGlossaryActive={isGlossaryActive}
+          isSummaryPanelOpen={Boolean(previewAsset)}
+          isVersionsView={false}
+          selectedData={selectedData as Glossary}
+          updateGlossary={updateGlossary}
+          onAssetClick={handleAssetClick}
+          onGlossaryDelete={handleGlossaryDelete}
+          onGlossaryTermDelete={handleGlossaryTermDelete}
+          onGlossaryTermUpdate={handleGlossaryTermUpdate}
+        />
       )}
     </PageLayoutV1>
   );

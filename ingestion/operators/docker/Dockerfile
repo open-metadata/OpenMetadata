@@ -85,7 +85,7 @@ RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=1.0.4"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN echo "Image built for $(uname -m)"
-RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
+RUN if [[ $(uname -m) == "arm64" ]]; \
     then \
     pip install "ibm-db-sa~=0.4"; \
     fi
@@ -94,4 +94,4 @@ RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
 # because the psycopg2-binary generates a architecture specific error
 # while authrenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
-RUN pip install psycopg2 mysqlclient
+RUN pip install psycopg2 mysqlclient==2.1.1
