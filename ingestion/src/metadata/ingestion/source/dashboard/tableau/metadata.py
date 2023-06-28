@@ -108,10 +108,9 @@ class TableauSource(DashboardServiceSource):
                     chart for chart in charts if chart.workbook.id == workbook.id
                 ]
 
-                for data_model in data_models.embeddedDatasources:
-                    for downstream_workbooks in data_model.downstreamWorkbooks or []:
-                        if downstream_workbooks.luid == workbook.id:
-                            workbook.dataModels.append(data_model)
+                for data_model in data_models or []:
+                    if data_model.workbook and data_model.workbook.luid == workbook.id:
+                        workbook.dataModels.append(data_model)
 
             # collect all the tags from charts and workbooks before yielding final entities
             if self.source_config.includeTags:
