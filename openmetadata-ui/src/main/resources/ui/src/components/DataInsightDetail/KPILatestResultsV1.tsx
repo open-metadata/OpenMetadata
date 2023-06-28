@@ -63,7 +63,7 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
 
         return (
           <Row key={name}>
-            <Col className="flex-center" span={24}>
+            <Col className="d-flex items-center" span={24}>
               <div
                 className="kpi-days-section"
                 style={{
@@ -77,7 +77,7 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                   {t('label.day-left', { day: 'days' })}
                 </Typography.Text>
               </div>
-              <div className="m-l-sm">
+              <div className="m-l-sm flex-1">
                 <Typography.Text className="text-xs">
                   {resultData.displayName ?? name}
                 </Typography.Text>

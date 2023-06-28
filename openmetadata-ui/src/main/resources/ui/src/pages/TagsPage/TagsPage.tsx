@@ -1037,9 +1037,7 @@ const TagsPage = () => {
       {isUpdateLoading ? (
         <Loader />
       ) : (
-        <div
-          className="full-height page-container"
-          data-testid="tags-container">
+        <div className="p-x-md" data-testid="tags-container">
           {currentClassification && (
             <Row data-testid="header" wrap={false}>
               <Col flex="auto">

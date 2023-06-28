@@ -514,9 +514,9 @@ export const DataAssetsHeader = ({
                   <Typography.Text>{followers}</Typography.Text>
                 </Button>
                 <Tooltip
+                  open={!isEmpty(copyTooltip)}
                   placement="bottomRight"
-                  title={copyTooltip}
-                  visible={!isEmpty(copyTooltip)}>
+                  title={copyTooltip}>
                   <Button
                     icon={<Icon component={ShareIcon} />}
                     onClick={handleShareButtonClick}
