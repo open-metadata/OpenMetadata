@@ -36,7 +36,6 @@ const TableTags = <T extends TableUnion>({
   hasTagEditAccess,
   entityFieldThreads,
   getColumnFieldFQN,
-  entityFieldTasks,
   showInlineEditTagButton,
   getColumnName,
   onUpdateTagsHandler,
