@@ -45,6 +45,17 @@ $$section
 
 Username to connect to Postgres. This user should have privileges to read all the metadata in Postgres.
 $$
+
+
+$$section
+### Auth Config $(id="authType")
+There are 2 types of auth configs:
+- Basic Auth.
+- IAM based Auth.
+
+User can authenticate the Postgres Instance with auth type as `Basic Authentication` i.e. Password **or** by using `IAM based Authentication` to connect to AWS related services.
+$$
+
 ## Basic Auth
 $$section
 ### Password $(id="password")
@@ -155,10 +166,11 @@ $$
 $$section
 ### SSL Mode $(id="sslMode")
 
-SSL Mode to connect to postgres database. E.g, `prefer`, `verify-ca` etc.
-#### Note: if you are using `IAM auth`, select either `allow` (recommended) or other option based on your use case.
+SSL Mode to connect to postgres database. E.g, `prefer`, `verify-ca`, `allow` etc.
 $$
-
+$$note
+if you are using `IAM auth`, select either `allow` (recommended) or other option based on your use case.
+$$
 $$section
 ### Classification Name $(id="classificationName")
 
