@@ -642,7 +642,8 @@ public class ElasticSearchClientImpl implements SearchClient {
         QueryBuilders.queryStringQuery(query)
             .field(FIELD_NAME, 10.0f)
             .field(EntityBuilderConstant.FIELD_DISPLAY_NAME, 10.0f)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM, 1.0f)
+            .field(EntityBuilderConstant.FIELD_NAME_NGRAM, 1.0f)
+            .field("classification.name", 1.0f)
             .field(EntityBuilderConstant.DESCRIPTION, 3.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
@@ -1153,13 +1154,20 @@ public class ElasticSearchClientImpl implements SearchClient {
 
   @Override
   public void updateClassification(ChangeEvent event) throws IOException {
+    Classification classification = (Classification) event.getEntity();
+    String indexName = ElasticSearchIndexDefinition.ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName;
     if (event.getEventType() == ENTITY_DELETED) {
-      Classification classification = (Classification) event.getEntity();
-      DeleteByQueryRequest request =
-          new DeleteByQueryRequest(ElasticSearchIndexDefinition.ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName);
+      DeleteByQueryRequest request = new DeleteByQueryRequest(indexName);
       String fqnMatch = classification.getName() + ".*";
       request.setQuery(new WildcardQueryBuilder("fullyQualifiedName", fqnMatch));
       deleteEntityFromElasticSearchByQuery(request);
+    } else if (event.getEventType() == ENTITY_UPDATED) {
+      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+      updateByQueryRequest.setQuery(new MatchQueryBuilder("tag.classification.id", classification.getId().toString()));
+      String scriptTxt = "ctx._source.disabled=true";
+      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
+      updateByQueryRequest.setScript(script);
+      updateElasticSearchByQuery(updateByQueryRequest);
     }
   }
 
