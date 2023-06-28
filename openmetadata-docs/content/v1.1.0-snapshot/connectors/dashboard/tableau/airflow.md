@@ -116,6 +116,12 @@ This is a sample config for Tableau:
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=18 %}
+
+**paginationLimit**: The pagination limit will be used while querying the Tableau Graphql endpoint to get the data source information.
+
+{% /codeInfo %}
+
 #### Source Configuration - Source Config
 
 {% codeInfo srNumber=8 %}
@@ -185,6 +191,9 @@ source:
 ```
 ```yaml {% srNumber=7 %}
       apiVersion: api_version
+```
+```yaml {% srNumber=18 %}
+      paginationLimit: pagination_limit
 ```
 ```yaml {% srNumber=8 %}
   sourceConfig:

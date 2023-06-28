@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Col, Row, Space, Typography } from 'antd';
+import { Button, Col, Row, Space, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
@@ -195,116 +195,113 @@ const GlossaryDetailsRightPanel = ({
   );
 
   return (
-    <Card>
-      <Row gutter={[0, 40]}>
-        <Col data-testid="glossary-owner-name" span="24">
-          <div className="d-flex items-center m-b-xss">
-            <Typography.Text className="right-panel-label">
-              {t('label.owner')}
-            </Typography.Text>
-            {(permissions.EditOwner || permissions.EditAll) &&
-              selectedData.owner && (
-                <UserTeamSelectableList
-                  hasPermission={permissions.EditOwner || permissions.EditAll}
-                  owner={selectedData.owner}
-                  onUpdate={handleUpdatedOwner}>
-                  <Button
-                    className="cursor-pointer flex-center m-l-xss"
-                    data-testid="edit-owner"
-                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                    size="small"
-                    type="text"
-                  />
-                </UserTeamSelectableList>
-              )}
-          </div>
-
-          <Space className="m-r-xss" size={4}>
-            {getUserNames(selectedData)}
-          </Space>
-
-          {!selectedData.owner &&
-            (permissions.EditOwner || permissions.EditAll) && (
+    <Row gutter={[0, 40]}>
+      <Col data-testid="glossary-owner-name" span="24">
+        <div className="d-flex items-center m-b-xss">
+          <Typography.Text className="right-panel-label">
+            {t('label.owner')}
+          </Typography.Text>
+          {(permissions.EditOwner || permissions.EditAll) &&
+            selectedData.owner && (
               <UserTeamSelectableList
                 hasPermission={permissions.EditOwner || permissions.EditAll}
                 owner={selectedData.owner}
                 onUpdate={handleUpdatedOwner}>
-                <TagButton
-                  className="tw-text-primary cursor-pointer"
-                  icon={<PlusIcon height={16} name="plus" width={16} />}
-                  label={t('label.add')}
-                  tooltip=""
+                <Button
+                  className="cursor-pointer flex-center m-l-xss"
+                  data-testid="edit-owner"
+                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                  size="small"
+                  type="text"
                 />
               </UserTeamSelectableList>
             )}
-        </Col>
-        <Col span="24">
-          <div
-            className={`d-flex items-center ${
-              selectedData.reviewers && selectedData.reviewers.length > 0
-                ? 'm-b-xss'
-                : ''
-            }`}>
-            <Typography.Text
-              className="right-panel-label"
-              data-testid="glossary-reviewer-heading-name">
-              {t('label.reviewer-plural')}
-            </Typography.Text>
-            {hasEditReviewerAccess &&
-              selectedData.reviewers &&
-              selectedData.reviewers.length > 0 && (
-                <UserSelectableList
-                  hasPermission={hasEditReviewerAccess}
-                  popoverProps={{ placement: 'topLeft' }}
-                  selectedUsers={selectedData.reviewers ?? []}
-                  onUpdate={handleReviewerSave}>
-                  <Button
-                    className="cursor-pointer flex-center m-l-xss"
-                    data-testid="edit-reviewer-button"
-                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                    size="small"
-                    type="text"
-                  />
-                </UserSelectableList>
-              )}
-          </div>
-          <div>
-            <GlossaryReviewers
-              editPermission={hasEditReviewerAccess}
-              glossaryData={selectedData}
-              isVersionView={isVersionView}
-            />
+        </div>
 
-            {hasEditReviewerAccess && noReviewersSelected && (
+        <Space className="m-r-xss" size={4}>
+          {getUserNames(selectedData)}
+        </Space>
+
+        {!selectedData.owner && (permissions.EditOwner || permissions.EditAll) && (
+          <UserTeamSelectableList
+            hasPermission={permissions.EditOwner || permissions.EditAll}
+            owner={selectedData.owner}
+            onUpdate={handleUpdatedOwner}>
+            <TagButton
+              className="tw-text-primary cursor-pointer"
+              icon={<PlusIcon height={16} name="plus" width={16} />}
+              label={t('label.add')}
+              tooltip=""
+            />
+          </UserTeamSelectableList>
+        )}
+      </Col>
+      <Col span="24">
+        <div
+          className={`d-flex items-center ${
+            selectedData.reviewers && selectedData.reviewers.length > 0
+              ? 'm-b-xss'
+              : ''
+          }`}>
+          <Typography.Text
+            className="right-panel-label"
+            data-testid="glossary-reviewer-heading-name">
+            {t('label.reviewer-plural')}
+          </Typography.Text>
+          {hasEditReviewerAccess &&
+            selectedData.reviewers &&
+            selectedData.reviewers.length > 0 && (
               <UserSelectableList
                 hasPermission={hasEditReviewerAccess}
                 popoverProps={{ placement: 'topLeft' }}
                 selectedUsers={selectedData.reviewers ?? []}
                 onUpdate={handleReviewerSave}>
-                <TagButton
-                  className="tw-text-primary cursor-pointer"
-                  icon={<PlusIcon height={16} name="plus" width={16} />}
-                  label={t('label.add')}
-                  tooltip=""
+                <Button
+                  className="cursor-pointer flex-center m-l-xss"
+                  data-testid="edit-reviewer-button"
+                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                  size="small"
+                  type="text"
                 />
               </UserSelectableList>
             )}
-          </div>
-        </Col>
-        <Col span="24">
-          <div data-testid="glossary-tags-name">
-            {isGlossary && (
-              <TagsInput
-                editable={permissions.EditAll || permissions.EditTags}
-                isVersionView={isVersionView}
-                tags={tags}
-                onTagsUpdate={handleTagsUpdate}
+        </div>
+        <div>
+          <GlossaryReviewers
+            editPermission={hasEditReviewerAccess}
+            glossaryData={selectedData}
+            isVersionView={isVersionView}
+          />
+
+          {hasEditReviewerAccess && noReviewersSelected && (
+            <UserSelectableList
+              hasPermission={hasEditReviewerAccess}
+              popoverProps={{ placement: 'topLeft' }}
+              selectedUsers={selectedData.reviewers ?? []}
+              onUpdate={handleReviewerSave}>
+              <TagButton
+                className="tw-text-primary cursor-pointer"
+                icon={<PlusIcon height={16} name="plus" width={16} />}
+                label={t('label.add')}
+                tooltip=""
               />
-            )}
-          </div>
-        </Col>
-      </Row>
-    </Card>
+            </UserSelectableList>
+          )}
+        </div>
+      </Col>
+      <Col span="24">
+        <div data-testid="glossary-tags-name">
+          {isGlossary && (
+            <TagsInput
+              editable={permissions.EditAll || permissions.EditTags}
+              isVersionView={isVersionView}
+              tags={tags}
+              onTagsUpdate={handleTagsUpdate}
+            />
+          )}
+        </div>
+      </Col>
+    </Row>
   );
 };
 

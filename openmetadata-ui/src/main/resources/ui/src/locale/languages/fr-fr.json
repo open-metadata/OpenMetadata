@@ -1258,7 +1258,7 @@
     "no-mentions": "There are no instances where you or your team have been referenced in any activities",
     "no-notification-found": "Aucune notifiaction trouvé",
     "no-open-task": "Aucune tâche ouverte",
-    "no-owned-data": "It appears that you or your team do not have any Data Assets under your ownership. To rectify this, kindly click on the \"Explore\" on your menu to discover.",
+    "no-owned-data": "It appears that you or your team are not currently data asset owners. To start owning data assets, click on the <0>Explore</0> option to discover and claim assets.",
     "no-permission-for-action": "Vous n'avez pas les permissions requises pour effectuer cette action.",
     "no-permission-to-view": "Vous n'avez pas les permissions requises pour voir ces données.",
     "no-profiler-enabled-summary-message": "Profilage n'est pas activé pour cette table.",

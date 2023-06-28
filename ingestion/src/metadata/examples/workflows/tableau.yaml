@@ -18,6 +18,7 @@ source:
       siteName: site_name
       siteUrl: site_url
       apiVersion: api_version
+      paginationLimit: 10
   sourceConfig:
     config:
       type: DashboardMetadata
