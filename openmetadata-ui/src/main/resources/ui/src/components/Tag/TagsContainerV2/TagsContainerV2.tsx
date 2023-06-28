@@ -13,7 +13,6 @@
 
 import { Button, Col, Form, Row, Space, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { AxiosError } from 'axios';
 import { TableTagsProps } from 'components/TableTags/TableTags.interface';
 import { DE_ACTIVE_COLOR, PAGE_SIZE } from 'constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
@@ -94,29 +93,25 @@ const TagsContainerV2 = ({
       }[];
       paging: Paging;
     }> => {
-      try {
-        const tagResponse = await searchQuery({
-          query: searchQueryParam ? searchQueryParam : '*',
-          pageNumber: page,
-          pageSize: PAGE_SIZE,
-          queryFilter: {},
-          searchIndex: SearchIndex.TAG,
-        });
+      const tagResponse = await searchQuery({
+        query: searchQueryParam ? searchQueryParam : '*',
+        pageNumber: page,
+        pageSize: PAGE_SIZE,
+        queryFilter: {},
+        searchIndex: SearchIndex.TAG,
+      });
 
-        return Promise.resolve({
-          data: formatSearchTagsResponse(tagResponse.hits.hits ?? []).map(
-            (item) => ({
-              label: item.fullyQualifiedName ?? '',
-              value: item.fullyQualifiedName ?? '',
-            })
-          ),
-          paging: {
-            total: tagResponse.hits.total.value,
-          },
-        });
-      } catch (error) {
-        return Promise.reject({ data: (error as AxiosError).response });
-      }
+      return {
+        data: formatSearchTagsResponse(tagResponse.hits.hits ?? []).map(
+          (item) => ({
+            label: item.fullyQualifiedName ?? '',
+            value: item.fullyQualifiedName ?? '',
+          })
+        ),
+        paging: {
+          total: tagResponse.hits.total.value,
+        },
+      };
     },
     [getTags]
   );
@@ -132,29 +127,25 @@ const TagsContainerV2 = ({
       }[];
       paging: Paging;
     }> => {
-      try {
-        const glossaryResponse = await searchQuery({
-          query: searchQueryParam ? searchQueryParam : '*',
-          pageNumber: page,
-          pageSize: 10,
-          queryFilter: {},
-          searchIndex: SearchIndex.GLOSSARY,
-        });
+      const glossaryResponse = await searchQuery({
+        query: searchQueryParam ? searchQueryParam : '*',
+        pageNumber: page,
+        pageSize: 10,
+        queryFilter: {},
+        searchIndex: SearchIndex.GLOSSARY,
+      });
 
-        return Promise.resolve({
-          data: formatSearchGlossaryTermResponse(
-            glossaryResponse.hits.hits ?? []
-          ).map((item) => ({
-            label: item.fullyQualifiedName ?? '',
-            value: item.fullyQualifiedName ?? '',
-          })),
-          paging: {
-            total: glossaryResponse.hits.total.value,
-          },
-        });
-      } catch (error) {
-        return Promise.reject({ data: (error as AxiosError).response });
-      }
+      return {
+        data: formatSearchGlossaryTermResponse(
+          glossaryResponse.hits.hits ?? []
+        ).map((item) => ({
+          label: item.fullyQualifiedName ?? '',
+          value: item.fullyQualifiedName ?? '',
+        })),
+        paging: {
+          total: glossaryResponse.hits.total.value,
+        },
+      };
     },
     [searchQuery, getGlossaryTerms, formatSearchGlossaryTermResponse]
   );

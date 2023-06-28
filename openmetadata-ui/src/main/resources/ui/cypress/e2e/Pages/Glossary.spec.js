@@ -288,7 +288,7 @@ const updateTerms = (newTerm) => {
     .contains(newTerm)
     .should('be.visible')
     .click();
-  cy.get('[data-testid="save-related-term-btn"]').should('be.visible').click();
+  cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
   verifyResponseStatusCode('@saveGlossaryTermData', 200);
 
   cy.get('[data-testid="related-term-container"]')
