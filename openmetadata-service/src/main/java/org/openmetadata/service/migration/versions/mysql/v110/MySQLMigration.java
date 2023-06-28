@@ -115,11 +115,11 @@ public class MySQLMigration implements MigrationStep {
             "ALTER TABLE web_analytic_event DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(768) NOT NULL",
             "ALTER TABLE automations_workflow DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL",
             // field_relationship
-            "ALTER TABLE field_relationship ADD COLUMN fromFQNHash VARCHAR(768), ADD COLUMN toFQNHash VARCHAR(768), DROP INDEX from_index, DROP INDEX to_index, ADD INDEX from_fqnhash_index(fromFQNHash, relation), ADD INDEX to_fqnhash_index(toFQNHash, relation)",
+            "ALTER TABLE field_relationship ADD COLUMN fromFQNHash VARCHAR(382), ADD COLUMN toFQNHash VARCHAR(382), DROP INDEX from_index, DROP INDEX to_index, ADD INDEX from_fqnhash_index(fromFQNHash, relation), ADD INDEX to_fqnhash_index(toFQNHash, relation)",
             // entity_extension_time_series
             "ALTER TABLE entity_extension_time_series ADD COLUMN entityFQNHash VARCHAR (768) NOT NULL",
             // tag_usage
-            "ALTER TABLE tag_usage ADD COLUMN tagFQNHash VARCHAR(768), ADD COLUMN targetFQNHash VARCHAR(768)");
+            "ALTER TABLE tag_usage ADD COLUMN tagFQNHash VARCHAR(382), ADD COLUMN targetFQNHash VARCHAR(382)");
     performSqlExecutionAndUpdation(this, migrationDAO, handle, queryList);
   }
 

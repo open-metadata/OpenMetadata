@@ -115,13 +115,13 @@ public class PostgresMigration implements MigrationStep {
             "ALTER TABLE automations_workflow DROP CONSTRAINT automations_workflow_name_key,  ADD COLUMN nameHash VARCHAR(256)",
             // field_relationship
             "DROP INDEX field_relationship_from_index, field_relationship_to_index;",
-            "ALTER TABLE field_relationship ADD COLUMN fromFQNHash VARCHAR(768), ADD COLUMN toFQNHash VARCHAR(768)",
+            "ALTER TABLE field_relationship ADD COLUMN fromFQNHash VARCHAR(382), ADD COLUMN toFQNHash VARCHAR(382)",
             "CREATE INDEX IF NOT EXISTS field_relationship_from_index ON field_relationship(fromFQNHash, relation)",
             "CREATE INDEX IF NOT EXISTS field_relationship_to_index ON field_relationship(toFQNHash, relation)",
             // entity_extension_time_series
             "ALTER TABLE entity_extension_time_series ADD COLUMN entityFQNHash VARCHAR (768)",
             // tag_usage
-            "ALTER TABLE tag_usage ADD COLUMN tagFQNHash VARCHAR(768), ADD COLUMN targetFQNHash VARCHAR(768)");
+            "ALTER TABLE tag_usage ADD COLUMN tagFQNHash VARCHAR(382), ADD COLUMN targetFQNHash VARCHAR(382)");
     performSqlExecutionAndUpdation(this, migrationDAO, handle, queryList);
   }
 
