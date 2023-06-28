@@ -177,7 +177,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     switch (deletedEntity.getAlertType()) {
       case CHANGE_EVENT:
         SubscriptionPublisher publisher = subscriptionPublisherMap.remove(deletedEntity.getId());
-        if (publisher != null) {
+        if (publisher != null && publisher.getProcessor() != null) {
           publisher.getProcessor().halt();
           publisher.awaitShutdown();
           EventPubSub.removeProcessor(publisher.getProcessor());
