@@ -119,6 +119,8 @@ workflowConfig:
 
 You can find further details on this configuration [here](/deployment/secrets-manager/supported-implementations/aws-secrets-manager).
 
+## Service Connection Changes
+
 ### MySQL and Postgres Connection
 
 Adding IAM role support for their auth requires a slight change on their JSON Schemas:
@@ -192,4 +194,27 @@ Now support GitHub and BitBucket as repositories for LookML models.
         repositoryOwner: ...
         repositoryName: ...
         token: ...
+```
+
+### From GCS to GCP
+
+We are renaming the `gcsConfig` to `gcpConfig` to properly define their role as generic Google Cloud configurations. This
+impacts BigQuery, Datalake and any other source where you are directly passing the GCP credentials to connect to.
+
+#### From
+
+```yaml
+...
+  credentials:
+    gcsConfig:
+...
+```
+
+#### To
+
+```yaml
+...
+  credentials:
+    gcpConfig:
+...
 ```
