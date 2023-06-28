@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SelectOption } from 'components/InfiniteSelectScroll/InfiniteSelectScroll.interface';
+import { SelectOption } from 'components/AsyncSelectList/AsyncSelectList.interface';
 import { Paging } from 'generated/type/paging';
 
 export type TagsSelectFormProps = {

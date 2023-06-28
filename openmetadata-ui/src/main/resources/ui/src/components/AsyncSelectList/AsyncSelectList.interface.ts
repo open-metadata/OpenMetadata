@@ -18,7 +18,7 @@ export type SelectOption = {
   value: string;
 };
 
-export interface InfiniteSelectScrollProps {
+export interface AsyncSelectListProps {
   mode?: 'multiple';
   placeholder?: string;
   debounceTimeout?: number;

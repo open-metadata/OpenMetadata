@@ -11,19 +11,21 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Select, Space, Spin, Tooltip, Typography } from 'antd';
+import { Button, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconFlatDoc } from 'assets/svg/ic-flat-doc.svg';
+import TagSelectForm from 'components/Tag/TagsSelectForm/TagsSelectForm.component';
 import TagButton from 'components/TagButton/TagButton.component';
 import { EntityField } from 'constants/Feeds.constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { ChangeDescription } from 'generated/entity/type';
+import { Paging } from 'generated/type/paging';
 import { t } from 'i18next';
-import { cloneDeep, debounce, includes, isEmpty } from 'lodash';
+import { cloneDeep, includes, isEmpty, uniqWith } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
+import { formatSearchGlossaryTermResponse } from 'utils/APIUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import {
   getChangedEntityNewValue,
@@ -41,7 +43,6 @@ import {
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
 import { getEntityReferenceFromGlossary } from '../../../utils/GlossaryUtils';
 import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 
@@ -49,7 +50,7 @@ interface RelatedTermsProps {
   isVersionView?: boolean;
   permissions: OperationPermission;
   glossaryTerm: GlossaryTerm;
-  onGlossaryTermUpdate: (data: GlossaryTerm) => void;
+  onGlossaryTermUpdate: (data: GlossaryTerm) => Promise<void>;
 }
 
 const RelatedTerms = ({
@@ -60,26 +61,21 @@ const RelatedTerms = ({
 }: RelatedTermsProps) => {
   const history = useHistory();
   const [isIconVisible, setIsIconVisible] = useState<boolean>(true);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [options, setOptions] = useState<EntityReference[]>([]);
   const [selectedOption, setSelectedOption] = useState<EntityReference[]>([]);
-
-  const getSearchedTerms = (searchedData: EntityReference[]) => {
-    const currOptions = selectedOption.map(
-      (item) => item.fullyQualifiedName || item.name
-    );
-    const data = searchedData.filter((item: EntityReference) => {
-      return !currOptions.includes(item.fullyQualifiedName);
-    });
-
-    return [...selectedOption, ...data];
-  };
 
   const handleRelatedTermClick = (fqn: string) => {
     history.push(getGlossaryPath(fqn));
   };
 
-  const handleRelatedTermsSave = (newOptions: EntityReference[]) => {
+  const handleRelatedTermsSave = async (
+    selectedData: string[]
+  ): Promise<void> => {
+    const newOptions = uniqWith(
+      options,
+      (arrVal, othVal) => arrVal.id === othVal.id
+    ).filter((item) => includes(selectedData, item.fullyQualifiedName));
+
     let updatedGlossaryTerm = cloneDeep(glossaryTerm);
     const oldTerms = newOptions.filter((d) =>
       includes(glossaryTerm.relatedTerms, d)
@@ -97,32 +93,49 @@ const RelatedTerms = ({
       relatedTerms: [...oldTerms, ...newTerms],
     };
 
-    onGlossaryTermUpdate(updatedGlossaryTerm);
+    await onGlossaryTermUpdate(updatedGlossaryTerm);
     setIsIconVisible(true);
   };
 
-  const suggestionSearch = (searchText = '') => {
-    setIsLoading(true);
-    searchData(searchText, 1, PAGE_SIZE, '', '', '', SearchIndex.GLOSSARY)
-      .then((res) => {
-        const termResult = formatSearchGlossaryTermResponse(
-          res.data.hits.hits
-        ).filter((item) => {
-          return item.fullyQualifiedName !== glossaryTerm.fullyQualifiedName;
-        });
+  const fetchGlossaryTerms = async (
+    searchText = '',
+    page: number
+  ): Promise<{
+    data: {
+      label: string;
+      value: string;
+    }[];
+    paging: Paging;
+  }> => {
+    const res = await searchData(
+      searchText,
+      page,
+      PAGE_SIZE,
+      '',
+      '',
+      '',
+      SearchIndex.GLOSSARY
+    );
 
-        const results = termResult.map(getEntityReferenceFromGlossary);
+    const termResult = formatSearchGlossaryTermResponse(
+      res.data.hits.hits
+    ).filter(
+      (item) => item.fullyQualifiedName !== glossaryTerm.fullyQualifiedName
+    );
 
-        const data = searchText ? getSearchedTerms(results) : results;
-        setOptions(data);
-      })
-      .catch(() => {
-        setOptions(selectedOption);
-      })
-      .finally(() => setIsLoading(false));
+    const results = termResult.map(getEntityReferenceFromGlossary);
+    setOptions((prev) => [...prev, ...results]);
+
+    return {
+      data: results.map((item) => ({
+        label: item.fullyQualifiedName ?? '',
+        value: item.fullyQualifiedName ?? '',
+      })),
+      paging: {
+        total: res.data.hits.total.value,
+      },
+    };
   };
-
-  const debounceOnSearch = useCallback(debounce(suggestionSearch, 250), []);
 
   const formatOptions = (data: EntityReference[]) => {
     return data.map((value) => ({
@@ -134,14 +147,13 @@ const RelatedTerms = ({
   };
 
   const handleCancel = () => {
-    setSelectedOption(formatOptions(glossaryTerm.relatedTerms || []));
     setIsIconVisible(true);
   };
 
   useEffect(() => {
-    if (glossaryTerm.relatedTerms?.length) {
-      setOptions(glossaryTerm.relatedTerms);
-      setSelectedOption(formatOptions(glossaryTerm.relatedTerms));
+    if (glossaryTerm) {
+      setOptions(glossaryTerm.relatedTerms ?? []);
+      setSelectedOption(formatOptions(glossaryTerm.relatedTerms ?? []));
     }
   }, [glossaryTerm]);
 
@@ -279,41 +291,17 @@ const RelatedTerms = ({
       {isIconVisible ? (
         relatedTermsContainer
       ) : (
-        <>
-          <Space className="justify-end w-full m-b-xs" size={8}>
-            <Button
-              className="w-6 p-x-05"
-              data-testid="cancel-related-term-btn"
-              icon={<CloseOutlined size={12} />}
-              size="small"
-              onClick={() => handleCancel()}
-            />
-            <Button
-              className="w-6 p-x-05"
-              data-testid="save-related-term-btn"
-              icon={<CheckOutlined size={12} />}
-              size="small"
-              type="primary"
-              onClick={() => handleRelatedTermsSave(selectedOption)}
-            />
-          </Space>
-          <Select
-            className="glossary-select w-full"
-            filterOption={false}
-            mode="multiple"
-            notFoundContent={isLoading ? <Spin size="small" /> : null}
-            options={formatOptions(options)}
-            placeholder={t('label.add-entity', {
-              entity: t('label.related-term-plural'),
-            })}
-            value={selectedOption}
-            onChange={(_, data) => {
-              setSelectedOption(data as EntityReference[]);
-            }}
-            onFocus={() => suggestionSearch()}
-            onSearch={debounceOnSearch}
-          />
-        </>
+        <TagSelectForm
+          defaultValue={selectedOption.map(
+            (item) => item.fullyQualifiedName ?? ''
+          )}
+          fetchApi={fetchGlossaryTerms}
+          placeholder={t('label.add-entity', {
+            entity: t('label.related-term-plural'),
+          })}
+          onCancel={handleCancel}
+          onSubmit={handleRelatedTermsSave}
+        />
       )}
     </div>
   );
