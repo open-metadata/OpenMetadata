@@ -31,7 +31,7 @@ import { isEmpty, isUndefined, toLower } from 'lodash';
 import { Bucket, EntityTags, TagOption } from 'Models';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
-import { searchData } from 'rest/miscAPI';
+import { searchQuery } from 'rest/searchAPI';
 import {
   getAllClassifications,
   getClassificationByName,
@@ -438,23 +438,22 @@ export const fetchTagsElasticSearch = async (
   }[];
   paging: Paging;
 }> => {
-  const res = await searchData(
-    searchText,
-    page,
-    PAGE_SIZE,
-    '',
-    '',
-    '',
-    SearchIndex.TAG
-  );
+  const res = await searchQuery({
+    query: searchText,
+    filters: 'disabled:false',
+    pageNumber: page,
+    pageSize: PAGE_SIZE,
+    queryFilter: {},
+    searchIndex: SearchIndex.TAG,
+  });
 
   return {
-    data: formatSearchTagsResponse(res.data.hits.hits ?? []).map((item) => ({
+    data: formatSearchTagsResponse(res.hits.hits ?? []).map((item) => ({
       label: item.fullyQualifiedName ?? '',
       value: item.fullyQualifiedName ?? '',
     })),
     paging: {
-      total: res.data.hits.total.value,
+      total: res.hits.total.value,
     },
   };
 };

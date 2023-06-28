@@ -691,7 +691,7 @@ const TagsPage = () => {
                   {getEntityName(category)}
                   {category.disabled && (
                     <Badge
-                      className="m-l-xs badge-grey"
+                      className="m-l-xs badge-grey opacity-60"
                       count={t('label.disabled')}
                       data-testid="disabled"
                       size="small"

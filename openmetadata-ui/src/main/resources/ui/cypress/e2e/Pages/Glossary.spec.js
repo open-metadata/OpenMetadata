@@ -245,7 +245,7 @@ const updateTags = (inTerm) => {
   // visit glossary page
   interceptURL(
     'GET',
-    `/api/v1/search/query?q=%2A&index=tag_search_index&from=0&size=10&query_filter=%7B%7D`,
+    '/api/v1/search/query?q=disabled%3Afalse&index=tag_search_index&from=0&size=10&query_filter=%7B%7D',
     'tags'
   );
   cy.get(
@@ -365,7 +365,11 @@ describe('Glossary page should work properly', () => {
 
   it('Create new glossary flow should work properly', () => {
     interceptURL('POST', '/api/v1/glossaries', 'createGlossary');
-    interceptURL('GET', '/api/v1/tags?limit=1000', 'fetchTags');
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=disabled%3Afalse&index=tag_search_index&from=0&size=10&query_filter=%7B%7D',
+      'fetchTags'
+    );
 
     // check for no data placeholder
     cy.get('[data-testid="add-placeholder-button"]')
