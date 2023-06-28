@@ -164,6 +164,19 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
+  const handleAddTestCaseSubmit = async (testCaseIds: string[]) => {
+    try {
+      await addTestCaseToLogicalTestSuite({
+        testCaseIds,
+        testSuiteId: testSuite?.id ?? '',
+      });
+      setIsTestCaseModalOpen(false);
+      fetchTestCases();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   const fetchTestSuiteByName = async () => {
     try {
       const response = await getTestSuiteByName(testSuiteFQN, {

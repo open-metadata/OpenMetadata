@@ -15,7 +15,6 @@ import { AxiosError } from 'axios';
 import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { TestSummary } from 'generated/tests/testSuite';
-import { isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getTestCaseExecutionSummary } from 'rest/testAPI';
@@ -23,7 +22,7 @@ import {} from 'utils/CommonUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { SummaryPanelProps } from './SummaryPanel.interface';
 
-export const SummaryPanel = ({ testSummary }: SummaryPanelProps) => {
+export const SummaryPanel = ({ testSuiteId }: SummaryPanelProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { testCase: testCasePermission } = permissions;
@@ -34,7 +33,7 @@ export const SummaryPanel = ({ testSummary }: SummaryPanelProps) => {
   const fetchTestSummary = async () => {
     setIsLoading(true);
     try {
-      const response = await getTestCaseExecutionSummary();
+      const response = await getTestCaseExecutionSummary(testSuiteId);
       setSummary(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -44,15 +43,10 @@ export const SummaryPanel = ({ testSummary }: SummaryPanelProps) => {
   };
 
   useEffect(() => {
-    if (isUndefined(testSummary)) {
-      if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
-        fetchTestSummary();
-      }
-    } else {
-      setSummary(testSummary);
-      setIsLoading(false);
+    if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
+      fetchTestSummary();
     }
-  }, [testCasePermission]);
+  }, [testSuiteId, testCasePermission]);
 
   return (
     <Row wrap gutter={[16, 16]}>
