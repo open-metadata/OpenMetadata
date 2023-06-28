@@ -38,7 +38,7 @@ services:
 
   elasticsearch:
     container_name: openmetadata_elasticsearch
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.16.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.16.1
     environment:
       - discovery.type=single-node
       - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
