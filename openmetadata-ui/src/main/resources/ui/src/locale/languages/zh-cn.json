@@ -876,6 +876,7 @@
     "synonym-lowercase-plural": "同义词",
     "synonym-plural": "同义词",
     "table": "数据表",
+    "table-constraint": "Table Constraint",
     "table-entity-text": "数据表{{entityText}}",
     "table-lowercase": "数据表",
     "table-lowercase-plural": "数据表",

@@ -876,6 +876,7 @@
     "synonym-lowercase-plural": "シノニム",
     "synonym-plural": "シノニム",
     "table": "テーブル",
+    "table-constraint": "Table Constraint",
     "table-entity-text": "テーブル {{entityText}}",
     "table-lowercase": "テーブル",
     "table-lowercase-plural": "tables",

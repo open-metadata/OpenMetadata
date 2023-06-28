@@ -87,6 +87,7 @@ import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import './table-details-page-v1.less';
+import TableConstraints from './TableConstraints/TableConstraints';
 
 const TableDetailsPageV1 = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
@@ -519,6 +520,7 @@ const TableDetailsPageV1 = () => {
               onSelectionChange={handleTagSelection}
               onThreadLinkSelect={onThreadLinkSelect}
             />
+            <TableConstraints constraints={tableDetails?.tableConstraints} />
           </Space>
         </Col>
       </Row>

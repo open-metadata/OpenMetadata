@@ -876,6 +876,7 @@
     "synonym-lowercase-plural": "sinónimos",
     "synonym-plural": "Sinónimos",
     "table": "Tabla",
+    "table-constraint": "Table Constraint",
     "table-entity-text": "Tabla {{entityText}}",
     "table-lowercase": "tabla",
     "table-lowercase-plural": "tablas",
