@@ -13,6 +13,8 @@
 
 @import url('../../styles/variables.less');
 
+@sidebar-width: 100px;
+
 .custom-react-flow {
   .react-flow__node-input.selectable.selected {
     box-shadow: none;
@@ -90,8 +92,8 @@
   width: 400px;
   height: 32px;
 }
-.custom-control-search-box-edit-mode {
-  margin-left: 83px;
+.ant-select.custom-control-search-box-edit-mode {
+  margin-left: @sidebar-width;
 }
 .custom-control-basic-button {
   padding-left: 4px;
@@ -156,4 +158,25 @@
 
 .lineage-card .react-flow__edge.animated path {
   animation: none;
+}
+
+.entity-lineage.sidebar {
+  height: 110%;
+  background: @white;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: @sidebar-width;
+  z-index: 200;
+  overflow-y: auto;
+  padding: 8px;
+  transform: translateX(100%);
+  display: none;
+  border-right: 1px solid @border-color;
+  transition: transform 0.3s ease-out;
+}
+
+.entity-lineage.sidebar.open {
+  transform: translateX(0);
+  display: block;
 }
