@@ -118,7 +118,7 @@ class SupersetDBSource(SupersetSourceMixin):
         self, chart_json: FetchChart, db_service_entity: DatabaseService
     ):
         return (
-            self._get_datasource_fqn(chart_json, db_service_entity)
+            self._get_datasource_fqn(db_service_entity, chart_json)
             if chart_json.table_name
             else None
         )
@@ -154,7 +154,7 @@ class SupersetDBSource(SupersetSourceMixin):
         return get_database_name_for_lineage(db_service_entity, default_db_name)
 
     def _get_datasource_fqn(
-        self, chart_json: FetchChart, db_service_entity: DatabaseService
+        self, db_service_entity: DatabaseService, chart_json: FetchChart
     ) -> Optional[str]:
         try:
             dataset_fqn = fqn.build(

@@ -208,7 +208,10 @@ def get_standard_chart_type(raw_chart_type: str) -> str:
     :param raw_chart_type: raw chart type to be standardize
     :return: standard chart type
     """
-    return om_chart_type_dict.get(raw_chart_type.lower(), ChartType.Other)
+    if raw_chart_type is not None:
+        return om_chart_type_dict.get(raw_chart_type.lower(), ChartType.Other)
+    else:
+        return ChartType.Other
 
 
 def find_in_iter(element: Any, container: Iterable[Any]) -> Optional[Any]:
