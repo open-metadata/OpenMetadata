@@ -17,8 +17,8 @@ Learn how to upgrade your OpenMetadata instance to 1.1!
 
 ## UI Improvements
 
-- Simplified Landing Page to make adoption easier for new users. We’ll keep iterating on improving UX for first-time users.
-- Simplified Explore view with improved asset details section. The filtering left panel is not part of the filtering selection at the top.
+- Simplified Landing Page to make the adoption easier for new users. We’ll keep iterating on improving UX for first-time users.
+- Simplified Explore view with improved asset details section. The filtering left panel is now part of the filtering selection at the top.
 - Lineage View now supports column pagination and filtering.
 - Views show their DDL on the Table details page.
 
@@ -30,6 +30,7 @@ Learn how to upgrade your OpenMetadata instance to 1.1!
 - Improved Customer SQL test to allow users to set a threshold for the expected number of rows to be returned
 - Allow multi project for BigQuery profiler
 - Fetch table metrics from system tables when information is available
+- Improved Snowflake Profiling performance of System Metrics.
 
 ## Ingestion
 
