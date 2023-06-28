@@ -218,3 +218,9 @@ impacts BigQuery, Datalake and any other source where you are directly passing t
     gcpConfig:
 ...
 ```
+
+### Other changes
+
+- Glue now supports custom database names via `databaseName`.
+- Snowflake supports the `clientSessionKeepAlive` parameter to keep the session open for long processes.
+- Kafka and Redpanda now have the `saslMechanism` based on enum values `["PLAIN", "GSSAPI", "SCRAM-SHA-256", "SCRAM-SHA-512", "OAUTHBEARER"]`.
