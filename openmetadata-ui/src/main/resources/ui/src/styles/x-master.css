@@ -872,7 +872,7 @@ code {
 
 .page-not-found-container {
   width: 100%;
-  height: calc(100% - 68px);
+  height: 100vh;
   display: flex;
 }
 
