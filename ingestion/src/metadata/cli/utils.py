@@ -21,6 +21,9 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.ingestion.source.connections import get_connection
 from metadata.utils.helpers import BackupRestoreArgs, list_to_dict
 
@@ -36,7 +39,7 @@ def get_engine(common_args: BackupRestoreArgs):
     connection_dict = {
         "hostPort": f"{common_args.host}:{common_args.port}",
         "username": common_args.user,
-        "password": common_args.password,
+        "authType": BasicAuth(password=common_args.password),
         "connectionOptions": connection_options if connection_options else None,
         "connectionArguments": connection_arguments if connection_arguments else None,
     }
