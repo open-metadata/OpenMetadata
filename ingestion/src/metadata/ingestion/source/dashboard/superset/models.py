@@ -11,7 +11,7 @@
 """
 Superset source models.
 """
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -21,7 +21,6 @@ class SupersetDashboard(BaseModel):
 
     description: Optional[str]
     id: Optional[int]
-    table: Optional[Dict[str, Any]]
 
 
 class SupersetDashboardList(BaseModel):
@@ -123,13 +122,13 @@ class DbParameter(BaseModel):
 class DatabaseResult(BaseModel):
     database_name: Optional[str]
     id: Optional[int]
-    parameters: Optional[DbParameter]
+    parameters: Optional[DbParameter] = DbParameter()
 
 
 class ListDatabaseResult(BaseModel):
     count: Optional[int]
     id: Optional[int]
-    result: Optional[DatabaseResult]
+    result: Optional[DatabaseResult] = DatabaseResult()
 
 
 class FetchDashboard(BaseModel):

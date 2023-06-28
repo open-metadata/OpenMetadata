@@ -24,10 +24,9 @@ from metadata.generated.schema.api.data.createDashboard import CreateDashboardRe
 from metadata.generated.schema.api.data.createDashboardDataModel import (
     CreateDashboardDataModelRequest,
 )
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboardDataModel import DataModelType
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -46,7 +45,6 @@ from metadata.ingestion.source.dashboard.superset.queries import (
     FETCH_COLUMN,
     FETCH_DASHBOARDS,
 )
-from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_datamodel
 from metadata.utils.helpers import (
@@ -79,7 +77,7 @@ class SupersetDBSource(SupersetSourceMixin):
             chart_detail = FetchChart(**chart)
             self.all_charts[chart_detail.id] = chart_detail
 
-    def get_column_list(self, table_name) -> Optional[List[object]]:
+    def get_column_list(self, table_name: FetchChart) -> Optional[List[object]]:
         sql_query = sql.text(FETCH_COLUMN.format(table_name=table_name.lower()))
         col_list = self.engine.execute(sql_query)
         return [FetchColumn(**col) for col in col_list]
@@ -92,16 +90,8 @@ class SupersetDBSource(SupersetSourceMixin):
         for dashboard in dashboards:
             yield FetchDashboard(**dashboard)
 
-    def get__list(self) -> Optional[List[object]]:
-        """
-        Get List of all dashboards
-        """
-        dashboards = self.engine.execute(FETCH_DASHBOARDS)
-        for dashboard in dashboards:
-            yield FetchDashboard(**dashboard)
-
     def yield_dashboard(
-        self, dashboard_details: dict
+        self, dashboard_details: FetchDashboard
     ) -> Iterable[CreateDashboardRequest]:
         """
         Method to Get Dashboard Entity
@@ -124,7 +114,9 @@ class SupersetDBSource(SupersetSourceMixin):
         yield dashboard_request
         self.register_record(dashboard_request=dashboard_request)
 
-    def _get_datasource_fqn_for_lineage(self, chart_json, db_service_entity):
+    def _get_datasource_fqn_for_lineage(
+        self, chart_json: FetchChart, db_service_entity: DatabaseService
+    ):
         return (
             self._get_datasource_fqn(chart_json, db_service_entity)
             if chart_json.table_name
@@ -132,7 +124,7 @@ class SupersetDBSource(SupersetSourceMixin):
         )
 
     def yield_dashboard_chart(
-        self, dashboard_details: dict
+        self, dashboard_details: FetchDashboard
     ) -> Optional[Iterable[CreateChartRequest]]:
         """
         Metod to fetch charts linked to dashboard
@@ -162,7 +154,7 @@ class SupersetDBSource(SupersetSourceMixin):
         return get_database_name_for_lineage(db_service_entity, default_db_name)
 
     def _get_datasource_fqn(
-        self, chart_json: dict, db_service_entity: DatabaseService
+        self, chart_json: FetchChart, db_service_entity: DatabaseService
     ) -> Optional[str]:
         try:
             dataset_fqn = fqn.build(
@@ -184,7 +176,7 @@ class SupersetDBSource(SupersetSourceMixin):
         return None
 
     def yield_datamodel(
-        self, dashboard_details: dict
+        self, dashboard_details: FetchDashboard
     ) -> Iterable[CreateDashboardDataModelRequest]:
 
         if self.source_config.includeDataModels:
@@ -225,64 +217,3 @@ class SupersetDBSource(SupersetSourceMixin):
                     )
                     logger.error(error_msg)
                     logger.debug(traceback.format_exc())
-
-    def get_column_info(self, data_source: FetchChart) -> Optional[List[Column]]:
-        """
-        Args:
-            data_source: DataSource
-        Returns:
-            Columns details for Data Model
-        """
-        datasource_columns = []
-        for field in data_source or []:
-            try:
-                parsed_fields = {
-                    "dataTypeDisplay": field.type,
-                    "dataType": ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
-                        field.type if field.type else None
-                    )[
-                        "dataType"
-                    ],
-                    "name": field.id,
-                    "displayName": field.column_name,
-                    "description": field.description,
-                    "dataLength": ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
-                        field.type if field.type else None
-                    )[
-                        "dataLength"
-                    ],
-                }
-
-                datasource_columns.append(Column(**parsed_fields))
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Error to yield datamodel column: {exc}")
-        return datasource_columns
-
-    def yield_dashboard_lineage(
-        self, dashboard_details
-    ) -> Optional[Iterable[AddLineageRequest]]:
-        yield from self.yield_datamodel_dashboard_lineage() or []
-
-        for db_service_name in self.source_config.dbServiceNames or []:
-            yield from self.yield_dashboard_lineage_details(
-                dashboard_details, db_service_name
-            ) or []
-
-    def yield_datamodel_dashboard_lineage(
-        self,
-    ) -> Optional[Iterable[AddLineageRequest]]:
-        """
-        Returns:
-            Lineage request between Data Models and Dashboards
-        """
-        for datamodel in self.context.dataModels or []:
-            try:
-                yield self._get_add_lineage_request(
-                    to_entity=self.context.dashboard, from_entity=datamodel
-                )
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.error(
-                    f"Error to yield dashboard lineage details for data model name [{datamodel.name}]: {err}"
-                )

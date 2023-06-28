@@ -177,7 +177,7 @@ class SupersetAPIClient:
             logger.warning("Failed to fetch the dashboard list")
         return []
 
-    def fetch_charts_with_id(self, chart_id):
+    def fetch_charts_with_id(self, chart_id: str):
         response = self.client.get(f"/chart/{chart_id}")
         return response
 

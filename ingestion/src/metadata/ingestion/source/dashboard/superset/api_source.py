@@ -20,14 +20,15 @@ from metadata.generated.schema.api.data.createDashboard import CreateDashboardRe
 from metadata.generated.schema.api.data.createDashboardDataModel import (
     CreateDashboardDataModelRequest,
 )
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboardDataModel import DataModelType
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
-from metadata.ingestion.source.dashboard.superset.models import DataSourceResult
-from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.ingestion.source.dashboard.superset.models import (
+    ChartResult,
+    DashboradResult,
+)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_datamodel
 from metadata.utils.helpers import (
@@ -75,7 +76,7 @@ class SupersetAPISource(SupersetSourceMixin):
                 yield dashboard
 
     def yield_dashboard(
-        self, dashboard_details: dict
+        self, dashboard_details: DashboradResult
     ) -> Iterable[CreateDashboardRequest]:
         """
         Method to Get Dashboard Entity
@@ -98,7 +99,9 @@ class SupersetAPISource(SupersetSourceMixin):
         yield dashboard_request
         self.register_record(dashboard_request=dashboard_request)
 
-    def _get_datasource_fqn_for_lineage(self, chart_json, db_service_entity):
+    def _get_datasource_fqn_for_lineage(
+        self, chart_json: ChartResult, db_service_entity: DatabaseService
+    ):
         return (
             self._get_datasource_fqn(chart_json.datasource_id, db_service_entity)
             if chart_json.datasource_id
@@ -106,7 +109,7 @@ class SupersetAPISource(SupersetSourceMixin):
         )
 
     def yield_dashboard_chart(
-        self, dashboard_details: dict
+        self, dashboard_details: DashboradResult
     ) -> Optional[Iterable[CreateChartRequest]]:
         """
         Metod to fetch charts linked to dashboard
@@ -164,7 +167,7 @@ class SupersetAPISource(SupersetSourceMixin):
         return None
 
     def yield_datamodel(
-        self, dashboard_details: dict
+        self, dashboard_details: DashboradResult
     ) -> Iterable[CreateDashboardDataModelRequest]:
 
         if self.source_config.includeDataModels:
@@ -205,63 +208,3 @@ class SupersetAPISource(SupersetSourceMixin):
                     )
                     logger.error(error_msg)
                     logger.debug(traceback.format_exc())
-
-    def get_column_info(self, data_source: DataSourceResult) -> Optional[List[Column]]:
-        """
-        Args:
-            data_source: DataSource
-        Returns:
-            Columns details for Data Model
-        """
-        datasource_columns = []
-        for field in data_source or []:
-            try:
-                parsed_fields = {
-                    "dataTypeDisplay": field.type,
-                    "dataType": ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
-                        field.type if field.type else None
-                    )[
-                        "dataType"
-                    ],
-                    "name": field.id,
-                    "displayName": field.column_name,
-                    "description": field.description,
-                    "dataLength": ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
-                        field.type if field.type else None
-                    )[
-                        "dataLength"
-                    ],
-                }
-                datasource_columns.append(Column(**parsed_fields))
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Error to yield datamodel column: {exc}")
-        return datasource_columns
-
-    def yield_dashboard_lineage(
-        self, dashboard_details
-    ) -> Optional[Iterable[AddLineageRequest]]:
-        yield from self.yield_datamodel_dashboard_lineage() or []
-
-        for db_service_name in self.source_config.dbServiceNames or []:
-            yield from self.yield_dashboard_lineage_details(
-                dashboard_details, db_service_name
-            ) or []
-
-    def yield_datamodel_dashboard_lineage(
-        self,
-    ) -> Optional[Iterable[AddLineageRequest]]:
-        """
-        Returns:
-            Lineage request between Data Models and Dashboards
-        """
-        for datamodel in self.context.dataModels or []:
-            try:
-                yield self._get_add_lineage_request(
-                    to_entity=self.context.dashboard, from_entity=datamodel
-                )
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.error(
-                    f"Error to yield dashboard lineage details for data model name [{datamodel.name}]: {err}"
-                )

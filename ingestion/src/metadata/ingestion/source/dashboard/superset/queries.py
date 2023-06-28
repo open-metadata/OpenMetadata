@@ -12,6 +12,7 @@
 Queries to fetch data from superset
 """
 
+
 FETCH_ALL_CHARTS = """
 select 
 	s.id,
@@ -84,5 +85,5 @@ inner join
 on 
 	t.id=tc.table_id  
 where 
-	table_name= '{table_name}'; 
+	table_name= '{table_name}'
 """
