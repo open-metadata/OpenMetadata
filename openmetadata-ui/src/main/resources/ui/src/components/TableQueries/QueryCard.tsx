@@ -215,7 +215,7 @@ const QueryCard: FC<QueryCardProp> = ({
               onChange={handleQueryChange}
             />
           </div>
-          <Row align="middle" className="p-y-xs border-t-1">
+          <Row align="middle" className="p-y-xs border-top">
             <Col className="p-y-0.5 p-l-md" span={16}>
               <QueryUsedByOtherTable query={query} tableId={tableId} />
             </Col>

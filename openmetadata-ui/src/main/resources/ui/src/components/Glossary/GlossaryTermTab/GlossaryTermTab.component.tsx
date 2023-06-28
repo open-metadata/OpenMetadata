@@ -65,6 +65,7 @@ const GlossaryTermTab = ({
   termsLoading,
   onAddGlossaryTerm,
   onEditGlossaryTerm,
+  className,
 }: GlossaryTermTabProps) => {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
@@ -268,7 +269,7 @@ const GlossaryTermTab = ({
   }
 
   return (
-    <Row gutter={[0, 16]}>
+    <Row className={className} gutter={[0, 16]}>
       <Col span={24}>
         <div className="d-flex justify-end">
           <Button

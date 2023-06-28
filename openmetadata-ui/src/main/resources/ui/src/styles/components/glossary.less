@@ -86,6 +86,12 @@
 }
 
 .glossary-tabs {
+  .glossary-overview-tab,
+  .glossary-term-table-container,
+  .assets-tab-container {
+    height: @glossary-term-page-height;
+    overflow-y: scroll;
+  }
   .description-heading {
     font-size: 16px;
     font-weight: 500;
@@ -150,5 +156,14 @@
     border-radius: 0;
     padding-left: 0;
     border-top: 0;
+
+    .summary-panel-container {
+      height: @page-height;
+    }
   }
+}
+
+.glossary-content-container {
+  height: @glossary-page-height;
+  overflow-y: scroll;
 }
