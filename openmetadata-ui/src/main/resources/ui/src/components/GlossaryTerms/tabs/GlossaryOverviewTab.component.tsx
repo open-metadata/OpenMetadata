@@ -100,7 +100,10 @@ const GlossaryOverviewTab = ({
 
   return (
     <Row className="glossary-overview-tab h-full" gutter={[32, 16]}>
-      <Col className="border-r-1" data-testid="updated-by-container" span={18}>
+      <Col
+        className="border-right"
+        data-testid="updated-by-container"
+        span={18}>
         <Row className="p-md p-r-0" gutter={[0, 32]}>
           <Col span={24}>
             <DescriptionV1

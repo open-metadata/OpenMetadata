@@ -123,10 +123,10 @@ const GlossaryDetails = ({
         />
       </Col>
 
-      <Col className="border-t-1 p-x-md" span={24}>
+      <Col className="border-top p-x-md" span={24}>
         <Row className="h-full" gutter={[32, 16]}>
           <Col
-            className="border-r-1 p-y-md glossary-content-container"
+            className="border-right p-y-md glossary-content-container"
             span={18}>
             <Space className="w-full" direction="vertical" size={24}>
               <DescriptionV1
