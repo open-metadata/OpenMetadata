@@ -219,7 +219,7 @@ const TagsPage = () => {
 
     try {
       const tagsResponse = await getTags({
-        arrQueryFields: ['usageCount', 'disabled'],
+        arrQueryFields: ['usageCount'],
         parent: currentClassificationName,
         after: paging?.after,
         before: paging?.before,
@@ -244,10 +244,7 @@ const TagsPage = () => {
     setIsLoading(true);
 
     try {
-      const response = await getAllClassifications(
-        ['termCount', 'disabled'],
-        1000
-      );
+      const response = await getAllClassifications(['termCount'], 1000);
       setClassifications(response.data);
       if (setCurrent && response.data.length) {
         setCurrentClassification(response.data[0]);
