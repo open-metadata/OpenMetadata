@@ -28,10 +28,6 @@ import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import TableTags from 'components/TableTags/TableTags.component';
-import {
-  GlossaryTermDetailsProps,
-  TagsDetailsProps,
-} from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { CSMode } from 'enums/codemirror.enum';
 import { TagLabel, TagSource } from 'generated/type/tagLabel';
@@ -40,11 +36,6 @@ import { EntityTags, TagOption } from 'Models';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
-import {
-  getGlossaryTermHierarchy,
-  getGlossaryTermsList,
-} from 'utils/GlossaryUtils';
-import { getAllTagsList, getTagsHierarchy } from 'utils/TagsUtils';
 import { DataTypeTopic, Field } from '../../../generated/entity/data/topic';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import {
@@ -71,43 +62,9 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 }) => {
   const { t } = useTranslation();
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-  const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
-  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.FIELDS
   );
-
-  const [glossaryTags, setGlossaryTags] = useState<GlossaryTermDetailsProps[]>(
-    []
-  );
-  const [classificationTags, setClassificationTags] = useState<
-    TagsDetailsProps[]
-  >([]);
-
-  const fetchGlossaryTags = async () => {
-    setIsGlossaryLoading(true);
-    try {
-      const glossaryTermList = await getGlossaryTermsList();
-      setGlossaryTags(glossaryTermList);
-    } catch {
-      setTagFetchFailed(true);
-    } finally {
-      setIsGlossaryLoading(false);
-    }
-  };
-
-  const fetchClassificationTags = async () => {
-    setIsTagLoading(true);
-    try {
-      const tags = await getAllTagsList();
-      setClassificationTags(tags);
-    } catch {
-      setTagFetchFailed(true);
-    } finally {
-      setIsTagLoading(false);
-    }
-  };
 
   const handleFieldTagsChange = async (
     selectedTags: EntityTags[],
@@ -231,16 +188,11 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         width: 300,
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
-            dataTestId="classification-tags"
-            fetchTags={fetchClassificationTags}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasTagEditAccess}
             index={index}
             isReadOnly={isReadOnly}
-            isTagLoading={isTagLoading}
             record={record}
-            tagFetchFailed={tagFetchFailed}
-            tagList={getTagsHierarchy(classificationTags)}
             tags={tags}
             type={TagSource.Classification}
           />
@@ -254,16 +206,11 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         width: 300,
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
-            dataTestId="glossary-tags"
-            fetchTags={fetchGlossaryTags}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasTagEditAccess}
             index={index}
             isReadOnly={isReadOnly}
-            isTagLoading={isGlossaryLoading}
             record={record}
-            tagFetchFailed={tagFetchFailed}
-            tagList={getGlossaryTermHierarchy(glossaryTags)}
             tags={tags}
             type={TagSource.Glossary}
           />
@@ -271,17 +218,12 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       },
     ],
     [
-      handleFieldTagsChange,
-      fetchGlossaryTags,
-      isGlossaryLoading,
+      isReadOnly,
       messageSchema,
-      hasDescriptionEditAccess,
       hasTagEditAccess,
       editFieldDescription,
-      isReadOnly,
-      isTagLoading,
-      glossaryTags,
-      tagFetchFailed,
+      hasDescriptionEditAccess,
+      handleFieldTagsChange,
     ]
   );
 

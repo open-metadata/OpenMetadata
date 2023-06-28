@@ -184,14 +184,17 @@ export const AddTestCaseList = ({
                   onClick={() => handleCardClick(test)}>
                   <Space className="justify-between w-full">
                     <Typography.Paragraph
-                      className="m-0 font-medium text-base"
-                      data-testid={test.name}>
+                      className="m-0 font-medium text-base w-max-500"
+                      data-testid={test.name}
+                      ellipsis={{ tooltip: true }}>
                       {getEntityName(test)}
                     </Typography.Paragraph>
 
                     <Checkbox checked={selectedItems?.has(test.id ?? '')} />
                   </Space>
-                  <Typography.Paragraph className="m-0">
+                  <Typography.Paragraph
+                    className="m-0 w-max-500"
+                    ellipsis={{ tooltip: true }}>
                     {getEntityName(test.testDefinition)}
                   </Typography.Paragraph>
                   <Typography.Paragraph className="m-0">

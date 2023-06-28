@@ -41,6 +41,16 @@ $$section
 Username to connect to MySQL. This user should have access to the `INFORMATION_SCHEMA` to extract metadata. Other workflows may require different permissions -- refer to the section above for more information.
 $$
 
+$$section
+### Auth Config $(id="authType")
+There are 2 types of auth configs:
+- Basic Auth.
+- IAM based Auth.
+
+User can authenticate the Mysql Instance with auth type as `Basic Authentication` i.e. Password **or** by using `IAM based Authentication` to connect to AWS related services.
+$$
+
+
 ## Basic Auth
 
 $$section
@@ -50,7 +60,9 @@ $$
 
 ## IAM Auth Config
 
-### Note: If you are using IAM auth, add `"ssl": {"ssl-mode": "allow"} under Connection Arguments`
+$$note 
+If you are using IAM auth, add <br />`"ssl": {"ssl-mode": "allow"}` under Connection Arguments
+$$
 
 $$section
 ### AWS Access Key ID $(id="awsAccessKeyId")
@@ -180,5 +192,3 @@ $$
 $$section
 ### Connection Arguments $(id="connectionArguments")
 Additional connection arguments such as security or protocol configs that can be sent to the service during connection.
-#### Note: If you are using IAM auth, add `"ssl": {"ssl-mode": "allow"} under Connection Arguments`
-$$
