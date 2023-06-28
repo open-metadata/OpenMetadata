@@ -76,6 +76,10 @@ source:
       authOptions: <auth options>
       authMechanism: PLAIN # NOSASL, PLAIN, GSSAPI, LDAP, JWT
       hostPort: <impala connection host & port>
+      # kerberosServiceName: KerberosServiceName
+      # databaseSchema: Database Schema of the data source
+      # databaseName: Optional name to give to the database in OpenMetadata.
+      # useSSL: true / false
   sourceConfig:
     config:
       type: DatabaseMetadata
@@ -327,6 +331,10 @@ source:
       authOptions: <auth options>
       authMechanism: PLAIN # NOSASL, PLAIN, GSSAPI, LDAP, JWT
       hostPort: <impala connection host & port>
+      # kerberosServiceName: KerberosServiceName
+      # databaseSchema: Database Schema of the data source
+      # databaseName: Optional name to give to the database in OpenMetadata.
+      # useSSL: true / false
   sourceConfig:
     config:
       type: Profiler
