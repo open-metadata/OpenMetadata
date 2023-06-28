@@ -100,7 +100,7 @@ class DatasourceField(BaseModel):
     description: Optional[str]
 
 
-class DownstreamWorkbook(BaseModel):
+class Workbook(BaseModel):
     id: str
     luid: str
     name: str
@@ -131,7 +131,7 @@ class DataSource(BaseModel):
     id: str
     name: str
     fields: Optional[List[DatasourceField]]
-    downstreamWorkbooks: Optional[List[DownstreamWorkbook]]
+    workbook: Optional[Workbook]
     upstreamTables: Optional[List[UpstreamTable]]
 
 

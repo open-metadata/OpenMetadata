@@ -30,7 +30,7 @@ TABLEAU_DATASOURCES_QUERY = """
         fullyQualifiedName
         description
       }}
-      downstreamWorkbooks {{
+      workbook {{
         id
         luid
         name
