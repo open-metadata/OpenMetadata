@@ -203,14 +203,15 @@ Update your helm values to mount Kubernetes Secrets as Volumes and update the Jw
 
 ```yaml
 # openmetadata.prod.values.yml
-global:
-	...
-	jwtTokenConfiguration:
-	  rsapublicKeyFilePath: "/etc/openmetadata/jwtkeys/public_key.der"
-	  rsaprivateKeyFilePath: "/etc/openmetadata/jwtkeys/private_key.der"
-	  jwtissuer: "open-metadata.org" # update this as per your environment
-	  keyId: "c8ec220c-be7d-4e47-97c7-098bf6a57ce1" # update this to a unique uuid4
-...
+openmetadata:
+  config:
+    ...
+    jwtTokenConfiguration:
+      rsapublicKeyFilePath: "/etc/openmetadata/jwtkeys/public_key.der"
+      rsaprivateKeyFilePath: "/etc/openmetadata/jwtkeys/private_key.der"
+      jwtissuer: "open-metadata.org" # update this as per your environment
+      keyId: "c8ec220c-be7d-4e47-97c7-098bf6a57ce1" # update this to a unique uuid4
+  ...
 extraVolumes:
 - name: openmetadata-jwt-vol
   secret: 

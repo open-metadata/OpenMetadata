@@ -239,34 +239,35 @@ Once you have the RDS and OpenSearch Services Setup, you can update the environm
 ```yaml
 # openmetadata-values.prod.yaml
 ...
-global:
-  elasticsearch:
-    host: <AMAZON_OPENSEARCH_SERVICE_ENDPOINT_WITHOUT_HTTPS>
-    port: 443
-    scheme: https
-    connectionTimeoutSecs: 5
-    socketTimeoutSecs: 60
-    keepAliveTimeoutSecs: 600
-    batchSize: 10
-    auth:
-      enabled: false
-      username: <AMAZON_OPENSEARCH_USERNAME>
-      password:
-        secretRef: elasticsearch-secrets
-        secretKey: openmetadata-elasticsearch-password
-  database:
-    host: <AMAZON_RDS_ENDPOINT>
-    port: 3306
-    driverClass: com.mysql.cj.jdbc.Driver
-    dbScheme: mysql
-    dbUseSSL: true
-    databaseName: <RDS_DATABASE_NAME>
-    auth:
-      username: <RDS_DATABASE_USERNAME>
-      password:
-        secretRef: mysql-secrets
-        secretKey: openmetadata-mysql-password
-...
+openmetadata:
+  config:
+    elasticsearch:
+      host: <AMAZON_OPENSEARCH_SERVICE_ENDPOINT_WITHOUT_HTTPS>
+      port: 443
+      scheme: https
+      connectionTimeoutSecs: 5
+      socketTimeoutSecs: 60
+      keepAliveTimeoutSecs: 600
+      batchSize: 10
+      auth:
+        enabled: false
+        username: <AMAZON_OPENSEARCH_USERNAME>
+        password:
+          secretRef: elasticsearch-secrets
+          secretKey: openmetadata-elasticsearch-password
+    database:
+      host: <AMAZON_RDS_ENDPOINT>
+      port: 3306
+      driverClass: com.mysql.cj.jdbc.Driver
+      dbScheme: mysql
+      dbUseSSL: true
+      databaseName: <RDS_DATABASE_NAME>
+      auth:
+        username: <RDS_DATABASE_USERNAME>
+        password:
+          secretRef: mysql-secrets
+          secretKey: openmetadata-mysql-password
+  ...
 ```
 
 Make sure to create RDS and OpenSearch credentials as Kubernetes Secrets mentioned [here](https://docs.open-metadata.org/deployment/kubernetes#quickstart).
