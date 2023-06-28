@@ -23,7 +23,7 @@ import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import loginBG from '../../assets/img/login-bg.png';
+import loginBG from '../../assets/img/login-bg-2.png';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { AuthTypes } from '../../enums/signin.enum';
 import localState from '../../utils/LocalStorageUtils';
@@ -196,7 +196,7 @@ const SigninPage = () => {
   return (
     <div className="d-flex flex-col h-full">
       <Row className="flex bg-body-main flex-grow" data-testid="signin-page">
-        <Col span={10}>
+        <Col span={8}>
           <div
             className={classNames('mt-24 text-center flex-center flex-col', {
               'sso-container': !isAuthProviderBasic,
@@ -308,7 +308,7 @@ const SigninPage = () => {
             )}
           </div>
         </Col>
-        <Col className="relative" span={14}>
+        <Col className="relative" span={16}>
           <div className="absolute inset-0">
             <img
               alt="bg-image"

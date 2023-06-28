@@ -12,31 +12,36 @@
  */
 
 import { CarouselProps } from 'antd';
-import lineage from '../assets/img/lineage.png';
-import screenShot2 from '../assets/img/screenShot1.png';
-import screenShot1 from '../assets/img/screenShot2.png';
+import screenShot1 from '../assets/img/screenShot1.png';
+import screenShot2 from '../assets/img/screenShot2.png';
 import screenShot3 from '../assets/img/screenShot3.png';
 import screenShot4 from '../assets/img/screenShot4.png';
+import screenShot5 from '../assets/img/screenShot5.png';
 
 export const LOGIN_SLIDE = [
   {
+    title: 'discovery',
     image: screenShot1,
     descriptionKey: 'enables-end-to-end-metadata-management',
   },
   {
+    title: 'data-quality',
     image: screenShot2,
     descriptionKey: 'discover-your-data-and-unlock-the-value-of-data-assets',
   },
   {
+    title: 'governance',
     image: screenShot3,
     descriptionKey: 'assess-data-reliability-with-data-profiler-lineage',
   },
   {
+    title: 'data-insight',
     image: screenShot4,
     descriptionKey: 'fosters-collaboration-among-producers-and-consumers',
   },
   {
-    image: lineage,
+    title: 'collaboration',
+    image: screenShot5,
     descriptionKey: 'deeply-understand-table-relations-message',
   },
 ];
