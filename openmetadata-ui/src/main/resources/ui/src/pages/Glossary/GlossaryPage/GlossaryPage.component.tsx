@@ -309,7 +309,11 @@ const GlossaryPage = () => {
         doc={GLOSSARIES_DOCS}
         heading={t('label.glossary')}
         permission={createGlossaryPermission}
-        type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        type={
+          createGlossaryPermission
+            ? ERROR_PLACEHOLDER_TYPE.CREATE
+            : ERROR_PLACEHOLDER_TYPE.NO_DATA
+        }
         onClick={handleAddGlossaryClick}
       />
     );
