@@ -1138,6 +1138,7 @@ const TagsPage = () => {
               <Switch
                 checked={currentClassification?.mutuallyExclusive}
                 data-testid="mutually-exclusive-classification-button"
+                disabled={isClassificationDisabled}
                 onChange={handleUpdateMutuallyExclusive}
               />
             </Space>
