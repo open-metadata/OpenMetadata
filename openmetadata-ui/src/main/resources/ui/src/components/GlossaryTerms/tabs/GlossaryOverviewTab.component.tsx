@@ -32,7 +32,7 @@ import RelatedTerms from './RelatedTerms';
 type Props = {
   selectedData: Glossary | GlossaryTerm;
   permissions: OperationPermission;
-  onUpdate: (data: GlossaryTerm | Glossary) => void;
+  onUpdate: (data: GlossaryTerm | Glossary) => Promise<void>;
   isGlossary: boolean;
   isVersionView?: boolean;
 };

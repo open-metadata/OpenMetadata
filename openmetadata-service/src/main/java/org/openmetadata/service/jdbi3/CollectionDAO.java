@@ -1810,6 +1810,119 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM tag where fqnHash LIKE CONCAT(:fqnHashPrefix, '.%')")
     void deleteTagsByPrefix(@Bind("fqnHashPrefix") String fqnHashPrefix);
+
+    @Override
+    default int listCount(ListFilter filter) {
+      boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
+      String condition =
+          String.format(
+              "INNER JOIN entity_relationship er ON tag.id=er.toId AND er.relation=%s AND er.fromEntity='%s'  "
+                  + "INNER JOIN classification c on er.fromId=c.id",
+              CONTAINS.ordinal(), Entity.CLASSIFICATION);
+      String mySqlCondition = condition;
+      String postgresCondition = condition;
+
+      if (disabled) {
+        mySqlCondition =
+            String.format(
+                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = TRUE)",
+                mySqlCondition);
+        postgresCondition =
+            String.format(
+                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean)  = TRUE)",
+                postgresCondition);
+      } else {
+        mySqlCondition =
+            String.format(
+                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = FALSE)",
+                mySqlCondition);
+        postgresCondition =
+            String.format(
+                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean)  = FALSE)",
+                postgresCondition);
+      }
+
+      mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
+      postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
+      return listCount(getTableName(), getNameColumn(), mySqlCondition, postgresCondition);
+    }
+
+    @Override
+    default List<String> listBefore(ListFilter filter, int limit, String before) {
+      boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
+      String condition =
+          String.format(
+              "INNER JOIN entity_relationship er ON tag.id=er.toId AND er.relation=%s AND er.fromEntity='%s'  "
+                  + "INNER JOIN classification c on er.fromId=c.id",
+              CONTAINS.ordinal(), Entity.CLASSIFICATION);
+
+      String mySqlCondition = condition;
+      String postgresCondition = condition;
+
+      if (disabled) {
+        mySqlCondition =
+            String.format(
+                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = TRUE)",
+                mySqlCondition);
+        postgresCondition =
+            String.format(
+                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean) = TRUE)",
+                postgresCondition);
+      } else {
+        mySqlCondition =
+            String.format(
+                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = FALSE)",
+                mySqlCondition);
+        postgresCondition =
+            String.format(
+                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean)  = FALSE)",
+                postgresCondition);
+      }
+
+      mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
+      postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
+
+      return listBefore(getTableName(), getNameColumn(), mySqlCondition, postgresCondition, limit, before);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String after) {
+      String parent = filter.getQueryParam("parent");
+
+      boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
+      String condition =
+          String.format(
+              "INNER JOIN entity_relationship er ON tag.id=er.toId AND er.relation=%s AND er.fromEntity='%s'  "
+                  + "INNER JOIN classification c on er.fromId=c.id",
+              CONTAINS.ordinal(), Entity.CLASSIFICATION);
+
+      String mySqlCondition = condition;
+      String postgresCondition = condition;
+
+      if (disabled) {
+        mySqlCondition =
+            String.format(
+                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = TRUE)",
+                mySqlCondition);
+        postgresCondition =
+            String.format(
+                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean) = TRUE)",
+                postgresCondition);
+      } else {
+        mySqlCondition =
+            String.format(
+                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = FALSE)",
+                mySqlCondition);
+        postgresCondition =
+            String.format(
+                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean)  = FALSE)",
+                postgresCondition);
+      }
+
+      mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
+      postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
+      return listAfter(getTableName(), getNameColumn(), mySqlCondition, postgresCondition, limit, after);
+    }
   }
 
   @RegisterRowMapper(TagLabelMapper.class)
@@ -2113,66 +2226,6 @@ public interface CollectionDAO {
       after = getNameColumn().equals("name") ? FullyQualifiedName.unquoteName(after) : after;
       return listAfter(getTableName(), getNameColumn(), mySqlCondition, postgresCondition, limit, after);
     }
-
-    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table> <mysqlCond>", connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table> <postgresCond>", connectionType = POSTGRES)
-    int listCount(
-        @Define("table") String table,
-        @Define("nameColumn") String nameColumn,
-        @Define("mysqlCond") String mysqlCond,
-        @Define("postgresCond") String postgresCond);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM ("
-                + "SELECT <nameColumn>, json FROM <table> <mysqlCond> AND "
-                + "<nameColumn> < :before "
-                + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
-                "ORDER BY <nameColumn> DESC "
-                + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have fqn)
-                "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY <nameColumn>",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM ("
-                + "SELECT <nameColumn>, json FROM <table> <postgresCond> AND "
-                + "<nameColumn> < :before "
-                + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
-                "ORDER BY <nameColumn> DESC "
-                + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have fqn)
-                "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY <nameColumn>",
-        connectionType = POSTGRES)
-    List<String> listBefore(
-        @Define("table") String table,
-        @Define("nameColumn") String nameColumn,
-        @Define("mysqlCond") String mysqlCond,
-        @Define("postgresCond") String postgresCond,
-        @Bind("limit") int limit,
-        @Bind("before") String before);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM <table> <mysqlCond> AND "
-                + "<nameColumn> > :after "
-                + "ORDER BY <nameColumn> "
-                + "LIMIT :limit",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM <table> <postgresCond> AND "
-                + "<nameColumn> > :after "
-                + "ORDER BY <nameColumn> "
-                + "LIMIT :limit",
-        connectionType = POSTGRES)
-    List<String> listAfter(
-        @Define("table") String table,
-        @Define("nameColumn") String nameColumn,
-        @Define("mysqlCond") String mysqlCond,
-        @Define("postgresCond") String postgresCond,
-        @Bind("limit") int limit,
-        @Bind("after") String after);
 
     default List<String> listTeamsUnderOrganization(String teamId) {
       return listTeamsUnderOrganization(teamId, Relationship.PARENT_OF.ordinal());

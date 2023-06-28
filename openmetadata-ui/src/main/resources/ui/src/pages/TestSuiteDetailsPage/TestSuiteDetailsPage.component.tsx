@@ -151,10 +151,6 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const afterSubmitAction = () => {
-    fetchTestCases();
-  };
-
   const handleAddTestCaseSubmit = async (testCaseIds: string[]) => {
     try {
       await addTestCaseToLogicalTestSuite({
@@ -270,6 +266,16 @@ const TestSuiteDetailsPage = () => {
     });
   };
 
+  const handleTestSuiteUpdate = (testCase?: TestCase) => {
+    if (testCase) {
+      setTestCaseResult((prev) =>
+        prev.map((test) =>
+          test.id === testCase.id ? { ...test, ...testCase } : test
+        )
+      );
+    }
+  };
+
   const extraInfo: Array<ExtraInfo> = useMemo(
     () => [
       {
@@ -381,7 +387,8 @@ const TestSuiteDetailsPage = () => {
             }}
             removeFromTestSuite={{ testSuite: testSuite as TestSuite }}
             testCases={testCaseResult}
-            onTestUpdate={afterSubmitAction}
+            onTestCaseResultUpdate={handleTestSuiteUpdate}
+            onTestUpdate={handleTestSuiteUpdate}
           />
         </Col>
         <Col span={24}>

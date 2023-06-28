@@ -226,6 +226,10 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
+      @Parameter(description = "Filter Disabled Classifications", schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("disabled")
+          @DefaultValue("false")
+          Boolean disabled,
       @Parameter(description = "Limit the number tags returned. (1 to 1000000, " + "default = 10)")
           @DefaultValue("10")
           @Min(0)
@@ -245,7 +249,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    ListFilter filter = new ListFilter(include).addQueryParam("parent", parent);
+    ListFilter filter =
+        new ListFilter(include).addQueryParam("parent", parent).addQueryParam("classification.disabled", disabled);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
