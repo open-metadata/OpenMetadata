@@ -103,6 +103,7 @@ export const dashboardVersionProps = {
     ],
   },
   deleted: false,
+  entityPermissions: { ViewAll: true },
 } as unknown as DashboardVersionProp;
 
 export const mockTagChangeVersion = {

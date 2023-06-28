@@ -11,16 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Card,
-  Col,
-  Divider,
-  Row,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Card, Col, Divider, Row, Space, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import TableTags from 'components/TableTags/TableTags.component';
 import { TagSource } from 'generated/type/schema';
@@ -103,7 +94,7 @@ const MlModelFeaturesList = ({
     }
   };
 
-  if (mlFeatures && mlFeatures.length) {
+  if (!isEmpty(mlFeatures)) {
     return (
       <Fragment>
         <Row data-testid="feature-list">
@@ -216,21 +207,10 @@ const MlModelFeaturesList = ({
                                 })}
                               </Typography.Text>
                             )}
-                            <Tooltip
-                              title={
-                                permissions.EditAll ||
-                                permissions.EditDescription
-                                  ? t('label.edit')
-                                  : t('message.no-permission-for-action')
-                              }>
+                            {(permissions.EditAll ||
+                              permissions.EditDescription) && (
                               <Button
                                 className="m-l-xxs no-border p-0 text-primary h-auto"
-                                disabled={
-                                  !(
-                                    permissions.EditAll ||
-                                    permissions.EditDescription
-                                  )
-                                }
                                 icon={<EditIcon width={16} />}
                                 type="text"
                                 onClick={() => {
@@ -238,7 +218,7 @@ const MlModelFeaturesList = ({
                                   setEditDescription(true);
                                 }}
                               />
-                            </Tooltip>
+                            )}
                           </Space>
                         </Col>
                       </Row>
