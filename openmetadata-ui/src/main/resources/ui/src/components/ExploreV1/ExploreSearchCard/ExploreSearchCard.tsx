@@ -49,6 +49,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       handleSummaryPanelDisplay,
       showTags = true,
       openEntityInNewPage,
+      hideBreadcrumbs = false,
     },
     ref
   ) => {
@@ -112,14 +113,16 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const header = useMemo(() => {
       return (
         <Row gutter={[8, 8]}>
-          <Col span={24}>
-            <div className="d-flex gap-2 items-center">
-              {serviceIcon}
-              <div className="entity-breadcrumb" data-testid="category-name">
-                <TitleBreadcrumb titleLinks={breadcrumbs} />
+          {!hideBreadcrumbs && (
+            <Col span={24}>
+              <div className="d-flex gap-2 items-center">
+                {serviceIcon}
+                <div className="entity-breadcrumb" data-testid="category-name">
+                  <TitleBreadcrumb titleLinks={breadcrumbs} />
+                </div>
               </div>
-            </div>
-          </Col>
+            </Col>
+          )}
           <Col span={24}>
             {isTourOpen ? (
               <Button data-testid={source.fullyQualifiedName} type="link">
@@ -152,7 +155,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           </Col>
         </Row>
       );
-    }, [breadcrumbs, source]);
+    }, [breadcrumbs, source, hideBreadcrumbs]);
 
     return (
       <div

@@ -13,6 +13,12 @@
 
 @import url('./variables.less');
 
+// font family
+pre {
+  // remove important once we remove tailwind
+  font-family: 'Source Code Pro', sans-serif !important;
+}
+
 //font weight
 .font-thin {
   font-weight: 300;
@@ -67,6 +73,45 @@
 // font color
 .text-base-color {
   color: @text-color;
+}
+
+.text-primary {
+  color: @primary-color;
+  &:hover {
+    color: @primary-color;
+  }
+}
+.text-color-inherit {
+  color: inherit;
+}
+.error-text {
+  color: #ff4c3b;
+}
+.text-white {
+  color: @white;
+}
+.text-grey-muted {
+  color: @text-grey-muted;
+}
+.text-grey-body {
+  color: @text-color-secondary;
+}
+.text-link-color {
+  color: @link-color;
+}
+.text-gray-400 {
+  color: #9ca3af;
+}
+.text-body {
+  color: @text-color-secondary;
+}
+
+.text-success {
+  color: #008376;
+}
+
+.text-failure {
+  color: #cb2431;
 }
 
 a.ant-typography,

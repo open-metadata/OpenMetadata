@@ -32,7 +32,7 @@ import {
 } from 'rest/dashboardAPI';
 import { postThread } from 'rest/feedsAPI';
 import { getVersionPath } from '../../constants/constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -99,6 +99,24 @@ const DashboardDetailsPage = () => {
     );
 
     return patchDashboardDetails(dashboardId, jsonPatch);
+  };
+
+  const fetchUsageSummaryDetails = async (dashboardFQN: string) => {
+    setLoading(true);
+
+    try {
+      const res = await getDashboardByFqn(
+        dashboardFQN,
+        TabSpecificField.USAGE_SUMMARY
+      );
+
+      const { usageSummary } = res;
+      setDashboardDetails((dashboard) => ({ ...dashboard, usageSummary }));
+    } catch (error) {
+      // Error here
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchDashboardDetail = async (dashboardFQN: string) => {
@@ -275,6 +293,9 @@ const DashboardDetailsPage = () => {
   useEffect(() => {
     if (dashboardPermissions.ViewAll || dashboardPermissions.ViewBasic) {
       fetchDashboardDetail(dashboardFQN);
+    }
+    if (dashboardPermissions.ViewUsage) {
+      fetchUsageSummaryDetails(dashboardFQN);
     }
   }, [dashboardFQN, dashboardPermissions]);
 

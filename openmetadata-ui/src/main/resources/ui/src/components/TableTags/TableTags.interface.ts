@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { HierarchyTagsProps } from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
 import { MlFeature } from 'generated/entity/data/mlmodel';
 import { Task } from 'generated/entity/data/pipeline';
 import { Field } from 'generated/entity/data/topic';
@@ -24,13 +23,11 @@ import { EntityFieldThreads } from '../../interface/feed.interface';
 
 export interface TableTagsComponentProps<T> {
   tags: TagLabel[];
-  tagList: HierarchyTagsProps[];
   onUpdateTagsHandler?: (cell: T) => void;
   isReadOnly?: boolean;
   entityFqn?: string;
   record: T;
   index: number;
-  isTagLoading: boolean;
   hasTagEditAccess: boolean;
   handleTagSelection: (
     selectedTags: EntityTags[],
@@ -42,10 +39,7 @@ export interface TableTagsComponentProps<T> {
   entityFieldTasks?: EntityFieldThreads[];
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   entityFieldThreads?: EntityFieldThreads[];
-  tagFetchFailed: boolean;
   type: TagSource;
-  fetchTags: () => Promise<void>;
-  dataTestId: string;
   showInlineEditTagButton?: boolean;
 }
 

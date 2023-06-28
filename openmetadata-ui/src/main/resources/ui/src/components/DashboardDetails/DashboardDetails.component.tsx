@@ -26,11 +26,7 @@ import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAss
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import TableTags from 'components/TableTags/TableTags.component';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
-import {
-  GlossaryTermDetailsProps,
-  TagsDetailsProps,
-} from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { getDashboardDetailsPath } from 'constants/constants';
 import { compare } from 'fast-json-patch';
 import { TagSource } from 'generated/type/schema';
@@ -42,11 +38,6 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { restoreDashboard } from 'rest/dashboardAPI';
 import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
-import {
-  getGlossaryTermHierarchy,
-  getGlossaryTermsList,
-} from 'utils/GlossaryUtils';
-import { getAllTagsList, getTagsHierarchy } from 'utils/TagsUtils';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-links.svg';
 import { EntityField } from '../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -106,10 +97,6 @@ const DashboardDetails = ({
     EntityFieldThreadCount[]
   >([]);
 
-  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-  const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
-
   const [threadLink, setThreadLink] = useState<string>('');
 
   const [threadType, setThreadType] = useState<ThreadType>(
@@ -120,13 +107,6 @@ const DashboardDetails = ({
   );
   const [chartsPermissionsArray, setChartsPermissionsArray] = useState<
     Array<ChartsPermissions>
-  >([]);
-
-  const [glossaryTags, setGlossaryTags] = useState<GlossaryTermDetailsProps[]>(
-    []
-  );
-  const [classificationTags, setClassificationTags] = useState<
-    TagsDetailsProps[]
   >([]);
 
   const {
@@ -230,30 +210,6 @@ const DashboardDetails = ({
     },
     [dashboardDetails]
   );
-
-  const fetchGlossaryTags = async () => {
-    setIsGlossaryLoading(true);
-    try {
-      const glossaryTermList = await getGlossaryTermsList();
-      setGlossaryTags(glossaryTermList);
-    } catch {
-      setTagFetchFailed(true);
-    } finally {
-      setIsGlossaryLoading(false);
-    }
-  };
-
-  const fetchClassificationTags = async () => {
-    setIsTagLoading(true);
-    try {
-      const tags = await getAllTagsList();
-      setClassificationTags(tags);
-    } catch {
-      setTagFetchFailed(true);
-    } finally {
-      setIsTagLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (charts) {
@@ -555,16 +511,11 @@ const DashboardDetails = ({
         render: (tags: TagLabel[], record: ChartType, index: number) => {
           return (
             <TableTags<ChartType>
-              dataTestId="classification-tags"
-              fetchTags={fetchClassificationTags}
               handleTagSelection={handleChartTagSelection}
               hasTagEditAccess={hasEditTagAccess(record)}
               index={index}
               isReadOnly={deleted}
-              isTagLoading={isTagLoading}
               record={record}
-              tagFetchFailed={tagFetchFailed}
-              tagList={getTagsHierarchy(classificationTags)}
               tags={tags}
               type={TagSource.Classification}
             />
@@ -579,34 +530,18 @@ const DashboardDetails = ({
         width: 300,
         render: (tags: TagLabel[], record: ChartType, index: number) => (
           <TableTags<ChartType>
-            dataTestId="glossary-tags"
-            fetchTags={fetchGlossaryTags}
             handleTagSelection={handleChartTagSelection}
             hasTagEditAccess={hasEditTagAccess(record)}
             index={index}
             isReadOnly={deleted}
-            isTagLoading={isGlossaryLoading}
             record={record}
-            tagFetchFailed={tagFetchFailed}
-            tagList={getGlossaryTermHierarchy(glossaryTags)}
             tags={tags}
             type={TagSource.Glossary}
           />
         ),
       },
     ],
-    [
-      deleted,
-      isTagLoading,
-      isGlossaryLoading,
-      tagFetchFailed,
-      glossaryTags,
-      classificationTags,
-      renderDescription,
-      fetchGlossaryTags,
-      handleChartTagSelection,
-      hasEditTagAccess,
-    ]
+    [deleted, renderDescription, handleChartTagSelection, hasEditTagAccess]
   );
 
   const tabs = useMemo(
@@ -663,7 +598,7 @@ const DashboardDetails = ({
               data-testid="entity-right-panel"
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
-                <TagsContainerV1
+                <TagsContainerV2
                   entityFqn={dashboardDetails.fullyQualifiedName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.DASHBOARD}
@@ -678,7 +613,7 @@ const DashboardDetails = ({
                   onThreadLinkSelect={onThreadLinkSelect}
                 />
 
-                <TagsContainerV1
+                <TagsContainerV2
                   entityFqn={dashboardDetails.fullyQualifiedName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.DASHBOARD}

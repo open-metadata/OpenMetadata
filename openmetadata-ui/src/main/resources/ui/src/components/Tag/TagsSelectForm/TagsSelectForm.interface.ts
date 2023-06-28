@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,20 +11,20 @@
  *  limitations under the License.
  */
 
-.explore-page-container {
-  padding-right: 0px !important;
+import { SelectOption } from 'components/AsyncSelectList/AsyncSelectList.interface';
+import { Paging } from 'generated/type/paging';
 
-  .searched-data-container {
-    margin-top: 16px;
-    margin-right: 8px;
-  }
-
-  .ant-tabs-top > .ant-tabs-nav {
-    margin-bottom: 0px;
-    margin-right: 8px;
-  }
-
-  .error-placeholder-text {
-    font-size: 16px;
-  }
-}
+export type TagsSelectFormProps = {
+  placeholder: string;
+  defaultValue: string[];
+  onChange?: (value: string[]) => void;
+  onSubmit: (tags: string[]) => Promise<void>;
+  onCancel: () => void;
+  fetchApi: (
+    search: string,
+    page: number
+  ) => Promise<{
+    data: SelectOption[];
+    paging: Paging;
+  }>;
+};
