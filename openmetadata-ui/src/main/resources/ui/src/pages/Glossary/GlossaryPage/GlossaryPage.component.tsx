@@ -177,7 +177,7 @@ const GlossaryPage = () => {
   }, [isGlossaryActive, glossaryFqn, glossaries]);
 
   useEffect(() => {
-    if (viewAllGlossaryPermission) {
+    if (!isGlossaryActive && viewAllGlossaryPermission) {
       fetchGlossaryTermParent();
     }
   }, [glossaryFqn]);
