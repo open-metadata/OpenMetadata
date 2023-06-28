@@ -12,36 +12,36 @@
  */
 
 import { CarouselProps } from 'antd';
-import screenShot1 from '../assets/img/screenShot1.png';
-import screenShot2 from '../assets/img/screenShot2.png';
-import screenShot3 from '../assets/img/screenShot3.png';
-import screenShot4 from '../assets/img/screenShot4.png';
-import screenShot5 from '../assets/img/screenShot5.png';
+import collaborationImg from '../assets/img/screenShot1.png';
+import discoveryImg from '../assets/img/screenShot2.png';
+import dataQualityImg from '../assets/img/screenShot3.png';
+import governanceImg from '../assets/img/screenShot4.png';
+import insightImg from '../assets/img/screenShot5.png';
 
 export const LOGIN_SLIDE = [
   {
     title: 'discovery',
-    image: screenShot1,
+    image: discoveryImg,
     descriptionKey: 'enables-end-to-end-metadata-management',
   },
   {
     title: 'data-quality',
-    image: screenShot2,
+    image: dataQualityImg,
     descriptionKey: 'discover-your-data-and-unlock-the-value-of-data-assets',
   },
   {
     title: 'governance',
-    image: screenShot3,
+    image: governanceImg,
     descriptionKey: 'assess-data-reliability-with-data-profiler-lineage',
   },
   {
     title: 'data-insight',
-    image: screenShot4,
+    image: insightImg,
     descriptionKey: 'fosters-collaboration-among-producers-and-consumers',
   },
   {
     title: 'collaboration',
-    image: screenShot5,
+    image: collaborationImg,
     descriptionKey: 'deeply-understand-table-relations-message',
   },
 ];

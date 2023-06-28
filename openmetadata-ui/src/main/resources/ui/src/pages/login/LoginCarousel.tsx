@@ -20,7 +20,7 @@ import { LOGIN_SLIDE } from '../../constants/Login.constants';
 const LoginCarousel = () => {
   return (
     <div className="carousal-container" data-testid="carousel-container">
-      <Carousel dots>
+      <Carousel autoplay dots autoplaySpeed={1500} easing="ease-in-out">
         {LOGIN_SLIDE.map((data) => (
           <div
             className="text-center"
@@ -30,7 +30,7 @@ const LoginCarousel = () => {
               {t(`label.${data.title}`)}
             </Typography.Title>
             <p
-              className="text-center m-b-lg carousal-description text-grey-muted"
+              className="m-b-lg carousal-description text-grey-muted"
               data-testid="carousel-slide-description">
               {t(`message.${data.descriptionKey}`)}
             </p>
