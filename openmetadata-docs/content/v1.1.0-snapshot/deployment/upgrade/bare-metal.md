@@ -33,9 +33,9 @@ version to have all the improvements shipped in the CLI.
 - Create a virtual environment to install an upgraded `metadata` version to run the backup command:
    - `python -m venv venv`
    - `source venv/bin/activate`
-   - `pip install openmetadata-ingestion~=1.0.0`
+   - `pip install openmetadata-ingestion~=1.1.0`
 - Validate the installed `metadata` version with `python -m metadata --version`, which should tell us that we are
-    indeed at 1.0.0. Notice the `python -m metadata` vs. `metadata`.
+    indeed at 1.1.0. Notice the `python -m metadata` vs. `metadata`.
 - Run the backup using the updated `metadata` CLI:
     ```
     python -m metadata backup -u openmetadata_user -p openmetadata_password -H mysql -d openmetadata_db --port 3306
@@ -85,7 +85,7 @@ command.
 
 ```commandline
 
-cd openmetadata-1.0.0
+cd openmetadata-1.1.0
 
 ```
 
@@ -137,10 +137,10 @@ pip3 install --upgrade "openmetadata-ingestion[<connectorname>]"
 
 Go to Settings -> Elasticsearch
 
-{% image src="/images/v1.0.0/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Reindex" /%}
+{% image src="/images/v1.1.0/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Reindex" /%}
 
 Click on reindex all
 
 in the dialog box choose Recreate Indexes to All
 
-{% image src="/images/v1.0.0/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex" /%}
+{% image src="/images/v1.1.0/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex" /%}
