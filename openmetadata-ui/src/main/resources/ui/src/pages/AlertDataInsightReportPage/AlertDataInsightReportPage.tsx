@@ -95,13 +95,7 @@ const AlertDataInsightReportPage = () => {
   }
 
   if (!isAdminUser) {
-    return (
-      // <Row>
-      //   <Col span={24}>
-      <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-      //   </Col>
-      // </Row>
-    );
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
   if (isUndefined(dataInsightAlert)) {
