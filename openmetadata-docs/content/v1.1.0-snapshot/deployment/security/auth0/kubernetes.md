@@ -60,7 +60,7 @@ global:
     callbackUrl: "http://localhost:8585/callback"
 ```
 
-### Before 0.13.0
+### After 0.13.0
 
 ```yaml
 global:
