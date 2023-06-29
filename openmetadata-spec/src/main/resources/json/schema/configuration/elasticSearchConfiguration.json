@@ -70,13 +70,13 @@
       "$ref": "#/definitions/searchIndexMappingLanguage"
     },
     "searchType": {
-      "description": "This enum defines the search Type Elastic/Open Search.",
+      "description": "This enum defines the search Type elastic/open Search.",
       "type": "string",
       "enum": [
-        "ElasticSearch",
-        "OpenSearch"
+        "elasticSearch",
+        "openSearch"
       ],
-      "default": "ElasticSearch"
+      "default": "elasticSearch"
     }
   },
   "required": ["host", "port", "scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],
