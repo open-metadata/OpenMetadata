@@ -326,6 +326,7 @@ const ExplorePageV1: FunctionComponent = () => {
             includeDeleted: showDeleted,
             trackTotalHits: true,
             fetchSource: false,
+            filters: index === SearchIndex.TAG ? 'disabled:false' : '',
           })
         )
       ).then(

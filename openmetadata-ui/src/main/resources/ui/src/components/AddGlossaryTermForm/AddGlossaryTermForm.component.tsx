@@ -11,24 +11,22 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Form, FormProps, Input, Row, Space, Spin } from 'antd';
+import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
 import { UserTag } from 'components/common/UserTag/UserTag.component';
 import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
 import { PAGE_SIZE } from 'constants/constants';
 import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { SearchIndex } from 'enums/search.enum';
+import { Paging } from 'generated/type/paging';
 import { t } from 'i18next';
 import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
-import { debounce } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import { includes } from 'lodash';
+import React, { useEffect, useState } from 'react';
 import { searchData } from 'rest/miscAPI';
 import { formatSearchGlossaryTermResponse } from 'utils/APIUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { generateFormFields, getField } from 'utils/formUtils';
-import {
-  formatRelatedTermOptions,
-  getEntityReferenceFromGlossaryTerm,
-} from 'utils/GlossaryUtils';
+import { getEntityReferenceFromGlossaryTerm } from 'utils/GlossaryUtils';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getCurrentUserId } from '../../utils/CommonUtils';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
@@ -45,12 +43,10 @@ const AddGlossaryTermForm = ({
   formRef: form,
 }: AddGlossaryTermFormProps) => {
   const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
-  const [relatedTerms, setRelatedTerms] = useState<EntityReference[]>([]);
   const [owner, setOwner] = useState<EntityReference | undefined>();
-  const [isSuggestionLoading, setIsSuggestionLoading] =
-    useState<boolean>(false);
-  const [relatedTermsOptions, setRelatedTermsOptions] =
-    useState<EntityReference[]>();
+  const [relatedTermsOptions, setRelatedTermsOptions] = useState<
+    EntityReference[]
+  >([]);
   const selectedOwner = Form.useWatch<EntityReference | undefined>(
     'owner',
     form
@@ -58,31 +54,45 @@ const AddGlossaryTermForm = ({
   const reviewersList =
     Form.useWatch<EntityReference[]>('reviewers', form) ?? [];
 
-  const suggestionSearch = useCallback(
-    (searchText = '') => {
-      setIsSuggestionLoading(true);
-      searchData(searchText, 1, PAGE_SIZE, '', '', '', SearchIndex.GLOSSARY)
-        .then((res) => {
-          let termResult = formatSearchGlossaryTermResponse(res.data.hits.hits);
-          if (editMode && glossaryTerm) {
-            termResult = termResult.filter((item) => {
-              return (
-                item.fullyQualifiedName !== glossaryTerm.fullyQualifiedName
-              );
-            });
-          }
-          const results = termResult.map(getEntityReferenceFromGlossaryTerm);
-          setRelatedTermsOptions(results);
-        })
-        .catch(() => {
-          setRelatedTermsOptions([]);
-        })
-        .finally(() => setIsSuggestionLoading(false));
-    },
-    [glossaryTerm]
-  );
+  const fetchGlossaryTerms = async (
+    searchText = '',
+    page: number
+  ): Promise<{
+    data: {
+      label: string;
+      value: string;
+    }[];
+    paging: Paging;
+  }> => {
+    const res = await searchData(
+      searchText,
+      page,
+      PAGE_SIZE,
+      '',
+      '',
+      '',
+      SearchIndex.GLOSSARY
+    );
 
-  const debounceOnSearch = useCallback(debounce(suggestionSearch, 250), []);
+    let termResult = formatSearchGlossaryTermResponse(res.data.hits.hits);
+    if (editMode && glossaryTerm) {
+      termResult = termResult.filter((item) => {
+        return item.fullyQualifiedName !== glossaryTerm.fullyQualifiedName;
+      });
+    }
+    const results = termResult.map(getEntityReferenceFromGlossaryTerm);
+    setRelatedTermsOptions((prev) => [...prev, ...results]);
+
+    return {
+      data: results.map((item) => ({
+        label: item.fullyQualifiedName ?? '',
+        value: item.fullyQualifiedName ?? '',
+      })),
+      paging: {
+        total: res.data.hits.total.value,
+      },
+    };
+  };
 
   const handleSave: FormProps['onFinish'] = (formObj) => {
     const {
@@ -93,6 +103,7 @@ const AddGlossaryTermForm = ({
       tags = [],
       mutuallyExclusive = false,
       references = [],
+      relatedTerms,
     } = formObj;
 
     const selectedOwner = owner || {
@@ -100,16 +111,16 @@ const AddGlossaryTermForm = ({
       type: 'user',
     };
 
-    const updatedTerms = editMode
-      ? relatedTerms.map((term) => term.id || '')
-      : relatedTerms.map((term) => term.fullyQualifiedName || '');
-
     const data = {
       name: name.trim(),
       displayName: displayName?.trim(),
       description: description,
       reviewers: reviewer,
-      relatedTerms: updatedTerms.length > 0 ? updatedTerms : undefined,
+      relatedTerms: editMode
+        ? relatedTermsOptions
+            .filter((item) => includes(relatedTerms, item.fullyQualifiedName))
+            .map((term) => term.id)
+        : relatedTerms,
       references: references.length > 0 ? references : undefined,
       synonyms: synonyms,
       mutuallyExclusive,
@@ -145,7 +156,7 @@ const AddGlossaryTermForm = ({
         tags,
         references,
         mutuallyExclusive,
-        relatedTerms: relatedTerms?.map((r) => r.id || ''),
+        relatedTerms: relatedTerms?.map((r) => r.fullyQualifiedName || ''),
       });
 
       if (reviewers) {
@@ -157,8 +168,7 @@ const AddGlossaryTermForm = ({
       }
 
       if (relatedTerms && relatedTerms.length > 0) {
-        setRelatedTerms(relatedTerms);
-        setRelatedTermsOptions(relatedTerms);
+        setRelatedTermsOptions((prev) => [...prev, ...relatedTerms]);
       }
     }
   }, [editMode, glossaryTerm, glossaryReviewers, form]);
@@ -241,7 +251,7 @@ const AddGlossaryTermForm = ({
       required: false,
       label: t('label.related-term-plural'),
       id: 'root/relatedTerms',
-      type: FieldTypes.SELECT,
+      type: FieldTypes.ASYNC_SELECT_LIST,
       props: {
         className: 'glossary-select',
         'data-testid': 'related-terms',
@@ -249,11 +259,7 @@ const AddGlossaryTermForm = ({
         placeholder: t('label.add-entity', {
           entity: t('label.related-term-plural'),
         }),
-        notFoundContent: isSuggestionLoading ? <Spin size="small" /> : null,
-        filterOption: false,
-        options: formatRelatedTermOptions(relatedTermsOptions),
-        onFocus: suggestionSearch,
-        onSearch: debounceOnSearch,
+        fetchOptions: fetchGlossaryTerms,
       },
     },
     {
