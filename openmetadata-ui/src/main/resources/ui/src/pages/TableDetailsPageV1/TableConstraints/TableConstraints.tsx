@@ -49,7 +49,7 @@ const TableConstraints: FC<TableConstraintsProps> = ({ constraints }) => {
   return (
     <Space className="p-b-sm" direction="vertical">
       <Typography.Text className="right-panel-label">
-        {t('label.table-constraint')}
+        {t('label.table-constraints')}
       </Typography.Text>
       {supportedConstraints.map(
         ({ constraintType, columns, referredColumns }) => {
