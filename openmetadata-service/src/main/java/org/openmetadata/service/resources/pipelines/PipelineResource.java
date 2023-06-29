@@ -78,6 +78,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "pipelines")
 public class PipelineResource extends EntityResource<Pipeline, PipelineRepository> {
   public static final String COLLECTION_PATH = "v1/pipelines/";
+  static final String FIELDS = "owner,tasks,pipelineStatus,followers,tags,extension,scheduleInterval";
 
   @Override
   public Pipeline addHref(UriInfo uriInfo, Pipeline pipeline) {
@@ -94,6 +95,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("tasks,pipelineStatus", MetadataOperation.VIEW_BASIC);
     return listOf(MetadataOperation.EDIT_LINEAGE, MetadataOperation.EDIT_STATUS);
   }
 
@@ -104,8 +106,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public static class PipelineStatusList extends ResultList<PipelineStatus> {
     /* Required for serde */
   }
-
-  static final String FIELDS = "owner,tasks,pipelineStatus,followers,tags,extension";
 
   @GET
   @Valid
@@ -351,7 +351,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Pipeline addPipelineStatus(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
+      @Parameter(description = "Fully qualified name of the pipeline", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
       @Valid PipelineStatus pipelineStatus)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_STATUS);
@@ -541,10 +543,11 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return copy(new Pipeline(), create, user)
         .withService(getEntityReference(Entity.PIPELINE_SERVICE, create.getService()))
         .withTasks(create.getTasks())
-        .withPipelineUrl(create.getPipelineUrl())
+        .withSourceUrl(create.getSourceUrl())
         .withTags(create.getTags())
         .withConcurrency(create.getConcurrency())
         .withStartDate(create.getStartDate())
-        .withPipelineLocation(create.getPipelineLocation());
+        .withPipelineLocation(create.getPipelineLocation())
+        .withScheduleInterval(create.getScheduleInterval());
   }
 }

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FilterPatternEnum } from 'enums/filterPattern.enum';
 import { FormSubmitType } from '../../../enums/form.enum';
 import {
   Credentials,
@@ -33,9 +34,11 @@ export interface DBTFormCommonProps {
 export interface DBTConfigFormProps extends DBTFormCommonProps {
   formType: FormSubmitType;
   data: AddIngestionState;
-
   onChange: (newState: Partial<AddIngestionState>) => void;
   onFocus: (fieldName: string) => void;
+  getExcludeValue: (value: string[], type: FilterPatternEnum) => void;
+  getIncludeValue: (value: string[], type: FilterPatternEnum) => void;
+  handleShowFilter: (value: boolean, type: string) => void;
 }
 
 export type DbtConfigCloud = Pick<

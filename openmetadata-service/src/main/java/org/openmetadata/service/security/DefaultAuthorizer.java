@@ -21,7 +21,9 @@ import java.util.List;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ResourcePermission;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
@@ -86,15 +88,25 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   @Override
-  public boolean decryptSecret(SecurityContext securityContext) {
+  public void authorizeAdminOrBot(SecurityContext securityContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    return subjectContext.isAdmin() || subjectContext.isBot();
+    if (subjectContext.isAdmin() || subjectContext.isBot()) {
+      return;
+    }
+    throw new AuthorizationException(notAdmin(securityContext.getUserPrincipal().getName()));
   }
 
   @Override
   public boolean shouldMaskPasswords(SecurityContext securityContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     return !subjectContext.isBot();
+  }
+
+  /** In 1.2, evaluate policies here instead of just checking the subject */
+  @Override
+  public boolean authorizePII(SecurityContext securityContext, EntityReference owner) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    return subjectContext.isAdmin() || subjectContext.isBot() || subjectContext.isOwner(owner);
   }
 
   public static SubjectContext getSubjectContext(SecurityContext securityContext) {
@@ -105,7 +117,7 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   public static SubjectContext getSubjectContext(String userName) {
-    return SubjectCache.getInstance().getSubjectContext(userName);
+    return SubjectCache.getInstance().getSubjectContext(EntityInterfaceUtil.quoteName(userName));
   }
 
   private SubjectContext changeSubjectContext(String user, SubjectContext loggedInUser) {

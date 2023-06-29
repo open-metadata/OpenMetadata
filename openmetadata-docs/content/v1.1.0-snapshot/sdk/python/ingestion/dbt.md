@@ -52,7 +52,7 @@ Add the details of the AWS s3 bucket in the above config:
 The `get_dbt_details` method takes in the source config provided in the json and detects source type (gcp, s3, local or file server) based on the fields provided in the config.
 
 ```python
-from metadata.utils.dbt_config import get_dbt_details
+from metadata.ingestion.source.database.dbt.dbt_config import get_dbt_details
 
 dbt_details = get_dbt_details(self.source_config.dbtConfigSource)
 self.dbt_catalog = dbt_details[0] if dbt_details else None

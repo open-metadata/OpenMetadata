@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.topics;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,6 +25,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -60,6 +63,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/topics")
@@ -73,6 +77,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "topics")
 public class TopicResource extends EntityResource<Topic, TopicRepository> {
   public static final String COLLECTION_PATH = "v1/topics/";
+  static final String FIELDS = "owner,followers,tags,extension";
 
   @Override
   public Topic addHref(UriInfo uriInfo, Topic topic) {
@@ -86,11 +91,15 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     super(Topic.class, new TopicRepository(dao), authorizer);
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("sampleData", MetadataOperation.VIEW_SAMPLE_DATA);
+    return listOf(MetadataOperation.VIEW_SAMPLE_DATA, MetadataOperation.EDIT_SAMPLE_DATA);
+  }
+
   public static class TopicList extends ResultList<Topic> {
     /* Required for serde */
   }
-
-  static final String FIELDS = "owner,followers,tags,sampleData,extension";
 
   @GET
   @Operation(
@@ -336,6 +345,32 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Topic topic = repository.addSampleData(id, sampleData);
+    return addHref(uriInfo, topic);
+  }
+
+  @GET
+  @Path("/{id}/sampleData")
+  @Operation(
+      operationId = "getSampleData",
+      summary = "Get sample data",
+      description = "Get sample data from the topic.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully obtained the Topic",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class)))
+      })
+  public Topic getSampleData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
+    ResourceContext resourceContext = getResourceContextById(id);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+
+    Topic topic = repository.getSampleData(id, authorizePII);
     return addHref(uriInfo, topic);
   }
 

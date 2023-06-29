@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { Include } from 'generated/type/include';
 import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { ServicePageData } from 'pages/service';
 import { Pipeline, PipelineStatus } from '../generated/entity/data/pipeline';
@@ -41,7 +42,8 @@ export const getPipelineVersion = async (id: string, version: string) => {
 export const getPipelines = async (
   service: string,
   fields: string,
-  paging?: PagingWithoutTotal
+  paging?: PagingWithoutTotal,
+  include: Include = Include.NonDeleted
 ) => {
   const response = await APIClient.get<{
     data: ServicePageData[];
@@ -51,6 +53,7 @@ export const getPipelines = async (
       service,
       fields,
       ...paging,
+      include,
     },
   });
 

@@ -59,6 +59,7 @@ import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SubscriptionResourceDescriptor;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -72,8 +73,9 @@ import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.search.IndexUtil;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.ElasticSearchClientUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -93,6 +95,8 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   public static final String FIELDS = "owner,filteringRules";
   private final CollectionDAO daoCollection;
 
+  private SearchClient searchClient;
+
   @Override
   public EventSubscription addHref(UriInfo uriInfo, EventSubscription entity) {
     Entity.withHref(uriInfo, entity.getOwner());
@@ -102,6 +106,12 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   public EventSubscriptionResource(CollectionDAO dao, Authorizer authorizer) {
     super(EventSubscription.class, new EventSubscriptionRepository(dao), authorizer);
     this.daoCollection = dao;
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("filteringRules", MetadataOperation.VIEW_BASIC);
+    return null;
   }
 
   public static class EventSubscriptionList extends ResultList<EventSubscription> {
@@ -118,8 +128,8 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       repository.initSeedDataFromResources();
       EventsSubscriptionRegistry.initialize(listOrEmpty(EventSubscriptionResource.getDescriptors()));
       ActivityFeedAlertCache.initialize("ActivityFeedAlert", repository);
-      ReportsHandler.initialize(
-          daoCollection, ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration()));
+      searchClient = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), daoCollection);
+      ReportsHandler.initialize(daoCollection, searchClient);
       initializeEventSubscriptions();
     } catch (Exception ex) {
       // Starting application should not fail
@@ -136,12 +146,8 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       List<EventSubscription> eventSubList = JsonUtils.readObjects(listAllEventsSubscriptions, EventSubscription.class);
       eventSubList.forEach(
           (subscription) -> {
-            if (subscription.getAlertType() == CreateEventSubscription.AlertType.CHANGE_EVENT) {
-              if (subscription.getSubscriptionType() != ACTIVITY_FEED) {
-                repository.addSubscriptionPublisher(subscription);
-              }
-            } else if (subscription.getAlertType() == CreateEventSubscription.AlertType.DATA_INSIGHT_REPORT) {
-              ReportsHandler.getInstance().addDataReportConfig(subscription);
+            if (subscription.getSubscriptionType() != ACTIVITY_FEED) {
+              repository.addSubscriptionPublisher(subscription);
             }
           });
     } catch (Exception ex) {

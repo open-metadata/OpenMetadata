@@ -13,6 +13,7 @@
 import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
+  Badge,
   Button,
   Card,
   Col,
@@ -39,6 +40,7 @@ import {
   EventSubscription,
   ScheduleInfo,
 } from 'generated/events/eventSubscription';
+import { useAuth } from 'hooks/authHooks';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -51,6 +53,7 @@ import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 const AlertDataInsightReportPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
+  const { isAdminUser } = useAuth();
   const [isLoading, setLoading] = useState<boolean>(false);
   const [dataInsightAlert, setDataInsightAlert] = useState<EventSubscription>();
   const [isSendingReport, setIsSendingReport] = useState<boolean>(false);
@@ -91,6 +94,10 @@ const AlertDataInsightReportPage = () => {
     return <Loader />;
   }
 
+  if (!isAdminUser) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
   if (isUndefined(dataInsightAlert)) {
     return (
       <ErrorPlaceHolder
@@ -110,13 +117,26 @@ const AlertDataInsightReportPage = () => {
     );
   }
 
+  const isEnabled = Boolean(dataInsightAlert?.enabled);
+
   return (
     <Row align="middle" gutter={[16, 16]}>
       <Col span={24}>
         <Space className="w-full justify-between">
           <PageHeader
             data={{
-              header: t('label.data-insight-report'),
+              header: (
+                <Space align="center" size={4}>
+                  {t('label.data-insight-report')}{' '}
+                  {!isEnabled ? (
+                    <Badge
+                      className="badge-grey"
+                      count={t('label.disabled')}
+                      data-testid="disabled"
+                    />
+                  ) : null}
+                </Space>
+              ),
               subHeader: dataInsightAlert?.description ?? '',
             }}
           />

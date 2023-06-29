@@ -40,9 +40,11 @@ import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -51,6 +53,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
@@ -74,7 +77,7 @@ import org.openmetadata.service.util.ResultList;
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
 
-  static final String FIELDS = "owner,testSuite,testDefinition";
+  static final String FIELDS = "owner,testSuite,testDefinition,testSuites";
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {
@@ -87,6 +90,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
   public TestCaseResource(CollectionDAO dao, Authorizer authorizer) {
     super(TestCase.class, new TestCaseRepository(dao), authorizer);
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("testSuite,testDefinition", MetadataOperation.VIEW_BASIC);
+    return null;
   }
 
   public static class TestCaseList extends ResultList<TestCase> {
@@ -104,7 +113,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       description =
           "Get a list of test. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
-              + "entries in the list using `limit` and `before` or `after` query params.",
+              + "entries in the list using `limit` and `before` or `after` query params."
+              + "Use the `testSuite` field to get the executable Test Suite linked to this test case "
+              + "or use the `testSuites` field to list test suites (executable and logical) linked.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -169,8 +180,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     // Override OperationContext to change the entity to table and operation from VIEW_ALL to VIEW_TESTS
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     Fields fields = getFields(fieldsParam);
-    return super.listInternal(
-        uriInfo, securityContext, fields, filter, limitParam, before, after, operationContext, resourceContext);
+
+    ResultList<TestCase> tests =
+        super.listInternal(
+            uriInfo, securityContext, fields, filter, limitParam, before, after, operationContext, resourceContext);
+    return PIIMasker.getTestCases(tests, authorizer, securityContext);
   }
 
   @GET
@@ -633,14 +647,54 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext = new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().entity(testSuite).build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-
+    if (testSuite.getExecutable()) {
+      throw new IllegalArgumentException("You are trying to add test cases to an executable test suite.");
+    }
     List<UUID> testCaseIds = createLogicalTestCases.getTestCaseIds();
+
+    if (testCaseIds == null || testCaseIds.isEmpty()) {
+      return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, RestUtil.ENTITY_NO_CHANGE).toResponse();
+    }
 
     int existingTestCaseCount = repository.getTestCaseCount(testCaseIds);
     if (existingTestCaseCount != testCaseIds.size()) {
       throw new IllegalArgumentException("You are trying to add one or more test cases that do not exist.");
     }
     return repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
+  }
+
+  @GET
+  @Path("/executionSummary")
+  @Operation(
+      operationId = "getExecutionSummaryOfTestCases",
+      summary = "Get the execution summary of test cases",
+      description = "Get the execution summary of test cases.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Tests Execution Summary",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSummary.class)))
+      })
+  public TestSummary getTestsExecutionSummary(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "get summary for a specific test suite",
+              schema = @Schema(type = "String", format = "uuid"))
+          @QueryParam("testSuiteId")
+          UUID testSuiteId)
+      throws IOException {
+    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().build();
+    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    return repository.getTestSummary(testSuiteId);
+  }
+
+  @Override
+  public TestCase getByNameInternal(
+      UriInfo uriInfo, SecurityContext securityContext, String fqn, String fieldsParam, Include include)
+      throws IOException {
+    return super.getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(fqn), fieldsParam, include);
   }
 
   private TestCase getTestCase(CreateTestCase create, String user, EntityLink entityLink) throws IOException {

@@ -12,22 +12,31 @@
  */
 
 import classNames from 'classnames';
-import { Post, Thread } from 'generated/entity/feed/thread';
-import React, { FC } from 'react';
+import { Post, Thread, ThreadType } from 'generated/entity/feed/thread';
+import React, { FC, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getReplyText } from '../../../utils/FeedUtils';
 import ActivityFeedCardV1 from '../ActivityFeedCard/ActivityFeedCardV1';
+import TaskFeedCard from '../TaskFeedCard/TaskFeedCard.component';
 
 interface FeedPanelBodyPropV1 {
   feed: Thread;
   className?: string;
   showThread?: boolean;
+  isOpenInDrawer?: boolean;
+  onFeedClick?: (feed: Thread) => void;
+  isActive?: boolean;
+  hidePopover: boolean;
 }
 
 const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   feed,
   className,
   showThread = true,
+  isOpenInDrawer = false,
+  onFeedClick,
+  isActive,
+  hidePopover = false,
 }) => {
   const { t } = useTranslation();
   const mainFeed = {
@@ -39,19 +48,39 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   } as Post;
   const postLength = feed?.posts?.length ?? 0;
 
+  const handleFeedClick = useCallback(() => {
+    onFeedClick && onFeedClick(feed);
+  }, [onFeedClick, feed]);
+
   return (
     <div
       className={classNames(className, 'activity-feed-card-container', {
         'has-replies': showThread && postLength > 0,
       })}
-      data-testid="message-container">
-      <ActivityFeedCardV1
-        feed={feed}
-        isPost={false}
-        key={feed.id}
-        post={mainFeed}
-        showThread={showThread}
-      />
+      data-testid="message-container"
+      onClick={handleFeedClick}>
+      {feed.type === ThreadType.Task ? (
+        <TaskFeedCard
+          feed={feed}
+          hidePopover={hidePopover}
+          isActive={isActive}
+          isOpenInDrawer={isOpenInDrawer}
+          key={feed.id}
+          post={mainFeed}
+          showThread={showThread}
+        />
+      ) : (
+        <ActivityFeedCardV1
+          feed={feed}
+          hidePopover={hidePopover}
+          isActive={isActive}
+          isPost={false}
+          key={feed.id}
+          post={mainFeed}
+          showThread={showThread}
+        />
+      )}
+
       {showThread && postLength > 0 ? (
         <div className="feed-posts" data-testid="replies">
           <div className="d-flex">
@@ -70,6 +99,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
             <ActivityFeedCardV1
               isPost
               feed={feed}
+              hidePopover={hidePopover}
               key={reply.id}
               post={reply}
             />

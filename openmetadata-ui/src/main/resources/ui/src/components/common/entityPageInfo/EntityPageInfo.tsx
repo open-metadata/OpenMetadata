@@ -83,9 +83,8 @@ interface Props {
   tagsHandler?: (selectedTags?: Array<EntityTags>) => void;
   versionHandler?: () => void;
   updateOwner?: (value: Table['owner']) => void;
-  updateTier?: (value: string) => void;
+  updateTier?: (value?: string) => void;
   currentOwner?: Dashboard['owner'];
-  removeTier?: () => void;
   onRestoreEntity?: () => Promise<void>;
   isRecursiveDelete?: boolean;
   extraDropdownContent?: ItemType[];
@@ -122,7 +121,6 @@ const EntityPageInfo = ({
   canDelete,
   currentOwner,
   entityFieldTasks,
-  removeTier,
   onRestoreEntity,
   isRecursiveDelete = false,
   extraDropdownContent,
@@ -392,7 +390,7 @@ const EntityPageInfo = ({
             serviceName={serviceType ?? ''}
           />
         </Col>
-        <Col className="d-flex justify-end item-start" flex="320px">
+        <Col className="d-flex justify-end items-start" flex="320px">
           <Space align="center" id="version-and-follow-section">
             {!isUndefined(version) && (
               <VersionButton
@@ -479,7 +477,6 @@ const EntityPageInfo = ({
                   currentOwner={currentOwner}
                   data={info}
                   deleted={deleted}
-                  removeTier={removeTier}
                   tier={tier}
                   updateOwner={updateOwner}
                   updateTier={updateTier}

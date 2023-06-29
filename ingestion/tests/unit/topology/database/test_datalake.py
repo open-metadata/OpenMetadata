@@ -142,7 +142,7 @@ EXAMPLE_JSON_TEST_3 = """
 
 EXAMPLE_JSON_TEST_4 = """
 [
-    {"name":"John","age":16,"sex":"M"},
+    {"name":"John","age":16,"sex":"M","address":null},
     {
         "name":"John",
         "age":16,

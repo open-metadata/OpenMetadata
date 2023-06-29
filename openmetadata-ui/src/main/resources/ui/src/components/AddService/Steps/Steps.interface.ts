@@ -43,8 +43,7 @@ export type ConnectionDetailsProps = {
   account: string;
   brokers: string;
   schemaRegistry: string;
-  pipelineUrl: string;
-  dashboardUrl: string;
+  sourceUrl: string;
   env: string;
   apiVersion: string;
   server: string;

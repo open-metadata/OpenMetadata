@@ -106,6 +106,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   private PipelineServiceClient pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private final MetadataServiceRepository metadataServiceRepository;
+  static final String FIELDS = FIELD_OWNER;
 
   @Override
   public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline ingestionPipeline) {
@@ -178,8 +179,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public static class IngestionPipelineList extends ResultList<IngestionPipeline> {
     /* Required for serde */
   }
-
-  static final String FIELDS = FIELD_OWNER;
 
   @GET
   @Valid

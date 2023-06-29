@@ -68,10 +68,10 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
 
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
-      <Row className="m-md" gutter={[0, 16]}>
+      <Row className="m-md m-t-0" gutter={[0, 8]}>
         <Col span={24}>
           <Typography.Text
-            className="text-grey-muted"
+            className="summary-panel-section-title"
             data-testid="usage-header">
             {t('label.usage')}
           </Typography.Text>
@@ -83,7 +83,9 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
             <Typography.Text
               className="text-grey-body"
               data-testid="no-reference-available">
-              {t('message.no-reference-available')}
+              {t('label.no-entity', {
+                entity: t('label.usage'),
+              })}
             </Typography.Text>
           )}
         </Col>

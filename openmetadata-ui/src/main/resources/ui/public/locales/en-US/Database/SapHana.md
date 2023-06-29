@@ -44,7 +44,10 @@ $$
 
 $$section
 ### Host Port $(id="hostPort")
-Host and port of the SAP Hana service. This should be specified as a string in the format `hostname:port`. E.g., `localhost:39041`, `host.docker.internal:39041`.
+
+This parameter specifies the host and port of the SAP Hana instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:39041`.
+
+If your database service and Open Metadata are both running via docker locally, use `host.docker.internal:39041` as the value.
 $$
 
 $$section

@@ -20,10 +20,3 @@ export interface DataModelTableProps {
   currentPage: number;
   pagingHandler: (cursorValue: string | number, activePage?: number) => void;
 }
-
-export enum DATA_MODELS_DETAILS_TABS {
-  MODEL = 'model',
-  ACTIVITY = 'activityFeed',
-  SQL = 'sql',
-  LINEAGE = 'lineage',
-}

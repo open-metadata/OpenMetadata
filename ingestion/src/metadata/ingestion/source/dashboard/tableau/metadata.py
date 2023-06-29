@@ -14,10 +14,6 @@ Tableau source module
 import traceback
 from typing import Iterable, List, Optional, Set
 
-from metadata.generated.schema.api.classification.createClassification import (
-    CreateClassificationRequest,
-)
-from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -39,6 +35,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -56,10 +53,15 @@ from metadata.ingestion.source.dashboard.tableau.models import (
     UpstreamTable,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.utils import fqn, tag_utils
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
-from metadata.utils.helpers import clean_uri, get_standard_chart_type
+from metadata.utils.helpers import (
+    clean_uri,
+    get_database_name_for_lineage,
+    get_standard_chart_type,
+)
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
@@ -106,10 +108,9 @@ class TableauSource(DashboardServiceSource):
                     chart for chart in charts if chart.workbook.id == workbook.id
                 ]
 
-                for data_model in data_models.embeddedDatasources:
-                    for downstream_workbooks in data_model.downstreamWorkbooks or []:
-                        if downstream_workbooks.luid == workbook.id:
-                            workbook.dataModels.append(data_model)
+                for data_model in data_models or []:
+                    if data_model.workbook and data_model.workbook.luid == workbook.id:
+                        workbook.dataModels.append(data_model)
 
             # collect all the tags from charts and workbooks before yielding final entities
             if self.source_config.includeTags:
@@ -172,43 +173,29 @@ class TableauSource(DashboardServiceSource):
         """
         Fetch Dashboard Tags
         """
-        if self.source_config.includeTags:
-            for tag in self.tags:
-                try:
-                    classification = OMetaTagAndClassification(
-                        classification_request=CreateClassificationRequest(
-                            name=TABLEAU_TAG_CATEGORY,
-                            description="Tags associates with tableau entities",
-                        ),
-                        tag_request=CreateTagRequest(
-                            classification=TABLEAU_TAG_CATEGORY,
-                            name=tag.label,
-                            description="Tableau Tag",
-                        ),
-                    )
-                    yield classification
-                    logger.info(
-                        f"Classification {TABLEAU_TAG_CATEGORY}, Tag {tag} Ingested"
-                    )
-                except Exception as err:
-                    logger.debug(traceback.format_exc())
-                    logger.error(f"Error ingesting tag [{tag}]: {err}")
+        yield from get_ometa_tag_and_classification(
+            tags=[tag.label for tag in self.tags],
+            classification_name=TABLEAU_TAG_CATEGORY,
+            tag_description="Tableau Tag",
+            classification_desciption="Tags associated with tableau entities",
+            include_tags=self.source_config.includeTags,
+        )
 
     def yield_datamodel(
         self, dashboard_details: TableauDashboard
     ) -> Iterable[CreateDashboardDataModelRequest]:
         if self.source_config.includeDataModels:
             for data_model in dashboard_details.dataModels or []:
+                data_model_name = data_model.name if data_model.name else data_model.id
                 if filter_by_datamodel(
-                    self.source_config.dataModelFilterPattern, data_model.name
+                    self.source_config.dataModelFilterPattern, data_model_name
                 ):
-                    self.status.filter(data_model.name, "Data model filtered out.")
+                    self.status.filter(data_model_name, "Data model filtered out.")
                     continue
                 try:
                     data_model_request = CreateDashboardDataModelRequest(
                         name=data_model.id,
-                        displayName=data_model.name,
-                        description="",
+                        displayName=data_model_name,
                         service=self.context.dashboard_service.fullyQualifiedName.__root__,
                         dataModelType=DataModelType.TableauDataModel.value,
                         serviceType=DashboardServiceType.Tableau.value,
@@ -219,9 +206,9 @@ class TableauSource(DashboardServiceSource):
                         f"Data Model Scanned: {data_model_request.displayName}"
                     )
                 except Exception as exc:
-                    error_msg = f"Error yielding Data Model [{data_model.name}]: {exc}"
+                    error_msg = f"Error yielding Data Model [{data_model_name}]: {exc}"
                     self.status.failed(
-                        name=data_model.name,
+                        name=data_model_name,
                         error=error_msg,
                         stack_trace=traceback.format_exc(),
                     )
@@ -245,6 +232,7 @@ class TableauSource(DashboardServiceSource):
                 name=dashboard_details.id,
                 displayName=dashboard_details.name,
                 description=dashboard_details.description,
+                project=dashboard_details.project.name,
                 charts=[
                     fqn.build(
                         self.metadata,
@@ -263,13 +251,13 @@ class TableauSource(DashboardServiceSource):
                     )
                     for data_model in self.context.dataModels or []
                 ],
-                tags=tag_utils.get_tag_labels(
+                tags=get_tag_labels(
                     metadata=self.metadata,
                     tags=[tag.label for tag in dashboard_details.tags],
                     classification_name=TABLEAU_TAG_CATEGORY,
                     include_tags=self.source_config.includeTags,
                 ),
-                dashboardUrl=dashboard_details.webpageUrl,
+                sourceUrl=dashboard_details.webpageUrl,
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
             )
             yield dashboard_request
@@ -322,12 +310,15 @@ class TableauSource(DashboardServiceSource):
         Returns:
             Lineage request between Data Models and Database table
         """
+        db_service_entity = self.metadata.get_by_name(
+            entity=DatabaseService, fqn=db_service_name
+        )
         for datamodel in dashboard_details.dataModels or []:
             try:
                 data_model_entity = self._get_datamodel(datamodel=datamodel)
                 if data_model_entity:
                     for table in datamodel.upstreamTables or []:
-                        om_table = self._get_database_table(db_service_name, table)
+                        om_table = self._get_database_table(db_service_entity, table)
                         if om_table:
                             yield self._get_add_lineage_request(
                                 to_entity=data_model_entity, from_entity=om_table
@@ -367,8 +358,8 @@ class TableauSource(DashboardServiceSource):
                     name=chart.id,
                     displayName=chart.name,
                     chartType=get_standard_chart_type(chart.sheetType),
-                    chartUrl=chart_url,
-                    tags=tag_utils.get_tag_labels(
+                    sourceUrl=chart_url,
+                    tags=get_tag_labels(
                         metadata=self.metadata,
                         tags=[tag.label for tag in chart.tags],
                         classification_name=TABLEAU_TAG_CATEGORY,
@@ -391,37 +382,41 @@ class TableauSource(DashboardServiceSource):
             logger.debug(f"Error closing connection - {err}")
 
     def _get_database_table(
-        self, db_service_name: str, table: UpstreamTable
+        self, db_service_entity: DatabaseService, table: UpstreamTable
     ) -> Optional[Table]:
         """
         Get the table entity for lineage
         """
         # table.name in tableau can come as db.schema.table_name. Hence the logic to split it
-        database_schema_table = fqn.split_table_name(table.name)
-        database_name = (
-            table.database.name
-            if table.database and table.database.name
-            else database_schema_table.get("database")
-        )
-        schema_name = (
-            table.schema_
-            if table.schema_
-            else database_schema_table.get("database_schema")
-        )
-        table_name = database_schema_table.get("table")
-        table_fqn = fqn.build(
-            self.metadata,
-            entity_type=Table,
-            service_name=db_service_name,
-            schema_name=schema_name,
-            table_name=table_name,
-            database_name=database_name,
-        )
-        if table_fqn:
-            return self.metadata.get_by_name(
-                entity=Table,
-                fqn=table_fqn,
+        if table.name:
+            database_schema_table = fqn.split_table_name(table.name)
+            database_name = (
+                table.database.name
+                if table.database and table.database.name
+                else database_schema_table.get("database")
             )
+            database_name = get_database_name_for_lineage(
+                db_service_entity, database_name
+            )
+            schema_name = (
+                table.schema_
+                if table.schema_
+                else database_schema_table.get("database_schema")
+            )
+            table_name = database_schema_table.get("table")
+            table_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=db_service_entity.name.__root__,
+                schema_name=schema_name,
+                table_name=table_name,
+                database_name=database_name,
+            )
+            if table_fqn:
+                return self.metadata.get_by_name(
+                    entity=Table,
+                    fqn=table_fqn,
+                )
         return None
 
     def _get_datamodel(self, datamodel: DataSource) -> Optional[DashboardDataModel]:
@@ -457,7 +452,7 @@ class TableauSource(DashboardServiceSource):
                             column.remoteType if column.remoteType else None
                         ),
                         "name": column.id,
-                        "displayName": column.name,
+                        "displayName": column.name if column.name else column.id,
                     }
                     if column.remoteType and column.remoteType == DataType.ARRAY.value:
                         parsed_column["arrayDataType"] = DataType.UNKNOWN
@@ -481,7 +476,7 @@ class TableauSource(DashboardServiceSource):
                     "dataTypeDisplay": "Tableau Field",
                     "dataType": DataType.RECORD,
                     "name": field.id,
-                    "displayName": field.name,
+                    "displayName": field.name if field.name else field.id,
                     "description": field.description,
                 }
                 child_columns = self.get_child_columns(field=field)

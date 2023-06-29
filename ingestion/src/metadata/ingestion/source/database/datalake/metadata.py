@@ -53,15 +53,16 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.datalake.models import (
     DatalakeTableSchemaWrapper,
 )
 from metadata.utils import fqn
-from metadata.utils.constants import DEFAULT_DATABASE
+from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, DEFAULT_DATABASE
 from metadata.utils.datalake.datalake_utils import (
-    COMPLEX_COLUMN_SEPARATOR,
-    SUPPORTED_TYPES,
+    SupportedTypes,
+    clean_dataframe,
     fetch_dataframe,
 )
 from metadata.utils.filters import filter_by_schema, filter_by_table
@@ -390,7 +391,6 @@ class DatalakeSource(DatabaseServiceSource):
                 table_request = CreateTableRequest(
                     name=table_name,
                     tableType=table_type,
-                    description="",
                     columns=columns,
                     tableConstraints=table_constraints if table_constraints else None,
                     databaseSchema=self.context.database_schema.fullyQualifiedName,
@@ -450,12 +450,26 @@ class DatalakeSource(DatabaseServiceSource):
             col_hierarchy = tuple(column_name.split(COMPLEX_COLUMN_SEPARATOR))
             parent_col: Optional[Column] = None
             root_col: Optional[Column] = None
+
+            # here we are only processing col_hierarchy till [:-1]
+            # because all the column/node before -1 would be treated
+            # as a record and the column at -1 would be the column
+            # having a primitive datatype
+            # for example if col_hierarchy is ("image", "properties", "size")
+            # then image would be the record having child properties which is
+            # also a record  but the "size" will not be handled in this loop
+            # as it will be of primitive type for ex. int
             for index, col_name in enumerate(col_hierarchy[:-1]):
+
                 if complex_col_dict.get(col_hierarchy[: index + 1]):
+                    # if we have already seen this column fetch that column
                     parent_col = complex_col_dict.get(col_hierarchy[: index + 1])
                 else:
+                    # if we have not seen this column than create the column and
+                    # append to the parent if available
                     intermediate_column = Column(
-                        name=col_name[:64],
+                        name=truncate_column_name(col_name),
+                        displayName=col_name,
                         dataType=DataType.RECORD.value,
                         children=[],
                         dataTypeDisplay=DataType.RECORD.value,
@@ -466,7 +480,8 @@ class DatalakeSource(DatabaseServiceSource):
                     parent_col = intermediate_column
                     complex_col_dict[col_hierarchy[: index + 1]] = parent_col
 
-            # use String by default
+            # prepare the leaf node
+            # use String as default type
             data_type = DataType.STRING.value
             if hasattr(data_frame[column], "dtypes"):
                 data_type = DATALAKE_DATA_TYPES.get(
@@ -479,9 +494,10 @@ class DatalakeSource(DatabaseServiceSource):
             )
             parent_col.children.append(leaf_column)
 
-            if col_hierarchy[0] not in processed_complex_columns and root_col:
+            # finally add the top level node in the column list
+            if col_hierarchy[0] not in processed_complex_columns:
                 processed_complex_columns.add(col_hierarchy[0])
-                final_column_list.append(root_col)
+                final_column_list.append(root_col or parent_col)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception parsing column [{column}]: {exc}")
@@ -510,8 +526,10 @@ class DatalakeSource(DatabaseServiceSource):
         """
         method to process column details
         """
+        data_frame = clean_dataframe(data_frame)
         cols = []
         complex_col_dict = {}
+
         processed_complex_columns = set()
         if hasattr(data_frame, "columns"):
             df_columns = list(data_frame.columns)
@@ -536,7 +554,8 @@ class DatalakeSource(DatabaseServiceSource):
                         parsed_string = {
                             "dataTypeDisplay": data_type,
                             "dataType": data_type,
-                            "name": column[:64],
+                            "name": truncate_column_name(column),
+                            "displayName": column,
                         }
                         parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
                         cols.append(Column(**parsed_string))
@@ -560,7 +579,7 @@ class DatalakeSource(DatabaseServiceSource):
         return table
 
     def check_valid_file_type(self, key_name):
-        for supported_types in SUPPORTED_TYPES:
+        for supported_types in SupportedTypes:
             if key_name.endswith(supported_types.value):
                 return True
         return False

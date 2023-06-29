@@ -93,9 +93,9 @@
     "chartType": {
       "$ref": "#/definitions/chartType"
     },
-    "chartUrl": {
+    "sourceUrl": {
       "description": "Chart URL suffix from its service.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
@@ -126,7 +126,7 @@
       "$ref": "../services/dashboardService.json#/definitions/dashboardServiceType"
     },
     "usageSummary": {
-      "description": "Latest usage information for this database.",
+      "description": "Latest usage information for this chart.",
       "$ref": "../../type/usageDetails.json",
       "default": null
     },

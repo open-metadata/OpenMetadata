@@ -1,0 +1,61 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/database/mongoDBConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "MongoDBConnection",
+    "description": "MongoDB Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.database.MongoDBConnection",
+    "definitions": {
+        "mongoDBType": {
+            "description": "Service type.",
+            "type": "string",
+            "enum": [
+                "MongoDB"
+            ],
+            "default": "MongoDB"
+        },
+        "MongoConnectionString": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.services.connections.database.mongo.MongoConnectionString",
+            "title": "Mongo Connection String",
+            "properties": {
+                "connectionURI": {
+                    "title": "Connection URI",
+                    "description": "Connection URI to connect to your MongoDB cluster",
+                    "type": "string"
+                }
+            }
+        }
+
+    },
+    "properties": {
+        "type": {
+            "title": "Service Type",
+            "description": "Service Type",
+            "$ref": "#/definitions/mongoDBType",
+            "default": "MongoDB"
+        },
+        "connectionDetails": {
+            "title": "MongoDB Connection Details",
+            "description": "MongoDB Connection Details.",
+            "oneOf": [
+                {
+                    "$ref": "mongoDB/mongoDBValues.json"
+                },
+                {
+                    "$ref": "#/definitions/MongoConnectionString"
+                }
+            ]
+        },
+        "databaseName": {
+            "title": "Database Name",
+            "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+            "type": "string"
+        },
+        "supportsMetadataExtraction": {
+            "title": "Supports Metadata Extraction",
+            "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+        }
+    },
+    "additionalProperties": false
+}

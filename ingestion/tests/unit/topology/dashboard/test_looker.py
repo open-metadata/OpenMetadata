@@ -100,7 +100,9 @@ MOCK_DASHBOARD_ELEMENTS = [
         body_text="Some body text",
         note_text="Some note",
         type="line",
-        query=Query(model="model", view="view"),
+        query=Query(
+            model="model", view="view", share_url="https://my-looker.com/hello"
+        ),
     )
 ]
 
@@ -155,7 +157,7 @@ class LookerUnitTest(TestCase):
                 "config": {
                     "type": "Mysql",
                     "username": "openmetadata_user",
-                    "password": "openmetadata_password",
+                    "authType": {"password": "openmetadata_password"},
                     "hostPort": "localhost:3306",
                     "databaseSchema": "openmetadata_db",
                 }
@@ -275,7 +277,7 @@ class LookerUnitTest(TestCase):
                 displayName="title1",
                 description="description",
                 charts=[],
-                dashboardUrl="https://my-looker.com/dashboards/1",
+                sourceUrl="https://my-looker.com/dashboards/1",
                 service=self.looker.context.dashboard_service.fullyQualifiedName.__root__,
                 owner=None,
             )
@@ -365,7 +367,7 @@ class LookerUnitTest(TestCase):
             displayName="chart_title1",
             description="subtitle; Some body text; Some note",
             chartType=ChartType.Line,
-            chartUrl="https://my-looker.com/dashboard_elements/chart_id1",
+            sourceUrl="https://my-looker.com/hello",
             service=self.looker.context.dashboard_service.fullyQualifiedName.__root__,
         )
 

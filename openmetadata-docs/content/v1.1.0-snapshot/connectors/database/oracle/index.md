@@ -8,19 +8,19 @@ slug: /connectors/database/oracle
 {% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- | :--------------------------- |
+| :----------------- |:-----------------------------|
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | Partially via Views          |
+| Lineage            | {% icon iconName="check" /%} |
 | DBT                | {% icon iconName="check" /%} |
-| Supported Versions | --                           |
+| Supported Versions | 12c, 18c, 19c, and 21c       |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
-| Lineage      | Partially via Views          |
+| Lineage      | {% icon iconName="check" /%} |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |
 
@@ -34,6 +34,7 @@ Configure and schedule Oracle metadata and profiler workflows from the OpenMetad
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](/connectors/ingestion/workflows/profiler)
 - [Data Quality](/connectors/ingestion/workflows/data-quality)
+- [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
@@ -205,6 +206,7 @@ desired.
 - **Username**: Specify the User to connect to Oracle. It should have enough privileges to read all the metadata.
 - **Password**: Password to connect to Oracle.
 - **Host and Port**: Enter the fully qualified hostname and port number for your Oracle deployment in the Host and Port field.
+- **Database Name**: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name. It is recommended to use the database name same as the SID, This ensures accurate results and proper identification of tables during profiling, data quality checks and dbt workflow.
 - **Oracle Connection Type** : Select the Oracle Connection Type. The type can either be `Oracle Service Name` or `Database Schema`
   - **Oracle Service Name**: The Oracle Service name is the TNS alias that you give when you remotely connect to your database and this Service name is recorded in tnsnames.
   - **Database Schema**: The name of the database schema available in Oracle that you want to connect with.
@@ -215,7 +217,7 @@ desired.
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Oracle during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Oracle during the connection. These details must be added as Key-Value pairs. 
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
-  - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
+
 
 {% /extraContent %}
 
@@ -354,6 +356,16 @@ caption="Edit and Deploy the Ingestion Pipeline" /%}
 ## Related
 
 {% tilesContainer %}
+
+{% tile
+  title="Usage Workflow"
+  description="Learn more about how to configure the Usage Workflow to ingest Query information from the UI."
+  link="/connectors/ingestion/workflows/usage" /%}
+
+{% tile
+  title="Lineage Workflow"
+  description="Learn more about how to configure the Lineage from the UI."
+  link="/connectors/ingestion/workflows/lineage" /%}
 
 {% tile
   title="Profiler Workflow"

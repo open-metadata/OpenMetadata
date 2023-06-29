@@ -8,19 +8,19 @@ slug: /connectors/database/oracle/cli
 {% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- | :--------------------------- |
+| :----------------- |:-----------------------------|
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | Partially via Views          |
+| Lineage            | {% icon iconName="check" /%} |
 | DBT                | {% icon iconName="check" /%} |
-| Supported Versions | --                           |
+| Supported Versions | 12c, 18c, 19c, and 21c       |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
-| Lineage      | Partially via Views          |
+| Lineage      | {% icon iconName="check" /%} |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |
 
@@ -34,6 +34,7 @@ Configure and schedule Oracle metadata and profiler workflows from the OpenMetad
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
+- [Lineage](#lineage)
 - [dbt Integration](#dbt-integration)
 
 ## Requirements
@@ -127,6 +128,12 @@ This is a sample config for Oracle:
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=23 %}
+
+**databaseName**: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name. It is recommended to use the database name same as the SID, This ensures accurate results and proper identification of tables during profiling, data quality checks and dbt workflow.
+
+{% /codeInfo %}
+
 #### Source Configuration - Source Config
 
 {% codeInfo srNumber=7 %}
@@ -174,7 +181,6 @@ For a simple, local installation using our docker containers, this looks like:
 **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
 
 - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
-- In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
 
 {% /codeInfo %}
 
@@ -204,6 +210,9 @@ source:
       oracleConnectionType:
         oracleServiceName: serviceName
         # databaseSchema: schema
+```
+```yaml {% srNumber=23 %}
+      databaseName: custom_db_display_name
 ```
 ```yaml {% srNumber=5 %}
       # connectionOptions:
@@ -511,6 +520,10 @@ metadata profile -c <path-to-yaml>
 ```
 
 Note now instead of running `ingest`, we are using the `profile` command to select the Profiler workflow.
+
+## Lineage
+
+You can learn more about how to ingest lineage [here](/connectors/ingestion/workflows/lineage).
 
 ## dbt Integration
 

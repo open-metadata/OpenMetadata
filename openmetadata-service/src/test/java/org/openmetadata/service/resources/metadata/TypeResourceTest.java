@@ -17,7 +17,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
-import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -103,14 +102,6 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     tableEntity = addCustomPropertyAndCheck(tableEntity.getId(), fieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertCustomProperties(new ArrayList<>(List.of(fieldA)), tableEntity.getCustomProperties());
 
-    // Changing property type with PUT - old property deleted and new customer property of the same name added
-    fieldA.withPropertyType(STRING_TYPE.getEntityReference());
-    change = getChangeDescription(tableEntity.getVersion());
-    fieldDeleted(change, "customProperties", tableEntity.getCustomProperties());
-    fieldAdded(change, "customProperties", new ArrayList<>(List.of(fieldA)));
-    tableEntity = addCustomPropertyAndCheck(tableEntity.getId(), fieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    assertCustomProperties(new ArrayList<>(List.of(fieldA)), tableEntity.getCustomProperties());
-
     // Changing custom property description with PATCH
     fieldA.withDescription("updated2");
     String json = JsonUtils.pojoToJson(tableEntity);
@@ -118,20 +109,6 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     change = getChangeDescription(tableEntity.getVersion());
     fieldUpdated(change, EntityUtil.getCustomField(fieldA, "description"), "updated", "updated2");
     tableEntity = patchEntityAndCheck(tableEntity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-
-    // Changing property type with PATCH - old property deleted and new customer property of the same name added
-    CustomProperty fieldA1 =
-        new CustomProperty()
-            .withDescription(fieldA.getDescription())
-            .withPropertyType(INT_TYPE.getEntityReference())
-            .withName(fieldA.getName());
-    json = JsonUtils.pojoToJson(tableEntity);
-    tableEntity.setCustomProperties(new ArrayList<>(List.of(fieldA1)));
-    change = getChangeDescription(tableEntity.getVersion());
-    fieldDeleted(change, "customProperties", new ArrayList<>(List.of(fieldA)));
-    fieldAdded(change, "customProperties", new ArrayList<>(List.of(fieldA1)));
-    tableEntity = patchEntityAndCheck(tableEntity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    assertCustomProperties(new ArrayList<>(List.of(fieldA1)), tableEntity.getCustomProperties());
 
     // Add a second property with name intB with type integer
     EntityReference typeRef =
@@ -144,7 +121,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     tableEntity = addCustomPropertyAndCheck(tableEntity.getId(), fieldB, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     fieldB.setPropertyType(INT_TYPE.getEntityReference());
     assertEquals(2, tableEntity.getCustomProperties().size());
-    assertCustomProperties(new ArrayList<>(List.of(fieldA1, fieldB)), tableEntity.getCustomProperties());
+    assertCustomProperties(new ArrayList<>(List.of(fieldA, fieldB)), tableEntity.getCustomProperties());
   }
 
   @Test

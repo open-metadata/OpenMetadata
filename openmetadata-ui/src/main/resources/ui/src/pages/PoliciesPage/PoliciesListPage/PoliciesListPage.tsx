@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tooltip } from 'antd';
+import { Button, Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
@@ -30,7 +30,6 @@ import {
   PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../../constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { Operation, Policy } from '../../../generated/entity/policies/policy';
 import { Paging } from '../../../generated/type/paging';
@@ -116,17 +115,15 @@ const PoliciesListPage = () => {
       <Col span={24}>
         <Space className="w-full justify-between">
           <PageHeader data={PAGE_HEADERS.POLICIES} />
-          <Tooltip
-            placement="topLeft"
-            title={!addPolicyPermission && NO_PERMISSION_FOR_ACTION}>
+
+          {addPolicyPermission && (
             <Button
               data-testid="add-policy"
-              disabled={!addPolicyPermission}
               type="primary"
               onClick={handleAddPolicy}>
               {t('label.add-entity', { entity: t('label.policy') })}
             </Button>
-          </Tooltip>
+          )}
         </Space>
       </Col>
       <Col span={24}>

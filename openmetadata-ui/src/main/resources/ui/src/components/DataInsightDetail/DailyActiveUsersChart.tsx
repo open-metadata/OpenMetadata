@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Typography } from 'antd';
+import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
+import PageHeader from 'components/header/PageHeader.component';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -95,14 +96,12 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter, selectedDays }) => {
       id={DataInsightChartType.DailyActiveUsers}
       loading={isLoading}
       title={
-        <>
-          <Typography.Title level={5}>
-            {t('label.daily-active-users-on-the-platform')}
-          </Typography.Title>
-          <Typography.Text className="data-insight-label-text">
-            {t('message.active-users')}
-          </Typography.Text>
-        </>
+        <PageHeader
+          data={{
+            header: t('label.daily-active-users-on-the-platform'),
+            subHeader: t('message.active-users'),
+          }}
+        />
       }>
       {dailyActiveUsers.length ? (
         <Row gutter={DI_STRUCTURE.rowContainerGutter}>

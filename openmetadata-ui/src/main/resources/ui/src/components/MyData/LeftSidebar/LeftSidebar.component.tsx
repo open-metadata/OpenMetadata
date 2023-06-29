@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Menu, Row, Typography } from 'antd';
+import { Col, Menu, MenuProps, Row, Typography } from 'antd';
 import { ReactComponent as GovernIcon } from 'assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from 'assets/svg/classification.svg';
 import { ReactComponent as ExploreIcon } from 'assets/svg/globalsearch.svg';
@@ -40,150 +40,155 @@ const LeftSidebar = () => {
     return [];
   }, [location.pathname]);
 
-  return (
-    <div className="d-flex flex-col justify-between h-full">
-      <Row className="p-y-sm">
-        <Col
-          className={`left-panel-item p-md ${
-            location.pathname.startsWith('/explore') ? 'active' : ''
-          }`}
-          span={24}>
-          <NavLink
-            className="no-underline"
-            data-testid="appbar-item-explore"
-            to={{
-              pathname: '/explore/tables',
-            }}>
-            <div className=" d-flex flex-col items-center">
-              <ExploreIcon className="m-0" width={30} />
-              <Typography.Text className="left-panel-label">
-                {t('label.explore')}
-              </Typography.Text>
-            </div>
-          </NavLink>
-        </Col>
-        <Col
-          className={`left-panel-item p-md ${
-            location.pathname.includes(ROUTES.TEST_SUITES) ? 'active' : ''
-          }`}
-          span={24}>
-          <NavLink
-            className="no-underline"
-            data-testid="appbar-item-data-quality"
-            to={{
-              pathname: ROUTES.TEST_SUITES,
-            }}>
-            <div className="d-flex flex-col items-center">
-              <QualityIcon className="m-0" width={30} />
-              <Typography.Text className="left-panel-label">
-                {t('label.quality')}
-              </Typography.Text>
-            </div>
-          </NavLink>
-        </Col>
-        <Col
-          className={`left-panel-item p-md ${
-            location.pathname.includes(ROUTES.DATA_INSIGHT) ? 'active' : ''
-          }`}
-          span={24}>
-          <NavLink
-            className="no-underline"
-            data-testid="appbar-item-data-insight"
-            to={{
-              pathname: ROUTES.DATA_INSIGHT,
-            }}>
-            <div className="d-flex flex-col items-center">
-              <InsightsIcon className="m-0" width={30} />
-              <Typography.Text className="left-panel-label">
-                {t('label.insight-plural')}
-              </Typography.Text>
-            </div>
-          </NavLink>
-        </Col>
-        <Menu
-          className="left-panel-item"
-          mode="vertical"
-          selectedKeys={subMenuItemSelected}>
-          <Menu.SubMenu
-            data-testid="governance"
-            key="governance"
-            popupClassName="govern-menu"
-            title={
-              <>
-                <GovernIcon className="m-0" width={30} />
-                <Typography.Text className="left-panel-label">
-                  {t('label.govern')}
-                </Typography.Text>
-              </>
-            }>
-            <Menu.Item
-              className={`left-panel-item ${
-                location.pathname.startsWith('/glossary') ? 'active' : ''
-              }`}
-              key="glossary">
+  const items: MenuProps['items'] = useMemo(() => {
+    return [
+      {
+        key: 'governance',
+        popupClassName: 'govern-menu',
+        label: (
+          <div
+            className="d-flex flex-col items-center"
+            data-testid="governance">
+            <GovernIcon className="m-0" width={30} />
+            <Typography.Text className="left-panel-label">
+              {t('label.govern', { lng: 'en-US' })}
+            </Typography.Text>
+          </div>
+        ),
+        children: [
+          {
+            key: 'glossary',
+            label: (
               <NavLink
                 className="no-underline"
                 data-testid="appbar-item-glossary"
                 to={{
                   pathname: ROUTES.GLOSSARY,
                 }}>
-                <div className="d-flex flex-col items-center">
+                <span className="left-panel-item p-y-xss">
                   <GlossaryIcon className="m-0" width={30} />
                   <Typography.Text className="left-panel-label">
-                    {t('label.glossary')}
+                    {t('label.glossary', { lng: 'en-US' })}
                   </Typography.Text>
-                </div>
+                </span>
               </NavLink>
-            </Menu.Item>
-            <Menu.Item
-              className={`left-panel-item ${
-                location.pathname.startsWith('/tags') ? 'active' : ''
-              }`}
-              key="tags">
+            ),
+          },
+          {
+            key: 'tags',
+            label: (
               <NavLink
                 className="no-underline"
                 data-testid="appbar-item-tags"
                 to={{
                   pathname: ROUTES.TAGS,
                 }}>
-                <div className="left-panel-item d-flex flex-col items-center">
+                <div className="left-panel-item p-y-xss">
                   <ClassificationIcon className="m-0" width={30} />
                   <Typography.Text className="left-panel-label">
-                    {t('label.classification')}
+                    {t('label.classification', { lng: 'en-US' })}
                   </Typography.Text>
                 </div>
               </NavLink>
-            </Menu.Item>
-          </Menu.SubMenu>
-        </Menu>
+            ),
+          },
+        ],
+      },
+    ];
+  }, []);
+
+  return (
+    <div className="d-flex flex-col justify-between h-full">
+      <Row className="p-y-sm">
+        <Col span={24}>
+          <NavLink
+            className="no-underline"
+            data-testid="appbar-item-explore"
+            to={{
+              pathname: '/explore/tables',
+            }}>
+            <div
+              className={`left-panel-item  ${
+                location.pathname.startsWith('/explore') ? 'active' : ''
+              }`}>
+              <ExploreIcon className="m-0" width={30} />
+              <Typography.Text className="left-panel-label">
+                {t('label.explore', { lng: 'en-US' })}
+              </Typography.Text>
+            </div>
+          </NavLink>
+        </Col>
+        <Col span={24}>
+          <NavLink
+            className="no-underline"
+            data-testid="appbar-item-data-quality"
+            to={{
+              pathname: ROUTES.DATA_QUALITY,
+            }}>
+            <div
+              className={`left-panel-item  ${
+                location.pathname.includes(ROUTES.DATA_QUALITY) ? 'active' : ''
+              }`}>
+              <QualityIcon className="m-0" width={30} />
+              <Typography.Text className="left-panel-label">
+                {t('label.quality', { lng: 'en-US' })}
+              </Typography.Text>
+            </div>
+          </NavLink>
+        </Col>
+        <Col span={24}>
+          <NavLink
+            className="no-underline"
+            data-testid="appbar-item-data-insight"
+            to={{
+              pathname: ROUTES.DATA_INSIGHT,
+            }}>
+            <div
+              className={`left-panel-item  ${
+                location.pathname.includes(ROUTES.DATA_INSIGHT) ? 'active' : ''
+              }`}>
+              <InsightsIcon className="m-0" width={30} />
+              <Typography.Text className="left-panel-label">
+                {t('label.insight-plural', { lng: 'en-US' })}
+              </Typography.Text>
+            </div>
+          </NavLink>
+        </Col>
+        <Menu
+          className="left-panel-item"
+          items={items}
+          mode="vertical"
+          selectedKeys={subMenuItemSelected}
+          triggerSubMenuAction="click"
+        />
       </Row>
       <Row className="p-y-sm">
-        <Col
-          className={`left-panel-item p-md ${
-            location.pathname.startsWith('/settings') ? 'active' : ''
-          }`}
-          span={24}>
+        <Col span={24}>
           <NavLink
             className="no-underline"
             data-testid="appbar-item-settings"
             to={{
               pathname: ROUTES.SETTINGS,
             }}>
-            <div className="d-flex flex-col items-center">
+            <div
+              className={`left-panel-item  ${
+                location.pathname.startsWith('/settings') ? 'active' : ''
+              }`}>
               <SettingsIcon className="m-0" width={30} />
               <Typography.Text className="left-panel-label">
-                {t('label.setting-plural')}
+                {t('label.setting-plural', { lng: 'en-US' })}
               </Typography.Text>
             </div>
           </NavLink>
         </Col>
-        <Col className="left-panel-item p-md" span={24}>
+        <Col span={24}>
           <div
-            className="d-flex flex-col items-center cursor-pointer"
+            className="left-panel-item cursor-pointer"
+            data-testid="appbar-item-logout"
             onClick={() => onLogoutHandler()}>
             <LogoutIcon className="m-0" width={30} />
             <Typography.Text className="left-panel-label">
-              {t('label.logout')}
+              {t('label.logout', { lng: 'en-US' })}
             </Typography.Text>
           </div>
         </Col>

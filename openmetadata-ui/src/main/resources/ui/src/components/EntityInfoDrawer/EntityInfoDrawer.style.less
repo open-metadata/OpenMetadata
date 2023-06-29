@@ -21,22 +21,37 @@
   }
 }
 
+.entity-panel-container.ant-drawer-right {
+  .ant-drawer-content-wrapper {
+    box-shadow: none;
+    border: @global-border;
+  }
+}
+
 .entity-panel-container {
+  margin-top: 60px;
+  .ant-drawer-header {
+    border-bottom: none;
+    padding-bottom: 0 !important;
+  }
   .ant-drawer-body {
     padding: unset;
   }
 
   .entity-info-header-link {
-    &:hover {
-      color: @primary-color;
-      .ant-btn-link > span {
-        color: @primary-color;
-      }
-    }
-
     .ant-btn-link > span {
-      color: @text-color-secondary;
+      color: @primary-color;
     }
+  }
+
+  .ant-divider {
+    visibility: hidden;
+    margin: 12px 0;
+  }
+
+  .summary-panel-section-title {
+    font-size: 14px;
+    color: @text-grey-muted;
   }
 
   .summary-panel-statistics-count {

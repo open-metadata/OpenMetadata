@@ -14,6 +14,7 @@
 import { ProfilerDashboardTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
+import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getServiceDetailsPath,
@@ -432,13 +433,7 @@ export const getLogEntityPath = (
     return '';
   }
 
-  const testSuitePath = ROUTES.TEST_SUITES.split('/')[1];
-
-  if (path === testSuitePath) {
-    return ROUTES.TEST_SUITES;
-  }
-
-  if (logEntityType === testSuitePath) {
+  if (logEntityType === PipelineType.TestSuite) {
     return getTestSuitePath(path);
   }
 
@@ -530,6 +525,16 @@ export const getTestCaseDetailsPath = (testCaseFQN: string) => {
   let path = ROUTES.TEST_CASE_DETAILS;
 
   path = path.replace(PLACEHOLDER_ROUTE_TEST_CASE_FQN, testCaseFQN);
+
+  return path;
+};
+
+export const getDataQualityPagePath = (tab?: DataQualityPageTabs) => {
+  let path = tab ? ROUTES.DATA_QUALITY_WITH_TAB : ROUTES.DATA_QUALITY;
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
 
   return path;
 };

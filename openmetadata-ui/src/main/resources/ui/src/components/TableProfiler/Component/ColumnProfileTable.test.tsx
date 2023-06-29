@@ -20,6 +20,7 @@ import {
   screen,
 } from '@testing-library/react';
 import { ColumnsType } from 'antd/lib/table';
+import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Column, ColumnProfile } from '../../../generated/entity/data/table';
@@ -105,6 +106,7 @@ const mockProps: ColumnProfileTableProps = {
   columns: MOCK_TABLE.columns,
   columnTests: [],
   hasEditAccess: true,
+  dateRangeObject: {} as DateRangeObject,
 };
 
 describe('Test ColumnProfileTable component', () => {
