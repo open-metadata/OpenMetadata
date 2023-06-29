@@ -12,7 +12,8 @@
  */
 
 // common css utils file
-@import url('./variables.less');
+@import (reference) url('./variables.less');
+
 @trigger-btn-hover-bg: #efefef;
 
 // Global css
@@ -429,6 +430,8 @@ a[href].link-text-grey,
   }
 }
 .entity-tag-right-panel-container {
+  height: @entity-details-tab-height;
+  overflow-y: scroll;
   border-left: @global-border;
   margin-left: 20px;
   padding: 12px 8px 0 8px;
