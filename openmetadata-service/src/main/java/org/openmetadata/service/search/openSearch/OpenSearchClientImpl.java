@@ -793,7 +793,7 @@ public class OpenSearchClientImpl implements SearchClient {
             AggregationBuilders.terms("entityType").field("entityType").size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"))
         .aggregation(
-            AggregationBuilders.terms("owner.fullyQualifiedName.keyword")
+            AggregationBuilders.terms("owner.displayName.keyword")
                 .field("owner.displayName.keyword")
                 .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE));
 

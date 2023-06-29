@@ -789,7 +789,7 @@ public class ElasticSearchClientImpl implements SearchClient {
                 .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"))
         .aggregation(
-            AggregationBuilders.terms("owner.fullyQualifiedName.keyword")
+            AggregationBuilders.terms("owner.displayName.keyword")
                 .field("owner.displayName.keyword")
                 .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE));
 
