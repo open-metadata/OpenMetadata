@@ -22,9 +22,9 @@ It is advised to go through [openmetadata release notes](/deployment/upgrade#bre
 
 {% /note %}
 
-## Upgrade from 0.13 to 1.0.0
+## Upgrade from 1.0 to 1.1
 
-Your production deployment should go from stable version to stable version. This translated to moving from 0.13 to 1.0.0 to get the latest stable OpenMetadata release.
+Your production deployment should go from stable version to stable version. This translated to moving from 1.0 to 1.1 to get the latest stable OpenMetadata release.
 
 Let's go through the required steps:
 
@@ -35,10 +35,10 @@ Let's go through the required steps:
    ```
     python -m venv venv
     source venv/bin/activate
-    pip install openmetadata-ingestion~=1.0.0
+    pip install openmetadata-ingestion~=1.1.0
    ```
 - Validate the installed `metadata` version with `python -m metadata --version`, which should tell us that we are
-   indeed at 1.0.0. Notice the `python -m metadata` vs. `metadata`.
+   indeed at 1.1.0. Notice the `python -m metadata` vs. `metadata`.
 - Run the backup using the updated `metadata` CLI:
     ```
     python -m metadata backup -u openmetadata_user -p openmetadata_password -H mysql -d openmetadata_db --port 3306
@@ -57,7 +57,7 @@ Let's go through the required steps:
 ```
 docker compose down
 ```
-- Download the Docker Compose Service File from OpenMetadata Github Release page [here](https://github.com/open-metadata/OpenMetadata/releases/latest)
+- Download the Docker Compose Service File from OpenMetadata GitHub Release page [here](https://github.com/open-metadata/OpenMetadata/releases/latest)
 - Replace the existing Docker Compose Service File with the one downloaded from the above step
 
 {% note %}
@@ -75,13 +75,13 @@ docker compose -f docker-compose.yml up -d
 
 Go to Settings -> OpenMetadata -> Search
 
-{% image src="/images/v1.0.0/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Reindex" /%}
+{% image src="/images/v1.1.0/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Reindex" /%}
 
 Click on reindex all.
 
 In the dialog box choose Recreate Indexes to All.
 
-{% image src="/images/v1.0.0/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex" /%}
+{% image src="/images/v1.1.0/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex" /%}
 
 ---
 

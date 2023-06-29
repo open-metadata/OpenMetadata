@@ -149,3 +149,199 @@ CREATE TABLE IF NOT EXISTS SERVER_MIGRATION_SQL_LOGS (
     checksum VARCHAR(256) PRIMARY KEY,
     executedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Update test definition parameterValues
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.parameterDefinition'),
+	'$.parameterDefinition',
+	JSON_ARRAY(
+		JSON_OBJECT(
+			'name', 'minValueForMeanInCol',
+			'dataType', 'INT',
+			'required', false,
+			'description', 'Expected mean value for the column to be greater or equal than',
+			'displayName', 'Min'
+		),
+		JSON_OBJECT(
+			'name', 'maxValueForMeanInCol',
+			'dataType', 'INT',
+			'required', false,
+			'description', 'Expected mean value for the column to be lower or equal than',
+			'displayName', 'Max'
+		)
+	)	
+)
+WHERE name = 'columnValueMeanToBeBetween';
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.parameterDefinition'),
+	'$.parameterDefinition',
+	JSON_ARRAY(
+		JSON_OBJECT(
+	        'name', 'minValueForMedianInCol',
+	        'dataType', 'INT',
+	        'required', false,
+	        'description', 'Expected median value for the column to be greater or equal than',
+	        'displayName', 'Min'
+		),
+		JSON_OBJECT(
+        'name', 'maxValueForMedianInCol',
+        'dataType', 'INT',
+        'required', false,
+        'description', 'Expected median value for the column to be lower or equal than',
+        'displayName', 'Max'
+		)
+	)	
+)
+WHERE name = 'columnValueMedianToBeBetween';
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.parameterDefinition'),
+	'$.parameterDefinition',
+	JSON_ARRAY(
+		JSON_OBJECT(
+	        'name', 'minValueForStdDevInCol',
+	        'dataType', 'INT',
+	        'required', false,
+	        'description', 'Expected std. dev value for the column to be greater or equal than',
+	        'displayName', 'Min'
+		),
+		JSON_OBJECT(
+	        'name', 'maxValueForStdDevInCol',
+	        'dataType', 'INT',
+	        'required', false,
+	        'description', 'Expected std. dev value for the column to be lower or equal than',
+	        'displayName', 'Max'
+		)
+	)	
+)
+WHERE name = 'columnValueStdDevToBeBetween';
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.parameterDefinition'),
+	'$.parameterDefinition',
+	JSON_ARRAY(
+		JSON_OBJECT(
+	        'name', 'minLength',
+	        'dataType', 'INT',
+	        'required', false,
+	        'description', 'The {minLength} for the column value. If minLength is not included, maxLength is treated as upperBound and there will be no minimum value length',
+	        'displayName', 'Min'
+		),
+		JSON_OBJECT(
+	        'name', 'maxLength',
+	        'dataType', 'INT',
+	        'required', false,
+	        'description', 'The {maxLength} for the column value. if maxLength is not included, minLength is treated as lowerBound and there will be no maximum value length',
+	        'displayName', 'Max'
+		)
+	)	
+)
+WHERE name = 'columnValueLengthsToBeBetween';
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.parameterDefinition'),
+	'$.parameterDefinition',
+	JSON_ARRAY(
+		JSON_OBJECT(
+        'name', 'minValue',
+        'dataType', 'INT',
+        'required', false,
+        'description', 'The {minValue} value for the column entry. If minValue is not included, maxValue is treated as upperBound and there will be no minimum',
+        'displayName', 'Min'
+		),
+		JSON_OBJECT(
+        'name', 'maxValue',
+        'dataType', 'INT',
+        'required', false,
+        'description', 'The {maxValue} value for the column entry. if maxValue is not included, minValue is treated as lowerBound and there will be no maximum',
+        'displayName', 'Max'
+		)
+	)	
+)
+WHERE name = 'columnValuesToBeBetween';
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.parameterDefinition'),
+	'$.parameterDefinition',
+	JSON_ARRAY(
+		JSON_OBJECT(
+        'name', 'columnNames',
+        'dataType', 'STRING',
+        'required', true,
+        'description', 'Expected columns names of the table to match the ones in {Column Names} -- should be a coma separated string',
+        'displayName', 'Column Names'
+		),
+		JSON_OBJECT(
+        'name', 'ordered',
+        'dataType', 'BOOLEAN',
+        'required', false,
+        'description', 'Whether or not to considered the order of the list when performing the match check',
+        'displayName', 'Ordered'
+		)
+	)	
+)
+WHERE name = 'tableColumnToMatchSet';
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.parameterDefinition'),
+	'$.parameterDefinition',
+	JSON_ARRAY(
+		JSON_OBJECT(
+        'name', 'minValue',
+        'dataType', 'INT',
+        'required', false,
+        'description', 'Expected number of columns should be greater than or equal to {minValue}. If minValue is not included, maxValue is treated as upperBound and there will be no minimum',
+        'displayName', 'Min'
+		),
+		JSON_OBJECT(
+        'name', 'maxValue',
+        'dataType', 'INT',
+        'required', false,
+        'description', 'Expected number of columns should be less than or equal to {maxValue}. If maxValue is not included, minValue is treated as lowerBound and there will be no maximum',
+        'displayName', 'Max'
+		)
+	)	
+)
+WHERE name = 'tableRowCountToBeBetween';
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.parameterDefinition'),
+	'$.parameterDefinition',
+	JSON_ARRAY(
+		JSON_OBJECT(
+		     'name', 'sqlExpression',
+        	'displayName', 'SQL Expression',
+        	'description', 'SQL expression to run against the table',
+        	'dataType', 'STRING',
+        	'required', 'true'
+		),
+		JSON_OBJECT(
+			'name', 'strategy',
+	        'displayName', 'Strategy',
+    	    'description', 'Strategy to use to run the custom SQL query (i.e. `SELECT COUNT(<col>)` or `SELECT <col> (defaults to ROWS)',
+        	'dataType', 'ARRAY',
+	        'optionValues', JSON_ARRAY(
+        	    'ROWS',
+            	'COUNT'
+    	    ),
+	        'required', false
+		),
+		JSON_OBJECT(
+			'name', 'threshold',
+        	'displayName', 'Threshold',
+        	'description', 'Threshold to use to determine if the test passes or fails (defaults to 0).',
+        	'dataType', 'NUMBER',
+        	'required', false
+		)
+	)	
+)
+WHERE name = 'tableCustomSQLQuery';

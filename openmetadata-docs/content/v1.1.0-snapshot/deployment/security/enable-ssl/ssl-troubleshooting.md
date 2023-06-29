@@ -78,10 +78,11 @@ airflowConfiguration:
 We have to update in the `values.yaml` file with:
 
 ```yaml
-global:
-  airflow:
-    verifySsl: "validate"
-    sslCertificatePath: "/path/to/certificate/in/airflow"
+openmetadata:
+  config:
+    pipelineServiceClientConfig:
+      verifySsl: "validate"
+      sslCertificatePath: "/path/to/certificate/in/airflow"
 ```
 
 #### 2. Ignore the certification validation (not recommended for production):
@@ -108,9 +109,10 @@ airflowConfiguration:
 We have to update in the `values.yaml` file with:
 
 ```yaml
-global:
-  airflow:
-    verifySsl: "ignore"
+openmetadata:
+  config:
+    pipelineServiceClientConfig:
+      verifySsl: "ignore"
 ```
 
 Once one of the configurations is set, we can restart our OM server and deploy or redeploy without any issues.

@@ -1,18 +1,17 @@
 package org.openmetadata.service.resources.databases;
 
-import io.dropwizard.db.DataSourceFactory;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
+import lombok.Getter;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 public class DatasourceConfig {
   private static DatasourceConfig instance;
   private static volatile boolean initialized = false;
-  private static DataSourceFactory dataSourceFactory;
+  @Getter private static ConnectionType connectionType;
 
-  public static void initialize(OpenMetadataApplicationConfig config) {
+  public static void initialize(String driverClass) {
     if (!initialized) {
       instance = new DatasourceConfig();
-      dataSourceFactory = config.getDataSourceFactory();
+      connectionType = ConnectionType.from(driverClass);
       initialized = true;
     }
   }
@@ -22,16 +21,6 @@ public class DatasourceConfig {
   }
 
   public Boolean isMySQL() {
-    return ConnectionType.MYSQL.label.equals(dataSourceFactory.getDriverClass());
-  }
-
-  public ConnectionType getDatabaseConnectionType() {
-    if (ConnectionType.MYSQL.label.equals(dataSourceFactory.getDriverClass())) {
-      return ConnectionType.MYSQL;
-    } else {
-      // Currently Mysql and Postgres are only supported hence not added a label check for now for Postgres it's either
-      // this or that
-      return ConnectionType.POSTGRES;
-    }
+    return ConnectionType.MYSQL.equals(connectionType);
   }
 }
