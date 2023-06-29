@@ -220,6 +220,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
                 <>
                   <Button
                     className="p-0 tw-self-start flex-center w-7 h-7 d-flex-none hover-cell-icon"
+                    data-testid="edit-button"
                     type="text"
                     onClick={() => setEditFieldDescription(record)}>
                     <EditIcon
