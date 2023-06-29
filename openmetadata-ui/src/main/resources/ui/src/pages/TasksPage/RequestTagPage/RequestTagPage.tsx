@@ -224,17 +224,7 @@ const RequestTag = () => {
                   label={`${t('label.suggest-entity', {
                     entity: t('label.tag-plural'),
                   })}:`}
-                  name="suggestTags"
-                  rules={[
-                    {
-                      required: true,
-                      message: t('message.field-text-is-required', {
-                        fieldText: t('label.suggest-entity', {
-                          entity: t('label.tag-plural'),
-                        }),
-                      }),
-                    },
-                  ]}>
+                  name="suggestTags">
                   <TagSuggestion />
                 </Form.Item>
 
