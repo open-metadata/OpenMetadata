@@ -186,15 +186,16 @@ class TableauSource(DashboardServiceSource):
     ) -> Iterable[CreateDashboardDataModelRequest]:
         if self.source_config.includeDataModels:
             for data_model in dashboard_details.dataModels or []:
+                data_model_name = data_model.name if data_model.name else data_model.id
                 if filter_by_datamodel(
-                    self.source_config.dataModelFilterPattern, data_model.name
+                    self.source_config.dataModelFilterPattern, data_model_name
                 ):
-                    self.status.filter(data_model.name, "Data model filtered out.")
+                    self.status.filter(data_model_name, "Data model filtered out.")
                     continue
                 try:
                     data_model_request = CreateDashboardDataModelRequest(
                         name=data_model.id,
-                        displayName=data_model.name,
+                        displayName=data_model_name,
                         service=self.context.dashboard_service.fullyQualifiedName.__root__,
                         dataModelType=DataModelType.TableauDataModel.value,
                         serviceType=DashboardServiceType.Tableau.value,
@@ -205,9 +206,9 @@ class TableauSource(DashboardServiceSource):
                         f"Data Model Scanned: {data_model_request.displayName}"
                     )
                 except Exception as exc:
-                    error_msg = f"Error yielding Data Model [{data_model.name}]: {exc}"
+                    error_msg = f"Error yielding Data Model [{data_model_name}]: {exc}"
                     self.status.failed(
-                        name=data_model.name,
+                        name=data_model_name,
                         error=error_msg,
                         stack_trace=traceback.format_exc(),
                     )
@@ -387,32 +388,35 @@ class TableauSource(DashboardServiceSource):
         Get the table entity for lineage
         """
         # table.name in tableau can come as db.schema.table_name. Hence the logic to split it
-        database_schema_table = fqn.split_table_name(table.name)
-        database_name = (
-            table.database.name
-            if table.database and table.database.name
-            else database_schema_table.get("database")
-        )
-        database_name = get_database_name_for_lineage(db_service_entity, database_name)
-        schema_name = (
-            table.schema_
-            if table.schema_
-            else database_schema_table.get("database_schema")
-        )
-        table_name = database_schema_table.get("table")
-        table_fqn = fqn.build(
-            self.metadata,
-            entity_type=Table,
-            service_name=db_service_entity.name.__root__,
-            schema_name=schema_name,
-            table_name=table_name,
-            database_name=database_name,
-        )
-        if table_fqn:
-            return self.metadata.get_by_name(
-                entity=Table,
-                fqn=table_fqn,
+        if table.name:
+            database_schema_table = fqn.split_table_name(table.name)
+            database_name = (
+                table.database.name
+                if table.database and table.database.name
+                else database_schema_table.get("database")
             )
+            database_name = get_database_name_for_lineage(
+                db_service_entity, database_name
+            )
+            schema_name = (
+                table.schema_
+                if table.schema_
+                else database_schema_table.get("database_schema")
+            )
+            table_name = database_schema_table.get("table")
+            table_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=db_service_entity.name.__root__,
+                schema_name=schema_name,
+                table_name=table_name,
+                database_name=database_name,
+            )
+            if table_fqn:
+                return self.metadata.get_by_name(
+                    entity=Table,
+                    fqn=table_fqn,
+                )
         return None
 
     def _get_datamodel(self, datamodel: DataSource) -> Optional[DashboardDataModel]:
@@ -448,7 +452,7 @@ class TableauSource(DashboardServiceSource):
                             column.remoteType if column.remoteType else None
                         ),
                         "name": column.id,
-                        "displayName": column.name,
+                        "displayName": column.name if column.name else column.id,
                     }
                     if column.remoteType and column.remoteType == DataType.ARRAY.value:
                         parsed_column["arrayDataType"] = DataType.UNKNOWN
@@ -472,7 +476,7 @@ class TableauSource(DashboardServiceSource):
                     "dataTypeDisplay": "Tableau Field",
                     "dataType": DataType.RECORD,
                     "name": field.id,
-                    "displayName": field.name,
+                    "displayName": field.name if field.name else field.id,
                     "description": field.description,
                 }
                 child_columns = self.get_child_columns(field=field)
