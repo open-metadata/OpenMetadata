@@ -13,6 +13,7 @@ Local Reader
 """
 import traceback
 from pathlib import Path
+from typing import List, Optional
 
 from metadata.readers.base import Reader, ReadException
 from metadata.utils.constants import UTF_8
@@ -40,3 +41,12 @@ class LocalReader(Reader):
         except Exception as err:
             logger.debug(traceback.format_exc())
             raise ReadException(f"Error reading file [{path}] locally: {err}")
+
+    def _get_tree(self) -> Optional[List[str]]:
+        """
+        Return the tree with the files relative to the base path
+        """
+        return [
+            str(path).replace(str(self.base_path) + "/", "")
+            for path in Path(self.base_path).rglob("*")
+        ]
