@@ -3,7 +3,6 @@ package org.openmetadata.service.search;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
 import static org.openmetadata.service.Entity.QUERY;
-import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMPLEMENTED_METHOD;
 import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
 import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_EXTENSION;
@@ -133,7 +132,7 @@ public interface SearchClient {
         ElasticSearchIndexDefinition.getIndexMappingByEntityType(Entity.TEST_CASE);
     // creating a new test case will return a TestCase entity while bulk adding test cases will return
     // the logical test suite entity with the newly added test cases
-    EntityInterface entityInterface = getEntity(event);
+    EntityInterface entityInterface = (EntityInterface) event.getEntity();
     if (entityInterface instanceof TestCase) {
       processTestCase((TestCase) entityInterface, event, indexType);
     } else {
