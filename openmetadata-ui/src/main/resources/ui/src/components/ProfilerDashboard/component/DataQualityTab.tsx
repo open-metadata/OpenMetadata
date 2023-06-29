@@ -420,8 +420,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             emptyText: <FilterTablePlaceHolder />,
           }}
           pagination={false}
-          rowKey="name"
-          scroll={{ x: 1000 }}
+          rowKey="id"
           size="small"
         />
       </Col>

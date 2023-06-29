@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 import { EntityHistory } from '../../generated/type/entityHistory';
@@ -29,4 +30,5 @@ export interface MlModelVersionProp {
   deleted?: boolean;
   backHandler: () => void;
   versionHandler: (v: string) => void;
+  entityPermissions: OperationPermission;
 }

@@ -90,7 +90,6 @@
     "reactjs-localstorage": "^1.0.1",
     "recharts": "2.5.0",
     "showdown": "^2.1.0",
-    "slick-carousel": "^1.8.1",
     "socket.io-client": "^4.5.1",
     "stream-http": "^3.2.0",
     "styled-components": "^5.3.7",

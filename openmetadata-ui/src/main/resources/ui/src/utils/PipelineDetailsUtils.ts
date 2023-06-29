@@ -23,7 +23,7 @@ import { sortTagsCaseInsensitive } from './CommonUtils';
 import { Icons } from './SvgUtils';
 
 export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
-${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS},${TabSpecificField.EXTENSION}, ${TabSpecificField.SCHEDULE_INTERVAL}`;
+${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS},${TabSpecificField.EXTENSION}`;
 
 export const pipelineDetailsTabs = [
   {

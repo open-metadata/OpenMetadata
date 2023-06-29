@@ -33,6 +33,7 @@ import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { getVersionPathWithTab } from 'constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { MlFeature, Mlmodel } from 'generated/entity/data/mlmodel';
 import { TagSource } from 'generated/type/tagLabel';
@@ -71,6 +72,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   deleted = false,
   backHandler,
   versionHandler,
+  entityPermissions,
 }: MlModelVersionProp) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -380,7 +382,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
             name={t('label.custom-property-plural')}
           />
         ),
-        children: (
+        children: !entityPermissions.ViewAll ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <CustomPropertyTable
             isVersionView
             entityDetails={
@@ -392,8 +396,12 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
         ),
       },
     ],
-    [description, mlFeaturesData, currentVersionData]
+    [description, mlFeaturesData, currentVersionData, entityPermissions]
   );
+
+  if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
 
   return (
     <>

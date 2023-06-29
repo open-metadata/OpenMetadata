@@ -160,16 +160,17 @@ If using Kubernetes, make sure that you are passing the correct values to Helm C
 
 ```yaml
 # Custom OpenMetadata Values.yaml
-global:
-   airflow:
-    enabled: true
-    # endpoint url for airflow
-    host: http://openmetadata-dependencies-web.default.svc.cluster.local:8080
-    auth:
-      username: admin
-      password:
-        secretRef: airflow-secrets
-        secretKey: openmetadata-airflow-password
+openmetadata:
+   config:
+      pipelineServiceClientConfig:
+      enabled: true
+      # endpoint url for airflow
+      apiEndpoint: http://openmetadata-dependencies-web.default.svc.cluster.local:8080
+      auth:
+         username: admin
+         password:
+            secretRef: airflow-secrets
+            secretKey: openmetadata-airflow-password
 ```
 
 #### Validating the installation

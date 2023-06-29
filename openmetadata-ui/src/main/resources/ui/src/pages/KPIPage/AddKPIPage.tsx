@@ -193,7 +193,7 @@ const AddKPIPage = () => {
     const formData: CreateKpiRequest = {
       dataInsightChart: values.dataInsightChart,
       description,
-      name: kebabCase(`${values.displayName} ${selectedMetric?.name}`),
+      name: kebabCase(`${values.displayName ?? ''} ${selectedMetric?.name}`),
       displayName: values.displayName,
       startDate,
       endDate,

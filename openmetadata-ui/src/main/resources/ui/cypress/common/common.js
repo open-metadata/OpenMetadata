@@ -617,6 +617,7 @@ export const visitEntityDetailsPage = (
 
 // add new tag to entity and its table
 export const addNewTagToEntity = (entityObj, term) => {
+  const { name, fqn } = term;
   visitEntityDetailsPage(
     entityObj.term,
     entityObj.serviceName,
@@ -624,27 +625,27 @@ export const addNewTagToEntity = (entityObj, term) => {
   );
   cy.wait(500);
   cy.get(
-    '[data-testid="classification-tags-0"] [data-testid="entity-tags"] [data-testid="add-tag"]'
+    '[data-testid="Classification-tags-0"] [data-testid="entity-tags"] [data-testid="add-tag"]'
   )
     .eq(0)
     .should('be.visible')
     .scrollIntoView()
     .click();
 
-  cy.get('[data-testid="tag-selector"] input').should('be.visible').type(term);
+  cy.get('[data-testid="tag-selector"] input').should('be.visible').type(name);
 
-  cy.get(`[title="${term}"]`).should('be.visible').click();
+  cy.get(`[data-testid="tag-${fqn}"]`).should('be.visible').click();
   // to close popup
   cy.clickOutside();
 
-  cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(term);
+  cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(name);
   cy.get('[data-testid="saveAssociatedTag"]')
     .scrollIntoView()
     .should('be.visible')
     .click();
-  cy.get('[data-testid="classification-tags-0"] [data-testid="tags-container"]')
+  cy.get('[data-testid="Classification-tags-0"] [data-testid="tags-container"]')
     .scrollIntoView()
-    .contains(term)
+    .contains(name)
     .should('exist');
 };
 

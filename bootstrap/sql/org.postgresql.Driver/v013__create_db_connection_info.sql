@@ -112,3 +112,68 @@ CREATE TABLE IF NOT EXISTS SERVER_MIGRATION_SQL_LOGS (
     checksum VARCHAR(256) PRIMARY KEY,
     executedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Update test definition parameterValues
+update test_definition 
+set json = jsonb_set(
+        json,
+        '{parameterDefinition}',
+        '[{"name": "minValueForMeanInCol", "dataType": "INT", "required": false, "description": "Expected mean value for the column to be greater or equal than", "displayName": "Min", "optionValues": []}, {"name": "maxValueForMeanInCol", "dataType": "INT", "required": false, "description": "Expected mean value for the column to be lower or equal than", "displayName": "Max", "optionValues": []}]'
+        )
+where name = 'columnValueMeanToBeBetween';
+
+update test_definition 
+set json = jsonb_set(
+        json,
+        '{parameterDefinition}',
+        '[{"name": "minValueForMedianInCol", "dataType": "INT", "required": false, "description": "Expected median value for the column to be greater or equal than", "displayName": "Min", "optionValues": []}, {"name": "maxValueForMedianInCol", "dataType": "INT", "required": false, "description": "Expected median value for the column to be lower or equal than", "displayName": "Max", "optionValues": []}]'
+        )
+where name = 'columnValueMedianToBeBetween';
+
+update test_definition 
+set json = jsonb_set(
+        json,
+        '{parameterDefinition}',
+        '[{"name": "minValueForStdDevInCol", "dataType": "INT", "required": false, "description": "Expected std. dev value for the column to be greater or equal than", "displayName": "Min", "optionValues": []}, {"name": "maxValueForStdDevInCol", "dataType": "INT", "required": false, "description": "Expected std. dev value for the column to be lower or equal than", "displayName": "Max", "optionValues": []}]'
+        )
+where name = 'columnValueStdDevToBeBetween';
+
+update test_definition 
+set json = jsonb_set(
+        json,
+        '{parameterDefinition}',
+        '[{"name": "minLength", "dataType": "INT", "required": false, "description": "The {minLength} for the column value. If minLength is not included, maxLength is treated as upperBound and there will be no minimum value length", "displayName": "Min", "optionValues": []}, {"name": "maxLength", "dataType": "INT", "required": false, "description": "The {maxLength} for the column value. if maxLength is not included, minLength is treated as lowerBound and there will be no maximum value length", "displayName": "Max", "optionValues": []}]'
+        )
+where name = 'columnValueLengthsToBeBetween';
+
+update test_definition 
+set json = jsonb_set(
+        json,
+        '{parameterDefinition}',
+        '[{"name": "minValue", "dataType": "INT", "required": false, "description": "The {minValue} value for the column entry. If minValue is not included, maxValue is treated as upperBound and there will be no minimum", "displayName": "Min", "optionValues": []}, {"name": "maxValue", "dataType": "INT", "required": false, "description": "The {maxValue} value for the column entry. if maxValue is not included, minValue is treated as lowerBound and there will be no maximum", "displayName": "Max", "optionValues": []}]'
+        )
+where name = 'columnValuesToBeBetween';
+
+update test_definition 
+set json = jsonb_set(
+        json,
+        '{parameterDefinition}',
+        '[{"name": "columnNames", "dataType": "STRING", "required": true, "description": "Expected columns names of the table to match the ones in {Column Names} -- should be a coma separated string", "displayName": "Column Names", "optionValues": []}, {"name": "ordered", "dataType": "BOOLEAN", "required": false, "description": "Whether or not to considered the order of the list when performing the match check", "displayName": "Ordered", "optionValues": []}]'
+        )
+where name = 'tableColumnToMatchSet';
+
+update test_definition 
+set json = jsonb_set(
+        json,
+        '{parameterDefinition}',
+        '[{"name": "minValue", "dataType": "INT", "required": false, "description": "Expected number of columns should be greater than or equal to {minValue}. If minValue is not included, maxValue is treated as upperBound and there will be no minimum", "displayName": "Min", "optionValues": []}, {"name": "maxValue", "dataType": "INT", "required": false, "description": "Expected number of columns should be less than or equal to {maxValue}. If maxValue is not included, minValue is treated as lowerBound and there will be no maximum", "displayName": "Max", "optionValues": []}]'
+        )
+where name = 'tableRowCountToBeBetween';
+
+update test_definition 
+set json = jsonb_set(
+        json,
+        '{parameterDefinition}',
+        '[{"name":"sqlExpression","displayName":"SQL Expression","description":"SQL expression to run against the table","dataType":"STRING","required":"true"},{"name":"strategy","displayName":"Strategy","description":"Strategy to use to run the custom SQL query (i.e. `SELECT COUNT(<col>)` or `SELECT <col> (defaults to ROWS)","dataType":"ARRAY","optionValues":["ROWS","COUNT"],"required":false},{"name":"threshold","displayName":"Threshold","description":"Threshold to use to determine if the test passes or fails (defaults to 0).","dataType":"NUMBER","required":false}]'
+        )
+where name = 'tableCustomSQLQuery';

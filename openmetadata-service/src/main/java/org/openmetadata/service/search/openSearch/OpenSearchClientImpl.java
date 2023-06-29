@@ -68,6 +68,7 @@ import org.openmetadata.service.elasticsearch.indexes.ElasticSearchIndex;
 import org.openmetadata.service.elasticsearch.indexes.GlossaryTermIndex;
 import org.openmetadata.service.elasticsearch.indexes.TagIndex;
 import org.openmetadata.service.elasticsearch.indexes.TeamIndex;
+import org.openmetadata.service.elasticsearch.indexes.TestSuiteIndex;
 import org.openmetadata.service.elasticsearch.indexes.UserIndex;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
@@ -279,13 +280,14 @@ public class OpenSearchClientImpl implements SearchClient {
         searchSourceBuilder = buildQuerySearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
         break;
       case "test_case_search_index":
+      case "test_suite_search_index":
         searchSourceBuilder = buildTestCaseSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
         break;
     }
-    if (!nullOrEmpty(request.getQueryFilter())) {
+    if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
       try {
         XContentParser filterParser =
             XContentType.JSON
@@ -789,7 +791,11 @@ public class OpenSearchClientImpl implements SearchClient {
                 .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
         .aggregation(
             AggregationBuilders.terms("entityType").field("entityType").size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"));
+        .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"))
+        .aggregation(
+            AggregationBuilders.terms("owner.fullyQualifiedName.keyword")
+                .field("owner.displayName.keyword")
+                .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE));
 
     return builder;
   }
@@ -1147,39 +1153,54 @@ public class OpenSearchClientImpl implements SearchClient {
 
   @Override
   public void updateClassification(ChangeEvent event) throws IOException {
+    Classification classification = (Classification) event.getEntity();
+    String indexName = ElasticSearchIndexDefinition.ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName;
     if (event.getEventType() == ENTITY_DELETED) {
-      Classification classification = (Classification) event.getEntity();
       DeleteByQueryRequest request =
           new DeleteByQueryRequest(ElasticSearchIndexDefinition.ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName);
       String fqnMatch = classification.getName() + ".*";
       request.setQuery(new WildcardQueryBuilder("fullyQualifiedName", fqnMatch));
       deleteEntityFromElasticSearchByQuery(request);
+    } else if (event.getEventType() == ENTITY_UPDATED) {
+      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+      updateByQueryRequest.setQuery(new MatchQueryBuilder("tag.classification.id", classification.getId().toString()));
+      String scriptTxt = "ctx._source.disabled=true";
+      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
+      updateByQueryRequest.setScript(script);
+      updateElasticSearchByQuery(updateByQueryRequest);
     }
   }
 
   @Override
   public void updateTestSuite(ChangeEvent event) throws IOException {
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
-        ElasticSearchIndexDefinition.getIndexMappingByEntityType(Entity.TEST_CASE);
+        ElasticSearchIndexDefinition.getIndexMappingByEntityType(Entity.TEST_SUITE);
     TestSuite testSuite = (TestSuite) event.getEntity();
     UUID testSuiteId = testSuite.getId();
 
-    if (event.getEventType() == ENTITY_DELETED) {
-      if (Boolean.TRUE.equals(testSuite.getExecutable())) {
-        DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexType.indexName);
-        deleteByQueryRequest.setQuery(new MatchQueryBuilder("testSuites.id", testSuiteId.toString()));
-        deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
-      } else {
-        UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexType.indexName);
-        updateByQueryRequest.setQuery(new MatchQueryBuilder("testSuites.id", testSuiteId.toString()));
-        String scriptTxt =
-            "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].id == '%s') { ctx._source.testSuites.remove(i) }}";
-        Script script =
-            new Script(
-                ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, String.format(scriptTxt, testSuiteId), new HashMap<>());
-        updateByQueryRequest.setScript(script);
-        updateElasticSearchByQuery(updateByQueryRequest);
-      }
+    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, testSuiteId.toString());
+    TestSuiteIndex testSuiteIndex;
+
+    switch (event.getEventType()) {
+      case ENTITY_CREATED:
+        testSuiteIndex = new TestSuiteIndex((TestSuite) event.getEntity());
+        updateRequest.doc(JsonUtils.pojoToJson(testSuiteIndex.buildESDoc()), XContentType.JSON);
+        updateRequest.docAsUpsert(true);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_UPDATED:
+        testSuiteIndex = new TestSuiteIndex((TestSuite) event.getEntity());
+        scriptedUpsert(testSuiteIndex.buildESDoc(), updateRequest);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_SOFT_DELETED:
+        softDeleteEntity(updateRequest);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_DELETED:
+        DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, event.getEntityId().toString());
+        deleteEntityFromElasticSearch(deleteRequest);
+        break;
     }
   }
 

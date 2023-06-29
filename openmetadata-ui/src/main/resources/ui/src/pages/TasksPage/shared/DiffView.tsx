@@ -52,14 +52,8 @@ export const DiffView = ({
   });
 
   return (
-    <div
-      className={classNames(
-        'tw-w-full tw-max-h-52 tw-overflow-y-auto',
-        className
-      )}>
-      <pre
-        className="tw-whitespace-pre-wrap tw-mb-0"
-        data-testid="diff-container">
+    <div className={classNames('w-full h-max-56 overflow-y-auto', className)}>
+      <pre className="whitespace-pre-wrap m-b-0" data-testid="diff-container">
         {diffArr.length ? (
           elements
         ) : (

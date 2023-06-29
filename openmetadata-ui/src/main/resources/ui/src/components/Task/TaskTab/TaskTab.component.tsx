@@ -42,6 +42,7 @@ import {
   TaskAction,
   TaskActionMode,
 } from 'pages/TasksPage/TasksPage.interface';
+import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
@@ -165,6 +166,17 @@ export const TaskTab = ({
   };
 
   const onTaskResolve = () => {
+    if (isEmpty(taskDetails?.suggestion)) {
+      showErrorToast(
+        t('message.field-text-is-required', {
+          fieldText: isTaskTags
+            ? t('label.tag-plural')
+            : t('label.description'),
+        })
+      );
+
+      return;
+    }
     if (isTaskTags) {
       const tagsData = {
         newValue: taskDetails?.suggestion || '[]',
@@ -259,6 +271,63 @@ export const TaskTab = ({
     }
   };
 
+  const actionButtons = useMemo(() => {
+    if (isTaskClosed) {
+      return null;
+    }
+
+    return (
+      <Space
+        className="m-t-sm items-end w-full"
+        data-testid="task-cta-buttons"
+        size="small">
+        {isCreator && (
+          <Button onClick={onTaskReject}>{t('label.close')}</Button>
+        )}
+        {hasTaskUpdateAccess() ? (
+          <>
+            {['RequestDescription', 'RequestTag'].includes(
+              taskDetails?.type ?? ''
+            ) && isEmpty(taskDetails?.suggestion) ? (
+              <Button
+                type="primary"
+                onClick={() =>
+                  handleMenuItemClick({ key: TaskActionMode.EDIT } as MenuInfo)
+                }>
+                {t('label.add-suggestion')}
+              </Button>
+            ) : (
+              <Dropdown.Button
+                menu={{
+                  items: TASK_ACTION_LIST,
+                  selectable: true,
+                  selectedKeys: [taskAction.key],
+                  onClick: handleMenuItemClick,
+                }}
+                type="primary"
+                onClick={() =>
+                  taskAction.key === TaskActionMode.EDIT
+                    ? handleMenuItemClick({ key: taskAction.key } as MenuInfo)
+                    : onTaskResolve()
+                }>
+                {taskAction.label}
+              </Dropdown.Button>
+            )}
+          </>
+        ) : (
+          <></>
+        )}
+      </Space>
+    );
+  }, [
+    taskDetails,
+    onTaskResolve,
+    handleMenuItemClick,
+    taskAction,
+    isTaskClosed,
+    isCreator,
+  ]);
+
   return (
     <Row className="p-y-sm p-x-md" gutter={[0, 24]}>
       <Col className="d-flex items-center" span={24}>
@@ -336,40 +405,19 @@ export const TaskTab = ({
           <ActivityFeedEditor onSave={onSave} onTextChange={setComment} />
         )}
 
-        <Space
-          className="m-t-sm items-end w-full"
-          data-testid="task-cta-buttons"
-          size="small">
-          {(hasTaskUpdateAccess() || isCreator) && !isTaskClosed && (
-            <Button onClick={onTaskReject}>{t('label.close')}</Button>
-          )}
-
-          {!isTaskClosed && (
-            <>
-              <Dropdown.Button
-                menu={{
-                  items: TASK_ACTION_LIST,
-                  selectable: true,
-                  selectedKeys: [taskAction.key],
-                  onClick: handleMenuItemClick,
-                }}
-                type="primary"
-                onClick={onTaskResolve}>
-                {taskAction.label}
-              </Dropdown.Button>
-            </>
-          )}
-        </Space>
+        {actionButtons}
       </Col>
       <Modal
         maskClosable
         closable={false}
         closeIcon={null}
         open={showEditTaskModel}
-        title={`Edit task #${taskDetails?.id}`}
+        title={`${t('label.edit-entity', {
+          entity: t('label.task-lowercase'),
+        })} #${taskDetails?.id} ${task.message}`}
         width={768}
         onCancel={() => setShowEditTaskModel(false)}
-        onOk={() => form.submit()}>
+        onOk={form.submit}>
         <Form form={form} layout="vertical" onFinish={onEditAndSuggest}>
           {isTaskTags ? (
             <Form.Item
