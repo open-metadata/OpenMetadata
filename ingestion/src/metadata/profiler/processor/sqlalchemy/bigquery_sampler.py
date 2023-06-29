@@ -33,7 +33,7 @@ class BigQuerySampler(Sampler):
     ):
         super().__init__(**kwargs)
 
-    def get_sample_query(self) -> str:
+    def get_bq_sample_query(self) -> str:
         """get query for sample data"""
         if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
             return self.sample_stmt.format(
@@ -64,7 +64,7 @@ class BigQuerySampler(Sampler):
         if self._profile_sample_query:
             return self._fetch_sample_data_from_user_query()
 
-        bq_sample = self.session.execute(self.get_sample_query())
+        bq_sample = self.session.execute(self.get_bq_sample_query())
         return TableData(
             columns=list(self.sample_columns),
             rows=[list(row) for row in bq_sample],
