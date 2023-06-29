@@ -32,7 +32,7 @@ const BaseConfig = AntdConfig as BasicConfig;
 export const COMMON_DROPDOWN_ITEMS = [
   {
     label: t('label.owner'),
-    key: 'owner.displayName',
+    key: 'owner.displayName.keyword',
   },
   {
     label: t('label.tag'),
