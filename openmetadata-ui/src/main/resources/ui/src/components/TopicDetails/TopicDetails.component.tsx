@@ -19,6 +19,7 @@ import ActivityFeedProvider, {
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import QueryViewer from 'components/common/QueryViewer/QueryViewer.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
@@ -52,7 +53,6 @@ import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropert
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import SampleDataTopic from '../SampleDataTopic/SampleDataTopic';
-import SchemaEditor from '../schema-editor/SchemaEditor';
 import { TopicDetailsProps } from './TopicDetails.interface';
 import TopicSchemaFields from './TopicSchema/TopicSchema';
 
@@ -383,13 +383,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         label: <TabsLabel id={EntityTabs.CONFIG} name={t('label.config')} />,
         key: EntityTabs.CONFIG,
         children: (
-          <Card className="m-md w-auto" data-testid="config-details">
-            <SchemaEditor
-              className="custom-code-mirror-theme"
-              editorClass="table-query-editor"
-              value={JSON.stringify(topicDetails.topicConfig)}
-            />
-          </Card>
+          <QueryViewer
+            sqlQuery={JSON.stringify(topicDetails.topicConfig)}
+            title={t('label.config')}
+          />
         ),
       },
       {

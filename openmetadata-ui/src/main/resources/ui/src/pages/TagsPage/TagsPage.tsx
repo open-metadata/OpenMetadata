@@ -691,7 +691,7 @@ const TagsPage = () => {
                   {getEntityName(category)}
                   {category.disabled && (
                     <Badge
-                      className="m-l-xs badge-grey"
+                      className="m-l-xs badge-grey opacity-60"
                       count={t('label.disabled')}
                       data-testid="disabled"
                       size="small"
@@ -1040,9 +1040,7 @@ const TagsPage = () => {
       {isUpdateLoading ? (
         <Loader />
       ) : (
-        <div
-          className="full-height page-container"
-          data-testid="tags-container">
+        <div className="p-x-md" data-testid="tags-container">
           {currentClassification && (
             <Row data-testid="header" wrap={false}>
               <Col flex="auto">
@@ -1138,6 +1136,7 @@ const TagsPage = () => {
               <Switch
                 checked={currentClassification?.mutuallyExclusive}
                 data-testid="mutually-exclusive-classification-button"
+                disabled={isClassificationDisabled}
                 onChange={handleUpdateMutuallyExclusive}
               />
             </Space>

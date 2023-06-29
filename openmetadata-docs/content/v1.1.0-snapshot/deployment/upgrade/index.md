@@ -76,6 +76,66 @@ If you are upgrading production this is the recommended version to upgrade to.
 
 ## Breaking Changes for 1.1 Stable Release
 
+### OpenMetadata Helm Chart Values
+
+With `1.1.0` we are moving away from `global.*` helm values under openmetadata helm charts to `openmetadata.config.*`. This change is introduce as helm reserves global chart values across all the helm charts. This conflicted the use of OpenMetadata helm charts along with other helm charts for organizations using common helm values yaml files.
+
+For example, with `1.0.X` Application version Releases, helm values would look like below -
+```yaml
+global:
+  ...
+  authorizer:
+    className: "org.openmetadata.service.security.DefaultAuthorizer"
+    containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
+    initialAdmins:
+      - "user1"
+    botPrincipals:
+      - "<service_application_client_id>"
+    principalDomain: "open-metadata.org"
+  authentication:
+    provider: "google"
+    publicKeys:
+      - "https://www.googleapis.com/oauth2/v3/certs"
+      - "http://openmetadata:8585/api/v1/system/config/jwks"
+    authority: "https://accounts.google.com"
+    clientId: "{client id}"
+    callbackUrl: "http://localhost:8585/callback"
+  ...
+```
+
+With OpenMetadata Application version `1.1.0` and above, the above config will need to be updated as
+```yaml
+openmetadata:
+  config:
+    authorizer:
+      className: "org.openmetadata.service.security.DefaultAuthorizer"
+      containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
+      initialAdmins:
+        - "user1"
+        - "user2"
+      botPrincipals:
+        - "<service_application_client_id>"
+      principalDomain: "open-metadata.org"
+    authentication:
+      provider: "google"
+      publicKeys:
+        - "https://www.googleapis.com/oauth2/v3/certs"
+        - "http://openmetadata:8585/api/v1/system/config/jwks"
+      authority: "https://accounts.google.com"
+      clientId: "{client id}"
+      callbackUrl: "http://localhost:8585/callback"
+```
+
+A quick and easy way to update the config is to use [yq](https://mikefarah.gitbook.io/yq/) utility to manipulate YAML files.
+
+```bash
+yq -i -e '{"openmetadata": {"config": .global}}' openmetadata.values.yml
+```
+
+The above command will update `global.*` with `openmetadata.config.*` yaml config. Please note, the above command is only recommended for users with custom helm values file explicit for OpenMetadata Helm Charts.
+
+For more information, visit the official helm docs for [global chart values](https://helm.sh/docs/chart_template_guide/subcharts_and_globals/#global-chart-values).
+
 ### Pipeline Service Client Configuration
 
 If reusing an old YAML configuration file, make sure to add the following inside `pipelineServiceClientConfiguration`:
@@ -224,3 +284,5 @@ impacts BigQuery, Datalake and any other source where you are directly passing t
 - Glue now supports custom database names via `databaseName`.
 - Snowflake supports the `clientSessionKeepAlive` parameter to keep the session open for long processes.
 - Kafka and Redpanda now have the `saslMechanism` based on enum values `["PLAIN", "GSSAPI", "SCRAM-SHA-256", "SCRAM-SHA-512", "OAUTHBEARER"]`.
+- OpenMetadata Server Docker Image now installs the OpenMetadata Libraries under `/opt/openmetadata` directory
+- Bumped up ElasticSearch version for Docker and Kubernetes OpenMetadata Dependencies Helm Chart to `7.16.3`
