@@ -133,7 +133,6 @@ import org.openmetadata.service.elasticsearch.indexes.ElasticSearchIndex;
 import org.openmetadata.service.elasticsearch.indexes.GlossaryTermIndex;
 import org.openmetadata.service.elasticsearch.indexes.TagIndex;
 import org.openmetadata.service.elasticsearch.indexes.TeamIndex;
-import org.openmetadata.service.elasticsearch.indexes.TestSuiteIndex;
 import org.openmetadata.service.elasticsearch.indexes.UserIndex;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
@@ -280,7 +279,6 @@ public class ElasticSearchClientImpl implements SearchClient {
         searchSourceBuilder = buildQuerySearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
         break;
       case "test_case_search_index":
-      case "test_suite_search_index":
         searchSourceBuilder = buildTestCaseSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
       default:
@@ -1180,33 +1178,26 @@ public class ElasticSearchClientImpl implements SearchClient {
   @Override
   public void updateTestSuite(ChangeEvent event) throws IOException {
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
-        ElasticSearchIndexDefinition.getIndexMappingByEntityType(Entity.TEST_SUITE);
+        ElasticSearchIndexDefinition.getIndexMappingByEntityType(Entity.TEST_CASE);
     TestSuite testSuite = (TestSuite) event.getEntity();
     UUID testSuiteId = testSuite.getId();
 
-    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, testSuiteId.toString());
-    TestSuiteIndex testSuiteIndex;
-
-    switch (event.getEventType()) {
-      case ENTITY_CREATED:
-        testSuiteIndex = new TestSuiteIndex((TestSuite) event.getEntity());
-        updateRequest.doc(JsonUtils.pojoToJson(testSuiteIndex.buildESDoc()), XContentType.JSON);
-        updateRequest.docAsUpsert(true);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_UPDATED:
-        testSuiteIndex = new TestSuiteIndex((TestSuite) event.getEntity());
-        scriptedUpsert(testSuiteIndex.buildESDoc(), updateRequest);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_SOFT_DELETED:
-        softDeleteEntity(updateRequest);
-        updateElasticSearch(updateRequest);
-        break;
-      case ENTITY_DELETED:
-        DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, event.getEntityId().toString());
-        deleteEntityFromElasticSearch(deleteRequest);
-        break;
+    if (event.getEventType() == ENTITY_DELETED) {
+      if (testSuite.getExecutable()) {
+        DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexType.indexName);
+        deleteByQueryRequest.setQuery(new MatchQueryBuilder("testSuites.id", testSuiteId.toString()));
+        deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
+      } else {
+        UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexType.indexName);
+        updateByQueryRequest.setQuery(new MatchQueryBuilder("testSuites.id", testSuiteId.toString()));
+        String scriptTxt =
+            "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].id == '%s') { ctx._source.testSuites.remove(i) }}";
+        Script script =
+            new Script(
+                ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, String.format(scriptTxt, testSuiteId), new HashMap<>());
+        updateByQueryRequest.setScript(script);
+        updateElasticSearchByQuery(updateByQueryRequest);
+      }
     }
   }
 

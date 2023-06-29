@@ -13,7 +13,6 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
-import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.elasticsearch.indexes.ContainerIndex;
 import org.openmetadata.service.elasticsearch.indexes.DashboardIndex;
@@ -25,7 +24,6 @@ import org.openmetadata.service.elasticsearch.indexes.QueryIndex;
 import org.openmetadata.service.elasticsearch.indexes.TableIndex;
 import org.openmetadata.service.elasticsearch.indexes.TagIndex;
 import org.openmetadata.service.elasticsearch.indexes.TeamIndex;
-import org.openmetadata.service.elasticsearch.indexes.TestSuiteIndex;
 import org.openmetadata.service.elasticsearch.indexes.TopicIndex;
 import org.openmetadata.service.elasticsearch.indexes.UserIndex;
 
@@ -58,9 +56,8 @@ public class ElasticSearchIndexFactory {
       case Entity.CONTAINER:
         return new ContainerIndex((Container) entity);
       case Entity.TEST_CASE:
-        return new TestCaseIndex((TestCase) entity);
       case Entity.TEST_SUITE:
-        return new TestSuiteIndex((TestSuite) entity);
+        return new TestCaseIndex((TestCase) entity);
       default:
         LOG.warn("Ignoring Entity Type {}", entityType);
     }
