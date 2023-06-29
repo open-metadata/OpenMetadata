@@ -31,6 +31,7 @@ import { getMlModelByFQN } from 'rest/mlModelAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTopicByFqn } from 'rest/topicsAPI';
+import { getTableFQNFromColumnFQN } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import AppState from '../../../AppState';
 import { EntityType } from '../../../enums/entity.enum';
@@ -59,6 +60,13 @@ const PopoverContent: React.FC<{
     switch (entityType) {
       case EntityType.TABLE:
         promise = getTableDetailsByFQN(entityFQN, fields);
+
+        break;
+      case EntityType.TEST_CASE:
+        promise = getTableDetailsByFQN(
+          getTableFQNFromColumnFQN(entityFQN),
+          fields
+        );
 
         break;
       case EntityType.TOPIC:

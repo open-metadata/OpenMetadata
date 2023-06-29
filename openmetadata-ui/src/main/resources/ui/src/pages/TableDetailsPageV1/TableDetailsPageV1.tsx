@@ -254,6 +254,8 @@ const TableDetailsPageV1 = () => {
             entity: t('label.resource-permission-lowercase'),
           })
         );
+      } finally {
+        setLoading(false);
       }
     },
     [getEntityPermissionByFqn, setTablePermissions]
@@ -862,7 +864,12 @@ const TableDetailsPageV1 = () => {
   }
 
   if (!(tablePermissions.ViewAll || tablePermissions.ViewBasic)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="m-0"
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (!tableDetails) {

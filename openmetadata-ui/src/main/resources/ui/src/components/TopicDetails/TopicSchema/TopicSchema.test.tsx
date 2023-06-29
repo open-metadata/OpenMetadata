@@ -35,6 +35,7 @@ const mockProps: TopicSchemaFieldsProps = {
   isReadOnly: false,
   onUpdate: mockOnUpdate,
   hasTagEditAccess: true,
+  entityFqn: 'topic.fqn',
 };
 
 jest.mock('utils/TagsUtils', () => ({

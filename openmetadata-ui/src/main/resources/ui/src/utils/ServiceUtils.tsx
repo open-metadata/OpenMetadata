@@ -124,7 +124,11 @@ import {
   PipelineServiceType,
 } from '../generated/entity/services/pipelineService';
 import { ServicesType } from '../interface/service.interface';
-import { getEntityDeleteMessage, pluralize } from './CommonUtils';
+import {
+  getEntityDeleteMessage,
+  pluralize,
+  replaceAllSpacialCharWith_,
+} from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
 import { getBrokers } from './MessagingServiceUtils';
 import { showErrorToast } from './ToastUtils';
@@ -604,7 +608,9 @@ export const getIngestionName = (
       IngestionPipelineType.Dbt,
     ].includes(type)
   ) {
-    return `${serviceName}_${type}_${cryptoRandomString({
+    return `${replaceAllSpacialCharWith_(
+      serviceName
+    )}_${type}_${cryptoRandomString({
       length: 8,
       type: 'alphanumeric',
     })}`;

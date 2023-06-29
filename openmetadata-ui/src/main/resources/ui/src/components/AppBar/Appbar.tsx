@@ -319,9 +319,9 @@ const Appbar: React.FC = (): JSX.Element => {
                 {remainingTeamsCount} {t('label.more')}
               </Link>
             ) : null}
+            <hr className="m-t-sm" />
           </div>
         ) : null}
-        <hr className="m-t-sm" />
       </div>
     );
   };
