@@ -149,7 +149,13 @@ If you are planning on going to PROD, we recommend to validate below points:
 - OpenMetadata-Server require the minimum configuration of 2vCPU and 6Memory (GiB)
 - OpenMetadata-Ingestion require the minimum configuration of 2vCPU and 8Memory (GiB)
 - We also recommend to bind Docker Volumes for data persistence. Minimum disk space required would be 128 Gib. Learn how to do so [here](/deployment/docker/volumes).
-- If your custom password includes any special characters then make sure to follow the steps [here](https://github.com/open-metadata/OpenMetadata/issues/12110#issuecomment-1611341650).
+
+{% note noteType="Warning" %}
+
+- When setting up environment file if your custom password includes any special characters then make sure to follow the steps [here](https://github.com/open-metadata/OpenMetadata/issues/12110#issuecomment-1611341650).
+
+{% /note %}
+
 
 ### Steps for Deploying Ingestion 
 - Download the docker-compose.yml file from the release page [here](https://github.com/open-metadata/OpenMetadata/releases).
