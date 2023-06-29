@@ -80,5 +80,26 @@ global:
     callbackUrl: "http://localhost:8585/callback"
 ```
 
+### After 1.1.0
+
+```yaml
+openmetadata:
+  config:
+    authorizer:
+      className: "org.openmetadata.service.security.DefaultAuthorizer"
+      containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
+      initialAdmins: 
+      - "suresh"
+      principalDomain: "open-metadata.org"
+    authentication:
+      provider: "auth0"
+      publicKeys: 
+      - "http://openmetadata:8585/api/v1/config/jwks"
+      - "{Auth0 Domain Name}/.well-known/jwks.json"
+      authority: "https://parth-panchal.us.auth0.com/"
+      clientId: "{Client ID}"
+      callbackUrl: "http://localhost:8585/callback"
+```
+
 **Note:** Follow [this](/how-to-guides/feature-configurations/bots) guide to configure the `ingestion-bot` credentials for
 ingesting data from Airflow.
