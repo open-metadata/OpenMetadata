@@ -140,9 +140,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     );
     const name =
       value.testName?.trim() ||
-      `${columnName ? columnName : table.name}_${snakeCase(
-        selectedTestType
-      )}_${cryptoRandomString({
+      `${replaceAllSpacialCharWith_(
+        columnName ? columnName : table.name
+      )}_${snakeCase(selectedTestType)}_${cryptoRandomString({
         length: 4,
         type: 'alphanumeric',
       })}`;

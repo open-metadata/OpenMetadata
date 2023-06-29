@@ -144,7 +144,7 @@ const Services = ({
                         <div>
                           <Link
                             to={getServiceDetailsPath(
-                              service.name,
+                              service.fullyQualifiedName ?? service.name,
                               serviceName
                             )}>
                             <button>

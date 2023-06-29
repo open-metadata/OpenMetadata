@@ -392,6 +392,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             isEmpty(messageSchema?.schemaFields) ? (
               messageSchema?.schemaText && (
                 <SchemaEditor
+                  className="custom-code-mirror-theme custom-query-editor"
                   editorClass={classNames('table-query-editor')}
                   mode={{ name: CSMode.JAVASCRIPT }}
                   options={{

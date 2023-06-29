@@ -472,6 +472,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         </Col>
         <Col span={24}>
           <Tabs
+            destroyInactiveTabPane
             activeKey={activeTab ?? EntityTabs.SCHEMA}
             className="entity-details-page-tabs"
             data-testid="tabs"
