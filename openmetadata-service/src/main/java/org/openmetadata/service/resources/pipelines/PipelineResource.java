@@ -351,7 +351,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Pipeline addPipelineStatus(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("fqn") String fqn,
+      @Parameter(description = "Fully qualified name of the pipeline", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
       @Valid PipelineStatus pipelineStatus)
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_STATUS);

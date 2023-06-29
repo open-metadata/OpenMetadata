@@ -273,17 +273,15 @@ const Users = ({
       );
     } else {
       return (
-        <div className="p-x-sm">
-          <p className="m-t-xs">
-            {userData.description || (
-              <span className="text-grey-muted">
-                {t('label.no-entity', {
-                  entity: t('label.description'),
-                })}
-              </span>
-            )}
-          </p>
-        </div>
+        <Typography.Paragraph className="m-b-0">
+          {userData.description || (
+            <span className="text-grey-muted">
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
+            </span>
+          )}
+        </Typography.Paragraph>
       );
     }
   };
@@ -584,7 +582,11 @@ const Users = ({
           )}
           <Space className="p-sm w-full" direction="vertical" size={8}>
             {getDisplayNameComponent()}
-            <p>{userData.email}</p>
+            <Typography.Paragraph
+              className="m-b-0"
+              ellipsis={{ tooltip: true }}>
+              {userData.email}
+            </Typography.Paragraph>
             {getDescriptionComponent()}
             {isAuthProviderBasic &&
               (isAdminUser || isLoggedinUser) &&
@@ -719,7 +721,7 @@ const Users = ({
                 }
               />
             ) : (
-              <ErrorPlaceHolder>
+              <ErrorPlaceHolder className="m-0">
                 <Typography.Paragraph>
                   {tab === UserPageTabs.MY_DATA
                     ? t('server.you-have-not-action-anything-yet', {
