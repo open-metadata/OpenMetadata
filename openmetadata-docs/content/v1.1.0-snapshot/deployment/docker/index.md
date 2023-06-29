@@ -6,6 +6,19 @@ slug: /deployment/docker
 # Docker Deployment
 Deploying OpenMetadata in Docker is a great start! 
 Before starting with the deployment make sure you follow all the below Prerequisites.
+
+## Docker Deployment Architecture
+{% image src="/images/v1.1.0/deployment/docker/om_docker_architecture.png" alt="Docker Deployment Architecture" /%}
+
+High-level overview:
+
+- Deploying with MySQL 3306 /PostgreSQL 5432 : Download docker-compose.yml / docker-compose-postgres.yml from the link: https://github.com/open-metadata/OpenMetadata/releases
+/OpenMetadata/releases.
+- We are shipping the Elasticsearch service and Ul at 9200.
+- We are shipping the OpenMetadata server and Ul at 8585.
+- We are shipping the ingestion container (Airflow) at 8080.
+- You can change the port number's according to your requirement.
+
 ## Prerequisites
 ### Docker (version 20.10.0 or greater)
 [Docker](https://docs.docker.com/get-started/overview/) is an open-source platform for developing, shipping, and running applications. It enables you to separate your applications from your infrastructure, so you can deliver software quickly using OS-level virtualization. It helps deliver software in packages called Containers.

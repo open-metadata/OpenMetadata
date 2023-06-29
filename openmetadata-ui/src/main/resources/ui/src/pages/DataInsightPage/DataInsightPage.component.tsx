@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
+import { Button, Card, Col, Row, Space, Typography } from 'antd';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import DailyActiveUsersChart from 'components/DataInsightDetail/DailyActiveUsersChart';
 import DataInsightSummary from 'components/DataInsightDetail/DataInsightSummary';
@@ -24,6 +25,8 @@ import TopActiveUsers from 'components/DataInsightDetail/TopActiveUsers';
 import TopViewEntities from 'components/DataInsightDetail/TopViewEntities';
 import TotalEntityInsight from 'components/DataInsightDetail/TotalEntityInsight';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import SearchDropdown from 'components/SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
@@ -32,6 +35,8 @@ import {
   DEFAULT_SELECTED_RANGE,
 } from 'constants/profiler.constant';
 import { EntityFields } from 'enums/AdvancedSearch.enum';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { Operation } from 'generated/entity/policies/policy';
 import { t } from 'i18next';
 import { isEmpty, isEqual } from 'lodash';
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
@@ -39,6 +44,7 @@ import { ListItem } from 'react-awesome-query-builder';
 import { useHistory, useParams } from 'react-router-dom';
 import { getListKPIs } from 'rest/KpiAPI';
 import { searchQuery } from 'rest/searchAPI';
+import { checkPermission } from 'utils/PermissionsUtils';
 import { autocomplete } from '../../constants/AdvancedSearch.constants';
 import { PAGE_SIZE, ROUTES } from '../../constants/constants';
 import {
@@ -49,7 +55,6 @@ import {
 import { SearchIndex } from '../../enums/search.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
-import { useAuth } from '../../hooks/authHooks';
 import {
   ChartFilter,
   DataInsightTabs,
@@ -73,8 +78,28 @@ const fetchTeamSuggestions = autocomplete({
 const DataInsightPage = () => {
   const { tab } = useParams<{ tab: DataInsightTabs }>();
 
-  const { isAdminUser } = useAuth();
+  const { permissions } = usePermissionProvider();
   const history = useHistory();
+
+  const viewDataInsightChartPermission = useMemo(
+    () =>
+      checkPermission(
+        Operation.ViewAll,
+        ResourceEntity.DATA_INSIGHT_CHART,
+        permissions
+      ),
+    [permissions]
+  );
+
+  const viewKPIPermission = useMemo(
+    () => checkPermission(Operation.ViewAll, ResourceEntity.KPI, permissions),
+    [permissions]
+  );
+
+  const createKPIPermission = useMemo(
+    () => checkPermission(Operation.Create, ResourceEntity.KPI, permissions),
+    [permissions]
+  );
 
   const [teamsOptions, setTeamOptions] = useState<TeamStateType>({
     defaultOptions: [],
@@ -273,10 +298,33 @@ const DataInsightPage = () => {
     setActiveTab(tab ?? DataInsightTabs.DATA_ASSETS);
   }, [tab]);
 
-  return (
-    <PageLayoutV1
-      leftPanel={<DataInsightLeftPanel />}
-      pageTitle={t('label.data-insight')}>
+  if (!viewDataInsightChartPermission && !viewKPIPermission) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
+  const getTabContent = () => {
+    const noDataInsightPermission =
+      !viewDataInsightChartPermission &&
+      (activeTab === DataInsightTabs.APP_ANALYTICS ||
+        activeTab === DataInsightTabs.DATA_ASSETS);
+
+    const noKPIPermission =
+      !viewKPIPermission && activeTab === DataInsightTabs.KPIS;
+
+    if (noDataInsightPermission || noKPIPermission) {
+      return (
+        <Row align="middle" className="w-full h-full" justify="center">
+          <Col span={24}>
+            <ErrorPlaceHolder
+              className="m-0"
+              type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+            />
+          </Col>
+        </Row>
+      );
+    }
+
+    return (
       <Row
         className="page-container"
         data-testid="data-insight-container"
@@ -291,23 +339,14 @@ const DataInsightPage = () => {
                 {t('message.data-insight-subtitle')}
               </Typography.Text>
             </div>
-            <Tooltip
-              title={
-                isAdminUser
-                  ? t('label.add-entity', {
-                      entity: t('label.kpi-uppercase'),
-                    })
-                  : t('message.no-permission-for-action')
-              }>
-              <Button
-                disabled={!isAdminUser}
-                type="primary"
-                onClick={handleAddKPI}>
+
+            {createKPIPermission && (
+              <Button type="primary" onClick={handleAddKPI}>
                 {t('label.add-entity', {
                   entity: t('label.kpi-uppercase'),
                 })}
               </Button>
-            </Tooltip>
+            )}
           </Space>
         </Col>
         <Col span={24}>
@@ -366,7 +405,12 @@ const DataInsightPage = () => {
         {/* Do not show KPIChart for app analytics */}
         {tab !== DataInsightTabs.APP_ANALYTICS && (
           <Col span={24}>
-            <KPIChart chartFilter={chartFilter} kpiList={kpiList} />
+            <KPIChart
+              chartFilter={chartFilter}
+              createKPIPermission={createKPIPermission}
+              kpiList={kpiList}
+              viewKPIPermission={viewKPIPermission}
+            />
           </Col>
         )}
         {activeTab === DataInsightTabs.DATA_ASSETS && (
@@ -422,8 +466,18 @@ const DataInsightPage = () => {
           </>
         )}
 
-        {activeTab === DataInsightTabs.KPIS && <KPIList />}
+        {activeTab === DataInsightTabs.KPIS && (
+          <KPIList viewKPIPermission={viewKPIPermission} />
+        )}
       </Row>
+    );
+  };
+
+  return (
+    <PageLayoutV1
+      leftPanel={<DataInsightLeftPanel />}
+      pageTitle={t('label.data-insight')}>
+      {getTabContent()}
     </PageLayoutV1>
   );
 };

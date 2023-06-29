@@ -113,47 +113,32 @@ const TableDetailsPageV1 = () => {
   const [queryCount, setQueryCount] = useState(0);
 
   const [loading, setLoading] = useState(!isTourOpen);
+  const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const viewUsagePermission = useMemo(
+    () => tablePermissions.ViewAll || tablePermissions.ViewUsage,
+    [tablePermissions]
+  );
+  const viewTestSuitePermission = useMemo(
+    () => tablePermissions.ViewAll || tablePermissions.ViewTests,
+    [tablePermissions]
+  );
 
   const fetchTableDetails = async () => {
     setLoading(true);
     try {
-      const details = await getTableDetailsByFQN(datasetFQN, defaultFields);
+      let fields = defaultFields;
+      if (viewUsagePermission) {
+        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+      }
+      if (viewTestSuitePermission) {
+        fields += `,${TabSpecificField.TESTSUITE}`;
+      }
+      const details = await getTableDetailsByFQN(datasetFQN, fields);
 
       setTableDetails(details);
-    } catch (error) {
-      // Error here
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchUsageDetails = async () => {
-    setLoading(true);
-    try {
-      const { usageSummary } = await getTableDetailsByFQN(
-        datasetFQN,
-        TabSpecificField.USAGE_SUMMARY
-      );
-
-      setTableDetails((table) =>
-        table ? { ...table, usageSummary } : undefined
-      );
-    } catch (error) {
-      // Error here
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchTestSuiteDetails = async () => {
-    setLoading(true);
-    try {
-      const { testSuite } = await getTableDetailsByFQN(
-        datasetFQN,
-        TabSpecificField.TESTSUITE
-      );
-
-      setTableDetails((table) => (table ? { ...table, testSuite } : undefined));
     } catch (error) {
       // Error here
     } finally {
@@ -182,10 +167,6 @@ const TableDetailsPageV1 = () => {
   const onCancel = () => {
     setIsEdit(false);
   };
-
-  const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
 
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const {
@@ -258,22 +239,31 @@ const TableDetailsPageV1 = () => {
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const fetchResourcePermission = useCallback(async () => {
-    try {
-      const tablePermission = await getEntityPermissionByFqn(
-        ResourceEntity.TABLE,
-        tableDetails?.id ?? ''
-      );
+  const fetchResourcePermission = useCallback(
+    async (datasetFQN) => {
+      try {
+        const tablePermission = await getEntityPermissionByFqn(
+          ResourceEntity.TABLE,
+          datasetFQN
+        );
 
-      setTablePermissions(tablePermission);
-    } catch (error) {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: t('label.resource-permission-lowercase'),
-        })
-      );
+        setTablePermissions(tablePermission);
+      } catch (error) {
+        showErrorToast(
+          t('server.fetch-entity-permissions-error', {
+            entity: t('label.resource-permission-lowercase'),
+          })
+        );
+      }
+    },
+    [getEntityPermissionByFqn, setTablePermissions]
+  );
+
+  useEffect(() => {
+    if (datasetFQN) {
+      fetchResourcePermission(datasetFQN);
     }
-  }, [tableDetails?.id, getEntityPermissionByFqn, setTablePermissions]);
+  }, [datasetFQN]);
 
   const getEntityFeedCount = () => {
     getFeedCounts(
@@ -836,21 +826,16 @@ const TableDetailsPageV1 = () => {
     if (isTourOpen || isTourPage) {
       setTableDetails(mockDatasetData.tableDetails as unknown as Table);
     } else {
-      fetchTableDetails();
-      getEntityFeedCount();
-      if (tablePermissions.ViewUsage) {
-        fetchUsageDetails();
-      }
-      if (tablePermissions.ViewTests) {
-        fetchTestSuiteDetails();
+      if (tablePermissions.ViewAll || tablePermissions.ViewBasic) {
+        fetchTableDetails();
+        getEntityFeedCount();
       }
     }
-  }, [datasetFQN, isTourOpen, isTourPage]);
+  }, [datasetFQN, isTourOpen, isTourPage, tablePermissions]);
 
   useEffect(() => {
     if (tableDetails) {
       fetchQueryCount();
-      fetchResourcePermission();
     }
   }, [tableDetails]);
 

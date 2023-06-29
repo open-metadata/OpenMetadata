@@ -12,6 +12,9 @@ OpenMetadata supports the Installation and Running of Application on kubernetes 
 [openmetadata-helm-charts](https://github.com/open-metadata/openmetadata-helm-charts) houses Kubernetes Helm charts 
 for deploying OpenMetadata and its dependencies (Elasticsearch, MySQL and Airflow) on a Kubernetes cluster.
 
+## Kubernetes Deployment Architecture
+{% image src="/images/v1.1.0/deployment/kubernetes/k8_architecture.png" alt="Kubernetes Deployment Architecture" /%}
+
 ## Prerequisites
 
 - A [Kubernetes](https://kubernetes.io/) cluster on any cloud 
