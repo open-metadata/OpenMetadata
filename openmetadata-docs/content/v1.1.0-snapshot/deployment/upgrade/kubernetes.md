@@ -180,25 +180,27 @@ global:
 ✅ After 1.0.0 Helm Chart Release, the `global.pipelineServiceClient` section will replace the above `airflow` section -
 
 ```yaml
-global:
+openmetadata:
+  config:
+    ...
+    pipelineServiceClientConfig:
+      enabled: true
+      className: "org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"
+      # endpoint url for airflow
+      apiEndpoint: http://openmetadata-dependencies-web.default.svc.cluster.local:8080
+      # this will be the api endpoint url of OpenMetadata Server
+      metadataApiEndpoint: http://openmetadata.default.svc.cluster.local:8585/api
+      # possible values are "no-ssl", "ignore", "validate"
+      verifySsl: "no-ssl"
+      ingestionIpInfoEnabled: false
+      # local path in Airflow Pod
+      sslCertificatePath: "/no/path"
+      auth:
+        username: admin
+        password:
+          secretRef: airflow-secrets
+          secretKey: openmetadata-airflow-password
   ...
-  pipelineServiceClientConfig:
-    enabled: true
-    className: "org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"
-    # endpoint url for airflow
-    apiEndpoint: http://openmetadata-dependencies-web.default.svc.cluster.local:8080
-    # this will be the api endpoint url of OpenMetadata Server
-    metadataApiEndpoint: http://openmetadata.default.svc.cluster.local:8585/api
-    # possible values are "no-ssl", "ignore", "validate"
-    verifySsl: "no-ssl"
-    ingestionIpInfoEnabled: false
-    # local path in Airflow Pod
-    sslCertificatePath: "/no/path"
-    auth:
-      username: admin
-      password:
-        secretRef: airflow-secrets
-        secretKey: openmetadata-airflow-password
 ...
 ```
 
