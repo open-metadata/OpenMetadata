@@ -99,7 +99,7 @@ public class SearchIndexWorkflow implements Runnable {
               }
             });
     this.searchClient = client;
-    if (searchClient.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPEN_SEARCH)) {
+    if (searchClient.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
       this.entityProcessor = new OpenSearchEntitiesProcessor();
       this.dataInsightProcessor = new OpenSearchDataInsightProcessor();
       this.searchIndexSink = new OpenSearchIndexSink(searchClient);
@@ -155,7 +155,7 @@ public class SearchIndexWorkflow implements Runnable {
           resultList = paginatedEntitiesSource.readNext(null);
           requestToProcess = resultList.getData().size() + resultList.getErrors().size();
           if (!resultList.getData().isEmpty()) {
-            if (searchClient.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPEN_SEARCH)) {
+            if (searchClient.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
               // process data to build Reindex Request
               org.opensearch.action.bulk.BulkRequest requests =
                   (org.opensearch.action.bulk.BulkRequest) entityProcessor.process(resultList, contextData);
@@ -235,7 +235,7 @@ public class SearchIndexWorkflow implements Runnable {
           resultList = paginatedDataInsightSource.readNext(null);
           requestToProcess = resultList.getData().size() + resultList.getErrors().size();
           if (!resultList.getData().isEmpty()) {
-            if (searchClient.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPEN_SEARCH)) {
+            if (searchClient.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
               // process data to build Reindex Request
               org.opensearch.action.bulk.BulkRequest requests =
                   (org.opensearch.action.bulk.BulkRequest) dataInsightProcessor.process(resultList, contextData);
