@@ -32,7 +32,6 @@ import { Table as TableType } from 'generated/entity/data/table';
 import { Operation } from 'generated/entity/policies/policy';
 import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
-import { isEmpty } from 'lodash';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -605,10 +604,6 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
     return <ErrorPlaceHolderIngestion />;
   }
 
-  if (isEmpty(testSuitePipelines)) {
-    return errorPlaceholder;
-  }
-
   return (
     <TestCaseCommonTabContainer
       buttonName={t('label.add-entity', {
@@ -627,6 +622,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
             ...test,
             key: test.name,
           }))}
+          locale={{ emptyText: errorPlaceholder }}
           pagination={false}
           rowKey="name"
           scroll={{ x: 1200 }}

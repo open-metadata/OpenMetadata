@@ -22,6 +22,7 @@ import {
   Typography,
 } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
+import AppState from 'AppState';
 import { AxiosError } from 'axios';
 import AirflowMessageBanner from 'components/common/AirflowMessageBanner/AirflowMessageBanner';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
@@ -51,6 +52,7 @@ import { compare } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Include } from 'generated/type/include';
+import { useAuth } from 'hooks/authHooks';
 import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
 import {
   ExtraInfo,
@@ -175,6 +177,8 @@ const ServicePage: FunctionComponent = () => {
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+  const { isAdminUser } = useAuth();
+
   const [isEdit, setIsEdit] = useState(false);
   const [description, setDescription] = useState('');
   const [serviceDetails, setServiceDetails] = useState<ServicesType>();
@@ -221,12 +225,15 @@ const ServicePage: FunctionComponent = () => {
   };
 
   const tabs = useMemo(() => {
+    const isOwner = AppState.userDetails.id === serviceDetails?.owner?.id;
+    const showIngestionTab = Boolean(isOwner || isAdminUser);
     const allTabs = getServicePageTabs(
       serviceCategory,
       paging.total,
       ingestionPaging.total,
       servicePermission,
-      dataModelPaging.total
+      dataModelPaging.total,
+      showIngestionTab
     ).map((tab) => ({
       label: (
         <TabsLabel
@@ -241,6 +248,9 @@ const ServicePage: FunctionComponent = () => {
 
     return allTabs;
   }, [
+    AppState,
+    serviceDetails,
+    isAdminUser,
     serviceCategory,
     paging,
     ingestionPaging,

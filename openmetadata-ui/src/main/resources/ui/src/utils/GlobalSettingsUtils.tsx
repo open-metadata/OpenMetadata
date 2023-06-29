@@ -194,28 +194,19 @@ export const getGlobalSettingsMenuWithPermission = (
       items: [
         {
           label: i18next.t('label.activity-feed-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.EVENT_SUBSCRIPTION,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'notifications.activityFeeds',
           icon: <AllActivityIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.alert-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.EVENT_SUBSCRIPTION,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'notifications.alerts',
           icon: <BellIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.data-insight-report'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.EVENT_SUBSCRIPTION,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'notifications.dataInsightReport',
           icon: <DataInsightReportIcon className="side-panel-icons" />,
         },
@@ -227,55 +218,37 @@ export const getGlobalSettingsMenuWithPermission = (
       items: [
         {
           label: i18next.t('label.table-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.TYPE,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'customAttributes.tables',
           icon: <TableIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.topic-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.TYPE,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'customAttributes.topics',
           icon: <TopicIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.dashboard-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.TYPE,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'customAttributes.dashboards',
           icon: <DashboardIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.pipeline-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.TYPE,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'customAttributes.pipelines',
           icon: <PipelineIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.ml-model-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.TYPE,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'customAttributes.mlModels',
           icon: <MlModelIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.container-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.TYPE,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'customAttributes.containers',
           icon: <StorageIcon className="side-panel-icons" />,
         },
@@ -317,10 +290,7 @@ export const getGlobalSettingsMenuWithPermission = (
       items: [
         {
           label: i18next.t('label.bot-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.BOT,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'integrations.bots',
           icon: <BotIcon className="w-4 side-panel-icons" />,
         },

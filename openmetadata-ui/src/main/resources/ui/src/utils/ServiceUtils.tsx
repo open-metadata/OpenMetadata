@@ -914,7 +914,8 @@ export const getServicePageTabs = (
   instanceCount: number,
   ingestionCount: number,
   servicePermission: OperationPermission,
-  dataModelCount: number
+  dataModelCount: number,
+  showIngestionTab: boolean
 ) => {
   const tabs = [];
 
@@ -938,6 +939,7 @@ export const getServicePageTabs = (
     {
       name: t('label.ingestion-plural'),
       key: EntityTabs.INGESTIONS,
+      isHidden: !showIngestionTab,
       count: ingestionCount,
     },
     {

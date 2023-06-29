@@ -40,6 +40,7 @@ import {
   EventSubscription,
   ScheduleInfo,
 } from 'generated/events/eventSubscription';
+import { useAuth } from 'hooks/authHooks';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -52,6 +53,7 @@ import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 const AlertDataInsightReportPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
+  const { isAdminUser } = useAuth();
   const [isLoading, setLoading] = useState<boolean>(false);
   const [dataInsightAlert, setDataInsightAlert] = useState<EventSubscription>();
   const [isSendingReport, setIsSendingReport] = useState<boolean>(false);
@@ -90,6 +92,10 @@ const AlertDataInsightReportPage = () => {
 
   if (isLoading) {
     return <Loader />;
+  }
+
+  if (!isAdminUser) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
   if (isUndefined(dataInsightAlert)) {

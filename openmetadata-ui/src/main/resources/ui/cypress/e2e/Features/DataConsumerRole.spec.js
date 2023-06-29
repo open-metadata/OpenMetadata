@@ -85,10 +85,6 @@ const ID = {
     testid: '[data-menu-id*="services.mlModels"]',
     button: 'add-service-button',
   },
-  bots: {
-    testid: '[data-menu-id*="bots"]',
-    button: 'add-bot',
-  },
 };
 const PERMISSIONS = {
   metadata: {
@@ -108,6 +104,9 @@ const PERMISSIONS = {
   },
   customAttributesMlModels: {
     testid: '[data-menu-id*="customAttributes.mlModels"]',
+  },
+  bots: {
+    testid: '[data-menu-id*="bots"]',
   },
 };
 
@@ -235,7 +234,7 @@ describe('DataConsumer Edit policy should work properly', () => {
     cy.get('[data-testid="tag-selector"]').should('be.visible');
   });
 
-  it('Check for CRUD operations to be disabled for the user for glossary and tags', () => {
+  it('Check for CRUD operations to not exist for the user for glossary and tags', () => {
     login(CREDENTIALS.email, CREDENTIALS.password);
     cy.goToHomePage(true);
     cy.url().should('eq', `${BASE_URL}/my-data`);
@@ -249,7 +248,7 @@ describe('DataConsumer Edit policy should work properly', () => {
     }
     cy.get('body').click();
 
-    cy.get('[data-testid="permission-error-placeholder"]').should('be.visible');
+    cy.get('[data-testid="no-data-placeholder"]').should('be.visible');
 
     cy.clickOnLogo();
 
@@ -275,16 +274,16 @@ describe('DataConsumer Edit policy should work properly', () => {
     cy.get(NAVBAR_DETAILS.settings.testid).should('be.visible').click();
     Object.values(ID).forEach((id) => {
       cy.get(id.testid).should('be.visible').click();
-      cy.get(`[data-testid="${id.button}"]`)
-        .should('be.visible')
-        .should('be.disabled');
+      cy.get(`[data-testid="${id.button}"]`).should('not.be.exist');
     });
 
     Object.values(PERMISSIONS).forEach((id) => {
-      cy.get(id.testid).should('be.visible').click();
-      cy.get(`[data-testid="permission-error-placeholder"]`).should(
-        'be.visible'
-      );
+      if (id.testid === '[data-menu-id*="metadata"]') {
+        cy.get(id.testid).should('be.visible').click();
+        cy.get(`[data-testid="no-data-placeholder"]`).should('be.visible');
+      } else {
+        cy.get(id.testid).should('not.be.exist');
+      }
     });
   });
 });
