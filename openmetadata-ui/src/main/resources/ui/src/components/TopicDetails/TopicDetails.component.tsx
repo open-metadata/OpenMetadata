@@ -294,6 +294,15 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   onThreadLinkSelect={onThreadLinkSelect}
                 />
                 <TopicSchemaFields
+                  entityFieldTasks={getEntityFieldThreadCounts(
+                    EntityField.COLUMNS,
+                    entityFieldTaskCount
+                  )}
+                  entityFieldThreads={getEntityFieldThreadCounts(
+                    EntityField.COLUMNS,
+                    entityFieldThreadCount
+                  )}
+                  entityFqn={topicDetails.fullyQualifiedName ?? ''}
                   hasDescriptionEditAccess={
                     topicPermissions.EditAll || topicPermissions.EditDescription
                   }
@@ -302,6 +311,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   }
                   isReadOnly={Boolean(topicDetails.deleted)}
                   messageSchema={topicDetails.messageSchema}
+                  onThreadLinkSelect={onThreadLinkSelect}
                   onUpdate={handleSchemaFieldsUpdate}
                 />
               </div>
