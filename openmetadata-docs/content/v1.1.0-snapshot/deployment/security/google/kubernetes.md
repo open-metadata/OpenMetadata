@@ -60,5 +60,28 @@ global:
     callbackUrl: "http://localhost:8585/callback"
 ```
 
+### After 1.1.0
+
+```yaml
+openmetadata:
+  config:
+    authorizer:
+      className: "org.openmetadata.service.security.DefaultAuthorizer"
+      containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
+      initialAdmins:
+        - "user1"
+        - "user2"
+      botPrincipals:
+        - "<service_application_client_id>"
+      principalDomain: "open-metadata.org"
+    authentication:
+      provider: "google"
+      publicKeys:
+        - "https://www.googleapis.com/oauth2/v3/certs"
+      authority: "https://accounts.google.com"
+      clientId: "{client id}"
+      callbackUrl: "http://localhost:8585/callback"
+```
+
 **Note:** Follow [this](/how-to-guides/feature-configurations/bots) guide to configure the `ingestion-bot` credentials for
 ingesting data from Airflow.

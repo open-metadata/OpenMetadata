@@ -12,6 +12,13 @@
  */
 
 import { Drawer, Typography } from 'antd';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'components/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
 import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
@@ -19,9 +26,10 @@ import { Dashboard } from 'generated/entity/data/dashboard';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Table } from 'generated/entity/data/table';
 import { get } from 'lodash';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getEntityLinkFromType, getEntityName } from 'utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getEncodedFqn, stringToHTML } from 'utils/StringsUtils';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
@@ -42,7 +50,43 @@ export default function EntitySummaryPanel({
 }: EntitySummaryPanelProps) {
   const { tab } = useParams<{ tab: string }>();
 
+  const { getEntityPermission } = usePermissionProvider();
+
+  const [entityPermissions, setEntityPermissions] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const fetchResourcePermission = async (entityFqn: string) => {
+    try {
+      const type =
+        get(entityDetails, 'details.entityType') ?? ResourceEntity.TABLE;
+      const permissions = await getEntityPermission(type, entityFqn);
+      setEntityPermissions(permissions);
+    } catch (error) {
+      // Error
+    }
+  };
+
+  useEffect(() => {
+    if (entityDetails?.details?.id) {
+      fetchResourcePermission(entityDetails.details.id);
+    }
+  }, [entityDetails]);
+
+  const viewPermission = useMemo(
+    () => entityPermissions.ViewBasic || entityPermissions.ViewAll,
+    [entityPermissions]
+  );
+
   const summaryComponent = useMemo(() => {
+    if (!viewPermission) {
+      return (
+        <ErrorPlaceHolder
+          className="m-0"
+          size={SIZE.MEDIUM}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
+      );
+    }
     const type = get(entityDetails, 'details.entityType') ?? EntityType.TABLE;
     const entity = entityDetails.details;
     switch (type) {
@@ -73,7 +117,7 @@ export default function EntitySummaryPanel({
       default:
         return null;
     }
-  }, [tab, entityDetails]);
+  }, [tab, entityDetails, viewPermission]);
 
   const entityLink = useMemo(
     () =>
@@ -97,14 +141,16 @@ export default function EntitySummaryPanel({
       headerStyle={{ padding: 16 }}
       mask={false}
       title={
-        <Link
-          className="no-underline"
-          data-testid="entity-link"
-          to={entityLink}>
-          <Typography.Text className="m-b-0 d-block summary-panel-title">
-            {stringToHTML(getEntityName(entityDetails.details))}
-          </Typography.Text>
-        </Link>
+        viewPermission && (
+          <Link
+            className="no-underline"
+            data-testid="entity-link"
+            to={entityLink}>
+            <Typography.Text className="m-b-0 d-block summary-panel-title">
+              {stringToHTML(getEntityName(entityDetails.details))}
+            </Typography.Text>
+          </Link>
+        )
       }
       width="100%">
       {summaryComponent}

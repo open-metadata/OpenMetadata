@@ -6,6 +6,19 @@ slug: /deployment/docker
 # Docker Deployment
 Deploying OpenMetadata in Docker is a great start! 
 Before starting with the deployment make sure you follow all the below Prerequisites.
+
+## Docker Deployment Architecture
+{% image src="/images/v1.1.0/deployment/docker/om_docker_architecture.png" alt="Docker Deployment Architecture" /%}
+
+High-level overview:
+
+- Deploying with MySQL 3306 /PostgreSQL 5432 : Download docker-compose.yml / docker-compose-postgres.yml from the link: https://github.com/open-metadata/OpenMetadata/releases
+/OpenMetadata/releases.
+- We are shipping the Elasticsearch service and Ul at 9200.
+- We are shipping the OpenMetadata server and Ul at 8585.
+- We are shipping the ingestion container (Airflow) at 8080.
+- You can change the port number's according to your requirement.
+
 ## Prerequisites
 ### Docker (version 20.10.0 or greater)
 [Docker](https://docs.docker.com/get-started/overview/) is an open-source platform for developing, shipping, and running applications. It enables you to separate your applications from your infrastructure, so you can deliver software quickly using OS-level virtualization. It helps deliver software in packages called Containers.
@@ -149,6 +162,14 @@ If you are planning on going to PROD, we recommend to validate below points:
 - OpenMetadata-Server require the minimum configuration of 2vCPU and 6Memory (GiB)
 - OpenMetadata-Ingestion require the minimum configuration of 2vCPU and 8Memory (GiB)
 - We also recommend to bind Docker Volumes for data persistence. Minimum disk space required would be 128 Gib. Learn how to do so [here](/deployment/docker/volumes).
+
+{% note noteType="Warning" %}
+
+- When setting up environment file if your custom password includes any special characters then make sure to follow the steps [here](https://github.com/open-metadata/OpenMetadata/issues/12110#issuecomment-1611341650).
+
+{% /note %}
+
+
 ### Steps for Deploying Ingestion 
 - Download the docker-compose.yml file from the release page [here](https://github.com/open-metadata/OpenMetadata/releases).
 - Update the environment variables below for OpenMetadata-Ingestion Docker Compose backed systems to connect with Database. 
@@ -166,6 +187,7 @@ Once the environment variables values with the RDS are updated then provide this
 ```
 docker compose --env-file ./config/.env.prod up -d openmetadata_ingestion
 ```
+
 ### Steps for Deploying OpenMetadata-Server
 - Download the docker-compose.yml file from the release page [here](https://github.com/open-metadata/OpenMetadata/releases).
 - Update the environment variables below for OpenMetadata-Ingestion Docker Compose backed systems to connect with Database and ElasticSearch and Ingestion.

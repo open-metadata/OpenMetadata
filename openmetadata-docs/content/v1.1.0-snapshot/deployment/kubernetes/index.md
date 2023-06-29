@@ -12,6 +12,9 @@ OpenMetadata supports the Installation and Running of Application on kubernetes 
 [openmetadata-helm-charts](https://github.com/open-metadata/openmetadata-helm-charts) houses Kubernetes Helm charts 
 for deploying OpenMetadata and its dependencies (Elasticsearch, MySQL and Airflow) on a Kubernetes cluster.
 
+## Kubernetes Deployment Architecture
+{% image src="/images/v1.1.0/deployment/kubernetes/k8_architecture.png" alt="Kubernetes Deployment Architecture" /%}
+
 ## Prerequisites
 
 - A [Kubernetes](https://kubernetes.io/) cluster on any cloud 
@@ -239,34 +242,35 @@ Once you have the RDS and OpenSearch Services Setup, you can update the environm
 ```yaml
 # openmetadata-values.prod.yaml
 ...
-global:
-  elasticsearch:
-    host: <AMAZON_OPENSEARCH_SERVICE_ENDPOINT_WITHOUT_HTTPS>
-    port: 443
-    scheme: https
-    connectionTimeoutSecs: 5
-    socketTimeoutSecs: 60
-    keepAliveTimeoutSecs: 600
-    batchSize: 10
-    auth:
-      enabled: false
-      username: <AMAZON_OPENSEARCH_USERNAME>
-      password:
-        secretRef: elasticsearch-secrets
-        secretKey: openmetadata-elasticsearch-password
-  database:
-    host: <AMAZON_RDS_ENDPOINT>
-    port: 3306
-    driverClass: com.mysql.cj.jdbc.Driver
-    dbScheme: mysql
-    dbUseSSL: true
-    databaseName: <RDS_DATABASE_NAME>
-    auth:
-      username: <RDS_DATABASE_USERNAME>
-      password:
-        secretRef: mysql-secrets
-        secretKey: openmetadata-mysql-password
-...
+openmetadata:
+  config:
+    elasticsearch:
+      host: <AMAZON_OPENSEARCH_SERVICE_ENDPOINT_WITHOUT_HTTPS>
+      port: 443
+      scheme: https
+      connectionTimeoutSecs: 5
+      socketTimeoutSecs: 60
+      keepAliveTimeoutSecs: 600
+      batchSize: 10
+      auth:
+        enabled: false
+        username: <AMAZON_OPENSEARCH_USERNAME>
+        password:
+          secretRef: elasticsearch-secrets
+          secretKey: openmetadata-elasticsearch-password
+    database:
+      host: <AMAZON_RDS_ENDPOINT>
+      port: 3306
+      driverClass: com.mysql.cj.jdbc.Driver
+      dbScheme: mysql
+      dbUseSSL: true
+      databaseName: <RDS_DATABASE_NAME>
+      auth:
+        username: <RDS_DATABASE_USERNAME>
+        password:
+          secretRef: mysql-secrets
+          secretKey: openmetadata-mysql-password
+  ...
 ```
 
 Make sure to create RDS and OpenSearch credentials as Kubernetes Secrets mentioned [here](https://docs.open-metadata.org/deployment/kubernetes#quickstart).

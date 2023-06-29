@@ -131,7 +131,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     validateConfiguration(catalogConfig);
 
     // init for dataSourceFactory
-    DatasourceConfig.initialize(catalogConfig);
+    DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
 
     ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
