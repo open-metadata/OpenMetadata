@@ -175,7 +175,7 @@ describe('DataConsumer Edit policy should work properly', () => {
       .should('contain', policy);
   });
 
-  it.skip('Check if the new user has only edit access on description and tags', () => {
+  it('Check if the new user has only edit access on description and tags', () => {
     login(CREDENTIALS.email, CREDENTIALS.password);
     cy.goToHomePage(true);
     cy.url().should('eq', `${BASE_URL}/my-data`);
@@ -234,7 +234,7 @@ describe('DataConsumer Edit policy should work properly', () => {
     cy.get('[data-testid="tag-selector"]').should('be.visible');
   });
 
-  it.skip('Check for CRUD operations to not exist for the user for glossary and tags', () => {
+  it('Check for CRUD operations to not exist for the user for glossary and tags', () => {
     login(CREDENTIALS.email, CREDENTIALS.password);
     cy.goToHomePage(true);
     cy.url().should('eq', `${BASE_URL}/my-data`);
