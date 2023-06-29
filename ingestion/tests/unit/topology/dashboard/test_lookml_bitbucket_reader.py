@@ -40,7 +40,7 @@ class TestLookMLBitBucketReader(TestCase):
         """
         We can parse the explore file.
 
-        We'll expand and find views from https://github.com/open-metadata/lookml-sample/blob/main/cats.explore.lkml
+        We'll expand and find views from https://bitbucket.org/pmbrull-trial-api/api/src/main
         """
 
         explore_file = "cats.explore.lkml"
