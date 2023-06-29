@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Carousel } from 'antd';
+import { Carousel, Typography } from 'antd';
 import { t } from 'i18next';
 import { uniqueId } from 'lodash';
 import React from 'react';
@@ -20,12 +20,20 @@ import { LOGIN_SLIDE } from '../../constants/Login.constants';
 const LoginCarousel = () => {
   return (
     <div className="carousal-container" data-testid="carousel-container">
-      <Carousel autoplay dots autoplaySpeed={1500}>
+      <Carousel autoplay dots autoplaySpeed={1500} easing="ease-in-out">
         {LOGIN_SLIDE.map((data) => (
           <div
             className="text-center"
             data-testid="slider-container"
             key={uniqueId()}>
+            <Typography.Title className="text-primary" level={1}>
+              {t(`label.${data.title}`)}
+            </Typography.Title>
+            <p
+              className="m-b-lg carousal-description text-grey-muted"
+              data-testid="carousel-slide-description">
+              {t(`message.${data.descriptionKey}`)}
+            </p>
             <img
               alt="slider"
               loading="lazy"
@@ -33,12 +41,6 @@ const LoginCarousel = () => {
               style={{ display: 'initial' }}
               width="750px"
             />
-
-            <p
-              className="text-center m-t-md carousal-description font-medium text-white text-xl"
-              data-testid="carousel-slide-description">
-              {t(`message.${data.descriptionKey}`)}
-            </p>
           </div>
         ))}
       </Carousel>
