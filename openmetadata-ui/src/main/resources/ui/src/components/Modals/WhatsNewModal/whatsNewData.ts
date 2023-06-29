@@ -878,7 +878,29 @@ export const WHATS_NEW = [
     id: 16,
     version: 'v1.1',
     description: 'Released on 29th Jun 2023.',
-    features: [],
+    features: [
+      {
+        title: 'OpenMetadata UI Makeover',
+        description:
+          'Experience the revamped OpenMetadata UI, designed to enhance user experience with  a simplified Landing Page to make the adoption easier for new users. The simplified Explore view has an improved asset details section. The filtering left panel is now part of the filtering selection at the top. The Lineage View now supports column pagination and filtering',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/fMSRi6Azj5I',
+      },
+      {
+        title: 'Data Quality Redesigned',
+        description:
+          'OpenMetadata has redesigned Data Quality Tests to improve the end-user experience and prevent unnecessary duplication of tests. Data Quality Tests now have a Resolution Field. Users can acknowledge any errors, and once failures are resolved, they can document the resolution directly in the OpenMetadata UI.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/J-v2ySfOgEI',
+      },
+      {
+        title: 'PII Masking',
+        description:
+          'PII Masking capabilities have been introduced in OpenMetadata in the 1.1 Release. Admins and Asset Owners can view PII data, but other users cannot. PII sensitive sample data for Tables, Topics, Profiler Metrics, Test Cases, and Queries will be masked. This feature goes perfectly with the Auto-Tagging capability in OpenMetadata.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/Lomg5G_-JQE',
+      },
+    ],
     changeLogs: {
       'UI Improvements': `- Simplified Landing Page to make the adoption easier for new users. We'll keep iterating on improving the UX for first-time users.
 - Simplified Explore view with improved asset details section. The filtering left panel is now part of the filtering selection at the top.
