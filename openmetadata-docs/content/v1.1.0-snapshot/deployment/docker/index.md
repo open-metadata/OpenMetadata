@@ -14,7 +14,7 @@ High-level overview:
 
 - Deploying with MySQL 3306 /PostgreSQL 5432 : Download docker-compose.yml / docker-compose-postgres.yml from the link: https://github.com/open-metadata/OpenMetadata/releases
 /OpenMetadata/releases.
--  We are shipping the Elasticsearch service and Ul at 9200.
+- We are shipping the Elasticsearch service and Ul at 9200.
 - We are shipping the OpenMetadata server and Ul at 8585.
 - We are shipping the ingestion container (Airflow) at 8080.
 - You can change the port number's according to your requirement.
