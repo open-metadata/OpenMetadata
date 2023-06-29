@@ -80,7 +80,6 @@ const mockProp = {
   index: 0,
   isReadOnly: false,
   hasTagEditAccess: true,
-  entityFieldTasks: [],
   onThreadLinkSelect: jest.fn(),
   entityFieldThreads: [
     {
@@ -191,6 +190,6 @@ describe('Test EntityTableTags Component', () => {
     const requestTags = await screen.findAllByTestId('field-thread-element');
 
     expect(tagContainer).toBeInTheDocument();
-    expect(requestTags).toHaveLength(2);
+    expect(requestTags).toHaveLength(1);
   });
 });

@@ -12,7 +12,7 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Row, Space, Tooltip as AntdTooltip } from 'antd';
+import { Button, Card, Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageHeader from 'components/header/PageHeader.component';
@@ -49,7 +49,6 @@ import {
   KpiResult,
   KpiTargetType,
 } from '../../generated/dataInsight/kpi/kpi';
-import { useAuth } from '../../hooks/authHooks';
 import {
   ChartFilter,
   UIKpiResult,
@@ -68,10 +67,16 @@ import KPILatestResults from './KPILatestResults';
 interface Props {
   chartFilter: ChartFilter;
   kpiList: Array<Kpi>;
+  viewKPIPermission: boolean;
+  createKPIPermission: boolean;
 }
 
-const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
-  const { isAdminUser } = useAuth();
+const KPIChart: FC<Props> = ({
+  chartFilter,
+  kpiList,
+  viewKPIPermission,
+  createKPIPermission,
+}) => {
   const { t } = useTranslation();
   const history = useHistory();
 
@@ -260,7 +265,14 @@ const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
             </>
           ) : (
             <Col className="justify-center" span={24}>
-              <EmptyGraphPlaceholder />
+              {viewKPIPermission ? (
+                <EmptyGraphPlaceholder />
+              ) : (
+                <ErrorPlaceHolder
+                  className="m-0"
+                  type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+                />
+              )}
             </Col>
           )}
         </Row>
@@ -270,24 +282,25 @@ const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
           direction="vertical">
           <ErrorPlaceHolder
             button={
-              <AntdTooltip
-                title={!isAdminUser && t('message.no-permission-for-action')}>
-                <Button
-                  ghost
-                  icon={<PlusOutlined />}
-                  type="primary"
-                  onClick={handleAddKpi}>
-                  {t('label.add-entity', {
-                    entity: t('label.kpi-uppercase'),
-                  })}
-                </Button>
-              </AntdTooltip>
+              <Button
+                ghost
+                icon={<PlusOutlined />}
+                type="primary"
+                onClick={handleAddKpi}>
+                {t('label.add-entity', {
+                  entity: t('label.kpi-uppercase'),
+                })}
+              </Button>
             }
-            className="p-y-lg"
-            permission={isAdminUser}
+            className="m-0"
+            permission={createKPIPermission}
             size={SIZE.MEDIUM}
-            type={ERROR_PLACEHOLDER_TYPE.ASSIGN}>
-            {t('message.no-kpi-available-add-new-one')}
+            type={
+              createKPIPermission
+                ? ERROR_PLACEHOLDER_TYPE.ASSIGN
+                : ERROR_PLACEHOLDER_TYPE.NO_DATA
+            }>
+            {createKPIPermission && t('message.no-kpi-available-add-new-one')}
           </ErrorPlaceHolder>
         </Space>
       )}

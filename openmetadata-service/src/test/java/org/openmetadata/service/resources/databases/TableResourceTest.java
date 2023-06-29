@@ -95,7 +95,6 @@ import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
-import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -1802,20 +1801,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     queryParams.put("includeEmptyTestSuite", "false");
     queryParams.put("fields", "testSuite");
     queryParams.put("limit", "100");
+
     ResultList<Table> tables = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertTrue(tables.getData().isEmpty());
-
-    for (int i = 0; i < 5; i++) {
-      CreateTestCase create =
-          testCaseResourceTest
-              .createRequest("test_testSuite__" + i)
-              .withTestSuite(executableTestSuite.getFullyQualifiedName());
-      testCaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    }
-
-    tables = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(1, tables.getData().size());
-    assertEquals(table1.getId(), tables.getData().get(0).getId());
+    assertEquals(3, tables.getData().size());
     assertNotNull(tables.getData().get(0).getTestSuite());
   }
 

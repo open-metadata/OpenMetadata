@@ -57,6 +57,10 @@ jest.mock('rest/alertsAPI', () => ({
   triggerEventById: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
+jest.mock('hooks/authHooks', () => ({
+  useAuth: jest.fn().mockImplementation(() => ({ isAdminUser: true })),
+}));
+
 describe('Test Alert Data Insights Report Page', () => {
   it('Should render the child elements', async () => {
     render(<AlertDataInsightReportPage />, {

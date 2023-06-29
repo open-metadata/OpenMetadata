@@ -1670,6 +1670,64 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+
+    @Override
+    default int listCount(ListFilter filter) {
+      String includeEmptyTestSuite = filter.getQueryParam("includeEmptyTestSuite");
+      if (includeEmptyTestSuite != null && !Boolean.parseBoolean(includeEmptyTestSuite)) {
+        String condition =
+            String.format(
+                "INNER JOIN entity_relationship er ON %s.id=er.fromId AND er.relation=%s AND er.toEntity='%s'",
+                getTableName(), CONTAINS.ordinal(), Entity.TEST_SUITE);
+        String mySqlCondition = condition;
+        String postgresCondition = condition;
+
+        mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition(getTableName()));
+        postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
+        return listCount(getTableName(), getNameColumn(), mySqlCondition, postgresCondition);
+      }
+
+      String condition = filter.getCondition(getTableName());
+      return listCount(getTableName(), getNameColumn(), condition, condition);
+    }
+
+    @Override
+    default List<String> listBefore(ListFilter filter, int limit, String before) {
+      String includeEmptyTestSuite = filter.getQueryParam("includeEmptyTestSuite");
+      if (includeEmptyTestSuite != null && !Boolean.parseBoolean(includeEmptyTestSuite)) {
+        String condition =
+            String.format(
+                "INNER JOIN entity_relationship er ON %s.id=er.fromId AND er.relation=%s AND er.toEntity='%s'",
+                getTableName(), CONTAINS.ordinal(), Entity.TEST_SUITE);
+        String mySqlCondition = condition;
+        String postgresCondition = condition;
+
+        mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition(getTableName()));
+        postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
+        return listBefore(getTableName(), getNameColumn(), mySqlCondition, postgresCondition, limit, before);
+      }
+      String condition = filter.getCondition(getTableName());
+      return listBefore(getTableName(), getNameColumn(), condition, condition, limit, before);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String after) {
+      String includeEmptyTestSuite = filter.getQueryParam("includeEmptyTestSuite");
+      if (includeEmptyTestSuite != null && !Boolean.parseBoolean(includeEmptyTestSuite)) {
+        String condition =
+            String.format(
+                "INNER JOIN entity_relationship er ON %s.id=er.fromId AND er.relation=%s AND er.toEntity='%s'",
+                getTableName(), CONTAINS.ordinal(), Entity.TEST_SUITE);
+        String mySqlCondition = condition;
+        String postgresCondition = condition;
+
+        mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition(getTableName()));
+        postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
+        return listAfter(getTableName(), getNameColumn(), mySqlCondition, postgresCondition, limit, after);
+      }
+      String condition = filter.getCondition(getTableName());
+      return listAfter(getTableName(), getNameColumn(), condition, condition, limit, after);
+    }
   }
 
   interface QueryDAO extends EntityDAO<Query> {
