@@ -22,6 +22,8 @@ import {
   Switch,
 } from 'antd';
 import classNames from 'classnames';
+import AsyncSelectList from 'components/AsyncSelectList/AsyncSelectList';
+import { AsyncSelectListProps } from 'components/AsyncSelectList/AsyncSelectList.interface';
 import FilterPattern from 'components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from 'components/common/FilterPattern/filterPattern.interface';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
@@ -133,6 +135,13 @@ export const getField = (field: FieldProp) => {
     case FieldTypes.TAG_SUGGESTION:
       fieldElement = (
         <TagSuggestion {...(props as unknown as TagSuggestionProps)} />
+      );
+
+      break;
+
+    case FieldTypes.ASYNC_SELECT_LIST:
+      fieldElement = (
+        <AsyncSelectList {...(props as unknown as AsyncSelectListProps)} />
       );
 
       break;

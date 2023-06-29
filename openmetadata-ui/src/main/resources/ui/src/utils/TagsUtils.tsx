@@ -23,13 +23,15 @@ import {
   TagsDetailsProps,
 } from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { getExplorePath } from 'constants/constants';
+import { getExplorePath, PAGE_SIZE } from 'constants/constants';
 import { delimiterRegex } from 'constants/regex.constants';
+import { SearchIndex } from 'enums/search.enum';
 import i18next from 'i18next';
 import { isEmpty, isUndefined, toLower } from 'lodash';
 import { Bucket, EntityTags, TagOption } from 'Models';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
+import { searchQuery } from 'rest/searchAPI';
 import {
   getAllClassifications,
   getClassificationByName,
@@ -41,6 +43,7 @@ import { Tag } from '../generated/entity/classification/tag';
 import { Column } from '../generated/entity/data/table';
 import { Paging } from '../generated/type/paging';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
+import { formatSearchTagsResponse } from './APIUtils';
 import { isUrlFriendlyName } from './CommonUtils';
 import { fetchGlossaryTerms, getGlossaryTermlist } from './GlossaryUtils';
 
@@ -423,4 +426,34 @@ export const tagRender = (customTagProps: CustomTagProps) => {
       </Tooltip>
     </AntdTag>
   );
+};
+
+export const fetchTagsElasticSearch = async (
+  searchText: string,
+  page: number
+): Promise<{
+  data: {
+    label: string;
+    value: string;
+  }[];
+  paging: Paging;
+}> => {
+  const res = await searchQuery({
+    query: searchText,
+    filters: 'disabled:false',
+    pageNumber: page,
+    pageSize: PAGE_SIZE,
+    queryFilter: {},
+    searchIndex: SearchIndex.TAG,
+  });
+
+  return {
+    data: formatSearchTagsResponse(res.hits.hits ?? []).map((item) => ({
+      label: item.fullyQualifiedName ?? '',
+      value: item.fullyQualifiedName ?? '',
+    })),
+    paging: {
+      total: res.hits.total.value,
+    },
+  };
 };

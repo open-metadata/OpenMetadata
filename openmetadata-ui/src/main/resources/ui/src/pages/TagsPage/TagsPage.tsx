@@ -691,7 +691,7 @@ const TagsPage = () => {
                   {getEntityName(category)}
                   {category.disabled && (
                     <Badge
-                      className="m-l-xs badge-grey"
+                      className="m-l-xs badge-grey opacity-60"
                       count={t('label.disabled')}
                       data-testid="disabled"
                       size="small"
@@ -1136,6 +1136,7 @@ const TagsPage = () => {
               <Switch
                 checked={currentClassification?.mutuallyExclusive}
                 data-testid="mutually-exclusive-classification-button"
+                disabled={isClassificationDisabled}
                 onChange={handleUpdateMutuallyExclusive}
               />
             </Space>

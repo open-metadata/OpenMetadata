@@ -36,7 +36,6 @@ export interface TableTagsComponentProps<T> {
   onRequestTagsHandler?: (cell: T) => void;
   getColumnName?: (cell: T) => string;
   getColumnFieldFQN?: string;
-  entityFieldTasks?: EntityFieldThreads[];
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   entityFieldThreads?: EntityFieldThreads[];
   type: TagSource;
