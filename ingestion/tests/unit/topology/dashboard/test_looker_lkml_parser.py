@@ -154,3 +154,15 @@ class TestLkmlParser(TestCase):
         self.assertEqual(
             get_path_from_link(link_no_files), "hello/explores/my_explore.explore.lkml"
         )
+
+    def test_expand(self):
+        """
+        We can expand a single Path. We are looking for "*/cats.view", which will
+        match a file in the resources directory "cats.view.lkml"
+        """
+        path = Includes("*/cats.view")
+
+        reader = LocalReader(BASE_PATH)
+        parser = LkmlParser(reader)
+
+        self.assertIn("cats.view.lkml", parser._expand(path)[0])

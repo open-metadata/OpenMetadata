@@ -20,7 +20,7 @@ import { LOGIN_SLIDE } from '../../constants/Login.constants';
 const LoginCarousel = () => {
   return (
     <div className="carousal-container" data-testid="carousel-container">
-      <Carousel autoplay dots autoplaySpeed={1500} easing="ease-in-out">
+      <Carousel autoplay dots autoplaySpeed={3000} easing="ease-in-out">
         {LOGIN_SLIDE.map((data) => (
           <div
             className="text-center"
