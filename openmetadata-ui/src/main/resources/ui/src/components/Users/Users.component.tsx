@@ -736,7 +736,7 @@ const Users = ({
       }
       case UserPageTabs.ACTIVITY:
         return (
-          <ActivityFeedProvider>
+          <ActivityFeedProvider user={userData.id}>
             <ActivityFeedTab
               entityType={EntityType.USER_NAME}
               fqn={username}
