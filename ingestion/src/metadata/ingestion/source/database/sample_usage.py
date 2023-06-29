@@ -77,7 +77,7 @@ class SampleUsageSource(UsageSource):
         connection: CustomDatabaseConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, CustomDatabaseConnection):
             raise InvalidSourceException(
-                f"Expected SampleDataConnection, but got {connection}"
+                f"Expected CustomDatabaseConnection, but got {connection}"
             )
         return cls(config, metadata_config)
 
