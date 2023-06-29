@@ -226,6 +226,7 @@ export const NEW_TAG = {
   name: 'CypressTag',
   displayName: 'CypressTag',
   renamedName: 'CypressTag-1',
+  fqn: `${NEW_CLASSIFICATION.name}.CypressTag`,
   description: 'This is the CypressTag',
 };
 

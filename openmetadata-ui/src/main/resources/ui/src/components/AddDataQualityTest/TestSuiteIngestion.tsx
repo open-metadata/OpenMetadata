@@ -22,6 +22,7 @@ import {
   deployIngestionPipelineById,
   updateIngestionPipeline as putIngestionPipeline,
 } from 'rest/ingestionPipelineAPI';
+import { getIngestionName } from 'utils/ServiceUtils';
 import {
   DEPLOYED_PROGRESS_VAL,
   INGESTION_PROGRESS_END_VAL,
@@ -36,7 +37,8 @@ import {
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   getIngestionFrequency,
-  replaceSpaceWith_,
+  getNameFromFQN,
+  replaceAllSpacialCharWith_,
   Transi18next,
 } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -113,7 +115,12 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   };
 
   const createIngestionPipeline = async (repeatFrequency: string) => {
-    const updatedName = replaceSpaceWith_(testSuite.name);
+    const tableName = replaceAllSpacialCharWith_(
+      getNameFromFQN(
+        testSuite.executableEntityReference?.fullyQualifiedName ?? ''
+      )
+    );
+    const updatedName = getIngestionName(tableName, PipelineType.TestSuite);
 
     const ingestionPayload: CreateIngestionPipeline = {
       airflowConfig: {
@@ -121,10 +128,10 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
           ? undefined
           : repeatFrequency,
       },
-      name: `${updatedName}_${PipelineType.TestSuite}`,
+      name: updatedName,
       pipelineType: PipelineType.TestSuite,
       service: {
-        id: testSuite.id || '',
+        id: testSuite.id ?? '',
         type: camelCase(PipelineType.TestSuite),
       },
       sourceConfig: {

@@ -221,6 +221,7 @@ For more information to get a Personal Access Token please visit this [link](htt
 - **Site Name**: This corresponds to the `contentUrl` attribute in the Tableau REST API. The `site_name` is the portion of the URL that follows the `/site/` in the URL.
 - **Site URL**: If it is empty, the default Tableau site name will be used.
 - **Environment**: The config object can have multiple environments. The default environment is defined as `tableau_prod`, and you can change this if needed by specifying an `env` parameter.
+- **Pagination Limit**: The pagination limit will be used while querying the Tableau Graphql endpoint to get the data source information.
 
 {% /extraContent %}
 

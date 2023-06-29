@@ -84,46 +84,6 @@ a[href].link-text-grey,
   color: @text-grey-muted;
 }
 
-// text color
-.text-primary {
-  color: @primary-color;
-  &:hover {
-    color: @primary-color;
-  }
-}
-.text-color-inherit {
-  color: inherit;
-}
-.error-text {
-  color: #ff4c3b;
-}
-.text-white {
-  color: @white;
-}
-.text-grey-muted {
-  color: @text-grey-muted;
-}
-.text-grey-body {
-  color: @text-color-secondary;
-}
-.text-link-color {
-  color: @link-color;
-}
-.text-gray-400 {
-  color: #9ca3af;
-}
-.text-body {
-  color: @text-color-secondary;
-}
-
-.text-success {
-  color: #008376;
-}
-
-.text-failure {
-  color: #cb2431;
-}
-
 // text alignment
 
 .text-center {
@@ -159,11 +119,6 @@ a[href].link-text-grey,
 .border-t-0 {
   border-top-width: 0px;
 }
-.border-t-1 {
-  border-top-width: 1px;
-  border-style: solid;
-  border-color: @border-color;
-}
 .border-main {
   border-color: @border-color;
 }
@@ -197,8 +152,19 @@ a[href].link-text-grey,
   border-radius: 12px;
 }
 
+// Word break
+
+.break-all {
+  word-break: break-all;
+}
 .break-word {
   word-break: break-word;
+}
+
+// Whitespace
+
+.whitespace-normal {
+  white-space: normal;
 }
 
 .mx-auto {
@@ -463,6 +429,8 @@ a[href].link-text-grey,
   }
 }
 .entity-tag-right-panel-container {
+  height: calc(100vh - 236px);
+  overflow-y: scroll;
   border-left: @global-border;
   margin-left: 20px;
   padding: 12px 8px 0 8px;
@@ -470,4 +438,8 @@ a[href].link-text-grey,
 
 .global-border-radius {
   border-radius: 10px;
+}
+
+.full-height {
+  height: calc(100vh - 64px); // removing only navbar height
 }

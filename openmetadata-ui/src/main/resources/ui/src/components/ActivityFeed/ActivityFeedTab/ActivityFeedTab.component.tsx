@@ -108,6 +108,16 @@ export const ActivityFeedTab = ({
     setActiveThread();
   };
 
+  const placeholderText = useMemo(() => {
+    if (activeTab === ActivityFeedTabs.ALL) {
+      return t('message.no-activity-feed');
+    } else if (activeTab === ActivityFeedTabs.MENTIONS) {
+      return t('message.no-mentions');
+    } else {
+      return t('message.no-tasks-assigned');
+    }
+  }, [activeTab]);
+
   const fetchFeedsCount = () => {
     if (!isUserEntity) {
       // To get conversation count
@@ -349,6 +359,7 @@ export const ActivityFeedTab = ({
         <ActivityFeedListV1
           hidePopover
           activeFeedId={selectedThread?.id}
+          emptyPlaceholderText={placeholderText}
           feedList={threads}
           isLoading={false}
           showThread={false}

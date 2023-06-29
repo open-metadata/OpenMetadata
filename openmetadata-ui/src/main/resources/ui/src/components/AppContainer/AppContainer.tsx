@@ -39,7 +39,7 @@ const AppContainer = () => {
           <Sider className="left-sidebar-col" width={60}>
             <LeftSidebar />
           </Sider>
-          <Content>
+          <Content className="main-content">
             <AuthenticatedAppRouter />
           </Content>
         </Layout>

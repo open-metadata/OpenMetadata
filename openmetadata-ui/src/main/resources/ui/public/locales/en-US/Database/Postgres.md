@@ -45,6 +45,17 @@ $$section
 
 Username to connect to Postgres. This user should have privileges to read all the metadata in Postgres.
 $$
+
+
+$$section
+### Auth Config $(id="authType")
+There are 2 types of auth configs:
+- Basic Auth.
+- IAM based Auth.
+
+User can authenticate the Postgres Instance with auth type as `Basic Authentication` i.e. Password **or** by using `IAM based Authentication` to connect to AWS related services.
+$$
+
 ## Basic Auth
 $$section
 ### Password $(id="password")
@@ -143,7 +154,9 @@ $$
 $$section
 ### Host and Port $(id="hostPort")
 
-Host and port of the Postgres service. E.g., `localhost:5432` or `host.docker.internal:5432`.
+This parameter specifies the host and port of the Postgres instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:5432`.
+
+If your database service and Open Metadata are both running via docker locally, use `host.docker.internal:5432` as the value.
 $$
 
 $$section
@@ -155,10 +168,11 @@ $$
 $$section
 ### SSL Mode $(id="sslMode")
 
-SSL Mode to connect to postgres database. E.g, `prefer`, `verify-ca` etc.
-#### Note: if you are using `IAM auth`, select either `allow` (recommended) or other option based on your use case.
+SSL Mode to connect to postgres database. E.g, `prefer`, `verify-ca`, `allow` etc.
 $$
-
+$$note
+if you are using `IAM auth`, select either `allow` (recommended) or other option based on your use case.
+$$
 $$section
 ### Classification Name $(id="classificationName")
 

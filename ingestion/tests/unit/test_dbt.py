@@ -32,7 +32,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_dbt_raw_query,
 )
 from metadata.ingestion.source.database.dbt.metadata import DbtSource
-from metadata.utils.dbt_config import DbtFiles, DbtObjects
+from metadata.ingestion.source.database.dbt.models import DbtFiles, DbtObjects
 from metadata.utils.tag_utils import get_tag_labels
 
 mock_dbt_config = {

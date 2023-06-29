@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
+import { Aggregations } from 'interface/search.interface';
 import { SearchIndex } from '../../enums/search.enum';
 import { ExploreQuickFilterField } from './explore.interface';
 
 export interface ExploreQuickFiltersProps {
   index: SearchIndex;
   fields: Array<ExploreQuickFilterField>;
+  aggregations?: Aggregations;
   onFieldValueSelect: (field: ExploreQuickFilterField) => void;
   onAdvanceSearch: () => void;
   showDeleted?: boolean;
