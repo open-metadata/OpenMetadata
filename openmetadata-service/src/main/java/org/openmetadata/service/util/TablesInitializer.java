@@ -54,6 +54,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.MigrationFile;
 import org.openmetadata.service.migration.api.MigrationStep;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -333,6 +334,7 @@ public final class TablesInitializer {
 
   public static void validateAndRunSystemDataMigrations(
       Jdbi jdbi, ConnectionType connType, boolean ignoreFileChecksum) {
+    DatasourceConfig.initialize(connType.label);
     List<MigrationStep> loadedMigrationFiles = getServerMigrationFiles(connType);
     MigrationWorkflow workflow = new MigrationWorkflow(jdbi, loadedMigrationFiles, ignoreFileChecksum);
     workflow.runMigrationWorkflows();

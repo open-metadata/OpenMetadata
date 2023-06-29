@@ -71,6 +71,28 @@ global:
     callbackUrl: "http://localhost:8585/callback"
 ```
 
+### After 1.1.0
+
+```yaml
+openmetadata:
+  config:
+    authorizer:
+      className: "org.openmetadata.service.security.DefaultAuthorizer"
+      containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
+      initialAdmins:
+        - "user1"
+        - "user2"
+      principalDomain: "open-metadata.org"
+    authentication:
+      provider: "azure"
+      publicKeys:
+      - "http://openmetadata:8585/api/v1/config/jwks"
+      - "https://login.microsoftonline.com/common/discovery/keys"
+      authority: "https://login.microsoftonline.com/{Tenant ID}"
+      clientId: "{Client ID}" # Azure Application
+      callbackUrl: "http://localhost:8585/callback"
+```
+
 {% note %}
 
 Follow [this](/deployment/security/azure#step-10-update-ingestion-bot-with-azure-sso-service-application) guide to configure the `ingestion-bot` credentials for ingesting data from Airflow.

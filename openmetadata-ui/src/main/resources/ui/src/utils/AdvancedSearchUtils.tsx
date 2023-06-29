@@ -17,6 +17,7 @@ import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import i18next from 'i18next';
 import {
+  Bucket,
   ContainerSearchSource,
   DashboardSearchSource,
   ExploreSearchSource,
@@ -388,4 +389,16 @@ export const getOptionTextFromKey = (
       return option.text;
     }
   }
+};
+
+export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
+  if (!buckets) {
+    return [];
+  }
+
+  return buckets.map((option) => ({
+    key: option.key,
+    label: option.key,
+    count: option.doc_count ?? 0,
+  }));
 };
