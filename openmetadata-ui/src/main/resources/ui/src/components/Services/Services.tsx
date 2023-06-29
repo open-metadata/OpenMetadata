@@ -100,28 +100,51 @@ const Services = ({
     }
   }, [serviceName]);
 
+  const noDataPlaceholder = useMemo(
+    () =>
+      addServicePermission ? (
+        <ErrorPlaceHolder
+          className="mt-24"
+          doc={CONNECTORS_DOCS}
+          heading={servicesDisplayName[serviceName]}
+          permission={addServicePermission}
+          type={ERROR_PLACEHOLDER_TYPE.CREATE}
+          onClick={handleAddServiceClick}
+        />
+      ) : (
+        <ErrorPlaceHolder
+          className="mt-24"
+          type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+        />
+      ),
+    [
+      addServicePermission,
+      servicesDisplayName,
+      serviceName,
+      addServicePermission,
+      handleAddServiceClick,
+    ]
+  );
+
   return (
     <Row className="justify-center" data-testid="services-container">
-      {serviceData.length ? (
-        <Fragment>
-          <Col span={24}>
-            <Space
-              className="w-full justify-between m-b-lg"
-              data-testid="header">
-              <PageHeader data={getServicePageHeader()} />
-              <Tooltip
-                placement="left"
-                title={
-                  addServicePermission
-                    ? t('label.add-entity', {
-                        entity: t('label.service'),
-                      })
-                    : NO_PERMISSION_FOR_ACTION
-                }>
+      <Fragment>
+        <Col span={24}>
+          <Space className="w-full justify-between m-b-lg" data-testid="header">
+            <PageHeader data={getServicePageHeader()} />
+            <Tooltip
+              placement="left"
+              title={
+                addServicePermission
+                  ? t('label.add-entity', {
+                      entity: t('label.service'),
+                    })
+                  : NO_PERMISSION_FOR_ACTION
+              }>
+              {(addServicePermission || isAuthDisabled) && (
                 <Button
                   className="m-b-xs"
                   data-testid="add-service-button"
-                  disabled={!addServicePermission && !isAuthDisabled}
                   size="middle"
                   type="primary"
                   onClick={handleAddServiceClick}>
@@ -129,13 +152,15 @@ const Services = ({
                     entity: t('label.service'),
                   })}
                 </Button>
-              </Tooltip>
-            </Space>
-          </Col>
+              )}
+            </Tooltip>
+          </Space>
+        </Col>
+        {serviceData.length ? (
           <Col span={24}>
             <Row data-testid="data-container" gutter={[16, 16]}>
-              {serviceData.map((service, index) => (
-                <Col key={index} lg={8} xl={6}>
+              {serviceData.map((service) => (
+                <Col key={service.name} lg={8} xl={6}>
                   <Card className="w-full" size="small">
                     <div
                       className="d-flex tw-justify-between text-grey-muted"
@@ -196,29 +221,20 @@ const Services = ({
               ))}
             </Row>
           </Col>
+        ) : (
+          <Col span={24}>{noDataPlaceholder}</Col>
+        )}
 
-          {showPagination(paging) && (
-            <NextPrevious
-              currentPage={currentPage}
-              pageSize={SERVICE_VIEW_CAP}
-              paging={paging}
-              pagingHandler={onPageChange}
-              totalCount={paging.total}
-            />
-          )}
-        </Fragment>
-      ) : (
-        <Col span={24}>
-          <ErrorPlaceHolder
-            className="mt-24"
-            doc={CONNECTORS_DOCS}
-            heading={servicesDisplayName[serviceName]}
-            permission={addServicePermission}
-            type={ERROR_PLACEHOLDER_TYPE.CREATE}
-            onClick={handleAddServiceClick}
+        {showPagination(paging) && (
+          <NextPrevious
+            currentPage={currentPage}
+            pageSize={SERVICE_VIEW_CAP}
+            paging={paging}
+            pagingHandler={onPageChange}
+            totalCount={paging.total}
           />
-        </Col>
-      )}
+        )}
+      </Fragment>
     </Row>
   );
 };
