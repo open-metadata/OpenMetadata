@@ -29,7 +29,9 @@ $$
 $$section
 ### Host Port $(id="hostPort")
 
-Host and port of the PinotDB service. E.g., `http://localhost:8099`.
+This parameter specifies the host and port of the PinotDB instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:8099`.
+
+If your database service and Open Metadata are both running via docker locally, use `host.docker.internal:8099` as the value.
 $$
 
 $$section

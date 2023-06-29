@@ -219,7 +219,6 @@ const UpdateTag = () => {
                   />
                 </Form.Item>
                 <Form.Item
-                  className="m-y-0"
                   data-testid="assignees"
                   label={`${t('label.assignee-plural')}:`}
                   name="assignees"

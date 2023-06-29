@@ -154,7 +154,9 @@ $$
 $$section
 ### Host and Port $(id="hostPort")
 
-Host and port of the Postgres service. E.g., `localhost:5432` or `host.docker.internal:5432`.
+This parameter specifies the host and port of the Postgres instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:5432`.
+
+If your database service and Open Metadata are both running via docker locally, use `host.docker.internal:5432` as the value.
 $$
 
 $$section

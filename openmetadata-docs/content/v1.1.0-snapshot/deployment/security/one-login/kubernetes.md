@@ -59,5 +59,49 @@ global:
     callbackUrl: "http://localhost:8585/callback"
 ```
 
+### After 1.1.0
+
+```yaml
+openmetadata:
+  config:
+    authorizer:
+      className: "org.openmetadata.service.security.DefaultAuthorizer"
+      # JWT Filter
+      containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
+      initialAdmins: 
+      - "suresh"
+      principalDomain: "open-metadata.org"
+    authentication:
+      provider: "custom-oidc"
+      publicKeys:
+      - "http://openmetadata:8585/api/v1/config/jwks"
+      - "{IssuerUrl}/certs"
+      authority: "{IssuerUrl}"
+      clientId: "{client id}"
+      callbackUrl: "http://localhost:8585/callback"
+```
+
+### After 1.1.0
+
+```yaml
+openmetadata:
+  config:
+    authorizer:
+      className: "org.openmetadata.service.security.DefaultAuthorizer"
+      # JWT Filter
+      containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
+      initialAdmins: 
+      - "suresh"
+      principalDomain: "open-metadata.org"
+    authentication:
+      provider: "custom-oidc"
+      publicKeys:
+      - "http://openmetadata:8585/api/v1/config/jwks"
+      - "{IssuerUrl}/certs"
+      authority: "{IssuerUrl}"
+      clientId: "{client id}"
+      callbackUrl: "http://localhost:8585/callback"
+```
+
 **Note:** Follow [this](/how-to-guides/feature-configurations/bots) guide to configure the `ingestion-bot` credentials for
 ingesting data from Airflow.

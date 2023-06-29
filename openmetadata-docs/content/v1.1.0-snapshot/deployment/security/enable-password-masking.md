@@ -59,8 +59,9 @@ Update your helm `maskPasswordsApi` value:
 
 ```yaml
 # openmetadata.prod.values.yml
-global:
-...
-  maskPasswordsApi: true
-...
+openmetadata:
+  config:
+  ...
+    maskPasswordsApi: true
+  ...
 ```
