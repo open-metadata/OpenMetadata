@@ -14,7 +14,7 @@ GitHub client to read files with token auth
 import base64
 import traceback
 from enum import Enum
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 import requests
 
@@ -85,3 +85,53 @@ class GitHubReader(ApiReader):
             raise ReadException(f"Error fetching file [{path}] from repo: {err}")
 
         raise ReadException(f"Could not fetch file [{path}] from repo")
+
+    def _get_default_branch(self) -> str:
+        """
+        Get repo default branch
+        """
+        res = requests.get(
+            self._build_url(
+                HOST,
+                UrlParts.REPOS.value,
+                self.credentials.repositoryOwner.__root__,
+                self.credentials.repositoryName.__root__,
+            ),
+            headers=self.auth_headers,
+            timeout=30,
+        )
+        if res.status_code == 200:
+            return res.json().get("default_branch")
+
+        # If we don't get a 200, raise
+        res.raise_for_status()
+        raise RuntimeError("Could not fetch the default branch")
+
+    def _get_tree(self) -> Optional[List[str]]:
+        """
+        Use the GitHub Tree API
+        """
+        # First, get the default branch
+        branch = self._get_default_branch()
+        if branch:
+            res = requests.get(
+                self._build_url(
+                    HOST,
+                    UrlParts.REPOS.value,
+                    self.credentials.repositoryOwner.__root__,
+                    self.credentials.repositoryName.__root__,
+                    "git",
+                    "trees",
+                    f"{branch}?recursive=1",
+                ),
+                headers=self.auth_headers,
+                timeout=30,
+            )
+            if res.status_code == 200:
+                return [elem.get("path") for elem in res.json().get("tree")]
+
+            # If we don't get a 200, raise
+            res.raise_for_status()
+
+        # If we don't find a branch, return None
+        return None
