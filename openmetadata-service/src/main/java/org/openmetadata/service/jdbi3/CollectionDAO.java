@@ -1673,8 +1673,8 @@ public interface CollectionDAO {
 
     @Override
     default int listCount(ListFilter filter) {
-      boolean includeEmptyTestSuite = Boolean.parseBoolean(filter.getQueryParam("includeEmptyTestSuite"));
-      if (!includeEmptyTestSuite) {
+      String includeEmptyTestSuite = filter.getQueryParam("includeEmptyTestSuite");
+      if (includeEmptyTestSuite != null && !Boolean.parseBoolean(includeEmptyTestSuite)) {
         String condition =
             String.format(
                 "INNER JOIN entity_relationship er ON %s.id=er.fromId AND er.relation=%s AND er.toEntity='%s'",
@@ -1693,8 +1693,8 @@ public interface CollectionDAO {
 
     @Override
     default List<String> listBefore(ListFilter filter, int limit, String before) {
-      boolean includeEmptyTestSuite = Boolean.parseBoolean(filter.getQueryParam("includeEmptyTestSuite"));
-      if (!includeEmptyTestSuite) {
+      String includeEmptyTestSuite = filter.getQueryParam("includeEmptyTestSuite");
+      if (includeEmptyTestSuite != null && !Boolean.parseBoolean(includeEmptyTestSuite)) {
         String condition =
             String.format(
                 "INNER JOIN entity_relationship er ON %s.id=er.fromId AND er.relation=%s AND er.toEntity='%s'",
@@ -1712,8 +1712,8 @@ public interface CollectionDAO {
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String after) {
-      boolean includeEmptyTestSuite = Boolean.parseBoolean(filter.getQueryParam("includeEmptyTestSuite"));
-      if (!includeEmptyTestSuite) {
+      String includeEmptyTestSuite = filter.getQueryParam("includeEmptyTestSuite");
+      if (includeEmptyTestSuite != null && !Boolean.parseBoolean(includeEmptyTestSuite)) {
         String condition =
             String.format(
                 "INNER JOIN entity_relationship er ON %s.id=er.fromId AND er.relation=%s AND er.toEntity='%s'",
