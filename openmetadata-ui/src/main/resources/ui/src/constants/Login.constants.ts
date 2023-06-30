@@ -20,7 +20,7 @@ import insightImg from '../assets/img/screenShot5.png';
 
 export const LOGIN_SLIDE = [
   {
-    title: 'discovery',
+    title: 'data-discovery',
     image: discoveryImg,
     descriptionKey: 'enables-end-to-end-metadata-management',
   },
@@ -40,7 +40,7 @@ export const LOGIN_SLIDE = [
     descriptionKey: 'fosters-collaboration-among-producers-and-consumers',
   },
   {
-    title: 'collaboration',
+    title: 'data-collaboration',
     image: collaborationImg,
     descriptionKey: 'deeply-understand-table-relations-message',
   },
