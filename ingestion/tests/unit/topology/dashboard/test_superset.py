@@ -56,8 +56,6 @@ from metadata.ingestion.source.dashboard.superset.client import SupersetAPIClien
 from metadata.ingestion.source.dashboard.superset.db_source import SupersetDBSource
 from metadata.ingestion.source.dashboard.superset.metadata import SupersetSource
 from metadata.ingestion.source.dashboard.superset.models import (
-    ChartResult,
-    DashboradResult,
     FetchChart,
     FetchDashboard,
     ListDatabaseResult,

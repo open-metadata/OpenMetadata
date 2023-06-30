@@ -202,7 +202,7 @@ def replace_special_with(raw: str, replacement: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]", replacement, raw)
 
 
-def get_standard_chart_type(raw_chart_type: str) -> Optional[str]:
+def get_standard_chart_type(raw_chart_type: str) -> ChartType.Other:
     """
     Get standard chart type supported by OpenMetadata based on raw chart type input
     :param raw_chart_type: raw chart type to be standardize
@@ -210,7 +210,7 @@ def get_standard_chart_type(raw_chart_type: str) -> Optional[str]:
     """
     if raw_chart_type is not None:
         return om_chart_type_dict.get(raw_chart_type.lower(), ChartType.Other)
-    return None
+    return ChartType.Other
 
 
 def find_in_iter(element: Any, container: Iterable[Any]) -> Optional[Any]:
