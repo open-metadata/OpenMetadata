@@ -76,9 +76,9 @@ const ServiceConnectionDetails = ({
           serviceCategory.slice(0, -1) === EntityType.DATABASE_SERVICE &&
           key === 'credentials'
         ) {
-          // Condition for GCS Credentials path
+          // Condition for GCP Credentials path
           const newSchemaPropertyObject =
-            schemaPropertyObject[key].definitions.GCSCredentialsPath;
+            schemaPropertyObject[key].definitions.gcpCredentialsPath;
 
           return getKeyValues(value, newSchemaPropertyObject);
         } else if (
@@ -86,7 +86,7 @@ const ServiceConnectionDetails = ({
           key === 'configSource'
         ) {
           if (isObject(value.securityConfig)) {
-            if (!value.securityConfig.gcsConfig) {
+            if (!value.securityConfig.gcpConfig) {
               if (Object.keys(schemaPropertyObject[key]).includes(oneOf)) {
                 if (
                   value.securityConfig?.awsAccessKeyId ||
@@ -113,24 +113,24 @@ const ServiceConnectionDetails = ({
                 return getKeyValues(value, newSchemaPropertyObject);
               }
             } else {
-              if (isObject(value.securityConfig.gcsConfig)) {
-                // Condition for GCS Credentials value
+              if (isObject(value.securityConfig.gcpConfig)) {
+                // Condition for GCP Credentials value
                 return getKeyValues(
-                  value.securityConfig.gcsConfig,
+                  value.securityConfig.gcpConfig,
                   get(
                     schema,
-                    'definitions.GCSConfig.properties.securityConfig.definitions.GCSValues.properties',
+                    'definitions.GCPConfig.properties.securityConfig.definitions.GCPValues.properties',
                     {}
                   )
                 );
               } else {
-                // Condition for GCS Credentials path
+                // Condition for GCP Credentials path
 
                 return getKeyValues(
                   value,
                   get(
                     schema,
-                    'definitions.GCSConfig.properties.securityConfig.definitions.GCSCredentialsPath',
+                    'definitions.GCPConfig.properties.securityConfig.definitions.gcpCredentialsPath',
                     {}
                   )
                 );
@@ -169,7 +169,7 @@ const ServiceConnectionDetails = ({
           : {};
 
         return (
-          <Col span={12}>
+          <Col key={key} span={12}>
             <Row>
               <Col span={8}>
                 <Space size={0}>
@@ -250,7 +250,9 @@ const ServiceConnectionDetails = ({
       <div
         className="d-flex flex-wrap p-xss"
         data-testid="service-connection-details">
-        <Row gutter={[8, 8]}>{data}</Row>
+        <Row className="w-full" gutter={[8, 8]}>
+          {data}
+        </Row>
       </div>
     </Card>
   );

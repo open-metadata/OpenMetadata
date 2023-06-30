@@ -17,7 +17,7 @@ import { EditorContentRef } from 'components/common/rich-text-editor/RichTextEdi
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { Change } from 'diff';
 import { isEqual } from 'lodash';
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getDescriptionDiff } from '../../../utils/TasksUtils';
 import { DiffView } from './DiffView';
@@ -30,29 +30,33 @@ interface Props {
 }
 
 export const DescriptionTabs = ({
-  value: description = '',
+  value = '',
   suggestion,
   placeHolder,
   onChange,
 }: Props) => {
   const { t } = useTranslation();
   const { TabPane } = Tabs;
-
+  const [description] = useState(value);
   const [diffs, setDiffs] = useState<Change[]>([]);
   const [activeTab, setActiveTab] = useState<string>('3');
   const markdownRef = useRef<EditorContentRef>();
 
-  const onTabChange = (key: string) => {
-    setActiveTab(key);
-    if (isEqual(key, '2')) {
-      const newDescription = markdownRef.current?.getEditorContent();
-      if (newDescription) {
-        setDiffs(getDescriptionDiff(description, newDescription));
+  const onTabChange = useCallback(
+    (key: string) => {
+      setActiveTab(key);
+      if (isEqual(key, '2')) {
+        const newDescription = markdownRef.current?.getEditorContent();
+        if (newDescription) {
+          const diff = getDescriptionDiff(description, newDescription);
+          setDiffs(diff);
+        }
+      } else {
+        setDiffs([]);
       }
-    } else {
-      setDiffs([]);
-    }
-  };
+    },
+    [markdownRef]
+  );
 
   return (
     <Tabs
@@ -63,7 +67,7 @@ export const DescriptionTabs = ({
       type="card"
       onChange={onTabChange}>
       <TabPane data-testid="current-tab" key="1" tab="Current">
-        <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4 tw-mt-3">
+        <div className="d-flex tw-border tw-border-main tw-rounded tw-mb-4 tw-mt-3">
           {description.trim() ? (
             <RichTextEditorPreviewer
               className="tw-p-2"
@@ -71,7 +75,7 @@ export const DescriptionTabs = ({
               markdown={description}
             />
           ) : (
-            <span className="tw-no-description tw-p-2">
+            <span className="text-grey-muted tw-p-2">
               {t('label.no-entity', { entity: t('label.description') })}
             </span>
           )}

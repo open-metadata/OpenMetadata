@@ -763,6 +763,15 @@
         "rowCount": {
           "description": "No.of rows in the table. This is always executed on the whole table.",
           "type": "number"
+        },
+        "sizeInByte": {
+          "description": "Table size in GB",
+          "type": "number"
+        },
+        "createDateTime": {
+          "description": "Table creation time.",
+          "type": "string",
+          "format": "date-time"
         }
       },
       "required": [
@@ -948,7 +957,7 @@
     },
     "followers": {
       "description": "Followers of this table.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     },
     "joins": {
       "description": "Details of other tables this table is frequently joined with.",
@@ -968,6 +977,10 @@
       "description": "Latest Data profile for a table.",
       "$ref": "#/definitions/tableProfile",
       "default": null
+    },
+    "testSuite": {
+      "description": "Executable test suite associated with this table",
+      "$ref": "../../tests/testSuite.json"
     },
     "dataModel": {
       "description": "This captures information about how the table is modeled. Currently only DBT model is supported.",
@@ -989,6 +1002,10 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "sourceUrl": {
+      "description": "Source URL of table.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
     }
   },
   "required": [

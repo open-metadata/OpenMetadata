@@ -38,7 +38,7 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
-import org.openmetadata.service.events.subscription.emailAlert.EmailMessage;
+import org.openmetadata.service.events.subscription.email.EmailMessage;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.simplejavamail.api.email.Email;
 import org.simplejavamail.api.email.EmailPopulatingBuilder;
@@ -84,16 +84,18 @@ public class EmailUtil {
 
   private static final String REPORT_SUBJECT = "%s: Data Insights Weekly - %s";
   public static final String DATA_INSIGHT_REPORT_TEMPLATE = "dataInsightReport.ftl";
-  private static EmailUtil INSTANCE;
+  private static EmailUtil instance;
   private static SmtpSettings STORED_SMTP_SETTINGS;
-  private static Mailer MAILER;
-  private static Configuration TEMPLATE_CONFIGURATION;
+  private static Mailer mailer;
+  private static Configuration templateConfiguration;
+
+  private static final String EMAIL_IGNORE_MSG = "Email was not sent to %s as SMTP setting is not enabled";
 
   private EmailUtil() {
     try {
       STORED_SMTP_SETTINGS = getSmtpSettings();
-      MAILER = createMailer(STORED_SMTP_SETTINGS);
-      TEMPLATE_CONFIGURATION = new Configuration(VERSION_2_3_28);
+      mailer = createMailer(STORED_SMTP_SETTINGS);
+      templateConfiguration = new Configuration(VERSION_2_3_28);
       LOG.info("Email Util cache is initialized");
     } catch (Exception ex) {
       LOG.warn("[MAILER] Smtp Configurations are missing : Reason {} ", ex.getMessage(), ex);
@@ -126,10 +128,10 @@ public class EmailUtil {
   }
 
   public static EmailUtil getInstance() {
-    if (INSTANCE == null) {
-      INSTANCE = new EmailUtil();
+    if (instance == null) {
+      instance = new EmailUtil();
     }
-    return INSTANCE;
+    return instance;
   }
 
   public void sendAccountStatus(User user, String action, String status) throws IOException, TemplateException {
@@ -146,6 +148,8 @@ public class EmailUtil {
           user.getEmail(),
           EMAIL_TEMPLATE_BASEPATH,
           ACCOUNT_STATUS_TEMPLATE_FILE);
+    } else {
+      LOG.warn(String.format(EMAIL_IGNORE_MSG, user.getEmail()));
     }
   }
 
@@ -163,6 +167,8 @@ public class EmailUtil {
           user.getEmail(),
           EMAIL_TEMPLATE_BASEPATH,
           EMAIL_VERIFICATION_TEMPLATE_PATH);
+    } else {
+      LOG.warn(String.format(EMAIL_IGNORE_MSG, user.getEmail()));
     }
   }
 
@@ -177,6 +183,8 @@ public class EmailUtil {
       templatePopulator.put(EXPIRATION_TIME_KEY, DEFAULT_EXPIRATION_TIME);
 
       sendMail(subject, templatePopulator, user.getEmail(), EMAIL_TEMPLATE_BASEPATH, templateFilePath);
+    } else {
+      LOG.warn(String.format(EMAIL_IGNORE_MSG, user.getEmail()));
     }
   }
 
@@ -195,6 +203,8 @@ public class EmailUtil {
       templatePopulator.put("taskLink", taskLink);
 
       sendMail(subject, templatePopulator, email, EMAIL_TEMPLATE_BASEPATH, templateFilePath);
+    } else {
+      LOG.warn(String.format(EMAIL_IGNORE_MSG, email));
     }
   }
 
@@ -228,8 +238,8 @@ public class EmailUtil {
       emailBuilder.to(to);
       emailBuilder.from(getSmtpSettings().getSenderMail());
 
-      TEMPLATE_CONFIGURATION.setClassForTemplateLoading(getClass(), baseTemplatePackage);
-      Template template = TEMPLATE_CONFIGURATION.getTemplate(templatePath);
+      templateConfiguration.setClassForTemplateLoading(getClass(), baseTemplatePackage);
+      Template template = templateConfiguration.getTemplate(templatePath);
 
       // write the freemarker output to a StringWriter
       StringWriter stringWriter = new StringWriter();
@@ -237,6 +247,8 @@ public class EmailUtil {
       String mailContent = stringWriter.toString();
       emailBuilder.withHTMLText(mailContent);
       sendMail(emailBuilder.buildEmail());
+    } else {
+      LOG.warn(EMAIL_IGNORE_MSG, to);
     }
   }
 
@@ -249,8 +261,8 @@ public class EmailUtil {
       emailBuilder.toMultiple(to);
       emailBuilder.from(getSmtpSettings().getSenderMail());
 
-      TEMPLATE_CONFIGURATION.setClassForTemplateLoading(getClass(), baseTemplatePackage);
-      Template template = TEMPLATE_CONFIGURATION.getTemplate(templatePath);
+      templateConfiguration.setClassForTemplateLoading(getClass(), baseTemplatePackage);
+      Template template = templateConfiguration.getTemplate(templatePath);
 
       // write the freemarker output to a StringWriter
       StringWriter stringWriter = new StringWriter();
@@ -262,8 +274,8 @@ public class EmailUtil {
   }
 
   public void sendMail(Email email) {
-    if (MAILER != null && getSmtpSettings().getEnableSmtpServer()) {
-      MAILER.sendMail(email, true);
+    if (mailer != null && getSmtpSettings().getEnableSmtpServer()) {
+      mailer.sendMail(email, true);
     }
   }
 
@@ -299,6 +311,8 @@ public class EmailUtil {
       } catch (Exception ex) {
         LOG.error("Failed in sending Mail to user [{}]. Reason : {}", user.getEmail(), ex.getMessage());
       }
+    } else {
+      LOG.warn(String.format(EMAIL_IGNORE_MSG, user.getEmail()));
     }
   }
 
@@ -325,6 +339,8 @@ public class EmailUtil {
       } catch (Exception ex) {
         LOG.error("Failed in sending Mail to user [{}]. Reason : {}", receiverMail, ex.getMessage());
       }
+    } else {
+      LOG.warn(String.format(EMAIL_IGNORE_MSG, receiverMail));
     }
   }
 
@@ -344,11 +360,13 @@ public class EmailUtil {
       templatePopulator.put("ownershipObj", ownerShipObj);
       templatePopulator.put("tierObj", tierObj);
       sendMailToMultiple(subject, templatePopulator, emails, EMAIL_TEMPLATE_BASEPATH, templateFilePath);
+    } else {
+      LOG.warn(EMAIL_IGNORE_MSG, emails.toString());
     }
   }
 
   public void testConnection() {
-    MAILER.testConnection();
+    mailer.testConnection();
   }
 
   private String getEmailVerificationSubject() {
@@ -401,7 +419,7 @@ public class EmailUtil {
         SettingsCache.getInstance().getSetting(SettingsType.EMAIL_CONFIGURATION, SmtpSettings.class);
     if (!emailConfig.equals(STORED_SMTP_SETTINGS)) {
       STORED_SMTP_SETTINGS = emailConfig;
-      MAILER = createMailer(emailConfig);
+      mailer = createMailer(emailConfig);
     }
     return emailConfig;
   }

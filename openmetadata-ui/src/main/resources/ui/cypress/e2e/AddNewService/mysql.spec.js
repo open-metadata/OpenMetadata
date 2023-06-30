@@ -40,7 +40,6 @@ describe('MySQL Ingestion', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
 
     const addIngestionInput = () => {
-      // cy.get('[data-testid="filter-pattern-container"]').first().scrollIntoView().should('be.visible');
       cy.get('[data-testid="schema-filter-pattern-checkbox"]')
         .invoke('show')
         .trigger('mouseover')
@@ -48,7 +47,7 @@ describe('MySQL Ingestion', () => {
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .scrollIntoView()
         .should('be.visible')
-        .type(Cypress.env('mysqlDatabaseSchema'));
+        .type(`${Cypress.env('mysqlDatabaseSchema')}{enter}`);
     };
 
     testServiceCreationAndIngestion({

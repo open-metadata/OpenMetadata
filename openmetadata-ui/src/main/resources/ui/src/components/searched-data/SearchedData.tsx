@@ -13,6 +13,7 @@
 
 import { Pagination } from 'antd';
 import classNames from 'classnames';
+import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isNumber, isUndefined } from 'lodash';
 import Qs from 'qs';
@@ -22,7 +23,6 @@ import { PAGE_SIZE } from '../../constants/constants';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { pluralize } from '../../utils/CommonUtils';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
-import TableDataCardV2 from '../common/table-data-card-v2/TableDataCardV2';
 import Loader from '../Loader/Loader';
 import Onboarding from '../onboarding/Onboarding';
 import { SearchedDataProps } from './SearchedData.interface';
@@ -48,6 +48,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   selectedEntityId,
   handleSummaryPanelDisplay,
   filter,
+  currentPage,
 }) => {
   const searchResultCards = useMemo(() => {
     return data.map(({ _source: table, highlight }, index) => {
@@ -93,8 +94,8 @@ const SearchedData: React.FC<SearchedDataProps> = ({
         : [];
 
       return (
-        <div className="tw-mb-3" key={index}>
-          <TableDataCardV2
+        <div className="m-b-md" key={`tabledatacard${index}`}>
+          <ExploreSearchCard
             className={classNames(
               table.id === selectedEntityId && isSummaryPanelVisible
                 ? 'highlight-card'
@@ -103,6 +104,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
             handleSummaryPanelDisplay={handleSummaryPanelDisplay}
             id={`tabledatacard${index}`}
             matches={matches}
+            showTags={false}
             source={{ ...table, name, description: tDesc, displayName }}
           />
         </div>
@@ -157,7 +159,11 @@ const SearchedData: React.FC<SearchedDataProps> = ({
                       <Pagination
                         hideOnSinglePage
                         className="text-center"
-                        current={isNumber(Number(page)) ? Number(page) : 1}
+                        current={
+                          isNumber(Number(page ?? currentPage))
+                            ? Number(page ?? currentPage)
+                            : 1
+                        }
                         pageSize={
                           size && isNumber(Number(size))
                             ? Number(size)

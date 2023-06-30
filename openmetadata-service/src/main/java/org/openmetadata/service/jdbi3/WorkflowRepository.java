@@ -25,8 +25,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
         dao.workflowDAO(),
         dao,
         PATCH_FIELDS,
-        UPDATE_FIELDS,
-        null);
+        UPDATE_FIELDS);
   }
 
   @Override
@@ -49,7 +48,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
 
     if (secretsManager != null) {
-      entity = secretsManager.encryptOrDecryptWorkflow(entity, true);
+      entity = secretsManager.encryptWorkflow(entity);
     }
 
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
@@ -60,9 +59,15 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
     entity.withOwner(owner).withOpenMetadataServerConnection(openmetadataConnection);
   }
 
+  /** Remove the secrets from the secret manager */
+  @Override
+  protected void postDelete(Workflow workflow) {
+    SecretsManagerFactory.getSecretsManager().deleteSecretsFromWorkflow(workflow);
+  }
+
   @Override
   public void storeRelationships(Workflow entity) {
-    storeOwner(entity, entity.getOwner());
+    // No relationships to store beyond what is stored in the super class
   }
 
   @Override

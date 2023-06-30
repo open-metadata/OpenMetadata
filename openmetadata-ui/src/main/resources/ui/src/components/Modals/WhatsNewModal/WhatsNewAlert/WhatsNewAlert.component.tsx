@@ -19,6 +19,7 @@ import { useAuth } from 'hooks/authHooks';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
+import { Transi18next } from 'utils/CommonUtils';
 import { WhatsNewModal } from '..';
 import { COOKIE_VERSION, LATEST_VERSION_ID, WHATS_NEW } from '../whatsNewData';
 import '../WhatsNewModal.styles.less';
@@ -80,13 +81,17 @@ const WhatsNewAlert = () => {
             className="cursor-pointer"
             data-testid="whats-new-alert-card"
             onClick={onAlertCardClick}>
-            <Space align="start">
+            <Space align="start" className="d-flex justify-between">
               <Space size={14}>
                 <RocketIcon color="#fff" height={42} width={42} />
                 <Typography.Text className="whats-new-alert-header">
-                  {t('message.version-released-try-now', {
-                    version: latestVersion.version,
-                  })}
+                  <Transi18next
+                    i18nKey="message.version-released-try-now"
+                    renderElement={<div />}
+                    values={{
+                      version: latestVersion.version,
+                    }}
+                  />
                 </Typography.Text>
               </Space>
               <Button

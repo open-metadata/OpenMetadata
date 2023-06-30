@@ -44,7 +44,7 @@ def test_get_connection_def():
     Test Connection Definitions can only be GET
     """
     res: TestConnectionDefinition = metadata.get_by_name(
-        entity=TestConnectionDefinition, fqn="Mysql"
+        entity=TestConnectionDefinition, fqn="Mysql.testConnectionDefinition"
     )
     assert len(res.steps) == 4
     assert res.name.__root__ == "Mysql"

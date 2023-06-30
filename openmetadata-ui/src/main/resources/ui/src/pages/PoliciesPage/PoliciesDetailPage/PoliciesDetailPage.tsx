@@ -25,6 +25,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import Description from 'components/common/description/Description';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -272,11 +273,7 @@ const PoliciesDetailPage = () => {
                         );
                       }}>
                       <Space align="center">
-                        <SVGIcons
-                          alt={t('label.edit')}
-                          icon={Icons.EDIT}
-                          width="16px"
-                        />
+                        <EditIcon width="16px" />
                         {t('label.edit')}
                       </Space>
                     </Button>
@@ -386,7 +383,7 @@ const PoliciesDetailPage = () => {
               />
 
               <Tabs defaultActiveKey="rules">
-                <TabPane key="rules" tab={t('label.rules')}>
+                <TabPane key="rules" tab={t('label.rule-plural')}>
                   {isEmpty(policy.rules) ? (
                     <ErrorPlaceHolder />
                   ) : (

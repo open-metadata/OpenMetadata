@@ -11,23 +11,32 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Table } from 'antd';
+import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import classNames from 'classnames';
-import PageContainerV1 from 'components/containers/PageContainerV1';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
+import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import TabsLabel from 'components/TabsLabel/TabsLabel.component';
+import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import { getVersionPathWithTab } from 'constants/constants';
+import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { EntityTabs, EntityType } from 'enums/entity.enum';
+import { TagSource } from 'generated/type/schema';
 import { t } from 'i18next';
-import { ColumnDiffProps } from 'interface/EntityVersion.interface';
-import { cloneDeep, isEqual, isUndefined } from 'lodash';
-import { ExtraInfo } from 'Models';
+import { EntityDiffProps } from 'interface/EntityVersion.interface';
+import { cloneDeep, isEqual } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
-import { OwnerType } from '../../enums/user.enum';
 import {
   ChangeDescription,
   Pipeline,
@@ -35,17 +44,18 @@ import {
 } from '../../generated/entity/data/pipeline';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
-  getDescriptionDiff,
+  getChangedEntityName,
+  getChangedEntityNewValue,
+  getChangedEntityOldValue,
+  getCommonExtraInfoForVersionDetails,
   getDiffByFieldName,
-  getDiffValue,
+  getEntityVersionByField,
+  getEntityVersionTags,
   getTagsDiff,
+  getTextDiff,
 } from '../../utils/EntityVersionUtils';
 import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
-import SVGIcons from '../../utils/SvgUtils';
-import Description from '../common/description/Description';
-import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import TabsPane from '../common/TabsPane/TabsPane';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import { PipelineVersionProp } from './PipelineVersion.interface';
@@ -61,7 +71,10 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   deleted = false,
   backHandler,
   versionHandler,
+  entityPermissions,
 }: PipelineVersionProp) => {
+  const history = useHistory();
+  const { tab } = useParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
@@ -74,180 +87,23 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
     return name?.endsWith(checkWith);
   };
 
-  const tabs = [
-    {
-      name: t('label.detail-plural'),
-      icon: {
-        alt: 'schema',
-        name: 'icon-schema',
-        title: 'Details',
-        selectedName: 'icon-schemacolor',
-      },
-      isProtected: false,
-      position: 1,
-    },
-  ];
-
-  const getPipelineDescription = () => {
-    const descriptionDiff = getDiffByFieldName(
-      EntityField.DESCRIPTION,
-      changeDescription
-    );
-    const oldDescription =
-      descriptionDiff?.added?.oldValue ??
-      descriptionDiff?.deleted?.oldValue ??
-      descriptionDiff?.updated?.oldValue;
-    const newDescription =
-      descriptionDiff?.added?.newValue ??
-      descriptionDiff?.deleted?.newValue ??
-      descriptionDiff?.updated?.newValue;
-
-    return getDescriptionDiff(
-      oldDescription,
-      newDescription,
-      currentVersionData.description
-    );
-  };
-
-  const getExtraInfo = () => {
-    const ownerDiff = getDiffByFieldName('owner', changeDescription);
-
-    const oldOwner = JSON.parse(
-      ownerDiff?.added?.oldValue ??
-        ownerDiff?.deleted?.oldValue ??
-        ownerDiff?.updated?.oldValue ??
-        '{}'
-    );
-    const newOwner = JSON.parse(
-      ownerDiff?.added?.newValue ??
-        ownerDiff?.deleted?.newValue ??
-        ownerDiff?.updated?.newValue ??
-        '{}'
-    );
-    const ownerPlaceHolder = owner?.name ?? owner?.displayName ?? '';
-
-    const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
-    const newTier = [
-      ...JSON.parse(
-        tagsDiff?.added?.newValue ??
-          tagsDiff?.deleted?.newValue ??
-          tagsDiff?.updated?.newValue ??
-          '[]'
-      ),
-    ].find((t) => (t?.tagFQN as string).startsWith('Tier'));
-
-    const oldTier = [
-      ...JSON.parse(
-        tagsDiff?.added?.oldValue ??
-          tagsDiff?.deleted?.oldValue ??
-          tagsDiff?.updated?.oldValue ??
-          '[]'
-      ),
-    ].find((t) => (t?.tagFQN as string).startsWith('Tier'));
-
-    const extraInfo: Array<ExtraInfo> = [
-      {
-        key: t('label.owner'),
-        value:
-          !isUndefined(ownerDiff.added) ||
-          !isUndefined(ownerDiff.deleted) ||
-          !isUndefined(ownerDiff.updated)
-            ? getDiffValue(
-                oldOwner?.displayName || oldOwner?.name || '',
-                newOwner?.displayName || newOwner?.name || ''
-              )
-            : ownerPlaceHolder
-            ? getDiffValue(ownerPlaceHolder, ownerPlaceHolder)
-            : '',
-        profileName:
-          newOwner?.type === OwnerType.USER ? newOwner?.name : undefined,
-      },
-      {
-        key: t('label.tier'),
-        value:
-          !isUndefined(newTier) || !isUndefined(oldTier)
-            ? getDiffValue(
-                oldTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] || '',
-                newTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] || ''
-              )
-            : tier?.tagFQN
-            ? tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
-            : '',
-      },
-      {
-        key: `${currentVersionData.serviceType} Url`,
-        value: (currentVersionData as Pipeline).pipelineUrl,
-        placeholderText:
-          currentVersionData.displayName ?? currentVersionData.name,
-        isLink: true,
-        openInNewTab: true,
-      },
-    ];
-
-    return extraInfo;
-  };
-
-  const getTags = () => {
-    const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
-    const oldTags: Array<TagLabel> = JSON.parse(
-      tagsDiff?.added?.oldValue ??
-        tagsDiff?.deleted?.oldValue ??
-        tagsDiff?.updated?.oldValue ??
-        '[]'
-    );
-    const newTags: Array<TagLabel> = JSON.parse(
-      tagsDiff?.added?.newValue ??
-        tagsDiff?.deleted?.newValue ??
-        tagsDiff?.updated?.newValue ??
-        '[]'
-    );
-    const flag: { [x: string]: boolean } = {};
-    const uniqueTags: Array<TagLabelWithStatus> = [];
-
-    [
-      ...(getTagsDiff(oldTags, newTags) ?? []),
-      ...(currentVersionData.tags ?? []),
-    ].forEach((elem) => {
-      if (!flag[elem.tagFQN as string]) {
-        flag[elem.tagFQN as string] = true;
-        uniqueTags.push(elem as TagLabelWithStatus);
-      }
-    });
-
-    return [
-      ...uniqueTags.map((t) =>
-        t.tagFQN.startsWith('Tier')
-          ? { ...t, tagFQN: t.tagFQN.split(FQN_SEPARATOR_CHAR)[1] }
-          : t
-      ),
-    ];
-  };
-
-  const getColumnDiffValue = (column: ColumnDiffProps) =>
-    column?.added?.name ?? column?.deleted?.name ?? column?.updated?.name;
-
-  const getColumnDiffOldValue = (column: ColumnDiffProps) =>
-    column?.added?.oldValue ??
-    column?.deleted?.oldValue ??
-    column?.updated?.oldValue;
-
-  const getColumnDiffNewValue = (column: ColumnDiffProps) =>
-    column?.added?.newValue ??
-    column?.deleted?.newValue ??
-    column?.updated?.newValue;
+  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
+    () => getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
+    [changeDescription, owner, tier]
+  );
 
   const handleColumnDescriptionChangeDiff = (
     colList: Pipeline['tasks'],
-    columnsDiff: ColumnDiffProps,
+    columnsDiff: EntityDiffProps,
     changedColName: string | undefined
   ) => {
-    const oldDescription = getColumnDiffOldValue(columnsDiff);
-    const newDescription = getColumnDiffNewValue(columnsDiff);
+    const oldDescription = getChangedEntityOldValue(columnsDiff);
+    const newDescription = getChangedEntityNewValue(columnsDiff);
 
     const formatColumnData = (arr: Pipeline['tasks']) => {
       arr?.forEach((i) => {
         if (isEqual(i.name, changedColName)) {
-          i.description = getDescriptionDiff(
+          i.description = getTextDiff(
             oldDescription,
             newDescription,
             i.description
@@ -261,14 +117,14 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
 
   const handleColumnTagChangeDiff = (
     colList: Pipeline['tasks'],
-    columnsDiff: ColumnDiffProps,
+    columnsDiff: EntityDiffProps,
     changedColName: string | undefined
   ) => {
     const oldTags: Array<TagLabel> = JSON.parse(
-      getColumnDiffOldValue(columnsDiff) ?? '[]'
+      getChangedEntityOldValue(columnsDiff) ?? '[]'
     );
     const newTags: Array<TagLabel> = JSON.parse(
-      getColumnDiffNewValue(columnsDiff) ?? '[]'
+      getChangedEntityNewValue(columnsDiff) ?? '[]'
     );
 
     const formatColumnData = (arr: Pipeline['tasks']) => {
@@ -295,7 +151,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
 
   const handleColumnDiffAdded = (
     colList: Pipeline['tasks'],
-    columnsDiff: ColumnDiffProps
+    columnsDiff: EntityDiffProps
   ) => {
     const newCol: Pipeline['tasks'] = JSON.parse(
       columnsDiff.added?.newValue ?? '[]'
@@ -305,17 +161,9 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         arr?.forEach((i) => {
           if (isEqual(i.name, col.name)) {
             i.tags = col.tags?.map((tag) => ({ ...tag, added: true }));
-            i.description = getDescriptionDiff(
-              undefined,
-              col.description,
-              col.description
-            );
-            i.taskType = getDescriptionDiff(
-              undefined,
-              col.taskType,
-              col.taskType
-            );
-            i.name = getDescriptionDiff(undefined, col.name, col.name);
+            i.description = getTextDiff('', col.description ?? '');
+            i.taskType = getTextDiff('', col.taskType ?? '');
+            i.name = getTextDiff('', col.name);
           }
         });
       };
@@ -323,7 +171,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
     });
   };
 
-  const handleColumnDiffDeleted = (columnsDiff: ColumnDiffProps) => {
+  const handleColumnDiffDeleted = (columnsDiff: EntityDiffProps) => {
     const newCol: Pipeline['tasks'] = JSON.parse(
       columnsDiff.deleted?.oldValue ?? '[]'
     );
@@ -331,13 +179,9 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
     return newCol?.map((col) => ({
       ...col,
       tags: col.tags?.map((tag) => ({ ...tag, removed: true })),
-      description: getDescriptionDiff(
-        col.description,
-        undefined,
-        col.description
-      ),
-      taskType: getDescriptionDiff(col.taskType, undefined, col.taskType),
-      name: getDescriptionDiff(col.name, undefined, col.name),
+      description: getTextDiff(col.description ?? '', ''),
+      taskType: getTextDiff(col.taskType ?? '', ''),
+      name: getTextDiff(col.name, ''),
     }));
   };
 
@@ -347,15 +191,20 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
       EntityField.TASKS,
       changeDescription
     );
-    const changedColName = getChangeColName(getColumnDiffValue(columnsDiff));
+    const changedColName = getChangeColName(getChangedEntityName(columnsDiff));
 
     if (
-      isEndsWithField(getColumnDiffValue(columnsDiff), EntityField.DESCRIPTION)
+      isEndsWithField(
+        getChangedEntityName(columnsDiff),
+        EntityField.DESCRIPTION
+      )
     ) {
       handleColumnDescriptionChangeDiff(colList, columnsDiff, changedColName);
 
       return colList;
-    } else if (isEndsWithField(getColumnDiffValue(columnsDiff), 'tags')) {
+    } else if (
+      isEndsWithField(getChangedEntityName(columnsDiff), EntityField.TAGS)
+    ) {
       handleColumnTagChangeDiff(colList, columnsDiff, changedColName);
 
       return colList;
@@ -381,7 +230,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
     currentVersionData,
     changeDescription,
     getChangeColName,
-    getColumnDiffValue,
     getDiffByFieldName,
     isEndsWithField,
     handleColumnDescriptionChangeDiff,
@@ -396,6 +244,17 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
     );
   }, [currentVersionData]);
 
+  const handleTabChange = (activeKey: string) => {
+    history.push(
+      getVersionPathWithTab(
+        EntityType.PIPELINE,
+        currentVersionData.fullyQualifiedName ?? '',
+        String(version),
+        activeKey
+      )
+    );
+  };
+
   const tableColumn: ColumnsType<Task> = useMemo(
     () => [
       {
@@ -406,15 +265,10 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         key: 'displayName',
         width: 250,
         render: (_, record) => (
-          <Link target="_blank" to={{ pathname: record.taskUrl }}>
+          <Link target="_blank" to={{ pathname: record.sourceUrl }}>
             <Space>
               <span>{getEntityName(record)}</span>
-              <SVGIcons
-                alt="external-link"
-                className="tw-align-middle"
-                icon="external-link"
-                width="16px"
-              />
+              <IconExternalLink className="m-l-xs" width={16} />
             </Space>
           </Link>
         ),
@@ -427,9 +281,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           text ? (
             <RichTextEditorPreviewer markdown={text} />
           ) : (
-            <span className="tw-no-description">
-              {t('label.no-description')}
-            </span>
+            <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
       },
       {
@@ -469,69 +321,154 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
     []
   );
 
-  return (
-    <PageContainerV1>
-      <PageLayoutV1
-        pageTitle={t('label.entity-detail-plural', {
-          entity: getEntityName(currentVersionData),
-        })}>
-        {isVersionLoading ? (
-          <Loader />
-        ) : (
-          <div className={classNames('version-data')}>
-            <EntityPageInfo
-              isVersionSelected
-              deleted={deleted}
-              displayName={currentVersionData.displayName}
-              entityName={
-                currentVersionData.displayName ?? currentVersionData.name ?? ''
-              }
-              extraInfo={getExtraInfo()}
-              followersList={[]}
-              serviceType={currentVersionData.serviceType ?? ''}
-              tags={getTags()}
-              tier={{} as TagLabel}
-              titleLinks={slashedPipelineName}
-              version={Number(version)}
-              versionHandler={backHandler}
-            />
-            <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow ">
-              <TabsPane activeTab={1} className="tw-flex-initial" tabs={tabs} />
-              <Card className="m-y-md">
-                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                  <div className="tw-col-span-full">
-                    <Description
-                      isReadOnly
-                      description={getPipelineDescription()}
-                    />
-                  </div>
-                  <div className="m-y-md tw-col-span-full">
-                    <Table
-                      bordered
-                      columns={tableColumn}
-                      data-testid="schema-table"
-                      dataSource={pipelineVersionTableData}
-                      pagination={false}
-                      rowKey="name"
-                      scroll={{ x: 1200 }}
-                      size="small"
-                    />
-                  </div>
-                </div>
-              </Card>
-            </div>
-          </div>
-        )}
+  const tags = useMemo(() => {
+    return getEntityVersionTags(currentVersionData, changeDescription);
+  }, [currentVersionData, changeDescription]);
 
-        <EntityVersionTimeLine
-          show
-          currentVersion={version}
-          versionHandler={versionHandler}
-          versionList={versionList}
-          onBack={backHandler}
-        />
-      </PageLayoutV1>
-    </PageContainerV1>
+  const description = useMemo(() => {
+    return getEntityVersionByField(
+      changeDescription,
+      EntityField.DESCRIPTION,
+      currentVersionData.description
+    );
+  }, [currentVersionData, changeDescription]);
+
+  const displayName = useMemo(() => {
+    return getEntityVersionByField(
+      changeDescription,
+      EntityField.DISPLAYNAME,
+      currentVersionData.displayName
+    );
+  }, [currentVersionData, changeDescription]);
+
+  const tabItems: TabsProps['items'] = useMemo(
+    () => [
+      {
+        key: EntityTabs.TASKS,
+        label: (
+          <TabsLabel id={EntityTabs.TASKS} name={t('label.task-plural')} />
+        ),
+        children: (
+          <Row gutter={[0, 16]} wrap={false}>
+            <Col className="p-t-sm m-l-lg" flex="auto">
+              <Row gutter={[0, 16]}>
+                <Col span={24}>
+                  <DescriptionV1
+                    isVersionView
+                    description={description}
+                    entityType={EntityType.PIPELINE}
+                  />
+                </Col>
+                <Col span={24}>
+                  <Table
+                    bordered
+                    columns={tableColumn}
+                    data-testid="schema-table"
+                    dataSource={pipelineVersionTableData}
+                    pagination={false}
+                    rowKey="name"
+                    scroll={TABLE_SCROLL_VALUE}
+                    size="small"
+                  />
+                </Col>
+              </Row>
+            </Col>
+            <Col
+              className="entity-tag-right-panel-container"
+              data-testid="entity-right-panel"
+              flex="220px">
+              <Space className="w-full" direction="vertical" size="large">
+                {Object.keys(TagSource).map((tagType) => (
+                  <TagsContainerV1
+                    isVersionView
+                    showLimited
+                    entityFqn={currentVersionData.fullyQualifiedName}
+                    entityType={EntityType.PIPELINE}
+                    key={tagType}
+                    permission={false}
+                    selectedTags={tags}
+                    tagType={TagSource[tagType as TagSource]}
+                  />
+                ))}
+              </Space>
+            </Col>
+          </Row>
+        ),
+      },
+      {
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        children: !entityPermissions.ViewAll ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
+          <CustomPropertyTable
+            isVersionView
+            entityDetails={
+              currentVersionData as CustomPropertyProps['entityDetails']
+            }
+            entityType={EntityType.PIPELINE}
+            hasEditAccess={false}
+          />
+        ),
+      },
+    ],
+    [
+      description,
+      tableColumn,
+      pipelineVersionTableData,
+      currentVersionData,
+      entityPermissions,
+    ]
+  );
+
+  if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
+  return (
+    <>
+      {isVersionLoading ? (
+        <Loader />
+      ) : (
+        <div className={classNames('version-data')}>
+          <Row gutter={[0, 12]}>
+            <Col span={24}>
+              <DataAssetsVersionHeader
+                breadcrumbLinks={slashedPipelineName}
+                currentVersionData={currentVersionData}
+                deleted={deleted}
+                displayName={displayName}
+                ownerDisplayName={ownerDisplayName}
+                ownerRef={ownerRef}
+                tierDisplayName={tierDisplayName}
+                version={version}
+                onVersionClick={backHandler}
+              />
+            </Col>
+            <Col span={24}>
+              <Tabs
+                defaultActiveKey={tab ?? EntityTabs.TASKS}
+                items={tabItems}
+                onChange={handleTabChange}
+              />
+            </Col>
+          </Row>
+        </div>
+      )}
+
+      <EntityVersionTimeLine
+        show
+        currentVersion={version}
+        versionHandler={versionHandler}
+        versionList={versionList}
+        onBack={backHandler}
+      />
+    </>
   );
 };
 

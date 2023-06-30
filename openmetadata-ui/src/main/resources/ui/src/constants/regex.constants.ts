@@ -20,7 +20,7 @@ export const FQN_REGEX = new RegExp(
   'g'
 );
 
-export const ENTITY_NAME_REGEX = /^[\w'\- .&]+$/gm;
+export const ENTITY_NAME_REGEX = /^[\p{L}\w\- .'&()]+$/;
 
 export const delimiterRegex = /[\\[\]\\()\\;\\,\\|\\{}\\``\\/\\<>\\^]/g;
 export const nameWithSpace = /\s/g;
@@ -30,7 +30,14 @@ export const passwordRegex =
 
 export const allowedNameRegEx = /[`!@#$%^&*()+=[\]{};:"\\|,.<>/?~]/;
 
-export const oneofOrEndsWithNumberRegex = /(oneof|anyof|allof|\d{1,2}$)/;
+export const ONEOF_ANYOF_ALLOF_REGEX = /(oneof|anyof|allof)/;
 
 export const markdownTextAndIdRegex = /^(\S.*?)\s*\$\(id="(.*?)"\)/;
 export const MARKDOWN_MATCH_ID = /\$\(id="(.*?)"\)/;
+
+export const CUSTOM_PROPERTY_NAME_REGEX =
+  /^(?![\p{Lu}\p{Lt}])[\p{L}a-z][\p{L}a-zA-Z0-9]*$/u;
+
+export const ENDS_WITH_NUMBER_REGEX = /\d+$/;
+
+export const VALID_OBJECT_KEY_REGEX = /^[_$a-zA-Z][_$a-zA-Z0-9]*$/;

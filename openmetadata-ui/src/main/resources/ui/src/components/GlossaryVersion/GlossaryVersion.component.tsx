@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import PageContainer from 'components/containers/PageContainer';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import EntityVersionTimeLine from 'components/EntityVersionTimeLine/EntityVersionTimeLine';
 import GlossaryV1 from 'components/Glossary/GlossaryV1.component';
 import { LOADING_STATE } from 'enums/common.enum';
 import { Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { EntityHistory } from 'generated/type/entityHistory';
-import { noop } from 'lodash';
+import { noop, toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
@@ -71,7 +71,7 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
     }
   };
 
-  const onVersionHandler = (selectedVersion: string) => {
+  const onVersionChange = (selectedVersion: string) => {
     const path = isGlossary
       ? getGlossaryVersionsPath(glossaryName, selectedVersion)
       : getGlossaryTermsVersionsPath(glossaryName, selectedVersion);
@@ -89,8 +89,8 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
   }, [glossaryName, version]);
 
   return (
-    <PageContainer>
-      <div className="version-data p-l-lg p-r-sm">
+    <PageLayoutV1 pageTitle="Glossary version">
+      <div className="version-data page-container">
         {/* TODO: Need to implement version component for Glossary */}
         <GlossaryV1
           isVersionsView
@@ -106,12 +106,12 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
       </div>
       <EntityVersionTimeLine
         show
-        currentVersion={version}
-        versionHandler={onVersionHandler}
+        currentVersion={toString(version)}
+        versionHandler={onVersionChange}
         versionList={versionList}
         onBack={onBackHandler}
       />
-    </PageContainer>
+    </PageLayoutV1>
   );
 };
 

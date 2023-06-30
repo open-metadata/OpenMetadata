@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import classNames from 'classnames';
 import { capitalize, toString } from 'lodash';
 import React, { Fragment, useState } from 'react';
@@ -98,7 +99,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
               </div>
             ) : null}
             <div
-              className="timeline-content tw-py-2 tw-cursor-pointer"
+              className="timeline-content p-y-xs cursor-pointer"
               onClick={() => versionHandler(toString(currV?.version))}>
               <div className="timeline-wrapper">
                 <span
@@ -116,18 +117,17 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                 <span className={classNames('timeline-line')} />
               </div>
               <div className="tw-grid tw-gap-0.5">
-                <p
-                  className={classNames('tw-text-grey-body tw-font-medium', {
-                    'tw-text-primary-active':
-                      toString(currV?.version) === currentVersion,
+                <Typography.Text
+                  className={classNames(' font-medium', {
+                    'text-primary': toString(currV?.version) === currentVersion,
                   })}>
                   <span>{`v${parseFloat(currV?.version).toFixed(1)}`}</span>
                   {majorVersionChecks() ? (
-                    <span className="tw-ml-2 tw-text-xs tw-font-medium tw-text-grey-body tw-bg-tag tw-px-2 tw-py-0.5 tw-rounded">
+                    <span className="tw-ml-2 text-xs font-medium tw-text-grey-body tw-bg-tag tw-px-2 tw-py-0.5 tw-rounded">
                       {t('label.major')}
                     </span>
                   ) : null}
-                </p>
+                </Typography.Text>
                 <div
                   className={classNames(
                     'tw-text-xs tw-font-normal tw-break-all',
@@ -140,7 +140,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                 </div>
                 <p className="tw-text-xs tw-italic">
                   <span className="tw-font-medium">{currV?.updatedBy}</span>
-                  <span className="tw-text-grey-muted">
+                  <span className="text-grey-muted">
                     {' '}
                     {t('label.updated-on')}{' '}
                   </span>
@@ -157,7 +157,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
         );
       })
     ) : (
-      <p className="tw-text-grey-muted tw-flex tw-justify-center tw-items-center tw-mt-10">
+      <p className="text-grey-muted d-flex tw-justify-center tw-items-center tw-mt-10">
         {t('message.no-version-type-available', {
           type: capitalize(versionType),
         })}
@@ -167,11 +167,11 @@ const EntityVersionTimeLine: React.FC<Props> = ({
 
   return (
     <div className={classNames('timeline-drawer', { open: show })}>
-      <header className="tw-flex tw-justify-between">
+      <header className="d-flex tw-justify-between">
         <p className="tw-font-medium tw-mr-2">
           {t('label.version-plural-history')}
         </p>
-        <div className="tw-flex" onClick={onBack}>
+        <div className="d-flex" onClick={onBack}>
           <svg
             className="tw-w-5 tw-h-5 tw-ml-1 tw-cursor-pointer"
             data-testid="closeDrawer"
@@ -188,7 +188,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
           </svg>
         </div>
       </header>
-      <hr className="tw-mt-3 tw-border-primary-hover-lite" />
+      <hr className="tw-mt-3" />
 
       <div className="tw-my-2 tw-pb-9">{getVersionList()}</div>
     </div>

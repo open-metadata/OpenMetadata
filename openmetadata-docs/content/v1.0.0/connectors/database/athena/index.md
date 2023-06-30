@@ -11,16 +11,16 @@ slug: /connectors/database/athena
 | :----------------- | :--------------------------- |
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="cross" /%} |
+| Query Usage        | {% icon iconName="check" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | Partially via Views          |
+| Lineage            | {% icon iconName="check" /%} |
 | DBT                | {% icon iconName="check" /%} |
 | Supported Versions | --                           |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
-| Lineage      | Partially via Views          |
+| Lineage      | {% icon iconName="check" /%} |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |
 
@@ -356,7 +356,7 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
-  - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
+
 
 {% /extraContent %}
 
@@ -494,6 +494,16 @@ caption="Edit and Deploy the Ingestion Pipeline" /%}
 ## Related
 
 {% tilesContainer %}
+
+{% tile
+  title="Usage Workflow"
+  description="Learn more about how to configure the Usage Workflow to ingest Query information from the UI."
+  link="/connectors/ingestion/workflows/usage" /%}
+
+{% tile
+  title="Lineage Workflow"
+  description="Learn more about how to configure the Lineage from the UI."
+  link="/connectors/ingestion/workflows/lineage" /%}
 
 {% tile
   title="Profiler Workflow"

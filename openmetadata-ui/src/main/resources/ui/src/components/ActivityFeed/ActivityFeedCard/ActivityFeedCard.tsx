@@ -52,9 +52,10 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   onConfirmation,
   updateThreadHandler,
   onReply,
-  taskDetails,
+  task,
   announcementDetails,
   editAnnouncementPermission,
+  showUserAvatar = true,
 }) => {
   const entityType = getEntityType(entityLink as string);
   const entityFQN = getEntityFQN(entityLink as string);
@@ -198,11 +199,14 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           trigger="hover"
           onOpenChange={handleVisibleChange}>
           <Space align="start" className="w-full">
-            <UserPopOverCard userName={feedDetail.from}>
-              <span className="tw-cursor-pointer" data-testid="authorAvatar">
-                <ProfilePicture id="" name={feedDetail.from} width="32" />
-              </span>
-            </UserPopOverCard>
+            {showUserAvatar && (
+              <UserPopOverCard userName={feedDetail.from}>
+                <span className="cursor-pointer" data-testid="authorAvatar">
+                  <ProfilePicture id="" name={feedDetail.from} width="32" />
+                </span>
+              </UserPopOverCard>
+            )}
+
             <div className="tw-flex tw-flex-col tw-flex-1">
               <FeedCardHeader
                 className="tw-pl-2"
@@ -212,7 +216,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
                 entityType={entityType as string}
                 feedType={feedType}
                 isEntityFeed={isEntityFeed}
-                taskDetails={taskDetails}
+                task={task}
                 timeStamp={feedDetail.postTs}
               />
               <FeedCardBody

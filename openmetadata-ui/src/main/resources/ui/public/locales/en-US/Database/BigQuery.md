@@ -37,6 +37,10 @@ You can visit [this](https://docs.open-metadata.org/connectors/database/bigquery
 
 You can find further information on the BigQuery connector in the [docs](https://docs.open-metadata.org/connectors/database/bigquery).
 
+
+### Profiler & Data Quality
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `table_storage` for all objects in the database. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+
 ## Connection Details
 
 $$section
@@ -52,13 +56,13 @@ BigQuery APIs URL. By default, the API URL is `bigquery.googleapis.com`. You can
 $$
 
 $$section
-### GCS Credentials Configuration $(id="gcsConfig")
+### GCP Credentials Configuration $(id="gcpConfig")
 
-You can authenticate with your BigQuery instance using either `GCS Credentials Path` where you can specify the file path of the service account key, or you can pass the values directly by choosing the `GCS Credentials Values` from the service account key file.
+You can authenticate with your BigQuery instance using either `GCP Credentials Path` where you can specify the file path of the service account key, or you can pass the values directly by choosing the `GCP Credentials Values` from the service account key file.
 
 You can check [this](https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console) documentation on how to create the service account keys and download it.
 
-If you want to use [ADC authentication](https://cloud.google.com/docs/authentication#adc) for BigQuery you can just leave the GCS credentials empty.
+If you want to use [ADC authentication](https://cloud.google.com/docs/authentication#adc) for BigQuery you can just leave the GCP credentials empty.
 
 $$
 

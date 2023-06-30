@@ -14,6 +14,7 @@ Test the lkml parser
 from pathlib import Path
 from unittest import TestCase
 
+from metadata.ingestion.source.dashboard.looker.links import get_path_from_link
 from metadata.ingestion.source.dashboard.looker.parser import (
     Includes,
     LkmlParser,
@@ -136,3 +137,32 @@ class TestLkmlParser(TestCase):
                 "views/cats.view.lkml": [],
             },
         )
+
+    def test_get_path_from_link(self):
+        """
+        Validate utility
+        """
+        simple_link = "/projects/my_project/files/hello.explore.lkml"
+        self.assertEqual(get_path_from_link(simple_link), "hello.explore.lkml")
+
+        link = "/projects/my_project/files/hello%2Fexplores%2Fmy_explore.explore.lkml?line=13"
+        self.assertEqual(
+            get_path_from_link(link), "hello/explores/my_explore.explore.lkml"
+        )
+
+        link_no_files = "hello%2Fexplores%2Fmy_explore.explore.lkml?line=13"
+        self.assertEqual(
+            get_path_from_link(link_no_files), "hello/explores/my_explore.explore.lkml"
+        )
+
+    def test_expand(self):
+        """
+        We can expand a single Path. We are looking for "*/cats.view", which will
+        match a file in the resources directory "cats.view.lkml"
+        """
+        path = Includes("*/cats.view")
+
+        reader = LocalReader(BASE_PATH)
+        parser = LkmlParser(reader)
+
+        self.assertIn("cats.view.lkml", parser._expand(path)[0])

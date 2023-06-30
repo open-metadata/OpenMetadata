@@ -44,6 +44,8 @@ VERSIONS = {
     "pyodbc": "pyodbc>=4.0.35,<5",
     "scikit-learn": "scikit-learn~=1.0",  # Python 3.7 only goes up to 1.0.2
     "packaging": "packaging==21.3",
+    "azure-storage-blob": "azure-storage-blob~=12.14",
+    "azure-identity": "azure-identity~=1.12",
 }
 
 COMMONS = {
@@ -59,7 +61,7 @@ COMMONS = {
     },
     "kafka": {
         VERSIONS["avro"],
-        "confluent_kafka==1.8.2",
+        "confluent_kafka==2.1.1",
         "fastavro>=1.2.0",
         # Due to https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
         # use >= v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
@@ -93,7 +95,9 @@ base_requirements = {
     "idna<3,>=2.5",
     "importlib-metadata~=4.12.0",  # From airflow constraints
     "Jinja2>=2.11.3",
+    "jsonpatch==1.32",
     "jsonschema",
+    "memory-profiler",
     "mypy_extensions>=0.4.3",
     "pydantic~=1.10",
     VERSIONS["pymysql"],
@@ -107,6 +111,7 @@ base_requirements = {
     "openmetadata-sqllineage>=1.0.4",
     "tabulate==0.9.0",
     "typing-compat~=0.1.0",  # compatibility requirements for 3.7
+    "typing_extensions<=4.5.0",  # We need to have this fixed due to a yanked release 4.6.0
     "typing-inspect",
     "wheel~=0.38.4",
 }
@@ -139,12 +144,14 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["boto3"],
         VERSIONS["google-cloud-storage"],
         "dbt-artifacts-parser",
+        VERSIONS["azure-storage-blob"],
+        VERSIONS["azure-identity"],
     },
     "db2": {"ibm-db-sa~=0.3"},
-    "databricks": {"sqlalchemy-databricks~=0.1"},
+    "databricks": {"sqlalchemy-databricks~=0.1", "databricks-sdk~=0.1"},
     "datalake-azure": {
-        "azure-storage-blob~=12.14",
-        "azure-identity~=1.12",
+        VERSIONS["azure-storage-blob"],
+        VERSIONS["azure-identity"],
         "adlfs>=2022.2.0",  # Python 3.7 does only support up to 2022.2.0
         *COMMONS["datalake"],
     },
@@ -161,7 +168,7 @@ plugins: Dict[str, Set[str]] = {
         "s3fs==0.4.2",
         *COMMONS["datalake"],
     },
-    "deltalake": {"delta-spark~=2.2"},
+    "deltalake": {"delta-spark<=2.3.0"},
     "docker": {"python_on_whales==0.55.0"},
     "domo": {VERSIONS["pydomo"]},
     "druid": {"pydruid>=0.6.5"},
@@ -190,6 +197,7 @@ plugins: Dict[str, Set[str]] = {
     "ldap-users": {"ldap3==2.9.1"},
     "looker": {"looker-sdk>=22.20.0", "lkml~=1.3"},
     "mlflow": {"mlflow-skinny~=1.30", "alembic~=1.10.2"},
+    "mongo": {"pymongo~=4.3", VERSIONS["pandas"]},
     "mssql": {"sqlalchemy-pytds~=0.3"},
     "mssql-odbc": {VERSIONS["pyodbc"]},
     "mysql": {VERSIONS["pymysql"]},
@@ -210,12 +218,14 @@ plugins: Dict[str, Set[str]] = {
     "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
-        "sqlalchemy-redshift~=0.8",
+        # Going higher has memory and performance issues
+        "sqlalchemy-redshift==0.8.12",
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
     },
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce==1.11.4"},
+    "sap-hana": {"hdbcli", "sqlalchemy-hana"},
     "singlestore": {VERSIONS["pymysql"]},
     "sklearn": {VERSIONS["scikit-learn"]},
     "snowflake": {"snowflake-sqlalchemy~=1.4"},

@@ -22,6 +22,8 @@ import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer
 import { PropertyInput } from './PropertyInput';
 
 interface Props {
+  versionDataKeys?: string[];
+  isVersionView?: boolean;
   propertyName: string;
   propertyType: EntityReference;
   extension: Table['extension'];
@@ -39,6 +41,8 @@ const EditIcon = ({ onShowInput }: { onShowInput: () => void }) => (
 );
 
 export const PropertyValue: FC<Props> = ({
+  isVersionView,
+  versionDataKeys,
   propertyName,
   extension,
   propertyType,
@@ -57,8 +61,7 @@ export const PropertyValue: FC<Props> = ({
     setShowInput(false);
   };
 
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  const onInputSave = async (updatedValue: any) => {
+  const onInputSave = async (updatedValue: string | number) => {
     const updatedExtension = {
       ...(extension || {}),
       [propertyName]:
@@ -77,7 +80,7 @@ export const PropertyValue: FC<Props> = ({
         return (
           <PropertyInput
             propertyName={propertyName}
-            type={propertyType.name as string}
+            type={propertyType.name === 'integer' ? 'number' : 'text'}
             value={value}
             onCancel={onHideInput}
             onSave={onInputSave}
@@ -104,6 +107,16 @@ export const PropertyValue: FC<Props> = ({
   };
 
   const getPropertyValue = () => {
+    if (isVersionView) {
+      const isKeyAdded = versionDataKeys?.includes(propertyName);
+
+      return (
+        <RichTextEditorPreviewer
+          className={isKeyAdded ? 'diff-added' : ''}
+          markdown={String(value) || ''}
+        />
+      );
+    }
     switch (propertyType.name) {
       case 'markdown':
         return <RichTextEditorPreviewer markdown={value || ''} />;
@@ -122,7 +135,7 @@ export const PropertyValue: FC<Props> = ({
       return !isUndefined(value) ? (
         propertyValue
       ) : (
-        <span className="tw-text-grey-muted" data-testid="no-data">
+        <span className="text-grey-muted" data-testid="no-data">
           {t('message.no-data')}
         </span>
       );
@@ -130,7 +143,7 @@ export const PropertyValue: FC<Props> = ({
       return value ? (
         propertyValue
       ) : (
-        <span className="tw-text-grey-muted" data-testid="no-data">
+        <span className="text-grey-muted" data-testid="no-data">
           {t('message.no-data')}
         </span>
       );

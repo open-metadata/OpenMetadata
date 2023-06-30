@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
-import PageContainerV1 from 'components/containers/PageContainerV1';
+import { Button, Card, Col, Row, Space, Typography } from 'antd';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import DailyActiveUsersChart from 'components/DataInsightDetail/DailyActiveUsersChart';
 import DataInsightSummary from 'components/DataInsightDetail/DataInsightSummary';
@@ -25,6 +25,8 @@ import TopActiveUsers from 'components/DataInsightDetail/TopActiveUsers';
 import TopViewEntities from 'components/DataInsightDetail/TopViewEntities';
 import TotalEntityInsight from 'components/DataInsightDetail/TotalEntityInsight';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import SearchDropdown from 'components/SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
@@ -33,6 +35,8 @@ import {
   DEFAULT_SELECTED_RANGE,
 } from 'constants/profiler.constant';
 import { EntityFields } from 'enums/AdvancedSearch.enum';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { Operation } from 'generated/entity/policies/policy';
 import { t } from 'i18next';
 import { isEmpty, isEqual } from 'lodash';
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
@@ -40,6 +44,7 @@ import { ListItem } from 'react-awesome-query-builder';
 import { useHistory, useParams } from 'react-router-dom';
 import { getListKPIs } from 'rest/KpiAPI';
 import { searchQuery } from 'rest/searchAPI';
+import { checkPermission } from 'utils/PermissionsUtils';
 import { autocomplete } from '../../constants/AdvancedSearch.constants';
 import { PAGE_SIZE, ROUTES } from '../../constants/constants';
 import {
@@ -50,7 +55,6 @@ import {
 import { SearchIndex } from '../../enums/search.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
-import { useAuth } from '../../hooks/authHooks';
 import {
   ChartFilter,
   DataInsightTabs,
@@ -74,8 +78,28 @@ const fetchTeamSuggestions = autocomplete({
 const DataInsightPage = () => {
   const { tab } = useParams<{ tab: DataInsightTabs }>();
 
-  const { isAdminUser } = useAuth();
+  const { permissions } = usePermissionProvider();
   const history = useHistory();
+
+  const viewDataInsightChartPermission = useMemo(
+    () =>
+      checkPermission(
+        Operation.ViewAll,
+        ResourceEntity.DATA_INSIGHT_CHART,
+        permissions
+      ),
+    [permissions]
+  );
+
+  const viewKPIPermission = useMemo(
+    () => checkPermission(Operation.ViewAll, ResourceEntity.KPI, permissions),
+    [permissions]
+  );
+
+  const createKPIPermission = useMemo(
+    () => checkPermission(Operation.Create, ResourceEntity.KPI, permissions),
+    [permissions]
+  );
 
   const [teamsOptions, setTeamOptions] = useState<TeamStateType>({
     defaultOptions: [],
@@ -274,157 +298,187 @@ const DataInsightPage = () => {
     setActiveTab(tab ?? DataInsightTabs.DATA_ASSETS);
   }, [tab]);
 
-  return (
-    <PageContainerV1>
-      <PageLayoutV1
-        leftPanel={<DataInsightLeftPanel />}
-        pageTitle={t('label.data-insight')}>
-        <Row data-testid="data-insight-container" gutter={[16, 16]}>
-          <Col span={24}>
-            <Space className="w-full justify-between item-start">
-              <div data-testid="data-insight-header">
-                <Typography.Title level={5}>
-                  {t('label.data-insight-plural')}
-                </Typography.Title>
-                <Typography.Text className="data-insight-label-text">
-                  {t('message.data-insight-subtitle')}
-                </Typography.Text>
-              </div>
-              <Tooltip
-                title={
-                  isAdminUser
-                    ? t('label.add-entity', {
-                        entity: t('label.kpi-uppercase'),
-                      })
-                    : t('message.no-permission-for-action')
-                }>
-                <Button
-                  disabled={!isAdminUser}
-                  type="primary"
-                  onClick={handleAddKPI}>
-                  {t('label.add-entity', {
-                    entity: t('label.kpi-uppercase'),
-                  })}
-                </Button>
-              </Tooltip>
-            </Space>
-          </Col>
-          <Col span={24}>
-            <Card>
-              <Space className="w-full justify-between">
-                <Space className="w-full">
-                  <SearchDropdown
-                    label={t('label.team')}
-                    options={teamsOptions.options}
-                    searchKey="teams"
-                    selectedKeys={teamsOptions.selectedOptions}
-                    onChange={handleTeamChange}
-                    onGetInitialOptions={fetchDefaultTeamOptions}
-                    onSearch={handleTeamSearch}
-                  />
+  if (!viewDataInsightChartPermission && !viewKPIPermission) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
 
-                  <SearchDropdown
-                    label={t('label.tier')}
-                    options={tierOptions.options}
-                    searchKey="tier"
-                    selectedKeys={tierOptions.selectedOptions}
-                    onChange={handleTierChange}
-                    onGetInitialOptions={fetchDefaultTierOptions}
-                    onSearch={handleTierSearch}
-                  />
-                </Space>
-                <Space>
-                  <Typography className="data-insight-label-text text-xs">
-                    {`${getFormattedDateFromMilliSeconds(
-                      chartFilter.startTs,
-                      'dd MMM yyyy'
-                    )} - ${getFormattedDateFromMilliSeconds(
-                      chartFilter.endTs,
-                      'dd MMM yyyy'
-                    )}`}
-                  </Typography>
-                  <DatePickerMenu
-                    handleDateRangeChange={handleDateRangeChange}
-                    showSelectedCustomRange={false}
-                  />
-                </Space>
+  const getTabContent = () => {
+    const noDataInsightPermission =
+      !viewDataInsightChartPermission &&
+      (activeTab === DataInsightTabs.APP_ANALYTICS ||
+        activeTab === DataInsightTabs.DATA_ASSETS);
+
+    const noKPIPermission =
+      !viewKPIPermission && activeTab === DataInsightTabs.KPIS;
+
+    if (noDataInsightPermission || noKPIPermission) {
+      return (
+        <Row align="middle" className="w-full h-full" justify="center">
+          <Col span={24}>
+            <ErrorPlaceHolder
+              className="m-0"
+              type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+            />
+          </Col>
+        </Row>
+      );
+    }
+
+    return (
+      <Row
+        className="page-container"
+        data-testid="data-insight-container"
+        gutter={[16, 16]}>
+        <Col span={24}>
+          <Space className="w-full justify-between items-start">
+            <div data-testid="data-insight-header">
+              <Typography.Title level={5}>
+                {t('label.data-insight-plural')}
+              </Typography.Title>
+              <Typography.Text className="data-insight-label-text">
+                {t('message.data-insight-subtitle')}
+              </Typography.Text>
+            </div>
+
+            {createKPIPermission && (
+              <Button type="primary" onClick={handleAddKPI}>
+                {t('label.add-entity', {
+                  entity: t('label.kpi-uppercase'),
+                })}
+              </Button>
+            )}
+          </Space>
+        </Col>
+        <Col span={24}>
+          <Card>
+            <Space className="w-full justify-between">
+              <Space className="w-full">
+                <SearchDropdown
+                  label={t('label.team')}
+                  options={teamsOptions.options}
+                  searchKey="teams"
+                  selectedKeys={teamsOptions.selectedOptions}
+                  onChange={handleTeamChange}
+                  onGetInitialOptions={fetchDefaultTeamOptions}
+                  onSearch={handleTeamSearch}
+                />
+
+                <SearchDropdown
+                  label={t('label.tier')}
+                  options={tierOptions.options}
+                  searchKey="tier"
+                  selectedKeys={tierOptions.selectedOptions}
+                  onChange={handleTierChange}
+                  onGetInitialOptions={fetchDefaultTierOptions}
+                  onSearch={handleTierSearch}
+                />
               </Space>
-            </Card>
-          </Col>
+              <Space>
+                <Typography className="data-insight-label-text text-xs">
+                  {`${getFormattedDateFromMilliSeconds(
+                    chartFilter.startTs,
+                    'dd MMM yyyy'
+                  )} - ${getFormattedDateFromMilliSeconds(
+                    chartFilter.endTs,
+                    'dd MMM yyyy'
+                  )}`}
+                </Typography>
+                <DatePickerMenu
+                  handleDateRangeChange={handleDateRangeChange}
+                  showSelectedCustomRange={false}
+                />
+              </Space>
+            </Space>
+          </Card>
+        </Col>
 
-          {/* Do not show summary for KPIs */}
-          {tab !== DataInsightTabs.KPIS && (
+        {/* Do not show summary for KPIs */}
+        {tab !== DataInsightTabs.KPIS && (
+          <Col span={24}>
+            <DataInsightSummary
+              chartFilter={chartFilter}
+              onScrollToChart={handleScrollToChart}
+            />
+          </Col>
+        )}
+
+        {/* Do not show KPIChart for app analytics */}
+        {tab !== DataInsightTabs.APP_ANALYTICS && (
+          <Col span={24}>
+            <KPIChart
+              chartFilter={chartFilter}
+              createKPIPermission={createKPIPermission}
+              kpiList={kpiList}
+              viewKPIPermission={viewKPIPermission}
+            />
+          </Col>
+        )}
+        {activeTab === DataInsightTabs.DATA_ASSETS && (
+          <>
             <Col span={24}>
-              <DataInsightSummary
+              <TotalEntityInsight
                 chartFilter={chartFilter}
-                onScrollToChart={handleScrollToChart}
+                selectedDays={selectedDaysFilter}
               />
             </Col>
-          )}
-
-          {/* Do not show KPIChart for app analytics */}
-          {tab !== DataInsightTabs.APP_ANALYTICS && (
             <Col span={24}>
-              <KPIChart chartFilter={chartFilter} kpiList={kpiList} />
+              <DescriptionInsight
+                chartFilter={chartFilter}
+                kpi={descriptionKpi}
+                selectedDays={selectedDaysFilter}
+              />
             </Col>
-          )}
-          {activeTab === DataInsightTabs.DATA_ASSETS && (
-            <>
-              <Col span={24}>
-                <TotalEntityInsight
-                  chartFilter={chartFilter}
-                  selectedDays={selectedDaysFilter}
-                />
-              </Col>
-              <Col span={24}>
-                <DescriptionInsight
-                  chartFilter={chartFilter}
-                  kpi={descriptionKpi}
-                  selectedDays={selectedDaysFilter}
-                />
-              </Col>
-              <Col span={24}>
-                <OwnerInsight
-                  chartFilter={chartFilter}
-                  kpi={ownerKpi}
-                  selectedDays={selectedDaysFilter}
-                />
-              </Col>
-              <Col span={24}>
-                <TierInsight
-                  chartFilter={chartFilter}
-                  selectedDays={selectedDaysFilter}
-                />
-              </Col>
-            </>
-          )}
-          {activeTab === DataInsightTabs.APP_ANALYTICS && (
-            <>
-              <Col span={24}>
-                <TopViewEntities chartFilter={chartFilter} />
-              </Col>
-              <Col span={24}>
-                <PageViewsByEntitiesChart
-                  chartFilter={chartFilter}
-                  selectedDays={selectedDaysFilter}
-                />
-              </Col>
-              <Col span={24}>
-                <DailyActiveUsersChart
-                  chartFilter={chartFilter}
-                  selectedDays={selectedDaysFilter}
-                />
-              </Col>
-              <Col span={24}>
-                <TopActiveUsers chartFilter={chartFilter} />
-              </Col>
-            </>
-          )}
+            <Col span={24}>
+              <OwnerInsight
+                chartFilter={chartFilter}
+                kpi={ownerKpi}
+                selectedDays={selectedDaysFilter}
+              />
+            </Col>
+            <Col span={24}>
+              <TierInsight
+                chartFilter={chartFilter}
+                selectedDays={selectedDaysFilter}
+              />
+            </Col>
+          </>
+        )}
+        {activeTab === DataInsightTabs.APP_ANALYTICS && (
+          <>
+            <Col span={24}>
+              <TopViewEntities chartFilter={chartFilter} />
+            </Col>
+            <Col span={24}>
+              <PageViewsByEntitiesChart
+                chartFilter={chartFilter}
+                selectedDays={selectedDaysFilter}
+              />
+            </Col>
+            <Col span={24}>
+              <DailyActiveUsersChart
+                chartFilter={chartFilter}
+                selectedDays={selectedDaysFilter}
+              />
+            </Col>
+            <Col span={24}>
+              <TopActiveUsers chartFilter={chartFilter} />
+            </Col>
+          </>
+        )}
 
-          {activeTab === DataInsightTabs.KPIS && <KPIList />}
-        </Row>
-      </PageLayoutV1>
-    </PageContainerV1>
+        {activeTab === DataInsightTabs.KPIS && (
+          <KPIList viewKPIPermission={viewKPIPermission} />
+        )}
+      </Row>
+    );
+  };
+
+  return (
+    <PageLayoutV1
+      leftPanel={<DataInsightLeftPanel />}
+      pageTitle={t('label.data-insight')}>
+      {getTabContent()}
+    </PageLayoutV1>
   );
 };
 

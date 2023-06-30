@@ -15,7 +15,6 @@ import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import BotDetails from 'components/BotDetails/BotDetails.component';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -24,6 +23,7 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
+import { useAuth } from 'hooks/authHooks';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
@@ -42,6 +42,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const BotDetailsPage = () => {
   const { t } = useTranslation();
   const { botsName } = useParams<{ [key: string]: string }>();
+  const { isAdminUser } = useAuth();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [botUserData, setBotUserData] = useState<User>({} as User);
   const [botData, setBotData] = useState<Bot>({} as Bot);
@@ -173,19 +174,19 @@ const BotDetailsPage = () => {
   }, [botsName]);
 
   return (
-    <PageContainerV1 className="p-y-md">
+    <>
       {isLoading ? (
         <Loader />
       ) : (
         <>
-          {botPermission.ViewAll || botPermission.ViewBasic ? (
+          {isAdminUser ? (
             getBotsDetailComponent()
           ) : (
             <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           )}
         </>
       )}
-    </PageContainerV1>
+    </>
   );
 };
 

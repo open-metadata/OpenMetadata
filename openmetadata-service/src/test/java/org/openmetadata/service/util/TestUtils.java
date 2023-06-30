@@ -61,6 +61,7 @@ import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.services.connections.messaging.RedpandaConnection;
 import org.openmetadata.schema.services.connections.metadata.AmundsenConnection;
@@ -84,7 +85,7 @@ import org.openmetadata.service.security.SecurityUtil;
 
 @Slf4j
 public final class TestUtils {
-  public static final String LONG_ENTITY_NAME = "a".repeat(128 + 1);
+  public static String LONG_ENTITY_NAME = "a".repeat(128 + 1);
   public static final Map<String, String> ADMIN_AUTH_HEADERS = authHeaders(ADMIN_USER_NAME + "@open-metadata.org");
   public static final String INGESTION_BOT = "ingestion-bot";
   public static final Map<String, String> INGESTION_BOT_AUTH_HEADERS =
@@ -142,7 +143,11 @@ public final class TestUtils {
   static {
     MYSQL_DATABASE_CONNECTION =
         new DatabaseConnection()
-            .withConfig(new MysqlConnection().withHostPort("localhost:3306").withUsername("test").withPassword("test"));
+            .withConfig(
+                new MysqlConnection()
+                    .withHostPort("localhost:3306")
+                    .withUsername("test")
+                    .withAuthType(new basicAuth().withPassword("test")));
     REDSHIFT_DATABASE_CONNECTION =
         new DatabaseConnection()
             .withConfig(

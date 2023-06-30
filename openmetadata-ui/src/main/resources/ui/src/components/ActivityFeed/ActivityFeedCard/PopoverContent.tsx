@@ -12,6 +12,7 @@
  */
 
 import { Button, Popover, Space } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { isNil, isUndefined, uniqueId } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -176,7 +177,7 @@ const PopoverContent: FC<Props> = ({
         zIndex={9999}
         onOpenChange={handleVisibleChange}>
         <Button
-          className="tw-p-0"
+          className="p-0"
           data-testid="add-reactions"
           size="small"
           type="text"
@@ -194,7 +195,7 @@ const PopoverContent: FC<Props> = ({
 
       {(onReply || isThread) && (
         <Button
-          className="tw-p-0"
+          className="p-0"
           data-testid="add-reply"
           size="small"
           type="text"
@@ -210,23 +211,18 @@ const PopoverContent: FC<Props> = ({
 
       {editCheck && (
         <Button
-          className="tw-p-0"
+          className="p-0 flex-center"
           data-testid="edit-message"
+          icon={<EditIcon width="18px" />}
           size="small"
           type="text"
-          onClick={handleEdit}>
-          <SVGIcons
-            alt="edit"
-            icon={Icons.EDIT}
-            title={t('label.edit')}
-            width="18px"
-          />
-        </Button>
+          onClick={handleEdit}
+        />
       )}
 
       {deleteButtonCheck ? (
         <Button
-          className="tw-p-0"
+          className="p-0"
           data-testid="delete-message"
           type="text"
           onClick={handleDelete}>

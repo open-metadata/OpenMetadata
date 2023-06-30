@@ -15,7 +15,7 @@ import { Space } from 'antd';
 import classNames from 'classnames';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconExternalLink } from '../../assets/svg/external-link.svg';
+import { ReactComponent as IconExternalLink } from '../../assets/svg/external-links.svg';
 import { useAuth } from '../../hooks/authHooks';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import './AnchorDropDownList.style.less';

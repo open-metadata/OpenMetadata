@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { ISubmitEvent } from '@rjsf/core';
+import { IChangeEvent } from '@rjsf/core';
+import validator from '@rjsf/validator-ajv8';
+import AirflowMessageBanner from 'components/common/AirflowMessageBanner/AirflowMessageBanner';
 import { StorageServiceType } from 'generated/entity/data/container';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
@@ -41,8 +43,8 @@ interface Props {
   serviceType: string;
   serviceCategory: ServiceCategory;
   status: LoadingState;
-  onFocus: (fieldName: string) => void;
-  onSave: (data: ISubmitEvent<ConfigData>) => void;
+  onFocus: (id: string) => void;
+  onSave: (data: IChangeEvent<ConfigData>) => Promise<void>;
   disableTestConnection?: boolean;
   onCancel?: () => void;
 }
@@ -63,9 +65,10 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
     ? ((data as ServicesType).connection?.config as ConfigData)
     : ({} as ConfigData);
 
-  const handleSave = (data: ISubmitEvent<ConfigData>) => {
+  const handleSave = async (data: IChangeEvent<ConfigData>) => {
     const updatedFormData = formatFormDataForSubmit(data.formData);
-    onSave({ ...data, formData: updatedFormData });
+
+    await onSave({ ...data, formData: updatedFormData });
   };
 
   const getConfigFields = () => {
@@ -132,6 +135,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         serviceType={serviceType}
         status={status}
         uiSchema={connSch.uiSchema}
+        validator={validator}
         onCancel={onCancel}
         onFocus={onFocus}
         onSubmit={handleSave}
@@ -139,7 +143,12 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
     );
   };
 
-  return <Fragment>{getConfigFields()}</Fragment>;
+  return (
+    <Fragment>
+      <AirflowMessageBanner />
+      {getConfigFields()}
+    </Fragment>
+  );
 };
 
 export default ConnectionConfigForm;

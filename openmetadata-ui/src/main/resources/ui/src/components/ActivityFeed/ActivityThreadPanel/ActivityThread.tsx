@@ -71,6 +71,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
               className="tw-mb-3"
               feed={mainThread as Post}
               feedType={threadData.type || ThreadType.Conversation}
+              task={threadData}
               threadId={threadData.id}
               updateThreadHandler={updateThreadHandler}
               onConfirmation={onConfirmation}
@@ -79,7 +80,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
         ) : null}
         {repliesLength > 0 ? (
           <div data-testid="replies">
-            <div className="tw-mb-3 tw-flex">
+            <div className="tw-mb-3 d-flex">
               <span data-testid="replies-count">
                 {getReplyText(
                   repliesLength,
@@ -87,7 +88,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
                   t('label.reply-lowercase-plural')
                 )}
               </span>
-              <span className="tw-flex-auto tw-self-center tw-ml-1.5">
+              <span className="flex-auto tw-self-center tw-ml-1.5">
                 <hr />
               </span>
             </div>
@@ -98,6 +99,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
                 feed={reply}
                 feedType={threadData.type || ThreadType.Conversation}
                 key={key}
+                task={threadData}
                 threadId={threadData.id}
                 updateThreadHandler={updateThreadHandler}
                 onConfirmation={onConfirmation}

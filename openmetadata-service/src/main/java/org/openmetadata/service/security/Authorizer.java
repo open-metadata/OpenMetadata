@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.util.List;
 import javax.ws.rs.core.SecurityContext;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -43,7 +44,10 @@ public interface Authorizer {
 
   void authorizeAdmin(SecurityContext securityContext);
 
-  boolean decryptSecret(SecurityContext securityContext);
+  void authorizeAdminOrBot(SecurityContext securityContext);
 
   boolean shouldMaskPasswords(SecurityContext securityContext);
+
+  /** Let the user view PII Sensitive data */
+  boolean authorizePII(SecurityContext securityContext, EntityReference owner);
 }

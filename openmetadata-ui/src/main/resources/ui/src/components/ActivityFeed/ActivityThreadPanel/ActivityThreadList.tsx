@@ -23,6 +23,7 @@ import {
 } from '../../../constants/Feeds.constants';
 import {
   Post,
+  Thread,
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
@@ -56,10 +57,8 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
     onThreadIdSelect(selectedThreadId === id ? '' : id);
   };
 
-  const handleCardClick = (taskId: number, isTask: boolean) => {
-    if (isTask) {
-      history.push(getTaskDetailPath(String(taskId)));
-    }
+  const handleCardClick = (task: Thread, isTask: boolean) => {
+    isTask && history.push(getTaskDetailPath(task));
   };
 
   return (
@@ -68,7 +67,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
         return (
           <div data-testid={`thread${i}`} key={i}>
             <FeedListSeparator
-              className="tw-relative tw-mt-1 tw-mb-3.5"
+              className="relative m-t-xss m-b-sm"
               relativeDay={d}
             />
             {updatedThreads
@@ -112,7 +111,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                         background: isAnnouncement ? `${ANNOUNCEMENT_BG}` : '',
                       }}
                       onClick={() =>
-                        thread.task && handleCardClick(thread.task.id, isTask)
+                        thread.task && handleCardClick(thread, isTask)
                       }>
                       {isTask && (
                         <TaskBadge
@@ -128,7 +127,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                           entityLink={thread.about}
                           feed={mainFeed}
                           feedType={thread.type || ThreadType.Conversation}
-                          taskDetails={thread.task}
+                          task={thread}
                           threadId={thread.id}
                           updateThreadHandler={updateThreadHandler}
                           onConfirmation={onConfirmation}
@@ -142,7 +141,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                               {Boolean(lastPost) && (
                                 <div className="tw-filter-seperator" />
                               )}
-                              <div className="tw-flex tw-my-4">
+                              <div className="d-flex tw-my-4">
                                 <FeedCardFooter
                                   isFooterVisible
                                   lastReplyTimeStamp={lastPost?.postTs}
@@ -162,6 +161,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                               className="tw-ml-9"
                               feed={lastPost as Post}
                               feedType={thread.type || ThreadType.Conversation}
+                              task={thread}
                               threadId={thread.id}
                               updateThreadHandler={updateThreadHandler}
                               onConfirmation={onConfirmation}
@@ -181,12 +181,12 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                       ) : null}
                       {thread.task && (
                         <div className="tw-border-t tw-border-main tw-py-1">
-                          <span className="tw-text-grey-muted">
+                          <span className="text-grey-muted">
                             {t('label.assignee-plural')}:{' '}
                           </span>
                           <AssigneeList
                             assignees={thread.task.assignees || []}
-                            className="tw-ml-0.5 tw-align-baseline tw-inline-flex tw-flex-wrap"
+                            className="tw-ml-0.5 tw-align-baseline tw-inline-flex flex-wrap"
                           />
                         </div>
                       )}

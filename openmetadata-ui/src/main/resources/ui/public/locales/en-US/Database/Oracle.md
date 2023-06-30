@@ -31,7 +31,7 @@ GRANT SELECT ON table_name TO {user | role};
 ```
 
 ### Profiler & Data Quality
-Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `dba_objects` and `all_tables` for all objects in the database. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
 
 ### Usage & Lineage
 For the usage and lineage workflow, the user will need `SELECT` privilege. You can find more information on the usage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/usage) and the lineage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/lineage).
@@ -61,7 +61,9 @@ $$
 $$section
 ### Host Port $(id="hostPort")
 
-Host and port of the oracle service. This should be specified as a string in the format `hostname:port`. E.g., `localhost:1521`
+This parameter specifies the host and port of the Oracle instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:1521`.
+
+If your database service and Open Metadata are both running via docker locally, use `host.docker.internal:1521` as the value.
 $$
 
 $$section
@@ -89,6 +91,18 @@ $$section
 ### Instant Client Directory $(id="instantClientDirectory")
 
 This directory will be used to set the `LD_LIBRARY_PATH` env variable. It is required if you need to enable thick connection mode. By default, we bring Instant Client 19 and point to `/instantclient`.
+$$
+
+$$section
+### Database Name $(id="databaseName")
+In OpenMetadata, the Database Service hierarchy works as follows:
+```
+Database Service > Database > Schema > Table
+```
+In the case of Oracle, we won't have a Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
+
+**Note:** It is recommended to use the database name same as the SID, This ensures accurate results and proper identification of tables during profiling, data quality checks and dbt workflow.
+
 $$
 
 $$section

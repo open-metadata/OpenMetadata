@@ -31,6 +31,10 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
+jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+  jest.fn().mockReturnValue(<p>Sidebar</p>)
+);
+
 jest.mock('rest/settingConfigAPI', () => ({
   getSettingsConfigFromConfigType: jest.fn().mockImplementation(() =>
     Promise.resolve({

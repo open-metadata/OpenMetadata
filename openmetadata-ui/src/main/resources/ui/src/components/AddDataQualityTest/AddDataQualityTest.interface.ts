@@ -70,5 +70,5 @@ export interface EditTestCaseModalProps {
   visible: boolean;
   testCase: TestCase;
   onCancel: () => void;
-  onUpdate?: () => void;
+  onUpdate?: (testCase: TestCase) => void;
 }

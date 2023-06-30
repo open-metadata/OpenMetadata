@@ -37,13 +37,17 @@ public class MetricsRepository extends EntityRepository<Metrics> {
         dao.metricsDAO(),
         dao,
         "",
-        METRICS_UPDATE_FIELDS,
-        null);
+        METRICS_UPDATE_FIELDS);
   }
 
   @Override
   public void setFullyQualifiedName(Metrics metrics) {
     metrics.setFullyQualifiedName(FullyQualifiedName.add(metrics.getService().getName(), metrics.getName()));
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(Metrics metrics) {
+    return FullyQualifiedName.buildHash(metrics.getFullyQualifiedName());
   }
 
   @Override
@@ -71,8 +75,6 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   public void storeRelationships(Metrics metrics) {
     EntityReference service = metrics.getService();
     addRelationship(service.getId(), metrics.getId(), service.getType(), Entity.METRICS, Relationship.CONTAINS);
-    storeOwner(metrics, metrics.getOwner());
-    applyTags(metrics);
   }
 
   private EntityReference getService(EntityReference service) throws IOException { // Get service by service ID

@@ -158,11 +158,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       excludeColumns,
     } = tableProfilerConfig;
     handleStateChange({
-      sqlQuery: profileQuery || '',
+      sqlQuery: profileQuery ?? '',
       profileSample: profileSample,
-      excludeCol: excludeColumns || [],
+      excludeCol: excludeColumns ?? [],
       selectedProfileSampleType:
-        profileSampleType || ProfileSampleType.Percentage,
+        profileSampleType ?? ProfileSampleType.Percentage,
     });
 
     const profileSampleTypeCheck =
@@ -429,6 +429,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               })}
               name="profileSampleType">
               <Select
+                autoFocus
                 className="w-full"
                 data-testid="profile-sample"
                 options={PROFILE_SAMPLE_OPTIONS}
@@ -477,13 +478,13 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           </p>
 
           <SchemaEditor
-            className="custom-query-editor query-editor-h-200"
+            className="sql-editor-container custom-query-editor query-editor-h-200 custom-code-mirror-theme"
             data-testid="profiler-setting-sql-editor"
             mode={{ name: CSMode.SQL }}
             options={{
               readOnly: false,
             }}
-            value={state?.sqlQuery || ''}
+            value={state?.sqlQuery ?? ''}
             onChange={handleCodeMirrorChange}
           />
         </Col>
@@ -520,7 +521,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             <List name="includeColumns">
               {(fields, { add, remove }) => (
                 <>
-                  <div className="tw-flex tw-items-center tw-mb-1.5">
+                  <div className="d-flex tw-items-center tw-mb-1.5">
                     <p className="w-form-label tw-text-xs tw-mr-3">
                       {`${t('label.include')}:`}
                     </p>

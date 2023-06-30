@@ -14,14 +14,15 @@ GitHub client to read files with token auth
 import base64
 import traceback
 from enum import Enum
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 import requests
 
 from metadata.generated.schema.security.credentials.githubCredentials import (
     GitHubCredentials,
 )
-from metadata.readers.base import Reader, ReadException
+from metadata.readers.api_reader import ApiReader
+from metadata.readers.base import ReadException
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
 
@@ -36,33 +37,12 @@ class UrlParts(Enum):
     CONTENTS = "contents"
 
 
-class GitHubReader(Reader):
+class GitHubReader(ApiReader):
     """
     Handle calls to the GitHub API against a repo
     """
 
-    def __init__(self, credentials: GitHubCredentials):
-        self.credentials = credentials
-
-        self._auth_headers = None
-
-    @property
-    def auth_headers(self) -> Dict[str, str]:
-        """
-        Build the headers to authenticate
-        to the API
-        """
-        if self._auth_headers is None:
-            self._auth_headers = {"Authentication": f"token {self.credentials.token}"}
-
-        return self._auth_headers
-
-    @staticmethod
-    def _build_url(*parts: str):
-        """
-        Build URL parts
-        """
-        return "/".join(parts)
+    credentials: GitHubCredentials
 
     @staticmethod
     def _decode_content(json_response: Dict[str, Any]) -> str:
@@ -78,14 +58,16 @@ class GitHubReader(Reader):
         Read a file from a GitHub Repo and return its
         contents as a string
         https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#get-repository-content
+
+        This does not care if the path starts with `/` or not.
         """
         try:
             res = requests.get(
                 self._build_url(
                     HOST,
                     UrlParts.REPOS.value,
-                    self.credentials.repositoryOwner,
-                    self.credentials.repositoryName,
+                    self.credentials.repositoryOwner.__root__,
+                    self.credentials.repositoryName.__root__,
                     UrlParts.CONTENTS.value,
                     path,
                 ),
@@ -103,3 +85,53 @@ class GitHubReader(Reader):
             raise ReadException(f"Error fetching file [{path}] from repo: {err}")
 
         raise ReadException(f"Could not fetch file [{path}] from repo")
+
+    def _get_default_branch(self) -> str:
+        """
+        Get repo default branch
+        """
+        res = requests.get(
+            self._build_url(
+                HOST,
+                UrlParts.REPOS.value,
+                self.credentials.repositoryOwner.__root__,
+                self.credentials.repositoryName.__root__,
+            ),
+            headers=self.auth_headers,
+            timeout=30,
+        )
+        if res.status_code == 200:
+            return res.json().get("default_branch")
+
+        # If we don't get a 200, raise
+        res.raise_for_status()
+        raise RuntimeError("Could not fetch the default branch")
+
+    def _get_tree(self) -> Optional[List[str]]:
+        """
+        Use the GitHub Tree API
+        """
+        # First, get the default branch
+        branch = self._get_default_branch()
+        if branch:
+            res = requests.get(
+                self._build_url(
+                    HOST,
+                    UrlParts.REPOS.value,
+                    self.credentials.repositoryOwner.__root__,
+                    self.credentials.repositoryName.__root__,
+                    "git",
+                    "trees",
+                    f"{branch}?recursive=1",
+                ),
+                headers=self.auth_headers,
+                timeout=30,
+            )
+            if res.status_code == 200:
+                return [elem.get("path") for elem in res.json().get("tree")]
+
+            # If we don't get a 200, raise
+            res.raise_for_status()
+
+        # If we don't find a branch, return None
+        return None

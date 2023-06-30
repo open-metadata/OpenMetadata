@@ -30,10 +30,17 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
+jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+  jest.fn().mockReturnValue(<p>Sidebar</p>)
+);
+
 jest.mock('components/PermissionProvider/PermissionProvider', () => {
   return {
     usePermissionProvider: jest.fn(() => ({
-      permissions: {},
+      permissions: {
+        glossary: { ViewAll: true, ViewBasic: true },
+        glossaryTerm: { ViewAll: true, ViewBasic: true },
+      },
     })),
   };
 });

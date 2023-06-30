@@ -1,0 +1,14 @@
+{
+    "name": "Spline",
+    "displayName": "Spline Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of pipelines.",
+    "steps": [
+        {
+            "name": "GetPipelines",
+            "description":  "List all execution events",
+            "errorMessage": "Failed to fetch pipelines, please validate the credentials",
+            "shortCircuit": true,
+            "mandatory": true
+        }
+    ]
+}

@@ -42,7 +42,7 @@ mock_bigquery_config = {
         "type": "bigquery",
         "serviceName": "local_bigquery",
         "serviceConnection": {
-            "config": {"type": "BigQuery", "credentials": {"gcsConfig": {}}}
+            "config": {"type": "BigQuery", "credentials": {"gcpConfig": {}}}
         },
         "sourceConfig": {
             "config": {

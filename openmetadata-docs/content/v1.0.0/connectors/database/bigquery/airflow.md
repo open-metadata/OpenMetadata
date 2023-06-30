@@ -20,7 +20,7 @@ slug: /connectors/database/bigquery/airflow
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
-| Lineage      | Partially via Views          |
+| Lineage      | {% icon iconName="check" /%} |
 | Table-level  | {% icon iconName="check" /%} |
 | Column-level | {% icon iconName="check" /%} |
 
@@ -230,7 +230,6 @@ For a simple, local installation using our docker containers, this looks like:
 **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
 
 - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
-- In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
 
 {% /codeInfo %}
 
@@ -591,13 +590,7 @@ workflowConfig:
 {% /codeBlock %}
 {% /codePreview %}
 
-### 2. Run with the CLI
-
-There is an extra requirement to run the Usage pipelines. You will need to install:
-
-```bash
-pip3 install --upgrade 'openmetadata-ingestion[bigquery-usage]'
-```
+### 2. Prepare the Usage DAG
 
 For the usage workflow creation, the Airflow file will look the same as for the metadata ingestion. Updating the YAML configuration will be enough.
 

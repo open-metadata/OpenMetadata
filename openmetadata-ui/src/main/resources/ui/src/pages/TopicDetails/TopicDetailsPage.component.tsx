@@ -21,43 +21,32 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import TopicDetails from 'components/TopicDetails/TopicDetails.component';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { compare, Operation } from 'fast-json-patch';
+import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
+import { postThread } from 'rest/feedsAPI';
 import {
   addFollower,
   getTopicByFqn,
   patchTopicDetails,
   removeFollower,
 } from 'rest/topicsAPI';
-import AppState from '../../AppState';
-import { getTopicDetailsPath, getVersionPath } from '../../constants/constants';
+import { getVersionPath } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
-import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic } from '../../generated/entity/data/topic';
-import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { Paging } from '../../generated/type/paging';
-import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
-  getFeedCounts,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
-import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
-import { deletePost, updateThreadData } from '../../utils/FeedUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import {
-  getCurrentTopicTab,
-  topicDetailsTabs,
-} from '../../utils/TopicDetailsUtils';
 
 const TopicDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -65,89 +54,14 @@ const TopicDetailsPage: FunctionComponent = () => {
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { topicFQN, tab } = useParams() as Record<string, string>;
+  const { topicFQN } = useParams<{ topicFQN: string }>();
   const [topicDetails, setTopicDetails] = useState<Topic>({} as Topic);
   const [isLoading, setLoading] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<number>(getCurrentTopicTab(tab));
   const [isError, setIsError] = useState(false);
-
-  const [entityThread, setEntityThread] = useState<Thread[]>([]);
-  const [isEntityThreadLoading, setIsEntityThreadLoading] =
-    useState<boolean>(false);
-  const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
-  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
-  const [paging, setPaging] = useState<Paging>({} as Paging);
 
   const [topicPermissions, setTopicPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-
-  const activeTabHandler = (tabValue: number) => {
-    const currentTabIndex = tabValue - 1;
-    if (topicDetailsTabs[currentTabIndex].path !== tab) {
-      setActiveTab(getCurrentTopicTab(topicDetailsTabs[currentTabIndex].path));
-      history.push({
-        pathname: getTopicDetailsPath(
-          topicFQN,
-          topicDetailsTabs[currentTabIndex].path
-        ),
-      });
-    }
-  };
-
-  const getEntityFeedCount = () => {
-    getFeedCounts(
-      EntityType.TOPIC,
-      topicFQN,
-      setEntityFieldThreadCount,
-      setEntityFieldTaskCount,
-      setFeedCount
-    );
-  };
-
-  const fetchActivityFeed = async (
-    after?: string,
-    feedType?: FeedFilter,
-    threadType?: ThreadType
-  ) => {
-    setIsEntityThreadLoading(true);
-    try {
-      const { data, paging: pagingObj } = await getAllFeeds(
-        getEntityFeedLink(EntityType.TOPIC, topicFQN),
-        after,
-        threadType,
-        feedType,
-        undefined,
-        USERId
-      );
-
-      setPaging(pagingObj);
-      setEntityThread((prevData) => [...(after ? prevData : []), ...data]);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.entity-feed-plural'),
-        })
-      );
-    } finally {
-      setIsEntityThreadLoading(false);
-    }
-  };
-
-  const handleFeedFetchFromFeedList = (
-    after?: string,
-    filterType?: FeedFilter,
-    type?: ThreadType
-  ) => {
-    !after && setEntityThread([]);
-    fetchActivityFeed(after, filterType, type);
-  };
 
   const { id: topicId, version: currentVersion } = topicDetails;
 
@@ -176,7 +90,6 @@ const TopicDetailsPage: FunctionComponent = () => {
           [key]: res[key],
         };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -247,7 +160,6 @@ const TopicDetailsPage: FunctionComponent = () => {
         ...prev,
         followers: [...(prev?.followers ?? []), ...newValue],
       }));
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -268,7 +180,6 @@ const TopicDetailsPage: FunctionComponent = () => {
           (follower) => follower.id !== oldValue[0].id
         ),
       }));
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -286,42 +197,9 @@ const TopicDetailsPage: FunctionComponent = () => {
       );
   };
 
-  const postFeedHandler = async (value: string, id: string) => {
-    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
-
-    const data = {
-      message: value,
-      from: currentUser,
-    } as Post;
-
-    try {
-      const res = await postFeedById(id, data);
-      const { id: responseId, posts } = res;
-      setEntityThread((pre) => {
-        return pre.map((thread) => {
-          if (thread.id === responseId) {
-            return { ...res, posts: posts?.slice(-3) };
-          } else {
-            return thread;
-          }
-        });
-      });
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.add-entity-error', {
-          entity: t('label.feed-plural'),
-        })
-      );
-    }
-  };
-
   const createThread = async (data: CreateThread) => {
     try {
-      const res = await postThread(data);
-      setEntityThread((pre) => [...pre, res]);
-      getEntityFeedCount();
+      await postThread(data);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -332,36 +210,6 @@ const TopicDetailsPage: FunctionComponent = () => {
     }
   };
 
-  const deletePostHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ) => {
-    deletePost(threadId, postId, isThread, setEntityThread);
-  };
-
-  const updateThreadHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean,
-    data: Operation[]
-  ) => {
-    updateThreadData(threadId, postId, isThread, data, setEntityThread);
-  };
-
-  useEffect(() => {
-    if (topicDetailsTabs[activeTab - 1].path !== tab) {
-      setActiveTab(getCurrentTopicTab(tab));
-    }
-    setEntityThread([]);
-  }, [tab]);
-
-  useEffect(() => {
-    if (activeTab === 2) {
-      fetchActivityFeed();
-    }
-  }, [activeTab, feedCount]);
-
   useEffect(() => {
     fetchResourcePermission(topicFQN);
   }, [topicFQN]);
@@ -369,7 +217,6 @@ const TopicDetailsPage: FunctionComponent = () => {
   useEffect(() => {
     if (topicPermissions.ViewAll || topicPermissions.ViewBasic) {
       fetchTopicDetail(topicFQN);
-      getEntityFeedCount();
     }
   }, [topicPermissions, topicFQN]);
 
@@ -389,23 +236,11 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   return (
     <TopicDetails
-      activeTab={activeTab}
       createThread={createThread}
-      deletePostHandler={deletePostHandler}
-      entityFieldTaskCount={entityFieldTaskCount}
-      entityFieldThreadCount={entityFieldThreadCount}
-      entityThread={entityThread}
-      feedCount={feedCount}
-      fetchFeedHandler={handleFeedFetchFromFeedList}
       followTopicHandler={followTopic}
-      isEntityThreadLoading={isEntityThreadLoading}
-      paging={paging}
-      postFeedHandler={postFeedHandler}
-      setActiveTabHandler={activeTabHandler}
       topicDetails={topicDetails}
-      topicFQN={topicFQN}
-      unfollowTopicHandler={unFollowTopic}
-      updateThreadHandler={updateThreadHandler}
+      topicPermissions={topicPermissions}
+      unFollowTopicHandler={unFollowTopic}
       versionHandler={versionHandler}
       onTopicUpdate={onTopicUpdate}
     />

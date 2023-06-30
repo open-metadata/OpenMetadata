@@ -40,6 +40,7 @@ import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.resources.types.TypeResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 
@@ -49,15 +50,7 @@ public class TypeRepository extends EntityRepository<Type> {
   private static final String PATCH_FIELDS = "customProperties";
 
   public TypeRepository(CollectionDAO dao) {
-    super(
-        TypeResource.COLLECTION_PATH,
-        Entity.TYPE,
-        Type.class,
-        dao.typeEntityDAO(),
-        dao,
-        PATCH_FIELDS,
-        UPDATE_FIELDS,
-        null);
+    super(TypeResource.COLLECTION_PATH, Entity.TYPE, Type.class, dao.typeEntityDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
   }
 
   @Override
@@ -85,7 +78,7 @@ public class TypeRepository extends EntityRepository<Type> {
 
   @Override
   public void storeRelationships(Type type) {
-    /* Nothing to do */
+    // No relationships to store beyond what is stored in the super class
   }
 
   private void updateTypeMap(Type entity) {
@@ -137,7 +130,10 @@ public class TypeRepository extends EntityRepository<Type> {
         daoCollection
             .fieldRelationshipDAO()
             .listToByPrefix(
-                getCustomPropertyFQNPrefix(type.getName()), Entity.TYPE, Entity.TYPE, Relationship.HAS.ordinal());
+                FullyQualifiedName.buildHash(getCustomPropertyFQNPrefix(type.getName())),
+                Entity.TYPE,
+                Entity.TYPE,
+                Relationship.HAS.ordinal());
     for (Triple<String, String, String> result : results) {
       CustomProperty property = JsonUtils.readValue(result.getRight(), CustomProperty.class);
       property.setPropertyType(dao.findEntityReferenceByName(result.getMiddle()));
@@ -196,6 +192,8 @@ public class TypeRepository extends EntityRepository<Type> {
       daoCollection
           .fieldRelationshipDAO()
           .insert(
+              FullyQualifiedName.buildHash(customPropertyFQN),
+              FullyQualifiedName.buildHash(property.getPropertyType().getName()),
               customPropertyFQN,
               property.getPropertyType().getName(),
               Entity.TYPE,
@@ -214,8 +212,8 @@ public class TypeRepository extends EntityRepository<Type> {
       daoCollection
           .fieldRelationshipDAO()
           .delete(
-              customPropertyFQN,
-              property.getPropertyType().getName(),
+              FullyQualifiedName.buildHash(customPropertyFQN),
+              FullyQualifiedName.buildHash(property.getPropertyType().getName()),
               Entity.TYPE,
               Entity.TYPE,
               Relationship.HAS.ordinal());
@@ -234,6 +232,8 @@ public class TypeRepository extends EntityRepository<Type> {
         daoCollection
             .fieldRelationshipDAO()
             .upsert(
+                FullyQualifiedName.buildHash(customPropertyFQN),
+                FullyQualifiedName.buildHash(updatedProperty.getPropertyType().getName()),
                 customPropertyFQN,
                 updatedProperty.getPropertyType().getName(),
                 Entity.TYPE,

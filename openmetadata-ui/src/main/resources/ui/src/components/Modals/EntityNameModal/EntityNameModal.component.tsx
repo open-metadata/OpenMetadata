@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Form, Input, Modal, Typography } from 'antd';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityNameModalProps } from './EntityNameModal.interface';
@@ -68,7 +69,7 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
       onCancel={onCancel}>
       <Form form={form} layout="vertical" onFinish={handleSave}>
         <Form.Item
-          label={`${t('label.name')}:`}
+          label={t('label.name')}
           name="name"
           rules={[
             {
@@ -76,6 +77,10 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
               message: `${t('label.field-required', {
                 field: t('label.name'),
               })}`,
+            },
+            {
+              pattern: ENTITY_NAME_REGEX,
+              message: t('message.entity-name-validation'),
             },
           ]}>
           <Input
@@ -85,17 +90,7 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
             })}
           />
         </Form.Item>
-        <Form.Item
-          label={`${t('label.display-name')}:`}
-          name="displayName"
-          rules={[
-            {
-              required: true,
-              message: `${t('label.field-required', {
-                field: t('label.name'),
-              })}`,
-            },
-          ]}>
+        <Form.Item label={t('label.display-name')} name="displayName">
           <Input placeholder={t('message.enter-display-name')} />
         </Form.Item>
       </Form>

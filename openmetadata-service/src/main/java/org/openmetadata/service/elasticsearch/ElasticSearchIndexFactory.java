@@ -12,7 +12,20 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.elasticsearch.indexes.ContainerIndex;
+import org.openmetadata.service.elasticsearch.indexes.DashboardIndex;
+import org.openmetadata.service.elasticsearch.indexes.ElasticSearchIndex;
+import org.openmetadata.service.elasticsearch.indexes.GlossaryTermIndex;
+import org.openmetadata.service.elasticsearch.indexes.MlModelIndex;
+import org.openmetadata.service.elasticsearch.indexes.PipelineIndex;
+import org.openmetadata.service.elasticsearch.indexes.QueryIndex;
+import org.openmetadata.service.elasticsearch.indexes.TableIndex;
+import org.openmetadata.service.elasticsearch.indexes.TagIndex;
+import org.openmetadata.service.elasticsearch.indexes.TeamIndex;
+import org.openmetadata.service.elasticsearch.indexes.TopicIndex;
+import org.openmetadata.service.elasticsearch.indexes.UserIndex;
 
 @Slf4j
 public class ElasticSearchIndexFactory {
@@ -42,9 +55,12 @@ public class ElasticSearchIndexFactory {
         return new QueryIndex((Query) entity);
       case Entity.CONTAINER:
         return new ContainerIndex((Container) entity);
+      case Entity.TEST_CASE:
+      case Entity.TEST_SUITE:
+        return new TestCaseIndex((TestCase) entity);
       default:
         LOG.warn("Ignoring Entity Type {}", entityType);
     }
-    return null;
+    throw new IllegalArgumentException(String.format("Entity Type [%s] is not valid for Index Factory", entityType));
   }
 }

@@ -32,6 +32,10 @@ import withSuspenseFallback from './withSuspenseFallback';
 const AddAlertPage = withSuspenseFallback(
   React.lazy(() => import('pages/AddAlertPage/AddAlertPage'))
 );
+
+const ImportTeamsPage = withSuspenseFallback(
+  React.lazy(() => import('pages/teams/ImportTeamsPage/ImportTeamsPage'))
+);
 const AddDataInsightReportAlert = withSuspenseFallback(
   React.lazy(
     () => import('pages/AddDataInsightReportAlert/AddDataInsightReportAlert')
@@ -144,6 +148,20 @@ const GlobalSettingRouter = () => {
           true
         )}
       />
+      <AdminProtectedRoute
+        exact
+        component={ImportTeamsPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEAM,
+          permissions
+        )}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.TEAMS,
+          true,
+          true
+        )}
+      />
       <Route
         path={getSettingPath(
           GlobalSettingsMenuCategory.MEMBERS,
@@ -214,10 +232,7 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={BotsPageV1}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.BOT,
-          permissions
-        )}
+        hasPermission={false}
         path={getSettingPath(
           GlobalSettingsMenuCategory.INTEGRATIONS,
           GlobalSettingOptions.BOTS
@@ -352,10 +367,7 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={CustomPropertiesPageV1}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.TYPE,
-          permissions
-        )}
+        hasPermission={false}
         path={getSettingCategoryPath(
           GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES
         )}

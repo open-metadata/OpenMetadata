@@ -77,17 +77,17 @@ const ProfilePicture = ({
   const getAvatarElement = () => {
     return isPicLoading ? (
       <div
-        className="tw-inline-block tw-relative"
+        className="d-inline-block relative"
         style={{
           height: `${height || width}px`,
           width: `${width}px`,
         }}>
         {getAvatarByName()}
         <div
-          className="tw-absolute tw-inset-0 tw-opacity-60 tw-bg-grey-backdrop tw-rounded"
+          className="absolute tw-inset-0 tw-opacity-60 tw-bg-grey-backdrop tw-rounded"
           data-testid="loader-cntnr">
           <Loader
-            className="tw-absolute tw-inset-0"
+            className="absolute tw-inset-0"
             size="small"
             style={{ height: `${+width - 2}px`, width: `${+width - 2}px` }}
             type="white"

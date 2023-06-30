@@ -21,8 +21,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
         dao.testDefinitionDAO(),
         dao,
         PATCH_FIELDS,
-        UPDATE_FIELDS,
-        null);
+        UPDATE_FIELDS);
   }
 
   @Override
@@ -45,7 +44,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
 
   @Override
   public void storeRelationships(TestDefinition entity) {
-    storeOwner(entity, entity.getOwner());
+    // No relationships to store beyond what is stored in the super class
   }
 
   @Override

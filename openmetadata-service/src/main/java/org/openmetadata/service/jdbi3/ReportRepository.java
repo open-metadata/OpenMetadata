@@ -28,15 +28,7 @@ public class ReportRepository extends EntityRepository<Report> {
   private static final String REPORT_UPDATE_FIELDS = "owner";
 
   public ReportRepository(CollectionDAO dao) {
-    super(
-        ReportResource.COLLECTION_PATH,
-        Entity.REPORT,
-        Report.class,
-        dao.reportDAO(),
-        dao,
-        "",
-        REPORT_UPDATE_FIELDS,
-        null);
+    super(ReportResource.COLLECTION_PATH, Entity.REPORT, Report.class, dao.reportDAO(), dao, "", REPORT_UPDATE_FIELDS);
   }
 
   @Override
@@ -60,8 +52,6 @@ public class ReportRepository extends EntityRepository<Report> {
   public void storeRelationships(Report report) {
     EntityReference service = report.getService();
     addRelationship(service.getId(), report.getId(), service.getType(), Entity.CHART, Relationship.CONTAINS);
-    storeOwner(report, report.getOwner());
-    applyTags(report);
   }
 
   private EntityReference getService(Report report) {

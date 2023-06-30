@@ -17,6 +17,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { EntityTabs } from 'enums/entity.enum';
 import { StorageServiceType } from 'generated/entity/data/container';
 import { t } from 'i18next';
 import {
@@ -72,6 +73,7 @@ import {
   MLFLOW,
   ML_MODEL_DEFAULT,
   MODE,
+  MONGODB,
   MSSQL,
   MYSQL,
   NIFI,
@@ -87,11 +89,13 @@ import {
   REDSHIFT,
   SAGEMAKER,
   SALESFORCE,
+  SAP_HANA,
   SCIKIT,
   serviceTypes,
   SERVICE_TYPE_MAP,
   SINGLESTORE,
   SNOWFLAKE,
+  SPLINE,
   SQLITE,
   SUPERSET,
   TABLEAU,
@@ -120,7 +124,11 @@ import {
   PipelineServiceType,
 } from '../generated/entity/services/pipelineService';
 import { ServicesType } from '../interface/service.interface';
-import { getEntityDeleteMessage, pluralize } from './CommonUtils';
+import {
+  getEntityDeleteMessage,
+  pluralize,
+  replaceAllSpacialCharWith_,
+} from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
 import { getBrokers } from './MessagingServiceUtils';
 import { showErrorToast } from './ToastUtils';
@@ -202,6 +210,9 @@ export const serviceTypeLogo = (type: string) => {
     case DatabaseServiceType.Salesforce:
       return SALESFORCE;
 
+    case DatabaseServiceType.SapHana:
+      return SAP_HANA;
+
     case DatabaseServiceType.DeltaLake:
       return DELTALAKE;
 
@@ -210,6 +221,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DatabaseServiceType.Datalake:
       return DATALAKE;
+
+    case DatabaseServiceType.MongoDB:
+      return MONGODB;
 
     case MessagingServiceType.Kafka:
       return KAFKA;
@@ -260,6 +274,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case PipelineServiceType.GluePipeline:
       return GLUE;
+
+    case PipelineServiceType.Spline:
+      return SPLINE;
 
     case PipelineServiceType.Nifi:
       return NIFI;
@@ -591,7 +608,9 @@ export const getIngestionName = (
       IngestionPipelineType.Dbt,
     ].includes(type)
   ) {
-    return `${serviceName}_${type}_${cryptoRandomString({
+    return `${replaceAllSpacialCharWith_(
+      serviceName
+    )}_${type}_${cryptoRandomString({
       length: 8,
       type: 'alphanumeric',
     })}`;
@@ -901,15 +920,15 @@ export const getServicePageTabs = (
   instanceCount: number,
   ingestionCount: number,
   servicePermission: OperationPermission,
-  dataModelCount: number
+  dataModelCount: number,
+  showIngestionTab: boolean
 ) => {
   const tabs = [];
 
   if (serviceName !== ServiceCategory.METADATA_SERVICES) {
     tabs.push({
       name: getCountLabel(serviceName),
-      isProtected: false,
-      position: 1,
+      key: getCountLabel(serviceName).toLowerCase(),
       count: instanceCount,
     });
   }
@@ -917,8 +936,7 @@ export const getServicePageTabs = (
   if (serviceName === ServiceCategory.DASHBOARD_SERVICES) {
     tabs.push({
       name: t('label.data-model'),
-      isProtected: false,
-      position: 4,
+      key: EntityTabs.DATA_Model,
       count: dataModelCount,
     });
   }
@@ -926,19 +944,18 @@ export const getServicePageTabs = (
   tabs.push(
     {
       name: t('label.ingestion-plural'),
-      isProtected: false,
-      position: 2,
+      key: EntityTabs.INGESTIONS,
+      isHidden: !showIngestionTab,
       count: ingestionCount,
     },
     {
       name: t('label.connection'),
-      isProtected: !servicePermission.EditAll,
       isHidden: !servicePermission.EditAll,
-      position: 3,
+      key: EntityTabs.CONNECTION,
     }
   );
 
-  return tabs;
+  return tabs.filter((tab) => !tab.isHidden);
 };
 
 export const getTestConnectionName = (connectionType: string) => {

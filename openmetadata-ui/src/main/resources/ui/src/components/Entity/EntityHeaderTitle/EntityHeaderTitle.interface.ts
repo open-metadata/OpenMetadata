@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 export interface EntityHeaderTitleProps {
+  className?: string;
   icon: React.ReactNode;
   name: string;
-  displayName: string;
+  displayName?: string;
   link?: string;
   openEntityInNewPage?: boolean;
   deleted?: boolean;
   serviceName: string;
   badge?: React.ReactNode;
+  isDisabled?: boolean;
 }

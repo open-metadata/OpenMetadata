@@ -15,7 +15,6 @@ import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
 import { Container } from 'generated/entity/data/container';
@@ -28,16 +27,15 @@ import { getPipelineByFqn } from 'rest/pipelineAPI';
 import { getContainerByName } from 'rest/storageAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTopicByFqn } from 'rest/topicsAPI';
-import { getContainerDetailPath } from 'utils/ContainerDetailUtils';
 import {
+  getContainerDetailPath,
   getDashboardDetailsPath,
   getMlModelPath,
   getPipelineDetailsPath,
   getTableTabPath,
   getTopicDetailsPath,
 } from '../../constants/constants';
-import { PIPELINE_DETAILS_TABS } from '../../constants/pipeline.constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
@@ -84,7 +82,7 @@ const LineagePage = () => {
               ...getEntityBreadcrumbs(tableRes, EntityType.TABLE),
               {
                 name: getEntityName(tableRes),
-                url: getTableTabPath(entityFQN, 'lineage'),
+                url: getTableTabPath(entityFQN, EntityTabs.LINEAGE),
               },
               {
                 name: t('label.lineage'),
@@ -101,7 +99,7 @@ const LineagePage = () => {
             const topicRes = await getTopicByFqn(entityFQN, '');
             updateBreadcrumb(
               topicRes,
-              getTopicDetailsPath(entityFQN, 'lineage'),
+              getTopicDetailsPath(entityFQN, EntityTabs.LINEAGE),
               EntityType.TOPIC
             );
           }
@@ -113,7 +111,7 @@ const LineagePage = () => {
             const dashboardRes = await getDashboardByFqn(entityFQN, '');
             updateBreadcrumb(
               dashboardRes,
-              getDashboardDetailsPath(entityFQN, 'lineage'),
+              getDashboardDetailsPath(entityFQN, EntityTabs.LINEAGE),
               EntityType.DASHBOARD
             );
           }
@@ -125,7 +123,7 @@ const LineagePage = () => {
             const pipelineRes = await getPipelineByFqn(entityFQN, '');
             updateBreadcrumb(
               pipelineRes,
-              getPipelineDetailsPath(entityFQN, PIPELINE_DETAILS_TABS.Lineage),
+              getPipelineDetailsPath(entityFQN, EntityTabs.LINEAGE),
               EntityType.PIPELINE
             );
           }
@@ -137,7 +135,7 @@ const LineagePage = () => {
             const mlmodelRes = await getMlModelByFQN(entityFQN, '');
             updateBreadcrumb(
               mlmodelRes,
-              getMlModelPath(entityFQN, 'lineage'),
+              getMlModelPath(entityFQN, EntityTabs.LINEAGE),
               EntityType.MLMODEL
             );
           }
@@ -149,7 +147,7 @@ const LineagePage = () => {
             const containerRes = await getContainerByName(entityFQN, '');
             updateBreadcrumb(
               containerRes,
-              getContainerDetailPath(entityFQN, 'lineage'),
+              getContainerDetailPath(entityFQN, EntityTabs.LINEAGE),
               EntityType.CONTAINER
             );
           }
@@ -176,20 +174,18 @@ const LineagePage = () => {
   }, [entityFQN, entityType]);
 
   return (
-    <PageContainerV1>
-      <PageLayoutV1 className="p-x-lg" pageTitle={t('label.lineage')}>
-        <div className="lineage-page-container">
-          <TitleBreadcrumb titleLinks={titleBreadcrumb} />
-          <Card className="h-full" size="default">
-            <EntityLineageComponent
-              hasEditAccess
-              isFullScreen
-              entityType={entityType}
-            />
-          </Card>
-        </div>
-      </PageLayoutV1>
-    </PageContainerV1>
+    <PageLayoutV1 className="p-x-lg" pageTitle={t('label.lineage')}>
+      <div className="lineage-page-container page-container">
+        <TitleBreadcrumb titleLinks={titleBreadcrumb} />
+        <Card className="h-full" size="default">
+          <EntityLineageComponent
+            hasEditAccess
+            isFullScreen
+            entityType={entityType}
+          />
+        </Card>
+      </div>
+    </PageLayoutV1>
   );
 };
 

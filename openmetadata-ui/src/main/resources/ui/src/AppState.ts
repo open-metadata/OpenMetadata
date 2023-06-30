@@ -17,7 +17,6 @@ import { action, makeAutoObservable } from 'mobx';
 import { ClientAuth, NewUser } from 'Models';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import { LOCALSTORAGE_USER_PROFILES } from './constants/constants';
-import { CurrentTourPageType } from './enums/tour.enum';
 import { ResourcePermission } from './generated/entity/policies/accessControl/resourcePermission';
 import {
   EntityReference as UserTeams,
@@ -53,10 +52,6 @@ class AppState {
 
   inPageSearchText = '';
   explorePageTab = 'tables';
-
-  isTourOpen = false;
-  currentTourPage: CurrentTourPageType = CurrentTourPageType.MY_DATA_PAGE;
-  activeTabforTourDatasetPage = 1;
 
   constructor() {
     makeAutoObservable(this, {

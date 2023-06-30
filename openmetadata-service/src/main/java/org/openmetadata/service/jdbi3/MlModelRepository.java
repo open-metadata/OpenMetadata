@@ -56,16 +56,21 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         dao.mlModelDAO(),
         dao,
         MODEL_PATCH_FIELDS,
-        MODEL_UPDATE_FIELDS,
-        null);
+        MODEL_UPDATE_FIELDS);
   }
 
   @Override
   public void setFullyQualifiedName(MlModel mlModel) {
-    mlModel.setFullyQualifiedName(FullyQualifiedName.add(mlModel.getService().getName(), mlModel.getName()));
+    mlModel.setFullyQualifiedName(
+        FullyQualifiedName.add(mlModel.getService().getFullyQualifiedName(), mlModel.getName()));
     if (!nullOrEmpty(mlModel.getMlFeatures())) {
       setMlFeatureFQN(mlModel.getFullyQualifiedName(), mlModel.getMlFeatures());
     }
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(MlModel mlModel) {
+    return FullyQualifiedName.buildHash(mlModel.getFullyQualifiedName());
   }
 
   @Override
@@ -156,8 +161,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     EntityReference service = mlModel.getService();
     addRelationship(service.getId(), mlModel.getId(), service.getType(), MLMODEL, Relationship.CONTAINS);
 
-    storeOwner(mlModel, mlModel.getOwner());
-
     setDashboard(mlModel, mlModel.getDashboard());
 
     if (mlModel.getDashboard() != null) {
@@ -167,7 +170,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     setMlFeatureSourcesLineage(mlModel);
-    applyTags(mlModel);
   }
 
   /**

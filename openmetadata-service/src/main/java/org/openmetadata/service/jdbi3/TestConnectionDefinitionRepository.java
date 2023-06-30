@@ -16,7 +16,7 @@ import org.openmetadata.service.util.EntityUtil;
 */
 public class TestConnectionDefinitionRepository extends EntityRepository<TestConnectionDefinition> {
 
-  private static final String UPDATE_FIELDS = "";
+  private static final String UPDATE_FIELDS = "steps";
   private static final String PATCH_FIELDS = "";
 
   public TestConnectionDefinitionRepository(CollectionDAO dao) {
@@ -27,8 +27,16 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
         dao.testConnectionDefinitionDAO(),
         dao,
         PATCH_FIELDS,
-        UPDATE_FIELDS,
-        null);
+        UPDATE_FIELDS);
+  }
+
+  /**
+   * TestConnectionDefinitions are created from JSON data. The FQN will be generated out of the informed name and
+   * `.testConnectionDefinition`
+   */
+  @Override
+  public void setFullyQualifiedName(TestConnectionDefinition entity) {
+    entity.setFullyQualifiedName(entity.getName() + ".testConnectionDefinition");
   }
 
   @Override
@@ -58,12 +66,24 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
 
   @Override
   public void storeRelationships(TestConnectionDefinition entity) {
-    storeOwner(entity, entity.getOwner());
+    // No relationships to store beyond what is stored in the super class
   }
 
   @Override
   public EntityUpdater getUpdater(
       TestConnectionDefinition original, TestConnectionDefinition updated, Operation operation) {
-    return null;
+    return new TestConnectionDefinitionUpdater(original, updated, operation);
+  }
+
+  public class TestConnectionDefinitionUpdater extends EntityUpdater {
+    public TestConnectionDefinitionUpdater(
+        TestConnectionDefinition original, TestConnectionDefinition updated, Operation operation) {
+      super(original, updated, operation);
+    }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      recordChange("steps", original.getSteps(), updated.getSteps(), true);
+    }
   }
 }

@@ -38,6 +38,8 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class MetadataServiceResourceTest extends EntityResourceTest<MetadataService, CreateMetadataService> {
+  public static final String DEFAULT_OPENMETADATA_SERVICE_NAME = "OpenMetadata";
+
   public MetadataServiceResourceTest() {
     super(
         Entity.METADATA_SERVICE,
@@ -67,6 +69,12 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
 
     metadataService = metadataServiceResourceTest.createEntity(createMetadata, ADMIN_AUTH_HEADERS);
     ATLAS_SERVICE_REFERENCE = metadataService.getEntityReference();
+  }
+
+  @Test
+  void defaultOpenMetadataServiceMustExist(TestInfo test) throws HttpResponseException {
+    MetadataService service = getEntityByName(DEFAULT_OPENMETADATA_SERVICE_NAME, ADMIN_AUTH_HEADERS);
+    assertEquals(service.getName(), DEFAULT_OPENMETADATA_SERVICE_NAME);
   }
 
   @Test
@@ -126,7 +134,7 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
                     .withPassword(secretPassword));
     // Update metadata description
     CreateMetadataService update =
-        createPutRequest(test).withDescription("description1").withConnection(metadataConnection);
+        createRequest(test).withDescription("description1").withConnection(metadataConnection);
     ChangeDescription change = getChangeDescription(service.getVersion());
     fieldAdded(change, "description", "description1");
     service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
@@ -190,18 +198,6 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
         .withName(name)
         .withServiceType(CreateMetadataService.MetadataServiceType.Amundsen)
         .withConnection(AMUNDSEN_CONNECTION);
-  }
-
-  @Override
-  public CreateMetadataService createPutRequest(String name) {
-    MetadataConnection metadataConnection = JsonUtils.convertValue(AMUNDSEN_CONNECTION, MetadataConnection.class);
-    AmundsenConnection amundsenConnection =
-        JsonUtils.convertValue(AMUNDSEN_CONNECTION.getConfig(), AmundsenConnection.class);
-    String secretPassword = "secret:/openmetadata/metadata/" + name.toLowerCase() + "/password";
-    return new CreateMetadataService()
-        .withName(name)
-        .withServiceType(CreateMetadataService.MetadataServiceType.Amundsen)
-        .withConnection(metadataConnection.withConfig(amundsenConnection.withPassword(secretPassword)));
   }
 
   @Override

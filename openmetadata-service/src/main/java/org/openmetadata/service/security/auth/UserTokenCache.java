@@ -26,21 +26,21 @@ import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
 public class UserTokenCache {
-  private static UserTokenCache INSTANCE;
-  private static LoadingCache<String, HashSet<String>> USER_TOKEN_CACHE;
-  private static volatile boolean INITIALIZED = false;
+  private static UserTokenCache instance;
+  private static LoadingCache<String, HashSet<String>> userTokenCache;
+  private static volatile boolean initialized = false;
   private static TokenRepository tokenRepository;
 
   public static void initialize(CollectionDAO dao) {
-    if (!INITIALIZED) {
-      USER_TOKEN_CACHE =
+    if (!initialized) {
+      userTokenCache =
           CacheBuilder.newBuilder()
               .maximumSize(1000)
               .expireAfterWrite(2, TimeUnit.MINUTES)
               .build(new UserTokenLoader());
       tokenRepository = new TokenRepository(dao);
-      INSTANCE = new UserTokenCache();
-      INITIALIZED = true;
+      instance = new UserTokenCache();
+      initialized = true;
       LOG.info("User Token cache is initialized");
     } else {
       LOG.info("User Token cache is already initialized");
@@ -49,7 +49,7 @@ public class UserTokenCache {
 
   public HashSet<String> getToken(String userName) {
     try {
-      return USER_TOKEN_CACHE.get(userName);
+      return userTokenCache.get(userName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
       LOG.error("Token not found", ex);
       return null;
@@ -58,14 +58,14 @@ public class UserTokenCache {
 
   public void invalidateToken(String userName) {
     try {
-      USER_TOKEN_CACHE.invalidate(userName);
+      userTokenCache.invalidate(userName);
     } catch (Exception ex) {
       LOG.error("Failed to invalidate User token cache for User {}", userName, ex);
     }
   }
 
   public static UserTokenCache getInstance() {
-    return INSTANCE;
+    return instance;
   }
 
   static class UserTokenLoader extends CacheLoader<String, HashSet<String>> {

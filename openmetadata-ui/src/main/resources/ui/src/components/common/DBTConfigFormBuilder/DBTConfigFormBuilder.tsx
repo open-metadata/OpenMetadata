@@ -12,9 +12,13 @@
  */
 
 import { Button, Form, FormProps, Space } from 'antd';
+import { ShowFilter } from 'components/AddIngestion/addIngestion.interface';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
+import { FilterPatternEnum } from 'enums/filterPattern.enum';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import React, { FunctionComponent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
+import { generateFormFields } from 'utils/formUtils';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { DBTCloudConfig } from './DBTCloudConfig';
 import { DBTConfigFormProps } from './DBTConfigForm.interface';
@@ -34,34 +38,59 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
   onChange,
   onSubmit,
   onFocus,
+  getExcludeValue,
+  getIncludeValue,
+  handleShowFilter,
 }: DBTConfigFormProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const currentDbtConfigSourceType = Form.useWatch('dbtConfigSource', form);
   const currentGcsConfigType = Form.useWatch('gcsConfig', form);
 
-  const { dbtConfigSource, gcsConfigType, ingestionName, dbtConfigSourceType } =
-    useMemo(
-      () => ({
-        ingestionName: data.ingestionName,
-        gcsConfigType: data.gcsConfigType ?? currentGcsConfigType,
-        dbtConfigSourceType: data.dbtConfigSourceType,
-        dbtConfigSource: {
-          ...data.dbtConfigSource,
-          dbtClassificationName: data.dbtClassificationName,
-          dbtUpdateDescriptions: data.dbtUpdateDescriptions,
-          includeTags: data.includeTags,
-        },
-      }),
-      [
-        data.ingestionName,
-        data.gcsConfigType,
-        data.dbtConfigSourceType,
-        data.dbtConfigSource,
-        data.includeTags,
-        currentGcsConfigType,
-      ]
-    );
+  const {
+    dbtConfigSource,
+    gcsConfigType,
+    ingestionName,
+    dbtConfigSourceType,
+    databaseFilterPattern,
+    schemaFilterPattern,
+    tableFilterPattern,
+    showDatabaseFilter,
+    showSchemaFilter,
+    showTableFilter,
+  } = useMemo(
+    () => ({
+      ingestionName: data.ingestionName,
+      gcsConfigType: data.gcsConfigType ?? currentGcsConfigType,
+      dbtConfigSourceType: data.dbtConfigSourceType,
+      dbtConfigSource: {
+        ...data.dbtConfigSource,
+        dbtClassificationName: data.dbtClassificationName,
+        dbtUpdateDescriptions: data.dbtUpdateDescriptions,
+        includeTags: data.includeTags,
+      },
+      databaseFilterPattern: data.databaseFilterPattern,
+      schemaFilterPattern: data.schemaFilterPattern,
+      tableFilterPattern: data.tableFilterPattern,
+      showDatabaseFilter: data.showDatabaseFilter,
+      showSchemaFilter: data.showSchemaFilter,
+      showTableFilter: data.showTableFilter,
+    }),
+    [
+      data.ingestionName,
+      data.gcsConfigType,
+      data.dbtConfigSourceType,
+      data.dbtConfigSource,
+      data.includeTags,
+      currentGcsConfigType,
+      data.databaseFilterPattern,
+      data.schemaFilterPattern,
+      data.tableFilterPattern,
+      data.showDatabaseFilter,
+      data.showSchemaFilter,
+      data.showTableFilter,
+    ]
+  );
 
   const getFields = () => {
     switch (currentDbtConfigSourceType) {
@@ -156,6 +185,69 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
       formItemProps: {
         initialValue: ingestionName,
       },
+      rules: [
+        {
+          pattern: ENTITY_NAME_REGEX,
+          message: t('message.entity-name-validation'),
+        },
+      ],
+    },
+    {
+      name: 'databaseFilterPattern',
+      label: null,
+      type: FieldTypes.FILTER_PATTERN,
+      required: false,
+      props: {
+        checked: showDatabaseFilter,
+        excludePattern: databaseFilterPattern?.excludes ?? [],
+        getExcludeValue: getExcludeValue,
+        getIncludeValue: getIncludeValue,
+        handleChecked: (value: boolean) =>
+          handleShowFilter(value, ShowFilter.showDatabaseFilter),
+        includePattern: databaseFilterPattern?.includes ?? [],
+        includePatternExtraInfo: data.database
+          ? t('message.include-database-filter-extra-information')
+          : undefined,
+        isDisabled: data.isDatabaseFilterDisabled,
+        type: FilterPatternEnum.DATABASE,
+      },
+      id: 'root/databaseFilterPattern',
+    },
+    {
+      name: 'schemaFilterPattern',
+      label: null,
+      type: FieldTypes.FILTER_PATTERN,
+      required: false,
+      props: {
+        checked: showSchemaFilter,
+        excludePattern: schemaFilterPattern?.excludes ?? [],
+        getExcludeValue: getExcludeValue,
+        getIncludeValue: getIncludeValue,
+        handleChecked: (value: boolean) =>
+          handleShowFilter(value, ShowFilter.showSchemaFilter),
+        includePattern: schemaFilterPattern?.includes ?? [],
+        type: FilterPatternEnum.SCHEMA,
+      },
+      id: 'root/schemaFilterPattern',
+    },
+    {
+      name: 'tableFilterPattern',
+      label: null,
+      type: FieldTypes.FILTER_PATTERN,
+      required: false,
+      props: {
+        checked: showTableFilter,
+        excludePattern: tableFilterPattern?.excludes ?? [],
+        getExcludeValue: getExcludeValue,
+        getIncludeValue: getIncludeValue,
+        handleChecked: (value: boolean) =>
+          handleShowFilter(value, ShowFilter.showTableFilter),
+        includePattern: tableFilterPattern?.includes ?? [],
+        type: FilterPatternEnum.TABLE,
+        showSeparator: false,
+      },
+      id: 'root/tableFilterPattern',
+      hasSeparator: true,
     },
     {
       name: 'dbtConfigSource',
@@ -272,7 +364,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             dbtConfigSourceType: currentDbtConfigSourceType,
             dbtConfigSource: {
               dbtSecurityConfig: {
-                gcsConfig:
+                gcpConfig:
                   currentGcsConfigType === GCS_CONFIG.GCSValues
                     ? {
                         type: value?.type,
@@ -286,7 +378,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
                         authProviderX509CertUrl: value?.authProviderX509CertUrl,
                         clientX509CertUrl: value?.clientX509CertUrl,
                       }
-                    : value?.GCSCredentialsPath,
+                    : value?.gcpCredentialsPath,
               },
               dbtPrefixConfig: {
                 dbtBucketName: value?.dbtBucketName,

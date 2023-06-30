@@ -16,11 +16,7 @@ import java.util.List;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.services.StorageService;
-import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.*;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.storages.ContainerResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -39,8 +35,7 @@ public class ContainerRepository extends EntityRepository<Container> {
         dao.containerDAO(),
         dao,
         CONTAINER_PATCH_FIELDS,
-        CONTAINER_UPDATE_FIELDS,
-        null);
+        CONTAINER_UPDATE_FIELDS);
   }
 
   @Override
@@ -95,6 +90,11 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (container.getDataModel() != null) {
       setColumnFQN(container.getFullyQualifiedName(), container.getDataModel().getColumns());
     }
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(Container container) {
+    return FullyQualifiedName.buildHash(container.getFullyQualifiedName());
   }
 
   private void setColumnFQN(String parentFQN, List<Column> columns) {
@@ -166,7 +166,6 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   @Override
   public void storeRelationships(Container container) {
-
     // store each relationship separately in the entity_relationship table
     EntityReference service = container.getService();
     addRelationship(service.getId(), container.getId(), service.getType(), CONTAINER, Relationship.CONTAINS);
@@ -176,8 +175,6 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (parentReference != null) {
       addRelationship(parentReference.getId(), container.getId(), CONTAINER, CONTAINER, Relationship.CONTAINS);
     }
-    storeOwner(container, container.getOwner());
-    applyTags(container);
   }
 
   @Override
@@ -249,6 +246,26 @@ public class ContainerRepository extends EntityRepository<Container> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       updateDataModel(original, updated);
+      recordChange("prefix", original.getPrefix(), updated.getPrefix());
+      List<ContainerFileFormat> addedItems = new ArrayList<>();
+      List<ContainerFileFormat> deletedItems = new ArrayList<>();
+      recordListChange(
+          "fileFormats",
+          original.getFileFormats(),
+          updated.getFileFormats(),
+          addedItems,
+          deletedItems,
+          EntityUtil.containerFileFormatMatch);
+
+      // record the changes for size and numOfObjects change without version update.
+      recordChange(
+          "numberOfObjects",
+          original.getNumberOfObjects(),
+          updated.getNumberOfObjects(),
+          false,
+          EntityUtil.objectMatch,
+          false);
+      recordChange("size", original.getSize(), updated.getSize(), false, EntityUtil.objectMatch, false);
     }
 
     private void updateDataModel(Container original, Container updated) throws IOException {

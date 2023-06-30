@@ -12,6 +12,21 @@
         "description": "SQL expression to run against the table",
         "dataType": "STRING",
         "required": "true"
+      },
+      {
+        "name": "strategy",
+        "displayName": "Strategy",
+        "description": "Strategy to use to run the custom SQL query (i.e. `SELECT COUNT(<col>)` or `SELECT <col> (defaults to ROWS)",
+        "dataType": "ARRAY",
+        "optionValues": ["ROWS", "COUNT"],
+        "required": false
+      },
+      {
+        "name": "threshold",
+        "displayName": "Threshold",
+        "description": "Threshold to use to determine if the test passes or fails (defaults to 0).",
+        "dataType": "NUMBER",
+        "required": false
       }
     ]
   }

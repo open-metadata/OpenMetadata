@@ -10,6 +10,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter {
   @Getter private final Include include;
@@ -48,10 +49,12 @@ public class ListFilter {
     condition = addCondition(condition, getServiceCondition(tableName));
     condition = addCondition(condition, getPipelineTypeCondition(tableName));
     condition = addCondition(condition, getParentCondition(tableName));
+    condition = addCondition(condition, getDisabledCondition(tableName));
     condition = addCondition(condition, getCategoryCondition(tableName));
     condition = addCondition(condition, getWebhookCondition(tableName));
     condition = addCondition(condition, getWebhookTypeCondition(tableName));
     condition = addCondition(condition, getTestCaseCondition());
+    condition = addCondition(condition, getTestSuiteCondition());
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
 
@@ -84,6 +87,30 @@ public class ListFilter {
   public String getParentCondition(String tableName) {
     String parentFqn = queryParams.get("parent");
     return parentFqn == null ? "" : getFqnPrefixCondition(tableName, parentFqn);
+  }
+
+  public String getDisabledCondition(String tableName) {
+    String disabled = queryParams.get("disabled");
+    return disabled == null ? "" : getDisabledCondition(tableName, disabled);
+  }
+
+  public String getDisabledCondition(String tableName, String disabledStr) {
+    boolean disabled = Boolean.parseBoolean(disabledStr);
+    String disabledCondition = "";
+    if (DatasourceConfig.getInstance().isMySQL()) {
+      if (disabled) {
+        disabledCondition = "JSON_EXTRACT(json, '$.disabled') = TRUE";
+      } else {
+        disabledCondition = "(JSON_EXTRACT(json, '$.disabled') IS NULL OR JSON_EXTRACT(json, '$.disabled') = FALSE)";
+      }
+    } else {
+      if (disabled) {
+        disabledCondition = "((c.json#>'{disabled}')::boolean)  = TRUE)";
+      } else {
+        disabledCondition = "(c.json#>'{disabled}' IS NULL OR ((c.json#>'{disabled}'):boolean) = FALSE";
+      }
+    }
+    return disabledCondition;
   }
 
   public String getCategoryCondition(String tableName) {
@@ -130,11 +157,34 @@ public class ListFilter {
     return addCondition(condition1, condition2);
   }
 
+  private String getTestSuiteCondition() {
+    String testSuiteType = getQueryParam("testSuiteType");
+
+    if (testSuiteType == null) {
+      return "";
+    }
+
+    switch (testSuiteType) {
+      case ("executable"):
+        if (DatasourceConfig.getInstance().isMySQL()) {
+          return "JSON_UNQUOTE(JSON_EXTRACT(json, '$.executable')) = 'true'";
+        }
+        return "json->>'executable' = 'true'";
+      case ("logical"):
+        if (DatasourceConfig.getInstance().isMySQL()) {
+          return "JSON_UNQUOTE(JSON_EXTRACT(json, '$.executable')) = 'false'";
+        }
+        return "json->>'executable' = 'false'";
+      default:
+        return "";
+    }
+  }
+
   private String getFqnPrefixCondition(String tableName, String fqnPrefix) {
-    fqnPrefix = escape(fqnPrefix);
     return tableName == null
-        ? String.format("fullyQualifiedName LIKE '%s%s%%'", fqnPrefix, Entity.SEPARATOR)
-        : String.format("%s.fullyQualifiedName LIKE '%s%s%%'", tableName, fqnPrefix, Entity.SEPARATOR);
+        ? String.format("fqnHash LIKE '%s%s%%'", FullyQualifiedName.buildHash(fqnPrefix), Entity.SEPARATOR)
+        : String.format(
+            "%s.fqnHash LIKE '%s%s%%'", tableName, FullyQualifiedName.buildHash(fqnPrefix), Entity.SEPARATOR);
   }
 
   private String getWebhookTypePrefixCondition(String tableName, String typePrefix) {

@@ -60,8 +60,10 @@ from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     SystemProfile,
     Table,
+    TableData,
     TableProfile,
 )
+from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
     CustomDatabaseConnection,
@@ -85,12 +87,13 @@ from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameter
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.schema import Topic
+from metadata.generated.schema.type.schema import Topic as TopicSchema
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.tests_data import (
+    OMetaLogicalTestSuiteSample,
     OMetaTestCaseResultsSample,
     OMetaTestCaseSample,
     OMetaTestSuiteSample,
@@ -445,6 +448,14 @@ class SampleDataSource(
             )
         )
 
+        self.logical_test_suites = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/tests/logicalTestSuites.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Create class instance"""
@@ -478,6 +489,7 @@ class SampleDataSource(
         yield from self.ingest_test_suite()
         yield from self.ingest_test_case()
         yield from self.ingest_test_case_results()
+        yield from self.ingest_logical_test_suite()
 
     def ingest_teams(self):
         """
@@ -619,6 +631,27 @@ class SampleDataSource(
             self.status.scanned(f"Table Scanned: {table_and_db.name}")
             yield table_and_db
 
+            if table.get("sampleData"):
+
+                table_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.database_service.name.__root__,
+                    database_name=db.name.__root__,
+                    schema_name=schema.name.__root__,
+                    table_name=table_and_db.name.__root__,
+                )
+
+                table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+
+                self.metadata.ingest_table_sample_data(
+                    table_entity,
+                    TableData(
+                        rows=table["sampleData"]["rows"],
+                        columns=table["sampleData"]["columns"],
+                    ),
+                )
+
     def ingest_topics(self) -> Iterable[CreateTopicRequest]:
         """
         Ingest Sample Topics
@@ -647,7 +680,7 @@ class SampleDataSource(
                     )
                 schema_fields = load_parser_fn(topic["name"], topic["schemaText"])
 
-                create_topic.messageSchema = Topic(
+                create_topic.messageSchema = TopicSchema(
                     schemaText=topic["schemaText"],
                     schemaType=topic["schemaType"],
                     schemaFields=schema_fields,
@@ -655,6 +688,22 @@ class SampleDataSource(
 
             self.status.scanned(f"Topic Scanned: {create_topic.name.__root__}")
             yield create_topic
+
+            if topic.get("sampleData"):
+
+                topic_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Topic,
+                    service_name=self.kafka_service.name.__root__,
+                    topic_name=topic["name"],
+                )
+
+                topic_entity = self.metadata.get_by_name(entity=Topic, fqn=topic_fqn)
+
+                self.metadata.ingest_topic_sample_data(
+                    topic=topic_entity,
+                    sample_data=TopicSampleData(messages=topic["sampleData"]),
+                )
 
     def ingest_looker(self) -> Iterable[Entity]:
         """
@@ -689,7 +738,7 @@ class SampleDataSource(
                     displayName=chart["displayName"],
                     description=chart["description"],
                     chartType=get_standard_chart_type(chart["chartType"]),
-                    chartUrl=chart["chartUrl"],
+                    sourceUrl=chart["sourceUrl"],
                     service=self.looker_service.fullyQualifiedName,
                 )
                 self.status.scanned(f"Chart Scanned: {chart_ev.name.__root__}")
@@ -704,7 +753,7 @@ class SampleDataSource(
                     name=dashboard["name"],
                     displayName=dashboard["displayName"],
                     description=dashboard["description"],
-                    dashboardUrl=dashboard["dashboardUrl"],
+                    sourceUrl=dashboard["sourceUrl"],
                     charts=dashboard["charts"],
                     dataModels=dashboard.get("dataModels", None),
                     service=self.looker_service.fullyQualifiedName,
@@ -771,7 +820,7 @@ class SampleDataSource(
                     displayName=chart["displayName"],
                     description=chart["description"],
                     chartType=get_standard_chart_type(chart["chartType"]),
-                    chartUrl=chart["chartUrl"],
+                    sourceUrl=chart["sourceUrl"],
                     service=self.dashboard_service.fullyQualifiedName,
                 )
                 self.status.scanned(f"Chart Scanned: {chart_ev.name.__root__}")
@@ -809,7 +858,7 @@ class SampleDataSource(
                 name=dashboard["name"],
                 displayName=dashboard["displayName"],
                 description=dashboard["description"],
-                dashboardUrl=dashboard["dashboardUrl"],
+                sourceUrl=dashboard["sourceUrl"],
                 charts=dashboard["charts"],
                 dataModels=dashboard.get("dataModels", None),
                 service=self.dashboard_service.fullyQualifiedName,
@@ -819,13 +868,20 @@ class SampleDataSource(
 
     def ingest_pipelines(self) -> Iterable[Pipeline]:
         for pipeline in self.pipelines["pipelines"]:
+            owner = None
+            if pipeline.get("owner"):
+                user = self.metadata.get_user_by_email(email=pipeline.get("owner"))
+                if user:
+                    owner = EntityReference(id=user.id.__root__, type="user")
             pipeline_ev = CreatePipelineRequest(
                 name=pipeline["name"],
                 displayName=pipeline["displayName"],
                 description=pipeline["description"],
-                pipelineUrl=pipeline["pipelineUrl"],
+                sourceUrl=pipeline["sourceUrl"],
                 tasks=pipeline["tasks"],
                 service=self.pipeline_service.fullyQualifiedName,
+                owner=owner,
+                scheduleInterval=pipeline.get("scheduleInterval"),
             )
             yield pipeline_ev
 
@@ -1066,7 +1122,29 @@ class SampleDataSource(
                 test_suite=CreateTestSuiteRequest(
                     name=test_suite["testSuiteName"],
                     description=test_suite["testSuiteDescription"],
+                    executableEntityReference=test_suite["executableEntityReference"],
                 )
+            )
+
+    def ingest_logical_test_suite(self) -> Iterable[OMetaLogicalTestSuiteSample]:
+        """Iterate over all the logical testSuite and testCase and ingest them"""
+        for logical_test_suite in self.logical_test_suites["tests"]:
+            test_suite = CreateTestSuiteRequest(
+                name=logical_test_suite["testSuiteName"],
+                description=logical_test_suite["testSuiteDescription"],
+            )  # type: ignore
+            test_cases: List[TestCase] = []
+            for test_case in logical_test_suite["testCases"]:
+                test_case = self.metadata.get_by_name(
+                    entity=TestCase,
+                    fqn=test_case["fqn"],
+                    fields=["testSuite", "testDefinition"],
+                )
+                if test_case:
+                    test_cases.append(test_case)
+
+            yield OMetaLogicalTestSuiteSample(
+                test_suite=test_suite, test_cases=test_cases
             )
 
     def ingest_test_case(self) -> Iterable[OMetaTestCaseSample]:

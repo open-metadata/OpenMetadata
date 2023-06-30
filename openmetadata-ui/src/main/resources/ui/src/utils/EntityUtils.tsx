@@ -23,7 +23,11 @@ import {
   EntityWithServices,
 } from 'components/Explore/explore.interface';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
+import {
+  SearchedDataProps,
+  SourceType,
+} from 'components/searched-data/SearchedData.interface';
+import { EntityField } from 'constants/Feeds.constants';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
@@ -32,12 +36,14 @@ import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Topic } from 'generated/entity/data/topic';
 import i18next from 'i18next';
+import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { get, isEmpty, isNil, isUndefined, lowerCase, startCase } from 'lodash';
 import { Bucket, EntityDetailUnion } from 'Models';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  getContainerDetailPath,
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
@@ -71,7 +77,7 @@ import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
-import { getContainerDetailPath } from './ContainerDetailUtils';
+import { getEntityFieldThreadCounts } from './FeedUtils';
 import Fqn from './Fqn';
 import { getGlossaryPath } from './RouterUtils';
 import {
@@ -279,7 +285,7 @@ export const getEntityOverview = (
     }
 
     case ExplorePageTabs.PIPELINES: {
-      const { owner, tags, pipelineUrl, service, displayName } =
+      const { owner, tags, sourceUrl, service, displayName } =
         entityDetail as Pipeline;
       const tier = getTierFromTableTags(tags || []);
 
@@ -301,7 +307,7 @@ export const getEntityOverview = (
           )}`,
           dataTestId: 'pipeline-url-label',
           value: displayName || NO_DATA,
-          url: pipelineUrl,
+          url: sourceUrl,
           isLink: true,
           isExternal: true,
           visible: [
@@ -331,7 +337,7 @@ export const getEntityOverview = (
       return overview;
     }
     case ExplorePageTabs.DASHBOARDS: {
-      const { owner, tags, dashboardUrl, service, displayName } =
+      const { owner, tags, sourceUrl, service, displayName } =
         entityDetail as Dashboard;
       const tier = getTierFromTableTags(tags || []);
 
@@ -352,7 +358,7 @@ export const getEntityOverview = (
             'label.url-uppercase'
           )}`,
           value: displayName || NO_DATA,
-          url: dashboardUrl,
+          url: sourceUrl,
           isLink: true,
           isExternal: true,
           visible: [
@@ -457,7 +463,7 @@ export const getEntityOverview = (
 
       const overview = [
         {
-          name: i18next.t('label.number-of-object'),
+          name: i18next.t('label.object-plural'),
           value: numberOfObjects,
           isLink: false,
           visible,
@@ -800,7 +806,7 @@ export const getFrequentlyJoinedColumns = (
 
   return checkIfJoinsAvailable(columnName, joins) ? (
     <div className="m-t-sm" data-testid="frequently-joined-columns">
-      <span className="tw-text-grey-muted m-r-xss">{columnLabel}:</span>
+      <span className="text-grey-muted m-r-xss">{columnLabel}:</span>
       <span>
         {frequentlyJoinedWithColumns.slice(0, 3).map((columnJoin, index) => (
           <Fragment key={index}>
@@ -935,8 +941,11 @@ export const getBreadcrumbForTable = (
     ...(includeCurrent
       ? [
           {
-            name: getEntityName(entity),
-            url: '#',
+            name: entity.name,
+            url: getEntityLinkFromType(
+              entity.fullyQualifiedName ?? '',
+              (entity as SourceType).entityType as EntityType
+            ),
           },
         ]
       : []),
@@ -964,8 +973,11 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
     ...(includeCurrent
       ? [
           {
-            name: getEntityName(entity),
-            url: '#',
+            name: entity.name,
+            url: getEntityLinkFromType(
+              entity.fullyQualifiedName ?? '',
+              (entity as SourceType).entityType as EntityType
+            ),
           },
         ]
       : []),
@@ -973,7 +985,7 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
 };
 
 export const getEntityBreadcrumbs = (
-  entity: SearchedDataProps['data'][number]['_source'],
+  entity: SearchedDataProps['data'][number]['_source'] | DashboardDataModel,
   entityType?: EntityType,
   includeCurrent = false
 ) => {
@@ -984,10 +996,13 @@ export const getEntityBreadcrumbs = (
     case EntityType.GLOSSARY_TERM:
       // eslint-disable-next-line no-case-declarations
       const glossary = (entity as GlossaryTerm).glossary;
+      if (!glossary) {
+        return [];
+      }
       // eslint-disable-next-line no-case-declarations
       const fqnList = Fqn.split((entity as GlossaryTerm).fullyQualifiedName);
       // eslint-disable-next-line no-case-declarations
-      const tree = fqnList.slice(1, fqnList.length - 1);
+      const tree = fqnList.slice(1, fqnList.length);
 
       return [
         {
@@ -1004,13 +1019,14 @@ export const getEntityBreadcrumbs = (
         })),
       ];
     case EntityType.TAG:
+      // eslint-disable-next-line no-case-declarations
+      const fqnTagList = Fqn.split((entity as Tag).fullyQualifiedName);
+
       return [
-        {
-          name: getEntityName((entity as Tag).classification),
-          url: getTagsDetailsPath(
-            (entity as Tag).classification?.fullyQualifiedName ?? ''
-          ),
-        },
+        ...fqnTagList.map((fqn) => ({
+          name: fqn,
+          url: getTagsDetailsPath(entity?.fullyQualifiedName ?? ''),
+        })),
       ];
 
     case EntityType.TOPIC:
@@ -1018,6 +1034,7 @@ export const getEntityBreadcrumbs = (
     case EntityType.PIPELINE:
     case EntityType.MLMODEL:
     case EntityType.CONTAINER:
+    case EntityType.DASHBOARD_DATA_MODEL:
     default:
       return getBreadcrumbForEntitiesWithServiceOnly(
         entity as Topic,
@@ -1053,4 +1070,15 @@ export const getEntityLinkFromType = (
     default:
       return '';
   }
+};
+
+export const getEntityThreadLink = (
+  entityFieldThreadCount: EntityFieldThreadCount[]
+) => {
+  const thread = getEntityFieldThreadCounts(
+    EntityField.TAGS,
+    entityFieldThreadCount
+  );
+
+  return thread[0]?.entityLink;
 };

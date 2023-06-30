@@ -379,7 +379,7 @@ export const MOCK_TEST_CASE = [
     ],
     testCaseResult: {
       timestamp: 1677046336,
-      testCaseStatus: 'Success',
+      testCaseStatus: 'Failed',
       result:
         'Found 99 value(s) matching regex pattern vs 99 value(s) in the column.',
       testResultValue: [
@@ -786,6 +786,45 @@ export const MOCK_TABLE_ROW_INSERTED_COUNT_TO_BE_BETWEEN = {
   updatedBy: 'admin',
   href: 'http://sandbox-beta.open-metadata.org/api/v1/dataQuality/testDefinitions/756c7770-0af3-49a9-9905-75a2886e5eec',
   deleted: false,
+};
+
+export const MOCK_TABLE_CUSTOM_SQL_QUERY = {
+  id: '9fdc266a-f262-4607-aafb-34562926ab3c',
+  name: 'tableCustomSQLQuery',
+  displayName: 'Custom SQL Query',
+  fullyQualifiedName: 'tableCustomSQLQuery',
+  description: 'Test if a custom SQL returns 0 row or `COUNT(<x>) == 0`',
+  entityType: 'TABLE',
+  testPlatforms: ['OpenMetadata'],
+  supportedDataTypes: [],
+  parameterDefinition: [
+    {
+      name: 'sqlExpression',
+      displayName: 'SQL Expression',
+      dataType: 'STRING',
+      description: 'SQL expression to run against the table',
+      required: true,
+      optionValues: [],
+    },
+    {
+      name: 'strategy',
+      displayName: 'Strategy',
+      dataType: 'ARRAY',
+      description:
+        'Strategy to use to run the custom SQL query (i.e. `SELECT COUNT(<col>)` or `SELECT <col> (defaults to COUNT)',
+      required: false,
+      optionValues: ['ROWS', 'COUNT'],
+    },
+    {
+      name: 'threshold',
+      displayName: 'Threshold',
+      dataType: 'NUMBER',
+      description:
+        'Threshold to use to determine if the test passes or fails (defaults to 0).',
+      required: false,
+      optionValues: [],
+    },
+  ],
 };
 
 export const MOCK_TABLE_COLUMN_NAME_TO_EXIST = {

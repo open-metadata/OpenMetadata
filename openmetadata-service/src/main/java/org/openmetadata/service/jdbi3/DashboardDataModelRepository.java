@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -22,6 +21,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import javax.json.JsonPatch;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
@@ -29,15 +29,18 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class DashboardDataModelRepository extends EntityRepository<DashboardDataModel> {
@@ -55,8 +58,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         dao.dashboardDataModelDAO(),
         dao,
         DATA_MODEL_PATCH_FIELDS,
-        DATA_MODEL_UPDATE_FIELDS,
-        listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_LINEAGE));
+        DATA_MODEL_UPDATE_FIELDS);
   }
 
   @Override
@@ -64,6 +66,39 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     dashboardDataModel.setFullyQualifiedName(
         FullyQualifiedName.add(dashboardDataModel.getService().getName() + ".model", dashboardDataModel.getName()));
     ColumnUtil.setColumnFQN(dashboardDataModel.getFullyQualifiedName(), dashboardDataModel.getColumns());
+  }
+
+  @Override
+  public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) throws IOException {
+    if (entityLink.getFieldName().equals("columns")) {
+      DashboardDataModel dashboardDataModel =
+          getByName(null, entityLink.getEntityFQN(), getFields("columns,tags"), Include.ALL);
+      String origJson = JsonUtils.pojoToJson(dashboardDataModel);
+      Column column =
+          dashboardDataModel.getColumns().stream()
+              .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          CatalogExceptionMessage.invalidFieldName("column", entityLink.getArrayFieldName())));
+      if (EntityUtil.isDescriptionTask(task.getType())) {
+        column.setDescription(newValue);
+      } else if (EntityUtil.isTagTask(task.getType())) {
+        List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
+        column.setTags(tags);
+      }
+      String updatedEntityJson = JsonUtils.pojoToJson(dashboardDataModel);
+      JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
+      patch(null, dashboardDataModel.getId(), user, patch);
+      return;
+    }
+    super.update(task, entityLink, newValue, user);
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(DashboardDataModel dashboardDataModel) {
+    return FullyQualifiedName.buildHash(dashboardDataModel.getFullyQualifiedName());
   }
 
   @Override
@@ -103,8 +138,6 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         service.getType(),
         Entity.DASHBOARD_DATA_MODEL,
         Relationship.CONTAINS);
-    storeOwner(dashboardDataModel, dashboardDataModel.getOwner());
-    applyTags(dashboardDataModel);
   }
 
   @Override

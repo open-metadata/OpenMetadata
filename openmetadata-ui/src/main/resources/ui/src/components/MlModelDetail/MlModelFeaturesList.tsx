@@ -11,31 +11,16 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Card,
-  Col,
-  Divider,
-  Row,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Card, Col, Divider, Row, Space, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import TableTags from 'components/TableTags/TableTags.component';
-import { TagLabel, TagSource } from 'generated/type/schema';
-import { isEmpty, map } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
+import { TagSource } from 'generated/type/schema';
+import { isEmpty } from 'lodash';
+import { EntityTags } from 'Models';
 import React, { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getFilterTags } from 'utils/TableTags/TableTags.utils';
 import { MlFeature } from '../../generated/entity/data/mlmodel';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import {
-  fetchGlossaryTerms,
-  getGlossaryTermlist,
-} from '../../utils/GlossaryUtils';
-import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -53,11 +38,6 @@ const MlModelFeaturesList = ({
     {} as MlFeature
   );
   const [editDescription, setEditDescription] = useState<boolean>(false);
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
-
-  const [glossaryTags, setGlossaryTags] = useState<TagOption[]>([]);
-  const [classificationTags, setClassificationTags] = useState<TagOption[]>([]);
 
   const hasEditPermission = useMemo(
     () => permissions.EditTags || permissions.EditAll,
@@ -88,10 +68,9 @@ const MlModelFeaturesList = ({
 
   const handleTagsChange = async (
     selectedTags: EntityTags[],
-    targetFeature: MlFeature,
-    otherTags: TagLabel[]
+    targetFeature: MlFeature
   ) => {
-    const newSelectedTags = [...selectedTags, ...otherTags].map((tag) => {
+    const newSelectedTags = selectedTags.map((tag) => {
       return {
         tagFQN: tag.tagFQN,
         source: tag.source,
@@ -115,42 +94,7 @@ const MlModelFeaturesList = ({
     }
   };
 
-  const fetchGlossaryTags = async () => {
-    setIsTagLoading(true);
-    try {
-      const res = await fetchGlossaryTerms();
-
-      const glossaryTerms: TagOption[] = getGlossaryTermlist(res).map(
-        (tag) => ({ fqn: tag, source: TagSource.Glossary })
-      );
-      setGlossaryTags(glossaryTerms);
-    } catch {
-      setTagFetchFailed(true);
-    } finally {
-      setIsTagLoading(false);
-    }
-  };
-
-  const fetchClassificationTags = async () => {
-    setIsTagLoading(true);
-    try {
-      const res = await getClassifications();
-      const tagList = await getTaglist(res.data);
-
-      const classificationTag: TagOption[] = map(tagList, (tag) => ({
-        fqn: tag,
-        source: TagSource.Classification,
-      }));
-
-      setClassificationTags(classificationTag);
-    } catch {
-      setTagFetchFailed(true);
-    } finally {
-      setIsTagLoading(false);
-    }
-  };
-
-  if (mlFeatures && mlFeatures.length) {
+  if (!isEmpty(mlFeatures)) {
     return (
       <Fragment>
         <Row data-testid="feature-list">
@@ -200,7 +144,7 @@ const MlModelFeaturesList = ({
 
                     <Col className="m-b-xs" span={24}>
                       <Row gutter={8} wrap={false}>
-                        <Col flex="120px">
+                        <Col flex="130px">
                           <Typography.Text className="text-grey-muted">
                             {`${t('label.glossary-term-plural')} :`}
                           </Typography.Text>
@@ -209,17 +153,12 @@ const MlModelFeaturesList = ({
                         <Col flex="auto">
                           <TableTags<MlFeature>
                             showInlineEditTagButton
-                            dataTestId="glossary-tags"
-                            fetchTags={fetchGlossaryTags}
                             handleTagSelection={handleTagsChange}
                             hasTagEditAccess={hasEditPermission}
                             index={index}
                             isReadOnly={isDeleted}
-                            isTagLoading={isTagLoading}
                             record={feature}
-                            tagFetchFailed={tagFetchFailed}
-                            tagList={glossaryTags}
-                            tags={getFilterTags(feature.tags ?? [])}
+                            tags={feature.tags ?? []}
                             type={TagSource.Glossary}
                           />
                         </Col>
@@ -228,7 +167,7 @@ const MlModelFeaturesList = ({
 
                     <Col span={24}>
                       <Row gutter={8} wrap={false}>
-                        <Col flex="120px">
+                        <Col flex="130px">
                           <Typography.Text className="text-grey-muted">
                             {`${t('label.tag-plural')} :`}
                           </Typography.Text>
@@ -236,64 +175,53 @@ const MlModelFeaturesList = ({
                         <Col flex="auto">
                           <TableTags<MlFeature>
                             showInlineEditTagButton
-                            dataTestId="classification-tags"
-                            fetchTags={fetchClassificationTags}
                             handleTagSelection={handleTagsChange}
                             hasTagEditAccess={hasEditPermission}
                             index={index}
                             isReadOnly={isDeleted}
-                            isTagLoading={isTagLoading}
                             record={feature}
-                            tagFetchFailed={tagFetchFailed}
-                            tagList={classificationTags}
-                            tags={getFilterTags(feature.tags ?? [])}
+                            tags={feature.tags ?? []}
                             type={TagSource.Classification}
                           />
                         </Col>
                       </Row>
                     </Col>
 
-                    <Col className="m-t-sm" span={24}>
-                      <Space direction="vertical">
-                        <Typography.Text className="text-grey-muted">
-                          {`${t('label.description')} :`}
-                        </Typography.Text>
-                        <Space>
-                          {feature.description ? (
-                            <RichTextEditorPreviewer
-                              markdown={feature.description}
-                            />
-                          ) : (
-                            <Typography.Text className="text-grey-muted">
-                              {t('label.no-entity', {
-                                entity: t('label.description'),
-                              })}
-                            </Typography.Text>
-                          )}
-                          <Tooltip
-                            title={
-                              permissions.EditAll || permissions.EditDescription
-                                ? t('label.edit')
-                                : t('message.no-permission-for-action')
-                            }>
-                            <Button
-                              className="no-border p-0 text-primary"
-                              disabled={
-                                !(
-                                  permissions.EditAll ||
-                                  permissions.EditDescription
-                                )
-                              }
-                              icon={<EditIcon width={16} />}
-                              type="text"
-                              onClick={() => {
-                                setSelectedFeature(feature);
-                                setEditDescription(true);
-                              }}
-                            />
-                          </Tooltip>
-                        </Space>
-                      </Space>
+                    <Col className="m-t-xs" span={24}>
+                      <Row gutter={8} wrap={false}>
+                        <Col flex="130px">
+                          <Typography.Text className="text-grey-muted">
+                            {`${t('label.description')} :`}
+                          </Typography.Text>
+                        </Col>
+                        <Col flex="auto">
+                          <Space align="start">
+                            {feature.description ? (
+                              <RichTextEditorPreviewer
+                                markdown={feature.description}
+                              />
+                            ) : (
+                              <Typography.Text className="text-grey-muted">
+                                {t('label.no-entity', {
+                                  entity: t('label.description'),
+                                })}
+                              </Typography.Text>
+                            )}
+                            {(permissions.EditAll ||
+                              permissions.EditDescription) && (
+                              <Button
+                                className="m-l-xxs no-border p-0 text-primary h-auto"
+                                icon={<EditIcon width={16} />}
+                                type="text"
+                                onClick={() => {
+                                  setSelectedFeature(feature);
+                                  setEditDescription(true);
+                                }}
+                              />
+                            )}
+                          </Space>
+                        </Col>
+                      </Row>
                     </Col>
                     <Col span={24}>
                       <SourceList feature={feature} />

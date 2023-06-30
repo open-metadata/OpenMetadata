@@ -22,7 +22,7 @@ GRANT SELECT ON <schema_name>.* to <username>;
 
 ### Profiler & Data Quality
 
-Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `tables` for all objects in the database. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
 
 ### Usage & Lineage
 
@@ -56,7 +56,9 @@ $$
 $$section
 ### Host Port $(id="hostPort")
 
-This parameter specifies the host and port of the ClickHouse instance. This should be specified as a string in the format `http://hostname:port` or `https://hostname:port`. For example, you might set the hostPort parameter to `https://localhost:3000`.
+This parameter specifies the host and port of the ClickHouse instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:3000`.
+
+If your database service and Open Metadata are both running via docker locally, use `host.docker.internal:3000` as the value.
 $$
 
 $$section

@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 import { ExclamationCircleFilled } from '@ant-design/icons';
-import { Col, Row, Typography } from 'antd';
+import { Badge, Col, Row, Typography } from 'antd';
 import { ReactComponent as IconExternalLink } from 'assets/svg/external-link-grey.svg';
 import { ROUTES } from 'constants/constants';
+import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
@@ -29,6 +30,8 @@ const EntityHeaderTitle = ({
   deleted = false,
   serviceName,
   badge,
+  isDisabled,
+  className,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useLocation();
@@ -41,22 +44,27 @@ const EntityHeaderTitle = ({
   const content = (
     <Row
       align="middle"
+      className={className}
       data-testid={`${serviceName}-${name}`}
-      gutter={8}
+      gutter={12}
       wrap={false}>
       <Col>{icon}</Col>
       <Col className={deleted || badge ? 'w-max-full-140' : 'w-max-full-45'}>
-        <Typography.Text
-          className="m-b-0 d-block text-grey-muted text-md font-medium"
-          data-testid="entity-header-name">
-          {stringToHTML(name)}
-        </Typography.Text>
+        {/* If we do not have displayName name only be shown in the bold from the below code */}
+        {!isEmpty(displayName) ? (
+          <Typography.Text
+            className="m-b-0 d-block text-grey-muted"
+            data-testid="entity-header-name">
+            {stringToHTML(name)}
+          </Typography.Text>
+        ) : null}
 
+        {/* It will render displayName fallback to name */}
         <Typography.Text
-          className="m-b-0 d-block entity-header-display-name text-lg font-bold"
+          className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
           data-testid="entity-header-display-name"
           ellipsis={{ tooltip: true }}>
-          {stringToHTML(displayName ?? name)}
+          {stringToHTML(displayName || name)}
           {openEntityInNewPage && (
             <IconExternalLink
               className="anticon vertical-baseline m-l-xss"
@@ -66,15 +74,22 @@ const EntityHeaderTitle = ({
           )}
         </Typography.Text>
       </Col>
+      {isDisabled && (
+        <Badge
+          className="m-l-xs badge-grey"
+          count={t('label.disabled')}
+          data-testid="disabled"
+        />
+      )}
       {deleted && (
-        <Col className="self-end text-xs">
+        <Col className="text-xs">
           <div className="deleted-badge-button" data-testid="deleted-badge">
             <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
             {t('label.deleted')}
           </div>
         </Col>
       )}
-      {badge && <Col className="self-end">{badge}</Col>}
+      {badge && <Col>{badge}</Col>}
     </Row>
   );
 

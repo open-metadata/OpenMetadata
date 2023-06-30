@@ -90,11 +90,14 @@ public class PipelineServiceResource
     super(PipelineService.class, new PipelineServiceRepository(dao), authorizer, ServiceType.PIPELINE);
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
+    return null;
+  }
+
   public static class PipelineServiceList extends ResultList<PipelineService> {
-    @SuppressWarnings("unused") /* Required for tests */
-    public PipelineServiceList() {
-      /* unused */
-    }
+    /* Required for serde */
   }
 
   @GET
@@ -235,7 +238,7 @@ public class PipelineServiceResource
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    PipelineService service = dao.addTestConnectionResult(id, testConnectionResult);
+    PipelineService service = repository.addTestConnectionResult(id, testConnectionResult);
     return decryptOrNullify(securityContext, service);
   }
 
