@@ -880,7 +880,7 @@
     "synonym-lowercase-plural": "synonyms",
     "synonym-plural": "Synonyms",
     "table": "Table",
-    "table-constraint": "Table Constraint",
+    "table-constraints": "Table Constraints",
     "table-entity-text": "Table {{entityText}}",
     "table-lowercase": "table",
     "table-lowercase-plural": "tables",

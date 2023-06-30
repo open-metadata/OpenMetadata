@@ -880,7 +880,7 @@
     "synonym-lowercase-plural": "シノニム",
     "synonym-plural": "シノニム",
     "table": "テーブル",
-    "table-constraint": "Table Constraint",
+    "table-constraints": "Table Constraints",
     "table-entity-text": "テーブル {{entityText}}",
     "table-lowercase": "テーブル",
     "table-lowercase-plural": "tables",
