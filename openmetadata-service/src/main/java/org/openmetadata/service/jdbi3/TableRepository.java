@@ -643,12 +643,6 @@ public class TableRepository extends EntityRepository<Table> {
   public void storeRelationships(Table table) {
     // Add relationship from database to table
     addRelationship(table.getDatabaseSchema().getId(), table.getId(), DATABASE_SCHEMA, TABLE, Relationship.CONTAINS);
-
-    // Add table owner relationship
-    storeOwner(table, table.getOwner());
-
-    // Add tag to table relationship
-    applyTags(table);
   }
 
   @Override

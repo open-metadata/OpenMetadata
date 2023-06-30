@@ -549,6 +549,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     validateExtension(entity);
   }
 
+  public void storeRelationshipsInternal(T entity) throws IOException {
+    storeOwner(entity, entity.getOwner());
+    applyTags(entity);
+    storeRelationships(entity);
+  }
+
   T setFieldsInternal(T entity, Fields fields) throws IOException {
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity.getFullyQualifiedName()) : null);
@@ -877,7 +883,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private T createNewEntity(T entity) throws IOException {
     storeEntity(entity, false);
     storeExtension(entity);
-    storeRelationships(entity);
+    storeRelationshipsInternal(entity);
     setInheritedFields(entity);
     return entity;
   }
@@ -921,8 +927,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String entityJson,
       Long timestamp,
       String operation,
-      boolean update)
-      throws JsonProcessingException {
+      boolean update) {
     String fqnHash = FullyQualifiedName.buildHash(fullyQualifiedName);
     if (update) {
       daoCollection

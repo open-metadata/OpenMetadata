@@ -87,10 +87,7 @@ public abstract class ServiceEntityRepository<
 
   @Override
   public void storeRelationships(T service) {
-    // Add owner relationship
-    storeOwner(service, service.getOwner());
-    // add tags relationship
-    applyTags(service);
+    // No relationships to store beyond what is stored in the super class
   }
 
   public T addTestConnectionResult(UUID serviceId, TestConnectionResult testConnectionResult) throws IOException {

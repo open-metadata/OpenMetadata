@@ -157,7 +157,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   public void storeRelationships(GlossaryTerm entity) {
     addGlossaryRelationship(entity);
     addParentRelationship(entity);
-    storeOwner(entity, entity.getOwner());
     for (EntityReference relTerm : listOrEmpty(entity.getRelatedTerms())) {
       // Make this bidirectional relationship
       addRelationship(entity.getId(), relTerm.getId(), GLOSSARY_TERM, GLOSSARY_TERM, Relationship.RELATED_TO, true);
@@ -165,8 +164,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     for (EntityReference reviewer : listOrEmpty(entity.getReviewers())) {
       addRelationship(reviewer.getId(), entity.getId(), Entity.USER, GLOSSARY_TERM, Relationship.REVIEWS);
     }
-
-    applyTags(entity);
   }
 
   @Override
