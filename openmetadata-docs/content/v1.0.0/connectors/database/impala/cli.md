@@ -44,7 +44,7 @@ custom Airflow plugins to handle the workflow deployment.
 To run the Impala ingestion, you will need to install:
 
 ```bash
-pip3 install "openmetadata-ingestion[hive]"
+pip3 install "openmetadata-ingestion[impala]"
 ```
 
 ## Metadata Ingestion
