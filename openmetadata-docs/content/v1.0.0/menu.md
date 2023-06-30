@@ -416,8 +416,6 @@ site_menu:
     url: /connectors/dashboard/mode/cli
   - category: Connectors / Dashboard / PowerBI
     url: /connectors/dashboard/powerbi
-  - category: Connectors / Dashboard / PowerBI / PowerBI Account Setup
-    url: /connectors/dashboard/powerbi/powerbi-account-setup
   - category: Connectors / Dashboard / PowerBI / Airflow
     url: /connectors/dashboard/powerbi/airflow
   - category: Connectors / Dashboard / PowerBI / CLI
@@ -1190,6 +1188,16 @@ site_menu:
     url: /developers/contribute/ux-style-guide
   - category: Developers / Webhooks
     url: /developers/webhooks
+  - category: Developers / APIs
+    url: /developers/apis
+  - category: Developers / APIs / Implementation Notes
+    url: /developers/apis/implementation-notes
+  - category: Developers / APIs / API Organization
+    url: /developers/apis/api-organization
+  - category: Developers / Schemas
+    url: /developers/schemas
+  - category: Developers / Schemas / Schema Language
+    url: /developers/schemas/schema-language
 
   - category: SDK
     url: /sdk

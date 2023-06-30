@@ -12,13 +12,19 @@
  */
 
 import { AxiosError } from 'axios';
+import {
+  AirflowResponse,
+  AirflowStatus,
+} from 'interface/AirflowStatus.interface';
 import { useEffect, useState } from 'react';
-import { checkAirflowStatus } from 'rest/ingestionPipelineAPI';
+import { getAirflowStatus } from 'rest/ingestionPipelineAPI';
 
 interface UseAirflowStatusProps {
   isFetchingStatus: boolean;
   isAirflowAvailable: boolean;
   error: AxiosError | undefined;
+  reason: AirflowResponse['reason'];
+  platform: AirflowResponse['platform'];
   fetchAirflowStatus: () => Promise<void>;
 }
 
@@ -26,12 +32,16 @@ export const useAirflowStatus = (): UseAirflowStatusProps => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isAirflowAvailable, setIsAirflowAvailable] = useState<boolean>(false);
   const [error, setError] = useState<AxiosError>();
+  const [reason, setReason] = useState<AirflowResponse['reason']>();
+  const [platform, setPlatform] = useState<AirflowResponse['platform']>();
 
   const fetchAirflowStatus = async () => {
     setIsLoading(true);
     try {
-      const response = await checkAirflowStatus();
-      setIsAirflowAvailable(response.status === 200);
+      const response = await getAirflowStatus();
+      setIsAirflowAvailable(response.status === AirflowStatus.HEALTHY);
+      setReason(response.reason);
+      setPlatform(response.platform);
     } catch (error) {
       setError(error as AxiosError);
       setIsAirflowAvailable(false);
@@ -49,5 +59,7 @@ export const useAirflowStatus = (): UseAirflowStatusProps => {
     isAirflowAvailable,
     error,
     fetchAirflowStatus,
+    reason,
+    platform,
   };
 };

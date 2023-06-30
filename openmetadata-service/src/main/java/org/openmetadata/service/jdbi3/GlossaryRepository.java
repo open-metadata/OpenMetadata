@@ -18,6 +18,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.CsvUtil.FIELD_SEPARATOR;
 import static org.openmetadata.csv.CsvUtil.addEntityReference;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
 import static org.openmetadata.csv.CsvUtil.addField;
@@ -96,15 +97,15 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   @Override
   public void storeRelationships(Glossary glossary) {
-    storeOwner(glossary, glossary.getOwner());
-    applyTags(glossary);
     for (EntityReference reviewer : listOrEmpty(glossary.getReviewers())) {
       addRelationship(reviewer.getId(), glossary.getId(), Entity.USER, Entity.GLOSSARY, Relationship.REVIEWS);
     }
   }
 
   private Integer getUsageCount(Glossary glossary) {
-    return daoCollection.tagUsageDAO().getTagCount(TagSource.GLOSSARY.ordinal(), glossary.getName());
+    return daoCollection
+        .tagUsageDAO()
+        .getTagCount(TagSource.GLOSSARY.ordinal(), FullyQualifiedName.buildHash(glossary.getName()));
   }
 
   private Integer getTermCount(Glossary glossary) {
@@ -187,7 +188,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       }
 
       // Field 9 - reviewers
-      glossaryTerm.withReviewers(getEntityReferences(printer, csvRecord, 8, Entity.USER));
+      glossaryTerm.withReviewers(getUserOrTeamEntityReferences(printer, csvRecord, 8, Entity.USER));
       if (!processRecord) {
         return null;
       }
@@ -242,7 +243,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       addEntityReferences(recordList, entity.getRelatedTerms());
       addField(recordList, termReferencesToRecord(entity.getReferences()));
       addTagLabels(recordList, entity.getTags());
-      addEntityReferences(recordList, entity.getReviewers());
+      addField(recordList, reviewerReferencesToRecord(entity.getReviewers()));
       addOwner(recordList, entity.getOwner());
       addField(recordList, entity.getStatus().value());
       return recordList;
@@ -253,7 +254,13 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           ? null
           : list.stream()
               .map(termReference -> termReference.getName() + CsvUtil.FIELD_SEPARATOR + termReference.getEndpoint())
-              .collect(Collectors.joining(";"));
+              .collect(Collectors.joining(FIELD_SEPARATOR));
+    }
+
+    private String reviewerReferencesToRecord(List<EntityReference> reviewers) {
+      return nullOrEmpty(reviewers)
+          ? null
+          : reviewers.stream().map(EntityReference::getName).collect(Collectors.joining(FIELD_SEPARATOR));
     }
   }
 

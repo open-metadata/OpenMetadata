@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { Include } from 'generated/type/include';
 import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { ServicePageData } from 'pages/service';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -21,6 +22,15 @@ import { EntityReference } from '../generated/type/entityReference';
 import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
+
+export type ListDataModelParams = {
+  service?: string;
+  fields?: string;
+  after?: string;
+  before?: string;
+  include?: Include;
+  limit?: number;
+};
 
 export const getDashboardVersions = async (id: string) => {
   const url = `/dashboards/${id}/versions`;
@@ -40,7 +50,8 @@ export const getDashboardVersion = async (id: string, version: string) => {
 export const getDashboards = async (
   service: string,
   fields: string,
-  paging?: PagingWithoutTotal
+  paging?: PagingWithoutTotal,
+  include: Include = Include.NonDeleted
 ) => {
   const response = await APIClient.get<{
     data: ServicePageData[];
@@ -50,6 +61,7 @@ export const getDashboards = async (
       service,
       fields,
       ...paging,
+      include,
     },
   });
 
@@ -130,19 +142,11 @@ export const restoreDashboard = async (id: string) => {
   return response.data;
 };
 
-export const getDataModels = async (
-  service: string,
-  fields: string,
-  paging?: PagingWithoutTotal
-) => {
+export const getDataModels = async (params?: ListDataModelParams) => {
   const response = await APIClient.get<PagingResponse<ServicePageData[]>>(
     `/dashboard/datamodels`,
     {
-      params: {
-        service,
-        fields,
-        ...paging,
-      },
+      params,
     }
   );
 

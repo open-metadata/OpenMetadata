@@ -15,7 +15,9 @@ package org.openmetadata.service.util;
 
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 
+import java.io.IOException;
 import java.time.Period;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -178,17 +180,17 @@ public class SubscriptionUtil {
       String entityType) {
     Set<String> receiverList = new HashSet<>();
     // Send to Admins
-    if (action.getSendToAdmins()) {
+    if (Boolean.TRUE.equals(action.getSendToAdmins())) {
       receiverList.addAll(getAdminsData(type));
     }
 
     // Send To Owners
-    if (action.getSendToOwners()) {
+    if (Boolean.TRUE.equals(action.getSendToOwners())) {
       receiverList.addAll(getOwnerOrFollowers(type, daoCollection, entityId, entityType, Relationship.OWNS));
     }
 
     // Send To Followers
-    if (action.getSendToFollowers()) {
+    if (Boolean.TRUE.equals(action.getSendToFollowers())) {
       receiverList.addAll(getOwnerOrFollowers(type, daoCollection, entityId, entityType, Relationship.FOLLOWS));
     }
 
@@ -200,8 +202,9 @@ public class SubscriptionUtil {
       CreateEventSubscription.SubscriptionType type,
       Client client,
       CollectionDAO daoCollection,
-      ChangeEvent event) {
-    EntityInterface entityInterface = (EntityInterface) event.getEntity();
+      ChangeEvent event)
+      throws IOException {
+    EntityInterface entityInterface = getEntity(event);
     List<Invocation.Builder> targets = new ArrayList<>();
     Set<String> receiversUrls =
         buildReceiversListFromActions(action, type, daoCollection, entityInterface.getId(), event.getEntityType());

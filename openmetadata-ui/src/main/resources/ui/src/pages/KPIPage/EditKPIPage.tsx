@@ -28,7 +28,7 @@ import {
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import Loader from 'components/Loader/Loader';
@@ -238,13 +238,12 @@ const EditKPIPage = () => {
   }
 
   return (
-    <>
-      {kpiData ? (
-        <Row
-          className="bg-body-main h-full"
-          data-testid="edit-kpi-container"
-          gutter={[16, 16]}>
-          <Col offset={4} span={12}>
+    <ResizablePanels
+      firstPanel={{
+        children: (
+          <div
+            className="max-width-md w-9/10 service-form-container"
+            data-testid="edit-kpi-container">
             <TitleBreadcrumb className="my-4" titleLinks={breadcrumb} />
             <Card>
               <Typography.Paragraph
@@ -438,20 +437,30 @@ const EditKPIPage = () => {
                 </Space>
               </Form>
             </Card>
-          </Col>
-          <Col className="m-t-md" data-testid="right-panel" span={4}>
+          </div>
+        ),
+        minWidth: 700,
+        flex: 0.7,
+      }}
+      pageTitle={t('label.edit-entity', { entity: t('label.kpi-uppercase') })}
+      secondPanel={{
+        children: (
+          <div data-testid="right-panel">
             <Typography.Paragraph className="text-base font-medium">
               {t('label.edit-entity', { entity: t('label.kpi-uppercase') })}
             </Typography.Paragraph>
             <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>
-          </Col>
-        </Row>
-      ) : (
-        <ErrorPlaceHolder>
-          {t('message.no-kpi-found', { name: kpiName })}
-        </ErrorPlaceHolder>
-      )}
-    </>
+          </div>
+        ),
+        className: 'p-md service-doc-panel',
+        minWidth: 60,
+        overlay: {
+          displayThreshold: 200,
+          header: t('label.setup-guide'),
+          rotation: 'counter-clockwise',
+        },
+      }}
+    />
   );
 };
 

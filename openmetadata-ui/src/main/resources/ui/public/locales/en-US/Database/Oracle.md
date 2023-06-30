@@ -61,7 +61,9 @@ $$
 $$section
 ### Host Port $(id="hostPort")
 
-Host and port of the oracle service. This should be specified as a string in the format `hostname:port`. E.g., `localhost:1521`
+This parameter specifies the host and port of the Oracle instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:1521`.
+
+If your database service and Open Metadata are both running via docker locally, use `host.docker.internal:1521` as the value.
 $$
 
 $$section
@@ -89,6 +91,18 @@ $$section
 ### Instant Client Directory $(id="instantClientDirectory")
 
 This directory will be used to set the `LD_LIBRARY_PATH` env variable. It is required if you need to enable thick connection mode. By default, we bring Instant Client 19 and point to `/instantclient`.
+$$
+
+$$section
+### Database Name $(id="databaseName")
+In OpenMetadata, the Database Service hierarchy works as follows:
+```
+Database Service > Database > Schema > Table
+```
+In the case of Oracle, we won't have a Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
+
+**Note:** It is recommended to use the database name same as the SID, This ensures accurate results and proper identification of tables during profiling, data quality checks and dbt workflow.
+
 $$
 
 $$section

@@ -13,6 +13,7 @@
 
 import { Badge, Button, Col, Row, Select, Space } from 'antd';
 import classNames from 'classnames';
+import { PRIMERY_COLOR } from 'constants/constants';
 import { DatabaseServiceType } from 'generated/entity/data/database';
 import { PipelineServiceType } from 'generated/entity/services/pipelineService';
 import { startCase } from 'lodash';
@@ -79,6 +80,16 @@ const SelectServiceType = ({
     [selectedConnectors]
   );
 
+  const getServiceName = (type: string) => {
+    if (type.includes('Custom')) {
+      return startCase(type);
+    } else if (type === PipelineServiceType.GluePipeline) {
+      return 'Glue Pipeline';
+    }
+
+    return type;
+  };
+
   return (
     <Row>
       <Col span={24}>
@@ -135,13 +146,13 @@ const SelectServiceType = ({
                   </div>
                 </div>
                 <p className="break-word text-center">
-                  {type.includes('Custom') ? startCase(type) : type}
+                  {getServiceName(type)}
                   {BETA_SERVICES.includes(
                     type as DatabaseServiceType | PipelineServiceType
                   ) ? (
                     <Badge
                       className="service-beta-tag"
-                      color="#7147E8"
+                      color={PRIMERY_COLOR}
                       count={t('label.beta')}
                     />
                   ) : null}

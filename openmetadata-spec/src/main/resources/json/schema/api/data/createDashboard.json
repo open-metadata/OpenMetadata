@@ -19,8 +19,15 @@
       "description": "Description of the database instance. What it has and how to use it.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "dashboardUrl": {
+    "dashboardType": {
+      "$ref": "../../entity/data/dashboard.json#/definitions/dashboardType"
+    },
+    "sourceUrl": {
       "description": "Dashboard URL suffix from its service.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "project": {
+      "description": "Name of the project / workspace / collection in which the dashboard is contained",
       "type": "string"
     },
     "charts": {

@@ -96,8 +96,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   @Override
   public void storeRelationships(Policy policy) {
-    // Add policy owner relationship.
-    storeOwner(policy, policy.getOwner());
+    // No relationships to store beyond what is stored in the super class
   }
 
   @Override

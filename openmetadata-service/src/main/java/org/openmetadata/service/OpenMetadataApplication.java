@@ -75,6 +75,7 @@ import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.service.elasticsearch.ElasticSearchEventPublisher;
 import org.openmetadata.service.events.EventFilter;
 import org.openmetadata.service.events.EventPubSub;
+import org.openmetadata.service.events.scheduled.PipelineServiceStatusJobHandler;
 import org.openmetadata.service.events.scheduled.ReportsHandler;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
@@ -129,6 +130,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           NoSuchAlgorithmException {
     validateConfiguration(catalogConfig);
 
+    // init for dataSourceFactory
+    DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
+
     ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
 
@@ -161,9 +165,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Authenticator
     registerAuthenticator(catalogConfig);
-
-    // init for dataSourceFactory
-    DatasourceConfig.initialize(catalogConfig);
 
     // Unregister dropwizard default exception mappers
     ((DefaultServerFactory) catalogConfig.getServerFactory()).setRegisterDefaultExceptionMappers(false);
@@ -215,6 +216,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.servlets().addServlet("static", assetServlet).addMapping(pathPattern);
 
     registerExtensions(catalogConfig, environment, jdbi);
+
+    // Handle Pipeline Service Client Status job
+    PipelineServiceStatusJobHandler pipelineServiceStatusJobHandler =
+        PipelineServiceStatusJobHandler.create(
+            catalogConfig.getPipelineServiceClientConfiguration(), catalogConfig.getClusterName());
+    pipelineServiceStatusJobHandler.addPipelineServiceStatusJob();
   }
 
   private void registerExtensions(OpenMetadataApplicationConfig catalogConfig, Environment environment, Jdbi jdbi) {

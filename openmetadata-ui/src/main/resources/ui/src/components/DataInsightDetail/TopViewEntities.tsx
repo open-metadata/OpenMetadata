@@ -14,6 +14,7 @@
 import { Card, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import PageHeader from 'components/header/PageHeader.component';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -122,14 +123,12 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
       className="data-insight-card"
       data-testid="entity-summary-card-percentage"
       title={
-        <>
-          <Typography.Title level={5}>
-            {t('label.data-insight-top-viewed-entity-summary')}
-          </Typography.Title>
-          <Typography.Text className="data-insight-label-text">
-            {t('message.most-viewed-data-assets')}
-          </Typography.Text>
-        </>
+        <PageHeader
+          data={{
+            header: t('label.data-insight-top-viewed-entity-summary'),
+            subHeader: t('message.most-viewed-data-assets'),
+          }}
+        />
       }>
       {isEmpty(mostViewedEntities) ? (
         <EmptyGraphPlaceholder />

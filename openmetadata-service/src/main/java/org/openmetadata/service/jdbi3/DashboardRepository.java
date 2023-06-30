@@ -14,19 +14,24 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.dashboards.DashboardResource;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -35,7 +40,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   private static final String DASHBOARD_UPDATE_FIELDS = "owner,tags,charts,extension,followers,dataModels";
   private static final String DASHBOARD_PATCH_FIELDS = "owner,tags,charts,extension,followers,dataModels";
 
-  private static final String DASHBOARD_URL = "dashboardUrl";
+  private static final String DASHBOARD_URL = "sourceUrl";
 
   public DashboardRepository(CollectionDAO dao) {
     super(
@@ -50,7 +55,32 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public void setFullyQualifiedName(Dashboard dashboard) {
-    dashboard.setFullyQualifiedName(FullyQualifiedName.add(dashboard.getService().getName(), dashboard.getName()));
+    dashboard.setFullyQualifiedName(
+        FullyQualifiedName.add(dashboard.getService().getFullyQualifiedName(), dashboard.getName()));
+  }
+
+  @Override
+  public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) throws IOException {
+    if (entityLink.getFieldName().equals("charts")) {
+      Dashboard dashboard = getByName(null, entityLink.getEntityFQN(), getFields("charts,tags"), Include.ALL);
+      EntityReference chart =
+          dashboard.getCharts().stream()
+              .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          CatalogExceptionMessage.invalidFieldName("chart", entityLink.getArrayFieldName())));
+      String fieldName =
+          EntityUtil.isDescriptionTask(task.getType())
+              ? FIELD_DESCRIPTION
+              : EntityUtil.isTagTask(task.getType()) ? FIELD_TAGS : "invalidField";
+      EntityLink chartLink = new EntityLink(Entity.CHART, chart.getFullyQualifiedName(), fieldName, null, null);
+      EntityRepository<? extends EntityInterface> chartRepository = Entity.getEntityRepository(Entity.CHART);
+      chartRepository.update(task, chartLink, newValue, user);
+      return;
+    }
+    super.update(task, entityLink, newValue, user);
   }
 
   @Override
@@ -127,12 +157,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
             dashboard.getId(), dataModel.getId(), Entity.DASHBOARD, Entity.DASHBOARD_DATA_MODEL, Relationship.HAS);
       }
     }
-
-    // Add owner relationship
-    storeOwner(dashboard, dashboard.getOwner());
-
-    // Add tag to dashboard relationship
-    applyTags(dashboard);
   }
 
   @Override
@@ -182,7 +206,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
 
     public void updateDashboardUrl(Dashboard original, Dashboard updated) throws IOException {
-      recordChange(DASHBOARD_URL, original.getDashboardUrl(), updated.getDashboardUrl());
+      recordChange(DASHBOARD_URL, original.getSourceUrl(), updated.getSourceUrl());
     }
   }
 }

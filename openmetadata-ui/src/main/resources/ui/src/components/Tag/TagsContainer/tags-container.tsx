@@ -237,8 +237,27 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   const tagsSelectContainer = useMemo(() => {
     return (
       <Form form={form} name="tagsForm" onFinish={handleSave}>
-        <Row gutter={8} wrap={false}>
-          <Col flex="auto">
+        <Row gutter={[0, 8]}>
+          <Col span={24}>
+            <Space align="center" className="w-full justify-end">
+              <Button
+                className="p-x-05"
+                data-testid="cancelAssociatedTag"
+                icon={<CloseOutlined size={12} />}
+                size="small"
+                onClick={handleCancel}
+              />
+              <Button
+                className="p-x-05"
+                data-testid="saveAssociatedTag"
+                htmlType="submit"
+                icon={<CheckOutlined size={12} />}
+                size="small"
+                type="primary"
+              />
+            </Space>
+          </Col>
+          <Col span={24}>
             <Form.Item noStyle name="tags">
               <Select
                 autoFocus
@@ -276,25 +295,6 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
                 ))}
               </Select>
             </Form.Item>
-          </Col>
-          <Col className="d-flex items-center" flex="64px">
-            <Space align="center">
-              <Button
-                className="p-x-05"
-                data-testid="cancelAssociatedTag"
-                icon={<CloseOutlined size={12} />}
-                size="small"
-                onClick={handleCancel}
-              />
-              <Button
-                className="p-x-05"
-                data-testid="saveAssociatedTag"
-                htmlType="submit"
-                icon={<CheckOutlined size={12} />}
-                size="small"
-                type="primary"
-              />
-            </Space>
           </Col>
         </Row>
       </Form>

@@ -59,6 +59,7 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -92,6 +93,7 @@ import org.openmetadata.service.util.ResultList;
 public class TagResource extends EntityResource<Tag, TagRepository> {
   private final CollectionDAO daoCollection;
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
+  static final String FIELDS = "children, usageCount";
 
   static class TagList extends ResultList<Tag> {
     /* Required for serde */
@@ -101,6 +103,12 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     super(Tag.class, new TagRepository(collectionDAO), authorizer);
     Objects.requireNonNull(collectionDAO, "TagRepository must not be null");
     daoCollection = collectionDAO;
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("children,usageCount", MetadataOperation.VIEW_BASIC);
+    return null;
   }
 
   private void migrateTags() {
@@ -188,8 +196,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     }
   }
 
-  static final String FIELDS = "children, usageCount";
-
   @GET
   @Valid
   @Operation(
@@ -220,6 +226,10 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
+      @Parameter(description = "Filter Disabled Classifications", schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("disabled")
+          @DefaultValue("false")
+          Boolean disabled,
       @Parameter(description = "Limit the number tags returned. (1 to 1000000, " + "default = 10)")
           @DefaultValue("10")
           @Min(0)
@@ -239,7 +249,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    ListFilter filter = new ListFilter(include).addQueryParam("parent", parent);
+    ListFilter filter =
+        new ListFilter(include).addQueryParam("parent", parent).addQueryParam("classification.disabled", disabled);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 

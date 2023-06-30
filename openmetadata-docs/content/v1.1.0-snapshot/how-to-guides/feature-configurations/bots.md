@@ -84,11 +84,12 @@ AUTHENTICATION_PUBLIC_KEYS=[https://www.googleapis.com/oauth2/v3/certs, http://l
 - In the case of **kubernetes**, you have to update `publicKeys` values:
 
 ```yaml
-global:
-  authentication:
-    publicKeys:
-      - "https://www.googleapis.com/oauth2/v3/certs"
-      - "http://localhost:8585/api/v1/system/config/jwks" 
+openmetadata:
+  config:
+    authentication:
+      publicKeys:
+        - "https://www.googleapis.com/oauth2/v3/certs"
+        - "http://localhost:8585/api/v1/system/config/jwks" 
 ```
 
 **3. Redeploying ingestion pipelines**

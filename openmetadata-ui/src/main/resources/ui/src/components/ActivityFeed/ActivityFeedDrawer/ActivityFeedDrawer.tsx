@@ -76,8 +76,13 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
       {isDrawerLoading ? (
         <Loader />
       ) : (
-        <div id="feed-panel">
-          <FeedPanelBodyV1 showThread feed={selectedThread as Thread} />
+        <div className="m-t-md" id="feed-panel">
+          <FeedPanelBodyV1
+            isOpenInDrawer
+            showThread
+            feed={selectedThread as Thread}
+            hidePopover={false}
+          />
           <ActivityFeedEditor
             buttonClass="tw-mr-4"
             className="tw-ml-5 tw-mr-2 tw-mb-2"

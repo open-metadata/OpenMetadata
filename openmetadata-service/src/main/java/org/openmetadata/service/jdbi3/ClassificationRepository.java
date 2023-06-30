@@ -68,17 +68,18 @@ public class ClassificationRepository extends EntityRepository<Classification> {
 
   @Override
   public void storeRelationships(Classification entity) {
-    /* No Relationships */
+    // No relationships to store beyond what is stored in the super class
   }
 
   private int getTermCount(Classification category) {
-    ListFilter filter =
-        new ListFilter(Include.NON_DELETED).addQueryParam("parent", FullyQualifiedName.build(category.getName()));
+    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("parent", category.getName());
     return daoCollection.tagDAO().listCount(filter);
   }
 
   private Integer getUsageCount(Classification classification) {
-    return daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), classification.getName());
+    return daoCollection
+        .tagUsageDAO()
+        .getTagCount(TagSource.CLASSIFICATION.ordinal(), FullyQualifiedName.buildHash(classification.getName()));
   }
 
   @Transaction
@@ -112,6 +113,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       // TODO handle name change
       // TODO mutuallyExclusive from false to true?
       recordChange("mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
+      recordChange("disabled,", original.getDisabled(), updated.getDisabled());
       updateName(original, updated);
     }
 

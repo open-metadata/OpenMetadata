@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -45,6 +46,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Votes;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -52,6 +54,7 @@ import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
@@ -64,11 +67,17 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "queries")
 public class QueryResource extends EntityResource<Query, QueryRepository> {
-
   public static final String COLLECTION_PATH = "v1/queries/";
+  static final String FIELDS = "owner,followers,users,votes,tags,queryUsedIn";
 
   public QueryResource(CollectionDAO dao, Authorizer authorizer) {
     super(Query.class, new QueryRepository(dao), authorizer);
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("users,votes,queryUsedIn", MetadataOperation.VIEW_BASIC);
+    return null;
   }
 
   @Override
@@ -83,8 +92,6 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   public static class QueryList extends ResultList<Query> {
     /* Required for serde */
   }
-
-  static final String FIELDS = "owner,followers,users,votes,tags,queryUsedIn";
 
   @GET
   @Operation(
@@ -137,7 +144,9 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     if (!CommonUtil.nullOrEmpty(entityId)) {
       filter.addQueryParam("entityId", entityId.toString());
     }
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    ResultList<Query> queries =
+        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return PIIMasker.getQueries(queries, authorizer, securityContext);
   }
 
   @GET
@@ -495,7 +504,12 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         .withQuery(create.getQuery())
         .withDuration(create.getDuration())
         .withVotes(new Votes().withUpVotes(0).withDownVotes(0))
-        .withUsers(getEntityReferences(USER, create.getUsers()))
+        .withUsers(
+            getEntityReferences(
+                USER,
+                create.getUsers() == null
+                    ? create.getUsers()
+                    : create.getUsers().stream().map(EntityInterfaceUtil::quoteName).collect(Collectors.toList())))
         .withQueryUsedIn(EntityUtil.populateEntityReferences(create.getQueryUsedIn()))
         .withQueryDate(create.getQueryDate());
   }

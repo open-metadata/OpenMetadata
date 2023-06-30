@@ -182,12 +182,12 @@ site_menu:
     url: /deployment/upgrade/kubernetes
   - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions
     url: /deployment/upgrade/versions
-  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.11 to 0.12
-    url: /deployment/upgrade/versions/011-to-012
   - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.12 to 0.13
     url: /deployment/upgrade/versions/012-to-013
   - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.13 to 1.0
     url: /deployment/upgrade/versions/013-to-100
+  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 1.0 to 1.1
+    url: /deployment/upgrade/versions/100-to-110
 
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
@@ -393,6 +393,12 @@ site_menu:
     url: /connectors/database/vertica/cli
   - category: Connectors / Database / Vertica / Troubleshooting
     url: /connectors/database/vertica/troubleshooting
+  - category: Connectors / Database / MongoDB
+    url: /connectors/database/mongodb
+  - category: Connectors / Database / MongoDB / Airflow
+    url: /connectors/database/mongodb/airflow
+  - category: Connectors / Database / MongoDB / CLI
+    url: /connectors/database/mongodb/cli
   - category: Connectors / Dashboard
     url: /connectors/dashboard
 
@@ -422,8 +428,6 @@ site_menu:
     url: /connectors/dashboard/mode/cli
   - category: Connectors / Dashboard / PowerBI
     url: /connectors/dashboard/powerbi
-  - category: Connectors / Dashboard / PowerBI / PowerBI Account Setup
-    url: /connectors/dashboard/powerbi/powerbi-account-setup
   - category: Connectors / Dashboard / PowerBI / Airflow
     url: /connectors/dashboard/powerbi/airflow
   - category: Connectors / Dashboard / PowerBI / CLI
@@ -629,6 +633,8 @@ site_menu:
     url: /connectors/ingestion/workflows/data-quality
   - category: Connectors / Ingestion / Workflows / Data Quality / Tests
     url: /connectors/ingestion/workflows/data-quality/tests
+  - category: Connectors / Ingestion / Workflows / Data Quality / Custom Tests
+    url: /connectors/ingestion/workflows/data-quality/custom-tests
   - category: Connectors / Ingestion / Lineage
     url: /connectors/ingestion/lineage
   - category: Connectors / Ingestion / Lineage / Edit Data Lineage Manually

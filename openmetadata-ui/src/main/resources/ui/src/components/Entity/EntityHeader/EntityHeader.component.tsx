@@ -50,7 +50,7 @@ export const EntityHeader = ({
     <div className="w-full">
       <div
         className={classNames(
-          'glossary-breadcrumb',
+          'entity-breadcrumb',
           gutter === 'large' ? 'm-b-sm' : 'm-b-xss'
         )}
         data-testid="category-name">

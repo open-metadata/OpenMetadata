@@ -13,7 +13,7 @@ slug: /main-concepts/metadata-standard/schemas/api/data/createchart
 - **`displayName`** *(string)*: Display Name that identifies this Chart. It could be title or label from the source services.
 - **`description`**: Description of the chart instance. What it has and how to use it. Refer to *../../type/basic.json#/definitions/markdown*.
 - **`chartType`**: Refer to *../../entity/data/chart.json#/definitions/chartType*.
-- **`chartUrl`** *(string)*: Chart URL suffix from its service.
+- **`sourceUrl`** *(string)*: Chart URL suffix from its service.
 - **`tables`**: Link to tables used in this chart. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
 - **`tags`** *(array)*: Tags for this chart. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.

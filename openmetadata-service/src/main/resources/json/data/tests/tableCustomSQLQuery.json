@@ -16,7 +16,7 @@
       {
         "name": "strategy",
         "displayName": "Strategy",
-        "description": "Strategy to use to run the custom SQL query (i.e. `SELECT COUNT(<col>)` or `SELECT <col> (defaults to COUNT)",
+        "description": "Strategy to use to run the custom SQL query (i.e. `SELECT COUNT(<col>)` or `SELECT <col> (defaults to ROWS)",
         "dataType": "ARRAY",
         "optionValues": ["ROWS", "COUNT"],
         "required": false

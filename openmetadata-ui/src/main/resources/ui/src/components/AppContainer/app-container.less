@@ -12,6 +12,8 @@
  */
 
 @import url('../../styles/variables.less');
+@import (reference) '~antd/dist/antd.less';
+
 .app-container {
   min-height: 100vh !important;
   background-color: white;
@@ -20,12 +22,13 @@
   }
   .navbar-container {
     border-bottom: 1px solid @border-color;
-    padding: 13px 16px;
+    padding: 13px 24px 13px 16px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     .appbar-search {
       min-width: 380px;
+      width: calc(100vw - 800px);
     }
     .navbar-items {
       display: flex;
@@ -40,11 +43,15 @@
       border-radius: 0 !important;
       border-top: 0;
       background-color: @white;
+      padding-bottom: @padding-lg;
     }
   }
   .ant-layout-content {
     height: calc(100vh - 64px);
     overflow-y: auto;
-    overflow-x: hidden;
+  }
+  .main-content .my-data-page {
+    min-width: 900px;
+    overflow-x: auto;
   }
 }

@@ -20,7 +20,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
-import TeamDetailsV1 from 'components/TeamDetails/TeamDetailsV1';
+import TeamDetailsV1 from 'components/Team/TeamDetails/TeamDetailsV1';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
@@ -256,7 +256,7 @@ const TeamsPage = () => {
         description: data.description,
         teamType: data.teamType as TeamType,
         parents: fqn ? [selectedTeam.id] : undefined,
-        email: data.email,
+        email: data.email || undefined,
       };
       const res = await createTeam(teamData);
       if (res) {
@@ -438,7 +438,7 @@ const TeamsPage = () => {
       patchTeamDetail(selectedTeam.id, jsonPatch)
         .then((res) => {
           if (res) {
-            fetchTeamByFqn(res.name);
+            fetchTeamByFqn(res.name, false);
           } else {
             throw t('server.unexpected-response');
           }

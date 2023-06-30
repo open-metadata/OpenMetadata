@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { EntityHistory } from '../../generated/type/entityHistory';
@@ -29,4 +30,5 @@ export interface PipelineVersionProp {
   deleted?: boolean;
   backHandler: () => void;
   versionHandler: (v: string) => void;
+  entityPermissions: OperationPermission;
 }

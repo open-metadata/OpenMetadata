@@ -25,6 +25,7 @@ import {
   TableSearchSource,
   TagClassSearchSource,
   TeamSearchSource,
+  TestCaseSearchSource,
   UserSearchSource,
 } from '../../interface/search.interface';
 import { ExploreSearchIndex } from '../Explore/explore.interface';
@@ -55,6 +56,7 @@ export type SourceType = (
         | QuerySearchSource
         | UserSearchSource
         | TeamSearchSource
+        | TestCaseSearchSource
       >,
       Fields
     >
@@ -89,4 +91,5 @@ export interface SearchedDataProps {
     entityType: string
   ) => void;
   filter?: Qs.ParsedQs;
+  currentPage?: number;
 }

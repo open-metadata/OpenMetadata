@@ -11,19 +11,29 @@
  *  limitations under the License.
  */
 
-import { Card, Table, Typography } from 'antd';
+import { Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
-import { isEmpty } from 'lodash';
+import { EntityField } from 'constants/Feeds.constants';
+import { ChangeDescription } from 'generated/tests/testCase';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getTypeByFQN } from 'rest/metadataTypeAPI';
 import { getEntityName } from 'utils/EntityUtils';
+import {
+  getChangedEntityNewValue,
+  getDiffByFieldName,
+  getUpdatedExtensionDiffFields,
+} from 'utils/EntityVersionUtils';
 import { CustomProperty, Type } from '../../../generated/entity/type';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../error-with-placeholder/ErrorPlaceHolder';
-import { CustomPropertyProps } from './CustomPropertyTable.interface';
+import {
+  CustomPropertyProps,
+  EntityDetails,
+} from './CustomPropertyTable.interface';
 import { PropertyValue } from './PropertyValue';
 
 export const CustomPropertyTable: FC<CustomPropertyProps> = ({
@@ -32,6 +42,7 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
   entityType,
   hasEditAccess,
   className,
+  isVersionView,
 }) => {
   const { t } = useTranslation();
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
@@ -54,38 +65,79 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
   const onExtensionUpdate = async (
     updatedExtension: CustomPropertyProps['entityDetails']['extension']
   ) => {
-    await handleExtensionUpdate({
-      ...entityDetails,
-      extension: updatedExtension,
-    });
+    if (!isUndefined(handleExtensionUpdate)) {
+      await handleExtensionUpdate({
+        ...entityDetails,
+        extension: updatedExtension,
+      });
+    }
   };
+
+  const extensionObject: {
+    extensionObject: EntityDetails['extension'];
+    addedKeysList?: string[];
+  } = useMemo(() => {
+    if (isVersionView) {
+      const changeDescription = entityDetails.changeDescription;
+      const extensionDiff = getDiffByFieldName(
+        EntityField.EXTENSION,
+        changeDescription as ChangeDescription
+      );
+
+      const newValues = getChangedEntityNewValue(extensionDiff);
+
+      if (extensionDiff.added) {
+        const addedFields = JSON.parse(newValues ? newValues : [])[0];
+        if (addedFields) {
+          return {
+            extensionObject: entityDetails.extension,
+            addedKeysList: Object.keys(addedFields),
+          };
+        }
+      }
+
+      if (extensionDiff.updated) {
+        return getUpdatedExtensionDiffFields(entityDetails, extensionDiff);
+      }
+    }
+
+    return { extensionObject: entityDetails.extension };
+  }, [isVersionView, entityDetails]);
 
   const tableColumn: ColumnsType<CustomProperty> = useMemo(() => {
     return [
       {
-        title: 'Name',
+        title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
         width: '50%',
         render: (_, record) => getEntityName(record),
       },
       {
-        title: 'Value',
+        title: t('label.value'),
         dataIndex: 'value',
         key: 'value',
         width: '50%',
         render: (_, record) => (
           <PropertyValue
-            extension={entityDetails.extension}
+            extension={extensionObject.extensionObject}
             hasEditPermissions={hasEditAccess}
+            isVersionView={isVersionView}
             propertyName={record.name}
             propertyType={record.propertyType}
+            versionDataKeys={extensionObject.addedKeysList}
             onExtensionUpdate={onExtensionUpdate}
           />
         ),
       },
     ];
-  }, [entityDetails.extension, hasEditAccess]);
+  }, [
+    entityDetails.extension,
+    hasEditAccess,
+    extensionObject,
+    isVersionView,
+    onExtensionUpdate,
+  ]);
 
   useEffect(() => {
     fetchTypeDetail();
@@ -106,17 +158,16 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
           </Typography.Paragraph>
         </ErrorPlaceHolder>
       ) : (
-        <Card className="m-y-md h-full">
-          <Table
-            bordered
-            columns={tableColumn}
-            data-testid="custom-properties-table"
-            dataSource={entityTypeDetail.customProperties || []}
-            pagination={false}
-            rowKey="name"
-            size="small"
-          />
-        </Card>
+        <Table
+          bordered
+          className="m-md"
+          columns={tableColumn}
+          data-testid="custom-properties-table"
+          dataSource={entityTypeDetail.customProperties || []}
+          pagination={false}
+          rowKey="name"
+          size="small"
+        />
       )}
     </>
   );

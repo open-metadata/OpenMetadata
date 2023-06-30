@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+@import (reference) url('./../../styles/variables.less');
+
 .ant-form-item-explain-error {
   text-align: left;
 }
@@ -32,6 +34,34 @@
   }
 }
 .carousal-description {
-  margin-left: 13%;
-  margin-right: 13%;
+  width: 750px;
+  text-align: center;
+  margin: 16px auto;
+  padding: 0 48px;
+}
+
+.carousal-container {
+  position: relative;
+  width: auto;
+  height: auto;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  .slick-dots.slick-dots-bottom {
+    .slick-active {
+      button {
+        background-color: @primary-color;
+        width: inherit;
+        border-radius: 5px;
+      }
+    }
+    button {
+      background-color: @primary-color;
+      opacity: 0.7;
+      height: 10px;
+      width: 10px;
+      border-radius: 50%;
+    }
+  }
 }

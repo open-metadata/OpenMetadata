@@ -13,20 +13,34 @@ Update the providerName config to the name you want to display in the `Sign In` 
 For example, with the following configuration with `providerName` set to `OneLogin`, the users will see `Sign In with OneLogin SSO` 
 in the `Sign In` page of the OpenMetadata UI.
 
+{% note noteType="Warning" %}
+
+It is important to leave the publicKeys configuration to have both OneLogin SSO public keys URL and OpenMetadata public keys URL. 
+
+1. OneLogin SSO Public Keys are used to authenticate User's login
+2. OpenMetadata JWT keys are used to authenticate Bot's login
+3. Important to update the URLs documented in below configuration. The below config reflects a setup where all dependencies are hosted in a single host. Example openmetadata:8585 might not be the same domain you may be using in your installation.
+4. OpenMetadata ships default public/private key, These must be changed in your production deployment to avoid any security issues.
+
+For more details, follow [Enabling JWT Authenticaiton](deployment/security/enable-jwt-tokens)
+
+{% /note %}
+
+
 ```yaml
 authenticationConfiguration:
   provider: "custom-oidc"
   providerName: "OneLogin"
   publicKeyUrls: 
     - "{IssuerUrl}/certs"
+    - "http://openmetadata:8585/api/v1/system/config/jwks"
   authority: "{IssuerUrl}"
   clientId: "{client id}"
   callbackUrl: "http://localhost:8585/callback"
 ```
 
-Then, 
-- Update `authorizerConfiguration` to add login names of the admin users in `adminPrincipals` section as shown below.
-- Update the `principalDomain` to your company domain name.
+- Update `authorizerConfiguration` to add login names of the admin users in  section as shown below. Make sure you configure the name from email, example: xyz@helloworld.com, initialAdmins username will be ```xyz``
+- Update the `principalDomain` to your company domain name.  Example from above, principalDomain should be ```helloworld.com```
 
 ```yaml
 authorizerConfiguration:
@@ -39,35 +53,8 @@ authorizerConfiguration:
   principalDomain: "open-metadata.org"
 ```
 
-In `0.12.1` the `className` and `containerRequestFilter` must replace `org.openmetadata.catalog` by `org.openmetadata.service`.
+{% note noteType="Tip" %}
+ Follow [this guide](/how-to-guides/feature-configurations/bots) to configure the `ingestion-bot` credentials for ingesting data using Connectors.
+{% /note %}
 
-Finally, update the Airflow information with the Secret Key
 
-**Before 0.12.1**
-
-```yaml
-airflowConfiguration:
-  apiEndpoint: ${AIRFLOW_HOST:-http://localhost:8080}
-  username: ${AIRFLOW_USERNAME:-admin}
-  password: ${AIRFLOW_PASSWORD:-admin}
-  metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
-  authProvider: custom-oidc
-  authConfig:
-    customOidc:
-      clientId: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID:-""}
-      secretKey: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY_PATH:-""}
-      tokenEndpoint: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL:-""}
-```
-
-**After 0.12.1**
-
-```yaml
-airflowConfiguration:
-  apiEndpoint: ${AIRFLOW_HOST:-http://localhost:8080}
-  username: ${AIRFLOW_USERNAME:-admin}
-  password: ${AIRFLOW_PASSWORD:-admin}
-  metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
-```
-
-**Note:** Follow [this](/how-to-guides/feature-configurations/bots) guide to configure the `ingestion-bot` credentials for
-ingesting data from Airflow.

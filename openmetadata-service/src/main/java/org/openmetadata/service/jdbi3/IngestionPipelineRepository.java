@@ -69,7 +69,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   @Override
   public void setFullyQualifiedName(IngestionPipeline ingestionPipeline) {
     ingestionPipeline.setFullyQualifiedName(
-        FullyQualifiedName.add(ingestionPipeline.getService().getName(), ingestionPipeline.getName()));
+        FullyQualifiedName.add(ingestionPipeline.getService().getFullyQualifiedName(), ingestionPipeline.getName()));
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(IngestionPipeline ingestionPipeline) {
+    return FullyQualifiedName.buildHash(ingestionPipeline.getFullyQualifiedName());
   }
 
   @Override
@@ -90,7 +95,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
     daoCollection
         .entityExtensionTimeSeriesDao()
-        .delete(ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION);
+        .delete(FullyQualifiedName.buildHash(ingestionPipeline.getFullyQualifiedName()), PIPELINE_STATUS_EXTENSION);
     setFieldsInternal(ingestionPipeline, Fields.EMPTY_FIELDS);
     return ingestionPipeline;
   }
@@ -123,8 +128,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         service.getType(),
         Entity.INGESTION_PIPELINE,
         Relationship.CONTAINS);
-    storeOwner(ingestionPipeline, ingestionPipeline.getOwner());
-    applyTags(ingestionPipeline);
   }
 
   @Override
@@ -169,7 +172,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       throws IOException {
     // Validate the request content
     IngestionPipeline ingestionPipeline = dao.findEntityByName(fqn);
-
     PipelineStatus storedPipelineStatus =
         JsonUtils.readValue(
             daoCollection
@@ -193,7 +195,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       daoCollection
           .entityExtensionTimeSeriesDao()
           .insert(
-              ingestionPipeline.getFullyQualifiedName(),
+              FullyQualifiedName.buildHash(ingestionPipeline.getFullyQualifiedName()),
               PIPELINE_STATUS_EXTENSION,
               PIPELINE_STATUS_JSON_SCHEMA,
               JsonUtils.pojoToJson(pipelineStatus));
@@ -211,10 +213,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     IngestionPipeline ingestionPipeline = dao.findEntityByName(ingestionPipelineFQN);
     List<PipelineStatus> pipelineStatusList =
         JsonUtils.readObjects(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .listBetweenTimestampsByFQN(
-                    ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_JSON_SCHEMA, startTs, endTs),
+            getResultsFromAndToTimestamps(
+                ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION, startTs, endTs),
             PipelineStatus.class);
     List<PipelineStatus> allPipelineStatusList = pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
     allPipelineStatusList.addAll(pipelineStatusList);
@@ -224,9 +224,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public PipelineStatus getLatestPipelineStatus(IngestionPipeline ingestionPipeline) throws IOException {
     return JsonUtils.readValue(
-        daoCollection
-            .entityExtensionTimeSeriesDao()
-            .getLatestExtensionByFQN(ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_JSON_SCHEMA),
+        getLatestExtensionFromTimeseries(ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
         PipelineStatus.class);
   }
 
@@ -238,7 +236,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
             .getExtensionByKey(
                 RUN_ID_EXTENSION_KEY,
                 pipelineStatusRunId.toString(),
-                ingestionPipeline.getFullyQualifiedName(),
+                FullyQualifiedName.buildHash(ingestionPipeline.getFullyQualifiedName()),
                 PIPELINE_STATUS_EXTENSION),
         PipelineStatus.class);
   }

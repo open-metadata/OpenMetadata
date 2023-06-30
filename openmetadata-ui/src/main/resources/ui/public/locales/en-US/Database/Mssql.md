@@ -76,7 +76,9 @@ $$
 $$section
 ### Host Port $(id="hostPort")
 
-This parameter specifies the host and port of the MSSQL instance. This should be specified as a string in the format `hostname:port`. E.g., `host.docker.internal:1433`.
+This parameter specifies the host and port of the MSSQL instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:1433`.
+
+If your database service and Open Metadata are both running via docker locally, use `host.docker.internal:1433` as the value.
 $$
 
 $$section

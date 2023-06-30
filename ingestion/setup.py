@@ -44,6 +44,8 @@ VERSIONS = {
     "pyodbc": "pyodbc>=4.0.35,<5",
     "scikit-learn": "scikit-learn~=1.0",  # Python 3.7 only goes up to 1.0.2
     "packaging": "packaging==21.3",
+    "azure-storage-blob": "azure-storage-blob~=12.14",
+    "azure-identity": "azure-identity~=1.12",
 }
 
 COMMONS = {
@@ -95,6 +97,7 @@ base_requirements = {
     "Jinja2>=2.11.3",
     "jsonpatch==1.32",
     "jsonschema",
+    "memory-profiler",
     "mypy_extensions>=0.4.3",
     "pydantic~=1.10",
     VERSIONS["pymysql"],
@@ -141,12 +144,14 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["boto3"],
         VERSIONS["google-cloud-storage"],
         "dbt-artifacts-parser",
+        VERSIONS["azure-storage-blob"],
+        VERSIONS["azure-identity"],
     },
     "db2": {"ibm-db-sa~=0.3"},
-    "databricks": {"sqlalchemy-databricks~=0.1"},
+    "databricks": {"sqlalchemy-databricks~=0.1", "databricks-sdk~=0.1"},
     "datalake-azure": {
-        "azure-storage-blob~=12.14",
-        "azure-identity~=1.12",
+        VERSIONS["azure-storage-blob"],
+        VERSIONS["azure-identity"],
         "adlfs>=2022.2.0",  # Python 3.7 does only support up to 2022.2.0
         *COMMONS["datalake"],
     },
@@ -192,6 +197,7 @@ plugins: Dict[str, Set[str]] = {
     "ldap-users": {"ldap3==2.9.1"},
     "looker": {"looker-sdk>=22.20.0", "lkml~=1.3"},
     "mlflow": {"mlflow-skinny~=1.30", "alembic~=1.10.2"},
+    "mongo": {"pymongo~=4.3", VERSIONS["pandas"]},
     "mssql": {"sqlalchemy-pytds~=0.3"},
     "mssql-odbc": {VERSIONS["pyodbc"]},
     "mysql": {VERSIONS["pymysql"]},
@@ -212,7 +218,8 @@ plugins: Dict[str, Set[str]] = {
     "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
-        "sqlalchemy-redshift~=0.8",
+        # Going higher has memory and performance issues
+        "sqlalchemy-redshift==0.8.12",
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
     },

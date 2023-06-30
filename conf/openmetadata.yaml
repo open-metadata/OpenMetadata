@@ -91,7 +91,7 @@ server:
 logging:
   level: ${LOG_LEVEL:-INFO}
   loggers:
-    io.swagger: ERROR
+    io.swagger: DEBUG
   appenders:
     - type: console
       threshold: TRACE
@@ -126,7 +126,6 @@ database:
   password: ${DB_USER_PASSWORD:-openmetadata_password}
   # the JDBC URL; the database is called openmetadata_db
   url: jdbc:${DB_SCHEME:-mysql}://${DB_HOST:-localhost}:${DB_PORT:-3306}/${OM_DATABASE:-openmetadata_db}?allowPublicKeyRetrieval=true&useSSL=${DB_USE_SSL:-false}&serverTimezone=UTC
-
 
 migrationConfiguration:
   path: "./bootstrap/sql"
@@ -210,6 +209,7 @@ jwtTokenConfiguration:
   keyId: ${JWT_KEY_ID:-"Gb389a-9f76-gdjs-a92j-0242bk94356"}
 
 elasticsearch:
+  searchType: ${SEARCH_TYPE:- "elasticsearch"}
   host: ${ELASTICSEARCH_HOST:-localhost}
   port: ${ELASTICSEARCH_PORT:-9200}
   scheme: ${ELASTICSEARCH_SCHEME:-http}
@@ -247,6 +247,7 @@ pipelineServiceClientConfiguration:
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
   ingestionIpInfoEnabled: ${PIPELINE_SERVICE_IP_INFO_ENABLED:-false}
   hostIp: ${PIPELINE_SERVICE_CLIENT_HOST_IP:-""}
+  healthCheckInterval: ${PIPELINE_SERVICE_CLIENT_HEALTH_CHECK_INTERVAL:-300}
   # This SSL information is about the OpenMetadata server.
   # It will be picked up from the pipelineServiceClient to use/ignore SSL when connecting to the OpenMetadata server.
   verifySSL: ${PIPELINE_SERVICE_CLIENT_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
