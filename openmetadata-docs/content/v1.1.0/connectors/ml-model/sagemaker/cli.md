@@ -181,15 +181,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 {% /codeInfo %}
 
-#### Workflow Configuration
-
-{% codeInfo srNumber=11 %}
-
-The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
-
-For a simple, local installation using our docker containers, this looks like:
-
-{% /codeInfo %}
+{% partial file="workflow-config.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -242,37 +234,11 @@ sink:
   config: {}
 ```
 
-```yaml {% srNumber=11 %}
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: "http://localhost:8585/api"
-    authProvider: openmetadata
-    securityConfig:
-      jwtToken: "{bot_jwt_token}"
-```
+{% partial file="workflow-config-yaml.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
-
-### Workflow Configs for Security Provider
-
-We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-spec/src/main/resources/json/schema/security/client).
-
-## Openmetadata JWT Auth
-
-- JWT tokens will allow your clients to authenticate against the OpenMetadata server. To enable JWT Tokens, you will get more details [here](/deployment/security/enable-jwt-tokens).
-
-```yaml
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: "http://localhost:8585/api"
-    authProvider: openmetadata
-    securityConfig:
-      jwtToken: "{bot_jwt_token}"
-```
-
-- You can refer to the JWT Troubleshooting section [link](/deployment/security/jwt-troubleshooting) for any issues in your JWT configuration. If you need information on configuring the ingestion with other security providers in your bots, you can follow this doc [link](/deployment/security/workflow-config-auth).
 
 ### 2. Run with the CLI
 

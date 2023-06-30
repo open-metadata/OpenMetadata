@@ -148,15 +148,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 {% /codeInfo %}
 
-#### Workflow Configuration
-
-{% codeInfo srNumber=12 %}
-
-The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
-
-For a simple, local installation using our docker containers, this looks like:
-
-{% /codeInfo %}
+{% partial file="workflow-config.md" /%}
 
 #### Advanced Configuration
 
@@ -258,14 +250,7 @@ sink:
   config: {}
 ```
 
-```yaml {% srNumber=12 %}
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: "http://localhost:8585/api"
-    authProvider: openmetadata
-    securityConfig:
-      jwtToken: "{bot_jwt_token}"
-```
+{% partial file="workflow-config-yaml.md" /%}
 
 {% /codeBlock %}
 

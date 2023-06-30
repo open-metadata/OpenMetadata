@@ -4,23 +4,27 @@ slug: /connectors/database/impala/cli
 ---
 
 # Run Impala using the metadata CLI
+
 {% multiTablesWrapper %}
 
-| Stage              | BETA                |
-|--------------------|---------------------|
-| Metadata           | ✅                   |
-| Query Usage        | ❌                   |
-| Data Profiler      | ✅                   |
-| Data Quality       | ✅                   |
-| Lineage            | Partially via Views |
-| DBT                | ❌                   |
-| Supported Versions | Impala >= 2.0       |
+| Feature            | Status                       |
+| :----------------- | :--------------------------- |
+| Stage              | PROD                         |
+| Metadata           | {% icon iconName="check" /%} |
+| Query Usage        | {% icon iconName="cross" /%} |
+| Data Profiler      | {% icon iconName="check" /%} |
+| Data Quality       | {% icon iconName="check" /%} |
+| Lineage            | Partially via Views          |
+| DBT                | {% icon iconName="cross" /%} |
+| Supported Versions | Impala >= 2.0                |
+
+| Feature      | Status                       |
+| :----------- | :--------------------------- |
+| Lineage      | Partially via Views          |
+| Table-level  | {% icon iconName="check" /%} |
+| Column-level | {% icon iconName="check" /%} |
 
 {% /multiTablesWrapper %}
-
-| Lineage | Table-level | Column-level |
-|:------:|:-----------:|:-------------:|
-| Partially via Views | ✅ | ✅ |
 
 In this section, we provide guides and references to use the Impala connector.
 
@@ -62,7 +66,87 @@ The workflow is modeled around the following
 
 ### 1. Define the YAML Config
 
-This is a sample config for Impala:
+This is a sample config for Hive:
+
+{% codePreview %}
+
+{% codeInfoContainer %}
+
+#### Source Configuration - Service Connection
+
+{% codeInfo srNumber=1 %}
+
+**username**: Specify the User to connect to Impala. It should have enough privileges to read all the metadata.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=2 %}
+
+**password**: User password.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=4 %}
+
+**authOptions**: Enter the auth options string.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=5 %}
+
+**authMechanism**: `PLAIN`, `NOSASL`, `GSSAPI`, `LDAP` or `JWT`
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=6 %}
+
+**hostPort**: Enter the fully qualified hostname and port number for your Hive deployment in the Host and Port field.
+
+{% /codeInfo %}
+
+#### Source Configuration - Source Config
+
+{% codeInfo srNumber=8 %}
+
+The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json):
+
+**markDeletedTables**: To flag tables as soft-deleted if they are not present anymore in the source system.
+
+**includeTables**: true or false, to ingest table data. Default is true.
+
+**includeViews**: true or false, to ingest views definitions.
+
+**databaseFilterPattern**, **schemaFilterPattern**, **tableFilternPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
+
+{% /codeInfo %}
+
+#### Sink Configuration
+
+{% codeInfo srNumber=9 %}
+
+To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
+
+{% /codeInfo %}
+
+{% partial file="workflow-config.md" /%}
+
+#### Advanced Configuration
+
+{% codeInfo srNumber=6 %}
+
+**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=7 %}
+
+**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+
+{% /codeInfo %}
+
+{% /codeInfoContainer %}
+
+{% codeBlock fileName="filename.yaml" %}
 
 ```yaml
 source:
@@ -71,15 +155,32 @@ source:
   serviceConnection:
     config:
       type: Impala
+```
+```yaml {% srNumber=1 %}
       username: <username>
+```
+```yaml {% srNumber=2 %}
       password: <password>
+```
+```yaml {% srNumber=3 %}
       authOptions: <auth options>
+```
+```yaml {% srNumber=4 %}
       authMechanism: PLAIN # NOSASL, PLAIN, GSSAPI, LDAP, JWT
-      hostPort: <impala connection host & port>
-      # kerberosServiceName: KerberosServiceName
-      # databaseSchema: Database Schema of the data source
-      # databaseName: Optional name to give to the database in OpenMetadata.
-      # useSSL: true / false
+```
+```yaml {% srNumber=5 %}
+      hostPort: <hive connection host & port>
+```
+```yaml {% srNumber=6 %}
+      # connectionOptions:
+      #   key: value
+```
+```yaml {% srNumber=7 %}
+      # connectionArguments:
+      #   key: value
+```
+
+```yaml {% srNumber=8 %}
   sourceConfig:
     config:
       type: DatabaseMetadata
@@ -103,200 +204,24 @@ source:
       #     - schema4
       # tableFilterPattern:
       #   includes:
-      #     - table1
-      #     - table2
+      #     - users
+      #     - type_test
       #   excludes:
       #     - table3
       #     - table4
+```
+
+```yaml {% srNumber=9 %}
 sink:
   type: metadata-rest
   config: {}
-workflowConfig:
-  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
-  openMetadataServerConfig:
-    hostPort: "<OpenMetadata host and port>"
-    authProvider: "<OpenMetadata auth provider>"
 ```
 
-#### Source Configuration - Service Connection
+{% partial file="workflow-config-yaml.md" /%}
 
-- **username**: Specify the User to connect to Impala. It should have enough privileges to read all the metadata.
-- **password**: Password to connect to Impala.
-- **hostPort**: Enter the fully qualified hostname and port number for your Impala deployment in the Host and Port field.
-- **authMechanism**: This parameter specifies the authentication method to use when connecting to the Impala server. Possible values are `NOSASL`, `PLAIN`, `GSSAPI`, `LDAP`, `JWT`. If you are using Kerberos authentication, you should set auth to `GSSAPI`. 
-- **kerberosServiceName**: This parameter specifies the Kerberos service name to use for authentication. This should only be specified if using Kerberos authentication.
-- **databaseSchema**: Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.
-- **databaseName**: In OpenMetadata, the Database Service hierarchy works as follows:
-`Database Service > Database > Schema > Table`. In the case of Impala, we won't have a Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
-- **useSSL**: Establish secure connection with Impala. Enables SSL for the connector.
-- **authOptions**: Enter the auth options string for impala connection.
-- **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Impala during the connection. These details must be added as Key-Value pairs.
-- **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Impala during the connection. These details must be added as Key-Value pairs. 
-  - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
+{% /codeBlock %}
 
-
-#### Source Configuration - Source Config
-
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json):
-
-- `markDeletedTables`: To flag tables as soft-deleted if they are not present anymore in the source system.
-- `includeTables`: true or false, to ingest table data. Default is true.
-- `includeViews`: true or false, to ingest views definitions.
-- `databaseFilterPattern`, `schemaFilterPattern`, `tableFilternPattern`: Note that the they support regex as include or exclude. E.g.,
-
-```yaml
-tableFilterPattern:
-  includes:
-    - users
-    - type_test
-```
-
-#### Sink Configuration
-
-To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
-
-#### Workflow Configuration
-
-The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
-
-For a simple, local installation using our docker containers, this looks like:
-
-```yaml
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: 'http://localhost:8585/api'
-    authProvider: openmetadata
-    securityConfig:
-      jwtToken: '{bot_jwt_token}'
-```
-
-We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/openmetadata-spec/src/main/resources/json/schema/security/client).
-You can find the different implementation of the ingestion below.
-
-### Openmetadata JWT Auth
-
-```yaml
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: 'http://localhost:8585/api'
-    authProvider: openmetadata
-    securityConfig:
-      jwtToken: '{bot_jwt_token}'
-```
-
-### Auth0 SSO
-
-```yaml
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: 'http://localhost:8585/api'
-    authProvider: auth0
-    securityConfig:
-      clientId: '{your_client_id}'
-      secretKey: '{your_client_secret}'
-      domain: '{your_domain}'
-```
-
-### Azure SSO
-
-```yaml
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: 'http://localhost:8585/api'
-    authProvider: azure
-    securityConfig:
-      clientSecret: '{your_client_secret}'
-      authority: '{your_authority_url}'
-      clientId: '{your_client_id}'
-      scopes:
-        - your_scopes
-```
-
-### Custom OIDC SSO
-
-```yaml
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: 'http://localhost:8585/api'
-    authProvider: custom-oidc
-    securityConfig:
-      clientId: '{your_client_id}'
-      secretKey: '{your_client_secret}'
-      domain: '{your_domain}'
-```
-
-### Google SSO
-
-```yaml
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: 'http://localhost:8585/api'
-    authProvider: google
-    securityConfig:
-      secretKey: '{path-to-json-creds}'
-```
-
-### Okta SSO
-
-```yaml
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: http://localhost:8585/api
-    authProvider: okta
-    securityConfig:
-      clientId: "{CLIENT_ID - SPA APP}"
-      orgURL: "{ISSUER_URL}/v1/token"
-      privateKey: "{public/private keypair}"
-      email: "{email}"
-      scopes:
-        - token
-```
-
-### Amazon Cognito SSO
-
-The ingestion can be configured by [Enabling JWT Tokens](https://docs.open-metadata.org/deployment/security/enable-jwt-tokens)
-
-```yaml
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: 'http://localhost:8585/api'
-    authProvider: auth0
-    securityConfig:
-      clientId: '{your_client_id}'
-      secretKey: '{your_client_secret}'
-      domain: '{your_domain}'
-```
-
-### OneLogin SSO
-
-Which uses Custom OIDC for the ingestion
-
-```yaml
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: 'http://localhost:8585/api'
-    authProvider: custom-oidc
-    securityConfig:
-      clientId: '{your_client_id}'
-      secretKey: '{your_client_secret}'
-      domain: '{your_domain}'
-```
-
-### KeyCloak SSO
-
-Which uses Custom OIDC for the ingestion
-
-```yaml
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: 'http://localhost:8585/api'
-    authProvider: custom-oidc
-    securityConfig:
-      clientId: '{your_client_id}'
-      secretKey: '{your_client_secret}'
-      domain: '{your_domain}'
-```
-
+{% /codePreview %}
 
 ### 2. Run with the CLI
 
@@ -312,35 +237,138 @@ you will be able to extract metadata from different sources.
 ## Data Profiler
 
 The Data Profiler workflow will be using the `orm-profiler` processor.
-While the `serviceConnection` will still be the same to reach the source system, the `sourceConfig` will be
-updated from previous configurations.
+
+After running a Metadata Ingestion workflow, we can run Data Profiler workflow.
+While the `serviceName` will be the same to that was used in Metadata Ingestion, so the ingestion bot can get the `serviceConnection` details from the server.
 
 ### 1. Define the YAML Config
 
 This is a sample config for the profiler:
 
+{% codePreview %}
+
+{% codeInfoContainer %}
+
+{% codeInfo srNumber=10 %}
+
+#### Source Configuration - Source Config
+
+You can find all the definitions and types for the  `sourceConfig` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json).
+
+**generateSampleData**: Option to turn on/off generating sample data.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=11 %}
+
+**profileSample**: Percentage of data or no. of rows we want to execute the profiler and tests on.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=12 %}
+
+**threadCount**: Number of threads to use during metric computations.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=13 %}
+
+**processPiiSensitive**: Optional configuration to automatically tag columns that might contain sensitive information.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=14 %}
+
+**confidence**: Set the Confidence value for which you want the column to be marked
+
+{% /codeInfo %}
+
+
+{% codeInfo srNumber=15 %}
+
+**timeoutSeconds**: Profiler Timeout in Seconds
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=16 %}
+
+**databaseFilterPattern**: Regex to only fetch databases that matches the pattern.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=17 %}
+
+**schemaFilterPattern**: Regex to only fetch tables or databases that matches the pattern.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=18 %}
+
+**tableFilterPattern**: Regex to only fetch tables or databases that matches the pattern.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=19 %}
+
+#### Processor Configuration
+
+Choose the `orm-profiler`. Its config can also be updated to define tests from the YAML itself instead of the UI:
+
+**tableConfig**: `tableConfig` allows you to set up some configuration at the table level.
+{% /codeInfo %}
+
+
+{% codeInfo srNumber=20 %}
+
+#### Sink Configuration
+
+To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
+{% /codeInfo %}
+
+
+{% codeInfo srNumber=21 %}
+
+#### Workflow Configuration
+
+The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
+
+For a simple, local installation using our docker containers, this looks like:
+
+{% /codeInfo %}
+
+{% /codeInfoContainer %}
+
+{% codeBlock fileName="filename.yaml" %}
+
+
 ```yaml
 source:
   type: impala
   serviceName: local_impala
-  serviceConnection:
-    config:
-      type: Impala
-      username: <username>
-      password: <password>
-      authOptions: <auth options>
-      authMechanism: PLAIN # NOSASL, PLAIN, GSSAPI, LDAP, JWT
-      hostPort: <impala connection host & port>
-      # kerberosServiceName: KerberosServiceName
-      # databaseSchema: Database Schema of the data source
-      # databaseName: Optional name to give to the database in OpenMetadata.
-      # useSSL: true / false
   sourceConfig:
     config:
       type: Profiler
-      # generateSampleData: true
+```
+
+```yaml {% srNumber=10 %}
+      generateSampleData: true
+```
+```yaml {% srNumber=11 %}
       # profileSample: 85
-      # threadCount: 5 (default)
+```
+```yaml {% srNumber=12 %}
+      # threadCount: 5
+```
+```yaml {% srNumber=13 %}
+      processPiiSensitive: false
+```
+```yaml {% srNumber=14 %}
+      # confidence: 80
+```
+```yaml {% srNumber=15 %}
+      # timeoutSeconds: 43200
+```
+```yaml {% srNumber=16 %}
       # databaseFilterPattern:
       #   includes:
       #     - database1
@@ -348,6 +376,8 @@ source:
       #   excludes:
       #     - database3
       #     - database4
+```
+```yaml {% srNumber=17 %}
       # schemaFilterPattern:
       #   includes:
       #     - schema1
@@ -355,6 +385,8 @@ source:
       #   excludes:
       #     - schema3
       #     - schema4
+```
+```yaml {% srNumber=18 %}
       # tableFilterPattern:
       #   includes:
       #     - table1
@@ -362,83 +394,53 @@ source:
       #   excludes:
       #     - table3
       #     - table4
+```
+
+```yaml {% srNumber=19 %}
 processor:
   type: orm-profiler
   config: {}  # Remove braces if adding properties
-  # tableConfig:
-  #   - fullyQualifiedName: <table fqn>
-  #     profileSample: <number between 0 and 99> # default will be 100 if omitted
-  #     profileQuery: <query to use for sampling data for the profiler>
-  #     columnConfig:
-  #       excludeColumns:
-  #         - <column name>
-  #       includeColumns:
-  #         - columnName: <column name>
-  #         - metrics:
-  #           - MEAN
-  #           - MEDIAN
-  #           - ...
-  #     partitionConfig:
-  #       enablePartitioning: <set to true to use partitioning>
-  #       partitionColumnName: <partition column name. Must be a timestamp or datetime/date field type>
-  #       partitionInterval: <partition interval>
-  #       partitionIntervalUnit: <YEAR, MONTH, DAY, HOUR>
+    # tableConfig:
+    #   - fullyQualifiedName: <table fqn>
+    #     profileSample: <number between 0 and 99> # default 
+    #     profileSample: <number between 0 and 99> # default will be 100 if omitted
+    #     profileQuery: <query to use for sampling data for the profiler>
+    #     columnConfig:
+    #       excludeColumns:
+    #         - <column name>
+    #       includeColumns:
+    #         - columnName: <column name>
+    #         - metrics:
+    #           - MEAN
+    #           - MEDIAN
+    #           - ...
+    #     partitionConfig:
+    #       enablePartitioning: <set to true to use partitioning>
+    #       partitionColumnName: <partition column name. Must be a timestamp or datetime/date field type>
+    #       partitionInterval: <partition interval>
+    #       partitionIntervalUnit: <YEAR, MONTH, DAY, HOUR>
+
+```
+
+```yaml {% srNumber=20 %}
 sink:
   type: metadata-rest
   config: {}
+```
+
+```yaml {% srNumber=21 %}
 workflowConfig:
   # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
-    hostPort: "<OpenMetadata host and port>"
-    authProvider: "<OpenMetadata auth provider>"
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>
 ```
 
-#### Source Configuration
+{% /codeBlock %}
 
-- You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/impalaConnection.json).
-- The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json).
+{% /codePreview %}
 
-Note that the filter patterns support regex as includes or excludes. E.g.,
-
-```yaml
-tableFilterPattern:
-  includes:
-  - *users$
-```
-
-#### Processor
-
-Choose the `orm-profiler`. Its config can also be updated to define tests from the YAML itself instead of the UI:
-
-```yaml
-processor:
-  type: orm-profiler
-  config:
-    tableConfig:
-      - fullyQualifiedName: <table fqn>
-        profileSample: <number between 0 and 99>
-        partitionConfig:
-          partitionField: <field to use as a partition field>
-          partitionQueryDuration: <for date/datetime partitioning based set the offset from today>
-          partitionValues: <values to uses as a predicate for the query>
-        profileQuery: <query to use for sampling data for the profiler>
-        columnConfig:
-          excludeColumns:
-            - <column name>
-          includeColumns:
-            - columnName: <column name>
-            - metrics:
-                - MEAN
-                - MEDIAN
-                - ...
-```
-
-`tableConfig` allows you to set up some configuration at the table level.
-All the properties are optional. `metrics` should be one of the metrics listed [here](https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler/metrics)
-
-#### Workflow Configuration
-
-The same as the metadata ingestion.
+- You can learn more about how to configure and run the Profiler Workflow to extract Profiler data and execute the Data Quality from [here](/connectors/ingestion/workflows/profiler)
 
 ### 2. Run with the CLI
 
@@ -452,4 +454,24 @@ Note how instead of running `ingest`, we are using the `profile` command to sele
 
 ## dbt Integration
 
-You can learn more about how to ingest dbt models' definitions and their lineage [here](/connectors/ingestion/workflows/dbt).
+{% tilesContainer %}
+
+{% tile
+icon="mediation"
+title="dbt Integration"
+description="Learn more about how to ingest dbt models' definitions and their lineage."
+link="/connectors/ingestion/workflows/dbt" /%}
+
+{% /tilesContainer %}
+
+## Related
+
+{% tilesContainer %}
+
+{% tile
+title="Ingest with Airflow"
+description="Configure the ingestion using Airflow SDK"
+link="/connectors/database/impala/airflow"
+/ %}
+
+{% /tilesContainer %}
