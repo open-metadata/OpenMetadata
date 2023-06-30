@@ -5,16 +5,13 @@ slug: /deployment/upgrade
 
 # Upgrade OpenMetadata
 
-## Releases
+## Prerequisites
 
-The OpenMetadata community will be doing feature releases and stable releases. 
+Everytime that you plan on upgrading OpenMetadata to a newer version, make sure to go over all these steps:
 
- - Feature releases are to upgrade your sandbox or POCs to give feedback to the community and any potential bugs that the community needs to fix.
- - Stable releases are to upgrade your production environments and share it with your users.
+### 1. Backup your Metadata
 
-## Backup Metadata
-
-Before upgrading your OpenMetadata version we recommend backing up the metadata.
+Before upgrading your OpenMetadata version we strongly recommend backing up the metadata.
 
 The source of truth is stored in the underlying database (MySQL and Postgres supported). You can refer
 to the following guide for our backup utility:
@@ -28,6 +25,35 @@ to the following guide for our backup utility:
       Learn how to back up MySQL data.
   {% /inlineCallout %}
 {% /inlineCalloutContainer %}
+
+This is important because if we face any unexpected issues during the upgrade process, you will be able to get back
+to the previous version without any loss.
+
+### 2. Review the Deprecation Notice and Breaking Changes
+
+Releases might introduce deprecations and breaking changes that you should be aware of and understand before moving forward.
+
+Below in this page you will find the details for the latest release, and you can find older release notes [here](/deployment/upgrade/versions).
+
+The goal is to answer questions like:
+- *Do I need to update my configurations?*
+- *If I am running connectors externally, did their service connection change?*
+
+Carefully reviewing this will prevent easy errors.
+
+### 3. Update your OpenMetadata Ingestion Client
+
+If you are running the ingestion workflows **externally**, you need to make sure that the Python Client you use is aligned
+with the OpenMetadata server version.
+
+For example, if you are upgrading the server to the version `x.y.z`, you will need to update your client with
+
+```
+pip install openmetadata-ingestion[<plugin>]==x.y.z
+```
+
+The `plugin` parameter is a list of the sources that we want to ingest. An example would look like this `openmetadata-ingestion[mysql,snowflake,s3]==1.1.0`.
+You will find specific instructions for each connector [here](/connectors).
 
 ## Upgrade your installation
 
