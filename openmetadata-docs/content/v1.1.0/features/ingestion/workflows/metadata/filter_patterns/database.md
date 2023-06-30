@@ -17,7 +17,7 @@ along with many examples.
 Filters can be configured in UI while adding an ingestion pipeline through `Add Metadata Ingestion` page.
 
 {% image
-  src="/images/v1.0.0/features/ingestion/workflows/metadata/filter-patterns/database-filter-patterns.png"
+  src="/images/v1.1.0/features/ingestion/workflows/metadata/filter-patterns/database-filter-patterns.png"
   alt="Database Filter Pattern Fields"
   caption="Database Filter Pattern Fields"
  /%}
@@ -95,7 +95,7 @@ and `TEST_SNOWFLAKEDB`.
 ### Configuring Filters via UI for Example 1
 
 {% image
-  src="/images/v1.0.0/features/ingestion/workflows/metadata/filter-patterns/database-filter-example-1.png"
+  src="/images/v1.1.0/features/ingestion/workflows/metadata/filter-patterns/database-filter-example-1.png"
   alt="Database Filter Pattern Example 1"
   caption="Database Filter Pattern Example 1"
  /%}
@@ -124,7 +124,7 @@ appied would be `^SNOWFLAKE.*` in the include field. This will result in ingesti
 ### Configuring Filters via UI for Example 2
 
 {% image
-  src="/images/v1.0.0/features/ingestion/workflows/metadata/filter-patterns/database-filter-example-2.png"
+  src="/images/v1.1.0/features/ingestion/workflows/metadata/filter-patterns/database-filter-example-2.png"
   alt="Database Filter Pattern Example 2"
   caption="Database Filter Pattern Example 2"
  /%}
@@ -152,7 +152,7 @@ appied would be `^SNOWFLAKE` & `DB$` in the include field. This will result in i
 ### Configuring Filters via UI for Example 3
 
 {% image
-  src="/images/v1.0.0/features/ingestion/workflows/metadata/filter-patterns/database-filter-example-3.png"
+  src="/images/v1.1.0/features/ingestion/workflows/metadata/filter-patterns/database-filter-example-3.png"
   alt="Database Filter Pattern Example 3"
   caption="Database Filter Pattern Example 3"
  /%}
@@ -180,7 +180,7 @@ In this example we want to ingest only the `SNOWFLAKE` database then the fillter
 ### Configuring Filters via UI for Example 4
 
 {% image
-  src="/images/v1.0.0/features/ingestion/workflows/metadata/filter-patterns/database-filter-example-4.png"
+  src="/images/v1.1.0/features/ingestion/workflows/metadata/filter-patterns/database-filter-example-4.png"
   alt="Database Filter Pattern Example 4"
   caption="Database Filter Pattern Example 4"
  /%}
@@ -239,7 +239,7 @@ appied would be `^PUBLIC$` in the include field. This will result in ingestion o
 ### Configuring Filters via UI for Example 1
 
 {% image
-  src="/images/v1.0.0/features/ingestion/workflows/metadata/filter-patterns/schema-filter-example-1.png"
+  src="/images/v1.1.0/features/ingestion/workflows/metadata/filter-patterns/schema-filter-example-1.png"
   alt="Schema Filter Pattern Example 1"
   caption="Schema Filter Pattern Example 1"
  /%}
@@ -269,7 +269,7 @@ Notice that we have two schemas availabale with name `PUBLIC` one is available i
 ### Configuring Filters via UI for Example 2
 
 {% image
-  src="/images/v1.0.0/features/ingestion/workflows/metadata/filter-patterns/schema-filter-example-2.png"
+  src="/images/v1.1.0/features/ingestion/workflows/metadata/filter-patterns/schema-filter-example-2.png"
   alt="Schema Filter Pattern Example 2"
   caption="Schema Filter Pattern Example 2"
  /%}
@@ -297,7 +297,7 @@ In this example we want to ingest `SNOWFLAKE.PUBLIC` & all the schemas in `SNOWF
 ### Configuring Filters via UI for Example 3
 
 {% image
-  src="/images/v1.0.0/features/ingestion/workflows/metadata/filter-patterns/schema-filter-example-3.png"
+  src="/images/v1.1.0/features/ingestion/workflows/metadata/filter-patterns/schema-filter-example-3.png"
   alt="Schema Filter Pattern Example 3"
   caption="Schema Filter Pattern Example 3"
  /%}
@@ -366,7 +366,7 @@ In this example we want to ingest table with name `CUSTOMER` within any schema a
 ### Configuring Filters via UI for Example 1
 
 {% image
-  src="/images/v1.0.0/features/ingestion/workflows/metadata/filter-patterns/table-filter-example-1.png"
+  src="/images/v1.1.0/features/ingestion/workflows/metadata/filter-patterns/table-filter-example-1.png"
   alt="Table Filter Pattern Example 1"
   caption="Table Filter Pattern Example 1"
  /%}
@@ -393,7 +393,7 @@ In this example we want to ingest table with name `CUSTOMER` within `PUBLIC` sch
 ### Configuring Filters via UI for Example 2
 
 {% image
-  src="/images/v1.0.0/features/ingestion/workflows/metadata/filter-patterns/table-filter-example-2.png"
+  src="/images/v1.1.0/features/ingestion/workflows/metadata/filter-patterns/table-filter-example-2.png"
   alt="Table Filter Pattern Example 2"
   caption="Table Filter Pattern Example 2"
  /%}

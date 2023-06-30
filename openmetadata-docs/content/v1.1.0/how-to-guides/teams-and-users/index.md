@@ -19,7 +19,7 @@ In OpenMetadata we have hierarchal team structure with `teamType` that can be `O
 
 
 {% image
-src="/images/v1.0.0/how-to-guides/teams-and-users/teams-structure.png"
+src="/images/v1.1.0/how-to-guides/teams-and-users/teams-structure.png"
 alt="team-structure"
 /%}
 

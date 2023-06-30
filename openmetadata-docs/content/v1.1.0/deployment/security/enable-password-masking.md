@@ -16,7 +16,7 @@ if they are changed.
 
 {% image
 caption="Editing a service connection with masked password."
-src="/images/v1.0.0/deployment/mask-password/edit-connection.png"
+src="/images/v1.1.0/deployment/mask-password/edit-connection.png"
 alt="mask-password" /%}
 
 However, note that the `ingestion-bot` user will still send the password in plain text as it needs to access the API 

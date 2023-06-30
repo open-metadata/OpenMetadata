@@ -160,7 +160,7 @@ Uploading dir1/dir2/openmetadata_202201250823_backup.sql to http://localhost:900
 
 If we now head to the minio console and check the `my-backup` bucket, we'll see our SQL dump in there.
 
-{% image src="/images/v1.0.0/deployment/backup/minio-example.png" alt="minio" /%}
+{% image src="/images/v1.1.0/deployment/backup/minio-example.png" alt="minio" /%}
 
 An example of Azure Blob CLI call will look as:
 

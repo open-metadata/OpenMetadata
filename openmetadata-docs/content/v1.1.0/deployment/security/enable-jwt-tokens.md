@@ -91,11 +91,11 @@ Once you configure the above settings, restart OpenMetadata server .
 
 Once the above configuration is updated, the server is restarted. Admin can go to Settings -> Bots page.
 
-{% image src="/images/v1.0.0/deployment/security/enable-jwt/bot.png" alt="Bot settings page" caption="Bot settings page" /%} 
+{% image src="/images/v1.1.0/deployment/security/enable-jwt/bot.png" alt="Bot settings page" caption="Bot settings page" /%} 
 
 Click on the `ingestion-bot`. The current token can be revoked, or you can create a new one.
 
-{% image src="/images/v1.0.0/deployment/security/enable-jwt/bot-jwt-token.png" alt="Bot credentials edition" caption="Edit JWT Token for ingestion-bot" /%} 
+{% image src="/images/v1.1.0/deployment/security/enable-jwt/bot-jwt-token.png" alt="Bot credentials edition" caption="Edit JWT Token for ingestion-bot" /%} 
 
 ## Configure Ingestion
 
