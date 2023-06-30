@@ -134,7 +134,7 @@ public abstract class OpenMetadataApplicationTest {
       configOverrides.add(ConfigOverride.config("elasticsearch.keepAliveTimeoutSecs", "600"));
       configOverrides.add(ConfigOverride.config("elasticsearch.batchSize", "10"));
       configOverrides.add(ConfigOverride.config("elasticsearch.searchIndexMappingLanguage", "EN"));
-      configOverrides.add(ConfigOverride.config("elasticsearch.searchType", "ElasticSearch"));
+      configOverrides.add(ConfigOverride.config("elasticsearch.searchType", "elasticsearch"));
     }
     // Database overrides
     configOverrides.add(ConfigOverride.config("database.driverClass", sqlContainer.getDriverClassName()));
