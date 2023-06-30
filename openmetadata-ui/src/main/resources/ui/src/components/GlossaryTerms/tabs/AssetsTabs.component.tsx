@@ -219,7 +219,7 @@ const AssetsTabs = forwardRef(
     }
 
     return (
-      <div data-testid="table-container">
+      <div className="p-md assets-tab-container" data-testid="table-container">
         {AssetsFilterOptions.map((option) => {
           const buttonStyle =
             activeFilter === option.value

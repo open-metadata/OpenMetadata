@@ -44,12 +44,7 @@ export const TagsTabs = ({
   };
 
   return (
-    <Tabs
-      activeKey={activeTab}
-      className="ant-tabs-description"
-      size="small"
-      type="card"
-      onChange={onTabChange}>
+    <Tabs activeKey={activeTab} size="small" type="card" onChange={onTabChange}>
       <Tabs.TabPane
         data-testid="current-tab"
         key={TaskTabs.CURRENT}

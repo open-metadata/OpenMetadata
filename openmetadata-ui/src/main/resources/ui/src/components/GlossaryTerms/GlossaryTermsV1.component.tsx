@@ -117,6 +117,7 @@ const GlossaryTermsV1 = ({
               children: (
                 <GlossaryTermTab
                   childGlossaryTerms={childGlossaryTerms}
+                  className="p-md glossary-term-table-container"
                   isGlossary={false}
                   permissions={permissions}
                   refreshGlossaryTerms={refreshGlossaryTerms}
@@ -221,7 +222,7 @@ const GlossaryTermsV1 = ({
   return (
     <>
       <Row data-testid="glossary-term" gutter={[0, 8]}>
-        <Col span={24}>
+        <Col className="p-x-md" span={24}>
           <GlossaryHeader
             isGlossary={false}
             isVersionView={isVersionView}
@@ -238,7 +239,7 @@ const GlossaryTermsV1 = ({
           <Tabs
             destroyInactiveTabPane
             activeKey={activeTab}
-            className="glossary-tabs"
+            className="glossary-tabs custom-tab-spacing"
             items={tabItems}
             onChange={activeTabHandler}
           />

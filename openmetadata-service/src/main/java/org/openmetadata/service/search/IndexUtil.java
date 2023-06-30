@@ -58,7 +58,7 @@ public class IndexUtil {
 
   public static SearchClient getSearchClient(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
     SearchClient client;
-    if (esConfig.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPEN_SEARCH)) {
+    if (esConfig.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
       client = new OpenSearchClientImpl(esConfig, dao);
     } else {
       client = new ElasticSearchClientImpl(esConfig, dao);

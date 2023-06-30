@@ -66,7 +66,7 @@ public abstract class OpenMetadataApplicationTest {
 
   private static final String JDBC_CONTAINER_CLASS_NAME = "org.testcontainers.containers.MySQLContainer";
   private static final String JDBC_CONTAINER_IMAGE = "mysql:8";
-  private static final String ELASTIC_SEARCH_CONTAINER_IMAGE = "docker.elastic.co/elasticsearch/elasticsearch:7.16.0";
+  private static final String ELASTIC_SEARCH_CONTAINER_IMAGE = "docker.elastic.co/elasticsearch/elasticsearch:7.16.3";
 
   private static String HOST;
   private static String PORT;
@@ -134,7 +134,7 @@ public abstract class OpenMetadataApplicationTest {
       configOverrides.add(ConfigOverride.config("elasticsearch.keepAliveTimeoutSecs", "600"));
       configOverrides.add(ConfigOverride.config("elasticsearch.batchSize", "10"));
       configOverrides.add(ConfigOverride.config("elasticsearch.searchIndexMappingLanguage", "EN"));
-      configOverrides.add(ConfigOverride.config("elasticsearch.searchType", "ElasticSearch"));
+      configOverrides.add(ConfigOverride.config("elasticsearch.searchType", "elasticsearch"));
     }
     // Database overrides
     configOverrides.add(ConfigOverride.config("database.driverClass", sqlContainer.getDriverClassName()));

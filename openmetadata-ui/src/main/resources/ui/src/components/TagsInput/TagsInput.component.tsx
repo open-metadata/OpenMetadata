@@ -10,18 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { TagDetails } from 'components/TableQueries/TableQueryRightPanel/TableQueryRightPanel.interface';
-import TagsContainerEntityTable from 'components/Tag/TagsContainerEntityTable/TagsContainerEntityTable.component';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
-import { t } from 'i18next';
-import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useEffect, useState } from 'react';
-import { getAllTagsList, getTagsHierarchy } from 'utils/TagsUtils';
+import React from 'react';
 
 type Props = {
   isVersionView?: boolean;
@@ -36,13 +29,6 @@ const TagsInput: React.FC<Props> = ({
   onTagsUpdate,
   isVersionView,
 }) => {
-  const [isEditTags, setIsEditTags] = useState(false);
-  const [tagDetails, setTagDetails] = useState<TagDetails>({
-    isLoading: false,
-    isError: false,
-    options: [],
-  });
-
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
     const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => {
       return {
@@ -55,7 +41,6 @@ const TagsInput: React.FC<Props> = ({
     if (onTagsUpdate) {
       await onTagsUpdate(updatedTags);
     }
-    setIsEditTags(false);
   };
 
   const getSelectedTags = () => {
@@ -71,64 +56,15 @@ const TagsInput: React.FC<Props> = ({
     }
   };
 
-  const fetchTags = async () => {
-    setTagDetails((pre) => ({ ...pre, isLoading: true }));
-
-    try {
-      const tags = await getAllTagsList();
-      setTagDetails((pre) => ({
-        ...pre,
-        options: tags,
-      }));
-    } catch (_error) {
-      setTagDetails((pre) => ({ ...pre, isError: true, options: [] }));
-    } finally {
-      setTagDetails((pre) => ({ ...pre, isLoading: false }));
-    }
-  };
-
-  const addButtonHandler = () => {
-    setIsEditTags(true);
-    if (isEmpty(tagDetails.options) || tagDetails.isError) {
-      fetchTags();
-    }
-  };
-
-  useEffect(() => {
-    fetchTags();
-  }, []);
-
   return (
     <div className="tags-input-container" data-testid="tags-input-container">
-      <div className="d-flex items-center">
-        <Typography.Text className="right-panel-label">
-          {t('label.tag-plural')}
-        </Typography.Text>
-        {editable && tags.length > 0 && (
-          <Button
-            className="cursor-pointer flex-center m-l-xss"
-            data-testid="edit-button"
-            disabled={!editable}
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-            size="small"
-            type="text"
-            onClick={() => setIsEditTags(true)}
-          />
-        )}
-      </div>
-
       {isVersionView ? (
         <TagsViewer sizeCap={-1} tags={tags} type="border" />
       ) : (
-        <TagsContainerEntityTable
-          isEditing={isEditTags}
-          isLoading={tagDetails.isLoading}
+        <TagsContainerV2
           permission={editable}
           selectedTags={getSelectedTags()}
           tagType={TagSource.Classification}
-          treeData={getTagsHierarchy(tagDetails.options)}
-          onAddButtonClick={addButtonHandler}
-          onCancel={() => setIsEditTags(false)}
           onSelectionChange={handleTagSelection}
         />
       )}

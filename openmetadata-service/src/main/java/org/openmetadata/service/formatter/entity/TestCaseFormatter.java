@@ -18,6 +18,7 @@ import static org.openmetadata.service.formatter.util.FormatterUtil.transformMes
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FormatterUtil;
@@ -46,19 +47,27 @@ public class TestCaseFormatter implements EntityFormatter {
     if (result != null) {
       String format =
           String.format(
-              "Test Case status for %s against table/column %s is %s in test suite %s",
+              "Test Case %s is %s in %s",
               messageFormatter.getBold(),
-              MessageParser.EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN(),
               messageFormatter.getBold(),
-              testCaseEntity.getTestSuite().getName());
-      return String.format(format, testCaseName, result.getTestCaseStatus());
+              MessageParser.EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN());
+      return String.format(format, testCaseName, getStatusMessage(result.getTestCaseStatus()));
     }
     String format =
-        String.format(
-            "Test Case %s is updated in %s/%s",
-            messageFormatter.getBold(),
-            MessageParser.EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN(),
-            testCaseEntity.getTestSuite().getName());
-    return String.format(format, testCaseName);
+        String.format("Test Case %s is updated in %s", messageFormatter.getBold(), messageFormatter.getBold());
+    return String.format(
+        format, testCaseName, MessageParser.EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN());
+  }
+
+  private String getStatusMessage(TestCaseStatus status) {
+    switch (status) {
+      case Success:
+        return "<span style=\"color:#48CA9E\">Passed</span>";
+      case Failed:
+        return "<span style=\"color:#F24822\">Failed</span>";
+      case Aborted:
+        return "<span style=\"color:#FFBE0E\">Aborted</span>";
+    }
+    return status.value();
   }
 }

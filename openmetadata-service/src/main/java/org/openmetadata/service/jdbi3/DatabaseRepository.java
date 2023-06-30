@@ -70,9 +70,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
   public void storeRelationships(Database database) {
     EntityReference service = database.getService();
     addRelationship(service.getId(), database.getId(), service.getType(), Entity.DATABASE, Relationship.CONTAINS);
-    storeOwner(database, database.getOwner());
-    // Add tag to database relationship
-    applyTags(database);
   }
 
   private List<EntityReference> getSchemas(Database database) throws IOException {

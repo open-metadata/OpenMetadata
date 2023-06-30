@@ -202,6 +202,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const viewProfiler =
     permissions.ViewAll || permissions.ViewBasic || permissions.ViewDataProfile;
   const editTest = permissions.EditAll || permissions.EditTests;
+  const editDataProfile = permissions.EditAll || permissions.EditDataProfile;
 
   const handleSettingModal = (value: boolean) => {
     setSettingModalVisible(value);
@@ -508,8 +509,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                   />
                 )}
 
-                <Tooltip
-                  title={!editTest && t('message.no-permission-for-action')}>
+                {editTest && (
                   <Dropdown
                     menu={{
                       items: addButtonContent,
@@ -518,7 +518,6 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                     trigger={['click']}>
                     <Button
                       data-testid="profiler-add-table-test-btn"
-                      disabled={!editTest}
                       type="primary">
                       <Space>
                         {t('label.add-entity', { entity: t('label.test') })}
@@ -526,22 +525,19 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                       </Space>
                     </Button>
                   </Dropdown>
-                </Tooltip>
+                )}
 
-                <Tooltip
-                  placement="topRight"
-                  title={
-                    editTest
-                      ? t('label.setting-plural')
-                      : t('message.no-permission-for-action')
-                  }>
-                  <Button
-                    data-testid="profiler-setting-btn"
-                    disabled={!editTest}
-                    onClick={() => handleSettingModal(true)}>
-                    <SettingIcon className="self-center" />
-                  </Button>
-                </Tooltip>
+                {editDataProfile && (
+                  <Tooltip
+                    placement="topRight"
+                    title={t('label.setting-plural')}>
+                    <Button
+                      data-testid="profiler-setting-btn"
+                      onClick={() => handleSettingModal(true)}>
+                      <SettingIcon className="self-center" />
+                    </Button>
+                  </Tooltip>
+                )}
               </Space>
             </Col>
           </Row>
