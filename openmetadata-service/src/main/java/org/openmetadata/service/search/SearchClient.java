@@ -254,29 +254,33 @@ public interface SearchClient {
 
   @SneakyThrows
   default void updateElasticSearchFailureStatus(String failedFor, String failureMessage) {
-    long updateTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
-    String recordString =
-        getDao()
-            .entityExtensionTimeSeriesDao()
-            .getExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
-    EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
-    long originalLastUpdate = lastRecord.getTimestamp();
-    lastRecord.setStatus(EventPublisherJob.Status.ACTIVE_WITH_ERROR);
-    lastRecord.setTimestamp(updateTime);
-    lastRecord.setFailure(
-        new Failure()
-            .withSinkError(
-                new FailureDetails()
-                    .withContext(failedFor)
-                    .withLastFailedAt(updateTime)
-                    .withLastFailedReason(failureMessage)));
+    try {
+      long updateTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
+      String recordString =
+          getDao()
+              .entityExtensionTimeSeriesDao()
+              .getExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
+      EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
+      long originalLastUpdate = lastRecord.getTimestamp();
+      lastRecord.setStatus(EventPublisherJob.Status.ACTIVE_WITH_ERROR);
+      lastRecord.setTimestamp(updateTime);
+      lastRecord.setFailure(
+          new Failure()
+              .withSinkError(
+                  new FailureDetails()
+                      .withContext(failedFor)
+                      .withLastFailedAt(updateTime)
+                      .withLastFailedReason(failureMessage)));
 
-    getDao()
-        .entityExtensionTimeSeriesDao()
-        .update(
-            ELASTIC_SEARCH_ENTITY_FQN_STREAM,
-            ELASTIC_SEARCH_EXTENSION,
-            JsonUtils.pojoToJson(lastRecord),
-            originalLastUpdate);
+      getDao()
+          .entityExtensionTimeSeriesDao()
+          .update(
+              ELASTIC_SEARCH_ENTITY_FQN_STREAM,
+              ELASTIC_SEARCH_EXTENSION,
+              JsonUtils.pojoToJson(lastRecord),
+              originalLastUpdate);
+    } catch (Exception e) {
+      // Failure to update
+    }
   }
 }
