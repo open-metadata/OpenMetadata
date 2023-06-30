@@ -117,6 +117,7 @@ public class MigrationWorkflow {
         if (transactionHandler.isInTransaction()) {
           transactionHandler.rollback();
         }
+        throw e;
       }
     }
     LOG.info("[MigrationWorkflow] WorkFlow Completed");
