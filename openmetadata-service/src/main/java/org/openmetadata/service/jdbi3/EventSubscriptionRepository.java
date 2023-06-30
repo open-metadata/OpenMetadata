@@ -144,15 +144,8 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
           }
 
           // Update the existing publisher
-          SubscriptionStatus.Status status = previousPublisher.getEventSubscription().getStatusDetails().getStatus();
-          previousPublisher.updateEventSubscription(eventSubscription);
-          if (status != SubscriptionStatus.Status.ACTIVE && status != SubscriptionStatus.Status.AWAITING_RETRY) {
-            // Restart the previously stopped publisher (in states notStarted, error, retryLimitReached)
-            BatchEventProcessor<EventPubSub.ChangeEventHolder> processor =
-                EventPubSub.addEventHandler(previousPublisher);
-            previousPublisher.setProcessor(processor);
-            LOG.info("Webhook publisher restarted for {}", eventSubscription.getName());
-          }
+          deleteEventSubscriptionPublisher(eventSubscription);
+          addSubscriptionPublisher(eventSubscription);
         } else {
           // Remove the webhook publisher
           removeProcessorForEventSubscription(
@@ -184,7 +177,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     switch (deletedEntity.getAlertType()) {
       case CHANGE_EVENT:
         SubscriptionPublisher publisher = subscriptionPublisherMap.remove(deletedEntity.getId());
-        if (publisher != null) {
+        if (publisher != null && publisher.getProcessor() != null) {
           publisher.getProcessor().halt();
           publisher.awaitShutdown();
           EventPubSub.removeProcessor(publisher.getProcessor());
