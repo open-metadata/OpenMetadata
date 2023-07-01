@@ -65,7 +65,7 @@ def get_table_fqn(entity_link: str) -> str:
         entity_link: entity link
     """
 
-    return entity_link.split("::")[2]
+    return split(entity_link)[1]
 
 
 def get_table_or_column_fqn(entity_link: str) -> str:
