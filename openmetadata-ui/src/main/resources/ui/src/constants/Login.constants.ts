@@ -35,7 +35,7 @@ export const LOGIN_SLIDE = [
     descriptionKey: 'assess-data-reliability-with-data-profiler-lineage',
   },
   {
-    title: 'data-insight',
+    title: 'data-insight-plural',
     image: insightImg,
     descriptionKey: 'fosters-collaboration-among-producers-and-consumers',
   },
