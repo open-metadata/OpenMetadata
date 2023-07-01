@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DashboardServiceRepository;
@@ -206,7 +207,8 @@ public class DashboardServiceResource
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    DashboardService dashboardService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    DashboardService dashboardService =
+        getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
     return decryptOrNullify(securityContext, dashboardService);
   }
 
@@ -420,7 +422,7 @@ public class DashboardServiceResource
       @Parameter(description = "Name of the dashboard service", schema = @Schema(type = "string")) @PathParam("name")
           String name)
       throws IOException {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), false, hardDelete);
   }
 
   @PUT
