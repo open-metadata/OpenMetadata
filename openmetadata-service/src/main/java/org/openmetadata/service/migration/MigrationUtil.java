@@ -60,6 +60,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -88,6 +89,18 @@ public class MigrationUtil {
     }
   }
 
+  @SneakyThrows
+  public static <T extends EntityInterface> void updateFQNHashForEntityWithName(Class<T> clazz, EntityDAO<T> dao) {
+    List<String> jsons = dao.listAfter(new ListFilter(Include.ALL), Integer.MAX_VALUE, "");
+    for (String json : jsons) {
+      T entity = JsonUtils.readValue(json, clazz);
+      dao.update(
+          entity.getId(),
+          FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getFullyQualifiedName())),
+          JsonUtils.pojoToJson(entity));
+    }
+  }
+
   public static MigrationDAO.ServerMigrationSQLTable buildServerMigrationTable(String version, String statement) {
     MigrationDAO.ServerMigrationSQLTable result = new MigrationDAO.ServerMigrationSQLTable();
     result.setVersion(String.valueOf(version));
@@ -112,45 +125,59 @@ public class MigrationUtil {
   }
 
   public static void dataMigrationFQNHashing(CollectionDAO collectionDAO) {
-    // Migration for Entities
-    updateFQNHashForEntity(Bot.class, collectionDAO.botDAO());
-    updateFQNHashForEntity(Chart.class, collectionDAO.chartDAO());
-    updateFQNHashForEntity(Classification.class, collectionDAO.classificationDAO());
-    updateFQNHashForEntity(Container.class, collectionDAO.containerDAO());
-    updateFQNHashForEntity(DashboardDataModel.class, collectionDAO.dashboardDataModelDAO());
-    updateFQNHashForEntity(Dashboard.class, collectionDAO.dashboardDAO());
-    updateFQNHashForEntity(DashboardService.class, collectionDAO.dashboardServiceDAO());
-    updateFQNHashForEntity(DataInsightChart.class, collectionDAO.dataInsightChartDAO());
+    // Migration for Entities with Name as their FQN
+    // We need to quote the FQN, if these entities have "." in their name we are storing it as it is
+    // into the FQN field.
+    updateFQNHashForEntityWithName(Bot.class, collectionDAO.botDAO());
+    updateFQNHashForEntityWithName(User.class, collectionDAO.userDAO());
+    updateFQNHashForEntityWithName(Team.class, collectionDAO.teamDAO());
+
+    // Update all the services
+    updateFQNHashForEntityWithName(DatabaseService.class, collectionDAO.dbServiceDAO());
+    updateFQNHashForEntityWithName(DashboardService.class, collectionDAO.dashboardServiceDAO());
+    updateFQNHashForEntityWithName(MessagingService.class, collectionDAO.messagingServiceDAO());
+    updateFQNHashForEntityWithName(MetadataService.class, collectionDAO.metadataServiceDAO());
+    updateFQNHashForEntityWithName(MlModelService.class, collectionDAO.mlModelServiceDAO());
+    updateFQNHashForEntityWithName(StorageService.class, collectionDAO.storageServiceDAO());
+    updateFQNHashForEntityWithName(PipelineService.class, collectionDAO.pipelineServiceDAO());
+    updateFQNHashForEntity(IngestionPipeline.class, collectionDAO.ingestionPipelineDAO());
+
+    // Update Entities
     updateFQNHashForEntity(Database.class, collectionDAO.databaseDAO());
     updateFQNHashForEntity(DatabaseSchema.class, collectionDAO.databaseSchemaDAO());
-    updateFQNHashForEntity(DatabaseService.class, collectionDAO.dbServiceDAO());
-    updateFQNHashForEntity(EventSubscription.class, collectionDAO.eventSubscriptionDAO());
+    updateFQNHashForEntity(Table.class, collectionDAO.tableDAO());
+    updateFQNHashForEntity(Query.class, collectionDAO.queryDAO());
+    updateFQNHashForEntity(Topic.class, collectionDAO.topicDAO());
+    updateFQNHashForEntity(Dashboard.class, collectionDAO.dashboardDAO());
+    updateFQNHashForEntity(DashboardDataModel.class, collectionDAO.dashboardDataModelDAO());
+    updateFQNHashForEntity(Chart.class, collectionDAO.chartDAO());
+    updateFQNHashForEntity(Container.class, collectionDAO.containerDAO());
+    updateFQNHashForEntity(MlModel.class, collectionDAO.mlModelDAO());
+    updateFQNHashForEntity(Pipeline.class, collectionDAO.pipelineDAO());
+    updateFQNHashForEntity(Metrics.class, collectionDAO.metricsDAO());
+    updateFQNHashForEntity(Report.class, collectionDAO.reportDAO());
+
+    // Update Glossaries & Classifications
+    updateFQNHashForEntity(Classification.class, collectionDAO.classificationDAO());
     updateFQNHashForEntity(Glossary.class, collectionDAO.glossaryDAO());
     updateFQNHashForEntity(GlossaryTerm.class, collectionDAO.glossaryTermDAO());
-    updateFQNHashForEntity(IngestionPipeline.class, collectionDAO.ingestionPipelineDAO());
-    updateFQNHashForEntity(Kpi.class, collectionDAO.kpiDAO());
-    updateFQNHashForEntity(MessagingService.class, collectionDAO.messagingServiceDAO());
-    updateFQNHashForEntity(MetadataService.class, collectionDAO.metadataServiceDAO());
-    updateFQNHashForEntity(Metrics.class, collectionDAO.metricsDAO());
-    updateFQNHashForEntity(MlModel.class, collectionDAO.mlModelDAO());
-    updateFQNHashForEntity(MlModelService.class, collectionDAO.mlModelServiceDAO());
-    updateFQNHashForEntity(Pipeline.class, collectionDAO.pipelineDAO());
-    updateFQNHashForEntity(PipelineService.class, collectionDAO.pipelineServiceDAO());
-    updateFQNHashForEntity(Policy.class, collectionDAO.policyDAO());
-    updateFQNHashForEntity(Query.class, collectionDAO.queryDAO());
-    updateFQNHashForEntity(Report.class, collectionDAO.reportDAO());
-    updateFQNHashForEntity(Role.class, collectionDAO.roleDAO());
-    updateFQNHashForEntity(StorageService.class, collectionDAO.storageServiceDAO());
-    updateFQNHashForEntity(Table.class, collectionDAO.tableDAO());
     updateFQNHashForEntity(Tag.class, collectionDAO.tagDAO());
-    updateFQNHashForEntity(Team.class, collectionDAO.teamDAO());
+
+    // Update DataInsights
+    updateFQNHashForEntity(DataInsightChart.class, collectionDAO.dataInsightChartDAO());
+    updateFQNHashForEntity(Kpi.class, collectionDAO.kpiDAO());
+
+    // Update DQ
     updateFQNHashForEntity(TestCase.class, collectionDAO.testCaseDAO());
     updateFQNHashForEntity(TestConnectionDefinition.class, collectionDAO.testConnectionDefinitionDAO());
     updateFQNHashForEntity(TestDefinition.class, collectionDAO.testDefinitionDAO());
     updateFQNHashForEntity(TestSuite.class, collectionDAO.testSuiteDAO());
-    updateFQNHashForEntity(Topic.class, collectionDAO.topicDAO());
+
+    // Update Misc
+    updateFQNHashForEntity(Policy.class, collectionDAO.policyDAO());
+    updateFQNHashForEntity(EventSubscription.class, collectionDAO.eventSubscriptionDAO());
+    updateFQNHashForEntity(Role.class, collectionDAO.roleDAO());
     updateFQNHashForEntity(Type.class, collectionDAO.typeEntityDAO());
-    updateFQNHashForEntity(User.class, collectionDAO.userDAO());
     updateFQNHashForEntity(WebAnalyticEvent.class, collectionDAO.webAnalyticEventDAO());
     updateFQNHashForEntity(Workflow.class, collectionDAO.workflowDAO());
 
