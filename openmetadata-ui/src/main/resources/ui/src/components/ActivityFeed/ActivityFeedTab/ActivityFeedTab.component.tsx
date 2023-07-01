@@ -56,8 +56,6 @@ import { ReactComponent as TaskIcon } from '/assets/svg/ic-task.svg';
 export const ActivityFeedTab = ({
   fqn,
   owner,
-  tags,
-  description,
   columns,
   entityType,
   onUpdateEntityDetails,
@@ -385,20 +383,16 @@ export const ActivityFeedTab = ({
               {entityType === EntityType.TABLE ? (
                 <TaskTab
                   columns={columns}
-                  description={description}
                   entityType={EntityType.TABLE}
                   owner={owner}
-                  tags={tags}
-                  task={selectedThread}
+                  taskThread={selectedThread}
                   onUpdateEntityDetails={onUpdateEntityDetails}
                 />
               ) : (
                 <TaskTab
-                  description={description}
                   entityType={isUserEntity ? entityTypeTask : entityType}
                   owner={owner}
-                  tags={tags}
-                  task={selectedThread}
+                  taskThread={selectedThread}
                   onUpdateEntityDetails={onUpdateEntityDetails}
                 />
               )}

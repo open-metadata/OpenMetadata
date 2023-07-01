@@ -21,7 +21,7 @@ import {
 import DescriptionTask from './DescriptionTask';
 
 const mockProps = {
-  taskDetail: {
+  taskThread: {
     id: '9542599e-f2f9-46d1-9fc0-d03620351a0d',
     type: 'Task',
     href: 'http://localhost:8585/api/v1/feed/9542599e-f2f9-46d1-9fc0-d03620351a0d',
@@ -84,8 +84,8 @@ describe('Test Description Task Component', () => {
     render(
       <DescriptionTask
         {...mockProps}
-        taskDetail={{
-          ...mockProps.taskDetail,
+        taskThread={{
+          ...mockProps.taskThread,
           task: {
             id: 5,
             assignees: [
@@ -125,8 +125,8 @@ describe('Test Description Task Component', () => {
     render(
       <DescriptionTask
         {...mockProps}
-        taskDetail={{
-          ...mockProps.taskDetail,
+        taskThread={{
+          ...mockProps.taskThread,
           task: {
             id: 5,
             assignees: [

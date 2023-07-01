@@ -22,15 +22,11 @@ import TagSuggestion from './TagSuggestion';
 
 interface Props {
   tags: TagLabel[];
-  value: TagLabel[];
-  onChange?: (value: TagLabel[]) => void;
+  suggestedTags: TagLabel[];
+  onChange: (newTags: TagLabel[]) => void;
 }
 
-export const TagsTabs = ({
-  tags,
-  value: suggestedTags = [],
-  onChange,
-}: Props) => {
+export const TagsTabs = ({ tags, suggestedTags = [] }: Props) => {
   const [diffs, setDiffs] = useState<ArrayChange<TagLabel>[]>([]);
   const [activeTab, setActiveTab] = useState<string>(TaskTabs.NEW);
 
@@ -60,7 +56,7 @@ export const TagsTabs = ({
       </Tabs.TabPane>
       <Tabs.TabPane data-testid="new-tab" key={TaskTabs.NEW} tab="New">
         <div className="m-t-xs">
-          <TagSuggestion value={suggestedTags} onChange={onChange} />
+          <TagSuggestion value={suggestedTags} />
         </div>
       </Tabs.TabPane>
     </Tabs>
