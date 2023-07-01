@@ -130,10 +130,10 @@ public class MigrationUtil {
     // into the FQN field.
     updateFQNHashForEntityWithName(Bot.class, collectionDAO.botDAO());
     updateFQNHashForEntityWithName(User.class, collectionDAO.userDAO());
-    updateFQNHashForEntityWithName(DatabaseService.class, collectionDAO.dbServiceDAO());
     updateFQNHashForEntityWithName(Team.class, collectionDAO.teamDAO());
 
     // Update all the services
+    updateFQNHashForEntityWithName(DatabaseService.class, collectionDAO.dbServiceDAO());
     updateFQNHashForEntityWithName(DashboardService.class, collectionDAO.dashboardServiceDAO());
     updateFQNHashForEntityWithName(MessagingService.class, collectionDAO.messagingServiceDAO());
     updateFQNHashForEntityWithName(MetadataService.class, collectionDAO.metadataServiceDAO());
