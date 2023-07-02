@@ -6,16 +6,21 @@ Everytime that you plan on upgrading OpenMetadata to a newer version, make sure 
 
 Before upgrading your OpenMetadata version we strongly recommend backing up the metadata.
 
-The source of truth is stored in the underlying database (MySQL and Postgres supported). This is important because if we 
-face any unexpected issues during the upgrade process, you will be able to get back to the previous version without any loss.
+The source of truth is stored in the underlying database (MySQL and Postgres supported). During each version upgrade there
+is a database migration process that needs to run. It will directly attack your database and update the shape of the
+data to the newest OpenMetadata release.
+
+It is important that we backup the data because if we face any unexpected issues during the upgrade process, 
+you will be able to get back to the previous version without any loss.
 
 {% note %}
 
-To run the backup and restore commands, please make sure that you are always in the latest `openmetadata-ingestion` version to have all the improvements shipped in the CLI.
-
-Also, make sure you have connectivity between your database (MySQL / PostgreSQL) and the host machine where you will be running the below commands.
+You can learn more about how the migration process works [here](/deployment/upgrade/how-does-it-work).
 
 {% /note %}
+
+- To run the backup and restore commands, please make sure that you are always in the latest `openmetadata-ingestion` version to have all the improvements shipped in the CLI.
+- Also, make sure you have connectivity between your database (MySQL / PostgreSQL) and the host machine where you will be running the below commands.
 
 **1. Create a Virtual Environment and Install the Backup CLI**
 

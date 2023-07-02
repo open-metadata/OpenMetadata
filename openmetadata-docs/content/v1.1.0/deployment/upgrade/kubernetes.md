@@ -83,6 +83,16 @@ helm upgrade openmetadata open-metadata/openmetadata
 
 You might need to pass your own `values.yaml` with the `--values` flag.
 
+Note that in every version upgrade there is a migration process that updates your database to the newest version.
+
+For kubernetes, this process will happen automatically as an upgrade hook.
+
+{% note %}
+
+You can learn more about how the migration process works [here](/deployment/upgrade/how-does-it-work).
+
+{% /note %}
+
 ## Step 5: Re-index all your metadata
 
 Go to Settings -> OpenMetadata -> Elasticsearch
