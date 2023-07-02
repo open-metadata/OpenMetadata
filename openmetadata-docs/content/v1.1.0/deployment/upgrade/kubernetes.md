@@ -116,9 +116,69 @@ If you are running into any issues, double-check what are the default values of 
 
 {% /note %}
 
-## Upgrade OpenMetdata
+## Upgrade OpenMetadata
 
-We upgrade OpenMetadata with the below command:
+### OpenMetadata Helm Chart Values
+
+With `1.1.0` we are moving away from `global.*` helm values under openmetadata helm charts to `openmetadata.config.*`. This change is introduce as helm reserves global chart values across all the helm charts. This conflicted the use of OpenMetadata helm charts along with other helm charts for organizations using common helm values yaml files.
+
+For example, with `1.0.X` Application version Releases, helm values would look like below -
+```yaml
+global:
+  ...
+  authorizer:
+    className: "org.openmetadata.service.security.DefaultAuthorizer"
+    containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
+    initialAdmins:
+      - "user1"
+    botPrincipals:
+      - "<service_application_client_id>"
+    principalDomain: "open-metadata.org"
+  authentication:
+    provider: "google"
+    publicKeys:
+      - "https://www.googleapis.com/oauth2/v3/certs"
+      - "http://openmetadata:8585/api/v1/system/config/jwks"
+    authority: "https://accounts.google.com"
+    clientId: "{client id}"
+    callbackUrl: "http://localhost:8585/callback"
+  ...
+```
+
+With OpenMetadata Application version `1.1.0` and above, the above config will need to be updated as
+```yaml
+openmetadata:
+  config:
+    authorizer:
+      className: "org.openmetadata.service.security.DefaultAuthorizer"
+      containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
+      initialAdmins:
+        - "user1"
+        - "user2"
+      botPrincipals:
+        - "<service_application_client_id>"
+      principalDomain: "open-metadata.org"
+    authentication:
+      provider: "google"
+      publicKeys:
+        - "https://www.googleapis.com/oauth2/v3/certs"
+        - "http://openmetadata:8585/api/v1/system/config/jwks"
+      authority: "https://accounts.google.com"
+      clientId: "{client id}"
+      callbackUrl: "http://localhost:8585/callback"
+```
+
+A quick and easy way to update the config is to use [yq](https://mikefarah.gitbook.io/yq/) utility to manipulate YAML files.
+
+```bash
+yq -i -e '{"openmetadata": {"config": .global}}' openmetadata.values.yml
+```
+
+The above command will update `global.*` with `openmetadata.config.*` yaml config. Please note, the above command is only recommended for users with custom helm values file explicit for OpenMetadata Helm Charts.
+
+For more information, visit the official helm docs for [global chart values](https://helm.sh/docs/chart_template_guide/subcharts_and_globals/#global-chart-values).
+
+Finally, we upgrade OpenMetadata with the below command:
 
 ```commandline
 helm upgrade openmetadata open-metadata/openmetadata

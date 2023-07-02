@@ -5,16 +5,13 @@ slug: /deployment/upgrade
 
 # Upgrade OpenMetadata
 
-## Releases
+## Prerequisites
 
-The OpenMetadata community will be doing feature releases and stable releases. 
+Everytime that you plan on upgrading OpenMetadata to a newer version, make sure to go over all these steps:
 
- - Feature releases are to upgrade your sandbox or POCs to give feedback to the community and any potential bugs that the community needs to fix.
- - Stable releases are to upgrade your production environments and share it with your users.
+### 1. Backup your Metadata
 
-## Backup Metadata
-
-Before upgrading your OpenMetadata version we recommend backing up the metadata.
+Before upgrading your OpenMetadata version we strongly recommend backing up the metadata.
 
 The source of truth is stored in the underlying database (MySQL and Postgres supported). You can refer
 to the following guide for our backup utility:
@@ -28,6 +25,35 @@ to the following guide for our backup utility:
       Learn how to back up MySQL data.
   {% /inlineCallout %}
 {% /inlineCalloutContainer %}
+
+This is important because if we face any unexpected issues during the upgrade process, you will be able to get back
+to the previous version without any loss.
+
+### 2. Review the Deprecation Notice and Breaking Changes
+
+Releases might introduce deprecations and breaking changes that you should be aware of and understand before moving forward.
+
+Below in this page you will find the details for the latest release, and you can find older release notes [here](/deployment/upgrade/versions).
+
+The goal is to answer questions like:
+- *Do I need to update my configurations?*
+- *If I am running connectors externally, did their service connection change?*
+
+Carefully reviewing this will prevent easy errors.
+
+### 3. Update your OpenMetadata Ingestion Client
+
+If you are running the ingestion workflows **externally**, you need to make sure that the Python Client you use is aligned
+with the OpenMetadata server version.
+
+For example, if you are upgrading the server to the version `x.y.z`, you will need to update your client with
+
+```
+pip install openmetadata-ingestion[<plugin>]==x.y.z
+```
+
+The `plugin` parameter is a list of the sources that we want to ingest. An example would look like this `openmetadata-ingestion[mysql,snowflake,s3]==1.1.0`.
+You will find specific instructions for each connector [here](/connectors).
 
 ## Upgrade your installation
 
@@ -78,63 +104,24 @@ If you are upgrading production this is the recommended version to upgrade to.
 
 ### OpenMetadata Helm Chart Values
 
-With `1.1.0` we are moving away from `global.*` helm values under openmetadata helm charts to `openmetadata.config.*`. This change is introduce as helm reserves global chart values across all the helm charts. This conflicted the use of OpenMetadata helm charts along with other helm charts for organizations using common helm values yaml files.
+With `1.1.0` we are moving away from `global.*` helm values under openmetadata helm charts to `openmetadata.config.*`. 
+This change is introduce as helm reserves global chart values across all the helm charts. This conflicted the use of 
+OpenMetadata helm charts along with other helm charts for organizations using common helm values yaml files.
 
-For example, with `1.0.X` Application version Releases, helm values would look like below -
+You can find more information on how to update your `values.yaml` when upgrading to 1.1 [here](/deployment/upgrade/kubernetes)
+
+### Elasticsearch and OpenSearch
+
+We now support ES version up to 7.16. However, this means that we need to handle the internals a bit differently
+for Elasticsearch and OpenSearch. In the server configuration, we added the following key:
+
 ```yaml
-global:
-  ...
-  authorizer:
-    className: "org.openmetadata.service.security.DefaultAuthorizer"
-    containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
-    initialAdmins:
-      - "user1"
-    botPrincipals:
-      - "<service_application_client_id>"
-    principalDomain: "open-metadata.org"
-  authentication:
-    provider: "google"
-    publicKeys:
-      - "https://www.googleapis.com/oauth2/v3/certs"
-      - "http://openmetadata:8585/api/v1/system/config/jwks"
-    authority: "https://accounts.google.com"
-    clientId: "{client id}"
-    callbackUrl: "http://localhost:8585/callback"
-  ...
+elasticsearch:
+  searchType: ${SEARCH_TYPE:- "elasticsearch"} # or opensearch
 ```
 
-With OpenMetadata Application version `1.1.0` and above, the above config will need to be updated as
-```yaml
-openmetadata:
-  config:
-    authorizer:
-      className: "org.openmetadata.service.security.DefaultAuthorizer"
-      containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
-      initialAdmins:
-        - "user1"
-        - "user2"
-      botPrincipals:
-        - "<service_application_client_id>"
-      principalDomain: "open-metadata.org"
-    authentication:
-      provider: "google"
-      publicKeys:
-        - "https://www.googleapis.com/oauth2/v3/certs"
-        - "http://openmetadata:8585/api/v1/system/config/jwks"
-      authority: "https://accounts.google.com"
-      clientId: "{client id}"
-      callbackUrl: "http://localhost:8585/callback"
-```
-
-A quick and easy way to update the config is to use [yq](https://mikefarah.gitbook.io/yq/) utility to manipulate YAML files.
-
-```bash
-yq -i -e '{"openmetadata": {"config": .global}}' openmetadata.values.yml
-```
-
-The above command will update `global.*` with `openmetadata.config.*` yaml config. Please note, the above command is only recommended for users with custom helm values file explicit for OpenMetadata Helm Charts.
-
-For more information, visit the official helm docs for [global chart values](https://helm.sh/docs/chart_template_guide/subcharts_and_globals/#global-chart-values).
+If you use Elasticsearch there's nothing to do. However, if you use OpenSearch, you will need to pass the new
+parameter as `opensearch`.
 
 ### Elasticsearch and OpenSearch
 
