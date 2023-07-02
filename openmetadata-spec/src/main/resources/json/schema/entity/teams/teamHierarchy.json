@@ -20,7 +20,7 @@
     },
     "teamType": {
       "description": "Team type",
-      "$ref": "../../entity/teams/team.json#/definitions/teamType"
+      "$ref": "team.json#/definitions/teamType"
     },
     "name": {
       "description": "A unique name of the team typically the team ID from an identity provider. Example - group Id from LDAP.",

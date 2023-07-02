@@ -59,10 +59,9 @@ public abstract class OpenMetadataApplicationTest {
   public static final String FERNET_KEY_1 = "ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ";
   private static ElasticsearchContainer ELASTIC_SEARCH_CONTAINER;
 
-  public static final boolean RUN_ELASTIC_SEARCH_TESTCASES =
-      Boolean.parseBoolean(System.getProperty("runESTestCases")) ? true : false;
+  public static final boolean RUN_ELASTIC_SEARCH_TESTCASES = Boolean.parseBoolean(System.getProperty("runESTestCases"));
 
-  private static Set<ConfigOverride> configOverrides = new HashSet<>();
+  private static final Set<ConfigOverride> configOverrides = new HashSet<>();
 
   private static final String JDBC_CONTAINER_CLASS_NAME = "org.testcontainers.containers.MySQLContainer";
   private static final String JDBC_CONTAINER_IMAGE = "mysql:8";
@@ -143,7 +142,7 @@ public abstract class OpenMetadataApplicationTest {
     configOverrides.add(ConfigOverride.config("database.password", sqlContainer.getPassword()));
     // Migration overrides
     configOverrides.add(ConfigOverride.config("migrationConfiguration.path", migrationScripsLocation));
-    ConfigOverride[] configOverridesArray = configOverrides.toArray(new ConfigOverride[configOverrides.size()]);
+    ConfigOverride[] configOverridesArray = configOverrides.toArray(new ConfigOverride[0]);
     APP = new DropwizardAppExtension<>(OpenMetadataApplication.class, CONFIG_PATH, configOverridesArray);
 
     // Run System Migrations
@@ -182,11 +181,6 @@ public abstract class OpenMetadataApplicationTest {
 
   public static RestClient getSearchClient() {
     return RestClient.builder(HttpHost.create(ELASTIC_SEARCH_CONTAINER.getHttpHostAddress())).build();
-  }
-
-  public static org.opensearch.client.RestClient getOpenSearchClient() {
-    return org.opensearch.client.RestClient.builder(HttpHost.create(ELASTIC_SEARCH_CONTAINER.getHttpHostAddress()))
-        .build();
   }
 
   public static WebTarget getResource(String collection) {
