@@ -66,6 +66,10 @@ site_menu:
     url: /deployment/ingestion/mwaa
   - category: Deployment / Ingestion / GCS Composer
     url: /deployment/ingestion/gcs-composer
+  - category: Deployment / Ingestion / GitHub Actions
+    url: /deployment/ingestion/github-actions
+  - category: Deployment / Ingestion / Credentials
+    url: /deployment/ingestion/credentials
 
   - category: Deployment / Enable Security
     url: /deployment/security
@@ -593,9 +597,6 @@ site_menu:
 
   - category: Connectors / Custom Connectors
     url: /connectors/custom-connectors
-
-  - category: Connectors / Managing Credentials
-    url: /connectors/credentials
 
   - category: Connectors / Ingestion
     url: /connectors/ingestion

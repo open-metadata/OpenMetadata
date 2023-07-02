@@ -130,4 +130,11 @@ don't hesitate to reach to us in [Slack](https://slack.open-metadata.org/) or di
     href="/deployment/ingestion/gcs-composer" %}
     Run the ingestion process externally from GCS Composer
   {% /inlineCallout %}
+  {% inlineCallout
+    color="violet-70"
+    icon="10k"
+    bold="Airflow"
+    href="/deployment/ingestion/github-actions" %}
+    Run the ingestion process externally from GitHub Actions
+  {% /inlineCallout %}
 {% /inlineCalloutContainer %}
