@@ -14,44 +14,13 @@ You can find more details about Docker deployment [here](/deployment/docker)
 
 {% /note %}
 
-Below we have highlighted the steps needed to upgrade to the latest version with Docker. Make sure to also look [here](/deployment/upgrade/versions/013-to-100) for the specific details related to upgrading to 1.0.0
+Below we have highlighted the steps needed to upgrade to the latest version with Docker. Make sure to also look [here](/deployment/upgrade/versions/100-to-110) for the specific details related to upgrading to 1.0.0
 
-{% note noteType="Warning" %}
+{% partial file="upgrade-prerequisites-110.md" /%}
 
-It is advised to go through [openmetadata release notes](/deployment/upgrade#breaking-changes-from-0130-release) before starting the upgrade process.
+# Upgrade Process
 
-{% /note %}
-
-## Upgrade from 1.0 to 1.1
-
-Your production deployment should go from stable version to stable version. This translated to moving from 1.0 to 1.1 to get the latest stable OpenMetadata release.
-
-Let's go through the required steps:
-
-### 1. Backup Existing OpenMetadata Data using Metadata CLI
-
-- Make sure your instance is connected to the Database server
-- Create a virtual environment to install an upgraded `metadata` version to run the backup command:
-   ```
-    python -m venv venv
-    source venv/bin/activate
-    pip install openmetadata-ingestion~=1.1.0
-   ```
-- Validate the installed `metadata` version with `python -m metadata --version`, which should tell us that we are
-   indeed at 1.1.0. Notice the `python -m metadata` vs. `metadata`.
-- Run the backup using the updated `metadata` CLI:
-    ```
-    python -m metadata backup -u openmetadata_user -p openmetadata_password -H mysql -d openmetadata_db --port 3306
-    ```
-   if using Postgres:
-    ```
-    python -m metadata backup -u openmetadata_user -p openmetadata_password -H postgresql -d openmetadata_db --port 5432 -s public
-    ```
-- This will generate the .sql file which can be used for the backup
-   In our case, the backup file was named `openmetadata_202212201528_backup.sql`. You can copy the name from the backup
-   command output.
-
-### 2. Replace the docker compose file
+## Step 1: Replace the docker compose file
 
 - Stop the running compose deployment with below command 
 ```
@@ -62,7 +31,7 @@ docker compose down
 
 {% note %}
 
-Please make sure to go through [breaking changes and release highlights](/deployment/upgrade/versions/013-to-100).
+Please make sure to go through [breaking changes and release highlights](/deployment/upgrade/versions/100-to-110).
 
 {% /note %}
 
@@ -71,7 +40,7 @@ Please make sure to go through [breaking changes and release highlights](/deploy
 docker compose -f docker-compose.yml up -d
 ```
 
-### 3. Re-index all your metadata
+## Step 2: Re-index all your metadata
 
 Go to Settings -> OpenMetadata -> Search
 
@@ -85,7 +54,7 @@ In the dialog box choose Recreate Indexes to All.
 
 ---
 
-## Upgrade ingestion patch versions
+## Guide for Upgrading ingestion patch versions
 
 During the release lifespan we may publish new patch versions of `openmetadata-ingestion`. If you deployed
 the ingestion container and require one of the fixes or improvements from a new patch release, there's usually no need
@@ -126,7 +95,7 @@ The steps to follow are:
    - ```metadata version```: where we expect to get the same version that was previously installed.
 
 
-### Troubleshooting
+## Troubleshooting
 
 #### Permission Denied when running  ```metadata openmetadata-imports-migration```
 If you have a `Permission Denied` error thrown when running ```metadata openmetadata-imports-migration --change-config-file-path``` you might need to change the permission on the `/opt/airflow/dags` folder. SSH into the ingestion container and check the permission on the folder running the below commands
