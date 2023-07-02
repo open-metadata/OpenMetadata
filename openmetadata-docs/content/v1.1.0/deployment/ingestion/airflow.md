@@ -1,19 +1,16 @@
 ---
-title: Run Connectors in your own Airflow
-slug: /connectors/ingestion/run-connectors-in-airflow
+title: Run the ingestion from your Airflow
+slug: /deployment/ingestion/airflow
 ---
 
-# Run Connectors in your Airflow
+# Run the ingestion from your Airflow
 
 We can use Airflow in different ways:
+
 1. We can [extract metadata](https://docs.open-metadata.org/connectors/pipeline/airflow) from it,
-2. And we can use [connect to the OpenMetadata UI](https://docs.open-metadata.org/deployment/airflow) to deploy Workflows automatically.
+2. And we can [connect it to the OpenMetadata UI](/deployment/ingestion/openmetadata) to deploy Workflows automatically.
 
-In this guide, we will show how to host the ingestion DAGs in your Airflow directly. Note that in each connector
-page (e.g., [Snowflake](https://docs.open-metadata.org/connectors/database/snowflake/airflow)) we are showing
-an example on how to prepare a YAML configuration and run it as a DAG.
-
-Here we are going to explain that a bit deeper and show an alternative process to achieve the same result.
+In this guide, we will show how to host the ingestion DAGs in your Airflow directly.
 
 ## Python Operator
 
@@ -21,12 +18,21 @@ Building a DAG using the `PythonOperator` requires devs to install the `openmeta
 environment. This is a comfortable approach if you have access to the Airflow host and can freely handle
 dependencies.
 
-Installing the dependencies' is as easy as `pip3 install "openmetadata-ingestion[<your-connector>]"`.
+Installing the dependencies' is as easy as:
+
+```
+pip3 install openmetadata-ingestion[<plugin>]==x.y.z
+```
+
+Where `x.y.z` is the version of the OpenMetadata ingestion package. Note that the version needs to match the server version. If we are using the server at 1.1.0, then the ingestion package needs to also be 1.1.0.
+
+The plugin parameter is a list of the sources that we want to ingest. An example would look like this `openmetadata-ingestion[mysql,snowflake,s3]==1.1.0`.
+
+A DAG deployed using a Python Operator would then look like follows
 
 For example, preparing a metadata ingestion DAG with this operator will look as follows:
 
 ```python
-import pathlib
 import yaml
 from datetime import timedelta
 from airflow import DAG
@@ -80,8 +86,10 @@ Note how we are preparing the `PythonOperator` by passing the `python_callable=m
 an argument, where `metadata_ingestion_workflow` is a function that instantiates the `Workflow` class and runs
 the whole process.
 
-The drawback here? You need to install some requirements, which is not always possible. This is why on 0.12.1 and higher
-versions we introduced an alternative approach. More on that below!
+The drawback here? You need to install some requirements, which is not always possible. Here you have two alternatives,
+either you use the `PythonVirtualenvOperator`, or read below on how to run the ingestion with the `DockerOperator`.
+
+{% partial file="run-connectors-class.md" /%}
 
 ## Docker Operator
 
@@ -132,11 +140,11 @@ with models.DAG(
     )
 ```
 
-<Note>
+{% note %}
 
 Make sure to tune out the DAG configurations (`schedule_interval`, `start_date`, etc.) as your use case requires.
 
-</Note>
+{% /note %}
 
 Note that the example uses the image `openmetadata/ingestion-base:0.13.2`. Update that accordingly for higher version
 once they are released. Also, the image version should be aligned with your OpenMetadata server version to avoid
