@@ -10,7 +10,7 @@ with an orchestration system. It does not matter which one, but we need it to ha
 run, fetch the logs, etc. of our workflows.
 
 {% image
-  src="/images/v1.1.0/deployment/ingestion/openmetadata/om-orchestration.drawio.png"
+  src="/images/v1.1.0/deployment/ingestion/openmetadata/om-orchestration.png"
   alt="openmetadata-orchestration"
   caption="OpenMetadata Ingestion Orchestration"
 /%}

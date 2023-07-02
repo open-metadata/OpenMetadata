@@ -15,7 +15,7 @@ In this guide, we will present the different alternatives to run and manage your
 1. Internally, by managing the workflows from OpenMetadata.
 2. Externally, by using any other tool capable or running Python code.
 
-### From OpenMetadata
+### Option 1 - From OpenMetadata
 
 If you want to learn how to configure your setup to run them from OpenMetadata, follow this guide:
 
@@ -29,7 +29,7 @@ If you want to learn how to configure your setup to run them from OpenMetadata, 
   {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-### Externally
+### Option 2 - Externally
 
 If, instead, you want to manage them from any other system, you would need a bit more background:
 1. How does the Ingestion Framework work?
@@ -126,14 +126,14 @@ don't hesitate to reach to us in [Slack](https://slack.open-metadata.org/) or di
   {% inlineCallout
     color="violet-70"
     icon="10k"
-    bold="Airflow"
+    bold="GCS Composer"
     href="/deployment/ingestion/gcs-composer" %}
     Run the ingestion process externally from GCS Composer
   {% /inlineCallout %}
   {% inlineCallout
     color="violet-70"
     icon="10k"
-    bold="Airflow"
+    bold="GitHub Actions"
     href="/deployment/ingestion/github-actions" %}
     Run the ingestion process externally from GitHub Actions
   {% /inlineCallout %}
