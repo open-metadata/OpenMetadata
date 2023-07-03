@@ -44,6 +44,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.StorageConnection;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -205,7 +206,8 @@ public class StorageServiceResource
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    StorageService storageService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    StorageService storageService =
+        getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
     return decryptOrNullify(securityContext, storageService);
   }
 
@@ -414,7 +416,7 @@ public class StorageServiceResource
       @Parameter(description = "Name of the StorageService", schema = @Schema(type = "string")) @PathParam("fqn")
           String fqn)
       throws IOException {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(fqn), false, hardDelete);
   }
 
   @PUT

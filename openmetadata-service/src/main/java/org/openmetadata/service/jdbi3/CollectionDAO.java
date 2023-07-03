@@ -2057,6 +2057,9 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM tag_usage where tagFQNHash = :tagFQNHash AND source = :source")
     void deleteTagLabels(@Bind("source") int source, @Bind("tagFQNHash") String tagFQNHash);
 
+    @SqlUpdate("DELETE FROM tag_usage where tagFQNHash = :tagFQNHash")
+    void deleteTagLabelsByFqn(@Bind("tagFQNHash") String tagFQNHash);
+
     @SqlUpdate("DELETE FROM tag_usage where tagFQNHash LIKE CONCAT(:tagFQNHash, '.%') AND source = :source")
     void deleteTagLabelsByPrefix(@Bind("source") int source, @Bind("tagFQNHash") String tagFQNHash);
 
@@ -3098,20 +3101,6 @@ public interface CollectionDAO {
         @Bind("entityFQNHash") String entityFQNHash,
         @Bind("extension") String extension,
         @Bind("json") String json,
-        @Bind("timestamp") Long timestamp);
-
-    @ConnectionAwareSqlUpdate(
-        value =
-            "UPDATE entity_extension_time_series set entityFQNHash = :entityFQNHash where entityFQN=:entityFQN and extension=:extension and timestamp=:timestamp",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "UPDATE entity_extension_time_series set entityFQNHash = :entityFQNHash  where entityFQN=:entityFQN and extension=:extension and timestamp=:timestamp",
-        connectionType = POSTGRES)
-    void updateEntityFQNHash(
-        @Bind("entityFQNHash") String entityFQNHash,
-        @Bind("entityFQN") String entityFQN,
-        @Bind("extension") String extension,
         @Bind("timestamp") Long timestamp);
 
     @ConnectionAwareSqlUpdate(

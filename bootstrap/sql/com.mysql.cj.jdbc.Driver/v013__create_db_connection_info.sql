@@ -345,3 +345,17 @@ SET json = JSON_INSERT(
 	)	
 )
 WHERE name = 'tableCustomSQLQuery';
+
+-- Modify migrations for service connection of airflow to move password under authType if 
+-- Connection Type as Mysql or Postgres
+
+UPDATE pipeline_service_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.connection.config.connection.password'),
+    '$.connection.config.connection.authType',
+    JSON_OBJECT(),
+    '$.connection.config.connection.authType.password',
+    JSON_EXTRACT(json, '$.connection.config.connection.password'))
+where serviceType = 'Airflow' 
+AND JSON_EXTRACT(json, '$.connection.config.connection.type') in ('Postgres', 'Mysql')
+AND JSON_EXTRACT(json, '$.connection.config.connection.password') IS NOT NULL;
