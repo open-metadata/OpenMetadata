@@ -78,9 +78,6 @@ public class MigrationWorkflow {
 
           LOG.info("[MigrationStep] Transaction Started");
 
-          // Begin Transaction
-          transactionHandler.begin();
-
           // Run Database Migration for all the Migration Steps
           LOG.info(
               "[MigrationStep] Running DataMigration, Version: {}, DatabaseType: {}, FileName: {}",
@@ -88,9 +85,6 @@ public class MigrationWorkflow {
               step.getDatabaseConnectionType(),
               step.getMigrationFileName());
           step.runDataMigration();
-
-          LOG.info("[MigrationStep] Committing Transaction");
-          transactionHandler.commit();
 
           // Run Database Migration for all the Migration Steps
           LOG.info(
@@ -114,9 +108,6 @@ public class MigrationWorkflow {
         // Rollback the transaction
         LOG.error("Encountered Exception in MigrationWorkflow", e);
         LOG.info("[MigrationWorkflow] Rolling Back Transaction");
-        if (transactionHandler.isInTransaction()) {
-          transactionHandler.rollback();
-        }
         throw e;
       }
     }

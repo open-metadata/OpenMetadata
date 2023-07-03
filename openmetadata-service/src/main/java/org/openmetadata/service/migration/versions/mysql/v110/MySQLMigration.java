@@ -57,7 +57,7 @@ public class MySQLMigration implements MigrationStep {
   @Override
   public void runDataMigration() {
     // FQN Hashing Migrations
-    dataMigrationFQNHashing(collectionDAO);
+    dataMigrationFQNHashing(handle, collectionDAO);
   }
 
   @Override
