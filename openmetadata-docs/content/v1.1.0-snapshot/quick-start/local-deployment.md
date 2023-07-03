@@ -145,6 +145,7 @@ pip3 install --upgrade pip setuptools
 ```
 
 ### 5. Install the OpenMetadata Python module using pip
+On macOS, make sure to install XCode prior to running the following command:
 
 ```bash
 pip3 install --upgrade "openmetadata-ingestion[docker]"
