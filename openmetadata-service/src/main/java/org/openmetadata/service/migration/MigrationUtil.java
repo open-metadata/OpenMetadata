@@ -126,7 +126,7 @@ public class MigrationUtil {
   public static <T extends EntityInterface> void readAndProcessEntity(
       Handle handle, String updateSql, Class<T> clazz, EntityDAO<T> dao, boolean withName) throws IOException {
     LOG.debug("Starting Migration for table : {}", dao.getTableName());
-    int limitParam = 100;
+    int limitParam = 1000;
     ListFilter filter = new ListFilter(Include.ALL);
     List<T> entities;
     String after = null;
