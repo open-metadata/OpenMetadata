@@ -44,6 +44,7 @@ import { TagsContainerV2Props } from './TagsContainerV2.interface';
 
 const TagsContainerV2 = ({
   permission,
+  isVersionView,
   selectedTags,
   entityType,
   entityThreadLink,
@@ -134,12 +135,15 @@ const TagsContainerV2 = ({
       source: tagType,
     }));
 
-    await onSelectionChange([
-      ...updatedTags,
-      ...((isGlossaryType
-        ? tags?.[TagSource.Classification]
-        : tags?.[TagSource.Glossary]) ?? []),
-    ]);
+    if (onSelectionChange) {
+      await onSelectionChange([
+        ...updatedTags,
+        ...((isGlossaryType
+          ? tags?.[TagSource.Classification]
+          : tags?.[TagSource.Glossary]) ?? []),
+      ]);
+    }
+
     form.resetFields();
     setIsEditTags(false);
   };
@@ -289,8 +293,12 @@ const TagsContainerV2 = ({
                   onClick={handleAddClick}
                 />
               )}
-              {tagType === TagSource.Classification && requestTagElement}
-              {onThreadLinkSelect && conversationThreadElement}
+              {permission && !isVersionView && (
+                <Row gutter={8}>
+                  {tagType === TagSource.Classification && requestTagElement}
+                  {onThreadLinkSelect && conversationThreadElement}
+                </Row>
+              )}
             </Row>
           )}
         </Space>
@@ -302,6 +310,7 @@ const TagsContainerV2 = ({
     showHeader,
     isEditTags,
     permission,
+    isVersionView,
     isGlossaryType,
     requestTagElement,
     conversationThreadElement,

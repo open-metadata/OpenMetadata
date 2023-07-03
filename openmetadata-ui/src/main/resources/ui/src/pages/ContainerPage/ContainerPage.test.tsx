@@ -60,10 +60,10 @@ jest.mock('components/common/description/Description', () => {
     .mockReturnValue(<div data-testid="description">Description</div>);
 });
 
-jest.mock('components/Tag/TagsContainerV1/TagsContainerV1', () => {
+jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () => {
   return jest
     .fn()
-    .mockReturnValue(<div data-testid="entity-page-info">TagsContainerV1</div>);
+    .mockReturnValue(<div data-testid="entity-page-info">TagsContainerV2</div>);
 });
 
 jest.mock('components/FeedEditor/FeedEditor', () => {

@@ -18,6 +18,7 @@ import { ReactElement } from 'react';
 
 export type TagsContainerV2Props = {
   permission: boolean;
+  isVersionView?: boolean;
   selectedTags: EntityTags[];
   entityType?: string;
   entityThreadLink?: string;
@@ -27,6 +28,6 @@ export type TagsContainerV2Props = {
   showBottomEditButton?: boolean;
   showInlineEditButton?: boolean;
   children?: ReactElement;
-  onSelectionChange: (selectedTags: EntityTags[]) => Promise<void>;
+  onSelectionChange?: (selectedTags: EntityTags[]) => Promise<void>;
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
 };
