@@ -28,17 +28,19 @@ SET json = JSON_INSERT(
     JSON_REMOVE(json, '$.connection.config.configSource.securityConfig.gcsConfig'),
     '$.connection.config.configSource.securityConfig.gcpConfig',
     JSON_EXTRACT(json, '$.connection.config.configSource.securityConfig.gcsConfig')
-) where serviceType in ('Datalake');
+) where serviceType in ('Datalake')
+AND JSON_EXTRACT(json, '$.connection.config.configSource.securityConfig.gcsConfig') IS NOT NULL;
 
 
 -- Rename gcsConfig in dbt to gcpConfig
 UPDATE ingestion_pipeline_entity
 SET json = JSON_INSERT(
     JSON_REMOVE(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcsConfig'),
-    '$.sourceConfig.config.dbtConfigdbtSecurityConfig.gcpConfig',
+    '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig',
     JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcsConfig')
 )
-WHERE json -> '$.sourceConfig.config.type' = 'DBT';
+WHERE json -> '$.sourceConfig.config.type' = 'DBT'
+AND JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcsConfig') IS NOT NULL;
 
 -- Rename chartUrl in chart_entity to sourceUrl
 UPDATE chart_entity
