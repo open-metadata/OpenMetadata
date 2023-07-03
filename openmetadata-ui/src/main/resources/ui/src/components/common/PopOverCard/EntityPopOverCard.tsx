@@ -14,6 +14,7 @@
 import { Popover } from 'antd';
 import { EntityUnion } from 'components/Explore/explore.interface';
 import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import Loader from 'components/Loader/Loader';
 import React, {
   FC,
   HTMLAttributes,
@@ -48,6 +49,7 @@ const PopoverContent: React.FC<{
   entityType: string;
 }> = ({ entityFQN, entityType }) => {
   const [entityData, setEntityData] = useState<EntityUnion>({} as EntityUnion);
+  const [loading, setLoading] = useState(false);
 
   const getData = useCallback(() => {
     const setEntityDetails = (entityDetail: EntityUnion) => {
@@ -107,6 +109,7 @@ const PopoverContent: React.FC<{
     }
 
     if (promise) {
+      setLoading(true);
       promise
         .then((res) => {
           setEntityDetails(res);
@@ -114,6 +117,9 @@ const PopoverContent: React.FC<{
         })
         .catch(() => {
           // do nothing
+        })
+        .finally(() => {
+          setLoading(false);
         });
     }
   }, [entityType, entityFQN]);
@@ -130,6 +136,10 @@ const PopoverContent: React.FC<{
   useEffect(() => {
     onMouseOver();
   }, [entityFQN]);
+
+  if (loading) {
+    return <Loader />;
+  }
 
   return (
     <ExploreSearchCard
