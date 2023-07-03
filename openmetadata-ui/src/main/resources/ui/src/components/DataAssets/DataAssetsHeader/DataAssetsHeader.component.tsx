@@ -30,9 +30,9 @@ import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from 'components/common/TierCard/TierCard';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { getDashboardDetailsPath } from 'constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
+import { DE_ACTIVE_COLOR, getDashboardDetailsPath } from 'constants/constants';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
@@ -47,9 +47,9 @@ import {
   ThreadType,
 } from 'generated/entity/feed/thread';
 import { useClipboard } from 'hooks/useClipBoard';
-import { t } from 'i18next';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { getActiveAnnouncement, getFeedCount } from 'rest/feedsAPI';
 import { getCurrentUserId, getEntityDetailLink } from 'utils/CommonUtils';
@@ -62,7 +62,7 @@ import {
 import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { bytesToSize } from 'utils/StringsUtils';
 import { getTierTags, getUsagePercentile } from 'utils/TableUtils';
-import { showErrorToast, showInfoToast } from 'utils/ToastUtils';
+import { showErrorToast } from 'utils/ToastUtils';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
@@ -119,6 +119,8 @@ export const DataAssetsHeader = ({
   onDisplayNameUpdate,
 }: DataAssetsHeaderProps) => {
   const USERId = getCurrentUserId();
+  const { t } = useTranslation();
+  const { isTourPage } = useTourProvider();
   const { onCopyToClipBoard } = useClipboard(window.location.href);
   const [taskCount, setTaskCount] = useState(0);
   const history = useHistory();
@@ -129,6 +131,7 @@ export const DataAssetsHeader = ({
       ) : null,
     [dataAsset]
   );
+  const [copyTooltip, setCopyTooltip] = useState<string>();
 
   const { entityName, tier, isFollowing, version, followers } = useMemo(
     () => ({
@@ -179,8 +182,10 @@ export const DataAssetsHeader = ({
   };
 
   useEffect(() => {
-    fetchActiveAnnouncement();
-    fetchTaskCount();
+    if (dataAsset.fullyQualifiedName && !isTourPage) {
+      fetchActiveAnnouncement();
+      fetchTaskCount();
+    }
   }, [dataAsset.fullyQualifiedName]);
 
   const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(() => {
@@ -189,46 +194,6 @@ export const DataAssetsHeader = ({
       breadcrumbs: [],
     };
     switch (entityType) {
-      default:
-      case EntityType.TABLE:
-        const tableDetails = dataAsset as Table;
-
-        returnData.extraInfo = (
-          <>
-            {tableDetails.tableType && (
-              <ExtraInfoLabel
-                label={t('label.type')}
-                value={tableDetails.tableType}
-              />
-            )}
-            {tableDetails?.usageSummary && (
-              <ExtraInfoLabel
-                label={t('label.usage')}
-                value={getUsagePercentile(
-                  tableDetails.usageSummary?.weeklyStats?.percentileRank || 0,
-                  false
-                )}
-              />
-            )}
-            {tableDetails?.profile?.columnCount && (
-              <ExtraInfoLabel
-                label={t('label.column-plural')}
-                value={tableDetails.profile?.columnCount}
-              />
-            )}
-            {tableDetails?.profile?.rowCount && (
-              <ExtraInfoLabel
-                label={t('label.row-plural')}
-                value={tableDetails.profile?.rowCount}
-              />
-            )}
-          </>
-        );
-
-        returnData.breadcrumbs = getBreadcrumbForTable(tableDetails);
-
-        break;
-
       case EntityType.TOPIC:
         const topicDetails = dataAsset as Topic;
         returnData.breadcrumbs =
@@ -397,6 +362,46 @@ export const DataAssetsHeader = ({
           getBreadcrumbForEntitiesWithServiceOnly(dataModelDetails);
 
         break;
+
+      case EntityType.TABLE:
+      default:
+        const tableDetails = dataAsset as Table;
+
+        returnData.extraInfo = (
+          <>
+            {tableDetails.tableType && (
+              <ExtraInfoLabel
+                label={t('label.type')}
+                value={tableDetails.tableType}
+              />
+            )}
+            {tableDetails?.usageSummary && (
+              <ExtraInfoLabel
+                label={t('label.usage')}
+                value={getUsagePercentile(
+                  tableDetails.usageSummary?.weeklyStats?.percentileRank || 0,
+                  false
+                )}
+              />
+            )}
+            {tableDetails?.profile?.columnCount && (
+              <ExtraInfoLabel
+                label={t('label.column-plural')}
+                value={tableDetails.profile?.columnCount}
+              />
+            )}
+            {tableDetails?.profile?.rowCount && (
+              <ExtraInfoLabel
+                label={t('label.row-plural')}
+                value={tableDetails.profile?.rowCount}
+              />
+            )}
+          </>
+        );
+
+        returnData.breadcrumbs = getBreadcrumbForTable(tableDetails);
+
+        break;
     }
 
     return returnData;
@@ -419,7 +424,8 @@ export const DataAssetsHeader = ({
 
   const handleShareButtonClick = async () => {
     await onCopyToClipBoard();
-    showInfoToast(`Link copied to clipboard`, 2000);
+    setCopyTooltip(t('message.copy-to-clipboard'));
+    setTimeout(() => setCopyTooltip(''), 2000);
   };
 
   return (
@@ -461,24 +467,19 @@ export const DataAssetsHeader = ({
                         })}
                       </span>
                     )}
-                    <Tooltip
-                      placement="topRight"
-                      title={
-                        permissions.EditAll || permissions.EditTags
-                          ? ''
-                          : NO_PERMISSION_FOR_ACTION
-                      }>
+
+                    {(permissions.EditAll || permissions.EditTags) && (
                       <Button
                         className="flex-center p-0"
                         data-testid="edit-tier"
                         disabled={
                           !(permissions.EditAll || permissions.EditTags)
                         }
-                        icon={<EditIcon width="14px" />}
+                        icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
                         size="small"
                         type="text"
                       />
-                    </Tooltip>
+                    )}
                   </Space>
                 </TierCard>
                 {extraInfo}
@@ -505,16 +506,22 @@ export const DataAssetsHeader = ({
                 </Button>
                 <Button
                   className="w-16 p-0"
+                  data-testid="entity-follow-button"
                   icon={
                     <Icon component={isFollowing ? StarFilledIcon : StarIcon} />
                   }
                   onClick={onFollowClick}>
                   <Typography.Text>{followers}</Typography.Text>
                 </Button>
-                <Button
-                  icon={<Icon component={ShareIcon} />}
-                  onClick={handleShareButtonClick}
-                />
+                <Tooltip
+                  open={!isEmpty(copyTooltip)}
+                  placement="bottomRight"
+                  title={copyTooltip}>
+                  <Button
+                    icon={<Icon component={ShareIcon} />}
+                    onClick={handleShareButtonClick}
+                  />
+                </Tooltip>
                 <ManageButton
                   allowSoftDelete={!dataAsset.deleted}
                   canDelete={permissions.Delete}
@@ -553,8 +560,8 @@ export const DataAssetsHeader = ({
       {isAnnouncementDrawerOpen && (
         <AnnouncementDrawer
           createPermission={permissions?.EditAll}
-          entityFQN={dataAsset.fullyQualifiedName || ''}
-          entityName={entityName || ''}
+          entityFQN={dataAsset.fullyQualifiedName ?? ''}
+          entityName={entityName ?? ''}
           entityType={entityType}
           open={isAnnouncementDrawerOpen}
           onClose={() => setIsAnnouncementDrawer(false)}

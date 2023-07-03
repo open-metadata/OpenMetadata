@@ -17,10 +17,6 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import { CellRendered } from 'components/ContainerDetail/ContainerDataModel/ContainerDataModel.interface';
 import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TableTags from 'components/TableTags/TableTags.component';
-import {
-  GlossaryTermDetailsProps,
-  TagsDetailsProps,
-} from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
 import { Column } from 'generated/entity/data/dashboardDataModel';
 import { TagLabel, TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, isUndefined, map } from 'lodash';
@@ -32,11 +28,6 @@ import {
   updateDataModelColumnTags,
 } from 'utils/DataModelsUtils';
 import { getEntityName } from 'utils/EntityUtils';
-import {
-  getGlossaryTermHierarchy,
-  getGlossaryTermsList,
-} from 'utils/GlossaryUtils';
-import { getAllTagsList, getTagsHierarchy } from 'utils/TagsUtils';
 import { ModelTabProps } from './ModelTab.interface';
 
 const ModelTab = ({
@@ -48,40 +39,6 @@ const ModelTab = ({
 }: ModelTabProps) => {
   const { t } = useTranslation();
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-  const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
-  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
-
-  const [glossaryTags, setGlossaryTags] = useState<GlossaryTermDetailsProps[]>(
-    []
-  );
-  const [classificationTags, setClassificationTags] = useState<
-    TagsDetailsProps[]
-  >([]);
-
-  const fetchGlossaryTags = async () => {
-    setIsGlossaryLoading(true);
-    try {
-      const glossaryTermList = await getGlossaryTermsList();
-      setGlossaryTags(glossaryTermList);
-    } catch {
-      setTagFetchFailed(true);
-    } finally {
-      setIsGlossaryLoading(false);
-    }
-  };
-
-  const fetchClassificationTags = async () => {
-    setIsTagLoading(true);
-    try {
-      const tags = await getAllTagsList();
-      setClassificationTags(tags);
-    } catch {
-      setTagFetchFailed(true);
-    } finally {
-      setIsTagLoading(false);
-    }
-  };
 
   const handleFieldTagsChange = useCallback(
     async (selectedTags: EntityTags[], editColumnTag: Column) => {
@@ -192,16 +149,11 @@ const ModelTab = ({
         width: 300,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            dataTestId="classification-tags"
-            fetchTags={fetchClassificationTags}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasEditTagsPermission}
             index={index}
             isReadOnly={isReadOnly}
-            isTagLoading={isTagLoading}
             record={record}
-            tagFetchFailed={tagFetchFailed}
-            tagList={getTagsHierarchy(classificationTags)}
             tags={tags}
             type={TagSource.Classification}
           />
@@ -215,16 +167,11 @@ const ModelTab = ({
         width: 300,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            dataTestId="glossary-tags"
-            fetchTags={fetchGlossaryTags}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasEditTagsPermission}
             index={index}
             isReadOnly={isReadOnly}
-            isTagLoading={isGlossaryLoading}
             record={record}
-            tagFetchFailed={tagFetchFailed}
-            tagList={getGlossaryTermHierarchy(glossaryTags)}
             tags={tags}
             type={TagSource.Glossary}
           />
@@ -232,18 +179,11 @@ const ModelTab = ({
       },
     ],
     [
-      fetchClassificationTags,
-      fetchGlossaryTags,
-      handleFieldTagsChange,
-      glossaryTags,
-      classificationTags,
-      tagFetchFailed,
+      isReadOnly,
       hasEditTagsPermission,
       editColumnDescription,
       hasEditDescriptionPermission,
-      isReadOnly,
-      isTagLoading,
-      isGlossaryLoading,
+      handleFieldTagsChange,
     ]
   );
 

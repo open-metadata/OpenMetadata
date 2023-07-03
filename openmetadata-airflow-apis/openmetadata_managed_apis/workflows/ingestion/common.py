@@ -83,9 +83,11 @@ class GetServiceException(Exception):
 
     def __init__(self, service_type: str, service_name: str):
         self.message = (
-            f"Could not get service from type {service_type}. This means that the"
+            f"Could not get service from type [{service_type}]. This means that the"
             " OpenMetadata client running in the Airflow host had issues getting"
-            f" the service {service_name}. Validate your ingestion-bot authentication."
+            f" the service [{service_name}]. Make sure the ingestion-bot JWT token"
+            " is valid and that the Workflow is deployed with the latest one. If this error"
+            " persists, recreate the JWT token and redeploy the Workflow."
         )
         super().__init__(self.message)
 

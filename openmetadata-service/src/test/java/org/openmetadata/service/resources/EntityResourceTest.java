@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
@@ -113,7 +114,6 @@ import org.elasticsearch.xcontent.XContentParser;
 import org.elasticsearch.xcontent.json.JsonXContent;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.junit.Assert;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -556,10 +556,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     List<UUID> createdUUIDs = new ArrayList<>();
     for (int i = 0; i < maxEntities; i++) {
-      createdUUIDs.add(
-          createEntity(createRequest(getEntityName(test, i + 1), "", null, null), ADMIN_AUTH_HEADERS).getId());
+      createdUUIDs.add(createEntity(createRequest(test, i + 1), ADMIN_AUTH_HEADERS).getId());
     }
-    T entity = createEntity(createRequest(getEntityName(test, 0), "", null, null), ADMIN_AUTH_HEADERS);
+    T entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
     deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
 
     Predicate<T> matchDeleted = e -> e.getId().equals(entity.getId());
@@ -1647,10 +1646,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       }
       for (ElasticSearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType :
           ElasticSearchIndexDefinition.ElasticSearchIndexType.values()) {
-        // check all the indexes are created sucessfully
-        Assert.assertTrue(
-            "Index name not found in Elasticsearch response " + elasticSearchIndexType.indexName,
-            indexNamesFromResponse.contains(elasticSearchIndexType.indexName));
+        // check all the indexes are created successfully
+        assertTrue(
+            indexNamesFromResponse.contains(elasticSearchIndexType.indexName),
+            "Index name not found in Elasticsearch response " + elasticSearchIndexType.indexName);
       }
       client.close();
     }
@@ -1706,7 +1705,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         entityIds.add(sourceAsMap.get("id").toString());
       }
       // verify if it is deleted from the search as well
-      assertTrue(!entityIds.contains(entity.getId().toString()));
+      assertFalse(entityIds.contains(entity.getId().toString()));
     }
   }
 
@@ -1758,11 +1757,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       for (SearchHit hit : hits) {
         Map<String, Object> sourceAsMap = hit.getSourceAsMap();
         if (sourceAsMap.get("id").toString().equals(entity.getId().toString())) {
+          @SuppressWarnings("unchecked")
           List<Map<String, String>> listTags = (List<Map<String, String>>) sourceAsMap.get("tags");
-          listTags.forEach(
-              tempMap -> {
-                fqnList.add(tempMap.get("tagFQN"));
-              });
+          listTags.forEach(tempMap -> fqnList.add(tempMap.get("tagFQN")));
           break;
         }
       }
@@ -1777,16 +1774,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       for (SearchHit hit : hits) {
         Map<String, Object> sourceAsMap = hit.getSourceAsMap();
         if (sourceAsMap.get("id").toString().equals(entity.getId().toString())) {
+          @SuppressWarnings("unchecked")
           List<Map<String, String>> listTags = (List<Map<String, String>>) sourceAsMap.get("tags");
-          listTags.forEach(
-              tempMap -> {
-                fqnList.add(tempMap.get("tagFQN"));
-              });
+          listTags.forEach(tempMap -> fqnList.add(tempMap.get("tagFQN")));
           break;
         }
       }
       // check if the relationships of tag are also deleted in search
-      assertTrue(!fqnList.contains(tagLabel.getTagFQN()));
+      assertFalse(fqnList.contains(tagLabel.getTagFQN()));
     }
   }
 
@@ -1794,14 +1789,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     Map<String, ContextParser<Object, ? extends Aggregation>> map = new HashMap<>();
     map.put(TopHitsAggregationBuilder.NAME, (p, c) -> ParsedTopHits.fromXContent(p, (String) c));
     map.put(StringTerms.NAME, (p, c) -> ParsedStringTerms.fromXContent(p, (String) c));
-    List<NamedXContentRegistry.Entry> entries =
-        map.entrySet().stream()
-            .map(
-                entry ->
-                    new NamedXContentRegistry.Entry(
-                        Aggregation.class, new ParseField(entry.getKey()), entry.getValue()))
-            .collect(Collectors.toList());
-    return entries;
+    return map.entrySet().stream()
+        .map(
+            entry ->
+                new NamedXContentRegistry.Entry(Aggregation.class, new ParseField(entry.getKey()), entry.getValue()))
+        .collect(Collectors.toList());
   }
 
   private static SearchResponse getResponseFormSearch(String indexName) throws HttpResponseException {
@@ -1813,8 +1805,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       XContentParser parser =
           JsonXContent.jsonXContent.createParser(registry, DeprecationHandler.IGNORE_DEPRECATIONS, result);
       response = SearchResponse.fromXContent(parser);
-    } catch (IOException e) {
-      System.out.println("exception " + e);
     } catch (Exception e) {
       System.out.println("exception " + e);
     }
@@ -2504,7 +2494,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
    * elements of T, validate lists
    */
   public <P> void assertListProperty(List<P> expected, List<P> actual, BiConsumer<P, P> validate) {
-    if (expected == null && actual == null) {
+    if (nullOrEmpty(expected) && nullOrEmpty(actual)) {
       return;
     }
 
@@ -2516,6 +2506,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   protected void assertEntityReferences(List<EntityReference> expectedList, List<EntityReference> actualList) {
+    if (nullOrEmpty(expectedList) && nullOrEmpty(actualList)) {
+      return;
+    }
     for (EntityReference expected : expectedList) {
       EntityReference actual =
           actualList.stream().filter(a -> EntityUtil.entityReferenceMatch.test(a, expected)).findAny().orElse(null);

@@ -66,7 +66,7 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
 
   @Override
   public void storeRelationships(TestConnectionDefinition entity) {
-    storeOwner(entity, entity.getOwner());
+    // No relationships to store beyond what is stored in the super class
   }
 
   @Override

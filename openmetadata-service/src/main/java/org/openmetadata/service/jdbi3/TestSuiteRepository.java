@@ -77,7 +77,6 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public void storeRelationships(TestSuite entity) throws IOException {
-    storeOwner(entity, entity.getOwner());
     if (entity.getExecutable()) {
       storeExecutableRelationship(entity);
     }

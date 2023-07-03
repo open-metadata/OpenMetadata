@@ -22,6 +22,7 @@ from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseReq
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
+from metadata.generated.schema.metadataIngestion.dbtPipeline import DbtPipeline
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
@@ -33,7 +34,14 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.source.database.database_service import DataModelLink
-from metadata.utils.dbt_config import DbtFiles, DbtObjects, get_dbt_details
+from metadata.ingestion.source.database.dbt.dbt_config import get_dbt_details
+from metadata.ingestion.source.database.dbt.models import (
+    DbtFiles,
+    DbtFilteredModel,
+    DbtObjects,
+)
+from metadata.utils import fqn
+from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -131,6 +139,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = DbtServiceTopology()
     context = create_source_context(topology)
+    source_config: DbtPipeline
 
     def remove_manifest_non_required_keys(self, manifest_dict: dict):
         """
@@ -152,9 +161,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         )
 
     def get_dbt_files(self) -> DbtFiles:
-        dbt_files = get_dbt_details(
-            self.source_config.dbtConfigSource  # pylint: disable=no-member
-        )
+        dbt_files = get_dbt_details(self.source_config.dbtConfigSource)
         self.context.dbt_files = dbt_files
         yield dbt_files
 
@@ -246,3 +253,30 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         After test cases has been processed, add the tests results info
         """
+
+    def is_filtered(
+        self, database_name: str, schema_name: str, table_name: str
+    ) -> DbtFilteredModel:
+        """
+        Function used to identify the filtered models
+        """
+        # pylint: disable=protected-access
+        model_fqn = fqn._build(str(database_name), str(schema_name), str(table_name))
+        is_filtered = False
+        reason = None
+        message = None
+
+        if filter_by_table(self.source_config.tableFilterPattern, table_name):
+            reason = "table"
+            is_filtered = True
+        if filter_by_schema(self.source_config.schemaFilterPattern, schema_name):
+            reason = "schema"
+            is_filtered = True
+        if filter_by_database(self.source_config.databaseFilterPattern, database_name):
+            reason = "database"
+            is_filtered = True
+        if is_filtered:
+            message = f"Model Filtered due to {reason} filter pattern"
+        return DbtFilteredModel(
+            is_filtered=is_filtered, message=message, model_fqn=model_fqn
+        )

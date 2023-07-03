@@ -13,12 +13,12 @@
 
 import { Space, Table as AntdTable, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { ROUTES } from 'constants/constants';
+import classNames from 'classnames';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { mockDatasetData } from 'constants/mockTourData.constants';
 import { t } from 'i18next';
 import { isEmpty, lowerCase } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
 import { getSampleDataByTableId } from 'rest/tableAPI';
 import { WORKFLOWS_PROFILER_DOCS } from '../../constants/docs.constants';
 import { Table } from '../../generated/entity/data/table';
@@ -34,16 +34,11 @@ import {
   SampleDataType,
 } from './sample.interface';
 import './SampleDataTable.style.less';
-
 const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
-  const location = useLocation();
+  const { isTourPage } = useTourProvider();
+
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);
-
-  const isTourActive = useMemo(
-    () => location.pathname.includes(ROUTES.TOUR),
-    [location.pathname]
-  );
 
   const getSampleDataWithType = (table: Table) => {
     const { sampleData, columns } = table;
@@ -96,12 +91,12 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
 
   useEffect(() => {
     setIsLoading(true);
-    if (!isTableDeleted && tableId && !isTourActive) {
+    if (!isTableDeleted && tableId && !isTourPage) {
       fetchSampleData();
     } else {
       setIsLoading(false);
     }
-    if (isTourActive) {
+    if (isTourPage) {
       setSampleData(
         getSampleDataWithType({
           columns: mockDatasetData.tableDetails.columns,
@@ -139,7 +134,12 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
   }
 
   return (
-    <div className="m-md" data-testid="sample-data" id="sampleDataDetails">
+    <div
+      className={classNames('m-md', {
+        'h-70vh overflow-hidden': isTourPage,
+      })}
+      data-testid="sample-data"
+      id="sampleDataDetails">
       <AntdTable
         bordered
         columns={sampleData?.columns}

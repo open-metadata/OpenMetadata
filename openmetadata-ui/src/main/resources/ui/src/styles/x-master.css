@@ -25,10 +25,6 @@ p {
   margin-bottom: 0px;
 }
 
-pre {
-  font-family: 'Source Code Pro', sans-serif;
-}
-
 /* Bootstrap Extended */
 .form-control:focus,
 .btn.focus,
@@ -41,9 +37,6 @@ pre {
 .table td,
 .table th {
   padding: 0.75em;
-}
-.text-success {
-  color: #28a745 !important;
 }
 .text-danger {
   color: #cb2431 !important;
@@ -716,12 +709,6 @@ body .profiler-graph .recharts-active-dot circle {
   width: calc(100% - 330px);
 }
 
-/* page-container v1 */
-
-.full-height {
-  height: calc(100vh - 110px);
-}
-
 /* 64 header + ( 16 + 16 )spacing Y = 96*/
 #left-panel {
   position: fixed;
@@ -879,7 +866,7 @@ code {
 
 .page-not-found-container {
   width: 100%;
-  height: calc(100% - 68px);
+  height: 100vh;
   display: flex;
 }
 
@@ -1151,7 +1138,7 @@ div.ant-typography-ellipsis-custom {
 
 .ant-dropdown-menu-item-selected {
   color: #0968da;
-  background-color: #7147e825;
+  background-color: #e6f4ff;
 }
 
 .table-query-editor pre.CodeMirror-line {

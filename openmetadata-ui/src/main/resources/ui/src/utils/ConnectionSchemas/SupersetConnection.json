@@ -112,15 +112,101 @@
               "description": "Username to connect to Postgres. This user should have privileges to read all the metadata in Postgres.",
               "type": "string"
             },
-            "password": {
-              "title": "Password",
-              "description": "Password to connect to Postgres.",
-              "type": "string",
-              "format": "password"
+            "authType": {
+              "title": "Auth Configuration Type",
+              "description": "Choose Auth Config Type.",
+              "oneOf": [
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "Basic Auth",
+                  "description": "Common Database Connection Config",
+                  "javaType": "org.openmetadata.schema.services.connections.database.common.basicAuth",
+                  "type": "object",
+                  "properties": {
+                    "password": {
+                      "title": "Password",
+                      "description": "Password to connect to source.",
+                      "type": "string",
+                      "format": "password"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "IAM Auth Configuration Source",
+                  "description": "IAM Auth Database Connection Config",
+                  "type": "object",
+                  "javaType": "org.openmetadata.schema.services.connections.database.common.IamAuthConfig",
+                  "properties": {
+                    "awsConfig": {
+                      "title": "AWS Credentials Configuration",
+
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "description": "AWS credentials configs.",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
+                      "properties": {
+                        "awsAccessKeyId": {
+                          "title": "AWS Access Key ID",
+                          "description": "AWS Access key ID.",
+                          "type": "string"
+                        },
+                        "awsSecretAccessKey": {
+                          "title": "AWS Secret Access Key",
+                          "description": "AWS Secret Access Key.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "awsRegion": {
+                          "title": "AWS Region",
+                          "description": "AWS Region",
+                          "type": "string"
+                        },
+                        "awsSessionToken": {
+                          "title": "AWS Session Token",
+                          "description": "AWS Session Token.",
+                          "type": "string"
+                        },
+                        "endPointURL": {
+                          "title": "Endpoint URL",
+                          "description": "EndPoint URL for the AWS",
+                          "type": "string",
+                          "format": "uri"
+                        },
+                        "profileName": {
+                          "title": "Profile Name",
+                          "description": "The name of a profile to use with the boto session.",
+                          "type": "string"
+                        },
+                        "assumeRoleArn": {
+                          "title": "Role Arn for Assume Role",
+                          "description": "The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume Role",
+                          "type": "string"
+                        },
+                        "assumeRoleSessionName": {
+                          "title": "Role Session Name for Assume Role",
+                          "description": "An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role is assumed by different principals or for different reasons. Required Field in case of Assume Role",
+                          "type": "string",
+                          "default": "OpenMetadataSession"
+                        },
+                        "assumeRoleSourceIdentity": {
+                          "title": "Source Identity for Assume Role",
+                          "description": "The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume Role",
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": ["awsRegion"]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
             },
             "hostPort": {
               "title": "Host and Port",
-              "description": "Host and port of the Postgres service.",
+              "description": "Host and port of the source service.",
               "type": "string"
             },
             "database": {
@@ -276,11 +362,97 @@
               "description": "Username to connect to MySQL. This user should have privileges to read all the metadata in Mysql.",
               "type": "string"
             },
-            "password": {
-              "title": "Password",
-              "description": "Password to connect to MySQL.",
-              "type": "string",
-              "format": "password"
+            "authType": {
+              "title": "Auth Configuration Type",
+              "description": "Choose Auth Config Type.",
+              "oneOf": [
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "Basic Auth",
+                  "description": "Common Database Connection Config",
+                  "javaType": "org.openmetadata.schema.services.connections.database.common.basicAuth",
+                  "type": "object",
+                  "properties": {
+                    "password": {
+                      "title": "Password",
+                      "description": "Password to connect to source.",
+                      "type": "string",
+                      "format": "password"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "IAM Auth Configuration Source",
+                  "description": "IAM Auth Database Connection Config",
+                  "type": "object",
+                  "javaType": "org.openmetadata.schema.services.connections.database.common.IamAuthConfig",
+                  "properties": {
+                    "awsConfig": {
+                      "title": "AWS Credentials Configuration",
+
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "description": "AWS credentials configs.",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
+                      "properties": {
+                        "awsAccessKeyId": {
+                          "title": "AWS Access Key ID",
+                          "description": "AWS Access key ID.",
+                          "type": "string"
+                        },
+                        "awsSecretAccessKey": {
+                          "title": "AWS Secret Access Key",
+                          "description": "AWS Secret Access Key.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "awsRegion": {
+                          "title": "AWS Region",
+                          "description": "AWS Region",
+                          "type": "string"
+                        },
+                        "awsSessionToken": {
+                          "title": "AWS Session Token",
+                          "description": "AWS Session Token.",
+                          "type": "string"
+                        },
+                        "endPointURL": {
+                          "title": "Endpoint URL",
+                          "description": "EndPoint URL for the AWS",
+                          "type": "string",
+                          "format": "uri"
+                        },
+                        "profileName": {
+                          "title": "Profile Name",
+                          "description": "The name of a profile to use with the boto session.",
+                          "type": "string"
+                        },
+                        "assumeRoleArn": {
+                          "title": "Role Arn for Assume Role",
+                          "description": "The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume Role",
+                          "type": "string"
+                        },
+                        "assumeRoleSessionName": {
+                          "title": "Role Session Name for Assume Role",
+                          "description": "An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role is assumed by different principals or for different reasons. Required Field in case of Assume Role",
+                          "type": "string",
+                          "default": "OpenMetadataSession"
+                        },
+                        "assumeRoleSourceIdentity": {
+                          "title": "Source Identity for Assume Role",
+                          "description": "The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume Role",
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": ["awsRegion"]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
             },
             "hostPort": {
               "title": "Host and Port",

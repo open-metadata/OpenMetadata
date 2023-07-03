@@ -113,6 +113,16 @@ export const getTestCaseByFqn = async (
 
   return response;
 };
+export const getTestCaseById = async (
+  id: string,
+  params?: Pick<ListParams, 'fields' | 'include'>
+) => {
+  const response = await APIClient.get<TestCase>(`${testCaseUrl}/${id}`, {
+    params,
+  });
+
+  return response;
+};
 
 export const createTestCase = async (data: CreateTestCase) => {
   const response = await APIClient.post<
@@ -128,7 +138,7 @@ export const updateTestCaseById = async (id: string, data: Operation[]) => {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
 
-  const response = await APIClient.patch<Operation[], AxiosResponse<TestSuite>>(
+  const response = await APIClient.patch<Operation[], AxiosResponse<TestCase>>(
     `${testCaseUrl}/${id}`,
     data,
     configOptions
@@ -137,9 +147,10 @@ export const updateTestCaseById = async (id: string, data: Operation[]) => {
   return response.data;
 };
 
-export const getTestCaseExecutionSummary = async () => {
+export const getTestCaseExecutionSummary = async (testSuiteId?: string) => {
   const response = await APIClient.get<TestSummary>(
-    `${testCaseUrl}/executionSummary`
+    `${testCaseUrl}/executionSummary`,
+    { params: { testSuiteId } }
   );
 
   return response.data;

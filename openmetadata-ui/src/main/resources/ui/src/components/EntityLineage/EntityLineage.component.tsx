@@ -12,8 +12,8 @@
  */
 
 import { Modal, Space } from 'antd';
-import AppState from 'AppState';
 import { AxiosError } from 'axios';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { mockDatasetData } from 'constants/mockTourData.constants';
 import {
   debounce,
@@ -153,6 +153,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   isFullScreen = false,
 }: EntityLineageProp) => {
   const { t } = useTranslation();
+  const { isTourOpen } = useTourProvider();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
@@ -222,7 +223,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
   const fetchLineageData = useCallback(
     async (config: LineageConfig) => {
-      if (AppState.isTourOpen) {
+      if (isTourOpen) {
         setPaginationData({});
         setEntityLineage(mockDatasetData.entityLineage);
         setUpdatedLineageData(mockDatasetData.entityLineage);
@@ -1370,10 +1371,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
       return node;
     });
-
-    setTimeout(() => {
-      reactFlowInstance?.fitView();
-    }, 100);
   };
 
   const handleExpandColumnClick = () => {

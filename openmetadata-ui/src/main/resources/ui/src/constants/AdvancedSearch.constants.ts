@@ -32,7 +32,7 @@ const BaseConfig = AntdConfig as BasicConfig;
 export const COMMON_DROPDOWN_ITEMS = [
   {
     label: t('label.owner'),
-    key: 'owner.displayName',
+    key: 'owner.displayName.keyword',
   },
   {
     label: t('label.tag'),
@@ -44,18 +44,18 @@ export const COMMON_DROPDOWN_ITEMS = [
   },
   {
     label: t('label.service'),
-    key: 'service.name',
+    key: 'service.name.keyword',
   },
 ];
 
 export const TABLE_DROPDOWN_ITEMS = [
   {
     label: t('label.database'),
-    key: 'database.name',
+    key: 'database.name.keyword',
   },
   {
     label: t('label.schema'),
-    key: 'databaseSchema.name',
+    key: 'databaseSchema.name.keyword',
   },
   {
     label: t('label.column'),

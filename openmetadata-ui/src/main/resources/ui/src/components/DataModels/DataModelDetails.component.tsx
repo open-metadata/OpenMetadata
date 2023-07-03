@@ -24,7 +24,7 @@ import EntityLineageComponent from 'components/EntityLineage/EntityLineage.compo
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { getDataModelDetailsPath, getVersionPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { CSMode } from 'enums/codemirror.enum';
@@ -195,7 +195,7 @@ const DataModelDetails = ({
           data-testid="entity-right-panel"
           flex="320px">
           <Space className="w-full" direction="vertical" size="large">
-            <TagsContainerV1
+            <TagsContainerV2
               entityFqn={dashboardDataModelFQN}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
@@ -205,7 +205,7 @@ const DataModelDetails = ({
               onSelectionChange={handleTagSelection}
               onThreadLinkSelect={onThreadLinkSelect}
             />
-            <TagsContainerV1
+            <TagsContainerV2
               entityFqn={dashboardDataModelFQN}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.DASHBOARD_DATA_MODEL}

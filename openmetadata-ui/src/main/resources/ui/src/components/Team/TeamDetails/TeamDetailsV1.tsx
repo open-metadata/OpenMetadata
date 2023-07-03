@@ -1114,18 +1114,19 @@ const TeamDetailsV1 = ({
                           </Typography.Text>
                         </span>
 
-                        <Button
-                          data-testid="add-team"
-                          disabled={!createTeamPermission}
-                          title={
-                            createTeamPermission
-                              ? addTeam
-                              : t('message.no-permission-for-action')
-                          }
-                          type="primary"
-                          onClick={() => handleAddTeam(true)}>
-                          {addTeam}
-                        </Button>
+                        {createTeamPermission && (
+                          <Button
+                            data-testid="add-team"
+                            title={
+                              createTeamPermission
+                                ? addTeam
+                                : t('message.no-permission-for-action')
+                            }
+                            type="primary"
+                            onClick={() => handleAddTeam(true)}>
+                            {addTeam}
+                          </Button>
+                        )}
                       </Space>
                     </Col>
                     <Col span={24}>

@@ -312,6 +312,7 @@ class DbtSource(DbtServiceSource):
             None,
         )
 
+    # pylint: disable=too-many-locals, too-many-branches
     def yield_data_models(self, dbt_objects: DbtObjects) -> Iterable[DataModelLink]:
         """
         Yield the data models
@@ -329,6 +330,14 @@ class DbtSource(DbtServiceSource):
                 }
             self.context.data_model_links = []
             self.context.dbt_tests = {}
+            self.context.run_results_generate_time = None
+            if (
+                dbt_objects.dbt_run_results
+                and dbt_objects.dbt_run_results.metadata.generated_at
+            ):
+                self.context.run_results_generate_time = (
+                    dbt_objects.dbt_run_results.metadata.generated_at
+                )
             for key, manifest_node in manifest_entities.items():
                 try:
                     # If the run_results file is passed then only DBT tests will be processed
@@ -359,6 +368,17 @@ class DbtSource(DbtServiceSource):
                         continue
 
                     model_name = get_dbt_model_name(manifest_node)
+
+                    # Filter the dbt models based on filter patterns
+                    filter_model = self.is_filtered(
+                        database_name=get_corrected_name(manifest_node.database),
+                        schema_name=get_corrected_name(manifest_node.schema_),
+                        table_name=model_name,
+                    )
+                    if filter_model.is_filtered:
+                        self.status.filter(filter_model.model_fqn, filter_model.message)
+                        continue
+
                     logger.debug(f"Processing DBT node: {model_name}")
 
                     catalog_node = None
@@ -387,6 +407,7 @@ class DbtSource(DbtServiceSource):
                         schema_name=get_corrected_name(manifest_node.schema_),
                         table_name=model_name,
                     )
+
                     table_entity: Optional[
                         Union[Table, List[Table]]
                     ] = get_entity_from_es_result(
@@ -448,6 +469,15 @@ class DbtSource(DbtServiceSource):
             for node in dbt_node.depends_on.nodes:
                 try:
                     parent_node = manifest_entities[node]
+                    table_name = get_dbt_model_name(parent_node)
+
+                    filter_model = self.is_filtered(
+                        database_name=get_corrected_name(parent_node.database),
+                        schema_name=get_corrected_name(parent_node.schema_),
+                        table_name=table_name,
+                    )
+                    if filter_model.is_filtered:
+                        continue
 
                     # check if the node is an ephemeral node
                     # Recursively store the upstream of the ephemeral node in the upstream list
@@ -462,7 +492,7 @@ class DbtSource(DbtServiceSource):
                             service_name=self.config.serviceName,
                             database_name=get_corrected_name(parent_node.database),
                             schema_name=get_corrected_name(parent_node.schema_),
-                            table_name=get_dbt_model_name(parent_node),
+                            table_name=table_name,
                         )
 
                         # check if the parent table exists in OM before adding it to the upstream list
@@ -783,7 +813,8 @@ class DbtSource(DbtServiceSource):
                 dbt_timestamp = None
                 if dbt_test_completed_at:
                     dbt_timestamp = dbt_test_completed_at.timestamp()
-
+                elif self.context.run_results_generate_time:
+                    dbt_timestamp = self.context.run_results_generate_time.timestamp()
                 # Create the test case result object
                 test_case_result = TestCaseResult(
                     timestamp=dbt_timestamp,

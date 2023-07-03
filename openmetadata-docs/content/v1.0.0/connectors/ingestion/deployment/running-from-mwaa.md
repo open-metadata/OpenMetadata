@@ -8,6 +8,7 @@ slug: /connectors/ingestion/run-connectors-from-mwaa
 When running ingestion workflows from MWAA we have two main approaches:
 1. Install the oprenmetadata-ingestion package as a requirement in the Airflow environment. We will then run the process using a `PythonOperator`
 2. Configure an ECS cluster and run the ingestion as an `ECSOperator`.
+3. Install the PythonVirtualenvOperator in the MWAA environment and run the ingestion process in a virtualenv.
 
 We will now discuss pros and cons of each aspect and how to configure them.
 
@@ -465,3 +466,159 @@ workflowConfig:
     securityConfig:
       jwtToken: ...
 ```
+
+
+## Ingestion Workflows as a Python Virtualenv Operator
+
+### PROs
+
+- Installation does not clash with existing libraries
+- Simpler than ECS
+
+### CONs
+
+- We need to install an additional plugin in MWAA
+- DAGs take longer to run due to needing to set up the virtualenv from scratch for each run.
+
+We need to update the `requirements.txt` file from the MWAA environment to add the following line:
+
+```
+virtualenv
+```
+
+Then, we need to set up a custom plugin in MWAA. Create a file named virtual_python_plugin.py. Note that you may need to update the python version (eg, python3.7 -> python3.10) depending on what your MWAA environment is running.
+```python
+"""
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+"""
+from airflow.plugins_manager import AirflowPlugin
+import airflow.utils.python_virtualenv
+from typing import List
+import os
+
+
+def _generate_virtualenv_cmd(tmp_dir: str, python_bin: str, system_site_packages: bool) -> List[str]:
+    cmd = ['python3', '/usr/local/airflow/.local/lib/python3.7/site-packages/virtualenv', tmp_dir]
+    if system_site_packages:
+        cmd.append('--system-site-packages')
+    if python_bin is not None:
+        cmd.append(f'--python={python_bin}')
+    return cmd
+
+
+airflow.utils.python_virtualenv._generate_virtualenv_cmd = _generate_virtualenv_cmd
+
+os.environ["PATH"] = f"/usr/local/airflow/.local/bin:{os.environ['PATH']}"
+
+
+class VirtualPythonPlugin(AirflowPlugin):
+    name = 'virtual_python_plugin'
+```
+
+This is modified from the [AWS sample](https://docs.aws.amazon.com/mwaa/latest/userguide/samples-virtualenv.html).
+
+Next, create the plugins.zip file and upload it according to [AWS docs](https://docs.aws.amazon.com/mwaa/latest/userguide/configuring-dag-import-plugins.html). You will also need to [disable lazy plugin loading in MWAA](https://docs.aws.amazon.com/mwaa/latest/userguide/samples-virtualenv.html#samples-virtualenv-airflow-config).
+
+A DAG deployed using the PythonVirtualenvOperator would then look like:
+
+```python
+from datetime import timedelta
+
+from airflow import DAG
+
+from airflow.operators.python import PythonVirtualenvOperator
+
+from airflow.utils.dates import days_ago
+
+
+default_args = {
+    "retries": 3,
+    "retry_delay": timedelta(seconds=10),
+    "execution_timeout": timedelta(minutes=60),
+}
+
+def metadata_ingestion_workflow():
+    from metadata.ingestion.api.workflow import Workflow
+    import yaml
+    
+    config = """
+YAML config
+    """
+    workflow_config = yaml.loads(config)
+    workflow = Workflow.create(workflow_config)
+    workflow.execute()
+    workflow.raise_from_status()
+    workflow.print_status()
+    workflow.stop()
+
+with DAG(
+    "redshift_ingestion",
+    default_args=default_args,
+    description="An example DAG which runs a OpenMetadata ingestion workflow",
+    start_date=days_ago(1),
+    is_paused_upon_creation=False,
+    catchup=False,
+) as dag:
+    ingest_task = PythonVirtualenvOperator(
+        task_id="ingest_redshift",
+        python_callable=metadata_ingestion_workflow,
+        requirements=['openmetadata-ingestion==1.0.5.0',
+            'apache-airflow==2.4.3',  # note, v2.4.3 is the first version that does not conflict with OpenMetadata's 'tabulate' requirements
+            'apache-airflow-providers-amazon==6.0.0',  # Amazon Airflow provider is necessary for MWAA 
+            'watchtower',],
+        system_site_packages=False,
+        dag=dag,
+    )
+```
+
+Where you can update the YAML configuration and workflow classes accordingly. accordingly. Further examples on how to
+run the ingestion can be found on the documentation (e.g., [Snowflake](https://docs.open-metadata.org/connectors/database/snowflake)).
+
+You will also need to determine the OpenMetadata ingestion extras and Airflow providers you need. Note that the Openmetadata version needs to match the server version. If we are using the server at 0.12.2, then the ingestion package needs to also be 0.12.2.  An example of the extras would look like this `openmetadata-ingestion[mysql,snowflake,s3]==0.12.2.2`.
+For Airflow providers, you will want to pull the provider versions from [the matching constraints file](https://raw.githubusercontent.com/apache/airflow/constraints-2.4.3/constraints-3.7.txt). Since this example installs Airflow Providers v2.4.3 on Python 3.7, we use that constraints file.
+
+Also note that the ingestion workflow function must be entirely self contained as it will run by itself in the virtualenv. Any imports it needs, including the configuration, must exist within the function itself.
+
+### Extracting MWAA Metadata
+
+As the ingestion process will be happening locally in MWAA, we can prepare a DAG with the following YAML
+configuration:
+
+```yaml
+source:
+  type: airflow
+  serviceName: airflow_mwaa
+  serviceConnection:
+    config:
+      type: Airflow
+      hostPort: http://localhost:8080
+      numberOfStatus: 10
+      connection:
+        type: Backend
+  sourceConfig:
+    config:
+      type: PipelineMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  loggerLevel: INFO
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>
+```
+
+Using the connection type `Backend` will pick up the Airflow database session directly at runtime.

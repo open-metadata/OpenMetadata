@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Menu, Typography } from 'antd';
-import AppState from 'AppState';
 import classNames from 'classnames';
 import Loader from 'components/Loader/Loader';
 import { TaskTab } from 'components/Task/TaskTab/TaskTab.component';
@@ -72,11 +71,6 @@ export const ActivityFeedTab = ({
   const [allCount, setAllCount] = useState(0);
   const [tasksCount, setTasksCount] = useState(0);
 
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
-
   const {
     postFeed,
     selectedThread,
@@ -84,6 +78,7 @@ export const ActivityFeedTab = ({
     entityThread,
     getFeedData,
     loading,
+    userId,
     entityPaging,
   } = useActivityFeedProvider();
 
@@ -107,6 +102,16 @@ export const ActivityFeedTab = ({
     );
     setActiveThread();
   };
+
+  const placeholderText = useMemo(() => {
+    if (activeTab === ActivityFeedTabs.ALL) {
+      return t('message.no-activity-feed');
+    } else if (activeTab === ActivityFeedTabs.MENTIONS) {
+      return t('message.no-mentions');
+    } else {
+      return t('message.no-tasks-assigned');
+    }
+  }, [activeTab]);
 
   const fetchFeedsCount = () => {
     if (!isUserEntity) {
@@ -133,56 +138,43 @@ export const ActivityFeedTab = ({
         }
       );
     } else {
-      if (activeTab !== ActivityFeedTabs.TASKS) {
-        // count for task on userProfile page
-        getAllFeeds(
-          undefined,
-          undefined,
-          ThreadType.Task,
-          FeedFilter.OWNER,
-          undefined,
-          currentUser?.id
-        ).then((res) => {
-          if (res) {
-            setTasksCount(res.paging.total);
-          } else {
-            throw t('server.entity-feed-fetch-error');
-          }
-        });
-      }
+      // count for task on userProfile page
+      getAllFeeds(
+        undefined,
+        undefined,
+        ThreadType.Task,
+        FeedFilter.OWNER,
+        undefined,
+        userId
+      ).then((res) => {
+        if (res) {
+          setTasksCount(res.paging.total);
+        } else {
+          throw t('server.entity-feed-fetch-error');
+        }
+      });
 
-      if (activeTab !== ActivityFeedTabs.ALL) {
-        // count for all on userProfile page
-        getAllFeeds(
-          undefined,
-          undefined,
-          ThreadType.Conversation,
-          FeedFilter.OWNER,
-          undefined,
-          currentUser?.id
-        ).then((res) => {
-          if (res) {
-            setAllCount(res.paging.total);
-          } else {
-            throw t('server.entity-feed-fetch-error');
-          }
-        });
-      }
+      // count for all on userProfile page
+      getAllFeeds(
+        undefined,
+        undefined,
+        ThreadType.Conversation,
+        FeedFilter.OWNER,
+        undefined,
+        userId
+      ).then((res) => {
+        if (res) {
+          setAllCount(res.paging.total);
+        } else {
+          throw t('server.entity-feed-fetch-error');
+        }
+      });
     }
   };
 
   useEffect(() => {
     fetchFeedsCount();
   }, []);
-
-  useEffect(() => {
-    if (isUserEntity && activeTab === ActivityFeedTabs.ALL && !allCount) {
-      setAllCount(entityPaging.total);
-    }
-    if (isUserEntity && activeTab === ActivityFeedTabs.TASKS && !tasksCount) {
-      setTasksCount(entityPaging.total);
-    }
-  });
 
   const { feedFilter, threadType } = useMemo(() => {
     return {
@@ -349,6 +341,7 @@ export const ActivityFeedTab = ({
         <ActivityFeedListV1
           hidePopover
           activeFeedId={selectedThread?.id}
+          emptyPlaceholderText={placeholderText}
           feedList={threads}
           isLoading={false}
           showThread={false}
@@ -360,6 +353,7 @@ export const ActivityFeedTab = ({
           data-testid="observer-element"
           id="observer-element"
           ref={elementRef as RefObject<HTMLDivElement>}
+          style={{ height: '2px' }}
         />
       </div>
       <div className=" right-container">

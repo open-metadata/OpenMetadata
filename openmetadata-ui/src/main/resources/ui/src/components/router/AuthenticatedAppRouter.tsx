@@ -325,6 +325,27 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         hasPermission={tagCategoryPermission}
         path={ROUTES.TAG_DETAILS}
       />
+      <Route
+        exact
+        component={() => <GlossaryVersionPage isGlossary />}
+        path={ROUTES.GLOSSARY_VERSION}
+      />
+      <Route
+        exact
+        component={GlossaryVersionPage}
+        path={ROUTES.GLOSSARY_TERMS_VERSION}
+      />
+      <Route
+        exact
+        component={GlossaryVersionPage}
+        path={ROUTES.GLOSSARY_TERMS_VERSION_TAB}
+      />
+      <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
+      <Route
+        exact
+        component={EntityVersionPage}
+        path={ROUTES.ENTITY_VERSION_WITH_TAB}
+      />
       <Route exact component={DatabaseDetails} path={ROUTES.DATABASE_DETAILS} />
       <Route
         exact
@@ -405,21 +426,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route
         exact
-        component={() => <GlossaryVersionPage isGlossary />}
-        path={ROUTES.GLOSSARY_VERSION}
-      />
-      <Route
-        exact
-        component={GlossaryVersionPage}
-        path={ROUTES.GLOSSARY_TERMS_VERSION}
-      />
-      <Route
-        exact
-        component={GlossaryVersionPage}
-        path={ROUTES.GLOSSARY_TERMS_VERSION_TAB}
-      />
-      <Route
-        exact
         component={PipelineDetailsPage}
         path={ROUTES.PIPELINE_DETAILS}
       />
@@ -445,7 +451,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={ContainerPage}
         path={ROUTES.CONTAINER_DETAILS_WITH_SUB_TAB}
       />
-      <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
       <AdminProtectedRoute
         exact
         component={GlossaryPage}

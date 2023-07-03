@@ -42,6 +42,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import javax.json.JsonPatch;
+import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
@@ -58,6 +59,7 @@ import org.openmetadata.schema.api.feed.ThreadCount;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.AnnouncementDetails;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Post;
@@ -129,10 +131,13 @@ public class FeedRepository {
       field = "id";
     }
     EntityInterface aboutEntity = Entity.getEntity(about, field, ALL);
-    ;
     thread.withEntityId(aboutEntity.getId()); // Add entity id to thread
-    EntityReference entityOwner = aboutEntity.getOwner();
+    return createThread(thread, about, aboutEntity.getOwner());
+  }
 
+  @Transaction
+  private Thread createThread(Thread thread, EntityLink about, EntityReference entityOwner)
+      throws JsonProcessingException {
     // Validate user creating thread
     User createdByUser = SubjectCache.getInstance().getUser(thread.getCreatedBy());
 
@@ -147,7 +152,7 @@ public class FeedRepository {
       List<String> announcements =
           dao.feedDAO()
               .listAnnouncementBetween(thread.getId().toString(), thread.getEntityId().toString(), startTime, endTime);
-      if (announcements.size() > 0) {
+      if (!announcements.isEmpty()) {
         // There is already an announcement that overlaps the new one
         throw new IllegalArgumentException(ANNOUNCEMENT_OVERLAP);
       }
@@ -181,6 +186,28 @@ public class FeedRepository {
     storeMentions(thread, thread.getMessage());
     populateAssignees(thread);
     return thread;
+  }
+
+  @Transaction
+  public Thread create(Thread thread, ContainerResponseContext responseContext) throws IOException {
+    // Validate about data entity is valid and get the owner for that entity
+    EntityInterface entity;
+    // In case of ENTITY_FIELDS_CHANGED entity from responseContext will be a ChangeEvent
+    if (responseContext.getEntity() instanceof ChangeEvent) {
+      ChangeEvent change = (ChangeEvent) responseContext.getEntity();
+      entity = (EntityInterface) change.getEntity();
+    } else {
+      entity = (EntityInterface) responseContext.getEntity();
+    }
+    EntityReference owner = null;
+    try {
+      owner = Entity.getOwner(entity.getEntityReference());
+    } catch (Exception ignored) {
+      // Either deleted or owner field not available
+    }
+    EntityLink about = EntityLink.parse(thread.getAbout());
+    thread.withEntityId(entity.getId()); // Add entity id to thread
+    return createThread(thread, about, owner);
   }
 
   public Thread get(String id) throws IOException {

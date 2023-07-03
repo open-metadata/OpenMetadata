@@ -13,6 +13,7 @@
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import Searchbar from 'components/common/searchbar/Searchbar';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import DataQualityTab from 'components/ProfilerDashboard/component/DataQualityTab';
 import { INITIAL_PAGING_VALUE, PAGE_SIZE } from 'constants/constants';
 import { SearchIndex } from 'enums/search.enum';
@@ -29,16 +30,21 @@ import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchQuery } from 'rest/searchAPI';
-import { getListTestCase, ListTestCaseParams } from 'rest/testAPI';
+import {
+  getListTestCase,
+  getTestCaseById,
+  ListTestCaseParams,
+} from 'rest/testAPI';
 import { showErrorToast } from 'utils/ToastUtils';
 import { DataQualitySearchParams } from '../DataQuality.interface';
 import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
-import './test-cases.style.less';
 
 export const TestCases = () => {
   const history = useHistory();
   const location = useLocation();
   const { tab } = useParams<{ tab: DataQualityPageTabs }>();
+  const { permissions } = usePermissionProvider();
+  const { testCase: testCasePermission } = permissions;
 
   const params = useMemo(() => {
     const search = location.search;
@@ -66,6 +72,18 @@ export const TestCases = () => {
     history.push({
       search: QueryString.stringify({ ...params, [key]: value }),
     });
+  };
+
+  const handleTestCaseUpdate = (data?: TestCase) => {
+    if (data) {
+      setTestCase((prev) => {
+        const updatedTestCase = prev.data.map((test) =>
+          test.id === data.id ? { ...test, ...data } : test
+        );
+
+        return { ...prev, data: updatedTestCase };
+      });
+    }
   };
 
   const fetchTestCases = async (params?: ListTestCaseParams) => {
@@ -104,16 +122,31 @@ export const TestCases = () => {
         pageSize: PAGE_SIZE,
         searchIndex: SearchIndex.TEST_CASE,
         query: searchValue,
+        fetchSource: false,
       });
-      const hits = (
+      const promise = (
         response.hits.hits as SearchHitBody<
           SearchIndex.TEST_CASE,
           TestCaseSearchSource
         >[]
-      ).map((value) => value._source);
+      ).map((value) =>
+        getTestCaseById(value._id ?? '', {
+          fields: 'testDefinition,testCaseResult,testSuite',
+        })
+      );
+
+      const value = await Promise.allSettled(promise);
+
+      const testSuites = value.reduce((prev, curr) => {
+        if (curr.status === 'fulfilled') {
+          return [...prev, curr.value.data];
+        }
+
+        return prev;
+      }, [] as TestCase[]);
 
       setTestCase({
-        data: hits,
+        data: testSuites,
         paging: { total: response.hits.total.value ?? 0 },
       });
     } catch (error) {
@@ -140,14 +173,16 @@ export const TestCases = () => {
   };
 
   useEffect(() => {
-    if (tab === DataQualityPageTabs.TEST_CASES) {
-      if (searchValue) {
-        searchTestCases();
-      } else {
-        fetchTestCases();
+    if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
+      if (tab === DataQualityPageTabs.TEST_CASES) {
+        if (searchValue) {
+          searchTestCases();
+        } else {
+          fetchTestCases();
+        }
       }
     }
-  }, [tab, searchValue]);
+  }, [tab, searchValue, testCasePermission]);
 
   return (
     <Row className="p-x-lg p-t-md" gutter={[16, 16]}>
@@ -172,6 +207,7 @@ export const TestCases = () => {
           }}
           testCases={testCase.data}
           onTestCaseResultUpdate={handleStatusSubmit}
+          onTestUpdate={handleTestCaseUpdate}
         />
       </Col>
     </Row>

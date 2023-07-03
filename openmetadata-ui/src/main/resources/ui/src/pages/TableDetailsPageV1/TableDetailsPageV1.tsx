@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row, Space, Tabs } from 'antd';
+import { Card, Col, Row, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import ActivityFeedProvider, {
   useActivityFeedProvider,
 } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -21,9 +22,9 @@ import { CustomPropertyTable } from 'components/common/CustomPropertyTable/Custo
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import QueryViewer from 'components/common/QueryViewer/QueryViewer.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import DbtTab from 'components/DatasetDetails/DbtTab/DbtTab.component';
 import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
 import Loader from 'components/Loader/Loader';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
@@ -37,18 +38,26 @@ import SchemaTab from 'components/SchemaTab/SchemaTab.component';
 import TableProfilerV1 from 'components/TableProfiler/TableProfilerV1';
 import TableQueries from 'components/TableQueries/TableQueries';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { getTableTabPath, getVersionPath, ROUTES } from 'constants/constants';
+import { getTableTabPath, getVersionPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
-import { EntityTabs, EntityType, FqnPart } from 'enums/entity.enum';
+import { mockDatasetData } from 'constants/mockTourData.constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import {
+  EntityTabs,
+  EntityType,
+  FqnPart,
+  TabSpecificField,
+} from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { CreateThread } from 'generated/api/feed/createThread';
 import { JoinedWith, Table } from 'generated/entity/data/table';
 import { ThreadType } from 'generated/entity/feed/thread';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { EntityFieldThreadCount } from 'interface/feed.interface';
-import { isEmpty, isEqual } from 'lodash';
+import { isEmpty, isEqual, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -78,8 +87,11 @@ import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import './table-details-page-v1.less';
+import TableConstraints from './TableConstraints/TableConstraints';
 
 const TableDetailsPageV1 = () => {
+  const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
+    useTourProvider();
   const [tableDetails, setTableDetails] = useState<Table>();
   const { datasetFQN, tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ datasetFQN: string; tab: string }>();
@@ -100,12 +112,31 @@ const TableDetailsPageV1 = () => {
   );
   const [queryCount, setQueryCount] = useState(0);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!isTourOpen);
+  const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const viewUsagePermission = useMemo(
+    () => tablePermissions.ViewAll || tablePermissions.ViewUsage,
+    [tablePermissions]
+  );
+  const viewTestSuitePermission = useMemo(
+    () => tablePermissions.ViewAll || tablePermissions.ViewTests,
+    [tablePermissions]
+  );
 
   const fetchTableDetails = async () => {
     setLoading(true);
     try {
-      const details = await getTableDetailsByFQN(datasetFQN, defaultFields);
+      let fields = defaultFields;
+      if (viewUsagePermission) {
+        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+      }
+      if (viewTestSuitePermission) {
+        fields += `,${TabSpecificField.TESTSUITE}`;
+      }
+      const details = await getTableDetailsByFQN(datasetFQN, fields);
 
       setTableDetails(details);
     } catch (error) {
@@ -137,11 +168,6 @@ const TableDetailsPageV1 = () => {
     setIsEdit(false);
   };
 
-  const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
-
-  const isTourPage = location.pathname.includes(ROUTES.TOUR);
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const {
     tier,
@@ -213,22 +239,33 @@ const TableDetailsPageV1 = () => {
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const fetchResourcePermission = useCallback(async () => {
-    try {
-      const tablePermission = await getEntityPermissionByFqn(
-        ResourceEntity.TABLE,
-        tableDetails?.id ?? ''
-      );
+  const fetchResourcePermission = useCallback(
+    async (datasetFQN) => {
+      try {
+        const tablePermission = await getEntityPermissionByFqn(
+          ResourceEntity.TABLE,
+          datasetFQN
+        );
 
-      setTablePermissions(tablePermission);
-    } catch (error) {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: t('label.resource-permission-lowercase'),
-        })
-      );
+        setTablePermissions(tablePermission);
+      } catch (error) {
+        showErrorToast(
+          t('server.fetch-entity-permissions-error', {
+            entity: t('label.resource-permission-lowercase'),
+          })
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [getEntityPermissionByFqn, setTablePermissions]
+  );
+
+  useEffect(() => {
+    if (datasetFQN) {
+      fetchResourcePermission(datasetFQN);
     }
-  }, [tableDetails?.id, getEntityPermissionByFqn, setTablePermissions]);
+  }, [datasetFQN]);
 
   const getEntityFeedCount = () => {
     getFeedCounts(
@@ -242,7 +279,7 @@ const TableDetailsPageV1 = () => {
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      if (!isTourPage) {
+      if (!isTourOpen) {
         history.push(getTableTabPath(datasetFQN, activeKey));
       }
     }
@@ -378,8 +415,14 @@ const TableDetailsPageV1 = () => {
 
   const schemaTab = useMemo(
     () => (
-      <Row gutter={[0, 16]} wrap={false}>
-        <Col className="p-t-sm m-l-lg" flex="auto">
+      <Row
+        className={classNames({
+          'h-70vh overflow-hidden': isTourPage,
+        })}
+        gutter={[0, 16]}
+        id="schemaDetails"
+        wrap={false}>
+        <Col className="p-t-sm m-l-lg tab-content-height" flex="auto">
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
               description={tableDetails?.description}
@@ -442,7 +485,7 @@ const TableDetailsPageV1 = () => {
           ) : null}
 
           <Space className="w-full" direction="vertical" size="large">
-            <TagsContainerV1
+            <TagsContainerV2
               entityFqn={datasetFQN}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.TABLE}
@@ -456,7 +499,7 @@ const TableDetailsPageV1 = () => {
               onThreadLinkSelect={onThreadLinkSelect}
             />
 
-            <TagsContainerV1
+            <TagsContainerV2
               entityFqn={datasetFQN}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.TABLE}
@@ -469,6 +512,7 @@ const TableDetailsPageV1 = () => {
               onSelectionChange={handleTagSelection}
               onThreadLinkSelect={onThreadLinkSelect}
             />
+            <TableConstraints constraints={tableDetails?.tableConstraints} />
           </Space>
         </Col>
       </Row>
@@ -521,13 +565,13 @@ const TableDetailsPageV1 = () => {
             name={t('label.sample-data')}
           />
         ),
-        isHidden: !(
-          tablePermissions.ViewAll ||
-          tablePermissions.ViewBasic ||
-          tablePermissions.ViewSampleData
-        ),
+
         key: EntityTabs.SAMPLE_DATA,
-        children: (
+        children: !(
+          tablePermissions.ViewAll || tablePermissions.ViewSampleData
+        ) ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <SampleDataTableComponent
             isTableDeleted={tableDetails?.deleted}
             tableId={tableDetails?.id ?? ''}
@@ -543,13 +587,12 @@ const TableDetailsPageV1 = () => {
             name={t('label.query-plural')}
           />
         ),
-        isHidden: !(
-          tablePermissions.ViewAll ||
-          tablePermissions.ViewBasic ||
-          tablePermissions.ViewQueries
-        ),
         key: EntityTabs.TABLE_QUERIES,
-        children: (
+        children: !(
+          tablePermissions.ViewAll || tablePermissions.ViewQueries
+        ) ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <TableQueries
             isTableDeleted={tableDetails?.deleted}
             tableId={tableDetails?.id ?? ''}
@@ -563,14 +606,14 @@ const TableDetailsPageV1 = () => {
             name={t('label.profiler-amp-data-quality')}
           />
         ),
-        isHidden: !(
+        key: EntityTabs.PROFILER,
+        children: !(
           tablePermissions.ViewAll ||
-          tablePermissions.ViewBasic ||
           tablePermissions.ViewDataProfile ||
           tablePermissions.ViewTests
-        ),
-        key: EntityTabs.PROFILER,
-        children: (
+        ) ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <TableProfilerV1
             isTableDeleted={tableDetails?.deleted}
             permissions={tablePermissions}
@@ -595,21 +638,46 @@ const TableDetailsPageV1 = () => {
           </Card>
         ),
       },
-      ...(tableDetails?.dataModel
-        ? [
-            {
-              label: (
-                <TabsLabel
-                  id={EntityTabs.DBT}
-                  name={t('label.dbt-lowercase')}
-                />
-              ),
-              // isHidden: !(dataModel?.sql ?? dataModel?.rawSql),
-              key: EntityTabs.DBT,
-              children: <DbtTab dataModel={tableDetails?.dataModel} />,
-            },
-          ]
-        : []),
+
+      {
+        label: (
+          <TabsLabel id={EntityTabs.DBT} name={t('label.dbt-lowercase')} />
+        ),
+        isHidden: !(
+          tableDetails?.dataModel?.sql || tableDetails?.dataModel?.rawSql
+        ),
+        key: EntityTabs.DBT,
+        children: (
+          <QueryViewer
+            sqlQuery={
+              tableDetails?.dataModel?.sql ??
+              tableDetails?.dataModel?.rawSql ??
+              ''
+            }
+            title={
+              <Space className="p-y-xss">
+                <Typography.Text className="text-grey-muted">
+                  {`${t('label.path')}:`}
+                </Typography.Text>
+                <Typography.Text>
+                  {tableDetails?.dataModel?.path}
+                </Typography.Text>
+              </Space>
+            }
+          />
+        ),
+      },
+      {
+        label: (
+          <TabsLabel
+            id={EntityTabs.VIEW_DEFINITION}
+            name={t('label.view-definition')}
+          />
+        ),
+        isHidden: isUndefined(tableDetails?.viewDefinition),
+        key: EntityTabs.VIEW_DEFINITION,
+        children: <QueryViewer sqlQuery={tableDetails?.viewDefinition ?? ''} />,
+      },
       {
         label: (
           <TabsLabel
@@ -618,7 +686,9 @@ const TableDetailsPageV1 = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
+        children: !tablePermissions.ViewAll ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <CustomPropertyTable
             entityDetails={tableDetails as CustomPropertyProps['entityDetails']}
             entityType={EntityType.TABLE}
@@ -642,6 +712,7 @@ const TableDetailsPageV1 = () => {
     entityName,
     onExtensionUpdate,
     getEntityFeedCount,
+    tableDetails?.dataModel,
   ]);
 
   const onTierUpdate = useCallback(
@@ -754,14 +825,19 @@ const TableDetailsPageV1 = () => {
   }, [version]);
 
   useEffect(() => {
-    fetchTableDetails();
-    getEntityFeedCount();
-  }, [datasetFQN]);
+    if (isTourOpen || isTourPage) {
+      setTableDetails(mockDatasetData.tableDetails as unknown as Table);
+    } else {
+      if (tablePermissions.ViewAll || tablePermissions.ViewBasic) {
+        fetchTableDetails();
+        getEntityFeedCount();
+      }
+    }
+  }, [datasetFQN, isTourOpen, isTourPage, tablePermissions]);
 
   useEffect(() => {
     if (tableDetails) {
       fetchQueryCount();
-      fetchResourcePermission();
     }
   }, [tableDetails]);
 
@@ -787,6 +863,15 @@ const TableDetailsPageV1 = () => {
     return <Loader />;
   }
 
+  if (!(tablePermissions.ViewAll || tablePermissions.ViewBasic)) {
+    return (
+      <ErrorPlaceHolder
+        className="m-0"
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
+  }
+
   if (!tableDetails) {
     return <ErrorPlaceHolder className="m-0" />;
   }
@@ -798,7 +883,7 @@ const TableDetailsPageV1 = () => {
       title="Table details">
       <Row gutter={[0, 12]}>
         {/* Entity Heading */}
-        <Col className="p-x-lg" span={24}>
+        <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
             dataAsset={tableDetails}
             entityType={EntityType.TABLE}
@@ -815,7 +900,12 @@ const TableDetailsPageV1 = () => {
         {/* Entity Tabs */}
         <Col span={24}>
           <Tabs
-            activeKey={activeTab ?? EntityTabs.SCHEMA}
+            destroyInactiveTabPane
+            activeKey={
+              isTourOpen
+                ? activeTabForTourDatasetPage
+                : activeTab ?? EntityTabs.SCHEMA
+            }
             className="table-details-page-tabs"
             data-testid="tabs"
             items={tabs}

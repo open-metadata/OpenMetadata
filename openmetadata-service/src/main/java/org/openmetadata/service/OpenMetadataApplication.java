@@ -130,6 +130,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           NoSuchAlgorithmException {
     validateConfiguration(catalogConfig);
 
+    // init for dataSourceFactory
+    DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
+
     ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
 
@@ -162,9 +165,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Authenticator
     registerAuthenticator(catalogConfig);
-
-    // init for dataSourceFactory
-    DatasourceConfig.initialize(catalogConfig);
 
     // Unregister dropwizard default exception mappers
     ((DefaultServerFactory) catalogConfig.getServerFactory()).setRegisterDefaultExceptionMappers(false);
@@ -459,12 +459,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       WebSocketUpgradeFilter.configure(environment.getApplicationContext());
       NativeWebSocketServletContainerInitializer.configure(
           environment.getApplicationContext(),
-          (context, container) -> {
-            container.addMapping(
-                new ServletPathSpec(pathSpec),
-                (servletUpgradeRequest, servletUpgradeResponse) ->
-                    new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
-          });
+          (context, container) ->
+              container.addMapping(
+                  new ServletPathSpec(pathSpec),
+                  (servletUpgradeRequest, servletUpgradeResponse) ->
+                      new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer())));
     } catch (ServletException ex) {
       LOG.error("Websocket Upgrade Filter error : " + ex.getMessage());
     }

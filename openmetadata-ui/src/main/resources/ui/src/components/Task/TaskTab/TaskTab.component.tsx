@@ -42,10 +42,12 @@ import {
   TaskAction,
   TaskActionMode,
 } from 'pages/TasksPage/TasksPage.interface';
+import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { updateTask } from 'rest/feedsAPI';
+import { getNameFromFQN } from 'utils/CommonUtils';
 import { ENTITY_LINK_SEPARATOR } from 'utils/EntityUtils';
 import { getEntityField, getEntityFQN, prepareFeedLink } from 'utils/FeedUtils';
 import { getEntityLink } from 'utils/TableUtils';
@@ -56,7 +58,6 @@ import {
   TASK_ACTION_LIST,
 } from 'utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
-import Fqn from './../../../utils/Fqn';
 import { TaskTabProps } from './TaskTab.interface';
 import { ReactComponent as TaskCloseIcon } from '/assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '/assets/svg/ic-open-task.svg';
@@ -144,7 +145,7 @@ export const TaskTab = ({
             data-testid="entitylink"
             to={prepareFeedLink(entityType, entityFQN)}
             onClick={(e) => e.stopPropagation()}>
-            {Fqn.split(entityFQN).join('  >  ')}
+            {getNameFromFQN(entityFQN)}
           </Link>
         </EntityPopOverCard>
       </>
@@ -165,6 +166,17 @@ export const TaskTab = ({
   };
 
   const onTaskResolve = () => {
+    if (isEmpty(taskDetails?.suggestion)) {
+      showErrorToast(
+        t('message.field-text-is-required', {
+          fieldText: isTaskTags
+            ? t('label.tag-plural')
+            : t('label.description'),
+        })
+      );
+
+      return;
+    }
     if (isTaskTags) {
       const tagsData = {
         newValue: taskDetails?.suggestion || '[]',
@@ -247,19 +259,74 @@ export const TaskTab = ({
 
   const onTaskReject = () => {
     if (comment && taskDetails?.id) {
-      //   setIsLoadingOnSave(true);
       updateTask(TaskOperation.REJECT, taskDetails?.id + '', {
         comment,
       } as unknown as TaskDetails)
         .then(() => {
           showSuccessToast(t('server.task-closed-successfully'));
-          //   setModalVisible(false);
         })
         .catch((err: AxiosError) => showErrorToast(err));
     } else {
       showErrorToast(t('server.task-closed-without-comment'));
     }
   };
+
+  const actionButtons = useMemo(() => {
+    if (isTaskClosed) {
+      return null;
+    }
+
+    return (
+      <Space
+        className="m-t-sm items-end w-full"
+        data-testid="task-cta-buttons"
+        size="small">
+        {isCreator && (
+          <Button onClick={onTaskReject}>{t('label.close')}</Button>
+        )}
+        {hasTaskUpdateAccess() ? (
+          <>
+            {['RequestDescription', 'RequestTag'].includes(
+              taskDetails?.type ?? ''
+            ) && isEmpty(taskDetails?.suggestion) ? (
+              <Button
+                type="primary"
+                onClick={() =>
+                  handleMenuItemClick({ key: TaskActionMode.EDIT } as MenuInfo)
+                }>
+                {t('label.add-suggestion')}
+              </Button>
+            ) : (
+              <Dropdown.Button
+                menu={{
+                  items: TASK_ACTION_LIST,
+                  selectable: true,
+                  selectedKeys: [taskAction.key],
+                  onClick: handleMenuItemClick,
+                }}
+                type="primary"
+                onClick={() =>
+                  taskAction.key === TaskActionMode.EDIT
+                    ? handleMenuItemClick({ key: taskAction.key } as MenuInfo)
+                    : onTaskResolve()
+                }>
+                {taskAction.label}
+              </Dropdown.Button>
+            )}
+          </>
+        ) : (
+          <></>
+        )}
+      </Space>
+    );
+  }, [
+    taskDetails,
+    onTaskResolve,
+    handleMenuItemClick,
+    taskAction,
+    isTaskClosed,
+    isCreator,
+  ]);
 
   return (
     <Row className="p-y-sm p-x-md" gutter={[0, 24]}>
@@ -277,23 +344,29 @@ export const TaskTab = ({
         {getTaskLinkElement}
       </Col>
       <Col span={24}>
-        <Typography.Text className="text-grey-muted">
-          {t('label.assignee-plural')}:{' '}
-        </Typography.Text>
+        <div className="d-flex justify-between">
+          <div className="flex-center gap-2">
+            <Typography.Text className="text-grey-muted">
+              {t('label.assignee-plural')}:{' '}
+            </Typography.Text>
 
-        <OwnerLabel
-          hasPermission={false}
-          owner={taskDetails?.assignees[0]}
-          onUpdate={noop}
-        />
-        <Typography.Text className="text-grey-muted">
-          {t('label.created-by')}:{' '}
-        </Typography.Text>
-        <OwnerLabel
-          hasPermission={false}
-          owner={{ name: task.createdBy, type: 'user', id: '' }}
-          onUpdate={noop}
-        />
+            <OwnerLabel
+              hasPermission={false}
+              owner={taskDetails?.assignees[0]}
+              onUpdate={noop}
+            />
+          </div>
+          <div className="flex-center gap-2">
+            <Typography.Text className="text-grey-muted">
+              {t('label.created-by')}:{' '}
+            </Typography.Text>
+            <OwnerLabel
+              hasPermission={false}
+              owner={{ name: task.createdBy, type: 'user', id: '' }}
+              onUpdate={noop}
+            />
+          </div>
+        </div>
       </Col>
       <Col span={24}>
         {isTaskDescription && (
@@ -332,40 +405,19 @@ export const TaskTab = ({
           <ActivityFeedEditor onSave={onSave} onTextChange={setComment} />
         )}
 
-        <Space
-          className="m-t-sm items-end w-full"
-          data-testid="task-cta-buttons"
-          size="small">
-          {(hasTaskUpdateAccess() || isCreator) && !isTaskClosed && (
-            <Button onClick={onTaskReject}>{t('label.close')}</Button>
-          )}
-
-          {!isTaskClosed && (
-            <>
-              <Dropdown.Button
-                menu={{
-                  items: TASK_ACTION_LIST,
-                  selectable: true,
-                  selectedKeys: [taskAction.key],
-                  onClick: handleMenuItemClick,
-                }}
-                type="primary"
-                onClick={onTaskResolve}>
-                {taskAction.label}
-              </Dropdown.Button>
-            </>
-          )}
-        </Space>
+        {actionButtons}
       </Col>
       <Modal
         maskClosable
         closable={false}
         closeIcon={null}
         open={showEditTaskModel}
-        title={`Edit task #${taskDetails?.id}`}
+        title={`${t('label.edit-entity', {
+          entity: t('label.task-lowercase'),
+        })} #${taskDetails?.id} ${task.message}`}
         width={768}
         onCancel={() => setShowEditTaskModel(false)}
-        onOk={() => form.submit()}>
+        onOk={form.submit}>
         <Form form={form} layout="vertical" onFinish={onEditAndSuggest}>
           {isTaskTags ? (
             <Form.Item

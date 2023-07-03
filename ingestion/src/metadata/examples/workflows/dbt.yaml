@@ -58,6 +58,22 @@ source:
       # dbtUpdateDescriptions: true or false
       # includeTags: true or false
       # dbtClassificationName: dbtTags
+      # databaseFilterPattern:
+      #   includes:
+      #     - .*db.*
+      #   excludes:
+      #     - .*demo.*
+      # schemaFilterPattern:
+      #   includes:
+      #     - .*schema.*
+      #   excludes:
+      #     - .*demo.*
+      # tableFilterPattern:
+      #   includes:
+      #     - .*table.*
+      #   excludes:
+      #     - .*demo.*
+      
 sink:
   type: metadata-rest
   config: {}

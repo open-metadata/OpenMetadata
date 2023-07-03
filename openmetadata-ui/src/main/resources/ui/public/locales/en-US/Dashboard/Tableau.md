@@ -86,6 +86,12 @@ The config object can have multiple environments. The default environment is def
 $$
 
 $$section
+### Pagination Limit $(id="paginationLimit")
+
+The pagination limit will be used while querying the Tableau Graphql endpoint to get the data source information.
+$$
+
+$$section
 ### Verify SSL $(id="verifySSL")
 
 Client SSL verification. Make sure to configure the SSLConfig if enabled.

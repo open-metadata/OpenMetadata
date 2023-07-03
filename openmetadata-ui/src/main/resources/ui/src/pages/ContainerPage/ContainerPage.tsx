@@ -42,7 +42,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { getContainerDetailPath, getVersionPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
@@ -589,9 +589,7 @@ const ContainerPage = () => {
   const tabs = useMemo(
     () => [
       {
-        label: (
-          <TabsLabel id={EntityTabs.SCHEMA} name={t('label.detail-plural')} />
-        ),
+        label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
         key: EntityTabs.SCHEMA,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
@@ -630,7 +628,7 @@ const ContainerPage = () => {
               data-testid="entity-right-panel"
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
-                <TagsContainerV1
+                <TagsContainerV2
                   entityFqn={containerName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.CONTAINER}
@@ -642,7 +640,7 @@ const ContainerPage = () => {
                   onSelectionChange={handleTagSelection}
                   onThreadLinkSelect={onThreadLinkSelect}
                 />
-                <TagsContainerV1
+                <TagsContainerV2
                   entityFqn={containerName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.CONTAINER}
@@ -730,7 +728,9 @@ const ContainerPage = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
+        children: !containerPermissions.ViewAll ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <CustomPropertyTable
             entityDetails={
               containerData as CustomPropertyProps['entityDetails']
