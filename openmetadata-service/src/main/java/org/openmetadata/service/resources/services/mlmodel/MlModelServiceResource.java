@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.MlModelConnection;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -214,7 +215,8 @@ public class MlModelServiceResource
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    MlModelService mlModelService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    MlModelService mlModelService =
+        getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
     return decryptOrNullify(securityContext, mlModelService);
   }
 
@@ -426,7 +428,7 @@ public class MlModelServiceResource
       @Parameter(description = "Name of the ML Model service", schema = @Schema(type = "string")) @PathParam("name")
           String name)
       throws IOException {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), false, hardDelete);
   }
 
   @PUT
