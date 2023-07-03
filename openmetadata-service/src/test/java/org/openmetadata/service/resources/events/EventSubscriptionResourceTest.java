@@ -59,7 +59,6 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
     supportedNameCharacters = supportedNameCharacters.replace(" ", ""); // Space not supported
     supportsSoftDelete = false;
     supportsFieldsQueryParam = false;
-    supportsEmptyDescription = true;
   }
 
   @Test

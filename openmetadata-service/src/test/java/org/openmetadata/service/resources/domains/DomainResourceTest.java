@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -24,6 +25,13 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
   public DomainResourceTest() {
     super(Entity.DOMAIN, Domain.class, DomainList.class, "domains", DomainResource.FIELDS);
     supportsFieldsQueryParam = false; // TODO
+    supportsEmptyDescription = false;
+  }
+
+  public void setupDomains(TestInfo test) throws IOException {
+    DOMAIN = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    SUB_DOMAIN =
+        createEntity(createRequest("sub-domain").withParent(DOMAIN.getFullyQualifiedName()), ADMIN_AUTH_HEADERS);
   }
 
   @Override
@@ -31,6 +39,7 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     return new CreateDomain()
         .withName(name)
         .withDomainType(DomainType.AGGREGATE)
+        .withDescription("name")
         .withExperts(listOf(USER1.getFullyQualifiedName()));
   }
 

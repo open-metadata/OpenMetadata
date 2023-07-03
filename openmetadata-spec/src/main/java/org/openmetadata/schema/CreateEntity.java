@@ -13,8 +13,10 @@
 
 package org.openmetadata.schema;
 
+import java.util.List;
 import org.openmetadata.schema.type.EntityReference;
 
+@SuppressWarnings("unchecked")
 public interface CreateEntity {
   String getName();
 
@@ -30,6 +32,14 @@ public interface CreateEntity {
     return null;
   }
 
+  default String getDomain() {
+    return null;
+  }
+
+  default List<String> getDataProducts() {
+    return null;
+  }
+
   <K extends CreateEntity> K withName(String name);
 
   <K extends CreateEntity> K withDisplayName(String displayName);
@@ -41,6 +51,10 @@ public interface CreateEntity {
   }
 
   default <K extends CreateEntity> K withExtension(Object extension) {
+    return (K) this;
+  }
+
+  default <K extends CreateEntity> K withDomain(String domain) {
     return (K) this;
   }
 }

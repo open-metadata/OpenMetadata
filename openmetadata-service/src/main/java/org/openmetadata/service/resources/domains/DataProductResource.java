@@ -47,14 +47,13 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.domains.CreateDomain;
-import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.api.domains.CreateDataProduct;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.DomainRepository;
+import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
@@ -64,51 +63,52 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/domains")
+@Path("/v1/dataProducts")
 @Tag(
     name = "Domains",
     description =
-        "A `Domain` is a bounded context that is aligned with a Business Unit or a function within an organization.")
+        "A `Data Product` or `Data as a Product` is a logical unit that contains all components to process and store "
+            + "domain data for analytical or data-intensive use cases made available to data consumers.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "domains", order = 4) // initialize after user resource
-public class DomainResource extends EntityResource<Domain, DomainRepository> {
-  public static final String COLLECTION_PATH = "/v1/domains/";
-  static final String FIELDS = "children,owner,parent,experts";
+@Collection(name = "dataProducts", order = 4) // initialize after user resource
+public class DataProductResource extends EntityResource<DataProduct, DataProductRepository> {
+  public static final String COLLECTION_PATH = "/v1/dataProducts/";
+  static final String FIELDS = "domain,owner,experts";
 
-  public DomainResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Domain.class, new DomainRepository(dao), authorizer);
+  public DataProductResource(CollectionDAO dao, Authorizer authorizer) {
+    super(DataProduct.class, new DataProductRepository(dao), authorizer);
   }
 
   @Override
-  public Domain addHref(UriInfo uriInfo, Domain domain) {
-    domain.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, domain.getId()));
-    Entity.withHref(uriInfo, domain.getParent());
-    Entity.withHref(uriInfo, domain.getChildren());
-    Entity.withHref(uriInfo, domain.getExperts());
-    Entity.withHref(uriInfo, domain.getOwner());
-    return domain;
+  public DataProduct addHref(UriInfo uriInfo, DataProduct dataProduct) {
+    dataProduct.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, dataProduct.getId()));
+    Entity.withHref(uriInfo, dataProduct.getExperts());
+    Entity.withHref(uriInfo, dataProduct.getOwner());
+    Entity.withHref(uriInfo, dataProduct.getDomain());
+    return dataProduct;
   }
 
-  public static class DomainList extends ResultList<Domain> {
+  public static class DataProductList extends ResultList<DataProduct> {
     @SuppressWarnings("unused")
-    public DomainList() {
+    public DataProductList() {
       /* Required for serde */
     }
   }
 
   @GET
   @Operation(
-      operationId = "listDomains",
-      summary = "List domains",
-      description = "Get a list of Domains.",
+      operationId = "listDataProducts",
+      summary = "List dataProducts",
+      description = "Get a list of DataProducts.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of Domains",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DomainList.class)))
+            description = "List of DataProducts",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DataProductList.class)))
       })
-  public ResultList<Domain> list(
+  public ResultList<DataProduct> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -117,10 +117,10 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @QueryParam("fields")
           String fieldsParam,
       @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
-      @Parameter(description = "Returns list of Domain before this cursor", schema = @Schema(type = "string"))
+      @Parameter(description = "Returns list of DataProduct before this cursor", schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of Domain after this cursor", schema = @Schema(type = "string"))
+      @Parameter(description = "Returns list of DataProduct after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
       throws IOException {
@@ -130,17 +130,17 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
   @GET
   @Path("/{id}")
   @Operation(
-      operationId = "getDomainByID",
-      summary = "Get a domain by Id",
-      description = "Get a domain by `Id`.",
+      operationId = "getDataProductByID",
+      summary = "Get a dataProduct by Id",
+      description = "Get a dataProduct by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The domain",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Domain.class))),
-        @ApiResponse(responseCode = "404", description = "Domain for instance {id} is not found")
+            description = "The dataProduct",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DataProduct.class))),
+        @ApiResponse(responseCode = "404", description = "DataProduct for instance {id} is not found")
       })
-  public Domain get(
+  public DataProduct get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -148,7 +148,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return getInternal(uriInfo, securityContext, id, fieldsParam, null);
   }
@@ -156,20 +156,21 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
   @GET
   @Path("/name/{name}")
   @Operation(
-      operationId = "getDomainByFQN",
-      summary = "Get a domain by name",
-      description = "Get a domain by `name`.",
+      operationId = "getDataProductByFQN",
+      summary = "Get a dataProduct by name",
+      description = "Get a dataProduct by `name`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "domain",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Domain.class))),
-        @ApiResponse(responseCode = "404", description = "Domain for instance {name} is not found")
+            description = "dataProduct",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DataProduct.class))),
+        @ApiResponse(responseCode = "404", description = "DataProduct for instance {name} is not found")
       })
-  public Domain getByName(
+  public DataProduct getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the domain", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Parameter(description = "Name of the dataProduct", schema = @Schema(type = "string")) @PathParam("name")
+          String name,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -182,19 +183,19 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
   @GET
   @Path("/{id}/versions")
   @Operation(
-      operationId = "listAllDomainVersion",
-      summary = "List domain versions",
-      description = "Get a list of all the versions of a domain identified by `Id`",
+      operationId = "listAllDataProductVersion",
+      summary = "List dataProduct versions",
+      description = "Get a list of all the versions of a dataProduct identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of domain versions",
+            description = "List of dataProduct versions",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -202,24 +203,24 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
-      operationId = "listSpecificDomainVersion",
-      summary = "Get a version of the domain",
-      description = "Get a version of the domain by given `Id`",
+      operationId = "listSpecificDataProductVersion",
+      summary = "Get a version of the dataProduct",
+      description = "Get a version of the dataProduct by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "domain",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Domain.class))),
+            description = "dataProduct",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DataProduct.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Domain for instance {id} and version {version} is " + "not found")
+            description = "DataProduct for instance {id} and version {version} is " + "not found")
       })
-  public Domain getVersion(
+  public DataProduct getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
-              description = "Domain version number in the form `major`.`minor`",
+              description = "DataProduct version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
@@ -229,53 +230,55 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
 
   @POST
   @Operation(
-      operationId = "createDomain",
-      summary = "Create a domain",
-      description = "Create a new domain.",
+      operationId = "createDataProduct",
+      summary = "Create a dataProduct",
+      description = "Create a new dataProduct.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The domain ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Domain.class))),
+            description = "The dataProduct ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DataProduct.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDomain create)
+  public Response create(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDataProduct create)
       throws IOException {
-    Domain domain = getDomain(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, domain);
+    DataProduct dataProduct = getDataProduct(create, securityContext.getUserPrincipal().getName());
+    return create(uriInfo, securityContext, dataProduct);
   }
 
   @PUT
   @Operation(
-      operationId = "createOrUpdateDomain",
-      summary = "Create or update a domain",
-      description = "Create a domain. if it does not exist. If a domain already exists, update the domain.",
+      operationId = "createOrUpdateDataProduct",
+      summary = "Create or update a dataProduct",
+      description =
+          "Create a dataProduct. if it does not exist. If a dataProduct already exists, update the " + "dataProduct.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The domain",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Domain.class))),
+            description = "The dataProduct",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DataProduct.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDomain create)
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDataProduct create)
       throws IOException {
-    Domain domain = getDomain(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, domain);
+    DataProduct dataProduct = getDataProduct(create, securityContext.getUserPrincipal().getName());
+    return createOrUpdate(uriInfo, securityContext, dataProduct);
   }
 
   @PATCH
   @Path("/{id}")
   @Operation(
-      operationId = "patchDomain",
-      summary = "Update a domain",
-      description = "Update an existing domain using JsonPatch.",
+      operationId = "patchDataProduct",
+      summary = "Update a dataProduct",
+      description = "Update an existing dataProduct using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -292,17 +295,17 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
   @DELETE
   @Path("/{id}")
   @Operation(
-      operationId = "deleteDomain",
-      summary = "Delete a domain by Id",
-      description = "Delete a domain by `Id`.",
+      operationId = "deleteDataProduct",
+      summary = "Delete a dataProduct by Id",
+      description = "Delete a dataProduct by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Domain for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "DataProduct for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, true, true);
   }
@@ -310,31 +313,29 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
   @DELETE
   @Path("/name/{name}")
   @Operation(
-      operationId = "deleteDomainByFQN",
-      summary = "Delete a domain by name",
-      description = "Delete a domain by `name`.",
+      operationId = "deleteDataProductByFQN",
+      summary = "Delete a dataProduct by name",
+      description = "Delete a dataProduct by `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Domain for instance {name} is not found")
+        @ApiResponse(responseCode = "404", description = "DataProduct for instance {name} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the domain", schema = @Schema(type = "string")) @PathParam("name") String name)
+      @Parameter(description = "Name of the dataProduct", schema = @Schema(type = "string")) @PathParam("name")
+          String name)
       throws IOException {
     return deleteByName(uriInfo, securityContext, name, true, true);
   }
 
-  private Domain getDomain(CreateDomain create, String user) throws IOException {
+  private DataProduct getDataProduct(CreateDataProduct create, String user) throws IOException {
     List<String> experts =
         create.getExperts() == null
             ? create.getExperts()
             : create.getExperts().stream().map(EntityInterfaceUtil::quoteName).collect(Collectors.toList());
-    return copy(new Domain(), create, user)
-        .withDomainType(create.getDomainType())
+    return copy(new DataProduct(), create, user)
         .withFullyQualifiedName(create.getName())
-        .withParent(
-            Entity.getEntityReference(getEntityReference(Entity.DOMAIN, create.getParent()), Include.NON_DELETED))
         .withExperts(EntityUtil.populateEntityReferences(getEntityReferences(Entity.USER, experts)));
   }
 }

@@ -132,6 +132,10 @@
     "isEmailVerified": {
       "description": "If the User has verified the mail",
       "type": "boolean"
+    },
+    "domain" : {
+      "description": "Domain the User belongs to. This is inherited by the team the user belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "additionalProperties": false,

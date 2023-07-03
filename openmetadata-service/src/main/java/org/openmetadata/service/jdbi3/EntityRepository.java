@@ -19,9 +19,13 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.DELETED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.DATA_PRODUCT;
+import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
@@ -163,6 +167,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final boolean supportsOwner;
   protected final boolean supportsFollower;
   protected final boolean supportsVotes;
+  protected final boolean supportsDomain;
+  protected final boolean supportsDataProducts;
 
   /** Fields that can be updated during PATCH operation */
   @Getter private final Fields patchFields;
@@ -192,6 +198,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
     this.supportsFollower = allowedFields.contains(FIELD_FOLLOWERS);
     this.supportsVotes = allowedFields.contains(FIELD_VOTES);
+    this.supportsDomain = allowedFields.contains(FIELD_DOMAIN);
+    this.supportsDataProducts = allowedFields.contains(FIELD_DATA_PRODUCTS);
   }
 
   /**
@@ -547,11 +555,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     prepare(entity);
     setFullyQualifiedName(entity);
     validateExtension(entity);
+    // Domain is already validated
   }
 
   public void storeRelationshipsInternal(T entity) throws IOException {
     storeOwner(entity, entity.getOwner());
     applyTags(entity);
+    storeDomain(entity, entity.getDomain());
+    storeDataProducts(entity, entity.getDataProducts());
     storeRelationships(entity);
   }
 
@@ -559,6 +570,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity.getFullyQualifiedName()) : null);
     entity.setExtension(fields.contains(FIELD_EXTENSION) ? getExtension(entity) : null);
+    entity.setDomain(fields.contains(FIELD_DOMAIN) ? getDomain(entity) : null);
+    entity.setDataProducts(fields.contains(FIELD_DATA_PRODUCTS) ? getDataProducts(entity) : null);
     setFields(entity, fields);
     setInheritedFields(entity);
     return entity;
@@ -901,6 +914,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setOwner(null);
     List<TagLabel> tags = entity.getTags();
     entity.setTags(null);
+    EntityReference domain = entity.getDomain();
+    entity.setDomain(null);
+    List<EntityReference> dataProducts = entity.getDataProducts();
+    entity.setDataProducts(null);
 
     if (update) {
       dao.update(entity.getId(), getFullyQualifiedNameHash(entity), JsonUtils.pojoToJson(entity));
@@ -913,6 +930,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Restore the relationships
     entity.setOwner(owner);
     entity.setTags(tags);
+    entity.setDomain(domain);
+    entity.setDataProducts(dataProducts);
   }
 
   protected void storeTimeSeries(
@@ -990,7 +1009,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.entityExtensionTimeSeriesDao().deleteBeforeTimestamp(fqnHash, extension, timestamp);
   }
 
-  public void validateExtension(T entity) {
+  private void validateExtension(T entity) {
     if (entity.getExtension() == null) {
       return;
     }
@@ -1357,6 +1376,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return !supportsOwner ? null : getFromEntityRef(entity.getId(), Relationship.OWNS, null, false);
   }
 
+  public EntityReference getDomain(T entity) throws IOException {
+    return getFromEntityRef(entity.getId(), Relationship.HAS, DOMAIN, false);
+  }
+
+  private List<EntityReference> getDataProducts(T entity) throws IOException {
+    if (!supportsDataProducts || entity == null) {
+      return null;
+    }
+    List<EntityRelationshipRecord> ids = findFrom(entity.getId(), entityType, Relationship.HAS, DATA_PRODUCT);
+    return EntityUtil.populateEntityReferences(ids, entityType);
+  }
+
   public EntityReference getOwner(EntityReference ref) throws IOException {
     return !supportsOwner ? null : Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
   }
@@ -1372,15 +1403,39 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void storeOwner(T entity, EntityReference owner) {
     if (supportsOwner && owner != null) {
       // Add relationship owner --- owns ---> ownedEntity
-      LOG.info("Adding owner {}:{} for entity {}:{}", owner.getType(), owner.getId(), entityType, entity.getId());
+      LOG.info(
+          "Adding owner {}:{} for entity {}:{}",
+          owner.getType(),
+          owner.getFullyQualifiedName(),
+          entityType,
+          entity.getId());
       addRelationship(owner.getId(), entity.getId(), owner.getType(), entityType, Relationship.OWNS);
+    }
+  }
+
+  protected void storeDomain(T entity, EntityReference domain) {
+    if (supportsDomain && domain != null) {
+      // Add relationship domain --- has ---> entity
+      LOG.info("Adding domain {} for entity {}:{}", domain.getFullyQualifiedName(), entityType, entity.getId());
+      addRelationship(domain.getId(), entity.getId(), Entity.DOMAIN, entityType, Relationship.HAS);
+    }
+  }
+
+  protected void storeDataProducts(T entity, List<EntityReference> dataProducts) {
+    if (supportsDataProducts && !nullOrEmpty(dataProducts)) {
+      for (EntityReference dataProduct : dataProducts) {
+        // Add relationship dataProduct --- has ---> entity
+        LOG.info(
+            "Adding dataProduct {} for entity {}:{}", dataProduct.getFullyQualifiedName(), entityType, entity.getId());
+        addRelationship(dataProduct.getId(), entity.getId(), Entity.DATA_PRODUCT, entityType, Relationship.HAS);
+      }
     }
   }
 
   /** Remove owner relationship for a given entity */
   private void removeOwner(T entity, EntityReference owner) {
     if (EntityUtil.getId(owner) != null) {
-      LOG.info("Removing owner {}:{} for entity {}", owner.getType(), owner.getId(), entity.getId());
+      LOG.info("Removing owner {}:{} for entity {}", owner.getType(), owner.getFullyQualifiedName(), entity.getId());
       deleteRelationship(owner.getId(), owner.getType(), entity.getId(), entityType, Relationship.OWNS);
     }
   }
@@ -1457,6 +1512,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL);
   }
 
+  public EntityReference validateDomain(String domainFqn) throws IOException {
+    if (!supportsDomain || domainFqn == null) {
+      return null;
+    }
+    return Entity.getEntityReferenceByName(Entity.DOMAIN, domainFqn, NON_DELETED);
+  }
+
   /** Override this method to support downloading CSV functionality */
   public String exportToCsv(String name, String user) throws IOException {
     throw new IllegalArgumentException(csvNotSupported(entityType));
@@ -1531,6 +1593,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateOwner();
         updateExtension();
         updateTags(updated.getFullyQualifiedName(), FIELD_TAGS, original.getTags(), updated.getTags());
+        updateDomain();
+        updateDataProducts();
         entitySpecificUpdate();
       }
 
@@ -1662,6 +1726,47 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       removeExtension(original);
       storeExtension(updated);
+    }
+
+    private void updateDomain() throws JsonProcessingException {
+      if (original.getDomain() == updated.getDomain()) {
+        return;
+      }
+
+      EntityReference origDomain = original.getDomain();
+      EntityReference updatedDomain = updated.getDomain();
+      if ((operation.isPatch() || updatedDomain != null)
+          && recordChange(FIELD_DOMAIN, origDomain, updatedDomain, true, entityReferenceMatch)) {
+        if (origDomain != null) {
+          LOG.info(
+              "Removing domain {} for entity {}", origDomain.getFullyQualifiedName(), original.getFullyQualifiedName());
+          deleteRelationship(origDomain.getId(), Entity.DOMAIN, original.getId(), entityType, Relationship.HAS);
+        }
+        if (updatedDomain != null) {
+          // Add relationship owner --- owns ---> ownedEntity
+          LOG.info(
+              "Adding domain {} for entity {}",
+              updatedDomain.getFullyQualifiedName(),
+              original.getFullyQualifiedName());
+          addRelationship(updatedDomain.getId(), original.getId(), Entity.DOMAIN, entityType, Relationship.HAS);
+        }
+      }
+    }
+
+    private void updateDataProducts() throws JsonProcessingException {
+      if (!supportsDataProducts) {
+        return;
+      }
+      List<EntityReference> origDataProducts = listOrEmpty(original.getDataProducts());
+      List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());
+      updateFromRelationships(
+          "dataProducts",
+          DATA_PRODUCT,
+          origDataProducts,
+          updatedDataProducts,
+          Relationship.HAS,
+          entityType,
+          original.getId());
     }
 
     public final boolean updateVersion(Double oldVersion) {

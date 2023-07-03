@@ -123,6 +123,10 @@
     "policies": {
       "description": "Policies that is attached to this team.",
       "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+    },
+    "domain" : {
+      "description": "Domain the Team belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["id", "name", "href"],

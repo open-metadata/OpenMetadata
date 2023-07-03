@@ -83,7 +83,7 @@ import org.openmetadata.service.util.ResultList;
 public class DatabaseServiceResource
     extends ServiceEntityResource<DatabaseService, DatabaseServiceRepository, DatabaseConnection> {
   public static final String COLLECTION_PATH = "v1/services/databaseServices/";
-  static final String FIELDS = "pipelines,owner,tags";
+  static final String FIELDS = "pipelines,owner,tags,domain";
 
   @Override
   public DatabaseService addHref(UriInfo uriInfo, DatabaseService service) {

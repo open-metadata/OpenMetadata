@@ -41,6 +41,17 @@
     "service": {
       "description": "Link to the chart service where this chart is hosted in",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Chart belongs to.",
+      "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "dataProducts" : {
+      "description": "List of fully qualified names of data products this entity is part of.",
+      "type": "array",
+      "items" : {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
     }
   },
   "required": ["name", "service"],

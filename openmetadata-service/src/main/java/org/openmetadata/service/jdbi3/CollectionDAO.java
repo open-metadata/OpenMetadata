@@ -81,6 +81,7 @@ import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -197,6 +198,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   DomainDAO domainDAO();
+
+  @CreateSqlObject
+  DataProductDAO dataProductDAO();
 
   @CreateSqlObject
   EventSubscriptionDAO eventSubscriptionDAO();
@@ -1365,6 +1369,28 @@ public interface CollectionDAO {
     @Override
     default Class<Domain> getEntityClass() {
       return Domain.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+
+    @Override
+    default boolean supportsSoftDelete() {
+      return false;
+    }
+  }
+
+  interface DataProductDAO extends EntityDAO<DataProduct> {
+    @Override
+    default String getTableName() {
+      return "data_product_entity";
+    }
+
+    @Override
+    default Class<DataProduct> getEntityClass() {
+      return DataProduct.class;
     }
 
     @Override
