@@ -34,6 +34,9 @@ from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
 )
 from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
+from metadata.profiler.interface.sqlalchemy.bigquery.profiler_interface import (
+    BigQueryProfilerInterface,
+)
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
