@@ -20,7 +20,7 @@ public interface MigrationDAO {
   Optional<String> getMaxVersion() throws StatementException;
 
   @ConnectionAwareSqlQuery(value = "SELECT MAX(version) FROM SERVER_CHANGE_LOG", connectionType = MYSQL)
-  @ConnectionAwareSqlQuery(value = "SELECT max(version) FROM \"SERVER_CHANGE_LOG\"", connectionType = POSTGRES)
+  @ConnectionAwareSqlQuery(value = "SELECT max(version) FROM SERVER_CHANGE_LOG", connectionType = POSTGRES)
   @SingleValue
   Optional<String> getMaxServerMigrationVersion() throws StatementException;
 
