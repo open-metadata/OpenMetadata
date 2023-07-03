@@ -2057,6 +2057,9 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM tag_usage where tagFQNHash = :tagFQNHash AND source = :source")
     void deleteTagLabels(@Bind("source") int source, @Bind("tagFQNHash") String tagFQNHash);
 
+    @SqlUpdate("DELETE FROM tag_usage where tagFQNHash = :tagFQNHash")
+    void deleteTagLabelsByFqn(@Bind("tagFQNHash") String tagFQNHash);
+
     @SqlUpdate("DELETE FROM tag_usage where tagFQNHash LIKE CONCAT(:tagFQNHash, '.%') AND source = :source")
     void deleteTagLabelsByPrefix(@Bind("source") int source, @Bind("tagFQNHash") String tagFQNHash);
 
