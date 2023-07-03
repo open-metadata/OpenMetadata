@@ -13,6 +13,7 @@
 import { Button, Col, Row, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
@@ -26,6 +27,7 @@ import {
   ROUTES,
 } from 'constants/constants';
 import { PROGRESS_BAR_COLOR } from 'constants/TestSuite.constant';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityTabs } from 'enums/entity.enum';
 import { TestSummary } from 'generated/entity/data/table';
 import { TestSuite } from 'generated/tests/testSuite';
@@ -159,17 +161,28 @@ export const TestSuites = () => {
   useEffect(() => {
     if (testSuitePermission?.ViewAll || testSuitePermission?.ViewBasic) {
       fetchTestSuites();
+    } else {
+      setIsLoading(false);
     }
   }, [tab, testSuitePermission]);
 
+  if (!testSuitePermission?.ViewAll && !testSuitePermission?.ViewBasic) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
   return (
-    <Row className="p-x-lg p-t-md" gutter={[16, 16]}>
+    <Row
+      className="p-x-lg p-t-md"
+      data-testid="test-suite-container"
+      gutter={[16, 16]}>
       <Col span={24}>
         <Row justify="end">
           <Col>
             {tab === DataQualityPageTabs.TEST_SUITES &&
               testSuitePermission?.Create && (
-                <Link to={ROUTES.ADD_TEST_SUITES}>
+                <Link
+                  data-testid="add-test-suite-btn"
+                  to={ROUTES.ADD_TEST_SUITES}>
                   <Button type="primary">
                     {t('label.add-entity', { entity: t('label.test-suite') })}
                   </Button>
