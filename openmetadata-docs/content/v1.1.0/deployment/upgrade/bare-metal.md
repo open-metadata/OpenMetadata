@@ -12,43 +12,11 @@ This guide will help you upgrade an OpenMetadata deployment using release binari
 This guide assumes that you have an OpenMetadata deployment that you installed and configured following the
 [Bare Metal deployment](/deployment/bare-metal) guide.
 
-## Procedure
+{% partial file="upgrade-prerequisites-110.md" /%}
 
-{% note noteType="Warning" %}
+# Upgrade process
 
-It is adviced to go through [openmetadata release notes](/deployment/upgrade/versions/013-to-100) before starting the upgrade process. 
-
-{% /note %}
-
-### Backup your data
-
-{% note %}
-
-To run the backup and restore commands, please make sure that you are always in the latest `openmetadata-ingestion`
-version to have all the improvements shipped in the CLI.
-
-{% /note %}
-
-- Make sure your instance is connected to the Database server
-- Create a virtual environment to install an upgraded `metadata` version to run the backup command:
-   - `python -m venv venv`
-   - `source venv/bin/activate`
-   - `pip install openmetadata-ingestion~=1.1.0`
-- Validate the installed `metadata` version with `python -m metadata --version`, which should tell us that we are
-    indeed at 1.1.0. Notice the `python -m metadata` vs. `metadata`.
-- Run the backup using the updated `metadata` CLI:
-    ```
-    python -m metadata backup -u openmetadata_user -p openmetadata_password -H mysql -d openmetadata_db --port 3306
-    ```
-   Or if using postgres:
-    ```
-    python -m metadata backup -u openmetadata_user -p openmetadata_password -H postgresql -d openmetadata_db --port 5432 -s public
-    ```
-- This will generate the .sql file which can be used for the backup
-    In our case, the backup file was named `openmetadata_202212201528_backup.sql`. You can copy the name from the backup
-    command output.
-
-### 1. Download the binaries for the release you want to install
+## Step 1: Download the binaries for the release you want to install
 
 OpenMetadata release binaries are maintained as GitHub releases.
 
@@ -60,7 +28,7 @@ To download a specific release binary:
 - Download the release binaries. The release binaries will be in a compressed tar file named using the following 
   convention, `openmetadata-x.y.z.tar.gz` Where `x`, `y`, `z` are the major, minor, and patch release numbers, respectively.
 
-### 2. Extract the release binaries from the download file
+## Step 2: Extract the release binaries from the download file
 
 Using the command-line tool or application of your choice, extract the release binaries. 
 
@@ -72,7 +40,7 @@ tar xfz openmetadata-*.tar.gz
 
 This will create a directory with the same name as the download file minus the `.tar` and `.gz` extensions.
 
-### 3. Navigate into the directory created by extracting the release binaries
+## Step 3: Navigate into the directory created by extracting the release binaries
 
 Change into the new directory by issuing a command similar to the following.
 
@@ -84,12 +52,10 @@ For example, to navigate into the directory created by issuing the tar command a
 command.
 
 ```commandline
-
 cd openmetadata-1.1.0
-
 ```
 
-### 4. Stop the OpenMetadata server
+## Step 4: Stop the OpenMetadata server
 
 OpenMetadata ships with a few control scripts. One is `openmetadata.sh`. This script enables you to start, stop, and
 perform other deployment operations on the OpenMetadata server. 
@@ -103,7 +69,7 @@ directory of your current installation by running the following command:
 ./bin/openmetadata.sh stop
 ```
 
-### 5. Migrate the database schemas and ElasticSearch indexes
+## Step 5: Migrate the database schemas and ElasticSearch indexes
 
 The bootstrap/bootstrap_storage.sh script enables you to perform a number of operations on the OpenMetadata database (in
 MySQL) and index (in Elasticsearch).
@@ -113,7 +79,7 @@ MySQL) and index (in Elasticsearch).
 ```
 
 
-### 6. Restart the OpenMetadata server
+## Step 6: Restart the OpenMetadata server
 
 Once you've dropped and recreated your data in the new version, restart the OpenMetadata server using the new release
 binaries. You may restart the server by running the following command.
@@ -122,18 +88,7 @@ binaries. You may restart the server by running the following command.
 ./bin/openmetadata.sh start
 ```
 
-### Optional - Upgrade all your connectors
-
-If you are ingesting data manually or in a custom scheduler using OpenMetadata connectors,
-upgrade all your connectors by running the following command for each connector.
-
-You will need to replace `<connectorname>` in the command below with the name of the connector you are upgrading.
-
-```commandline
-pip3 install --upgrade "openmetadata-ingestion[<connectorname>]"
-```
-
-### Re-index all your metadata
+## Step 7: Re-index all your metadata
 
 Go to Settings -> Elasticsearch
 

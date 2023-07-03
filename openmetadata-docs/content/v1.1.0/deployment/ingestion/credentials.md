@@ -1,6 +1,6 @@
 ---
 title: Managing Credentials
-slug: /connectors/credentials
+slug: /deployment/ingestion/credentials
 ---
 
 # Managing Credentials

@@ -39,6 +39,7 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
 import org.jdbi.v3.core.Jdbi;
@@ -204,7 +205,7 @@ public final class TablesInitializer {
       execute(config, flyway, schemaMigrationOptionSpecified);
       printToConsoleInDebug(schemaMigrationOptionSpecified + "option successful");
     } catch (Exception e) {
-      printError(schemaMigrationOptionSpecified + "option failed with : " + e);
+      printError(schemaMigrationOptionSpecified + "option failed with : " + ExceptionUtils.getStackTrace(e));
       System.exit(1);
     }
     System.exit(0);

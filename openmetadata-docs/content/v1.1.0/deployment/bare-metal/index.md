@@ -64,10 +64,8 @@ If you are using AWS OpenSearch Service, OpenMetadata Supports AWS OpenSearch Se
 
 ## Airflow (version 2.0.0 or greater) or other workflow schedulers
 
-OpenMetadata performs metadata ingestion using ingestion
-
-connectors designed to run in Airflow or another workflow scheduler. To install Airflow, please see the
-[Airflow Installation guide](/deployment/airflow).
+OpenMetadata performs metadata ingestion using the Ingestion Framework. Learn more about how to deploy and manage
+the ingestion workflows [here](/deployment/ingestion).
 
 ## Minimum Sizing Requirements
 
