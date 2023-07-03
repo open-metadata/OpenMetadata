@@ -312,7 +312,7 @@ class DbtSource(DbtServiceSource):
             None,
         )
 
-    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-locals, too-many-branches
     def yield_data_models(self, dbt_objects: DbtObjects) -> Iterable[DataModelLink]:
         """
         Yield the data models
@@ -330,6 +330,14 @@ class DbtSource(DbtServiceSource):
                 }
             self.context.data_model_links = []
             self.context.dbt_tests = {}
+            self.context.run_results_generate_time = None
+            if (
+                dbt_objects.dbt_run_results
+                and dbt_objects.dbt_run_results.metadata.generated_at
+            ):
+                self.context.run_results_generate_time = (
+                    dbt_objects.dbt_run_results.metadata.generated_at
+                )
             for key, manifest_node in manifest_entities.items():
                 try:
                     # If the run_results file is passed then only DBT tests will be processed
@@ -805,7 +813,8 @@ class DbtSource(DbtServiceSource):
                 dbt_timestamp = None
                 if dbt_test_completed_at:
                     dbt_timestamp = dbt_test_completed_at.timestamp()
-
+                elif self.context.run_results_generate_time:
+                    dbt_timestamp = self.context.run_results_generate_time.timestamp()
                 # Create the test case result object
                 test_case_result = TestCaseResult(
                     timestamp=dbt_timestamp,
