@@ -187,8 +187,8 @@ json #-'{connection,config,connection,password}',
 '{connection,config,connection,authType}',
 jsonb_build_object('password',json#>'{connection,config,connection,password}')
 )
-WHERE serviceType IN ('Airflow')
+WHERE serviceType = 'Airflow'
 and json#>'{connection,config,connection,type}' IN ('"Mysql"', '"Postgres"')
-and json#>'{connection,config,connection,password}' is not null 
+and json#>'{connection,config,connection,password}' is not null;
   
   

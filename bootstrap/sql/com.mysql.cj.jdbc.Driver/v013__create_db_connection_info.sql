@@ -356,5 +356,6 @@ SET json = JSON_INSERT(
     JSON_OBJECT(),
     '$.connection.config.connection.authType.password',
     JSON_EXTRACT(json, '$.connection.config.connection.password'))
-where JSON_EXTRACT(json, '$.connection.config.connection.type') in ('Postgres', 'Mysql')
+where serviceType = 'Airflow' 
+AND JSON_EXTRACT(json, '$.connection.config.connection.type') in ('Postgres', 'Mysql')
 AND JSON_EXTRACT(json, '$.connection.config.connection.password') IS NOT NULL;
