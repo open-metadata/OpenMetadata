@@ -35,6 +35,17 @@ public final class Migration {
     }
   }
 
+  public static Optional<String> lastMigratedServer(Jdbi jdbi) {
+    try {
+      return jdbi.withExtension(MigrationDAO.class, MigrationDAO::getMaxServerMigrationVersion);
+    } catch (StatementException e) {
+      throw new IllegalArgumentException(
+          "Exception encountered when trying to obtain last migrated Server version."
+              + " Make sure you have run `./bootstrap/bootstrap_storage.sh migrate-all` at least once.",
+          e);
+    }
+  }
+
   public static String lastMigrationFile(MigrationConfiguration conf) throws IOException {
     List<String> migrationFiles = getMigrationVersions(conf);
     return Collections.max(migrationFiles);

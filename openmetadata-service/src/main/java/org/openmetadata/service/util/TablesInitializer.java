@@ -341,7 +341,7 @@ public final class TablesInitializer {
     workflow.runMigrationWorkflows();
   }
 
-  private static List<MigrationStep> getServerMigrationFiles(ConnectionType connType) {
+  public static List<MigrationStep> getServerMigrationFiles(ConnectionType connType) {
     List<MigrationStep> migrations = new ArrayList<>();
     try {
       String prefix =
