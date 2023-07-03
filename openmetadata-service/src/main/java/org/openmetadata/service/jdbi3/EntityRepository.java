@@ -830,8 +830,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.entityExtensionDAO().deleteAll(id);
 
     // Delete all the tag labels
-    daoCollection.tagUsageDAO().deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
+    daoCollection
+        .tagUsageDAO()
+        .deleteTagLabelsByTargetPrefix(FullyQualifiedName.buildHash(entityInterface.getFullyQualifiedName()));
 
+    // when the glossary and tag is deleted .. delete its usage
+    daoCollection
+        .tagUsageDAO()
+        .deleteTagLabelsByFqn(FullyQualifiedName.buildHash(entityInterface.getFullyQualifiedName()));
     // Delete all the usage data
     daoCollection.usageDAO().delete(id);
 
