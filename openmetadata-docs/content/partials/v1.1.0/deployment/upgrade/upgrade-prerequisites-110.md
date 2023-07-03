@@ -107,6 +107,24 @@ If you are upgrading production this is the recommended version to upgrade to.
 
 ## Breaking Changes for 1.1 Stable Release
 
+### MySQL - Update `sort_buffer_size`
+
+Before running the migrations, it is important to update the `sort_buffer_size` if using MySQL as the backend database.
+
+A safe value would be setting it to 10MB.
+
+You can update it via SQL (note that it will reset after the server restarts):
+
+```sql
+SET GLOBAL sort_buffer_size = 10485760
+```
+
+To make the configuration persistent, you'd need to navigate to your MySQL Server install directory and update the
+`my.ini` or `my.cnf` files with `sort_buffer_size = 10485760`.
+
+If using RDS, you will need to update your instance's [Parameter Group](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html)
+to include the above change.
+
 ### Elasticsearch and OpenSearch
 
 We now support ES version up to 7.16. However, this means that we need to handle the internals a bit differently
@@ -117,8 +135,15 @@ elasticsearch:
   searchType: ${SEARCH_TYPE:- "elasticsearch"} # or opensearch
 ```
 
-If you use Elasticsearch there's nothing to do. However, if you use OpenSearch, you will need to pass the new
+If you use Elasticsearch there's nothing to do. However, if you use **OpenSearch**, you will need to pass the new
 parameter as `opensearch`.
+
+If you skip this step, you would see the following error:
+
+```
+ERROR [2023-07-02 15:53:41,538] [main] o.o.s.s.e.ElasticSearchClientImpl - Failed to create Elastic Search indexes due to
+org.elasticsearch.ElasticsearchException: Invalid or missing build flavor [oss]
+```
 
 ### Pipeline Service Client Configuration
 
