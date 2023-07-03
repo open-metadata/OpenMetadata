@@ -30,18 +30,17 @@ In this section, we provide guides and references to use the Athena connector.
 
 Configure and schedule Athena metadata and profiler workflows from the OpenMetadata UI:
 
-- [Athena](#athena)
-  - [Requirements](#requirements)
-  - [Metadata Ingestion](#metadata-ingestion)
-      - [Service Name](#service-name)
-      - [Connection Options](#connection-options)
-      - [Metadata Ingestion Options](#metadata-ingestion-options)
-  - [Troubleshooting](#troubleshooting)
-    - [Workflow Deployment Error](#workflow-deployment-error)
-  - [Related](#related)
+- [Requirements](#requirements)
+- [Metadata Ingestion](#metadata-ingestion)
+    - [Service Name](#service-name)
+    - [Connection Options](#connection-options)
+    - [Metadata Ingestion Options](#metadata-ingestion-options)
+- [Troubleshooting](#troubleshooting)
+  - [Workflow Deployment Error](#workflow-deployment-error)
+- [Related](#related)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
-the following docs to connect using Airflow SDK or with the CLI.
+the following docs to run the Ingestion Framework in any orchestrator [externally](/deployment/ingestion).
 
 {% tilesContainer %}
 
@@ -53,7 +52,7 @@ the following docs to connect using Airflow SDK or with the CLI.
 {% tile
     title="Ingest with the CLI"
     description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/database/athena/cli"
+    link="/connectors/database/$connector/cli"
   / %}
 
 {% /tilesContainer %}
@@ -65,7 +64,8 @@ To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
-custom Airflow plugins to handle the workflow deployment.
+custom Airflow plugins to handle the workflow deployment. If you want to install it manually in an already existing
+Airflow host, you can follow [this](http://localhost:3000/v1.1.0/deployment/ingestion/openmetadata) guide.
 
 The Athena connector ingests metadata through JDBC connections.
 
@@ -176,117 +176,7 @@ You can find further information on the Athena connector in the [docs](https://d
 
 ## Metadata Ingestion
 
-{% stepsContainer %}
-
-{% step srNumber=1 %}
-
-{% stepDescription title="1. Visit the Services Page" %}
-
-The first step is to ingesting the metadata from your sources. To do that create a service connection first. Once a service is created, it can be used to configure
-metadata, usage, and profiler workflows.
-
-To visit the Database Services page, click on 'Settings' in the top navigation bar and select 'Databases' from left panel.
-
-{% /stepDescription %}
-
-{% stepVisualInfo %}
-
-{% image
-src="/images/v1.1.0/connectors/visit-database-service-page.png"
-alt="Visit Services Page"
-caption="Find Databases option on left panel of the settings page" /%}
-
-{% /stepVisualInfo %}
-
-{% /step %}
-
-{% step srNumber=2 %}
-
-{% stepDescription title="2. Create a New Service" %}
-
-Click on the 'Add New Service' button to start the Service creation.
-
-{% /stepDescription %}
-
-{% stepVisualInfo %}
-
-{% image
-src="/images/v1.1.0/connectors/create-database-service.png"
-alt="Create a new service"
-caption="Add a new Service from the Database Services page" /%}
-
-{% /stepVisualInfo %}
-
-{% /step %}
-
-{% step srNumber=3 %}
-
-{% stepDescription title="3. Select the Service Type" %}
-
-Select Athena as the service type and click Next.
-
-{% /stepDescription %}
-
-{% stepVisualInfo %}
-
-{% image
-  src="/images/v1.1.0/connectors/athena/select-service.png"
-  alt="Select Service"
-  caption="Select your service from the list" /%}
-
-{% /stepVisualInfo %}
-
-{% /step %}
-
-{% step srNumber=4 %}
-
-{% stepDescription title="4. Name and Describe your Service" %}
-
-Provide a name and description for your service as illustrated below.
-
-#### Service Name
-
-OpenMetadata uniquely identifies services by their Service Name. Provide
-a name that distinguishes your deployment from other services, including
-the other {connector} services that you might be ingesting metadata
-from.
-
-{% /stepDescription %}
-
-{% stepVisualInfo %}
-
-{% image
-  src="/images/v1.1.0/connectors/athena/add-new-service.png"
-  alt="Add New Service"
-  caption="Provide a Name and description for your Service" /%}
-
-{% /stepVisualInfo %}
-
-{% /step %}
-
-{% step srNumber=5 %}
-
-{% stepDescription title="5. Configure the Service Connection" %}
-
-In this step, we will configure the connection settings required for
-this connector. Please follow the instructions below to ensure that
-you've configured the connector to read from your athena service as
-desired.
-
-{% /stepDescription %}
-
-{% stepVisualInfo %}
-
-{% image
-  src="/images/v1.1.0/connectors/athena/service-connection.png"
-  alt="Configure service connection"
-  caption="Configure the service connection by filling the form" /%}
-
-{% /stepVisualInfo %}
-
-{% /step %}
-
-{% extraContent parentTagName="stepsContainer" %}
+{% partial file="metadata-ingestion.md" variables={connectorName: "Athena", connectorPath: "athena"} /%}
 
 #### Connection Details
 
@@ -408,13 +298,13 @@ caption="Configure Metadata Ingestion Page" /%}
 - **Database Filter Pattern (Optional)**: Use to database filter patterns to control whether or not to include database as part of metadata ingestion.
   - **Include**: Explicitly include databases by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all databases with names matching one or more of the supplied regular expressions. All other databases will be excluded.
   - **Exclude**: Explicitly exclude databases by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all databases with names matching one or more of the supplied regular expressions. All other databases will be included.
-- **Schema Filter Pattern (Optional)**: Use to schema filter patterns to control whether or not to include schemas as part of metadata ingestion.
+- **Schema Filter Pattern (Optional)**: Use to schema filter patterns to control whether to include schemas as part of metadata ingestion.
   - **Include**: Explicitly include schemas by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all schemas with names matching one or more of the supplied regular expressions. All other schemas will be excluded.
   - **Exclude**: Explicitly exclude schemas by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all schemas with names matching one or more of the supplied regular expressions. All other schemas will be included.
-- **Table Filter Pattern (Optional)**: Use to table filter patterns to control whether or not to include tables as part of metadata ingestion.
+- **Table Filter Pattern (Optional)**: Use to table filter patterns to control whether to include tables as part of metadata ingestion.
   - **Include**: Explicitly include tables by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded.
   - **Exclude**: Explicitly exclude tables by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included.
-- **Include views (toggle)**: Set the Include views toggle to control whether or not to include views as part of metadata ingestion.
+- **Include views (toggle)**: Set the Include views toggle to control whether to include views as part of metadata ingestion.
 - **Include tags (toggle)**: Set the 'Include Tags' toggle to control whether to include tags as part of metadata ingestion.
 - **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
 
