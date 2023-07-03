@@ -76,7 +76,7 @@ class BigQueryProfilerSource(BaseProfilerSource):
         table_config: Optional[TableConfig],
     ) -> Union[SQAProfilerInterface, PandasProfilerInterface]:
         """Create BigQuery profiler interface"""
-        profiler_interface: BigQueryProfilerSource = ProfilerProtocol.create(
+        profiler_interface: BigQueryProfilerInterface = ProfilerProtocol.create(
             "BigQuery",
             entity,
             table_config,
