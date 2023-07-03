@@ -107,11 +107,12 @@ If you are upgrading production this is the recommended version to upgrade to.
 
 ## Breaking Changes for 1.1 Stable Release
 
-### MySQL - Update `sort_buffer_size`
+### Update `sort_buffer_size` (MySQL) or `work_mem` (Postgres)
 
-Before running the migrations, it is important to update the `sort_buffer_size` if using MySQL as the backend database.
+Before running the migrations, it is important to update these parameters to ensure there are no runtime errors.
+A safe value would be setting them to 10MB.
 
-A safe value would be setting it to 10MB.
+**If using MySQL**
 
 You can update it via SQL (note that it will reset after the server restarts):
 
@@ -121,6 +122,19 @@ SET GLOBAL sort_buffer_size = 10485760
 
 To make the configuration persistent, you'd need to navigate to your MySQL Server install directory and update the
 `my.ini` or `my.cnf` files with `sort_buffer_size = 10485760`.
+
+If using RDS, you will need to update your instance's [Parameter Group](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html)
+to include the above change.
+
+**If using Postgres**
+
+You can update it via SQL (not that it will reset after the server restarts):
+
+```sql
+SET work_mem = '10MB';
+```
+
+To make the configuration persistent, you'll need to update the `postgresql.conf` file.
 
 If using RDS, you will need to update your instance's [Parameter Group](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html)
 to include the above change.
