@@ -31,6 +31,8 @@ TABLES_DUMP_ALL = {
     "field_relationship",
     "tag_usage",
     "openmetadata_settings",
+    "SERVER_MIGRATION_SQL_LOGS",
+    "SERVER_CHANGE_LOG",
 }
 
 CUSTOM_TABLES = {"entity_extension_time_series": {"exclude_columns": ["timestamp"]}}
