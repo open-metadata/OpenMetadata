@@ -13,6 +13,7 @@ import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.jdbi.v3.core.statement.PreparedBatch;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
@@ -72,6 +73,7 @@ import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.migration.api.MigrationStep;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -79,26 +81,89 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MigrationUtil {
+  private MigrationUtil() {
+    /* Cannot create object  util class*/
+  }
+
+  private static final String MYSQL_ENTITY_UPDATE =
+      "UPDATE %s SET  json = :json, %s = :nameHashColumnValue WHERE id = :id";
+  private static final String POSTGRES_ENTITY_UPDATE =
+      "UPDATE %s SET  json = (:json :: jsonb), %s = :nameHashColumnValue WHERE id = :id";
+
+  private static final String MYSQL_ENTITY_EXTENSION_TIME_SERIES_UPDATE =
+      "UPDATE entity_extension_time_series set entityFQNHash = :entityFQNHash where entityFQN=:entityFQN and extension=:extension and timestamp=:timestamp";
+  private static final String POSTGRES_ENTITY_EXTENSION_TIME_SERIES_UPDATE =
+      "UPDATE entity_extension_time_series set entityFQNHash = :entityFQNHash  where entityFQN=:entityFQN and extension=:extension and timestamp=:timestamp";
+
   @SneakyThrows
-  public static <T extends EntityInterface> void updateFQNHashForEntity(Class<T> clazz, EntityDAO<T> dao) {
-    List<String> jsons = dao.listAfter(new ListFilter(Include.ALL), Integer.MAX_VALUE, "");
-    for (String json : jsons) {
-      T entity = JsonUtils.readValue(json, clazz);
-      dao.update(
-          entity.getId(), FullyQualifiedName.buildHash(entity.getFullyQualifiedName()), JsonUtils.pojoToJson(entity));
+  public static <T extends EntityInterface> void updateFQNHashForEntity(
+      Handle handle, Class<T> clazz, EntityDAO<T> dao) {
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      readAndProcessEntity(
+          handle, String.format(MYSQL_ENTITY_UPDATE, dao.getTableName(), dao.getNameHashColumn()), clazz, dao, false);
+    } else {
+      readAndProcessEntity(
+          handle,
+          String.format(POSTGRES_ENTITY_UPDATE, dao.getTableName(), dao.getNameHashColumn()),
+          clazz,
+          dao,
+          false);
     }
   }
 
   @SneakyThrows
-  public static <T extends EntityInterface> void updateFQNHashForEntityWithName(Class<T> clazz, EntityDAO<T> dao) {
-    List<String> jsons = dao.listAfter(new ListFilter(Include.ALL), Integer.MAX_VALUE, "");
-    for (String json : jsons) {
-      T entity = JsonUtils.readValue(json, clazz);
-      dao.update(
-          entity.getId(),
-          FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getFullyQualifiedName())),
-          JsonUtils.pojoToJson(entity));
+  public static <T extends EntityInterface> void updateFQNHashForEntityWithName(
+      Handle handle, Class<T> clazz, EntityDAO<T> dao) {
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      readAndProcessEntity(
+          handle, String.format(MYSQL_ENTITY_UPDATE, dao.getTableName(), dao.getNameHashColumn()), clazz, dao, true);
+    } else {
+      readAndProcessEntity(
+          handle, String.format(POSTGRES_ENTITY_UPDATE, dao.getTableName(), dao.getNameHashColumn()), clazz, dao, true);
     }
+  }
+
+  public static <T extends EntityInterface> void readAndProcessEntity(
+      Handle handle, String updateSql, Class<T> clazz, EntityDAO<T> dao, boolean withName) throws IOException {
+    LOG.debug("Starting Migration for table : {}", dao.getTableName());
+    int limitParam = 100;
+    ListFilter filter = new ListFilter(Include.ALL);
+    List<T> entities;
+    String after = null;
+    PreparedBatch upsertBatch = handle.prepareBatch(updateSql);
+    do {
+      // Create empty Array
+      entities = new ArrayList<>();
+
+      // Read from Database
+      List<String> jsons = dao.listAfter(filter, limitParam + 1, after == null ? "" : after);
+      for (String json : jsons) {
+        T entity = JsonUtils.readValue(json, clazz);
+        entities.add(entity);
+      }
+      String afterCursor = null;
+      if (entities.size() > limitParam) {
+        entities.remove(limitParam);
+        afterCursor = entities.get(limitParam - 1).getName();
+      }
+      after = afterCursor;
+
+      // Process Update
+      for (T entity : entities) {
+        // Update the Statements to Database
+        String hash =
+            withName
+                ? FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getFullyQualifiedName()))
+                : FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
+        upsertBatch
+            .bind("json", JsonUtils.pojoToJson(entity))
+            .bind("nameHashColumnValue", hash)
+            .bind("id", entity.getId().toString())
+            .add();
+      }
+      upsertBatch.execute();
+    } while (!CommonUtil.nullOrEmpty(after));
+    LOG.debug("End Migration for table : {}", dao.getTableName());
   }
 
   public static MigrationDAO.ServerMigrationSQLTable buildServerMigrationTable(String version, String statement) {
@@ -117,75 +182,78 @@ public class MigrationUtil {
       if (!lookUp.contains(tableContent.getCheckSum())) {
         result.add(tableContent);
       } else {
-        // TODO:LOG better
         LOG.debug("Query will be skipped in Migration Step , as this has already been executed");
       }
     }
     return result;
   }
 
-  public static void dataMigrationFQNHashing(CollectionDAO collectionDAO) {
+  public static void dataMigrationFQNHashing(Handle handle, CollectionDAO collectionDAO) {
     // Migration for Entities with Name as their FQN
     // We need to quote the FQN, if these entities have "." in their name we are storing it as it is
     // into the FQN field.
-    updateFQNHashForEntityWithName(Bot.class, collectionDAO.botDAO());
-    updateFQNHashForEntityWithName(User.class, collectionDAO.userDAO());
-    updateFQNHashForEntityWithName(Team.class, collectionDAO.teamDAO());
+    updateFQNHashForEntityWithName(handle, Bot.class, collectionDAO.botDAO());
+    updateFQNHashForEntityWithName(handle, User.class, collectionDAO.userDAO());
+    updateFQNHashForEntityWithName(handle, Team.class, collectionDAO.teamDAO());
 
     // Update all the services
-    updateFQNHashForEntityWithName(DatabaseService.class, collectionDAO.dbServiceDAO());
-    updateFQNHashForEntityWithName(DashboardService.class, collectionDAO.dashboardServiceDAO());
-    updateFQNHashForEntityWithName(MessagingService.class, collectionDAO.messagingServiceDAO());
-    updateFQNHashForEntityWithName(MetadataService.class, collectionDAO.metadataServiceDAO());
-    updateFQNHashForEntityWithName(MlModelService.class, collectionDAO.mlModelServiceDAO());
-    updateFQNHashForEntityWithName(StorageService.class, collectionDAO.storageServiceDAO());
-    updateFQNHashForEntityWithName(PipelineService.class, collectionDAO.pipelineServiceDAO());
-    updateFQNHashForEntity(IngestionPipeline.class, collectionDAO.ingestionPipelineDAO());
+    updateFQNHashForEntityWithName(handle, DatabaseService.class, collectionDAO.dbServiceDAO());
+    updateFQNHashForEntityWithName(handle, DashboardService.class, collectionDAO.dashboardServiceDAO());
+    updateFQNHashForEntityWithName(handle, MessagingService.class, collectionDAO.messagingServiceDAO());
+    updateFQNHashForEntityWithName(handle, MetadataService.class, collectionDAO.metadataServiceDAO());
+    updateFQNHashForEntityWithName(handle, MlModelService.class, collectionDAO.mlModelServiceDAO());
+    updateFQNHashForEntityWithName(handle, StorageService.class, collectionDAO.storageServiceDAO());
+    updateFQNHashForEntityWithName(handle, PipelineService.class, collectionDAO.pipelineServiceDAO());
+    updateFQNHashForEntity(handle, IngestionPipeline.class, collectionDAO.ingestionPipelineDAO());
 
     // Update Entities
-    updateFQNHashForEntity(Database.class, collectionDAO.databaseDAO());
-    updateFQNHashForEntity(DatabaseSchema.class, collectionDAO.databaseSchemaDAO());
-    updateFQNHashForEntity(Table.class, collectionDAO.tableDAO());
-    updateFQNHashForEntity(Query.class, collectionDAO.queryDAO());
-    updateFQNHashForEntity(Topic.class, collectionDAO.topicDAO());
-    updateFQNHashForEntity(Dashboard.class, collectionDAO.dashboardDAO());
-    updateFQNHashForEntity(DashboardDataModel.class, collectionDAO.dashboardDataModelDAO());
-    updateFQNHashForEntity(Chart.class, collectionDAO.chartDAO());
-    updateFQNHashForEntity(Container.class, collectionDAO.containerDAO());
-    updateFQNHashForEntity(MlModel.class, collectionDAO.mlModelDAO());
-    updateFQNHashForEntity(Pipeline.class, collectionDAO.pipelineDAO());
-    updateFQNHashForEntity(Metrics.class, collectionDAO.metricsDAO());
-    updateFQNHashForEntity(Report.class, collectionDAO.reportDAO());
+    updateFQNHashForEntity(handle, Database.class, collectionDAO.databaseDAO());
+    updateFQNHashForEntity(handle, DatabaseSchema.class, collectionDAO.databaseSchemaDAO());
+    updateFQNHashForEntity(handle, Table.class, collectionDAO.tableDAO());
+    updateFQNHashForEntity(handle, Query.class, collectionDAO.queryDAO());
+    updateFQNHashForEntity(handle, Topic.class, collectionDAO.topicDAO());
+    updateFQNHashForEntity(handle, Dashboard.class, collectionDAO.dashboardDAO());
+    updateFQNHashForEntity(handle, DashboardDataModel.class, collectionDAO.dashboardDataModelDAO());
+    updateFQNHashForEntity(handle, Chart.class, collectionDAO.chartDAO());
+    updateFQNHashForEntity(handle, Container.class, collectionDAO.containerDAO());
+    updateFQNHashForEntity(handle, MlModel.class, collectionDAO.mlModelDAO());
+    updateFQNHashForEntity(handle, Pipeline.class, collectionDAO.pipelineDAO());
+    updateFQNHashForEntity(handle, Metrics.class, collectionDAO.metricsDAO());
+    updateFQNHashForEntity(handle, Report.class, collectionDAO.reportDAO());
 
     // Update Glossaries & Classifications
-    updateFQNHashForEntity(Classification.class, collectionDAO.classificationDAO());
-    updateFQNHashForEntity(Glossary.class, collectionDAO.glossaryDAO());
-    updateFQNHashForEntity(GlossaryTerm.class, collectionDAO.glossaryTermDAO());
-    updateFQNHashForEntity(Tag.class, collectionDAO.tagDAO());
+    updateFQNHashForEntity(handle, Classification.class, collectionDAO.classificationDAO());
+    updateFQNHashForEntity(handle, Glossary.class, collectionDAO.glossaryDAO());
+    updateFQNHashForEntity(handle, GlossaryTerm.class, collectionDAO.glossaryTermDAO());
+    updateFQNHashForEntity(handle, Tag.class, collectionDAO.tagDAO());
 
     // Update DataInsights
-    updateFQNHashForEntity(DataInsightChart.class, collectionDAO.dataInsightChartDAO());
-    updateFQNHashForEntity(Kpi.class, collectionDAO.kpiDAO());
+    updateFQNHashForEntity(handle, DataInsightChart.class, collectionDAO.dataInsightChartDAO());
+    updateFQNHashForEntity(handle, Kpi.class, collectionDAO.kpiDAO());
 
     // Update DQ
-    updateFQNHashForEntity(TestCase.class, collectionDAO.testCaseDAO());
-    updateFQNHashForEntity(TestConnectionDefinition.class, collectionDAO.testConnectionDefinitionDAO());
-    updateFQNHashForEntity(TestDefinition.class, collectionDAO.testDefinitionDAO());
-    updateFQNHashForEntity(TestSuite.class, collectionDAO.testSuiteDAO());
+    updateFQNHashForEntity(handle, TestCase.class, collectionDAO.testCaseDAO());
+    updateFQNHashForEntity(handle, TestConnectionDefinition.class, collectionDAO.testConnectionDefinitionDAO());
+    updateFQNHashForEntity(handle, TestDefinition.class, collectionDAO.testDefinitionDAO());
+    updateFQNHashForEntity(handle, TestSuite.class, collectionDAO.testSuiteDAO());
 
     // Update Misc
-    updateFQNHashForEntity(Policy.class, collectionDAO.policyDAO());
-    updateFQNHashForEntity(EventSubscription.class, collectionDAO.eventSubscriptionDAO());
-    updateFQNHashForEntity(Role.class, collectionDAO.roleDAO());
-    updateFQNHashForEntity(Type.class, collectionDAO.typeEntityDAO());
-    updateFQNHashForEntity(WebAnalyticEvent.class, collectionDAO.webAnalyticEventDAO());
-    updateFQNHashForEntity(Workflow.class, collectionDAO.workflowDAO());
+    updateFQNHashForEntity(handle, Policy.class, collectionDAO.policyDAO());
+    updateFQNHashForEntity(handle, EventSubscription.class, collectionDAO.eventSubscriptionDAO());
+    updateFQNHashForEntity(handle, Role.class, collectionDAO.roleDAO());
+    updateFQNHashForEntity(handle, Type.class, collectionDAO.typeEntityDAO());
+    updateFQNHashForEntity(handle, WebAnalyticEvent.class, collectionDAO.webAnalyticEventDAO());
+    updateFQNHashForEntity(handle, Workflow.class, collectionDAO.workflowDAO());
 
     // Field Relationship
     updateFQNHashForFieldRelationship(collectionDAO);
 
     // TimeSeries
-    updateFQNHashEntityExtensionTimeSeries(collectionDAO);
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      updateFQNHashEntityExtensionTimeSeries(handle, MYSQL_ENTITY_EXTENSION_TIME_SERIES_UPDATE, collectionDAO);
+    } else {
+      updateFQNHashEntityExtensionTimeSeries(handle, POSTGRES_ENTITY_EXTENSION_TIME_SERIES_UPDATE, collectionDAO);
+    }
 
     // Tag Usage
     updateFQNHashTagUsage(collectionDAO);
@@ -213,20 +281,28 @@ public class MigrationUtil {
     }
   }
 
-  private static void updateFQNHashEntityExtensionTimeSeries(CollectionDAO collectionDAO) {
+  private static void updateFQNHashEntityExtensionTimeSeries(
+      Handle handle, String updateSql, CollectionDAO collectionDAO) {
     List<CollectionDAO.EntityExtensionTimeSeriesDAO.EntityExtensionTimeSeriesTable> timeSeriesTables =
         collectionDAO.entityExtensionTimeSeriesDao().listAll();
+    PreparedBatch upsertBatch = handle.prepareBatch(updateSql);
+    int total = 0;
     for (CollectionDAO.EntityExtensionTimeSeriesDAO.EntityExtensionTimeSeriesTable timeSeries : timeSeriesTables) {
       if (CommonUtil.nullOrEmpty(timeSeries.getEntityFQNHash())) {
-        collectionDAO
-            .entityExtensionTimeSeriesDao()
-            .updateEntityFQNHash(
-                FullyQualifiedName.buildHash(timeSeries.getEntityFQN()),
-                timeSeries.getEntityFQN(),
-                timeSeries.getExtension(),
-                timeSeries.getTimestamp());
+        upsertBatch
+            .bind("entityFQNHash", FullyQualifiedName.buildHash(timeSeries.getEntityFQN()))
+            .bind("entityFQN", timeSeries.getEntityFQN())
+            .bind("extension", timeSeries.getExtension())
+            .bind("timestamp", timeSeries.getTimestamp())
+            .add();
+        total++;
+        if (total > 10000) {
+          upsertBatch.execute();
+          total = 0;
+        }
       }
     }
+    upsertBatch.execute();
   }
 
   public static void updateFQNHashTagUsage(CollectionDAO collectionDAO) {

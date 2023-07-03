@@ -3105,20 +3105,6 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlUpdate(
         value =
-            "UPDATE entity_extension_time_series set entityFQNHash = :entityFQNHash where entityFQN=:entityFQN and extension=:extension and timestamp=:timestamp",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "UPDATE entity_extension_time_series set entityFQNHash = :entityFQNHash  where entityFQN=:entityFQN and extension=:extension and timestamp=:timestamp",
-        connectionType = POSTGRES)
-    void updateEntityFQNHash(
-        @Bind("entityFQNHash") String entityFQNHash,
-        @Bind("entityFQN") String entityFQN,
-        @Bind("extension") String extension,
-        @Bind("timestamp") Long timestamp);
-
-    @ConnectionAwareSqlUpdate(
-        value =
             "UPDATE entity_extension_time_series set json = :json where entityFQNHash=:entityFQNHash and extension=:extension and timestamp=:timestamp and json -> '$.operation' = :operation",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
