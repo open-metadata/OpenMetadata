@@ -130,13 +130,13 @@ public class MigrationUtil {
     ListFilter filter = new ListFilter(Include.ALL);
     List<T> entities;
     String after = null;
-    PreparedBatch upsertBatch = handle.prepareBatch(updateSql);
     do {
+      PreparedBatch upsertBatch = handle.prepareBatch(updateSql);
       // Create empty Array
       entities = new ArrayList<>();
 
       // Read from Database
-      List<String> jsons = dao.listAfter(filter, limitParam + 1, after == null ? "" : after);
+      List<String> jsons = dao.listAfterWithOrderBy(filter, limitParam + 1, after == null ? "" : after, "id");
       for (String json : jsons) {
         T entity = JsonUtils.readValue(json, clazz);
         entities.add(entity);
@@ -144,7 +144,7 @@ public class MigrationUtil {
       String afterCursor = null;
       if (entities.size() > limitParam) {
         entities.remove(limitParam);
-        afterCursor = entities.get(limitParam - 1).getName();
+        afterCursor = entities.get(limitParam - 1).getId().toString();
       }
       after = afterCursor;
 
@@ -299,6 +299,8 @@ public class MigrationUtil {
         if (total > 10000) {
           upsertBatch.execute();
           total = 0;
+          // Creating a new batch result in faster writes
+          upsertBatch = handle.prepareBatch(updateSql);
         }
       }
     }
