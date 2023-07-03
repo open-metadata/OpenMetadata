@@ -277,7 +277,13 @@ export const ActivityFeedTab = ({
             label: (
               <div className="d-flex justify-between">
                 <span>{t('label.all')}</span>
-                <span>{getCountBadge(allCount)}</span>
+                <span>
+                  {getCountBadge(
+                    allCount,
+                    '',
+                    activeTab === ActivityFeedTabs.ALL
+                  )}
+                </span>
               </div>
             ),
             key: 'all',
@@ -294,7 +300,13 @@ export const ActivityFeedTab = ({
             label: (
               <div className="d-flex justify-between">
                 <span>{t('label.task-plural')}</span>
-                <span>{getCountBadge(tasksCount)}</span>
+                <span>
+                  {getCountBadge(
+                    tasksCount,
+                    '',
+                    activeTab === ActivityFeedTabs.TASKS
+                  )}
+                </span>
               </div>
             ),
             key: 'tasks',

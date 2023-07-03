@@ -275,7 +275,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         if (res && entityLineage) {
           setNodeLoading((prev) => ({ ...prev, id: node.id, state: false }));
           setLeafNode(res, pos);
-          setEntityLineage(getEntityLineage(entityLineage, res, pos));
+          const newLineageData = getEntityLineage(entityLineage, res, pos);
+          setEntityLineage(newLineageData);
+          setUpdatedLineageData(newLineageData);
         }
       } catch (err) {
         setNodeLoading((prev) => ({ ...prev, id: node.id, state: false }));
@@ -1260,6 +1262,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             </div>
           ),
           removeNodeHandler,
+          onNodeExpand: handleNodeExpand,
           isEditMode,
           isNewNode: true,
         },

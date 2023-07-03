@@ -48,7 +48,7 @@ const tagBG = '#EEEAF8';
 const badgeBG = '#D5D8DC';
 const primaryBG = '#7147E840'; // 'rgba(113, 71, 232, 0.25)';
 const backdropBG = '#302E36';
-const lightBG = '#F4F0FD';
+const lightBG = '#FFFFFF';
 const taskStatusBG = '#E5F3F1';
 
 // Borders and Separators

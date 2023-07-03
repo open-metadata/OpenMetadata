@@ -365,10 +365,13 @@ a[href].link-text-grey,
     font-size: inherit !important;
     color: @text-grey-muted !important;
   }
-}
-
-.link-title:hover {
-  text-decoration: none !important;
+  .link-title:hover {
+    color: @primary-color !important;
+    text-decoration: none !important;
+  }
+  .link-title.inactive-link:hover {
+    color: @text-grey-muted !important;
+  }
 }
 
 // lineage
