@@ -121,7 +121,7 @@ SET GLOBAL sort_buffer_size = 10485760
 ```
 
 To make the configuration persistent, you'd need to navigate to your MySQL Server install directory and update the
-`my.ini` or `my.cnf` files with `sort_buffer_size = 10485760`.
+`my.ini` or `my.cnf` [files](https://dev.mysql.com/doc/refman/8.0/en/option-files.html) with `sort_buffer_size = 10485760`.
 
 If using RDS, you will need to update your instance's [Parameter Group](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html)
 to include the above change.
@@ -134,7 +134,8 @@ You can update it via SQL (not that it will reset after the server restarts):
 SET work_mem = '10MB';
 ```
 
-To make the configuration persistent, you'll need to update the `postgresql.conf` file.
+To make the configuration persistent, you'll need to update the `postgresql.conf` [file](https://www.postgresql.org/docs/9.3/config-setting.html)
+with `work_mem = 10MB`.
 
 If using RDS, you will need to update your instance's [Parameter Group](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html)
 to include the above change.
