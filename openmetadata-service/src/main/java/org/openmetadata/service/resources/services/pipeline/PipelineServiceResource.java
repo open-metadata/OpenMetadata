@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PipelineConnection;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -213,7 +214,8 @@ public class PipelineServiceResource
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    PipelineService pipelineService = getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    PipelineService pipelineService =
+        getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(fqn), fieldsParam, include);
     return decryptOrNullify(securityContext, pipelineService);
   }
 
@@ -426,7 +428,7 @@ public class PipelineServiceResource
           @PathParam("fqn")
           String fqn)
       throws IOException {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(fqn), false, hardDelete);
   }
 
   @PUT
