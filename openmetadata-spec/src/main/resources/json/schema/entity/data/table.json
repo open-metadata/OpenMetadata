@@ -39,7 +39,8 @@
         "Iceberg",
         "Local",
         "Partitioned",
-        "Foreign"
+        "Foreign",
+        "Transient"
       ],
       "javaEnums": [
         {
@@ -68,6 +69,9 @@
         },
         {
           "name": "Foreign"
+        },
+        {
+          "name": "Transient"
         }
       ]
     },

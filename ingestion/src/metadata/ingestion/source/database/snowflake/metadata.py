@@ -322,7 +322,7 @@ class SnowflakeSource(CommonDbSourceService):
             TableNameAndType(name=table_name)
             for table_name in self.inspector.get_table_names(
                 schema=schema_name,
-                include_temp_tables=self.service_connection.includeTempTables,
+                # include_temp_tables=self.service_connection.includeTempTables,
             )
             or []
         ]
@@ -335,7 +335,16 @@ class SnowflakeSource(CommonDbSourceService):
             or []
         ]
 
-        return regular_tables + external_tables
+        transient_tables = [
+            TableNameAndType(name=table_name, type_=TableType.Transient)
+            for table_name in self.inspector.get_table_names(
+                schema=schema_name,
+                include_temp_tables=self.service_connection.includeTempTables,
+            )
+            or []
+        ]
+
+        return regular_tables + external_tables + transient_tables
 
     def _get_current_region(self) -> Optional[str]:
         try:
@@ -393,3 +402,4 @@ class SnowflakeSource(CommonDbSourceService):
                 f"/{schema_name}/{tab_type}/{table_name}"
             )
         return None
+       

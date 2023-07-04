@@ -66,6 +66,12 @@ SNOWFLAKE_GET_VIEW_NAMES = """
 select TABLE_NAME from information_schema.tables 
 where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'VIEW'
 """
+SNOWFLAKE_GET_TRANSIENT_NAMES = """
+select TABLE_NAME from information_schema.tables 
+where TABLE_SCHEMA = '{}' 
+AND TABLE_TYPE = 'BASE TABLE' 
+AND IS_TRANSIENT = 'YES'
+"""
 
 SNOWFLAKE_GET_COMMENTS = textwrap.dedent(
     """
