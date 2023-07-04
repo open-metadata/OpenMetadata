@@ -12,10 +12,12 @@
  */
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import Searchbar from 'components/common/searchbar/Searchbar';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import DataQualityTab from 'components/ProfilerDashboard/component/DataQualityTab';
 import { INITIAL_PAGING_VALUE, PAGE_SIZE } from 'constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { TestCase } from 'generated/tests/testCase';
 import { Paging } from 'generated/type/paging';
@@ -181,11 +183,20 @@ export const TestCases = () => {
           fetchTestCases();
         }
       }
+    } else {
+      setIsLoading(false);
     }
   }, [tab, searchValue, testCasePermission]);
 
+  if (!testCasePermission?.ViewAll && !testCasePermission?.ViewBasic) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
   return (
-    <Row className="p-x-lg p-t-md" gutter={[16, 16]}>
+    <Row
+      className="p-x-lg p-t-md"
+      data-testid="test-case-container"
+      gutter={[16, 16]}>
       <Col span={8}>
         <Searchbar
           removeMargin
