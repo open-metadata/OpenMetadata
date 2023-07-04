@@ -92,6 +92,8 @@ import TableConstraints from './TableConstraints/TableConstraints';
 const TableDetailsPageV1 = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
     useTourProvider();
+  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
   const [tableDetails, setTableDetails] = useState<Table>();
   const { datasetFQN, tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ datasetFQN: string; tab: string }>();
@@ -126,49 +128,6 @@ const TableDetailsPageV1 = () => {
     [tablePermissions]
   );
 
-  const fetchTableDetails = async () => {
-    setLoading(true);
-    try {
-      let fields = defaultFields;
-      if (viewUsagePermission) {
-        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
-      }
-      if (viewTestSuitePermission) {
-        fields += `,${TabSpecificField.TESTSUITE}`;
-      }
-      const details = await getTableDetailsByFQN(datasetFQN, fields);
-
-      setTableDetails(details);
-    } catch (error) {
-      // Error here
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchQueryCount = async () => {
-    if (!tableDetails?.id) {
-      return;
-    }
-    try {
-      const response = await getQueriesList({
-        limit: 0,
-        entityId: tableDetails.id,
-      });
-      setQueryCount(response.paging.total);
-    } catch (error) {
-      setQueryCount(0);
-    }
-  };
-
-  const onDescriptionEdit = (): void => {
-    setIsEdit(true);
-  };
-  const onCancel = () => {
-    setIsEdit(false);
-  };
-
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const {
     tier,
     tableTags,
@@ -237,7 +196,55 @@ const TableDetailsPageV1 = () => {
     };
   }, [tableDetails, tableDetails?.tags]);
 
-  const { getEntityPermissionByFqn } = usePermissionProvider();
+  const { isFollowing } = useMemo(() => {
+    return {
+      isFollowing: followers?.some(({ id }) => id === USERId),
+    };
+  }, [followers, USERId]);
+
+  const fetchTableDetails = async () => {
+    setLoading(true);
+
+    try {
+      let fields = defaultFields;
+      if (viewUsagePermission) {
+        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+      }
+      if (viewTestSuitePermission) {
+        fields += `,${TabSpecificField.TESTSUITE}`;
+      }
+
+      const details = await getTableDetailsByFQN(datasetFQN, fields);
+
+      setTableDetails(details);
+    } catch (error) {
+      // Error here
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchQueryCount = async () => {
+    if (!tableDetails?.id) {
+      return;
+    }
+    try {
+      const response = await getQueriesList({
+        limit: 0,
+        entityId: tableDetails.id,
+      });
+      setQueryCount(response.paging.total);
+    } catch (error) {
+      setQueryCount(0);
+    }
+  };
+
+  const onDescriptionEdit = (): void => {
+    setIsEdit(true);
+  };
+  const onCancel = () => {
+    setIsEdit(false);
+  };
 
   const fetchResourcePermission = useCallback(
     async (datasetFQN) => {
@@ -411,6 +418,144 @@ const TableDetailsPageV1 = () => {
 
   const onExtensionUpdate = async (updatedData: Table) => {
     await onTableUpdate(updatedData, 'extension');
+  };
+
+  const onTierUpdate = useCallback(
+    async (newTier?: string) => {
+      if (tableDetails) {
+        const tierTag: Table['tags'] = newTier
+          ? [
+              ...getTagsWithoutTier(tableTags ?? []),
+              {
+                tagFQN: newTier,
+                labelType: LabelType.Manual,
+                state: State.Confirmed,
+              },
+            ]
+          : getTagsWithoutTier(tableTags ?? []);
+        const updatedTableDetails = {
+          ...tableDetails,
+          tags: tierTag,
+        };
+
+        await onTableUpdate(updatedTableDetails, 'tags');
+      }
+    },
+    [tableDetails, onTableUpdate, tableTags]
+  );
+
+  const handleRestoreTable = async () => {
+    try {
+      await restoreTable(tableDetails?.id ?? '');
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.table'),
+        }),
+        2000
+      );
+      refreshPage();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.table'),
+        })
+      );
+    }
+  };
+
+  const followTable = useCallback(async () => {
+    try {
+      const res = await addFollower(tableId, USERId);
+      const { newValue } = res.changeDescription.fieldsAdded[0];
+      const newFollowers = [...(followers ?? []), ...newValue];
+      setTableDetails((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        return { ...prev, followers: newFollowers };
+      });
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-follow-error', {
+          entity: getEntityName(tableDetails),
+        })
+      );
+    }
+  }, [USERId, tableId, setTableDetails, getEntityFeedCount]);
+
+  const unFollowTable = useCallback(async () => {
+    try {
+      const res = await removeFollower(tableId, USERId);
+      const { oldValue } = res.changeDescription.fieldsDeleted[0];
+      setTableDetails((pre) => {
+        if (!pre) {
+          return pre;
+        }
+
+        return {
+          ...pre,
+          followers: pre.followers?.filter(
+            (follower) => follower.id !== oldValue[0].id
+          ),
+        };
+      });
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-unfollow-error', {
+          entity: getEntityName(tableDetails),
+        })
+      );
+    }
+  }, [USERId, tableId, getEntityFeedCount, setTableDetails]);
+
+  const handleFollowTable = useCallback(async () => {
+    isFollowing ? await unFollowTable() : await followTable();
+  }, [isFollowing, unFollowTable, followTable]);
+
+  const versionHandler = useCallback(() => {
+    version &&
+      history.push(getVersionPath(EntityType.TABLE, datasetFQN, version + ''));
+  }, [version]);
+
+  useEffect(() => {
+    if (isTourOpen || isTourPage) {
+      setTableDetails(mockDatasetData.tableDetails as unknown as Table);
+    } else {
+      if (tablePermissions.ViewAll || tablePermissions.ViewBasic) {
+        fetchTableDetails();
+        getEntityFeedCount();
+      }
+    }
+  }, [datasetFQN, isTourOpen, isTourPage, tablePermissions]);
+
+  useEffect(() => {
+    if (tableDetails) {
+      fetchQueryCount();
+    }
+  }, [tableDetails]);
+
+  const onThreadPanelClose = () => {
+    setThreadLink('');
+  };
+
+  const createThread = async (data: CreateThread) => {
+    try {
+      await postThread(data);
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.create-entity-error', {
+          entity: t('label.conversation'),
+        })
+      );
+    }
   };
 
   const schemaTab = useMemo(
@@ -714,150 +859,6 @@ const TableDetailsPageV1 = () => {
     getEntityFeedCount,
     tableDetails?.dataModel,
   ]);
-
-  const onTierUpdate = useCallback(
-    async (newTier?: string) => {
-      if (tableDetails) {
-        const tierTag: Table['tags'] = newTier
-          ? [
-              ...getTagsWithoutTier(tableTags ?? []),
-              {
-                tagFQN: newTier,
-                labelType: LabelType.Manual,
-                state: State.Confirmed,
-              },
-            ]
-          : getTagsWithoutTier(tableTags ?? []);
-        const updatedTableDetails = {
-          ...tableDetails,
-          tags: tierTag,
-        };
-
-        await onTableUpdate(updatedTableDetails, 'tags');
-      }
-    },
-    [tableDetails, onTableUpdate, tableTags]
-  );
-
-  const handleRestoreTable = async () => {
-    try {
-      await restoreTable(tableDetails?.id ?? '');
-      showSuccessToast(
-        t('message.restore-entities-success', {
-          entity: t('label.table'),
-        }),
-        2000
-      );
-      refreshPage();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('message.restore-entities-error', {
-          entity: t('label.table'),
-        })
-      );
-    }
-  };
-
-  const followTable = useCallback(async () => {
-    try {
-      const res = await addFollower(tableId, USERId);
-      const { newValue } = res.changeDescription.fieldsAdded[0];
-      const newFollowers = [...(followers ?? []), ...newValue];
-      setTableDetails((prev) => {
-        if (!prev) {
-          return prev;
-        }
-
-        return { ...prev, followers: newFollowers };
-      });
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-follow-error', {
-          entity: getEntityName(tableDetails),
-        })
-      );
-    }
-  }, [USERId, tableId, setTableDetails, getEntityFeedCount]);
-
-  const unFollowTable = useCallback(async () => {
-    try {
-      const res = await removeFollower(tableId, USERId);
-      const { oldValue } = res.changeDescription.fieldsDeleted[0];
-      setTableDetails((pre) => {
-        if (!pre) {
-          return pre;
-        }
-
-        return {
-          ...pre,
-          followers: pre.followers?.filter(
-            (follower) => follower.id !== oldValue[0].id
-          ),
-        };
-      });
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-unfollow-error', {
-          entity: getEntityName(tableDetails),
-        })
-      );
-    }
-  }, [USERId, tableId, getEntityFeedCount, setTableDetails]);
-
-  const { isFollowing } = useMemo(() => {
-    return {
-      isFollowing: followers?.some(({ id }) => id === USERId),
-    };
-  }, [followers, USERId]);
-
-  const handleFollowTable = useCallback(async () => {
-    isFollowing ? await unFollowTable() : await followTable();
-  }, [isFollowing, unFollowTable, followTable]);
-
-  const versionHandler = useCallback(() => {
-    version &&
-      history.push(getVersionPath(EntityType.TABLE, datasetFQN, version + ''));
-  }, [version]);
-
-  useEffect(() => {
-    if (isTourOpen || isTourPage) {
-      setTableDetails(mockDatasetData.tableDetails as unknown as Table);
-    } else {
-      if (tablePermissions.ViewAll || tablePermissions.ViewBasic) {
-        fetchTableDetails();
-        getEntityFeedCount();
-      }
-    }
-  }, [datasetFQN, isTourOpen, isTourPage, tablePermissions]);
-
-  useEffect(() => {
-    if (tableDetails) {
-      fetchQueryCount();
-    }
-  }, [tableDetails]);
-
-  const onThreadPanelClose = () => {
-    setThreadLink('');
-  };
-
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.conversation'),
-        })
-      );
-    }
-  };
 
   if (loading) {
     return <Loader />;

@@ -281,7 +281,7 @@ export const TaskTab = ({
         className="m-t-sm items-end w-full"
         data-testid="task-cta-buttons"
         size="small">
-        {isCreator && (
+        {(hasTaskUpdateAccess() || isCreator) && (
           <Button onClick={onTaskReject}>{t('label.close')}</Button>
         )}
         {hasTaskUpdateAccess() ? (

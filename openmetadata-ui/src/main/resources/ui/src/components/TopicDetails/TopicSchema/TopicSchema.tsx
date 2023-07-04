@@ -362,14 +362,14 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   return (
     <Row className="mt-4" gutter={[16, 16]}>
-      <Col>
-        <Space>
+      {messageSchema?.schemaType && (
+        <Col>
           <Typography.Text type="secondary">
             {t('label.schema')}
           </Typography.Text>
-          <Tag>{messageSchema?.schemaType ?? ''}</Tag>
-        </Space>
-      </Col>
+          <Tag>{messageSchema.schemaType}</Tag>
+        </Col>
+      )}
       {isEmpty(messageSchema?.schemaFields) &&
       isEmpty(messageSchema?.schemaText) ? (
         <ErrorPlaceHolder />
