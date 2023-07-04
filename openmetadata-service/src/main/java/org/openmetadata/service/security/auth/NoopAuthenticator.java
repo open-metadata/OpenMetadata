@@ -32,7 +32,7 @@ public class NoopAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public void validatePassword(String procidedIdentity, User storedUser, String reqPassword) {
+  public void validatePassword(String providedIdentity, User storedUser, String reqPassword) {
     throw new CustomExceptionMessage(Response.Status.FORBIDDEN, FORBIDDEN_AUTHENTICATOR_OP);
   }
 
