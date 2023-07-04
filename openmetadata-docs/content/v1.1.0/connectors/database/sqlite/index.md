@@ -36,31 +36,13 @@ Configure and schedule Presto metadata and profiler workflows from the OpenMetad
 - [Data Quality](/connectors/ingestion/workflows/data-quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
-the following docs to connect using Airflow SDK or with the CLI.
-
-{% tilesContainer %}
-
-{% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/database/sqlite/airflow"
-  / %}
-{% tile
-    title="Ingest with the CLI"
-    description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/database/sqlite/cli"
-  / %}
-
-{% /tilesContainer %}
+{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/sqlite/yaml"} /%}
 
 ## Requirements
 
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
-
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with custom Airflow plugins to handle the workflow deployment.
 
 ### Metadata
 To extract metadata, the user needs to be able to perform `.tables`, `.schema`, on database you wish to extract metadata from and have `SELECT` permission on the `sqlite_temp_master`. Access to resources will be different based on the connector used.

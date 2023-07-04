@@ -12,27 +12,7 @@ Configure and schedule Mlflow metadata and profiler workflows from the OpenMetad
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
-
-### Metadata
-To extract metadata, OpenMetadata needs two elements:
-- **Tracking URI**: Address of local or remote tracking server. More information on the MLFlow documentation [here](https://www.mlflow.org/docs/latest/tracking.html#where-runs-are-recorded)
-- **Registry URI**: Address of local or remote model registry server.
-
-{% tilesContainer %}
-
-{% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/ml-model/mlflow/airflow"
-  / %}
-{% tile
-    title="Ingest with the CLI"
-    description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/ml-model/mlflow/cli"
-  / %}
-
-{% /tilesContainer %}
+{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mlflow/yaml"} /%}
 
 ## Requirements
 
@@ -40,9 +20,9 @@ To extract metadata, OpenMetadata needs two elements:
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
-custom Airflow plugins to handle the workflow deployment.
-
+To extract metadata, OpenMetadata needs two elements:
+- **Tracking URI**: Address of local or remote tracking server. More information on the MLFlow documentation [here](https://www.mlflow.org/docs/latest/tracking.html#where-runs-are-recorded)
+- **Registry URI**: Address of local or remote model registry server.
 
 ## Metadata Ingestion
 

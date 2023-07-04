@@ -5,23 +5,7 @@ slug: /connectors/metadata/amundsen
 
 # Amundsen
 
-If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
-the following docs to connect using Airflow SDK or with the CLI.
-
-{% tilesContainer %}
-
-{% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/metadata/amundsen/airflow"
-  / %}
-{% tile
-    title="Ingest with the CLI"
-    description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/metadata/amundsen/cli"
-  / %}
-
-{% /tilesContainer %}
+{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/amundsen/yaml"} /%}
 
 In this page, you will learn how to use the `metadata` CLI to run a one-ingestion.
 

@@ -34,32 +34,13 @@ Configure and schedule MongoDB metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
-the following docs to connect using Airflow SDK or with the CLI.
-
-{% tilesContainer %}
-
-{% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/database/mongodb/airflow"
-  / %}
-{% tile
-    title="Ingest with the CLI"
-    description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/database/mongodb/cli"
-  / %}
-
-{% /tilesContainer %}
+{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mongodb/yaml"} /%}
 
 ## Requirements
 
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
-
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
-custom Airflow plugins to handle the workflow deployment.
 
 To fetch the metadata from MongoDB to OpenMetadata, the MongoDB user must have access to perform `find` operation on collection and `listCollection` operations on database available in MongoDB.
 

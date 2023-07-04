@@ -21,23 +21,7 @@ Configure and schedule PowerBI metadata and profiler workflows from the OpenMeta
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
-the following docs to connect using Airflow SDK or with the CLI.
-
-{% tilesContainer %}
-
-{% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/dashboard/powerbi/airflow"
-  / %}
-{% tile
-    title="Ingest with the CLI"
-    description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/dashboard/powerbi/cli"
-  / %}
-
-{% /tilesContainer %}
+{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/powerbi/yaml"} /%}
 
 ## Requirements
 
@@ -78,8 +62,7 @@ Please refer [here](https://stackoverflow.com/questions/71001110/power-bi-rest-a
 The service principal only works with [new workspaces](https://docs.microsoft.com/en-us/power-bi/collaborate-share/service-create-the-new-workspaces).
 [For reference](https://community.powerbi.com/t5/Service/Error-while-executing-Get-dataset-call-quot-API-is-not/m-p/912360#M85711)
 
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
-custom Airflow plugins to handle the workflow deployment.
+
 
 ## Metadata Ingestion
 

@@ -3,7 +3,7 @@ title: DomoDatabase
 slug: /connectors/database/domo-database
 ---
 
-# DomoDatabase
+# Domo Database
 
 {% multiTablesWrapper %}
 
@@ -26,7 +26,6 @@ slug: /connectors/database/domo-database
 
 {% /multiTablesWrapper %}
 
-
 In this section, we provide guides and references to use the DomoDatabase connector.
 
 Configure and schedule DomoDatabase metadata and profiler workflows from the OpenMetadata UI:
@@ -36,23 +35,7 @@ Configure and schedule DomoDatabase metadata and profiler workflows from the Ope
 - [Data Profiler](/connectors/ingestion/workflows/profiler)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
-the following docs to connect using Airflow SDK or with the CLI.
-
-{% tilesContainer %}
-
-{% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/database/domo-database/airflow"
-  / %}
-{% tile
-    title="Ingest with the CLI"
-    description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/database/domo-database/cli"
-  / %}
-
-{% /tilesContainer %}
+{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/domo-database/yaml"} /%}
 
 ## Requirements
 
@@ -60,12 +43,9 @@ the following docs to connect using Airflow SDK or with the CLI.
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
-custom Airflow plugins to handle the workflow deployment.
-
 **Note:**
 
-For metadata ingestion, kindly make sure add alteast `data` scopes to the clientId provided.
+For metadata ingestion, kindly make sure add at least `data` scopes to the clientId provided.
 Question related to scopes, click [here](https://developer.domo.com/portal/1845fc11bbe5d-api-authentication).
 
 ## Metadata Ingestion

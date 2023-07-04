@@ -9,25 +9,13 @@ In this section, we provide guides and references to use the Airflow connector.
 
 Configure and schedule Airflow metadata workflow from the OpenMetadata UI:
 
-If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to
-extract metadata directly from your Airflow instance or via the CLI:
-
-{% tilesContainer %}
-{% tile
-    title="Ingest with the CLI"
-    description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/pipeline/airflow/cli"
-  / %}
-{% /tilesContainer %}
+{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/airflow/yaml"} /%}
 
 ## Requirements
 
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides. 
 {% /inlineCallout %}
-
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
-custom Airflow plugins to handle the workflow deployment.
 
 **Note:** we only support officially supported Airflow versions. You can check the version list [here](https://airflow.apache.org/docs/apache-airflow/stable/installation/supported-versions.html).
 

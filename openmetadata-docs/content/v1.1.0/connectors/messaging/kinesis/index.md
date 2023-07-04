@@ -12,23 +12,7 @@ Configure and schedule Kinesis metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
-the following docs to connect using Airflow SDK or with the CLI.
-
-{% tilesContainer %}
-
-{% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/messaging/kinesis/airflow"
-  / %}
-{% tile
-    title="Ingest with the CLI"
-    description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/messaging/kinesis/cli"
-  / %}
-
-{% /tilesContainer %}
+{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/kinesis/yaml"} /%}
 
 ## Requirements
 
@@ -36,13 +20,10 @@ the following docs to connect using Airflow SDK or with the CLI.
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
-custom Airflow plugins to handle the workflow deployment.
-
 The Kinesis connector ingests metadata using the Kinesis boto3 client.
 
 OpenMetadata retrieves information about streams and sample data from the streams in the AWS account.
-The user must have following policy set to access the metadata from Kinesis.
+The user must have the following policy set to access the metadata from Kinesis.
 
 ```json
 {

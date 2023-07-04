@@ -21,24 +21,7 @@ Configure and schedule QuickSight metadata and profiler workflows from the OpenM
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
-the following docs to connect using Airflow SDK or with the CLI.
-
-{% tilesContainer %}
-
-{% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/dashboard/quicksight/airflow"
-  / %}
-{% tile
-    title="Ingest with the CLI"
-    description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/dashboard/quicksight/cli"
-  / %}
-
-{% /tilesContainer %}
-
+{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/quicksight/yaml"} /%}
 ## Requirements
 
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
@@ -93,8 +76,7 @@ Here is how to add Permissions to an IAM user.
 }
 ```
 
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
-custom Airflow plugins to handle the workflow deployment.
+
 
 ## Metadata Ingestion
 

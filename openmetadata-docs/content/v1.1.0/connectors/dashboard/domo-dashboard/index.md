@@ -20,23 +20,7 @@ Configure and schedule DomoDashboard metadata and profiler workflows from the Op
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
-the following docs to connect using Airflow SDK or with the CLI.
-
-{% tilesContainer %}
-
-{% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/dashboard/domo-dashboard/airflow"
-  / %}
-{% tile
-    title="Ingest with the CLI"
-    description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/dashboard/domo-dashboard/cli"
-  / %}
-
-{% /tilesContainer %}
+{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/domo-dashboard/yaml"} /%}
 
 ## Requirements
 
@@ -44,11 +28,8 @@ the following docs to connect using Airflow SDK or with the CLI.
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with 
-custom Airflow plugins to handle the workflow deployment.
-
 {% note noteType="Warning" %}
-For metadata ingestion, kindly make sure add alteast `dashboard` scopes to the clientId provided.
+For metadata ingestion, kindly make sure add at least `dashboard` scopes to the clientId provided.
 Question related to scopes, click [here](https://developer.domo.com/portal/1845fc11bbe5d-api-authentication).
 {% /note %}
 

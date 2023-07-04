@@ -12,22 +12,7 @@ Configure and schedule Spline metadata and profiler workflows from the OpenMetad
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
-the following docs to connect using Airflow SDK or with the CLI.
-
-{% tilesContainer %}
-{% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/pipeline/spline/airflow"
-  / %}
-{% tile
-    title="Ingest with the CLI"
-    description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/pipeline/spline/cli"
-  / %}
-
-{% /tilesContainer %}
+{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/spline/yaml"} /%}
 
 ## Requirements
 
@@ -35,14 +20,11 @@ the following docs to connect using Airflow SDK or with the CLI.
 To deploy OpenMetadata, check the Deployment guides. 
 {% /inlineCallout %}
 
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
-custom Airflow plugins to handle the workflow deployment.
-
 The Spline connector support lineage of data source of type `jdbc` or `dbfs` i.e. The spline connector would be able to extract lineage if the data source is either a jdbc connection or the data source is databricks instance.
 
 {% note %}
 
-Currently we do not support data source of type aws s3 or any other cloud storage, which also means that the lineage for external tables from databricks will not be extracted. 
+Currently, we do not support data source of type aws s3 or any other cloud storage, which also means that the lineage for external tables from databricks will not be extracted. 
 
 {% /note %}
 

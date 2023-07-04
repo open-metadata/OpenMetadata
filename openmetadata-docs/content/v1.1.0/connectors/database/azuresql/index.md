@@ -40,23 +40,7 @@ Configure and schedule AzureSQL metadata and profiler workflows from the OpenMet
     - [Workflow Deployment Error](#workflow-deployment-error)
   - [Related](#related)
 
-If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
-the following docs to connect using Airflow SDK or with the CLI.
-
-{% tilesContainer %}
-
-{% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/database/azuresql/airflow"
-  / %}
-{% tile
-    title="Ingest with the CLI"
-    description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/database/azuresql/cli"
-  / %}
-
-{% /tilesContainer %}
+{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/azuresql/yaml"} /%}
 
 ## Requirements
 
@@ -75,9 +59,6 @@ CREATE USER Mary WITH PASSWORD = '********';
 -- Grant SELECT on table
 GRANT SELECT TO Mary;
 ```
-
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
-custom Airflow plugins to handle the workflow deployment.
 
 ## Metadata Ingestion
 

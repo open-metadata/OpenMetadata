@@ -39,33 +39,13 @@ Configure and schedule Athena metadata and profiler workflows from the OpenMetad
   - [Workflow Deployment Error](#workflow-deployment-error)
 - [Related](#related)
 
-If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
-the following docs to run the Ingestion Framework in any orchestrator [externally](/deployment/ingestion).
-
-{% tilesContainer %}
-
-{% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/database/athena/airflow"
-  / %}
-{% tile
-    title="Ingest with the CLI"
-    description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/database/$connector/cli"
-  / %}
-
-{% /tilesContainer %}
+{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/athena/yaml"} /%}
 
 ## Requirements
 
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
-
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
-custom Airflow plugins to handle the workflow deployment. If you want to install it manually in an already existing
-Airflow host, you can follow [this](http://localhost:3000/v1.1.0/deployment/ingestion/openmetadata) guide.
 
 The Athena connector ingests metadata through JDBC connections.
 

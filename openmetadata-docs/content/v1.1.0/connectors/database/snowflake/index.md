@@ -38,22 +38,7 @@ Configure and schedule Snowflake metadata and profiler workflows from the OpenMe
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
-the following docs to connect using Airflow SDK or with the CLI.
-
-{% tilesContainer %}
-{% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/database/snowflake/airflow"
-  / %}
-{% tile
-    title="Ingest with the CLI"
-    description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/database/snowflake/cli"
-  / %}
-
-{% /tilesContainer %}
+{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/snowflake/yaml"} /%}
 
 ## Requirements
 
@@ -61,10 +46,7 @@ the following docs to connect using Airflow SDK or with the CLI.
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
-custom Airflow plugins to handle the workflow deployment.
-
-To ingest basic metadata snowflake user must have the following priviledges:
+To ingest basic metadata snowflake user must have the following privileges:
   - `USAGE` Privilege on Warehouse
   - `USAGE` Privilege on Database
   - `USAGE` Privilege on Schema

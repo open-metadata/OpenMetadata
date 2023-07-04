@@ -21,23 +21,7 @@ Configure and schedule Redash metadata and profiler workflows from the OpenMetad
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
-the following docs to connect using Airflow SDK or with the CLI.
-
-{% tilesContainer %}
-
-{% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/dashboard/redash/airflow"
-  / %}
-{% tile
-    title="Ingest with the CLI"
-    description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/dashboard/redash/cli"
-  / %}
-
-{% /tilesContainer %}
+{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/redash/yaml"} /%}
 
 ## Requirements
 
@@ -48,9 +32,6 @@ To deploy OpenMetadata, check the Deployment guides.
 We connect to Redash through the [API](https://redash.io/help/user-guide/integrations-and-api/api) endpoint, so the user
 we use in the configuration to ingest data must have enough permissions to view all the data. For more info about the
 permissions, please visit Redash documentation [here](https://redash.io/help/user-guide/users/permissions-groups).
-
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
-custom Airflow plugins to handle the workflow deployment.
 
 ## Metadata Ingestion
 
