@@ -49,6 +49,7 @@ import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -85,6 +86,14 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public User getByName(UriInfo uriInfo, String name, Fields fields) throws IOException {
     return super.getByName(uriInfo, EntityInterfaceUtil.quoteName(name), fields);
+  }
+
+  public User getByEmail(UriInfo uriInfo, String email, Fields fields) throws IOException {
+    String userString = ((CollectionDAO.UserDAO) dao).findUserByEmail(email);
+    if (userString == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(USER, email));
+    }
+    return withHref(uriInfo, setFieldsInternal(JsonUtils.readValue(userString, User.class), fields));
   }
 
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
