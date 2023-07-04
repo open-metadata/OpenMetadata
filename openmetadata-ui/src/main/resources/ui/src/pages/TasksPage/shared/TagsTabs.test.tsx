@@ -29,7 +29,7 @@ jest.mock('./TagsDiffView', () => ({
 
 const mockProps = {
   tags: [],
-  suggestedTags: [],
+  value: [],
   onChange: jest.fn(),
 };
 

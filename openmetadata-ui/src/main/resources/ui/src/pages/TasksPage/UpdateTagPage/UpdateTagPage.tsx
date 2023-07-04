@@ -254,8 +254,8 @@ const UpdateTag = () => {
                       },
                     ]}>
                     <TagsTabs
-                      suggestedTags={suggestion}
                       tags={currentTags}
+                      value={suggestion}
                       onChange={setSuggestion}
                     />
                   </Form.Item>

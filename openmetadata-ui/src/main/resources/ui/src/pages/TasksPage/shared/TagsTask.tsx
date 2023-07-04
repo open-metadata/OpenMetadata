@@ -114,8 +114,8 @@ const TagsTask: FC<TagsTaskProps> = ({
               <div data-testid="update-tags">
                 {isTaskActionEdit && hasEditAccess ? (
                   <TagsTabs
-                    suggestedTags={JSON.parse(suggestion ?? '[]')}
                     tags={JSON.parse(oldValue ?? '[]')}
+                    value={JSON.parse(suggestion ?? '[]')}
                     onChange={onChange}
                   />
                 ) : (

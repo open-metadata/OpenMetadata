@@ -230,6 +230,13 @@ export const TaskTab = ({
       return null;
     }
 
+    const parsedSuggestion = [
+      'RequestDescription',
+      'UpdateDescription',
+    ].includes(taskDetails?.type ?? '')
+      ? taskDetails?.suggestion
+      : JSON.parse(taskDetails?.suggestion || '[]');
+
     return (
       <Space
         className="m-t-sm items-end w-full"
@@ -242,7 +249,7 @@ export const TaskTab = ({
           <>
             {['RequestDescription', 'RequestTag'].includes(
               taskDetails?.type ?? ''
-            ) && isEmpty(taskDetails?.suggestion) ? (
+            ) && isEmpty(parsedSuggestion) ? (
               <Button
                 type="primary"
                 onClick={() =>
