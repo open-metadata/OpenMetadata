@@ -15,7 +15,6 @@ import { ProfilerDashboardTab } from 'components/ProfilerDashboard/profilerDashb
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getServiceDetailsPath,
   INGESTION_NAME,
@@ -145,23 +144,12 @@ export const getEditIngestionPath = (
 export const getGlossaryPath = (fqn?: string) => {
   let path = ROUTES.GLOSSARY;
   if (fqn) {
+    const encodedFqn = encodeURIComponent(fqn);
     path = ROUTES.GLOSSARY_DETAILS;
-    path = path.replace(PLACEHOLDER_GLOSSARY_NAME, fqn);
+    path = path.replace(PLACEHOLDER_GLOSSARY_NAME, encodedFqn);
   }
 
   return path;
-};
-
-export const getParentGlossaryPath = (fqn?: string) => {
-  if (fqn) {
-    const parts = fqn.split(FQN_SEPARATOR_CHAR);
-    if (parts.length > 1) {
-      // remove the last part to get parent FQN
-      fqn = parts.slice(0, -1).join(FQN_SEPARATOR_CHAR);
-    }
-  }
-
-  return getGlossaryPath(fqn);
 };
 
 export const getGlossaryTermsPath = (
@@ -169,7 +157,8 @@ export const getGlossaryTermsPath = (
   glossaryTerm = ''
 ) => {
   let path = glossaryTerm ? ROUTES.GLOSSARY_TERMS : ROUTES.GLOSSARY_DETAILS;
-  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName);
+  const encodedGlossaryName = encodeURIComponent(glossaryName);
+  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, encodedGlossaryName);
 
   if (glossaryTerm) {
     path = path.replace(PLACEHOLDER_GLOSSARY_TERMS_FQN, glossaryTerm);
@@ -465,9 +454,9 @@ export const getGlossaryPathWithAction = (
   action: EntityAction
 ) => {
   let path = ROUTES.GLOSSARY_DETAILS_WITH_ACTION;
-
+  const encodedFqn = encodeURIComponent(fqn);
   path = path
-    .replace(PLACEHOLDER_GLOSSARY_NAME, fqn)
+    .replace(PLACEHOLDER_GLOSSARY_NAME, encodedFqn)
     .replace(PLACEHOLDER_ACTION, action);
 
   return path;
@@ -495,8 +484,9 @@ export const getGlossaryVersionsPath = (
   version: string
 ) => {
   let path = ROUTES.GLOSSARY_VERSION;
+  const encodedGlossaryName = encodeURIComponent(glossaryName);
   path = path
-    .replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName)
+    .replace(PLACEHOLDER_GLOSSARY_NAME, encodedGlossaryName)
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   return path;

@@ -14,11 +14,7 @@ import {
   MOCKED_GLOSSARY_TERMS,
   MOCKED_GLOSSARY_TERMS_TREE,
 } from 'mocks/Glossary.mock';
-import {
-  buildTree,
-  formatRelatedTermOptions,
-  getQueryFilterToExcludeTerm,
-} from './GlossaryUtils';
+import { buildTree, getQueryFilterToExcludeTerm } from './GlossaryUtils';
 
 describe('Glossary Utils', () => {
   it('getQueryFilterToExcludeTerm returns the correct query filter', () => {
@@ -56,36 +52,5 @@ describe('Glossary Utils', () => {
     expect(buildTree(MOCKED_GLOSSARY_TERMS)).toEqual(
       MOCKED_GLOSSARY_TERMS_TREE
     );
-  });
-
-  it('formatRelatedTermOptions - should format related term options correctly', () => {
-    const data = [
-      { id: 'term1', displayName: 'Term One', type: 'glossaryTerm' },
-      { id: 'term2', name: 'Term Two', type: 'glossaryTerm' },
-    ];
-    const expectedOutput = [
-      {
-        id: 'term1',
-        value: 'term1',
-        label: 'Term One',
-        key: 'term1',
-        displayName: 'Term One',
-        type: 'glossaryTerm',
-      },
-      {
-        id: 'term2',
-        value: 'term2',
-        label: 'Term Two',
-        name: 'Term Two',
-        key: 'term2',
-        type: 'glossaryTerm',
-      },
-    ];
-
-    expect(formatRelatedTermOptions(data)).toEqual(expectedOutput);
-  });
-
-  it('formatRelatedTermOptions -should return an empty array if no data is provided', () => {
-    expect(formatRelatedTermOptions(undefined)).toEqual([]);
   });
 });

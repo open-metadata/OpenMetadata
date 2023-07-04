@@ -19,12 +19,7 @@ import {
 } from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
 import { API_RES_MAX_SIZE, PAGE_SIZE_LARGE } from 'constants/constants';
 import { TagSource } from 'generated/type/tagLabel';
-import { isUndefined, omit } from 'lodash';
-import {
-  getGlossariesList,
-  getGlossaryTerms,
-  ListGlossaryTermsParams,
-} from 'rest/glossaryAPI';
+import { getGlossariesList, getGlossaryTerms } from 'rest/glossaryAPI';
 import { searchData } from 'rest/miscAPI';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
@@ -96,26 +91,6 @@ export const getEntityReferenceFromGlossaryTerm = (
     displayName: glossaryTerm.displayName,
     name: glossaryTerm.name,
   };
-};
-
-// calculate root level glossary term
-export const getRootLevelGlossaryTerm = (
-  data: GlossaryTerm[],
-  params?: ListGlossaryTermsParams
-) => {
-  return data.reduce((glossaryTerms, curr) => {
-    const currentTerm =
-      curr.children?.length === 0 ? omit(curr, 'children') : curr;
-    if (params?.glossary) {
-      return isUndefined(curr.parent)
-        ? [...glossaryTerms, currentTerm]
-        : glossaryTerms;
-    }
-
-    return curr?.parent?.id === params?.parent
-      ? [...glossaryTerms, currentTerm]
-      : glossaryTerms;
-  }, [] as GlossaryTerm[]);
 };
 
 export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
@@ -214,19 +189,6 @@ export const getQueryFilterToExcludeTerm = (fqn: string) => ({
     },
   },
 });
-
-export const formatRelatedTermOptions = (
-  data: EntityReference[] | undefined
-) => {
-  return data
-    ? data.map((value) => ({
-        ...value,
-        value: value.id,
-        label: value.displayName || value.name,
-        key: value.id,
-      }))
-    : [];
-};
 
 export const getGlossaryTermHierarchy = (
   data: GlossaryTermDetailsProps[]
