@@ -156,7 +156,10 @@ You can find further information on the Athena connector in the [docs](https://d
 
 ## Metadata Ingestion
 
-{% partial file="metadata-ingestion.md" variables={connectorName: "Athena", connectorPath: "athena"} /%}
+{% partial 
+  file="/v1.1.0/connectors/metadata-ingestion.md" 
+  variables={connector: "Athena", connectorPath: "athena"} 
+/%}
 
 #### Connection Details
 

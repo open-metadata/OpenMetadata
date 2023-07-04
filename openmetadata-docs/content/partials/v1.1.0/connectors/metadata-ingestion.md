@@ -4,10 +4,10 @@
 
 {% stepDescription title="1. Visit the Services Page" %}
 
-The first step is to ingest the metadata from your sources. To do that create a service connection first. Once a service is created, it can be used to configure
-metadata, usage, and profiler workflows.
+The first step is to ingest the metadata from your sources. To do that, you first need to create a Service connection first. This
+Service will be the bridge between OpenMetadata and your source system.
 
-To visit the Database Services page, click on 'Settings' in the top navigation bar and select 'Databases' from left panel.
+Once a Service is created, it can be used to configure your ingestion workflows.
 
 {% /stepDescription %}
 
@@ -33,8 +33,8 @@ Click on the 'Add New Service' button to start the Service creation.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.1.0/connectors/create-database-service.png"
-alt="Create a new service"
+src="/images/v1.1.0/connectors/create-database-Service.png"
+alt="Create a new Service"
 caption="Add a new Service from the Database Services page" /%}
 
 {% /stepVisualInfo %}
@@ -45,7 +45,7 @@ caption="Add a new Service from the Database Services page" /%}
 
 {% stepDescription title="3. Select the Service Type" %}
 
-Select {% $connectorName %} as the service type and click Next.
+Select {% $connector %} as the Service type and click Next.
 
 {% /stepDescription %}
 
@@ -54,7 +54,7 @@ Select {% $connectorName %} as the service type and click Next.
 {% image
 src="/images/v1.1.0/connectors/$connectorPath/select-service.png"
 alt="Select Service"
-caption="Select your service from the list" /%}
+caption="Select your Service from the list" /%}
 
 {% /stepVisualInfo %}
 
@@ -64,13 +64,13 @@ caption="Select your service from the list" /%}
 
 {% stepDescription title="4. Name and Describe your Service" %}
 
-Provide a name and description for your service as illustrated below.
+Provide a name and description for your Service as illustrated below.
 
 #### Service Name
 
-OpenMetadata uniquely identifies services by their Service Name. Provide
-a name that distinguishes your deployment from other services, including
-the other {% $connectorName %} services that you might be ingesting metadata
+OpenMetadata uniquely identifies Services by their Service Name. Provide
+a name that distinguishes your deployment from other Services, including
+the other {% $connector %} Services that you might be ingesting metadata
 from.
 
 {% /stepDescription %}
@@ -78,7 +78,7 @@ from.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.1.0/connectors/$connectorPath/add-new-service.png"
+src="/images/v1.1.0/connectors/$connectorPath/add-new-Service.png"
 alt="Add New Service"
 caption="Provide a Name and description for your Service" /%}
 
@@ -92,7 +92,7 @@ caption="Provide a Name and description for your Service" /%}
 
 In this step, we will configure the connection settings required for
 this connector. Please follow the instructions below to ensure that
-you've configured the connector to read from your {% $connectorName %} service as
+you've configured the connector to read from your {% $connector %} Service as
 desired.
 
 {% /stepDescription %}
@@ -101,8 +101,8 @@ desired.
 
 {% image
 src="/images/v1.1.0/connectors/$connectorPath/service-connection.png"
-alt="Configure service connection"
-caption="Configure the service connection by filling the form" /%}
+alt="Configure Service connection"
+caption="Configure the Service connection by filling the form" /%}
 
 {% /stepVisualInfo %}
 
