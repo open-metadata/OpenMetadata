@@ -401,4 +401,3 @@ class SnowflakeSource(CommonDbSourceService):
                 f"/{schema_name}/{tab_type}/{table_name}"
             )
         return None
-       
