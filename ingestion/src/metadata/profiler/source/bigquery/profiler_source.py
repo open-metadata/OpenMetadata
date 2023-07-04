@@ -14,7 +14,9 @@ Bigquery Profiler source
 """
 
 from copy import deepcopy
+from typing import Optional, Union
 
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
@@ -26,6 +28,17 @@ from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
     MultipleProjectId,
     SingleProjectId,
+)
+from metadata.profiler.api.models import TableConfig
+from metadata.profiler.interface.pandas.profiler_interface import (
+    PandasProfilerInterface,
+)
+from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
+from metadata.profiler.interface.sqlalchemy.bigquery.profiler_interface import (
+    BigQueryProfilerInterface,
+)
+from metadata.profiler.interface.sqlalchemy.profiler_interface import (
+    SQAProfilerInterface,
 )
 from metadata.profiler.source.base_profiler_source import BaseProfilerSource
 
@@ -59,3 +72,22 @@ class BigQueryProfilerSource(BaseProfilerSource):
                 )
 
         return config_copy
+
+    def create_profiler_interface(
+        self,
+        entity: Table,
+        table_config: Optional[TableConfig],
+    ) -> Union[SQAProfilerInterface, PandasProfilerInterface]:
+        """Create BigQuery profiler interface"""
+        profiler_interface: BigQueryProfilerInterface = ProfilerProtocol.create(
+            "BigQuery",
+            entity,
+            table_config,
+            self.source_config,
+            self.service_conn_config,
+            self.ometa_client,
+            sqa_metadata=self.sqa_metadata,
+        )  # type: ignore
+
+        self.interface = profiler_interface
+        return self.interface
