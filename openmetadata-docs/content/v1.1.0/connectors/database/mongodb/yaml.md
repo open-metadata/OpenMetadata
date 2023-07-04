@@ -33,7 +33,7 @@ Configure and schedule MongoDB metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mongodb/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mongodb/yaml"} /%}
 
 ## Requirements
 

@@ -35,7 +35,7 @@ Configure and schedule Deltalake metadata and profiler workflows from the OpenMe
 - [Metadata Ingestion](#metadata-ingestion)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/deltalake/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/deltalake/yaml"} /%}
 
 
 ## Requirements

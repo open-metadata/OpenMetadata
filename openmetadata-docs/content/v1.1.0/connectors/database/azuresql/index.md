@@ -40,7 +40,7 @@ Configure and schedule AzureSQL metadata and profiler workflows from the OpenMet
     - [Workflow Deployment Error](#workflow-deployment-error)
   - [Related](#related)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/azuresql/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/azuresql/yaml"} /%}
 
 ## Requirements
 

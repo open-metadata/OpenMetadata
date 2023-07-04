@@ -21,7 +21,7 @@ Configure and schedule Superset metadata and profiler workflows from the OpenMet
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/superset/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/superset/yaml"} /%}
 
 ## Requirements
 

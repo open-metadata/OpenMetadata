@@ -35,7 +35,7 @@ Configure and schedule Impala metadata and profiler workflows from the OpenMetad
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/impala/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/impala/yaml"} /%}
 
 ## Requirements
 

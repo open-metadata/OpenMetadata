@@ -21,7 +21,7 @@ Configure and schedule Tableau metadata and profiler workflows from the OpenMeta
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/tableau/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/tableau/yaml"} /%}
 
 ## Requirements
 

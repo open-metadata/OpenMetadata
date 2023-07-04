@@ -35,7 +35,7 @@ Configure and schedule DomoDatabase metadata and profiler workflows from the Ope
 - [Data Profiler](/connectors/ingestion/workflows/profiler)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/domo-database/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/domo-database/yaml"} /%}
 
 ## Requirements
 

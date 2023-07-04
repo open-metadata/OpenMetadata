@@ -21,7 +21,7 @@ Configure and schedule QuickSight metadata and profiler workflows from the OpenM
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/quicksight/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/quicksight/yaml"} /%}
 ## Requirements
 
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}

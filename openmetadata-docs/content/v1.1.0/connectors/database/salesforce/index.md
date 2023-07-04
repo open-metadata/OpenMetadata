@@ -35,7 +35,7 @@ Configure and schedule Salesforce metadata and profiler workflows from the OpenM
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/salesforce/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/salesforce/yaml"} /%}
 
 ## Requirements
 

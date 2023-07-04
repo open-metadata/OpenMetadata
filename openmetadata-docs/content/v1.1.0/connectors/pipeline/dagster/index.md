@@ -19,7 +19,7 @@ Configure and schedule Dagster metadata and profiler workflows from the OpenMeta
   - [Troubleshooting](#troubleshooting)
     - [Workflow Deployment Error](#workflow-deployment-error)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/dagster/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/dagster/yaml"} /%}
 
 ## Requirements
 

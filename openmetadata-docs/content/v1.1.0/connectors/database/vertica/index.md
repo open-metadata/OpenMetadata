@@ -37,7 +37,7 @@ Configure and schedule Vertica metadata and profiler workflows from the OpenMeta
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/vertica/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/vertica/yaml"} /%}
 
 ## Requirements
 

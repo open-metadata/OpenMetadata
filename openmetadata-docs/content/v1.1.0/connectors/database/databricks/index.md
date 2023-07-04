@@ -38,7 +38,7 @@ Configure and schedule Databricks metadata and profiler workflows from the OpenM
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/databricks/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/databricks/yaml"} /%}
 
 ## Requirements
 

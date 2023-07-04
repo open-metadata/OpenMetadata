@@ -42,7 +42,7 @@ Configure and schedule Clickhouse metadata and profiler workflows from the OpenM
     - [Workflow Deployment Error](#workflow-deployment-error)
   - [Related](#related)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/clickhouse/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/clickhouse/yaml"} /%}
 
 ## Requirements
 

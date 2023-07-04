@@ -35,7 +35,7 @@ Configure and schedule SAP Hana metadata and profiler workflows from the OpenMet
 - [Data Quality](/connectors/ingestion/workflows/data-quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/sap-hana/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/sap-hana/yaml"} /%}
 
 ## Requirements
 

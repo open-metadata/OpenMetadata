@@ -39,7 +39,7 @@ Configure and schedule MSSQL metadata and profiler workflows from the OpenMetada
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mssql/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mssql/yaml"} /%}
 
 ## Requirements
 

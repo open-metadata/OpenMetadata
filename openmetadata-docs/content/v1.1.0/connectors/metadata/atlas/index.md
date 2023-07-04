@@ -5,7 +5,7 @@ slug: /connectors/metadata/atlas
 
 # Atlas
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/atlas/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/metadata/atlas/yaml"} /%}
 
 ## Requirements
 

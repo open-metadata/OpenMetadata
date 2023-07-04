@@ -12,7 +12,7 @@ Configure and schedule Databricks Pipeline metadata workflows from the OpenMetad
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/databricks-pipeline/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/databricks-pipeline/yaml"} /%}
 
 ## Requirements
 

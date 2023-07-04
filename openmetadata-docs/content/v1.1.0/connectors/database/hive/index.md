@@ -36,7 +36,7 @@ Configure and schedule Hive metadata and profiler workflows from the OpenMetadat
 - [Data Quality](/connectors/ingestion/workflows/data-quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/hive/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/hive/yaml"} /%}
 
 ## Requirements
 

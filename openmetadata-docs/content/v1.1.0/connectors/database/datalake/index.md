@@ -34,7 +34,7 @@ Configure and schedule Datalake metadata and profiler workflows from the OpenMet
 - [Data Profiler](/connectors/ingestion/workflows/profiler)
 - [Data Quality](/connectors/ingestion/workflows/data-quality)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/datalake/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/datalake/yaml"} /%}
 
 ## Requirements
 

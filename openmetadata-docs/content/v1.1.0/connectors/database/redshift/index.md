@@ -38,7 +38,7 @@ Configure and schedule Redshift metadata and profiler workflows from the OpenMet
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/redshift/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/redshift/yaml"} /%}
 
 ## Requirements
 

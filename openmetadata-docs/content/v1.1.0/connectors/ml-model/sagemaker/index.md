@@ -12,7 +12,7 @@ Configure and schedule Sagemaker metadata and profiler workflows from the OpenMe
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/sagemaker/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/ml-model/sagemaker/yaml"} /%}
 
 ## Requirements
 

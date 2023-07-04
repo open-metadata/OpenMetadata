@@ -12,7 +12,7 @@ Configure and schedule Mlflow metadata and profiler workflows from the OpenMetad
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mlflow/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/ml-model/mlflow/yaml"} /%}
 
 ## Requirements
 

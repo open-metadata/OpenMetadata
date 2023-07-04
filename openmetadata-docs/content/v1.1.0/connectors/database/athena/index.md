@@ -39,7 +39,7 @@ Configure and schedule Athena metadata and profiler workflows from the OpenMetad
   - [Workflow Deployment Error](#workflow-deployment-error)
 - [Related](#related)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/athena/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/athena/yaml"} /%}
 
 ## Requirements
 

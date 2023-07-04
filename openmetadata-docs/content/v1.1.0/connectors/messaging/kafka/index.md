@@ -12,7 +12,7 @@ Configure and schedule Kafka metadata and profiler workflows from the OpenMetada
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/kafka/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/messaging/kafka/yaml"} /%}
 
 ## Requirements
 

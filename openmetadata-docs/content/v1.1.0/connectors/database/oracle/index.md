@@ -37,7 +37,7 @@ Configure and schedule Oracle metadata and profiler workflows from the OpenMetad
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/oracle/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/oracle/yaml"} /%}
 
 ## Requirements
 

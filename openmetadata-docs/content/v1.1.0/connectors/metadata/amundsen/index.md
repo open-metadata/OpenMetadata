@@ -5,7 +5,7 @@ slug: /connectors/metadata/amundsen
 
 # Amundsen
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/amundsen/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/metadata/amundsen/yaml"} /%}
 
 In this page, you will learn how to use the `metadata` CLI to run a one-ingestion.
 

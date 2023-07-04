@@ -21,7 +21,7 @@ Configure and schedule Mode metadata and profiler workflows from the OpenMetadat
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mode/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/mode/yaml"} /%}
 
 ## Requirements
 

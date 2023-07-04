@@ -12,7 +12,7 @@ Configure and schedule Glue metadata and profiler workflows from the OpenMetadat
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/glue-pipeline/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/glue-pipeline/yaml"} /%}
 
 ## Requirements
 

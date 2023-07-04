@@ -12,7 +12,7 @@ Configure and schedule Fivetran metadata and profiler workflows from the OpenMet
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/fivetran/yaml"} /%}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/fivetran/yaml"} /%}
 
 ## Requirements
 
