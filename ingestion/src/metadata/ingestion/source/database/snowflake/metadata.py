@@ -322,7 +322,6 @@ class SnowflakeSource(CommonDbSourceService):
             TableNameAndType(name=table_name)
             for table_name in self.inspector.get_table_names(
                 schema=schema_name,
-                # include_temp_tables=self.service_connection.includeTempTables,
             )
             or []
         ]
