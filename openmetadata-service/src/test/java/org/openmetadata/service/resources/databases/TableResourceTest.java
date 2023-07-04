@@ -1716,12 +1716,16 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateDatabaseSchema createSchema =
         schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName()).withOwner(null);
     DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
-    assertReference(USER1_REF, schema.getOwner());
+    assertReference(USER1_REF, schema.getOwner()); // Inherited owner
+    schema = schemaTest.getEntity(schema.getId(), "owner", ADMIN_AUTH_HEADERS);
+    assertReference(USER1_REF, schema.getOwner()); // Inherited owner
 
     // Ensure table owner is inherited from databaseSchema
     CreateTable createTable = createRequest(test).withOwner(null).withDatabaseSchema(schema.getFullyQualifiedName());
     Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
-    assertReference(USER1_REF, table.getOwner());
+    assertReference(USER1_REF, table.getOwner()); // Inherited owner
+    table = getEntity(table.getId(), "owner", ADMIN_AUTH_HEADERS);
+    assertReference(USER1_REF, table.getOwner()); // Inherited owner
 
     // Change the ownership of table and ensure further ingestion updates don't overwrite the ownership
     String json = JsonUtils.pojoToJson(table);
@@ -1730,6 +1734,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertReference(USER2_REF, table.getOwner());
     table = updateEntity(createTable.withOwner(null), OK, ADMIN_AUTH_HEADERS); // Simulate ingestion update
     assertReference(USER2_REF, table.getOwner()); // Owner remains the same
+    table = getEntity(table.getId(), "owner", ADMIN_AUTH_HEADERS);
+    assertReference(USER2_REF, table.getOwner()); // Owner remains the same
 
     // Change the ownership of schema and ensure further ingestion updates don't overwrite the ownership
     json = JsonUtils.pojoToJson(schema);
@@ -1737,6 +1743,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     schema = schemaTest.patchEntity(schema.getId(), json, schema, ADMIN_AUTH_HEADERS);
     assertReference(USER2_REF, schema.getOwner());
     schema = schemaTest.updateEntity(createSchema.withOwner(null), OK, ADMIN_AUTH_HEADERS); // Simulate ingestion update
+    assertReference(USER2_REF, schema.getOwner()); // Owner remains the same
+    schema = schemaTest.getEntity(schema.getId(), "owner", ADMIN_AUTH_HEADERS);
     assertReference(USER2_REF, schema.getOwner()); // Owner remains the same
   }
 
@@ -1748,23 +1756,21 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals("P30D", database.getRetentionPeriod());
 
     // Ensure database schema retention period is carried over from the parent database
-    DatabaseSchemaResourceTest schemaResourceTest = new DatabaseSchemaResourceTest();
+    DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
     CreateDatabaseSchema createDatabaseSchema =
-        schemaResourceTest.createRequest(test).withDatabase(database.getFullyQualifiedName());
+        schemaTest.createRequest(test).withDatabase(database.getFullyQualifiedName());
     DatabaseSchema schema =
-        schemaResourceTest
-            .createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS)
-            .withDatabase(database.getEntityReference());
-    assertEquals("P30D", schema.getRetentionPeriod());
-    schema = schemaResourceTest.getEntity(schema.getId(), "", ADMIN_AUTH_HEADERS);
-    assertEquals("P30D", schema.getRetentionPeriod());
+        schemaTest.createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS).withDatabase(database.getEntityReference());
+    assertEquals("P30D", schema.getRetentionPeriod()); // Retention period is inherited in create response
+    schema = schemaTest.getEntity(schema.getId(), "", ADMIN_AUTH_HEADERS);
+    assertEquals("P30D", schema.getRetentionPeriod()); // Retention period is inherited in create response
 
     // Ensure table retention period is carried over from the parent database schema
     CreateTable createTable = createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
     Table table = createEntity(createTable, ADMIN_AUTH_HEADERS).withDatabase(database.getEntityReference());
-    assertEquals("P30D", table.getRetentionPeriod());
+    assertEquals("P30D", table.getRetentionPeriod()); // Retention period is inherited in get response
     table = getEntity(table.getId(), "", ADMIN_AUTH_HEADERS);
-    assertEquals("P30D", table.getRetentionPeriod());
+    assertEquals("P30D", table.getRetentionPeriod()); // Retention period is inherited in get response
   }
 
   @Test

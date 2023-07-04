@@ -85,10 +85,8 @@ public class MigrationUtil {
     /* Cannot create object  util class*/
   }
 
-  private static final String MYSQL_ENTITY_UPDATE =
-      "UPDATE %s SET  json = :json, %s = :nameHashColumnValue WHERE id = :id";
-  private static final String POSTGRES_ENTITY_UPDATE =
-      "UPDATE %s SET  json = (:json :: jsonb), %s = :nameHashColumnValue WHERE id = :id";
+  private static final String MYSQL_ENTITY_UPDATE = "UPDATE %s SET %s = :nameHashColumnValue WHERE id = :id";
+  private static final String POSTGRES_ENTITY_UPDATE = "UPDATE %s SET %s = :nameHashColumnValue WHERE id = :id";
 
   private static final String MYSQL_ENTITY_EXTENSION_TIME_SERIES_UPDATE =
       "UPDATE entity_extension_time_series set entityFQNHash = :entityFQNHash where entityFQN=:entityFQN and extension=:extension and timestamp=:timestamp";
@@ -127,7 +125,6 @@ public class MigrationUtil {
       Handle handle, String updateSql, Class<T> clazz, EntityDAO<T> dao, boolean withName) throws IOException {
     LOG.debug("Starting Migration for table : {}", dao.getTableName());
     int limitParam = 1000;
-    ListFilter filter = new ListFilter(Include.ALL);
     List<T> entities;
     String after = null;
     do {
@@ -136,7 +133,7 @@ public class MigrationUtil {
       entities = new ArrayList<>();
 
       // Read from Database
-      List<String> jsons = dao.listAfterWithOrderBy(filter, limitParam + 1, after == null ? "" : after, "id");
+      List<String> jsons = dao.listAfterWitFullyQualifiedName(limitParam + 1, after == null ? "" : after);
       for (String json : jsons) {
         T entity = JsonUtils.readValue(json, clazz);
         entities.add(entity);
@@ -144,7 +141,7 @@ public class MigrationUtil {
       String afterCursor = null;
       if (entities.size() > limitParam) {
         entities.remove(limitParam);
-        afterCursor = entities.get(limitParam - 1).getId().toString();
+        afterCursor = entities.get(limitParam - 1).getFullyQualifiedName();
       }
       after = afterCursor;
 
@@ -155,11 +152,7 @@ public class MigrationUtil {
             withName
                 ? FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getFullyQualifiedName()))
                 : FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
-        upsertBatch
-            .bind("json", JsonUtils.pojoToJson(entity))
-            .bind("nameHashColumnValue", hash)
-            .bind("id", entity.getId().toString())
-            .add();
+        upsertBatch.bind("nameHashColumnValue", hash).bind("id", entity.getId().toString()).add();
       }
       upsertBatch.execute();
     } while (!CommonUtil.nullOrEmpty(after));
@@ -363,7 +356,7 @@ public class MigrationUtil {
     return testSuite;
   }
 
-  public static TestSuite copy(TestSuite entity, CreateEntity request, String updatedBy) throws IOException {
+  public static TestSuite copy(TestSuite entity, CreateEntity request, String updatedBy) {
     entity.setId(UUID.randomUUID());
     entity.setName(request.getName());
     entity.setDisplayName(request.getDisplayName());
@@ -396,7 +389,6 @@ public class MigrationUtil {
                 null, FullyQualifiedName.quoteName(testSuiteFqn), new EntityUtil.Fields(List.of("id")), Include.ALL);
         testSuiteRepository.addRelationship(stored.getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
       } catch (EntityNotFoundException ex) {
-        // TODO: Need to update the executable field as well
         TestSuite newExecutableTestSuite =
             getTestSuite(
                     collectionDAO,
@@ -405,7 +397,8 @@ public class MigrationUtil {
                         .withExecutableEntityReference(entityLink.getEntityFQN()),
                     "ingestion-bot")
                 .withExecutable(false);
-        TestSuite testSuitePutResponse = testSuiteRepository.create(null, newExecutableTestSuite);
+        // Create
+        testSuiteRepository.create(null, newExecutableTestSuite);
         // Here we aer manually adding executable relationship since the table Repository is not registered and result
         // into null for entity type table
         testSuiteRepository.addRelationship(
