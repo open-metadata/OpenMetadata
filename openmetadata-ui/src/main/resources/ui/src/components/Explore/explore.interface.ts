@@ -128,7 +128,8 @@ export type EntityWithServices =
   | Pipeline
   | Mlmodel
   | Container
-  | DashboardDataModel;
+  | DashboardDataModel
+  | Database;
 
 export interface EntityDetailsObjectInterface {
   details: SearchedDataProps['data'][number]['_source'];
