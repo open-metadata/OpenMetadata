@@ -131,7 +131,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
-import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
@@ -1775,7 +1774,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   void get_tablesWithTestCases(TestInfo test) throws IOException {
-    TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     DatabaseSchemaResourceTest schemaResourceTest = new DatabaseSchemaResourceTest();
     DatabaseResourceTest databaseTest = new DatabaseResourceTest();

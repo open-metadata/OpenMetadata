@@ -186,15 +186,14 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Create user with mandatory email field empty
     create.withEmail("");
-    assertResponseContains(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "email must match \"^\\S+@\\S+\\.\\S+$\"");
+    String emailMatchError = "email must match \"^[\\S.!#$%&’*+/=?^_`{|}~-]+@\\S+\\.\\S+$\"";
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, emailMatchError);
     assertResponseContains(
         () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "email size must be between 6 and 127");
 
     // Create user with mandatory email field with invalid email address
     create.withEmail("invalidEmail");
-    assertResponseContains(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[email must match \"^\\S+@\\S+\\.\\S+$\"]");
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, emailMatchError);
   }
 
   @Test
