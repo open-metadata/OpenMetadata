@@ -224,15 +224,16 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("limit") int limit,
       @Bind("after") String after);
 
-  @SqlQuery(
-      "SELECT json FROM <table> <cond> AND " + "<orderByColumn> > :after " + "ORDER BY :orderBy " + "LIMIT :limit")
-  List<String> listAfterWithOrderBy(
-      @Define("table") String table,
-      @Define("orderByColumn") String orderByColumn,
-      @Define("cond") String cond,
-      @Bind("limit") int limit,
-      @Bind("after") String after,
-      @Bind("orderBy") String orderBy);
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT json FROM <table> WHERE JSON_EXTRACT(json, '$.fullyQualifiedName') > :after ORDER BY JSON_EXTRACT(json, '$.fullyQualifiedName') LIMIT :limit;",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT json FROM <table> WHERE json#>>'{fullyQualifiedName}' > :after ORDER BY json#>>'{fullyQualifiedName}' LIMIT :limit;",
+      connectionType = POSTGRES)
+  List<String> listAfterWitFullyQualifiedName(
+      @Define("table") String table, @Bind("limit") int limit, @Bind("after") String after);
 
   @SqlQuery("SELECT json FROM <table> <cond> AND " + "ORDER BY <nameColumn> " + "LIMIT :limit " + "OFFSET :offset")
   List<String> listAfter(
@@ -353,10 +354,10 @@ public interface EntityDAO<T extends EntityInterface> {
     return listAfter(getTableName(), getNameColumn(), filter.getCondition(), limit, after);
   }
 
-  default List<String> listAfterWithOrderBy(ListFilter filter, int limit, String after, String orderBy) {
+  default List<String> listAfterWitFullyQualifiedName(int limit, String after) {
     // This is based on field not fqn or name
     // Ordering and Paginating on name or fqn should be done using above function as requires unquoting/quoting
-    return listAfterWithOrderBy(getTableName(), orderBy, filter.getCondition(), limit, after, orderBy);
+    return listAfterWitFullyQualifiedName(getTableName(), limit, after);
   }
 
   default List<String> listAfter(ListFilter filter, int limit, int offset) {
