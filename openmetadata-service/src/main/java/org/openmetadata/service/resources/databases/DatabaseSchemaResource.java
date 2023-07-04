@@ -124,7 +124,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
               description = "Filter schemas by database name",
               schema = @Schema(type = "string", example = "customerDatabase"))
           @QueryParam("database")
-          String serviceParam,
+          String databaseParam,
       @Parameter(description = "Limit the number schemas returned. (1 to 1000000, default" + " = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
@@ -144,7 +144,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
+    ListFilter filter = new ListFilter(include).addQueryParam("database", databaseParam);
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
