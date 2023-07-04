@@ -810,7 +810,7 @@ public class OpenSearchClientImpl implements SearchClient {
 
   @Override
   public ElasticSearchConfiguration.SearchType getSearchType() {
-    return ElasticSearchConfiguration.SearchType.OPEN_SEARCH;
+    return ElasticSearchConfiguration.SearchType.OPENSEARCH;
   }
 
   @Override

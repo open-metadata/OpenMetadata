@@ -79,9 +79,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     EntityReference database = schema.getDatabase();
     addRelationship(
         database.getId(), schema.getId(), database.getType(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS);
-    storeOwner(schema, schema.getOwner());
-    // Add tag to databaseSchema relationship
-    applyTags(schema);
   }
 
   private List<EntityReference> getTables(DatabaseSchema schema) throws IOException {

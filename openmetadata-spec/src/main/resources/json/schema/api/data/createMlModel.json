@@ -75,6 +75,10 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the MLModel belongs to.",
+      "type": "string"
     }
   },
   "required": ["name", "algorithm", "service"],

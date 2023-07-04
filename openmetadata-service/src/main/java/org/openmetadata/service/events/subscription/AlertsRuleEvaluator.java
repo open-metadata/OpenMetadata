@@ -241,12 +241,16 @@ public class AlertsRuleEvaluator {
 
   public static EntityInterface getEntity(ChangeEvent event) throws IOException {
     Class<? extends EntityInterface> entityClass = Entity.getEntityClassFromType(event.getEntityType());
-    EntityInterface entity;
-    if (event.getEntity() instanceof String) {
-      entity = JsonUtils.readValue((String) event.getEntity(), entityClass);
-    } else {
-      entity = JsonUtils.convertValue(event.getEntity(), entityClass);
+    if (entityClass != null) {
+      EntityInterface entity;
+      if (event.getEntity() instanceof String) {
+        entity = JsonUtils.readValue((String) event.getEntity(), entityClass);
+      } else {
+        entity = JsonUtils.convertValue(event.getEntity(), entityClass);
+      }
+      return entity;
     }
-    return entity;
+    throw new IllegalArgumentException(
+        String.format("Change Event Data Asset is not an entity %s", JsonUtils.pojoToJson(event.getEntity())));
   }
 }

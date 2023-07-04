@@ -11,4 +11,11 @@
  *  limitations under the License.
  */
 
+import { ConstraintType } from 'generated/entity/data/table';
+
 export const TABLE_SCROLL_VALUE = { x: 1200 };
+
+export const SUPPORTED_TABLE_CONSTRAINTS = [
+  ConstraintType.ForeignKey,
+  ConstraintType.PrimaryKey,
+];

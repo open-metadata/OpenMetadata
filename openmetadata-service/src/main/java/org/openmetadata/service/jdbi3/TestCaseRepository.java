@@ -197,8 +197,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // Add relationship from test definition to test
     addRelationship(
         test.getTestDefinition().getId(), test.getId(), TEST_DEFINITION, TEST_CASE, Relationship.APPLIED_TO);
-    // Add test owner relationship
-    storeOwner(test, test.getOwner());
   }
 
   @Transaction

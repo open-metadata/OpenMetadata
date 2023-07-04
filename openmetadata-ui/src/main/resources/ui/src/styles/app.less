@@ -12,7 +12,8 @@
  */
 
 // common css utils file
-@import url('./variables.less');
+@import (reference) url('./variables.less');
+
 @trigger-btn-hover-bg: #efefef;
 
 // Global css
@@ -429,7 +430,7 @@ a[href].link-text-grey,
   }
 }
 .entity-tag-right-panel-container {
-  height: calc(100vh - 236px);
+  height: @entity-details-tab-height;
   overflow-y: scroll;
   border-left: @global-border;
   margin-left: 20px;
@@ -442,4 +443,9 @@ a[href].link-text-grey,
 
 .full-height {
   height: calc(100vh - 64px); // removing only navbar height
+}
+
+.tab-content-height {
+  height: @entity-details-tab-height;
+  overflow-y: scroll;
 }

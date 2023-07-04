@@ -1006,6 +1006,14 @@
     "sourceUrl": {
       "description": "Source URL of table.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "domain" : {
+      "description": "Domain the table belongs to. When not set, the table inherits the domain from the database schema it belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "dataProducts" : {
+      "description": "List of of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     }
   },
   "required": [

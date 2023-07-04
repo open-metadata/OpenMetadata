@@ -138,8 +138,6 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         service.getType(),
         Entity.DASHBOARD_DATA_MODEL,
         Relationship.CONTAINS);
-    storeOwner(dashboardDataModel, dashboardDataModel.getOwner());
-    applyTags(dashboardDataModel);
   }
 
   @Override

@@ -91,6 +91,10 @@
       "description" : "Glossary terms that are direct children in this glossary are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity.",
       "type" : "boolean",
       "default" : "false"
+    },
+    "domain" : {
+      "description": "Domain the Glossary belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["id", "name", "description"],

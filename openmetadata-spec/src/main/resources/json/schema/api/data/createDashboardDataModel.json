@@ -58,6 +58,10 @@
     "project": {
       "description": "Name of the project / workspace / collection in which the dataModel is contained",
       "type": "string"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Dashboard Data Model belongs to.",
+      "type": "string"
     }
   },
   "required": ["name", "service", "dataModelType", "columns"],

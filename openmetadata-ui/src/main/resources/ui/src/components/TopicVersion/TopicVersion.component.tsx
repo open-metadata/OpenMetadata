@@ -127,6 +127,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
                   <TopicSchemaFields
                     defaultExpandAllRows
                     isReadOnly
+                    entityFqn={currentVersionData?.fullyQualifiedName ?? ''}
                     hasDescriptionEditAccess={false}
                     hasTagEditAccess={false}
                     messageSchema={messageSchemaDiff}

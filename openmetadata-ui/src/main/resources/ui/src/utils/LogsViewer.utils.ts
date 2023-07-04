@@ -14,6 +14,8 @@
 import { OPEN_METADATA } from 'constants/service-guide.constant';
 import { isUndefined, startCase } from 'lodash';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { getNameFromFQN } from './CommonUtils';
+import Fqn from './Fqn';
 import { getSettingsPathFromPipelineType } from './IngestionUtils';
 import { getLogEntityPath } from './RouterUtils';
 
@@ -32,7 +34,8 @@ export const getLogBreadCrumbs = (
   ingestionName: string,
   ingestionDetails: IngestionPipeline | undefined
 ) => {
-  if (ingestionName.split('.')[0] === OPEN_METADATA && ingestionDetails) {
+  const updateIngestionName = Fqn.split(ingestionName);
+  if (updateIngestionName.includes(OPEN_METADATA) && ingestionDetails) {
     return [
       {
         name: startCase(ingestionDetails.pipelineType),
@@ -40,7 +43,7 @@ export const getLogBreadCrumbs = (
         activeTitle: true,
       },
       {
-        name: startCase(ingestionName.split('.')[1]),
+        name: getNameFromFQN(ingestionName),
         url: '',
         activeTitle: true,
       },
@@ -50,7 +53,7 @@ export const getLogBreadCrumbs = (
     return [];
   }
 
-  const urlPath = [serviceType, ...ingestionName.split('.')];
+  const urlPath = [serviceType, ...updateIngestionName];
 
   return urlPath.map((path, index) => {
     return {

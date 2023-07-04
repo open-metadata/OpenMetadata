@@ -68,7 +68,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
 
   @Override
   public void storeRelationships(Classification entity) {
-    /* No Relationships */
+    // No relationships to store beyond what is stored in the super class
   }
 
   private int getTermCount(Classification category) {

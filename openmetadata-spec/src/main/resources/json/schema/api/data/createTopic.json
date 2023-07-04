@@ -79,6 +79,18 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Topic belongs to.",
+      "type": "string",
+      "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "dataProducts" : {
+      "description": "List of fully qualified names of data products this entity is part of.",
+      "type": "array",
+      "items" : {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
     }
   },
   "required": ["name", "service", "partitions"],

@@ -10,11 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Typography } from 'antd';
+import { Space, Tooltip, Typography } from 'antd';
+import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
+import { SUPPORTED_TABLE_CONSTRAINTS } from 'constants/Table.constants';
+import { EntityType, FqnPart } from 'enums/entity.enum';
 import { ConstraintType, Table } from 'generated/entity/data/table';
-import { isUndefined, map } from 'lodash';
-import React, { FC, Fragment } from 'react';
+import { isEmpty, map } from 'lodash';
+import React, { FC, Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { getPartialNameFromTableFQN } from 'utils/CommonUtils';
+import { getEntityLink } from 'utils/TableUtils';
 import ForeignKeyConstraint from './ForeignKeyConstraint';
 import PrimaryKeyConstraint from './PrimaryKeyConstraint';
 import './table-constraints.less';
@@ -26,50 +32,83 @@ interface TableConstraintsProps {
 const TableConstraints: FC<TableConstraintsProps> = ({ constraints }) => {
   const { t } = useTranslation();
 
-  if (isUndefined(constraints)) {
+  const supportedConstraints = useMemo(
+    () =>
+      constraints?.filter((constraint) =>
+        SUPPORTED_TABLE_CONSTRAINTS.includes(
+          constraint.constraintType as ConstraintType
+        )
+      ) ?? [],
+    [constraints]
+  );
+
+  if (isEmpty(supportedConstraints)) {
     return null;
   }
 
   return (
     <Space className="p-b-sm" direction="vertical">
       <Typography.Text className="right-panel-label">
-        {t('label.table-constraint')}
+        {t('label.table-constraints')}
       </Typography.Text>
-      {constraints.map(({ constraintType, columns, referredColumns }) => {
-        if (constraintType === ConstraintType.PrimaryKey) {
-          const columnsLength = (columns?.length ?? 0) - 1;
+      {supportedConstraints.map(
+        ({ constraintType, columns, referredColumns }) => {
+          if (constraintType === ConstraintType.PrimaryKey) {
+            const columnsLength = (columns?.length ?? 0) - 1;
 
-          return (
-            <Space className="constraint-columns">
-              {columns?.map((column, index) => (
-                <Fragment key={column}>
-                  <Typography.Text>{column}</Typography.Text>
-                  {index < columnsLength ? <PrimaryKeyConstraint /> : null}
-                </Fragment>
-              ))}
-            </Space>
-          );
-        }
-        if (constraintType === ConstraintType.ForeignKey) {
-          return (
-            <Space className="constraint-columns">
-              <ForeignKeyConstraint />
-              <Space direction="vertical" size={16}>
-                <Typography.Text>{columns?.join(', ')}</Typography.Text>
-                <div data-testid="referred-column-name">
-                  {map(referredColumns, (referredColumn) => (
-                    <Typography.Text className="truncate referred-column-name">
-                      {referredColumn}
-                    </Typography.Text>
-                  ))}
-                </div>
+            return (
+              <Space wrap className="constraint-columns">
+                {columns?.map((column, index) => (
+                  <Fragment key={column}>
+                    <Typography.Text>{column}</Typography.Text>
+                    {index < columnsLength ? <PrimaryKeyConstraint /> : null}
+                  </Fragment>
+                ))}
               </Space>
-            </Space>
-          );
-        }
+            );
+          }
+          if (constraintType === ConstraintType.ForeignKey) {
+            return (
+              <Space className="constraint-columns">
+                <ForeignKeyConstraint />
+                <Space direction="vertical" size={16}>
+                  <Typography.Text>{columns?.join(', ')}</Typography.Text>
+                  <div data-testid="referred-column-name">
+                    {map(referredColumns, (referredColumn) => (
+                      <Tooltip
+                        placement="top"
+                        title={referredColumn}
+                        trigger="hover">
+                        <Link
+                          className="no-underline"
+                          to={getEntityLink(
+                            EntityType.TABLE,
+                            getPartialNameFromTableFQN(
+                              referredColumn,
+                              [
+                                FqnPart.Service,
+                                FqnPart.Database,
+                                FqnPart.Schema,
+                                FqnPart.Table,
+                              ],
+                              FQN_SEPARATOR_CHAR
+                            )
+                          )}>
+                          <Typography.Text className="truncate referred-column-name">
+                            {referredColumn}
+                          </Typography.Text>
+                        </Link>
+                      </Tooltip>
+                    ))}
+                  </div>
+                </Space>
+              </Space>
+            );
+          }
 
-        return null;
-      })}
+          return null;
+        }
+      )}
     </Space>
   );
 };

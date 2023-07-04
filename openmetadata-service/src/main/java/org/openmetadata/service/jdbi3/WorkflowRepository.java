@@ -67,7 +67,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
 
   @Override
   public void storeRelationships(Workflow entity) {
-    storeOwner(entity, entity.getOwner());
+    // No relationships to store beyond what is stored in the super class
   }
 
   @Override

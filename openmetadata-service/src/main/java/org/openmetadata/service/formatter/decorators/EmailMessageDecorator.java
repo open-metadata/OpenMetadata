@@ -13,12 +13,13 @@
 
 package org.openmetadata.service.formatter.decorators;
 
+import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getFormattedMessages;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.ChangeEventConfig;
 import org.openmetadata.service.Entity;
@@ -63,7 +64,7 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
   }
 
   @Override
-  public EmailMessage buildMessage(ChangeEvent event) {
+  public EmailMessage buildMessage(ChangeEvent event) throws IOException {
     EmailMessage emailMessage = new EmailMessage();
     emailMessage.setUserName(event.getUserName());
     if (event.getEntity() != null) {
@@ -75,7 +76,7 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
       }
     }
     Map<MessageParser.EntityLink, String> messages =
-        getFormattedMessages(this, event.getChangeDescription(), (EntityInterface) event.getEntity());
+        getFormattedMessages(this, event.getChangeDescription(), getEntity(event));
     List<String> changeMessage = new ArrayList<>();
     for (Map.Entry<MessageParser.EntityLink, String> entry : messages.entrySet()) {
       changeMessage.add(entry.getValue());
