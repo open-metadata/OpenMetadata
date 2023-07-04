@@ -24,9 +24,9 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_COMMENTS,
     SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES,
     SNOWFLAKE_GET_SCHEMA_COLUMNS,
+    SNOWFLAKE_GET_TRANSIENT_NAMES,
     SNOWFLAKE_GET_VIEW_NAMES,
     SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
-    SNOWFLAKE_GET_TRANSIENT_NAMES
 )
 from metadata.utils.sqlalchemy_utils import (
     get_display_datatype,
@@ -83,8 +83,6 @@ def get_view_names(self, connection, schema, **kw):  # pylint: disable=unused-ar
     return result
 
 
-
-
 @reflection.cache
 def get_view_definition(  # pylint: disable=unused-argument
     self, connection, view_name, schema=None, **kw
@@ -134,6 +132,7 @@ def get_unique_constraints(  # pylint: disable=unused-argument
 
 def normalize_names(self, name):  # pylint: disable=unused-argument
     return name
+
 
 # pylint: disable=too-many-locals,protected-access
 @reflection.cache
