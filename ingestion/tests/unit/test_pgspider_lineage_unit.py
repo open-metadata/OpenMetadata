@@ -29,7 +29,10 @@ from metadata.generated.schema.type.entityLineage import (
     LineageDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.database.postgres.pgspider.lineage import PgspiderLineageSource
+from metadata.ingestion.source.database.postgres.lineage import PostgresLineageSource
+from metadata.ingestion.source.database.postgres.pgspider.lineage import (
+    get_lineage_from_multi_tenant_table,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -239,6 +242,7 @@ mock_pgspider_config = {
         "serviceConnection": {
             "config": {
                 "type": "Postgres",
+                "scheme": "pgspider+psycopg2",
                 "username": "openmetadata_user",
                 "hostPort": "localhost:4813",
                 "database": "pgspider",
@@ -583,13 +587,14 @@ class PGSpiderLineageUnitTests(TestCase):
     def __init__(self, methodName) -> None:
         super().__init__(methodName)
         config = OpenMetadataWorkflowConfig.parse_obj(mock_pgspider_config)
-        self.pgspider = PgspiderLineageSource.create(
+        self.postgres = PostgresLineageSource.create(
             mock_pgspider_config["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
+        print(type(self.postgres))
 
     @patch(
-        "metadata.ingestion.source.database.postgres.pgspider.lineage.PgspiderLineageSource.get_multi_tenant_tables"
+        "metadata.ingestion.source.database.postgres.pgspider.lineage._get_multi_tenant_tables"
     )
     def test_next_record_1(self, multi_tenant_tables):
         """
@@ -606,13 +611,18 @@ class PGSpiderLineageUnitTests(TestCase):
         with patch(
             "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
         ) as source_entities, patch(
-            "metadata.ingestion.source.database.postgres.pgspider.lineage.PgspiderLineageSource.get_child_tables"
+            "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
         ) as child_tables:
             child_tables.side_effect = mock_child_data
             source_entities.side_effect = table_entities_1
 
             requests = []
-            for record in self.pgspider.next_record():
+            for record in get_lineage_from_multi_tenant_table(
+                self.postgres.metadata,
+                connection=self.postgres.service_connection,
+                service_name=self.postgres.config.serviceName,
+            ):
+
                 if isinstance(record, AddLineageRequest):
                     requests.append(record)
 
@@ -623,7 +633,7 @@ class PGSpiderLineageUnitTests(TestCase):
                 self.assertEqual(expected, original)
 
     @patch(
-        "metadata.ingestion.source.database.postgres.pgspider.lineage.PgspiderLineageSource.get_multi_tenant_tables"
+        "metadata.ingestion.source.database.postgres.pgspider.lineage._get_multi_tenant_tables"
     )
     def test_next_record_2(self, multi_tenant_tables):
         """
@@ -640,13 +650,18 @@ class PGSpiderLineageUnitTests(TestCase):
         with patch(
             "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
         ) as source_entities, patch(
-            "metadata.ingestion.source.database.postgres.pgspider.lineage.PgspiderLineageSource.get_child_tables"
+            "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
         ) as child_tables:
             child_tables.side_effect = mock_child_data
             source_entities.side_effect = table_entities_2
 
             requests = []
-            for record in self.pgspider.next_record():
+            for record in get_lineage_from_multi_tenant_table(
+                self.postgres.metadata,
+                connection=self.postgres.service_connection,
+                service_name=self.postgres.config.serviceName,
+            ):
+
                 if isinstance(record, AddLineageRequest):
                     requests.append(record)
 
@@ -657,7 +672,7 @@ class PGSpiderLineageUnitTests(TestCase):
                 self.assertEqual(expected, original)
 
     @patch(
-        "metadata.ingestion.source.database.postgres.pgspider.lineage.PgspiderLineageSource.get_multi_tenant_tables"
+        "metadata.ingestion.source.database.postgres.pgspider.lineage._get_multi_tenant_tables"
     )
     def test_next_record_3(self, multi_tenant_tables):
         """
@@ -674,13 +689,18 @@ class PGSpiderLineageUnitTests(TestCase):
         with patch(
             "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
         ) as source_entities, patch(
-            "metadata.ingestion.source.database.postgres.pgspider.lineage.PgspiderLineageSource.get_child_tables"
+            "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
         ) as child_tables:
             child_tables.side_effect = mock_child_data
             source_entities.side_effect = table_entities_3
 
             requests = []
-            for record in self.pgspider.next_record():
+            for record in get_lineage_from_multi_tenant_table(
+                self.postgres.metadata,
+                connection=self.postgres.service_connection,
+                service_name=self.postgres.config.serviceName,
+            ):
+
                 if isinstance(record, AddLineageRequest):
                     requests.append(record)
 
@@ -691,7 +711,7 @@ class PGSpiderLineageUnitTests(TestCase):
                 self.assertEqual(expected, original)
 
     @patch(
-        "metadata.ingestion.source.database.postgres.pgspider.lineage.PgspiderLineageSource.get_multi_tenant_tables"
+        "metadata.ingestion.source.database.postgres.pgspider.lineage._get_multi_tenant_tables"
     )
     def test_next_record_4(self, multi_tenant_tables):
         """
@@ -707,13 +727,18 @@ class PGSpiderLineageUnitTests(TestCase):
         with patch(
             "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
         ) as source_entities, patch(
-            "metadata.ingestion.source.database.postgres.pgspider.lineage.PgspiderLineageSource.get_child_tables"
+            "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
         ) as child_tables:
             child_tables.return_value = mock_child_data
             source_entities.return_value = []
 
             requests = []
-            for record in self.pgspider.next_record():
+            for record in get_lineage_from_multi_tenant_table(
+                self.postgres.metadata,
+                connection=self.postgres.service_connection,
+                service_name=self.postgres.config.serviceName,
+            ):
+
                 if isinstance(record, AddLineageRequest):
                     requests.append(record)
 
@@ -721,7 +746,7 @@ class PGSpiderLineageUnitTests(TestCase):
             self.assertEqual(0, len(requests))
 
     @patch(
-        "metadata.ingestion.source.database.postgres.pgspider.lineage.PgspiderLineageSource.get_multi_tenant_tables"
+        "metadata.ingestion.source.database.postgres.pgspider.lineage._get_multi_tenant_tables"
     )
     def test_next_record_5(self, multi_tenant_tables):
         """
@@ -738,12 +763,17 @@ class PGSpiderLineageUnitTests(TestCase):
         with patch(
             "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
         ) as source_entities, patch(
-            "metadata.ingestion.source.database.postgres.pgspider.lineage.PgspiderLineageSource.get_child_tables"
+            "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
         ) as child_tables:
             child_tables.return_value = []
 
             requests = []
-            for record in self.pgspider.next_record():
+            for record in get_lineage_from_multi_tenant_table(
+                self.postgres.metadata,
+                connection=self.postgres.service_connection,
+                service_name=self.postgres.config.serviceName,
+            ):
+
                 if isinstance(record, AddLineageRequest):
                     requests.append(record)
 
@@ -751,7 +781,7 @@ class PGSpiderLineageUnitTests(TestCase):
             self.assertEqual(0, len(requests))
 
     @patch(
-        "metadata.ingestion.source.database.postgres.pgspider.lineage.PgspiderLineageSource.get_multi_tenant_tables"
+        "metadata.ingestion.source.database.postgres.pgspider.lineage._get_multi_tenant_tables"
     )
     def test_next_record_6(self, multi_tenant_tables):
         """
@@ -768,13 +798,18 @@ class PGSpiderLineageUnitTests(TestCase):
         with patch(
             "metadata.ingestion.source.database.postgres.pgspider.lineage.search_table_entities"
         ) as source_entities, patch(
-            "metadata.ingestion.source.database.postgres.pgspider.lineage.PgspiderLineageSource.get_child_tables"
+            "metadata.ingestion.source.database.postgres.pgspider.lineage._get_child_tables"
         ) as child_tables:
             child_tables.side_effect = mock_child_data
             source_entities.return_value = []
 
             requests = []
-            for record in self.pgspider.next_record():
+            for record in get_lineage_from_multi_tenant_table(
+                self.postgres.metadata,
+                connection=self.postgres.service_connection,
+                service_name=self.postgres.config.serviceName,
+            ):
+
                 if isinstance(record, AddLineageRequest):
                     requests.append(record)
 
