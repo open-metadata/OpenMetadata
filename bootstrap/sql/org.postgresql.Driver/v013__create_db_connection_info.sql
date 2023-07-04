@@ -177,3 +177,18 @@ set json = jsonb_set(
         '[{"name":"sqlExpression","displayName":"SQL Expression","description":"SQL expression to run against the table","dataType":"STRING","required":"true"},{"name":"strategy","displayName":"Strategy","description":"Strategy to use to run the custom SQL query (i.e. `SELECT COUNT(<col>)` or `SELECT <col> (defaults to ROWS)","dataType":"ARRAY","optionValues":["ROWS","COUNT"],"required":false},{"name":"threshold","displayName":"Threshold","description":"Threshold to use to determine if the test passes or fails (defaults to 0).","dataType":"NUMBER","required":false}]'
         )
 where name = 'tableCustomSQLQuery';
+
+-- Modify migrations for service connection of airflow to move password under authType if 
+-- Connection Type as Mysql or Postgres
+
+UPDATE pipeline_service_entity
+SET json =  jsonb_set(
+json #-'{connection,config,connection,password}',
+'{connection,config,connection,authType}',
+jsonb_build_object('password',json#>'{connection,config,connection,password}')
+)
+WHERE serviceType = 'Airflow'
+and json#>'{connection,config,connection,type}' IN ('"Mysql"', '"Postgres"')
+and json#>'{connection,config,connection,password}' is not null;
+  
+  

@@ -152,6 +152,14 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "domain" : {
+      "description": "Domain the Topic belongs to. When not set, the Topic inherits the domain from the messaging service it belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "dataProducts" : {
+      "description": "List of of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     }
   },
   "required": ["id", "name", "partitions", "service"],

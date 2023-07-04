@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.resources.services.messaging;
 
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -58,6 +56,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -78,7 +77,7 @@ import org.openmetadata.service.util.ResultList;
 public class MessagingServiceResource
     extends ServiceEntityResource<MessagingService, MessagingServiceRepository, MessagingConnection> {
   public static final String COLLECTION_PATH = "v1/services/messagingServices/";
-  public static final String FIELDS = FIELD_OWNER;
+  public static final String FIELDS = "owner,domain";
 
   @Override
   public MessagingService addHref(UriInfo uriInfo, MessagingService service) {
@@ -207,7 +206,8 @@ public class MessagingServiceResource
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    MessagingService messagingService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    MessagingService messagingService =
+        getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
     return decryptOrNullify(securityContext, messagingService);
   }
 

@@ -107,6 +107,48 @@ If you are upgrading production this is the recommended version to upgrade to.
 
 ## Breaking Changes for 1.1 Stable Release
 
+{% note noteType="Warning" %}
+
+The Release 1.1.0 migration process will modify the structure of all your data. Depending on the number of records in the database,
+**this process can take up quite some time to run**. Please wait until it gets executed end-to-end.
+
+Make sure your data has been backed up before running the migration.
+
+{% /note %}
+
+### Update `sort_buffer_size` (MySQL) or `work_mem` (Postgres)
+
+Before running the migrations, it is important to update these parameters to ensure there are no runtime errors.
+A safe value would be setting them to 10MB.
+
+**If using MySQL**
+
+You can update it via SQL (note that it will reset after the server restarts):
+
+```sql
+SET GLOBAL sort_buffer_size = 10485760
+```
+
+To make the configuration persistent, you'd need to navigate to your MySQL Server install directory and update the
+`my.ini` or `my.cnf` [files](https://dev.mysql.com/doc/refman/8.0/en/option-files.html) with `sort_buffer_size = 10485760`.
+
+If using RDS, you will need to update your instance's [Parameter Group](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html)
+to include the above change.
+
+**If using Postgres**
+
+You can update it via SQL (not that it will reset after the server restarts):
+
+```sql
+SET work_mem = '10MB';
+```
+
+To make the configuration persistent, you'll need to update the `postgresql.conf` [file](https://www.postgresql.org/docs/9.3/config-setting.html)
+with `work_mem = 10MB`.
+
+If using RDS, you will need to update your instance's [Parameter Group](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html)
+to include the above change.
+
 ### Elasticsearch and OpenSearch
 
 We now support ES version up to 7.16. However, this means that we need to handle the internals a bit differently
@@ -117,8 +159,15 @@ elasticsearch:
   searchType: ${SEARCH_TYPE:- "elasticsearch"} # or opensearch
 ```
 
-If you use Elasticsearch there's nothing to do. However, if you use OpenSearch, you will need to pass the new
+If you use Elasticsearch there's nothing to do. However, if you use **OpenSearch**, you will need to pass the new
 parameter as `opensearch`.
+
+If you skip this step, you would see the following error:
+
+```
+ERROR [2023-07-02 15:53:41,538] [main] o.o.s.s.e.ElasticSearchClientImpl - Failed to create Elastic Search indexes due to
+org.elasticsearch.ElasticsearchException: Invalid or missing build flavor [oss]
+```
 
 ### Pipeline Service Client Configuration
 

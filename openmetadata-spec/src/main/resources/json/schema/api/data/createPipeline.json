@@ -68,6 +68,10 @@
       "description": "Scheduler Interval for the pipeline in cron format.",
       "type": "string",
       "default": null
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Pipeline belongs to.",
+      "type": "string"
     }
   },
   "required": ["name", "service"],

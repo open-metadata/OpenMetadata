@@ -224,6 +224,16 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("limit") int limit,
       @Bind("after") String after);
 
+  @SqlQuery(
+      "SELECT json FROM <table> <cond> AND " + "<orderByColumn> > :after " + "ORDER BY :orderBy " + "LIMIT :limit")
+  List<String> listAfterWithOrderBy(
+      @Define("table") String table,
+      @Define("orderByColumn") String orderByColumn,
+      @Define("cond") String cond,
+      @Bind("limit") int limit,
+      @Bind("after") String after,
+      @Bind("orderBy") String orderBy);
+
   @SqlQuery("SELECT json FROM <table> <cond> AND " + "ORDER BY <nameColumn> " + "LIMIT :limit " + "OFFSET :offset")
   List<String> listAfter(
       @Define("table") String table,
@@ -341,6 +351,12 @@ public interface EntityDAO<T extends EntityInterface> {
     // Quoted name is stored in fullyQualifiedName column and not in the name column
     after = getNameColumn().equals("name") ? FullyQualifiedName.unquoteName(after) : after;
     return listAfter(getTableName(), getNameColumn(), filter.getCondition(), limit, after);
+  }
+
+  default List<String> listAfterWithOrderBy(ListFilter filter, int limit, String after, String orderBy) {
+    // This is based on field not fqn or name
+    // Ordering and Paginating on name or fqn should be done using above function as requires unquoting/quoting
+    return listAfterWithOrderBy(getTableName(), orderBy, filter.getCondition(), limit, after, orderBy);
   }
 
   default List<String> listAfter(ListFilter filter, int limit, int offset) {

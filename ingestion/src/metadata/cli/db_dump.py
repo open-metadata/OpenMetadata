@@ -34,7 +34,7 @@ TABLES_DUMP_ALL = {
 }
 
 CUSTOM_TABLES = {"entity_extension_time_series": {"exclude_columns": ["timestamp"]}}
-NOT_MIGRATE = {"DATABASE_CHANGE_LOG"}
+NOT_MIGRATE = {"DATABASE_CHANGE_LOG", "SERVER_MIGRATION_SQL_LOGS", "SERVER_CHANGE_LOG"}
 
 STATEMENT_JSON = "SELECT json FROM {table}"
 STATEMENT_ALL = "SELECT * FROM {table}"
@@ -71,6 +71,7 @@ def clean_str(raw: str, engine: Engine) -> str:
 
 
 @singledispatch
+# pylint: disable=line-too-long
 def clean_col(column_raw: Optional[Union[dict, str]], engine: Engine) -> str:
     return (
         single_quote_wrap(clean_str(str(column_raw), engine))
