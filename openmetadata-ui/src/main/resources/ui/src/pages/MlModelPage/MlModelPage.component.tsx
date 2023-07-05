@@ -36,6 +36,7 @@ import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import {
+  addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
   sortTagsCaseInsensitive,
@@ -94,6 +95,14 @@ const MlModelPage = () => {
       }
       const res = await getMlModelByFQN(name, fields);
       setMlModelDetail(res);
+      addToRecentViewed({
+        displayName: getEntityName(res),
+        entityType: EntityType.MLMODEL,
+        fqn: res.fullyQualifiedName ?? '',
+        serviceType: res.serviceType,
+        timestamp: 0,
+        id: res.id,
+      });
       setCurrentVersion(res.version?.toString());
     } catch (error) {
       showErrorToast(error as AxiosError);
