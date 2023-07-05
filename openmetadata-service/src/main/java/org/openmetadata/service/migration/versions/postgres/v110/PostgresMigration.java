@@ -57,7 +57,7 @@ public class PostgresMigration implements MigrationStep {
 
   @Override
   public void runDataMigration() {
-    dataMigrationFQNHashing(collectionDAO);
+    dataMigrationFQNHashing(handle, collectionDAO);
   }
 
   @Override

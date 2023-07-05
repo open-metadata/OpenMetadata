@@ -14,16 +14,10 @@ extract metadata directly from your Airflow instance or via the CLI:
 
 {% tilesContainer %}
 {% tile
-    title="Ingest directly from your Airflow"
-    description="Configure the ingestion with a DAG on your own Airflow instance"
-    link="/connectors/pipeline/airflow/gcp"
-  / %}
-{% tile
     title="Ingest with the CLI"
     description="Run a one-time ingestion using the metadata CLI"
     link="/connectors/pipeline/airflow/cli"
   / %}
-
 {% /tilesContainer %}
 
 ## Requirements

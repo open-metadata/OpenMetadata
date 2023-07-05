@@ -1,13 +1,15 @@
 ---
-title: Run Connectors from MWAA
-slug: /connectors/ingestion/run-connectors-from-mwaa
+title: Extract MWAA Metadata
+slug: /connectors/pipeline/airflow/mwaa
 ---
 
-# Run Connectors from MWAA
+# Extract MWAA Metadata
 
-When running ingestion workflows from MWAA we have two main approaches:
-1. Install the oprenmetadata-ingestion package as a requirement in the Airflow environment. We will then run the process using a `PythonOperator`
+When running ingestion workflows from MWAA we have three approaches:
+
+1. Install the openmetadata-ingestion package as a requirement in the Airflow environment. We will then run the process using a `PythonOperator`
 2. Configure an ECS cluster and run the ingestion as an `ECSOperator`.
+3. Install a plugin and run the ingestion with the `PythonVirtualenvOperator`.
 
 We will now discuss pros and cons of each aspect and how to configure them.
 
@@ -30,9 +32,9 @@ To install the package, we need to update the `requirements.txt` file from the M
 openmetadata-ingestion[<plugin>]==x.y.z
 ```
 
-Where `x.y.z` is the version of the OpenMetadata ingestion package. Note that the version needs to match the server version. If we are using the server at 0.12.2, then the ingestion package needs to also be 0.12.2.
+Where `x.y.z` is the version of the OpenMetadata ingestion package. Note that the version needs to match the server version. If we are using the server at 1.1.0, then the ingestion package needs to also be 1.1.0.
 
-The plugin parameter is a list of the sources that we want to ingest. An example would look like this `openmetadata-ingestion[mysql,snowflake,s3]==0.12.2.2`.
+The plugin parameter is a list of the sources that we want to ingest. An example would look like this `openmetadata-ingestion[mysql,snowflake,s3]==1.1.0`.
 
 A DAG deployed using a Python Operator would then look like follows
 
@@ -83,7 +85,7 @@ with DAG(
     )
 ```
 
-Where you can update the YAML configuration and workflow classes accordingly. accordingly. Further examples on how to 
+Where you can update the YAML configuration and workflow classes accordingly. accordingly. Further examples on how to
 run the ingestion can be found on the documentation (e.g., [Snowflake](https://docs.open-metadata.org/connectors/database/snowflake)).
 
 ### Extracting MWAA Metadata
@@ -132,8 +134,8 @@ We will now describe the steps, following the official AWS documentation.
 
 - The cluster just needs a task to run in `FARGATE` mode.
 - The required image is `docker.getcollate.io/openmetadata/ingestion-base:x.y.z`
-  - The same logic as above applies. The `x.y.z` version needs to match the server version. For example, `docker.getcollate.io/openmetadata/ingestion-base:0.13.2`
-  
+    - The same logic as above applies. The `x.y.z` version needs to match the server version. For example, `docker.getcollate.io/openmetadata/ingestion-base:0.13.2`
+
 We have tested this process with a Task Memory of 512MB and Task CPU (unit) of 256. This can be tuned depending on the amount of metadata that needs to be ingested.
 
 When creating the ECS Cluster, take notes on the log groups assigned, as we will need them to prepare the MWAA Executor Role policies.
@@ -262,24 +264,11 @@ with DAG(
     )
 ```
 
-Note that depending on the kind of workflow you will be deploying, the YAML configuration will need to updated following 
-the official OpenMetadata docs, and the value of the `pipelineType` configuration will need to hold one of the following values:
-
-- `metadata`
-- `usage`
-- `lineage`
-- `profiler`
-- `TestSuite`
-
-Which are based on the `PipelineType` [JSON Schema definitions](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/ingestionPipelines/ingestionPipeline.json#L14)
-
-### Extracting MWAA Metadata
+### Getting MWAA database connection
 
 To extract MWAA information we will need to take a couple of points in consideration:
 1. How to get the underlying database connection info, and
 2. How to make sure we can reach such database.
-
-#### Getting the DB connection
 
 The happy path would be going to the `Airflow UI > Admin > Configurations` and finding the `sql_alchemy_conn` parameter.
 
@@ -590,8 +579,11 @@ For Airflow providers, you will want to pull the provider versions from [the mat
 
 Also note that the ingestion workflow function must be entirely self contained as it will run by itself in the virtualenv. Any imports it needs, including the configuration, must exist within the function itself.
 
+<<<<<<<< HEAD:openmetadata-docs/content/v1.1.0/connectors/ingestion/deployment/running-from-mwaa.md
 ### Extracting MWAA Metadata
 
+========
+>>>>>>>> docs-sso-airflow:openmetadata-docs/content/v1.1.0/connectors/pipeline/airflow/mwaa.md
 As the ingestion process will be happening locally in MWAA, we can prepare a DAG with the following YAML
 configuration:
 

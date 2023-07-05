@@ -56,8 +56,20 @@ site_menu:
   - category: Deployment / Kubernetes Deployment / GKE Troubleshooting
     url: /deployment/kubernetes/gke-troubleshooting
 
-  - category: Deployment / Airflow
-    url: /deployment/airflow
+  - category: Deployment / Ingestion
+    url: /deployment/ingestion
+  - category: Deployment / Ingestion / OpenMetadata
+    url: /deployment/ingestion/openmetadata
+  - category: Deployment / Ingestion / Airflow
+    url: /deployment/ingestion/airflow
+  - category: Deployment / Ingestion / MWAA
+    url: /deployment/ingestion/mwaa
+  - category: Deployment / Ingestion / GCS Composer
+    url: /deployment/ingestion/gcs-composer
+  - category: Deployment / Ingestion / GitHub Actions
+    url: /deployment/ingestion/github-actions
+  - category: Deployment / Ingestion / Credentials
+    url: /deployment/ingestion/credentials
 
   - category: Deployment / Enable Security
     url: /deployment/security
@@ -178,13 +190,13 @@ site_menu:
     url: /deployment/upgrade/docker
   - category: Deployment / Upgrade OpenMetadata / Upgrade on Kubernetes
     url: /deployment/upgrade/kubernetes
-  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions
+  - category: Deployment / Upgrade OpenMetadata / Version Changes
     url: /deployment/upgrade/versions
-  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.12 to 0.13
+  - category: Deployment / Upgrade OpenMetadata / Version Changes / 0.12 to 0.13
     url: /deployment/upgrade/versions/012-to-013
-  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.13 to 1.0
+  - category: Deployment / Upgrade OpenMetadata / Version Changes / 0.13 to 1.0
     url: /deployment/upgrade/versions/013-to-100
-  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 1.0 to 1.1
+  - category: Deployment / Upgrade OpenMetadata / Version Changes / 1.0 to 1.1
     url: /deployment/upgrade/versions/100-to-110
 
   - category: Deployment / Backup & Restore Metadata
@@ -485,14 +497,16 @@ site_menu:
     url: /connectors/pipeline/airflow
   - category: Connectors / Pipeline / Airflow / CLI
     url: /connectors/pipeline/airflow/cli
-  - category: Connectors / Pipeline / Airflow / GCS Composer
-    url: /connectors/pipeline/airflow/gcp
   - category: Connectors / Pipeline / Airflow / Lineage Backend
     url: /connectors/pipeline/airflow/lineage-backend
   - category: Connectors / Pipeline / Airflow / Lineage Operator
     url: /connectors/pipeline/airflow/lineage-operator
   - category: Connectors / Pipeline / Airflow / Configuring DAG Lineage
     url: /connectors/pipeline/airflow/configuring-lineage
+  - category: Connectors / Pipeline / Airflow / MWAA
+    url: /connectors/pipeline/airflow/mwaa
+  - category: Connectors / Pipeline / Airflow / GCS Composer
+    url: /connectors/pipeline/airflow/gcs-composer
   - category: Connectors / Pipeline / Airbyte
     url: /connectors/pipeline/airbyte
   - category: Connectors / Pipeline / Airbyte / Airflow
@@ -584,9 +598,6 @@ site_menu:
   - category: Connectors / Custom Connectors
     url: /connectors/custom-connectors
 
-  - category: Connectors / Managing Credentials
-    url: /connectors/credentials
-
   - category: Connectors / Ingestion
     url: /connectors/ingestion
   - category: Connectors / Ingestion / Workflows
@@ -649,10 +660,6 @@ site_menu:
     url: /connectors/ingestion/versioning/event-notification-via-webhooks
   - category: Connectors / Ingestion / Ingestion Pipeline UI Deployment
     url: /connectors/ingestion/deployment
-  - category: Connectors / Ingestion / Run Connectors in your Airflow
-    url: /connectors/ingestion/run-connectors-in-airflow
-  - category: Connectors / Ingestion / Run Connectors from MWAA
-    url: /connectors/ingestion/run-connectors-from-mwaa
   - category: Connectors / Ingestion / Best Practices
     url: /connectors/ingestion/best-practices
 

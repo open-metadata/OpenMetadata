@@ -81,6 +81,8 @@ import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.domains.DataProduct;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -193,6 +195,12 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   BotDAO botDAO();
+
+  @CreateSqlObject
+  DomainDAO domainDAO();
+
+  @CreateSqlObject
+  DataProductDAO dataProductDAO();
 
   @CreateSqlObject
   EventSubscriptionDAO eventSubscriptionDAO();
@@ -1352,6 +1360,50 @@ public interface CollectionDAO {
     }
   }
 
+  interface DomainDAO extends EntityDAO<Domain> {
+    @Override
+    default String getTableName() {
+      return "domain_entity";
+    }
+
+    @Override
+    default Class<Domain> getEntityClass() {
+      return Domain.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+
+    @Override
+    default boolean supportsSoftDelete() {
+      return false;
+    }
+  }
+
+  interface DataProductDAO extends EntityDAO<DataProduct> {
+    @Override
+    default String getTableName() {
+      return "data_product_entity";
+    }
+
+    @Override
+    default Class<DataProduct> getEntityClass() {
+      return DataProduct.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+
+    @Override
+    default boolean supportsSoftDelete() {
+      return false;
+    }
+  }
+
   interface EventSubscriptionDAO extends EntityDAO<EventSubscription> {
     @Override
     default String getTableName() {
@@ -2030,6 +2082,9 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM tag_usage where tagFQNHash = :tagFQNHash AND source = :source")
     void deleteTagLabels(@Bind("source") int source, @Bind("tagFQNHash") String tagFQNHash);
+
+    @SqlUpdate("DELETE FROM tag_usage where tagFQNHash = :tagFQNHash")
+    void deleteTagLabelsByFqn(@Bind("tagFQNHash") String tagFQNHash);
 
     @SqlUpdate("DELETE FROM tag_usage where tagFQNHash LIKE CONCAT(:tagFQNHash, '.%') AND source = :source")
     void deleteTagLabelsByPrefix(@Bind("source") int source, @Bind("tagFQNHash") String tagFQNHash);
@@ -2720,6 +2775,9 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM user_entity WHERE email = :email", connectionType = MYSQL)
     @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM user_entity WHERE email = :email", connectionType = POSTGRES)
     int checkEmailExists(@Bind("email") String email);
+
+    @SqlQuery("SELECT json FROM user_entity WHERE email = :email")
+    String findUserByEmail(@Bind("email") String email);
   }
 
   interface ChangeEventDAO {
@@ -3072,20 +3130,6 @@ public interface CollectionDAO {
         @Bind("entityFQNHash") String entityFQNHash,
         @Bind("extension") String extension,
         @Bind("json") String json,
-        @Bind("timestamp") Long timestamp);
-
-    @ConnectionAwareSqlUpdate(
-        value =
-            "UPDATE entity_extension_time_series set entityFQNHash = :entityFQNHash where entityFQN=:entityFQN and extension=:extension and timestamp=:timestamp",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "UPDATE entity_extension_time_series set entityFQNHash = :entityFQNHash  where entityFQN=:entityFQN and extension=:extension and timestamp=:timestamp",
-        connectionType = POSTGRES)
-    void updateEntityFQNHash(
-        @Bind("entityFQNHash") String entityFQNHash,
-        @Bind("entityFQN") String entityFQN,
-        @Bind("extension") String extension,
         @Bind("timestamp") Long timestamp);
 
     @ConnectionAwareSqlUpdate(

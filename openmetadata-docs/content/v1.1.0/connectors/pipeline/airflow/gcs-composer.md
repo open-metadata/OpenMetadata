@@ -1,16 +1,12 @@
 ---
-title: Extract GCS Composer Metadata
-slug: /connectors/pipeline/airflow/gcp
+title: Extract Metadata from GCS Composer
+slug: /connectors/pipeline/airflow/gcs-composer
 ---
 
-# Extract GCS Composer Metadata
-
-
+# Extract Metadata from GCS Composer
 
 **Note:** This approach has been tested against Airflow 2.1.4 & 2.2.5 If you have any issues or questions,
 please do not hesitate to reach out!
-
-
 
 There are 2 main approaches we can follow here to extract metadata from GCS. Both of them involve creating a DAG
 directly in your Composer instance, but the requirements and the steps to follow are going to be slightly different.
@@ -36,11 +32,8 @@ In your environment you will need to install the following packages:
 - `flask-appbuilder==3.4.5`: Again, this is just an alignment of versions so that `openmetadata-ingestion` can
   work with GCS Composer internals.
 
-
-
 **Note:** Make sure to use the `openmetadata-ingestion` version that matches the server version
 you currently have!
-
 
 ### Prepare the DAG!
 
@@ -137,11 +130,7 @@ we will rely on the `KubernetesPodOperator` to use the underlying k8s cluster of
 Then, the code won't directly run using the hosts' environment, but rather inside a container that we created
 with only the `openmetadata-ingestion` package.
 
-
-
 **Note:** This approach only has the `openmetadata/ingestion-base` ready from version 0.12.1 or higher!
-
-
 
 ### Requirements
 
@@ -268,24 +257,4 @@ workflowConfig:
     authProvider: openmetadata
     securityConfig:
        jwtToken: <JWT>
-```
-
-## Google SSO
-
-Against Google SSO we need to use the [Cloud Storage](https://cloud.google.com/composer/docs/concepts/cloud-storage)
-to pass the `secretKey` JSON file. Upload the file to the `gs://bucket-name/data` directory, which will be mapped
-against `/home/airflow/gcp/data/` in Airflow.
-
-You can see in the example above how our file is named `gcp_creds_beta.json`, which gets resolved in Airflow as
-`/home/airflow/gcp/data/gcp_creds_beta.json`.
-
-The workflow config here would look like:
-
-```yaml
-workflowConfig:
-  openMetadataServerConfig:
-    hostPort: https://sandbox.getcollate.io/api
-    authProvider: google
-    securityConfig:
-      secretKey: /home/airflow/gcp/data/gcp_creds_beta.json
 ```

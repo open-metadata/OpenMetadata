@@ -90,6 +90,18 @@ optional arguments:
   -s SCHEMA, --schema SCHEMA
 ```
 
+If using MySQL:
+
+```bash
+python -m metadata backup -u openmetadata_user -p openmetadata_password -H mysql -d openmetadata_db --port 3306
+```
+
+If using Postgres, add the `-s` parameter specifying the `schema`:
+
+```bash
+python -m metadata backup -u openmetadata_user -p openmetadata_password -H postgresql -d openmetadata_db --port 5432 -s public
+```
+
 ### Database Connection
 
 There is a set of four required parameters, the minimum required for us to access the database service and run the
@@ -120,11 +132,6 @@ local dump file and the one in the cloud.
 
 You can pass any required connection options or arguments to the MySQL connection via `-o <opt1>, -o <opt2> [...]`
 or `-a <arg1>, -a <arg2> [...]`.
-
-### Backup Postgres
-
-If you are saving the data from Postgres, pass the argument `-s <schema>` or `--schema=<schema>` to indicate the
-schema containing the OpenMetadata tables. E.g., `-s public`.
 
 ### Trying it out
 

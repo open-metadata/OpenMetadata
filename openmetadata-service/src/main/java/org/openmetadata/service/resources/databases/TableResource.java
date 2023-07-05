@@ -84,6 +84,9 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "tables")
 public class TableResource extends EntityResource<Table, TableRepository> {
   public static final String COLLECTION_PATH = "v1/tables/";
+  static final String FIELDS =
+      "tableConstraints,tablePartition,usageSummary,owner,customMetrics,"
+          + "tags,followers,joins,viewDefinition,dataModel,extension,testSuite,domain,dataProducts";
 
   @Override
   public Table addHref(UriInfo uriInfo, Table table) {
@@ -135,10 +138,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public static class SystemProfileList extends ResultList<SystemProfile> {
     /* Required for serde */
   }
-
-  static final String FIELDS =
-      "tableConstraints,tablePartition,usageSummary,owner,customMetrics,"
-          + "tags,followers,joins,viewDefinition,dataModel,extension,testSuite";
 
   @GET
   @Operation(
@@ -952,6 +951,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                 .withViewDefinition(create.getViewDefinition())
                 .withTableProfilerConfig(create.getTableProfilerConfig())
                 .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema())))
+        .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema()))
         .withRetentionPeriod(create.getRetentionPeriod());
   }
 

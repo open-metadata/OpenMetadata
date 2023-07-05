@@ -72,7 +72,7 @@ class CliDBTBase(TestCase):
                 entity=TestDefinition,
                 params={"testPlatform": TestPlatform.DBT.value},
             )
-            self.assertTrue(len(test_case_entity_list.entities) == 22)
+            self.assertTrue(len(test_case_entity_list.entities) == 26)
 
         # 5. test dbt lineage
         @pytest.mark.order(5)

@@ -3,7 +3,7 @@ title: Releases
 slug: /releases
 ---
 
-# 1.0 Release 🎉
+# 1.1 Release 🎉
 
 {% inlineCalloutContainer %}
 {% inlineCallout
@@ -11,69 +11,50 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.0!
+Learn how to upgrade your OpenMetadata instance to 1.1!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
+## UI Improvements
 
-## APIs & Schema
-- **Stabilized** and improved the Schemas and APIs.
-- The APIs are **backward compatible**.
+- Simplified Landing Page to make the adoption easier for new users. We’ll keep iterating on improving UX for first-time users.
+- Simplified Explore view with improved asset details section. The filtering left panel is now part of the filtering selection at the top.
+- Lineage View now supports column pagination and filtering.
+- Views show their DDL on the Table details page.
+
+## Data Quality
+
+- Redesigned [Data Quality Tests](https://github.com/open-metadata/OpenMetadata/issues/11592) to improve the end-user experience and prevent unnecessary duplication of tests.
+- Data Quality Tests now have a **Resolution** Field. Users can acknowledge any errors, and once failures are resolved, they can document the resolution directly in the OpenMetadata UI.
+- Fixed a large number of connections being opened by the profiler workflow.
+- Improved Customer SQL test to allow users to set a threshold for the expected number of rows to be returned
+- Allow multi project for BigQuery profiler
+- Fetch table metrics from system tables when information is available
+- Improved Snowflake Profiling performance of System Metrics.
 
 ## Ingestion
-- Connecting to your data sources has never been easier. Find all the necessary **permissions** and **connection details** directly in the UI.
-- When testing the connection, we now have a comprehensive list of **validations** to let you know which pieces of metadata can be extracted with the provided configuration.
-- **Performance** improvements when extracting metadata from sources such as Snowflake, Redshift, Postgres, and dbt.
-- New **Apache Impala** connector.
 
-## Storage Services
-- Based on your [feedback](https://github.com/open-metadata/OpenMetadata/discussions/8124), we created a new service to extract metadata from your **cloud storage**.
-- The Data Lake connector ingested one table per file, which covered only some of the use cases in a Data Platform. With **Storage Services**, you can now present accurate metadata from your tables, even when **partitioned**.
-- The first implementation has been done on **S3**, and we will keep adding support for other sources in the upcoming releases.
+- Improved [SQL Lineage Parsing](https://github.com/open-metadata/OpenMetadata/issues/7427). We continue to share the OSS love by contributing to [sqllineage](https://github.com/reata/sqllineage) and [sqlfluff](https://sqlfluff.com/), the base libraries for our lineage features.
+- Improved LookML metadata ingestion, with added support for projects based on Bitbucket.
+- dbt bug fixes, added support for database, schema and table filtering and lineage management for ephemeral models.
+- PowerBI metadata ingestion now supports Reports and Dataset lineage from multiple workspaces.
+- Improved Tableau Data Models ingestion now ingests Data Sources.
+- Improved Snowflake Profiling performance of System Metrics.
+- AWS Glue support for Partition Column Details.
+- New Oracle lineage and usage workflows based on the query history.
+- IAM role-based authentication for MySQL and Postgres RDS databases.
+- Fixed dashboard description wrongly reported description as completed in the Data Insight
 
-## Dashboard Data Models
-- Dashboard Services now support the concept of **Data Models**: data that can be directly defined and managed in the Dashboard tooling itself, e.g., LookML models in Looker.
-- Data Models will help us close the gap between engineering and business by providing all the necessary metadata from sources typically used and managed by analysts or business users.
-- The first implementation has been done for **Tableau** and **Looker**.
+## Connectors
 
-## Queries
-- Improved UI for **SQL Queries**, with faster loading times and allowing users to **vote** for popular queries!
-- Users can now create and share a **Query** directly from the UI, linking it to multiple tables if needed.
+- New [Spline](https://absaoss.github.io/spline/) Connector to extract metadata and lineage from Spark jobs. Regardless of where the Spark execution happens, if you have configured the Spline Agent, we can send Spark metadata to OpenMetadata.
+- New [SAP Hana](https://www.sap.com/products/technology-platform/hana/what-is-sap-hana.html) Connector, our first integration to the SAP ecosystem.
+- New [MongoDB](https://www.mongodb.com/) Connector, extracting Collections as Tables.
+- Added support for [Databricks Unity Catalog](https://www.databricks.com/product/unity-catalog) for metadata and lineage extraction. If your Databricks instance supports the Unity Catalog, you can enable it in the Connection Details section to use this metadata extraction method instead of getting metadata out of the metastore and history APIs.
 
-## Localization
-- In 1.0, we have added **Localization** support for OpenMetadata.
-- Now you can use OpenMetadata in **English**, **French**, **Chinese**, **Japanese**, **Portuguese**, and **Spanish**.
+## Backend
 
-## Glossary
-- New and Improved **Glossary UI**
-- Easily search for Glossaries and any Glossary Term directly in the **global search**.
-- Instead of searching and tagging their assets individually, users can add Glossary Terms to multiple **assets** from the Glossary UI.
-
-## Auto PII Classification
-- Implemented an automated way to **tag PII data**.
-- The auto-classification is an optional step of the **Profiler** workflow. We will analyze the column names, and if sample data is being ingested, we will run NLP models on top of it.
-
-## Search
-- **Improved Relevancy**, with added support for partial matches.
-- **Improved Ranking**, with most used or higher Tier assets at the top of the search.
-- Support for **Classifications** and **Glossaries** in the global search.
-
-## Security
-- **SAML** support has been added.
-- Added option to mask passwords in the API response except for the `ingestion-bot` by setting the environment variable `MASK_PASSWORDS_API=true`. More info [here](/deployment/security/enable-password-masking).
-- **Deprecation Notice**: **SSO** Service accounts for Bots will be deprecated. **JWT** authentication will be the preferred method for creating Bots.
-
-## Lineage
-- Enhanced Lineage UI to display a large number of **nodes (1000+)**.
-- Improved UI for **better navigation**.
-- Improved **SQL parser** to extract lineage in the Lineage Workflows.
-
-## Chrome Browser Extension
-- All the metadata is at your fingertips while browsing Looker, Superset, etc., with the OpenMetadata Chrome Browser Extension.
-- **Chrome extension** supports Google SSO, Azure SSO, Okta, and AWS Cognito authentication.
-- You can Install the Chrome extension from **Chrome Web Store**.
-
-## Other Changes
-- The **Explore page** cards will now display a maximum of **ten tags**.
-- **Entity names** support apostrophes.
-- The **Summary panel** has been improved to be consistent across the UI.
+- PII masking of Sample data for Tables and Topics, Profiler Metrics, Test Cases, and Queries for users that are not admins or owners of the assets. In 1.2, we’ll iterate on this logic to add Roles & Policies support for masking PII data.
+- Name and FQN hashing of data in the database. This reduces the length of the data being stored and indexed, allowing us for longer FQNs in the Metadata Standard.
+- Improved monitoring of the Pipeline Service Client health. Any status errors between the OpenMetadata server and the Pipeline Service Client are now surfaced in a Prometheus metric `pipelineServiceClientStatus_counter_total`
+- Added AWS OpenSearch client-specific support. This allows us to update the Elasticsearch version support up to 7.16.
