@@ -227,7 +227,14 @@ const GlossaryPage = () => {
           })
         );
         setIsLoading(true);
-        history.push(getGlossaryPath());
+        // check if the glossary available
+        const updatedGlossaries = glossaries.filter((item) => item.id !== id);
+        const glossaryPath =
+          updatedGlossaries.length > 0
+            ? getGlossaryPath(updatedGlossaries[0].fullyQualifiedName)
+            : getGlossaryPath();
+
+        history.push(glossaryPath);
         fetchGlossaryList();
       })
       .catch((err: AxiosError) => {
