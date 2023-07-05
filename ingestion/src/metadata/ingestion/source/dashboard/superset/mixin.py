@@ -76,7 +76,7 @@ class SupersetSourceMixin(DashboardServiceSource):
 
     def get_dashboard_name(
         self, dashboard: Union[FetchDashboard, DashboradResult]
-    ) -> str:
+    ) -> Optional[str]:
         """
         Get Dashboard Name
         """

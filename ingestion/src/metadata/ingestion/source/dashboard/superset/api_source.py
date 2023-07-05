@@ -13,7 +13,7 @@ Superset source module
 """
 
 import traceback
-from typing import Iterable, List, Optional
+from typing import Iterable, Optional
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -62,7 +62,7 @@ class SupersetAPISource(SupersetSourceMixin):
             for index, chart_result in enumerate(charts.result):
                 self.all_charts[charts.ids[index]] = chart_result
 
-    def get_dashboards_list(self) -> Optional[List[object]]:
+    def get_dashboards_list(self) -> Optional[Iterable[DashboradResult]]:
         """
         Get List of all dashboards
         """
@@ -77,7 +77,7 @@ class SupersetAPISource(SupersetSourceMixin):
 
     def yield_dashboard(
         self, dashboard_details: DashboradResult
-    ) -> Iterable[CreateDashboardRequest]:
+    ) -> Optional[Iterable[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
         """
@@ -168,7 +168,7 @@ class SupersetAPISource(SupersetSourceMixin):
 
     def yield_datamodel(
         self, dashboard_details: DashboradResult
-    ) -> Iterable[CreateDashboardDataModelRequest]:
+    ) -> Optional[Iterable[CreateDashboardDataModelRequest]]:
 
         if self.source_config.includeDataModels:
             for chart_id in self._get_charts_of_dashboard(dashboard_details):

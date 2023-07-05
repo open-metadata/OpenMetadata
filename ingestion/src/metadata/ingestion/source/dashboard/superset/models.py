@@ -46,7 +46,7 @@ class DashboradResult(BaseModel):
 
 class SupersetDashboardCount(BaseModel):
     count: Optional[int]
-    ids: Optional[List[int]]
+    ids: Optional[List[int]] = []
     dashboard_title: Optional[str]
     result: Optional[List[DashboradResult]] = []
 
@@ -70,7 +70,7 @@ class ChartResult(BaseModel):
 
 class SupersetChart(BaseModel):
     count: Optional[int]
-    ids: Optional[List[int]]
+    ids: Optional[List[int]] = []
     result: Optional[List[ChartResult]] = []
 
 
@@ -93,7 +93,7 @@ class DataSourceResult(BaseModel):
     description: Optional[str]
     extra: Optional[str]
     id: Optional[int]
-    owners: Optional[list]
+    owners: Optional[list] = []
     table_schema: Optional[str] = Field(None, alias="schema")
     sql: Optional[str]
     table_name: Optional[str]

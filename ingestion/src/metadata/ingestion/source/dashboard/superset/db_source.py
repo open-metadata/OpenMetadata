@@ -13,7 +13,7 @@ Superset source module
 """
 
 import traceback
-from typing import Iterable, List, Optional
+from typing import Iterable, Optional
 
 from sqlalchemy import sql
 from sqlalchemy.engine import Engine
@@ -77,12 +77,12 @@ class SupersetDBSource(SupersetSourceMixin):
             chart_detail = FetchChart(**chart)
             self.all_charts[chart_detail.id] = chart_detail
 
-    def get_column_list(self, table_name: FetchChart) -> Optional[List[object]]:
+    def get_column_list(self, table_name: FetchChart) -> Optional[Iterable[FetchChart]]:
         sql_query = sql.text(FETCH_COLUMN.format(table_name=table_name.lower()))
         col_list = self.engine.execute(sql_query)
         return [FetchColumn(**col) for col in col_list]
 
-    def get_dashboards_list(self) -> Optional[List[object]]:
+    def get_dashboards_list(self) -> Optional[Iterable[FetchDashboard]]:
         """
         Get List of all dashboards
         """
@@ -92,7 +92,7 @@ class SupersetDBSource(SupersetSourceMixin):
 
     def yield_dashboard(
         self, dashboard_details: FetchDashboard
-    ) -> Iterable[CreateDashboardRequest]:
+    ) -> Optional[Iterable[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
         """
@@ -177,7 +177,7 @@ class SupersetDBSource(SupersetSourceMixin):
 
     def yield_datamodel(
         self, dashboard_details: FetchDashboard
-    ) -> Iterable[CreateDashboardDataModelRequest]:
+    ) -> Optional[Iterable[CreateDashboardDataModelRequest]]:
 
         if self.source_config.includeDataModels:
             for chart_id in self._get_charts_of_dashboard(dashboard_details):
