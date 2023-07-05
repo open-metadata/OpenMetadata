@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.exception.SourceException;
@@ -92,7 +93,7 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
 
   public ResultList<ReportData> getReportDataPagination(String entityFQN, int limit, String after) {
     // workaround. Should be fixed in https://github.com/open-metadata/OpenMetadata/issues/12298
-    String upperCaseFQN = entityFQN.substring(0, 1).toUpperCase() + entityFQN.substring(1);
+    String upperCaseFQN = StringUtils.capitalize(entityFQN);
     int reportDataCount = dao.entityExtensionTimeSeriesDao().listCount(EntityUtil.hash(upperCaseFQN));
     List<CollectionDAO.ReportDataRow> reportDataList =
         dao.entityExtensionTimeSeriesDao()
