@@ -117,7 +117,7 @@ export const getHeaderLabel = (
     <Fragment>
       {isMainNode ? (
         <span
-          className="tw-break-words description-text tw-self-center tw-font-medium"
+          className="tw-break-words description-text tw-self-center font-medium"
           data-testid="lineage-entity">
           {name || prepareLabel(type, fqn, false)}
         </span>
@@ -433,7 +433,7 @@ export const getDataLabel = (
 
 export const getDeletedLineagePlaceholder = () => {
   return (
-    <div className="tw-mt-4 tw-ml-4 d-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+    <div className="tw-mt-4 tw-ml-4 d-flex tw-justify-center font-medium items-center  -main -md tw-p-8">
       <span>
         {t('message.lineage-data-is-not-available-for-deleted-entities')}
       </span>
@@ -548,7 +548,7 @@ export const getUniqueFlowElements = (elements: CustomFlow[]) => {
 export const getNodeRemoveButton = (onClick: () => void) => {
   return (
     <button
-      className="tw-absolute tw--top-3.5 tw--right-3 tw-cursor-pointer tw-z-9999 tw-bg-body-hover tw-rounded-full"
+      className="tw-absolute tw--top-3.5 tw--right-3 cursor-pointer tw-z-9999 tw-bg-body-hover -full"
       onClick={() => onClick()}>
       <SVGIcons alt="times-circle" icon="icon-times-circle" width="16px" />
     </button>

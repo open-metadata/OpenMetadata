@@ -12,6 +12,7 @@
  */
 
 import { Button, Modal, Radio, RadioChangeEvent, Space } from 'antd';
+import Input from 'antd/lib/input/Input';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import React, {
@@ -239,13 +240,11 @@ const DeleteWidgetModal = ({
                 key={option.type}
                 value={option.type}>
                 <p
-                  className="tw-text-sm tw-mb-1 tw-font-medium"
+                  className="text-sm font-medium"
                   data-testid={`${option.type}-option`}>
                   {option.title}
                 </p>
-                <p className="text-grey-muted tw-text-xs tw-mb-2">
-                  {option.description}
-                </p>
+                <p className="text-grey-muted text-xs">{option.description}</p>
               </Radio>
             )
         )}
@@ -258,9 +257,8 @@ const DeleteWidgetModal = ({
           />
         </div>
 
-        <input
+        <Input
           autoComplete="off"
-          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="confirmation-text-input"
           disabled={entityDeleteState.loading === 'waiting'}
           name="entityName"

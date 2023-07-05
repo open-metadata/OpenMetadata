@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Radio, Row, Space, Tabs, Tooltip, Typography } from 'antd';
+import Icon from '@ant-design/icons';
+import { Card, Col, Radio, Row, Space, Tabs, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
@@ -390,9 +391,7 @@ const PipelineDetails = ({
         width: 350,
         title: t('label.description'),
         render: (text, record, index) => (
-          <Space
-            className="w-full tw-group cursor-pointer"
-            data-testid="description">
+          <Space className="w-full cursor-pointer" data-testid="description">
             <div>
               {text ? (
                 <RichTextEditorPreviewer markdown={text} />
@@ -405,25 +404,22 @@ const PipelineDetails = ({
               )}
             </div>
             {!deleted && (
-              <Tooltip
+              <Icon
+                component={EditIcon}
+                disabled={
+                  !(
+                    pipelinePermissions.EditDescription ||
+                    pipelinePermissions.EditAll
+                  )
+                }
                 title={
                   pipelinePermissions.EditDescription ||
                   pipelinePermissions.EditAll
                     ? t('label.edit-entity', { entity: t('label.description') })
                     : t('message.no-permission-for-action')
-                }>
-                <button
-                  className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                  disabled={
-                    !(
-                      pipelinePermissions.EditDescription ||
-                      pipelinePermissions.EditAll
-                    )
-                  }
-                  onClick={() => setEditTask({ task: record, index })}>
-                  <EditIcon width={16} />
-                </button>
-              </Tooltip>
+                }
+                onClick={() => setEditTask({ task: record, index })}
+              />
             )}
           </Space>
         ),
@@ -582,7 +578,7 @@ const PipelineDetails = ({
                     </Card>
                   ) : (
                     <div
-                      className="tw-mt-4 tw-ml-4 d-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
+                      className="d-flex justify-center font-medium items-center"
                       data-testid="no-tasks-data">
                       <span>{t('label.no-task-available')}</span>
                     </div>

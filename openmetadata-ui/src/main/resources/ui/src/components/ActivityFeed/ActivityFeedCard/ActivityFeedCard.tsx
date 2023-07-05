@@ -163,15 +163,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
 
   return (
     <>
-      <div
-        className={classNames(
-          className,
-          'hover:tw-bg-gray-100 tw--mx-2.5 tw-px-2.5 tw--mt-1 tw-py-2 tw-mb-1 tw-rounded',
-          {
-            'tw-bg-gray-100': visible,
-          }
-        )}
-        ref={containerRef}>
+      <div className={classNames(className)} ref={containerRef}>
         <Popover
           align={{ targetOffset: [0, -16] }}
           content={
@@ -207,9 +199,8 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
               </UserPopOverCard>
             )}
 
-            <div className="tw-flex tw-flex-col tw-flex-1">
+            <div>
               <FeedCardHeader
-                className="tw-pl-2"
                 createdBy={feedDetail.from}
                 entityFQN={entityFQN as string}
                 entityField={entityField as string}
@@ -221,7 +212,6 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
               />
               <FeedCardBody
                 announcementDetails={announcementDetails}
-                className="tw-pl-2 tw-break-all"
                 isEditPost={isEditPost}
                 isThread={isThread}
                 message={feedDetail.message}
@@ -234,7 +224,6 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           </Space>
           {isFooterVisible && (
             <FeedCardFooter
-              className="tw-mt-2"
               isFooterVisible={isFooterVisible}
               lastReplyTimeStamp={lastReplyTimeStamp}
               repliedUsers={repliedUsers}

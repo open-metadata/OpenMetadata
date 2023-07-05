@@ -168,7 +168,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       showAddTagButton ? (
         <span onClick={onAddButtonClick}>
           <Tags
-            className="tw-font-semibold tw-text-primary"
+            className="font-semibold text-primary"
             startWith={TAG_START_WITH.PLUS}
             tag={TAG_CONSTANT}
             type="border"

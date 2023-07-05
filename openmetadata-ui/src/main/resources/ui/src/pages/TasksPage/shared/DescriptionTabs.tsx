@@ -67,7 +67,7 @@ export const DescriptionTabs = ({
       type="card"
       onChange={onTabChange}>
       <TabPane data-testid="current-tab" key="1" tab="Current">
-        <div className="d-flex tw-border tw-border-main tw-rounded tw-mb-4 tw-mt-3">
+        <div className="d-flex  -main  tw-mb-4 tw-mt-3">
           {description.trim() ? (
             <RichTextEditorPreviewer
               className="tw-p-2"
@@ -82,10 +82,7 @@ export const DescriptionTabs = ({
         </div>
       </TabPane>
       <TabPane data-testid="diff-tab" key="2" tab="Diff">
-        <DiffView
-          className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-3"
-          diffArr={diffs}
-        />
+        <DiffView className=" -main tw-p-2  tw-my-3" diffArr={diffs} />
       </TabPane>
       <TabPane data-testid="new-tab" key="3" tab="New">
         <RichTextEditor

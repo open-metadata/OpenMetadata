@@ -34,20 +34,17 @@ const FeedCardFooter: FC<FeedFooterProp> = ({
       {!isUndefined(repliedUsers) &&
       !isUndefined(replies) &&
       isFooterVisible ? (
-        <div className="d-flex tw-group tw-items-center">
+        <div className="d-flex items-center">
           {repliedUsers?.map((u, i) => (
             <ProfilePicture
-              className="tw-mt-0.5 tw-mx-0.5"
               data-testid="replied-user"
               id=""
               key={i}
               name={u}
-              profileImgClasses="tw-align-baseline"
               width="18"
             />
           ))}
           <span
-            className="tw-ml-1 tw-text-info tw-text-xs tw-underline tw-self-center"
             data-testid="reply-count"
             onClick={() => onThreadSelect?.(threadId as string)}>
             {`${t('label.view')} ${getReplyText(repliesCount)}`}

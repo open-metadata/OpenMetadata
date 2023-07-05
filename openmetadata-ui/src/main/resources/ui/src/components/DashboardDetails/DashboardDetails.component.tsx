@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Space, Table, Tabs, Tooltip, Typography } from 'antd';
+import { Button, Card, Col, Row, Space, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
@@ -401,9 +401,7 @@ const DashboardDetails = ({
         (permissionsObject.EditDescription || permissionsObject.EditAll);
 
       return (
-        <Space
-          className="w-full tw-group cursor-pointer"
-          data-testid="description">
+        <Space className="w-full cursor-pointer" data-testid="description">
           <div>
             {text ? (
               <RichTextEditorPreviewer markdown={text} />
@@ -416,21 +414,18 @@ const DashboardDetails = ({
             )}
           </div>
           {!deleted && (
-            <Tooltip
+            <Button
+              disabled={!editDescriptionPermissions}
+              icon={EditIcon}
               title={
                 editDescriptionPermissions
                   ? t('label.edit-entity', {
                       entity: t('label.description'),
                     })
                   : t('message.no-permission-for-action')
-              }>
-              <button
-                className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                disabled={!editDescriptionPermissions}
-                onClick={() => handleUpdateChart(record, index)}>
-                <EditIcon width={16} />
-              </button>
-            </Tooltip>
+              }
+              onClick={() => handleUpdateChart(record, index)}
+            />
           )}
         </Space>
       );

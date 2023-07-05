@@ -36,7 +36,6 @@ import './components/step.less';
 import './fonts.less';
 import './modal.less';
 import './myDataDetailsTemp.css';
-import './tailwind.css';
 import './temp.css';
 import './tree.less';
 import './x-custom/CronEditor.css';

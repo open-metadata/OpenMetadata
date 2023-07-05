@@ -43,7 +43,7 @@ const TagButton: React.FC<TagButtonProps> = ({
   versionData,
 }) => {
   const buttonClassNames = classNames(
-    'tag-button-container tw-inline-flex text-xs font-medium rounded-4 whitespace-nowrap bg-white tw-border tw-items-center tw-mr-2 tw-mt-2 tw-font-semibold',
+    'tag-button-container tw-inline-flex text-xs font-medium rounded-4 whitespace-nowrap bg-white  items-center tw-mr-2 tw-mt-2 font-semibold',
     { 'tw-pl-2': isRemovable },
     { 'tw-px-2': !isRemovable },
     { 'diff-added': versionData?.added },
@@ -64,7 +64,7 @@ const TagButton: React.FC<TagButtonProps> = ({
       </Tooltip>
       {isRemovable && (
         <span
-          className="tw-py-0.5 tw-px-2 tw-rounded tw-cursor-pointer"
+          className="tw-py-0.5 tw-px-2  cursor-pointer"
           data-testid={`remove-${label}-tag`}
           onClick={(e: React.MouseEvent<HTMLElement, MouseEvent>) => {
             e.preventDefault();
@@ -73,7 +73,7 @@ const TagButton: React.FC<TagButtonProps> = ({
               removeTag(e, label);
             }
           }}>
-          <CloseOutlined className="tw-text-primary" />
+          <CloseOutlined className="text-primary" />
         </span>
       )}
     </div>

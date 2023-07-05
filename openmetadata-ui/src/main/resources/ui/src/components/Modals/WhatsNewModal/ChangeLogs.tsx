@@ -26,9 +26,9 @@ const ChangeLogs = ({ data }: Props) => {
   return (
     <div>
       {logKeys.map((log, index) => (
-        <div className="tw-mb-4" key={index}>
-          <div className="tw-border-b tw-mb-2.5 tw-border-text">
-            <p className="tw-text-base tw-font-medium tw-mb-2.5">{log}</p>
+        <div key={index}>
+          <div>
+            <p className="text-base font-medium">{log}</p>
           </div>
           <RichTextEditorPreviewer
             enableSeeMoreVariant={false}

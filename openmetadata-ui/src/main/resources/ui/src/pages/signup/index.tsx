@@ -120,17 +120,17 @@ const SignUp = () => {
           />
         </div>
         <div className="tw-mb-7">
-          <h4 className="tw-font-semibold" data-testid="om-heading">
+          <h4 className="font-semibold" data-testid="om-heading">
             <Transi18next
               i18nKey="label.join-entity"
-              renderElement={<span className="tw-text-primary" />}
+              renderElement={<span className="text-primary" />}
               values={{
                 entity: t('label.open-metadata'),
               }}
             />
           </h4>
         </div>
-        <div className="tw-px-8 tw-w-full">
+        <div className="tw-px-8 w-full">
           <form
             action="."
             data-testid="create-user-form"
@@ -138,7 +138,7 @@ const SignUp = () => {
             onSubmit={onSubmitHandler}>
             <div className="tw-mb-4">
               <label
-                className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
+                className="tw-block tw-text-body text-grey-body tw-mb-2 required-field"
                 data-testid="full-name-label"
                 htmlFor="displayName">
                 {t('label.full-name')}
@@ -146,9 +146,9 @@ const SignUp = () => {
               <input
                 required
                 autoComplete="off"
-                className="tw-appearance-none tw-border tw-border-main  
-              tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight 
-              focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
+                className="tw-appearance-none  -main  
+               w-full tw-py-2 tw-px-3 text-grey-body  tw-leading-tight 
+              focus:tw-outline-none focus:-focus hover:-hover tw-h-10"
                 data-testid="full-name-input"
                 id="displayName"
                 name="displayName"
@@ -162,7 +162,7 @@ const SignUp = () => {
             </div>
             <div className="tw-mb-4">
               <label
-                className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
+                className="tw-block tw-text-body text-grey-body tw-mb-2 required-field"
                 data-testid="username-label"
                 htmlFor="name">
                 {t('label.username')}
@@ -171,8 +171,8 @@ const SignUp = () => {
                 readOnly
                 required
                 autoComplete="off"
-                className="cursor-not-allowed tw-appearance-none tw-border tw-border-main tw-rounded tw-bg-gray-100
-                  tw-w-full tw-py-2 tw-px-3 tw-text-grey-body tw-leading-tight focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
+                className="cursor-not-allowed tw-appearance-none  -main  tw-bg-gray-100
+                  w-full tw-py-2 tw-px-3 text-grey-body tw-leading-tight focus:tw-outline-none focus:-focus hover:-hover tw-h-10"
                 data-testid="username-input"
                 id="name"
                 name="name"
@@ -184,7 +184,7 @@ const SignUp = () => {
             </div>
             <div className="tw-mb-4">
               <label
-                className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
+                className="tw-block tw-text-body text-grey-body tw-mb-2 required-field"
                 data-testid="email-label"
                 htmlFor="email">
                 {t('label.email')}
@@ -193,8 +193,8 @@ const SignUp = () => {
                 readOnly
                 required
                 autoComplete="off"
-                className="cursor-not-allowed tw-appearance-none tw-border tw-border-main tw-rounded tw-bg-gray-100
-                  tw-w-full tw-py-2 tw-px-3 tw-text-grey-body tw-leading-tight focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
+                className="cursor-not-allowed tw-appearance-none  -main  tw-bg-gray-100
+                  w-full tw-py-2 tw-px-3 text-grey-body tw-leading-tight focus:tw-outline-none focus:-focus hover:-hover tw-h-10"
                 data-testid="email-input"
                 id="email"
                 name="email"
@@ -208,7 +208,7 @@ const SignUp = () => {
             </div>
             <div className="tw-mb-4">
               <label
-                className="tw-block tw-text-body tw-text-grey-body tw-mb-2"
+                className="tw-block tw-text-body text-grey-body tw-mb-2"
                 data-testid="select-team-label">
                 {t('label.select-field', {
                   field: t('label.team-plural-lowercase'),
@@ -220,10 +220,10 @@ const SignUp = () => {
                 onSelectionChange={setSelectedTeams}
               />
             </div>
-            <div className="d-flex tw-my-7 tw-justify-end">
+            <div className="d-flex tw-my-7 justify-end">
               <Button
                 className="tw-text-white 
-                       tw-text-sm tw-py-2 tw-px-4 tw-font-semibold tw-rounded tw-h-10 tw-justify-self-end"
+                       tw-text-sm tw-py-2 tw-px-4 font-semibold  tw-h-10 tw-justify-self-end"
                 data-testid="create-button"
                 htmlType="submit"
                 type="primary">

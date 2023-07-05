@@ -196,7 +196,7 @@ const CustomNodeV1 = (props: NodeProps) => {
                             'lineage-column-node-handle',
                             column.fullyQualifiedName
                           )}
-                          {getConstraintIcon(column.constraint, 'tw-')}
+                          {getConstraintIcon(column.constraint)}
                           <p className="p-xss">{getEntityName(column)}</p>
                         </div>
                       );

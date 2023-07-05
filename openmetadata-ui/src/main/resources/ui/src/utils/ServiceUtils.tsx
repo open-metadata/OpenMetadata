@@ -577,8 +577,8 @@ export const getServiceIngestionStepGuide = (
     <>
       {guide && (
         <>
-          <h6 className="tw-heading tw-text-base">{getTitle(guide.title)}</h6>
-          <div className="tw-mb-5 overflow-wrap-anywhere">
+          <h6 className="text-base">{getTitle(guide.title)}</h6>
+          <div className="overflow-wrap-anywhere">
             {isIngestion
               ? getFormattedGuideText(
                   guide.description,
@@ -713,10 +713,10 @@ export const getOptionalFields = (
       const messagingService = service as MessagingService;
 
       return (
-        <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
+        <div className="tw-mb-1 truncate" data-testid="additional-field">
           <label className="tw-mb-0">{t('label.broker-plural')}:</label>
           <span
-            className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+            className=" tw-ml-1 font-normal text-grey-body"
             data-testid="brokers">
             {getBrokers(messagingService.connection?.config)}
           </span>
@@ -727,10 +727,10 @@ export const getOptionalFields = (
       const dashboardService = service as DashboardService;
 
       return (
-        <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
+        <div className="tw-mb-1 truncate" data-testid="additional-field">
           <label className="tw-mb-0">{t('label.url-uppercase')}:</label>
           <span
-            className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+            className=" tw-ml-1 font-normal text-grey-body"
             data-testid="dashboard-url">
             {getDashboardURL(dashboardService.connection?.config)}
           </span>
@@ -741,10 +741,10 @@ export const getOptionalFields = (
       const pipelineService = service as PipelineService;
 
       return (
-        <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
+        <div className="tw-mb-1 truncate" data-testid="additional-field">
           <label className="tw-mb-0">{t('label.url-uppercase')}:</label>
           <span
-            className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+            className=" tw-ml-1 font-normal text-grey-body"
             data-testid="pipeline-url">
             {pipelineService.connection?.config?.hostPort || '--'}
           </span>
@@ -757,18 +757,18 @@ export const getOptionalFields = (
 
       return (
         <>
-          <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
+          <div className="tw-mb-1 truncate" data-testid="additional-field">
             <label className="tw-mb-0">{t('label.registry')}:</label>
             <span
-              className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+              className=" tw-ml-1 font-normal text-grey-body"
               data-testid="pipeline-url">
               {mlmodel.connection?.config?.registryUri || '--'}
             </span>
           </div>
-          <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
+          <div className="tw-mb-1 truncate" data-testid="additional-field">
             <label className="tw-mb-0">{t('label.tracking')}:</label>
             <span
-              className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+              className=" tw-ml-1 font-normal text-grey-body"
               data-testid="pipeline-url">
               {mlmodel.connection?.config?.trackingUri || '--'}
             </span>

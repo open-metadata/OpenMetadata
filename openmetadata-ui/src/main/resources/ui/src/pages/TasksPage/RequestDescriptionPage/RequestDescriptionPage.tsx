@@ -244,7 +244,7 @@ const RequestDescription = () => {
 
                 <Form.Item noStyle>
                   <Space
-                    className="tw-w-full tw-justify-end"
+                    className="w-full justify-end"
                     data-testid="cta-buttons"
                     size={16}>
                     <Button type="link" onClick={back}>

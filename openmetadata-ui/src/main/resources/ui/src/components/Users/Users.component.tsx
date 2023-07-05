@@ -233,7 +233,7 @@ const Users = ({
             </InlineEdit>
           ) : (
             <Fragment>
-              <span className="tw-text-base tw-font-medium tw-mr-2 tw-overflow-auto">
+              <span className="text-base font-medium tw-mr-2 tw-overflow-auto">
                 {userData.displayName ||
                   t('label.add-entity', { entity: t('label.display-name') })}
               </span>
@@ -311,7 +311,7 @@ const Users = ({
       <Fragment>
         {getNonDeletedTeams(userData.teams ?? []).map((team, i) => (
           <div
-            className="tw-mb-2 d-flex tw-items-center tw-gap-2"
+            className="tw-mb-2 d-flex items-center tw-gap-2"
             data-testid={team.name}
             key={i}>
             <IconTeamsGrey height={16} width={16} />
@@ -337,7 +337,7 @@ const Users = ({
             marginTop: '20px',
           }}
           title={
-            <div className="d-flex tw-items-center tw-justify-between">
+            <div className="d-flex items-center justify-between">
               <h6 className="right-panel-label tw-mb-0">
                 {t('label.team-plural')}
               </h6>
@@ -355,7 +355,7 @@ const Users = ({
             marginTop: '20px',
           }}
           title={
-            <div className="d-flex tw-items-center tw-justify-between">
+            <div className="d-flex items-center justify-between">
               <h6 className="right-panel-label tw-mb-0">
                 {t('label.team-plural')}
               </h6>
@@ -405,13 +405,13 @@ const Users = ({
     const rolesElement = (
       <Fragment>
         {userData.isAdmin && (
-          <div className="tw-mb-2 d-flex tw-items-center tw-gap-2">
+          <div className="tw-mb-2 d-flex items-center tw-gap-2">
             <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
             <span>{TERM_ADMIN}</span>
           </div>
         )}
         {userData.roles?.map((role, i) => (
-          <div className="tw-mb-2 d-flex tw-items-center tw-gap-2" key={i}>
+          <div className="tw-mb-2 d-flex items-center tw-gap-2" key={i}>
             <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
             <Typography.Text
               className="ant-typography-ellipsis-custom w-48"
@@ -437,7 +437,7 @@ const Users = ({
             marginTop: '20px',
           }}
           title={
-            <div className="d-flex tw-items-center tw-justify-between">
+            <div className="d-flex items-center justify-between">
               <h6 className="right-panel-label tw-mb-0">
                 {t('label.role-plural')}
               </h6>
@@ -455,7 +455,7 @@ const Users = ({
             marginTop: '20px',
           }}
           title={
-            <div className="d-flex tw-items-center tw-justify-between">
+            <div className="d-flex items-center justify-between">
               <h6 className="right-panel-label tw-mb-0">
                 {t('label.role-plural')}
               </h6>
@@ -523,11 +523,9 @@ const Users = ({
               </span>
             </div>
           ) : (
-            <div className="d-flex tw-justify-between flex-col">
+            <div className="d-flex justify-between flex-col">
               {userData.inheritedRoles?.map((inheritedRole, i) => (
-                <div
-                  className="tw-mb-2 d-flex tw-items-center tw-gap-2"
-                  key={i}>
+                <div className="tw-mb-2 d-flex items-center tw-gap-2" key={i}>
                   <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
 
                   <Typography.Text
@@ -560,7 +558,7 @@ const Users = ({
           {isImgUrlValid ? (
             <Image
               alt="profile"
-              className="tw-w-full"
+              className="w-full"
               preview={false}
               referrerPolicy="no-referrer"
               src={image || ''}

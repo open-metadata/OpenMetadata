@@ -39,12 +39,12 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
   };
 
   return (
-    <div className="d-flex flex-col tw-mb-5 tw-items-center">
+    <div className="d-flex flex-col  items-center">
       <div
         className={classNames(
-          'sidebar-icon-container flex-center tw-border tw-p-2 tw-border-main d-flex tw-justify-between tw-w-16 tw-rounded tw-bg-body-hover',
+          'sidebar-icon-container flex-center  d-flex justify-between',
           {
-            'cursor-not-allowed tw-opacity-50': !draggable,
+            'cursor-not-allowed opacity-50': !draggable,
           }
         )}
         draggable={draggable}
@@ -70,7 +70,7 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
           />
         </span>
       </div>
-      <p className="tw-text-grey-body tw-text-center tw-text-xs tw-pt-1.5">
+      <p className="text-grey-body text-center text-xs">
         {capitalize(`${label}s`)}
       </p>
     </div>
@@ -80,7 +80,7 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
 const EntityLineageSidebar: FC<SidebarProps> = ({ show, newAddedNode }) => {
   return (
     <div className={classNames('entity-lineage sidebar', { open: show })}>
-      <div className="d-flex flex-col tw-mt-3">
+      <div className="d-flex flex-col">
         {entityData.map((d) => (
           <EntityNode
             draggable={isEmpty(newAddedNode)}

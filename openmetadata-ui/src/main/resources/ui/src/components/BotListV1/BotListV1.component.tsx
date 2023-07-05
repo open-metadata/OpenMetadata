@@ -100,7 +100,7 @@ const BotListV1 = ({
         width: 200,
         render: (_, record) => (
           <Link
-            className="hover:tw-underline tw-cursor-pointer"
+            className="cursor-pointer"
             data-testid={`bot-link-${getEntityName(record)}`}
             to={getBotsPath(record?.fullyQualifiedName || record?.name || '')}>
             {getEntityName(record)}
@@ -143,11 +143,7 @@ const BotListV1 = ({
                   data-testid={`bot-delete-${getEntityName(record)}`}
                   disabled={isDisabled}
                   icon={
-                    <SVGIcons
-                      alt={t('label.delete')}
-                      className="tw-w-4"
-                      icon={Icons.DELETE}
-                    />
+                    <SVGIcons alt={t('label.delete')} icon={Icons.DELETE} />
                   }
                   type="text"
                   onClick={() => setSelectedUser(record)}
@@ -202,7 +198,7 @@ const BotListV1 = ({
 
   return handleErrorPlaceholder ? (
     <Row>
-      <Col className="w-full d-flex tw-justify-end">
+      <Col className="w-full d-flex justify-end">
         <Space align="end" size={5}>
           <Switch
             checked={showDeleted}
@@ -231,7 +227,7 @@ const BotListV1 = ({
       </Col>
 
       <Col span={12}>
-        <Space align="center" className="tw-w-full tw-justify-end" size={16}>
+        <Space align="center" className="w-full justify-end" size={16}>
           <Space align="end" size={5}>
             <Switch
               checked={showDeleted}

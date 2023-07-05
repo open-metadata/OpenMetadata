@@ -75,8 +75,8 @@ const Searchbar = ({
 
   return (
     <div
-      className={classNames('tw-group page-search-bar', {
-        'tw-mb-4': !removeMargin,
+      className={classNames('page-search-bar', {
+        'm-b-md': !removeMargin,
       })}
       data-testid="search-bar-container">
       {label !== '' && <label>{label}</label>}
@@ -84,13 +84,7 @@ const Searchbar = ({
         <Input
           data-testid="searchbar"
           placeholder={placeholder}
-          prefix={
-            <SVGIcons
-              alt="icon-search"
-              className="tw-w-4 tw-h-4 tw-mr-0.5"
-              icon={searchIcon}
-            />
-          }
+          prefix={<SVGIcons alt="icon-search" icon={searchIcon} />}
           type="text"
           value={userSearch}
           onBlur={() => setSearchIcon(Icons.SEARCHV1)}
@@ -99,13 +93,13 @@ const Searchbar = ({
           {...inputProps}
         />
         {showLoadingStatus && loadingState === 'waiting' && (
-          <div className="tw-absolute tw-block tw-z-1 tw-w-4 tw-h-4 tw-top-2 tw-right-2.5 tw-text-center tw-pointer-events-none">
+          <div className="absolute d-block text-center">
             <Loader size="small" type="default" />
           </div>
         )}
         {showClearSearch && searchValue && (
           <Icon
-            className="tw-absolute tw-block tw-z-1 tw-w-4 tw-h-4 tw-top-2 tw-right-2.5 tw-text-center cursor-pointer"
+            className="absolute d-block text-center cursor-pointer"
             component={ClearIcon}
             onClick={() => {
               debouncedOnSearch('');

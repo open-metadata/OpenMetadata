@@ -83,12 +83,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
             feed={selectedThread as Thread}
             hidePopover={false}
           />
-          <ActivityFeedEditor
-            buttonClass="tw-mr-4"
-            className="tw-ml-5 tw-mr-2 tw-mb-2"
-            focused={focusReplyEditor}
-            onSave={onSave}
-          />
+          <ActivityFeedEditor focused={focusReplyEditor} onSave={onSave} />
         </div>
       )}
     </Drawer>

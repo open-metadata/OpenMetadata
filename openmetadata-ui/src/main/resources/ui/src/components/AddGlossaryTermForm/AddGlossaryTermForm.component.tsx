@@ -412,7 +412,7 @@ const AddGlossaryTermForm = ({
         <div className="m-t-xss">
           {getField(ownerField)}
           {selectedOwner && (
-            <div className="tw-my-2" data-testid="owner-container">
+            <div data-testid="owner-container">
               <UserTag
                 id={selectedOwner.id}
                 name={getEntityName(selectedOwner)}
@@ -424,11 +424,7 @@ const AddGlossaryTermForm = ({
         <div className="m-t-xss">
           {getField(reviewersField)}
           {Boolean(reviewersList.length) && (
-            <Space
-              wrap
-              className="tw-my-2"
-              data-testid="reviewers-container"
-              size={[8, 8]}>
+            <Space wrap data-testid="reviewers-container" size={[8, 8]}>
               {reviewersList.map((d) => (
                 <UserTag
                   id={d.id}

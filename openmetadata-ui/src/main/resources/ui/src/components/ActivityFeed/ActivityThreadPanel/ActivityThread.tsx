@@ -68,7 +68,6 @@ const ActivityThread: FC<ActivityThreadProp> = ({
               isEntityFeed
               isThread
               announcementDetails={threadData.announcement}
-              className="tw-mb-3"
               feed={mainThread as Post}
               feedType={threadData.type || ThreadType.Conversation}
               task={threadData}
@@ -80,7 +79,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
         ) : null}
         {repliesLength > 0 ? (
           <div data-testid="replies">
-            <div className="tw-mb-3 d-flex">
+            <div className="d-flex">
               <span data-testid="replies-count">
                 {getReplyText(
                   repliesLength,
@@ -88,14 +87,13 @@ const ActivityThread: FC<ActivityThreadProp> = ({
                   t('label.reply-lowercase-plural')
                 )}
               </span>
-              <span className="flex-auto tw-self-center tw-ml-1.5">
+              <span className="flex-auto self-center ">
                 <hr />
               </span>
             </div>
             {threadData?.posts?.map((reply, key) => (
               <ActivityFeedCard
                 isEntityFeed
-                className="tw-mb-3"
                 feed={reply}
                 feedType={threadData.type || ThreadType.Conversation}
                 key={key}
@@ -108,11 +106,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
           </div>
         ) : null}
       </div>
-      <ActivityFeedEditor
-        buttonClass="tw-mr-4"
-        className="tw-ml-5 tw-mr-2 tw-my-6"
-        onSave={postFeed}
-      />
+      <ActivityFeedEditor onSave={postFeed} />
     </Fragment>
   );
 };

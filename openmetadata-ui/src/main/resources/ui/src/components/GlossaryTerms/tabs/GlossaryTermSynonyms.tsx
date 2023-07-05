@@ -58,7 +58,7 @@ const GlossaryTermSynonyms = ({
       ))}
       {permissions.EditAll && synonyms.length === 0 && (
         <TagButton
-          className="tw-text-primary cursor-pointer"
+          className="text-primary cursor-pointer"
           dataTestId="synonym-add-button"
           icon={<PlusIcon height={16} name="plus" width={16} />}
           label={t('label.add')}

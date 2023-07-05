@@ -138,7 +138,7 @@ const EntitySummaryDetails = ({
                     <span data-testid="owner-link">
                       {userDetails.ownerName}
                     </span>
-                    <span className="tw-mr-1 tw-inline-block tw-text-gray-400">
+                    <span className="d-inline-block">
                       {t('label.pipe-symbol')}
                     </span>
                   </>
@@ -180,7 +180,7 @@ const EntitySummaryDetails = ({
                 <TierCard currentTier={tier?.tagFQN} updateTier={updateTier}>
                   <span data-testid="edit-tier">
                     <EditIcon
-                      className="tw-cursor-pointer"
+                      className="cursor-pointer"
                       color={DE_ACTIVE_COLOR}
                       width={14}
                     />
@@ -244,12 +244,7 @@ const EntitySummaryDetails = ({
           {data.isLink ? (
             <>
               <a
-                className={classNames(
-                  'tw-inline-block tw-truncate link-text tw-align-middle',
-                  {
-                    'tw-w-52': (displayVal as string).length > 32,
-                  }
-                )}
+                className={classNames('d-inline-block link-text align-middle')}
                 data-testid={`${lowerCase(data.key)}-link`}
                 href={data.value as string}
                 rel="noopener noreferrer"
@@ -289,12 +284,7 @@ const EntitySummaryDetails = ({
           ) : isOwner ? (
             <>
               <span
-                className={classNames(
-                  'tw-inline-block tw-truncate tw-align-middle',
-                  {
-                    'tw-w-52': (displayVal as string).length > 32,
-                  }
-                )}
+                className={classNames('dinline-block align-middle')}
                 data-testid="owner-link"
                 title={displayVal as string}>
                 <Button data-testid="owner-dropdown" type="link">
@@ -306,9 +296,7 @@ const EntitySummaryDetails = ({
             </>
           ) : isTier ? (
             <Space
-              className={classNames('tw-mr-1  tw-truncate tw-align-middle', {
-                'tw-w-52': (displayVal as string).length > 32,
-              })}
+              className={classNames('align-middle')}
               data-testid="tier-name"
               direction="horizontal"
               title={displayVal as string}>
@@ -337,25 +325,21 @@ const EntitySummaryDetails = ({
             ) : (
               <>
                 {displayVal}
-                <Tooltip
-                  placement="bottom"
+                <AntdButton
+                  data-testid={`edit-${data.key}-icon`}
+                  disabled={isGroupType}
                   title={
                     isGroupType
                       ? t('message.group-team-type-change-message')
                       : t('label.edit-entity', {
                           entity: t('label.team-type'),
                         })
-                  }>
-                  <AntdButton
-                    className={isGroupType ? 'tw-opacity-50' : ''}
-                    data-testid={`edit-${data.key}-icon`}
-                    disabled={isGroupType}
-                    onClick={() => setShowTypeSelector(true)}>
-                    {updateTeamType ? (
-                      <EditIcon className="cursor-pointer" width={14} />
-                    ) : null}
-                  </AntdButton>
-                </Tooltip>
+                  }
+                  onClick={() => setShowTypeSelector(true)}>
+                  {updateTeamType ? (
+                    <EditIcon className="cursor-pointer" width={14} />
+                  ) : null}
+                </AntdButton>
               </>
             )
           ) : (

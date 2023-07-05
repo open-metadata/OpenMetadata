@@ -239,7 +239,7 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
                   />
                 }
                 onClick={() => setIsNewTestSuite(true)}>
-                <span className="tw-text-primary">
+                <span className="text-primary">
                   {t('label.create-new-test-suite')}
                 </span>
               </Button>
@@ -249,7 +249,7 @@ const SelectTestSuite: React.FC<SelectTestSuiteProps> = ({
       )}
 
       <Form.Item noStyle>
-        <Space className="tw-w-full tw-justify-end" size={16}>
+        <Space className="w-full justify-end" size={16}>
           <Button onClick={handleCancelClick}>{t('label.cancel')}</Button>
           <Button data-testid="next-button" htmlType="submit" type="primary">
             {t('label.next')}

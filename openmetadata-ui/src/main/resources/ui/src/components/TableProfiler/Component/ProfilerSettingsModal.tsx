@@ -490,10 +490,10 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         </Col>
         <Col data-testid="exclude-column-container" span={24}>
           <p className="tw-mb-4">{t('message.enable-column-profile')}</p>
-          <p className="tw-text-xs tw-mb-1.5">{t('label.exclude')}:</p>
+          <p className="text-xs tw-mb-1.5">{t('label.exclude')}:</p>
           <Select
             allowClear
-            className="tw-w-full"
+            className="w-full"
             data-testid="exclude-column-select"
             mode="tags"
             options={selectOptions}
@@ -521,8 +521,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             <List name="includeColumns">
               {(fields, { add, remove }) => (
                 <>
-                  <div className="d-flex tw-items-center tw-mb-1.5">
-                    <p className="w-form-label tw-text-xs tw-mr-3">
+                  <div className="d-flex items-center tw-mb-1.5">
+                    <p className="w-form-label text-xs tw-mr-3">
                       {`${t('label.include')}:`}
                     </p>
                     <Button

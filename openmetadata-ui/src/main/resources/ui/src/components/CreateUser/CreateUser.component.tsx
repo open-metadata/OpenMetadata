@@ -643,7 +643,7 @@ const CreateUser = ({
 
   return (
     <Card className="p-xs">
-      <h6 className="tw-heading tw-text-base">
+      <h6 className="text-base">
         {t('label.create-entity', {
           entity: forceBot ? t('label.bot') : t('label.user'),
         })}
@@ -924,7 +924,7 @@ const CreateUser = ({
           </>
         )}
 
-        <Space className="w-full tw-justify-end" size={4}>
+        <Space className="w-full justify-end" size={4}>
           <Button data-testid="cancel-user" type="link" onClick={onCancel}>
             {t('label.cancel')}
           </Button>

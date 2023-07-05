@@ -100,7 +100,7 @@ export const commonUserDetailColumns = (): ColumnsType<User> => [
     key: 'username',
     render: (_, record) => (
       <Link
-        className="hover:tw-underline tw-cursor-pointer"
+        className="hover:tw-underline cursor-pointer"
         data-testid={record.name}
         to={getUserPath(record.fullyQualifiedName || record.name)}>
         {getEntityName(record)}
@@ -122,7 +122,7 @@ export const commonUserDetailColumns = (): ColumnsType<User> => [
           <Space wrap data-testid="policy-link" size={4}>
             {record.teams.slice(0, LIST_CAP).map((team) => (
               <Link
-                className="hover:tw-underline tw-cursor-pointer"
+                className="hover:tw-underline cursor-pointer"
                 key={uniqueId()}
                 to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
                 {getEntityName(team)}
@@ -130,12 +130,12 @@ export const commonUserDetailColumns = (): ColumnsType<User> => [
             ))}
             {hasMore && (
               <Popover
-                className="tw-cursor-pointer"
+                className="cursor-pointer"
                 content={
                   <Space wrap size={4}>
                     {record.teams.slice(LIST_CAP).map((team) => (
                       <Link
-                        className="hover:tw-underline tw-cursor-pointer"
+                        className="hover:tw-underline cursor-pointer"
                         key={uniqueId()}
                         to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
                         {getEntityName(team)}
@@ -170,7 +170,7 @@ export const commonUserDetailColumns = (): ColumnsType<User> => [
           <Space wrap data-testid="policy-link" size={4}>
             {record.roles.slice(0, LIST_CAP).map((role) => (
               <Link
-                className="hover:tw-underline tw-cursor-pointer"
+                className="hover:tw-underline cursor-pointer"
                 key={uniqueId()}
                 to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
                 {getEntityName(role)}
@@ -178,12 +178,12 @@ export const commonUserDetailColumns = (): ColumnsType<User> => [
             ))}
             {hasMore && (
               <Popover
-                className="tw-cursor-pointer"
+                className="cursor-pointer"
                 content={
                   <Space wrap size={4}>
                     {record.roles.slice(LIST_CAP).map((role) => (
                       <Link
-                        className="hover:tw-underline tw-cursor-pointer"
+                        className="hover:tw-underline cursor-pointer"
                         key={uniqueId()}
                         to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
                         {getEntityName(role)}

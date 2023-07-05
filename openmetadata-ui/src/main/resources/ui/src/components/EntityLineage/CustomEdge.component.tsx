@@ -151,7 +151,7 @@ export const CustomEdge = ({
       return (
         <LineageEdgeIcon offset={offset} x={edgeCenterX} y={edgeCenterY}>
           <Button
-            className="tw-cursor-pointer d-flex tw-z-9999"
+            className="cursor-pointer d-flex"
             data-testid={dataTestId}
             icon={
               <SVGIcons

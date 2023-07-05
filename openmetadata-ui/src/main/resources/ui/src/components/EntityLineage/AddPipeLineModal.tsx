@@ -49,7 +49,6 @@ const AddPipeLineModal = ({
       data-testid="add-pipeline-modal"
       footer={[
         <Button
-          className="tw-mr-2"
           data-testid="remove-edge-button"
           key="remove-edge-btn"
           type="text"
@@ -73,7 +72,7 @@ const AddPipeLineModal = ({
       <Select
         allowClear
         showSearch
-        className="tw-w-full"
+        className="w-full"
         data-testid="field-select"
         defaultActiveFirstOption={false}
         filterOption={false}

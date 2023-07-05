@@ -36,12 +36,11 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
   const [activeData, setActiveData] = useState(WHATS_NEW[LATEST_VERSION_ID]);
   const [checkedValue, setCheckedValue] = useState<ToggleType>('features');
 
+  // Let's replace it with AntD ButtonGroup instead using custom classes and styles
   const getToggleButtonClasses = (type: string): string => {
     return (
-      'flex-1 tw-font-medium tw-border tw-border-transparent tw-rounded tw-py-1 tw-px-2 focus:tw-outline-none' +
-      (type === checkedValue
-        ? ' tw-bg-primary tw-border-primary tw-text-white'
-        : ' tw-text-primary ')
+      'flex-1 font-medium' +
+      (type === checkedValue ? 'bg-primary text-white' : 'text-primary ')
     );
   };
 

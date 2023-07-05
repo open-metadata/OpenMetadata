@@ -222,7 +222,7 @@ const TagsContainerV1 = ({
       showAddTagButton ? (
         <span onClick={handleAddClick}>
           <Tags
-            className="tw-font-semibold tw-text-primary"
+            className="font-semibold text-primary"
             startWith={TAG_START_WITH.PLUS}
             tag={TAG_CONSTANT}
             type="border"

@@ -58,7 +58,7 @@ describe('MyData page should work', () => {
       });
     cy.clickOnLogo();
     cy.get(
-      `[data-testid="Recently-Search-${term}"] > :nth-child(1) > .d-flex > .tw-opacity-0 > [data-testid="image"]`
+      `[data-testid="Recently-Search-${term}"] > :nth-child(1) > .d-flex > [data-testid="image"]`
     )
       .scrollIntoView()
       .invoke('show')

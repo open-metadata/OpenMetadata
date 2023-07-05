@@ -12,7 +12,6 @@
  */
 
 import { Button, Typography } from 'antd';
-import classNames from 'classnames';
 import { AIRFLOW_DOCS } from 'constants/docs.constants';
 import { isUndefined } from 'lodash';
 import React from 'react';
@@ -60,19 +59,13 @@ const SuccessScreen = ({
       icon = (
         <SVGIcons
           alt="success"
-          className="tw-w-5"
           data-testid="success-icon"
           icon={Icons.SUCCESS_BADGE}
         />
       );
     } else {
       icon = (
-        <SVGIcons
-          alt="fail"
-          className="tw-w-5"
-          data-testid="fail-icon"
-          icon={Icons.FAIL_BADGE}
-        />
+        <SVGIcons alt="fail" data-testid="fail-icon" icon={Icons.FAIL_BADGE} />
       );
     }
 
@@ -80,25 +73,20 @@ const SuccessScreen = ({
   };
 
   return (
-    <div
-      className="d-flex flex-col tw-mt-14 tw-mb-24 tw-mx-8 tw-px-1"
-      data-testid="success-screen-container">
-      <div className="d-flex tw-border tw-border-main tw-rounded tw-shadow tw-p-3">
-        <div className="tw-mr-2">
-          <SVGIcons
-            alt="success"
-            className="tw-w-5"
-            data-testid="success-icon"
-            icon={Icons.SUCCESS_BADGE}
-          />
-        </div>
+    <div className="d-flex flex-col" data-testid="success-screen-container">
+      <div className="d-flex ">
+        <SVGIcons
+          alt="success"
+          data-testid="success-icon"
+          icon={Icons.SUCCESS_BADGE}
+        />
         <Typography.Paragraph data-testid="success-line" ellipsis={{ rows: 3 }}>
           {isUndefined(successMessage) ? (
             <span>
-              <span className="tw-mr-1 tw-font-semibold">
+              <span className="font-semibold">
                 {`"${name || 'demo_mysql'}"`}
               </span>
-              {suffix && <span className="tw-mr-1">{suffix}</span>}
+              {suffix && <span>{suffix}</span>}
               <span>{t('message.has-been-created-successfully')}</span>
             </span>
           ) : (
@@ -108,13 +96,11 @@ const SuccessScreen = ({
       </div>
 
       {!isAirflowAvailable && (
-        <div
-          className="tw-border tw-border-main tw-rounded tw-shadow tw-mt-7 tw-p-3"
-          data-testid="airflow-status-msg">
-          <div className="d-flex tw-justify-between items-center">
-            <div className="d-flex tw-mt-0.5">
-              <div className="flex-none tw-mr-2">{getAirflowStatusIcon()}</div>
-              <h6 className="tw-text-base tw-font-medium tw-mb-0.5">
+        <div data-testid="airflow-status-msg">
+          <div className="d-flex justify-between items-center">
+            <div className="d-flex ">
+              <div className="flex-none ">{getAirflowStatusIcon()}</div>
+              <h6 className="text-base font-medium ">
                 {isAirflowAvailable
                   ? t('message.manage-airflow-api')
                   : t('message.manage-airflow-api-failed')}
@@ -153,7 +139,7 @@ const SuccessScreen = ({
         </div>
       )}
 
-      <div className="tw-mt-7 tw-text-center">
+      <div className="text-center">
         <Button
           ghost
           data-testid="view-service-button"
@@ -167,9 +153,6 @@ const SuccessScreen = ({
 
         {showIngestionButton && (
           <Button
-            className={classNames('tw-ml-3.5', {
-              'tw-opacity-40 tw-pointer-events-none': !isAirflowAvailable,
-            })}
             data-testid="add-ingestion-button"
             disabled={!isAirflowAvailable}
             type="primary"
@@ -182,9 +165,6 @@ const SuccessScreen = ({
 
         {showDeployButton && (
           <Button
-            className={classNames('tw-ml-3.5', {
-              'tw-opacity-40 tw-pointer-events-none': !isAirflowAvailable,
-            })}
             data-testid="add-ingestion-button"
             disabled={!isAirflowAvailable}
             type="primary"

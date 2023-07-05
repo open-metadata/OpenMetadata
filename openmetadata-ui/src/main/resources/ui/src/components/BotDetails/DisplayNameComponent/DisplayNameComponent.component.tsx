@@ -78,7 +78,7 @@ const DisplayNameComponent = ({
           )}
           {(displayNamePermission || editAllPermission) && (
             <button
-              className="focus:tw-outline-none m-t-xss"
+              className="m-t-xss"
               data-testid="edit-displayName"
               onClick={() => setIsDisplayNameEdit(true)}>
               <EditIcon width={16} />

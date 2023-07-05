@@ -103,15 +103,11 @@ const TeamsSelectable = ({
         onChange={onChange}
       />
       {noTeam && (
-        <div
-          className="tw-notification tw-bg-info tw-mt-2 tw-justify-start tw-w-full tw-p-2"
-          data-testid="toast">
-          <div className="tw-font-semibold d-flex-shrink-0">
+        <div className="justify-start w-full" data-testid="toast">
+          <div className="font-semibold d-flex-shrink-0">
             <SVGIcons alt="info" icon="info" title="Info" width="16px" />
           </div>
-          <div className="tw-font-semibold tw-px-1">
-            {t('message.no-data-available')}
-          </div>
+          <div className="font-semibold">{t('message.no-data-available')}</div>
         </div>
       )}
     </>

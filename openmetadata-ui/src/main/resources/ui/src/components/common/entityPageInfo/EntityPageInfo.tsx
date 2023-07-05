@@ -197,14 +197,11 @@ const EntityPageInfo = ({
 
     return (
       <div
-        className={classNames('tw-max-h-96 tw-overflow-y-auto', {
-          'd-flex tw-justify-center tw-items-center tw-py-2': list.length === 0,
+        className={classNames({
+          'd-flex justify-center items-center': list.length === 0,
         })}>
         {list.length > 0 ? (
-          <div
-            className={classNames('tw-grid tw-gap-3', {
-              'tw-grid-cols-2': list.length > 1,
-            })}>
+          <div>
             {list.slice(0, FOLLOWERS_VIEW_CAP).map((follower) => (
               <div className="d-flex" key={follower.name}>
                 <ProfilePicture
@@ -213,7 +210,7 @@ const EntityPageInfo = ({
                   name={follower?.name || ''}
                   width="20"
                 />
-                <span className="tw-self-center tw-ml-2">
+                <span className="self-center ">
                   {follower?.displayName || follower?.name}
                 </span>
               </div>
@@ -223,9 +220,7 @@ const EntityPageInfo = ({
           <p>{t('message.entity-does-not-have-followers', { entityName })}</p>
         )}
         {list.length > FOLLOWERS_VIEW_CAP && (
-          <p
-            className="link-text tw-text-sm tw-py-2"
-            onClick={() => setIsViewMore(true)}>
+          <p className="link-text text-sm" onClick={() => setIsViewMore(true)}>
             {t('label.view-more')}
           </p>
         )}
@@ -470,7 +465,7 @@ const EntityPageInfo = ({
           <Space wrap align="center" data-testid="extrainfo" size={4}>
             {extraInfo.map((info, index) => (
               <span
-                className="d-flex tw-items-center"
+                className="d-flex items-center"
                 data-testid={info.key || `info${index}`}
                 key={`${info.key}`}>
                 <EntitySummaryDetails
@@ -482,7 +477,7 @@ const EntityPageInfo = ({
                   updateTier={updateTier}
                 />
                 {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
-                  <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
+                  <span className="d-inline-block">
                     {t('label.pipe-symbol')}
                   </span>
                 ) : null}

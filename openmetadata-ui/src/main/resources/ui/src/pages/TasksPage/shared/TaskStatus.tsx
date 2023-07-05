@@ -22,7 +22,7 @@ const TaskStatus = ({ status }: { status: ThreadTaskStatus }) => {
   return (
     <div
       className={classNames(
-        'tw-rounded-3xl tw-px-2 tw-p-0',
+        '-3xl tw-px-2 tw-p-0',
         {
           'tw-bg-task-status-bg': openCheck,
         },
@@ -31,7 +31,7 @@ const TaskStatus = ({ status }: { status: ThreadTaskStatus }) => {
       data-testid="task-status">
       <span
         className={classNames(
-          'tw-inline-block tw-w-2 tw-h-2 tw-rounded-full',
+          'tw-inline-block tw-w-2 tw-h-2 -full',
           {
             'tw-bg-task-status-fg': openCheck,
           },

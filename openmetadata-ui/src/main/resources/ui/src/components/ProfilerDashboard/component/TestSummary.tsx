@@ -218,7 +218,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
       </ResponsiveContainer>
     ) : (
       <ErrorPlaceHolder
-        className="tw-mt-0"
+        className="m-t-0"
         size={SIZE.MEDIUM}
         type={ERROR_PLACEHOLDER_TYPE.FILTER}
       />

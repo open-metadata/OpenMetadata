@@ -13,6 +13,7 @@
 
 import { SettingOutlined } from '@ant-design/icons';
 import { Button, Col, Row, Select, Space } from 'antd';
+import Input from 'antd/lib/input/Input';
 import classNames from 'classnames';
 import { PRIMERY_COLOR } from 'constants/constants';
 import React, {
@@ -203,14 +204,12 @@ const CustomControls: FC<ControlProps> = ({
                   onClick={onZoomOutHandler}>
                   <SVGIcons
                     alt="minus-icon"
-                    className="tw--mt-0.5"
                     icon="icon-control-minus"
                     width="12"
                   />
                 </ControlButton>
 
-                <input
-                  className="tw-bg-body-hover"
+                <Input
                   max={MAX_ZOOM_VALUE}
                   min={MIN_ZOOM_VALUE}
                   step={ZOOM_SLIDER_STEP}
@@ -223,7 +222,6 @@ const CustomControls: FC<ControlProps> = ({
                   onClick={onZoomInHandler}>
                   <SVGIcons
                     alt="plus-icon"
-                    className="tw--mt-0.5"
                     icon="icon-control-plus"
                     width="12"
                   />

@@ -88,14 +88,14 @@ function GlossaryTermSummary({
                 {reviewers.map((assignee) => (
                   <>
                     <span
-                      className="d-flex tw-m-1.5 tw-mt-0 tw-cursor-pointer"
+                      className="d-flex cursor-pointer"
                       key={assignee.fullyQualifiedName}>
                       <ProfilePicture
                         id=""
                         name={assignee.name || ''}
                         width="20"
                       />
-                      <span className="tw-self-center tw-ml-2">
+                      <span className="self-center">
                         {assignee?.displayName || assignee?.name}
                       </span>
                     </span>

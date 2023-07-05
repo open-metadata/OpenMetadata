@@ -235,7 +235,7 @@ const RelatedTerms = ({
         <div className="d-flex flex-wrap">
           {permissions.EditAll && selectedOption.length === 0 && (
             <TagButton
-              className="tw-text-primary cursor-pointer"
+              className="text-primary cursor-pointer"
               dataTestId="related-term-add-button"
               icon={<PlusIcon height={16} name="plus" width={16} />}
               label={t('label.add')}

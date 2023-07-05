@@ -12,6 +12,7 @@
  */
 
 import { Empty } from 'antd';
+import Input from 'antd/lib/input/Input';
 import { AxiosError } from 'axios';
 import { PAGE_SIZE } from 'constants/constants';
 import { capitalize, debounce } from 'lodash';
@@ -111,8 +112,8 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
 
   return (
     <div data-testid="suggestion-node">
-      <input
-        className="tw-form-inputs tw-form-inputs-padding tw-w-full"
+      <Input
+        className="w-full"
         data-testid="node-search-box"
         placeholder={`${t('label.search-for-type', {
           type: capitalize(entityType),
@@ -125,14 +126,12 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         <div
           aria-labelledby="menu-button"
           aria-orientation="vertical"
-          className="suggestion-node-item 
-           m-t-xss tw-rounded-md tw-shadow-lg 
-        tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
+          className="suggestion-node-item m-t-xss"
           role="menu">
           {data.map((entity) => (
             <>
               <div
-                className="d-flex items-center p-xs tw-text-sm hover:tw-bg-body-hover"
+                className="d-flex items-center p-xs text-sm"
                 key={entity.fullyQualifiedName}
                 onClick={() => {
                   setIsOpen(false);
@@ -147,10 +146,9 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                 }}>
                 <img
                   alt={entity.serviceType}
-                  className="tw-inline tw-h-4 tw-mr-2"
                   src={serviceTypeLogo(entity.serviceType as string)}
                 />
-                <div className="flex-1 text-left tw-px-2">
+                <div className="flex-1 text-left">
                   {entity.entityType === EntityType.TABLE && (
                     <p className="d-block text-xs text-grey-muted">
                       {getSuggestionLabelHeading(
@@ -162,13 +160,13 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                   <p>{entity.name}</p>
                 </div>
               </div>
-              <hr className="tw-w-full" />
+              <hr className="w-full" />
             </>
           ))}
         </div>
       ) : (
         searchValue && (
-          <div className="tw-origin-top-right tw-absolute tw-z-20 tw-w-max tw-mt-1 tw-rounded-md tw-shadow-lg bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none">
+          <div>
             <Empty
               description={t('label.no-data-found')}
               image={Empty.PRESENTED_IMAGE_SIMPLE}

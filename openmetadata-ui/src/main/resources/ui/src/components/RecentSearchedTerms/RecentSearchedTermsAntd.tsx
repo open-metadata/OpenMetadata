@@ -60,21 +60,21 @@ const RecentSearchedTermsAntd: FunctionComponent = () => {
           recentlySearchedTerms.map((item, index) => {
             return (
               <div
-                className="d-flex tw-items-center tw-justify-between tw-group"
+                className="d-flex items-center justify-between"
                 data-testid={`Recently-Search-${item.term}`}
                 key={index}>
                 <div className="d-flex">
                   <SVGIcons
                     alt="search"
-                    className="tw-h-4 tw-w-4 tw-self-center"
+                    className="self-center"
                     icon={Icons.SEARCHV1}
                   />
-                  <div className="d-flex tw-justify-between">
+                  <div className="d-flex justify-between">
                     <Link
-                      className="tw-font-medium"
+                      className="font-medium"
                       to={getExplorePath({ search: item.term })}>
                       <Button
-                        className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                        className="text-grey-body"
                         data-testid={`search-term-${item.term}`}
                         type="text">
                         {item.term.length > 20 ? (
@@ -93,10 +93,7 @@ const RecentSearchedTermsAntd: FunctionComponent = () => {
                         )}
                       </Button>
                     </Link>
-                    <Button
-                      className="tw-opacity-0 group-hover:tw-opacity-100 tw-ml-2"
-                      type="text"
-                      onClick={() => onRemove(item.term)}>
+                    <Button type="text" onClick={() => onRemove(item.term)}>
                       <SVGIcons
                         alt="delete"
                         icon="icon-times-circle"

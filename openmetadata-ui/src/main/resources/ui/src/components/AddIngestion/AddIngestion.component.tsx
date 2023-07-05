@@ -718,9 +718,7 @@ const AddIngestion = ({
 
     return (
       <span>
-        <span className="tw-mr-1 tw-font-semibold">
-          {`"${state.ingestionName}"`}
-        </span>
+        <span>{`"${state.ingestionName}"`}</span>
         <span>
           {status === FormSubmitType.ADD ? createMessage : updateMessage}
         </span>
@@ -743,7 +741,7 @@ const AddIngestion = ({
 
   return (
     <div data-testid="add-ingestion-container">
-      <h6 className="tw-heading tw-text-base">{heading}</h6>
+      <h6>{heading}</h6>
 
       <IngestionStepper
         activeStep={activeIngestionStep}
@@ -751,7 +749,7 @@ const AddIngestion = ({
         steps={STEPS_FOR_ADD_INGESTION}
       />
 
-      <div className="tw-pt-7">
+      <div>
         {activeIngestionStep === 1 && (
           <ConfigureIngestion
             data={state}

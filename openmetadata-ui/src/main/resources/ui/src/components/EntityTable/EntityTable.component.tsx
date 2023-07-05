@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons';
 import { Button, Popover, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
@@ -293,33 +294,21 @@ const EntityTable = ({
     const hasDescription = Boolean(cell?.description ?? '');
 
     return (
-      <Button
-        className="p-0 w-7 h-7 flex-none flex-center link-text focus:tw-outline-none hover-cell-icon m-r-xss"
+      <Icon
+        component={IconRequest}
         data-testid="request-description"
+        title={
+          hasDescription
+            ? t('message.request-update-description')
+            : t('message.request-description')
+        }
         type="text"
         onClick={() =>
           hasDescription
             ? onUpdateDescriptionHandler(cell)
             : onRequestDescriptionHandler(cell)
-        }>
-        <Popover
-          destroyTooltipOnHide
-          content={
-            hasDescription
-              ? t('message.request-update-description')
-              : t('message.request-description')
-          }
-          overlayClassName="ant-popover-request-description"
-          trigger="hover"
-          zIndex={9999}>
-          <IconRequest
-            height={14}
-            name={t('message.request-description')}
-            style={{ color: DE_ACTIVE_COLOR }}
-            width={14}
-          />
-        </Popover>
-      </Button>
+        }
+      />
     );
   };
 
@@ -378,13 +367,13 @@ const EntityTable = ({
                 </span>
               )}
             </div>
-            <div className="d-flex tw--mt-1.5">
+            <div className="d-flex">
               {!isReadOnly ? (
                 <Fragment>
                   {hasDescriptionEditAccess && (
                     <>
                       <Button
-                        className="p-0 tw-self-start flex-center w-7 h-7 d-flex-none hover-cell-icon"
+                        className="p-0 self-start flex-center w-7 h-7 d-flex-none hover-cell-icon"
                         type="text"
                         onClick={() => handleUpdate(record, index)}>
                         <IconEdit

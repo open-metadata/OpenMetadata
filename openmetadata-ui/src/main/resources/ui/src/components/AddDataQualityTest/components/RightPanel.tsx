@@ -18,9 +18,7 @@ import { RightPanelProps } from '../AddDataQualityTest.interface';
 const RightPanel: React.FC<RightPanelProps> = ({ data }) => {
   return (
     <Row>
-      <Typography.Paragraph
-        className="tw-heading tw-text-base"
-        data-testid="right-panel-header">
+      <Typography.Paragraph data-testid="right-panel-header">
         {data.title}
       </Typography.Paragraph>
       <Typography.Paragraph>{data.body}</Typography.Paragraph>

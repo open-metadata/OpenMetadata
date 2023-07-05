@@ -228,7 +228,7 @@ export const getCountBadge = (
   return (
     <span
       className={classNames(
-        'tw-py-px p-x-xss m-x-xss tw-border tw-rounded tw-text-xs text-center',
+        'tw-py-px p-x-xss m-x-xss   text-xs text-center',
         clsBG,
         className
       )}>
@@ -346,7 +346,7 @@ export const errorMsg = (value: string) => {
   return (
     <div className="tw-mt-1">
       <strong
-        className="tw-text-red-500 tw-text-xs tw-italic"
+        className="tw-text-red-500 text-xs tw-italic"
         data-testid="error-message">
         {value}
       </strong>
@@ -367,9 +367,9 @@ export const getSeparator = (
 ) => {
   return (
     <span className="d-flex tw-py-2 text-grey-muted">
-      <hr className={classNames('tw-w-full', hrMarginTop)} />
+      <hr className={classNames('w-full', hrMarginTop)} />
       {title && <span className="tw-px-0.5 tw-min-w-max">{title}</span>}
-      <hr className={classNames('tw-w-full', hrMarginTop)} />
+      <hr className={classNames('w-full', hrMarginTop)} />
     </span>
   );
 };

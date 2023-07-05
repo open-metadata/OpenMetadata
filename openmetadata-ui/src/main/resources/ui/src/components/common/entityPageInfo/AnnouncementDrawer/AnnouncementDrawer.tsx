@@ -60,10 +60,10 @@ const AnnouncementDrawer: FC<Props> = ({
 
   const title = (
     <Space
-      className="tw-justify-between"
+      className="justify-between"
       data-testid="title"
       style={{ width: '100%' }}>
-      <Typography.Text className="tw-font-medium">
+      <Typography.Text className="font-medium">
         {t('label.announcement-on-entity', { entity: entityName })}
       </Typography.Text>
       <CloseOutlined onClick={onClose} />
@@ -117,7 +117,7 @@ const AnnouncementDrawer: FC<Props> = ({
           title={title}
           width={576}
           onClose={onClose}>
-          <div className="d-flex tw-justify-end">
+          <div className="d-flex justify-end">
             <Tooltip
               title={!createPermission && t('message.no-permission-to-view')}>
               <Button
@@ -131,7 +131,7 @@ const AnnouncementDrawer: FC<Props> = ({
           </div>
 
           <ActivityThreadPanelBody
-            className="tw-p-0"
+            className="p-0"
             createThread={createThread}
             deletePostHandler={deletePostHandler}
             editAnnouncementPermission={createPermission}

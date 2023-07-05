@@ -137,11 +137,9 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                       {postLength > 0 ? (
                         <div data-testid="replies-container">
                           {postLength > 1 ? (
-                            <div className="tw-ml-9 tw-my-2">
-                              {Boolean(lastPost) && (
-                                <div className="tw-filter-seperator" />
-                              )}
-                              <div className="d-flex tw-my-4">
+                            <div>
+                              {Boolean(lastPost) && <div />}
+                              <div className="d-flex">
                                 <FeedCardFooter
                                   isFooterVisible
                                   lastReplyTimeStamp={lastPost?.postTs}
@@ -158,7 +156,6 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                           <div data-testid="latest-reply">
                             <ActivityFeedCard
                               isEntityFeed
-                              className="tw-ml-9"
                               feed={lastPost as Post}
                               feedType={thread.type || ThreadType.Conversation}
                               task={thread}
@@ -172,21 +169,17 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                       ) : null}
                       {selectedThreadId === thread.id ? (
                         <div data-testid="quick-reply-editor">
-                          <ActivityFeedEditor
-                            buttonClass="tw-mr-4"
-                            className="tw-ml-5 tw-mr-2 tw-mb-6"
-                            onSave={postFeed}
-                          />
+                          <ActivityFeedEditor onSave={postFeed} />
                         </div>
                       ) : null}
                       {thread.task && (
-                        <div className="tw-border-t tw-border-main tw-py-1">
+                        <div>
                           <span className="text-grey-muted">
                             {t('label.assignee-plural')}:{' '}
                           </span>
                           <AssigneeList
                             assignees={thread.task.assignees || []}
-                            className="tw-ml-0.5 tw-align-baseline tw-inline-flex flex-wrap"
+                            className="flex-wrap"
                           />
                         </div>
                       )}

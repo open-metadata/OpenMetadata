@@ -25,7 +25,7 @@ export const RowData = ({ data }: { data: SampleDataType }) => {
     if (typeof rowValue === 'object') {
       return (
         <p
-          className="tw-w-52 tw-truncate tw-cursor-pointer"
+          className="truncate cursor-pointer"
           data-testid="json-object"
           onClick={onOpen}>
           {JSON.stringify(rowValue)}

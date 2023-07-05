@@ -28,7 +28,7 @@ export const SendButton: FC<SendButtonProp> = ({
   onSaveHandler,
 }) => (
   <div
-    className="absolute tw-right-2 tw-bottom-2 d-flex flex-row tw-items-center tw-justify-end"
+    className="absolute d-flex flex-row items-center justify-end"
     onClick={(e) => e.stopPropagation()}>
     <Button
       className={classNames('p-0', buttonClass)}

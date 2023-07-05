@@ -666,7 +666,7 @@ const AuthMechanismForm: FC<Props> = ({
             {getSSOConfig()}
           </>
         )}
-        <Space className="w-full tw-justify-end" size={4}>
+        <Space className="w-full justify-end" size={4}>
           {!isEmpty(authenticationMechanism) && (
             <Button data-testid="cancel-edit" type="link" onClick={onCancel}>
               {t('label.cancel')}

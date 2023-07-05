@@ -63,7 +63,7 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
     const newValue = taskDetail.task?.newValue;
     if (!oldValue && !newValue) {
       return (
-        <div className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3">
+        <div className=" -main tw-p-2  tw-my-1 tw-mb-3">
           <span className="tw-p-2 text-grey-muted">
             {t('label.no-entity', { entity: t('label.description') })}
           </span>
@@ -72,7 +72,7 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
     } else {
       return (
         <DiffView
-          className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3"
+          className=" -main tw-p-2  tw-my-1 tw-mb-3"
           diffArr={getDescriptionDiff(
             taskDetail?.task?.oldValue || '',
             taskDetail?.task?.newValue || ''
@@ -124,7 +124,7 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
                     onTextChange={onChange}
                   />
                 ) : (
-                  <div className="d-flex tw-border tw-border-main tw-rounded tw-mb-4">
+                  <div className="d-flex  -main  tw-mb-4">
                     {getSuggestedDescriptionDiff()}
                   </div>
                 )}
@@ -140,7 +140,7 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
                     onChange={onChange}
                   />
                 ) : (
-                  <div className="d-flex tw-border tw-border-main tw-rounded tw-mb-4">
+                  <div className="d-flex  -main  tw-mb-4">
                     {getSuggestedDescriptionDiff()}
                   </div>
                 )}

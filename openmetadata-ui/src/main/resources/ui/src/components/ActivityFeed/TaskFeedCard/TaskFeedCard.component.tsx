@@ -88,7 +88,7 @@ const TaskFeedCard = ({
       <Typography.Text>{taskDetails?.type}</Typography.Text>
       <span className="m-x-xss">{t('label.for-lowercase')}</span>
       {isEntityFeed ? (
-        <span className="tw-heading" data-testid="headerText-entityField">
+        <span data-testid="headerText-entityField">
           {getEntityFieldDisplay(feed.about)}
         </span>
       ) : (

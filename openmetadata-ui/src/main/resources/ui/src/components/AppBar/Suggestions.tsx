@@ -175,16 +175,13 @@ const Suggestions = ({
       {options.length > 0 && isOpen ? (
         <>
           <button
-            className="tw-z-10 tw-fixed tw-inset-0 tw-h-full tw-w-full tw-bg-black tw-opacity-0 "
             data-testid="suggestion-overlay"
             onClick={() => setIsOpen(false)}
           />
           <div
             aria-labelledby="menu-button"
             aria-orientation="vertical"
-            className="suggestions-menu tw-origin-top-right tw-absolute z-400
-          tw-w-600 tw-mt-1 tw-rounded-md tw-shadow-lg
-        bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
+            className="suggestions-menu bg-white"
             role="menu">
             {getEntitiesSuggestions()}
           </div>

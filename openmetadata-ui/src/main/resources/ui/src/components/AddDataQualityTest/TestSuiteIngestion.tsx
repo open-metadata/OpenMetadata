@@ -220,11 +220,9 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   };
 
   return (
-    <Row className="tw-form-container" gutter={[16, 16]}>
+    <Row gutter={[16, 16]}>
       <Col span={24}>
-        <Typography.Paragraph
-          className="tw-heading tw-text-base"
-          data-testid="header">
+        <Typography.Paragraph data-testid="header">
           {t('label.schedule-for-ingestion')}
         </Typography.Paragraph>
       </Col>

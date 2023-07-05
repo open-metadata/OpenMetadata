@@ -49,21 +49,14 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
     <>
       {isOpen ? (
         <>
-          <button
-            className="tw-z-10 tw-fixed tw-inset-0 tw-h-full tw-w-full tw-bg-black tw-opacity-0"
-            onClick={() => setIsOpen(false)}
-          />
+          <button onClick={() => setIsOpen(false)} />
           <div
             aria-labelledby="menu-button"
             aria-orientation="vertical"
-            className="tw-origin-top-right tw-absolute tw-z-10
-          tw-w-full tw-mt-1 tw-rounded-md tw-shadow-lg 
-        bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
             role="menu">
             <div className="py-1" role="none">
               <Link
-                className="link-text d-flex tw-justify-between tw-px-4 tw-py-2 tw-text-sm 
-                    hover:tw-bg-body-hover"
+                className="link-text d-flex justify-between text-sm"
                 data-testid="InOpenMetadata"
                 to={getExplorePath({ search: searchText })}
                 onClick={() => setIsOpen(false)}>
@@ -72,8 +65,7 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
               </Link>
               {options.map((option, index) => (
                 <span
-                  className="link-text d-flex tw-justify-between tw-px-4 tw-py-2 tw-text-sm 
-                    hover:tw-bg-body-hover"
+                  className="link-text d-flex justify-between"
                   data-testid="InPage"
                   key={index}
                   onClick={() => {

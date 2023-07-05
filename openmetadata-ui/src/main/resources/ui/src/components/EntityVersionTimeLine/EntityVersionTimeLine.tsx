@@ -92,7 +92,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
         return (
           <Fragment key={i}>
             {i === 0 ? (
-              <div className="timeline-content tw-cursor-pointer tw--mb-2.5">
+              <div className="timeline-content cursor-pointer">
                 <div className="timeline-wrapper">
                   <span className="timeline-line-se" />
                 </div>
@@ -116,35 +116,32 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                 />
                 <span className={classNames('timeline-line')} />
               </div>
-              <div className="tw-grid tw-gap-0.5">
+              <div>
                 <Typography.Text
                   className={classNames(' font-medium', {
                     'text-primary': toString(currV?.version) === currentVersion,
                   })}>
                   <span>{`v${parseFloat(currV?.version).toFixed(1)}`}</span>
                   {majorVersionChecks() ? (
-                    <span className="tw-ml-2 text-xs font-medium tw-text-grey-body tw-bg-tag tw-px-2 tw-py-0.5 tw-rounded">
+                    <span className="text-xs font-medium text-grey-body">
                       {t('label.major')}
                     </span>
                   ) : null}
                 </Typography.Text>
                 <div
-                  className={classNames(
-                    'tw-text-xs tw-font-normal tw-break-all',
-                    {
-                      'diff-description':
-                        toString(currV?.version) === currentVersion,
-                    }
-                  )}>
+                  className={classNames('text-xs font-normal break-all', {
+                    'diff-description':
+                      toString(currV?.version) === currentVersion,
+                  })}>
                   {getSummary(currV?.changeDescription)}
                 </div>
-                <p className="tw-text-xs tw-italic">
-                  <span className="tw-font-medium">{currV?.updatedBy}</span>
+                <p className="text-xs">
+                  <span className="font-medium">{currV?.updatedBy}</span>
                   <span className="text-grey-muted">
                     {' '}
                     {t('label.updated-on')}{' '}
                   </span>
-                  <span className="tw-font-medium">
+                  <span className="font-medium">
                     {new Date(currV?.updatedAt).toLocaleDateString('en-CA', {
                       hour: 'numeric',
                       minute: 'numeric',
@@ -157,7 +154,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
         );
       })
     ) : (
-      <p className="text-grey-muted d-flex tw-justify-center tw-items-center tw-mt-10">
+      <p className="text-grey-muted d-flex justify-center items-center">
         {t('message.no-version-type-available', {
           type: capitalize(versionType),
         })}
@@ -167,13 +164,11 @@ const EntityVersionTimeLine: React.FC<Props> = ({
 
   return (
     <div className={classNames('timeline-drawer', { open: show })}>
-      <header className="d-flex tw-justify-between">
-        <p className="tw-font-medium tw-mr-2">
-          {t('label.version-plural-history')}
-        </p>
+      <header className="d-flex justify-between">
+        <p className="font-medium ">{t('label.version-plural-history')}</p>
         <div className="d-flex" onClick={onBack}>
           <svg
-            className="tw-w-5 tw-h-5 tw-ml-1 tw-cursor-pointer"
+            className="cursor-pointer"
             data-testid="closeDrawer"
             fill="none"
             stroke="#6B7280"
@@ -188,9 +183,9 @@ const EntityVersionTimeLine: React.FC<Props> = ({
           </svg>
         </div>
       </header>
-      <hr className="tw-mt-3" />
+      <hr />
 
-      <div className="tw-my-2 tw-pb-9">{getVersionList()}</div>
+      <div>{getVersionList()}</div>
     </div>
   );
 };

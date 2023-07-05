@@ -167,7 +167,6 @@ const NotificationBox = ({
         </div>
       ) : (
         <List
-          className="tw-min-h-64"
           dataSource={notificationDropDownList}
           footer={
             <Button block href={viewAllPath} type="link">
@@ -180,9 +179,7 @@ const NotificationBox = ({
           }
           itemLayout="vertical"
           renderItem={(item) => (
-            <List.Item className="hover:tw-bg-body-hover tw-cursor-pointer">
-              {item}
-            </List.Item>
+            <List.Item className="cursor-pointer">{item}</List.Item>
           )}
           size="small"
         />
@@ -191,11 +188,8 @@ const NotificationBox = ({
   );
 
   return (
-    <div className="bg-white tw-border tw-border-gray-100 tw-rounded d-flex flex-col tw-justify-between tw-shadow-lg notification-box">
-      <Typography.Title
-        className="tw-px-4 tw-pt-3 tw-pb-1"
-        data-testid="notification-heading"
-        level={5}>
+    <div className="bg-white d-flex flex-col justify-between notification-box">
+      <Typography.Title data-testid="notification-heading" level={5}>
         {t('label.notification-plural')}
       </Typography.Title>
       <Tabs
@@ -212,7 +206,7 @@ const NotificationBox = ({
         {tabsInfo.map(({ name, key }) => (
           <Tabs.TabPane key={key} tab={getTabTitle(name, key)}>
             {isLoading ? (
-              <div className="tw-h-64 d-flex tw-items-center tw-justify-center">
+              <div className="h-64 d-flex items-center justify-center">
                 <Loader size="small" />
               </div>
             ) : (

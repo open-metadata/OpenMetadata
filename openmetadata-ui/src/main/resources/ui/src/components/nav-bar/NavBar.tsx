@@ -21,6 +21,7 @@ import {
   Space,
   Tooltip,
 } from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
 import { ReactComponent as Help } from 'assets/svg/ic-help.svg';
 import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -71,7 +72,6 @@ import {
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import Avatar from '../common/avatar/Avatar';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
-import LegacyDropDown from '../dropdown/DropDown';
 import { WhatsNewModal } from '../Modals/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { useWebSocketConnector } from '../web-scoket/web-scoket.provider';
@@ -465,29 +465,33 @@ const NavBar = ({
           </Dropdown>
 
           <div className="profile-dropdown " data-testid="dropdown-profile">
-            <LegacyDropDown
-              dropDownList={profileDropdown}
-              icon={
-                <Tooltip placement="bottom" title="Profile" trigger="hover">
-                  {isImgUrlValid ? (
-                    <div className="profile-image circle tw--mr-2">
-                      <Image
-                        alt="user"
-                        preview={false}
-                        referrerPolicy="no-referrer"
-                        src={profilePicture || ''}
-                        width={24}
-                        onError={handleOnImageError}
-                      />
-                    </div>
-                  ) : (
-                    <Avatar name={username} type="circle" width="24" />
-                  )}
-                </Tooltip>
-              }
-              isDropDownIconVisible={false}
-              type="link"
-            />
+            <Dropdown
+              menu={{
+                items: profileDropdown.map(
+                  (dd) =>
+                    ({
+                      title: dd.name,
+                      icon: dd.icon,
+                    } as ItemType)
+                ),
+              }}>
+              <Tooltip placement="bottom" title="Profile" trigger="hover">
+                {isImgUrlValid ? (
+                  <div className="profile-image circle">
+                    <Image
+                      alt="user"
+                      preview={false}
+                      referrerPolicy="no-referrer"
+                      src={profilePicture || ''}
+                      width={24}
+                      onError={handleOnImageError}
+                    />
+                  </div>
+                ) : (
+                  <Avatar name={username} type="circle" width="24" />
+                )}
+              </Tooltip>
+            </Dropdown>
           </div>
         </Space>
       </div>

@@ -838,9 +838,9 @@ const TeamDetailsV1 = ({
 
   const getTeamHeading = () => {
     return (
-      <div className="tw-text-link tw-text-base">
+      <div className="tw-text-link text-base">
         {isHeadingEditing ? (
-          <div className="d-flex tw-items-center tw-gap-1">
+          <div className="d-flex items-center tw-gap-1">
             <input
               className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
               data-testid="synonyms"
@@ -853,16 +853,16 @@ const TeamDetailsV1 = ({
               value={heading}
               onChange={(e) => setHeading(e.target.value)}
             />
-            <div className="d-flex tw-justify-end" data-testid="buttons">
+            <div className="d-flex justify-end" data-testid="buttons">
               <Button
-                className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
+                className="tw-px-1 tw-py-1  tw-text-sm tw-mr-1"
                 data-testid="cancelAssociatedTag"
                 type="primary"
                 onMouseDown={() => setIsHeadingEditing(false)}>
                 <CloseOutlined />
               </Button>
               <Button
-                className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
+                className="tw-px-1 tw-py-1  tw-text-sm"
                 data-testid="saveAssociatedTag"
                 type="primary"
                 onMouseDown={handleHeadingSave}>
@@ -979,7 +979,7 @@ const TeamDetailsV1 = ({
 
   return viewPermission ? (
     <div
-      className="tw-h-full d-flex flex-col flex-grow"
+      className="h-full d-flex flex-col flex-grow"
       data-testid="team-details-container">
       {!isEmpty(currentTeam) ? (
         <Fragment>
@@ -987,7 +987,7 @@ const TeamDetailsV1 = ({
             <TitleBreadcrumb className="p-b-xs" titleLinks={slashedTeamName} />
           )}
           <div
-            className="d-flex tw-justify-between tw-items-center"
+            className="d-flex justify-between items-center"
             data-testid="header">
             {getTeamHeading()}
             {!isOrganization ? (
@@ -1187,7 +1187,7 @@ const TeamDetailsV1 = ({
                   })
                 ) : (
                   <Space
-                    className="tw-w-full roles-and-policy"
+                    className="w-full roles-and-policy"
                     direction="vertical">
                     <Button
                       data-testid="add-role"
@@ -1244,7 +1244,7 @@ const TeamDetailsV1 = ({
                   })
                 ) : (
                   <Space
-                    className="tw-w-full roles-and-policy"
+                    className="w-full roles-and-policy"
                     direction="vertical">
                     <Button
                       data-testid="add-policy"
@@ -1337,7 +1337,7 @@ const TeamDetailsV1 = ({
       )}
     </div>
   ) : (
-    <Row align="middle" className="tw-h-full">
+    <Row align="middle" className="h-full">
       <Col span={24}>
         <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
       </Col>

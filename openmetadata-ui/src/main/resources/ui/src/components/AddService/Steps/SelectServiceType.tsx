@@ -135,11 +135,11 @@ const SelectServiceType = ({
               <Space
                 className="w-full justify-center items-center"
                 direction="vertical">
-                <div className="tw-mb-2.5">
+                <div>
                   <div data-testid="service-icon">
-                    {getServiceLogo(type || '', 'tw-h-9')}
+                    {getServiceLogo(type || '')}
                   </div>
-                  <div className="tw-absolute tw-top-0 tw-right-1.5">
+                  <div className="absolute">
                     {type === selectServiceType && (
                       <SVGIcons alt="checkbox" icon={Icons.CHECKBOX_PRIMARY} />
                     )}

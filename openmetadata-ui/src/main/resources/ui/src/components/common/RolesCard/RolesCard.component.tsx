@@ -91,7 +91,7 @@ const RolesCard = ({
             <h6 className="mb-0">{t('label.role-plural')}</h6>
             {!isRolesEdit && (
               <button
-                className="m-l-xs focus:tw-outline-none"
+                className="m-l-xs"
                 data-testid="edit-roles"
                 onClick={() => setIsRolesEdit(true)}>
                 <EditIcon width={16} />

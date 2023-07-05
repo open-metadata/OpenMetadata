@@ -71,7 +71,7 @@ function IngestionListTable({
             : t('message.no-permission-to-view')
         }>
         <Typography.Link
-          className="tw-mr-2 overflow-wrap-anywhere"
+          className="overflow-wrap-anywhere"
           data-testid="airflow-tree-view"
           disabled={!(permissions.ViewAll || permissions.ViewBasic)}
           href={`${airflowEndpoint}/tree?dag_id=${text}`}
@@ -187,7 +187,7 @@ function IngestionListTable({
   );
 
   return !isEmpty(ingestionData) ? (
-    <div className="tw-mb-6" data-testid="ingestion-table">
+    <div data-testid="ingestion-table">
       <Table
         bordered
         columns={tableColumn}

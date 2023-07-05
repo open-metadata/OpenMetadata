@@ -41,7 +41,7 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
             {noun ? noun : getFeedPanelHeaderText(threadType)}{' '}
             {t('label.on-lowercase')}{' '}
           </span>
-          <span className="tw-heading" data-testid="entity-attribute">
+          <span data-testid="entity-attribute">
             {entityField ? getEntityFieldDisplay(entityField) : entityFQN}
           </span>
         </p>
@@ -66,7 +66,7 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
           ) : null}
           {hideCloseIcon ? null : (
             <svg
-              className="tw-w-5 tw-h-5 tw-ml-2 tw-cursor-pointer tw-self-center"
+              className="cursor-pointer self-center"
               data-testid="closeDrawer"
               fill="none"
               stroke="#6B7280"

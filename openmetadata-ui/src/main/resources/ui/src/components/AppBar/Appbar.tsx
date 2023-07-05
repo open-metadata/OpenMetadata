@@ -130,7 +130,7 @@ const Appbar: React.FC = (): JSX.Element => {
           target="_blank">
           <Space size={4}>
             <IconDoc
-              className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+              className="align-middle"
               height={14}
               name="Doc icon"
               width={14}
@@ -152,7 +152,7 @@ const Appbar: React.FC = (): JSX.Element => {
         <Link className="link-title" to={ROUTES.SWAGGER}>
           <Space size={4}>
             <IconAPI
-              className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+              className="align-middle"
               height={14}
               name="API icon"
               width={14}
@@ -172,7 +172,7 @@ const Appbar: React.FC = (): JSX.Element => {
           target="_blank">
           <Space size={4}>
             <IconSlackGrey
-              className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+              className="align-middle"
               height={14}
               name="slack icon"
               width={14}
@@ -215,7 +215,7 @@ const Appbar: React.FC = (): JSX.Element => {
           target="_blank">
           <Space size={4}>
             <IconVersionBlack
-              className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+              className="align-middle"
               height={14}
               name="Version icon"
               width={14}
@@ -240,7 +240,7 @@ const Appbar: React.FC = (): JSX.Element => {
   const getUsersRoles = (userRoleArr: string[], name: string) => {
     return (
       <div>
-        <div className="text-grey-muted tw-text-xs">{name}</div>
+        <div className="text-grey-muted text-xs">{name}</div>
         {userRoleArr.map((userRole, i) => (
           <Typography.Paragraph
             className="ant-typography-ellipsis-custom font-normal"
@@ -249,7 +249,7 @@ const Appbar: React.FC = (): JSX.Element => {
             {userRole}
           </Typography.Paragraph>
         ))}
-        <hr className="tw-my-1.5" />
+        <hr />
       </div>
     );
   };
@@ -281,7 +281,7 @@ const Appbar: React.FC = (): JSX.Element => {
     const remainingTeamsCount = max([userTeams.length, 0]);
 
     return (
-      <div className="tw-max-w-xs" data-testid="greeting-text">
+      <div data-testid="greeting-text">
         <Link
           data-testid="user-name"
           to={getUserPath(currentUser?.name as string)}>
@@ -299,7 +299,7 @@ const Appbar: React.FC = (): JSX.Element => {
           : null}
         {teams.length > 0 ? (
           <div>
-            <span className="text-grey-muted tw-text-xs">
+            <span className="text-grey-muted text-xs">
               {t('label.team-plural')}
             </span>
             {teams.map((t, i) => (

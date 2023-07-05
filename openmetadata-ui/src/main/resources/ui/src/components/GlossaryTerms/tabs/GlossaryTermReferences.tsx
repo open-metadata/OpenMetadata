@@ -222,7 +222,7 @@ const GlossaryTermReferences = ({
               {references.map((ref) => getReferenceElement(ref))}
               {permissions.EditAll && references.length === 0 && (
                 <TagButton
-                  className="tw-text-primary cursor-pointer"
+                  className="text-primary cursor-pointer"
                   dataTestId="term-references-add-button"
                   icon={<PlusIcon height={16} name="plus" width={16} />}
                   label={t('label.add')}

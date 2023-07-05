@@ -228,7 +228,7 @@ const GlossaryDetailsRightPanel = ({
             owner={selectedData.owner}
             onUpdate={handleUpdatedOwner}>
             <TagButton
-              className="tw-text-primary cursor-pointer"
+              className="text-primary cursor-pointer"
               icon={<PlusIcon height={16} name="plus" width={16} />}
               label={t('label.add')}
               tooltip=""
@@ -280,7 +280,7 @@ const GlossaryDetailsRightPanel = ({
               selectedUsers={selectedData.reviewers ?? []}
               onUpdate={handleReviewerSave}>
               <TagButton
-                className="tw-text-primary cursor-pointer"
+                className="text-primary cursor-pointer"
                 icon={<PlusIcon height={16} name="plus" width={16} />}
                 label={t('label.add')}
                 tooltip=""

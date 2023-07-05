@@ -238,7 +238,6 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
       <div id="thread-panel-body">
         {showHeader && isConversationType && (
           <FeedPanelHeader
-            className="tw-px-4 tw-shadow-sm"
             entityField={entityField as string}
             noun={
               isConversationType
@@ -259,21 +258,16 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
             className="w-full justify-end p-r-xs m-t-xs"
             size={4}>
             <Switch size="small" onChange={onSwitchChange} />
-            <span className="tw-ml-1">{t('label.closed-task-plural')}</span>
+            <span>{t('label.closed-task-plural')}</span>
           </Space>
         )}
 
         {!isUndefined(selectedThread) ? (
           <Fragment>
-            <Button
-              className="tw-mb-3 tw-ml-2"
-              size="small"
-              type="link"
-              onClick={onBack}>
+            <Button size="small" type="link" onClick={onBack}>
               {t('label.back')}
             </Button>
             <ActivityThread
-              className="tw-pb-4 tw-pl-5 tw-pr-2"
               postFeed={postFeed}
               selectedThread={selectedThread}
               updateThreadHandler={onUpdateThread}
@@ -286,12 +280,8 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
               <Fragment>
                 {isConversationType && (
                   <Fragment>
-                    <p className="tw-ml-9 tw-mr-2 tw-mb-2 tw-mt-1">
-                      {t('message.new-conversation')}
-                    </p>
+                    <p>{t('message.new-conversation')}</p>
                     <ActivityFeedEditor
-                      buttonClass="tw-mr-4"
-                      className="tw-ml-5 tw-mr-2"
                       placeHolder={t('message.enter-a-field', {
                         field: t('label.message-lowercase'),
                       })}
@@ -323,7 +313,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
             ) : null}
             {isAnnouncementType ? (
               <AnnouncementThreads
-                className={classNames({ 'tw-p-4': !className }, className)}
+                className={classNames(className)}
                 editAnnouncementPermission={editAnnouncementPermission}
                 postFeed={postFeed}
                 selectedThreadId={selectedThreadId}
@@ -335,7 +325,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
               />
             ) : (
               <ActivityThreadList
-                className={classNames({ 'tw-p-4': !className }, className)}
+                className={classNames(className)}
                 postFeed={postFeed}
                 selectedThreadId={selectedThreadId}
                 threads={threads}

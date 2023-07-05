@@ -83,7 +83,7 @@ export const TagsDiffView = ({
 
   return (
     <div
-      className={classNames('tw-w-full', className)}
+      className={classNames('w-full', className)}
       data-testid="diff-container">
       {elements}
     </div>

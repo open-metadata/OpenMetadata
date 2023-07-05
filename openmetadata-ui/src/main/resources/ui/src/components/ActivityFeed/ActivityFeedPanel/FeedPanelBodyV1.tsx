@@ -91,7 +91,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
                 t('label.reply-lowercase-plural')
               )}
             </span>
-            <span className="flex-auto self-center tw-ml-1.5">
+            <span className="flex-auto self-center ">
               <hr />
             </span>
           </div>

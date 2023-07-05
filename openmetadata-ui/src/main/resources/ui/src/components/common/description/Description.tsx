@@ -201,11 +201,11 @@ const Description: FC<DescriptionProps> = ({
   };
 
   return (
-    <div className={`schema-description tw-relative ${className}`}>
+    <div className={`schema-description relative ${className}`}>
       <Space align="end" className="description-inner-main-container" size={4}>
-        <div className="tw-relative">
+        <div className="relative">
           <div
-            className="description tw-h-full tw-overflow-y-scroll tw-relative "
+            className="description h-full relative "
             data-testid="description"
             id="center">
             {description?.trim() ? (

@@ -152,7 +152,7 @@ const UserCard = ({
 
     return (
       <Link className="no-underline" data-testid="dataset-link" to={link}>
-        <span className="tw-font-medium tw-text-grey-body tw-break-all tw-text-left">
+        <span className="font-medium text-grey-body break-all text-left">
           {getAssetDisplayName(type, fqn)}
         </span>
       </Link>
@@ -161,14 +161,13 @@ const UserCard = ({
 
   return (
     <Card
-      className={classNames(
-        'd-flex tw-justify-between tw-py-2 tw-px-3 tw-group',
-        { 'tw-py-5 tw-items-center': isDataset }
-      )}
+      className={classNames('d-flex justify-between tw-py-2 tw-px-3 tw-group', {
+        'tw-py-5 items-center': isDataset,
+      })}
       data-testid="user-card-container">
       <div
         className={`d-flex ${
-          isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1 tw-items-center'
+          isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1 items-center'
         }`}>
         {isIconVisible && !isDataset ? (
           <ProfilePicture
@@ -192,11 +191,10 @@ const UserCard = ({
             <Fragment>
               <span
                 className={classNames(
-                  'tw-font-normal',
+                  'font-normal',
                   isActionVisible ? 'tw-w-32' : 'tw-w-52',
                   {
-                    'tw-cursor-pointer hover:tw-underline':
-                      Boolean(onTitleClick),
+                    'cursor-pointer hover:tw-underline': Boolean(onTitleClick),
                   }
                 )}
                 title={item.displayName}
@@ -243,12 +241,12 @@ const UserCard = ({
                 editPermission ? t('label.remove') : NO_PERMISSION_FOR_ACTION
               }>
               <Button
-                className={classNames('tw-h-8 tw-rounded tw-mb-3')}
+                className={classNames('tw-h-8  tw-mb-3')}
                 data-testid="remove"
                 disabled={!editPermission}
                 type="text"
                 onClick={() => onRemove?.(item.id as string)}>
-                <CloseOutlined className="tw-cursor-pointer tw-opacity-0 group-hover:tw-opacity-100" />
+                <CloseOutlined className="cursor-pointer tw-opacity-0 group-hover:tw-opacity-100" />
               </Button>
             </Tooltip>
           </div>

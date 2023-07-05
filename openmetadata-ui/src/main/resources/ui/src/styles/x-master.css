@@ -957,8 +957,7 @@ code {
 
 /* Description CSS */
 
-.description,
-.break-all {
+.description {
   word-break: break-all;
 }
 
@@ -1182,14 +1181,6 @@ div.ant-typography-ellipsis-custom {
 
 .left-panel-container::-webkit-scrollbar {
   display: none;
-}
-
-/**
-* This is to override tailwind default behavior for svg alignment
-* It was causing issue to antD styling hence resetting it to default
-*/
-svg {
-  vertical-align: baseline;
 }
 
 /**

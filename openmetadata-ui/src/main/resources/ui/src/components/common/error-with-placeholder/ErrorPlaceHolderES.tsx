@@ -82,7 +82,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
 
   const noRecordForES = useMemo(() => {
     return (
-      <div className="tw-text-center" data-testid="no-search-results">
+      <div className="text-center" data-testid="no-search-results">
         {isQuery ? (
           <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.FILTER} />
         ) : ['glossaries', 'tags'].includes(tab) ? (
@@ -129,8 +129,8 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
     const errorText = errorMessage && index ? `find ${index} in` : 'access';
 
     return (
-      <div className="tw-mb-5" data-testid="es-error">
-        <div className="tw-mb-3 tw-text-center">
+      <div data-testid="es-error">
+        <div className="text-center">
           <p>
             <span>{t('message.welcome-to-open-metadata')} </span>
             <span data-testid="error-text">
@@ -140,27 +140,23 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
 
           <p>{t('message.elasticsearch-setup')}</p>
         </div>
-        <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-mt-5">
+        <div>
           {stepsData.map((data) => (
-            <Card
-              className="d-flex flex-col tw-justify-between tw-p-5"
-              key={uniqueId()}>
+            <Card className="d-flex flex-col justify-between " key={uniqueId()}>
               <div>
-                <div className="d-flex tw-mb-2">
-                  <div className="tw-rounded-full d-flex tw-justify-center tw-items-center tw-h-10 tw-w-10 tw-border-2 tw-border-primary tw-text-lg tw-font-bold tw-text-primary">
+                <div className="d-flex ">
+                  <div className="d-flex justify-center items-center text-primary">
                     {data.step}
                   </div>
                 </div>
 
                 <h6
-                  className="tw-text-base tw-text-grey-body tw-font-medium"
+                  className="text-base text-grey-body font-medium"
                   data-testid="service-name">
                   {data.title}
                 </h6>
 
-                <p className="tw-text-grey-body tw-pb-1 tw-text-sm tw-mb-5">
-                  {data.description}
-                </p>
+                <p className="text-grey-body text-sm">{data.description}</p>
               </div>
 
               <p>
@@ -176,7 +172,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
   }, [errorMessage]);
 
   return (
-    <div className="tw-mt-10 tw-text-base tw-font-medium">
+    <div className="text-base font-medium">
       {type === ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA
         ? noRecordForES
         : elasticSearchError}

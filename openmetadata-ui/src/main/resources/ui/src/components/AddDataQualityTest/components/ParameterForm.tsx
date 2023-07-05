@@ -112,7 +112,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
         case TestDataType.Float:
           Field = (
             <InputNumber
-              className="tw-w-full"
+              className="w-full"
               placeholder={`${t('message.enter-a-field', {
                 field: data.displayName,
               })}`}
@@ -144,7 +144,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                   key={data.name}
                   label={
                     <span>
-                      <span className="tw-mr-3">{data.displayName}:</span>
+                      <span>{data.displayName}:</span>
                       <Button
                         icon={<PlusOutlined />}
                         size="small"
@@ -156,9 +156,8 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                   name={data.name}
                   tooltip={data.description}>
                   {fields.map(({ key, name, ...restField }) => (
-                    <div className="d-flex tw-gap-2 tw-w-full" key={key}>
+                    <div className="d-flex w-full" key={key}>
                       <Form.Item
-                        className="tw-w-11/12 tw-mb-4"
                         {...restField}
                         name={[name, 'value']}
                         rules={[
@@ -176,13 +175,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                         />
                       </Form.Item>
                       <Button
-                        icon={
-                          <SVGIcons
-                            alt="delete"
-                            className="tw-w-4"
-                            icon={Icons.DELETE}
-                          />
-                        }
+                        icon={<SVGIcons alt="delete" icon={Icons.DELETE} />}
                         type="text"
                         onClick={() => remove(name)}
                       />

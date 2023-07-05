@@ -24,10 +24,8 @@ const ProfilerSummaryCard: React.FC<ProfilerSummaryCardProps> = ({
   showIndicator = false,
 }) => {
   return (
-    <Card className="tw-rounded-md tw-border">
-      <p
-        className="tw-text-base tw-font-medium tw-mb-4"
-        data-testid="summary-card-title">
+    <Card>
+      <p className="text-base font-medium" data-testid="summary-card-title">
         {title}
       </p>
       <Row

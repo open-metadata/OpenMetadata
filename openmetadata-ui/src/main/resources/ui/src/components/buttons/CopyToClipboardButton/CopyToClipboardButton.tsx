@@ -42,7 +42,7 @@ export const CopyToClipboardButton: FunctionComponent<Props> = ({
       destroyTooltipOnHide
       content={
         <span
-          className="tw-text-grey-body tw-text-xs tw-font-medium tw-italic"
+          className="text-grey-body text-xs font-medium"
           data-testid="copy-success">
           {t('message.copied-to-clipboard')}
         </span>

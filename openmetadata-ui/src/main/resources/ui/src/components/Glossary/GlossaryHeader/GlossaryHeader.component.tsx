@@ -417,7 +417,7 @@ const GlossaryHeader = ({
                   onOpenChange={setShowActions}>
                   <Tooltip placement="right">
                     <Button
-                      className="glossary-manage-dropdown-button tw-px-1.5"
+                      className="glossary-manage-dropdown-button"
                       data-testid="manage-button"
                       onClick={() => setShowActions(true)}>
                       <IconDropdown className="anticon self-center manage-dropdown-icon" />

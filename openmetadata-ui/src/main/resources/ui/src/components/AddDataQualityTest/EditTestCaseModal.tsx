@@ -211,7 +211,6 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         <Loader />
       ) : (
         <Form
-          className="tw-h-70vh tw-overflow-auto"
           form={form}
           layout="vertical"
           name="tableTestForm"

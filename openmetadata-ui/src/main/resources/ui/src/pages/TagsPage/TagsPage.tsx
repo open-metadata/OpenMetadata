@@ -644,7 +644,7 @@ const TagsPage = () => {
         <TagsLeftPanelSkeleton loading={isLoading}>
           <div className="tw-py-2" data-testid="data-summary-container">
             <div className="tw-px-3">
-              <h6 className="tw-heading tw-text-sm tw-font-semibold">
+              <h6 className="tw-heading tw-text-sm font-semibold">
                 {t('label.classification-plural')}
               </h6>
               <div className="tw-mb-3">
@@ -674,7 +674,7 @@ const TagsPage = () => {
 
             {classifications.map((category: Classification) => (
               <div
-                className={`tw-group align-center content-box cursor-pointer tw-text-grey-body tw-text-body d-flex p-y-xss p-x-sm m-y-xss ${getActiveCatClass(
+                className={`tw-group align-center content-box cursor-pointer text-grey-body tw-text-body d-flex p-y-xss p-x-sm m-y-xss ${getActiveCatClass(
                   category.name,
                   currentClassification?.name
                 )}`}

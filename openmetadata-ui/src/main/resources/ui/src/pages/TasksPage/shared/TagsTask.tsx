@@ -54,7 +54,7 @@ const TagsTask: FC<TagsTaskProps> = ({
   const diffView = useMemo(() => {
     if (!oldValue && !newValue) {
       return (
-        <div className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3">
+        <div className=" -main tw-p-2  tw-my-1 tw-mb-3">
           <span className="tw-p-2 text-grey-muted">
             {t('label.no-entity', { entity: t('label.tag-plural') })}
           </span>

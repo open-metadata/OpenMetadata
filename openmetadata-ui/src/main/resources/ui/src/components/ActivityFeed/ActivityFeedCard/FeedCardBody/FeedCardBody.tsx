@@ -63,16 +63,14 @@ const FeedCardBody: FC<FeedBodyProp> = ({
         <ActivityFeedEditor
           defaultValue={getDefaultValue(message)}
           editAction={
-            <div className="d-flex tw-justify-end tw-gap-2 tw-mr-1.5">
+            <div className="d-flex">
               <Button
-                className="tw-border tw-border-primary tw-text-primary tw-rounded"
                 data-testid="cancel-button"
                 size="small"
                 onClick={handleCancel}>
                 {t('label.cancel')}
               </Button>
               <Button
-                className="tw-rounded"
                 data-testid="save-button"
                 disabled={!postMessage.length}
                 size="small"
@@ -103,7 +101,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
   }, [message]);
 
   return (
-    <div className={classNames('tw-group', isEditPost ? '' : className)}>
+    <div className={classNames('', isEditPost ? '' : className)}>
       <div className="feed-meesage">
         {!isUndefined(announcementDetails) ? (
           <Space direction="vertical" size={4}>
@@ -113,9 +111,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
               {t('label.to-lowercase')}{' '}
               {getDateTimeByTimeStamp(announcementDetails.endTime * 1000)}
             </Typography.Text>
-            <Typography.Text className="tw-font-semibold">
-              {postMessage}
-            </Typography.Text>
+            <Typography.Text>{postMessage}</Typography.Text>
             <RichTextEditorPreviewer
               className="activity-feed-card-text"
               markdown={announcementDetails.description || ''}

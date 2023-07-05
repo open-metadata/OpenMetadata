@@ -26,7 +26,7 @@ const CustomTooltip = ({
 }): ReactNode => {
   if (active && payload && payload.length) {
     return (
-      <div className="tw-py-1.5 tw-px-1 tw-bg-black tw-opacity-50 tw-rounded tw-text-white tw-text-xs tw-font-medium">
+      <div className="tw-py-1.5 tw-px-1 tw-bg-black tw-opacity-50  tw-text-white text-xs font-medium">
         <div>
           {t('label.value')} {payload[0].value}
         </div>

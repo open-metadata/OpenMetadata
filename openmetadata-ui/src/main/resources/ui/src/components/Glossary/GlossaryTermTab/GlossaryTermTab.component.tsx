@@ -90,7 +90,7 @@ const GlossaryTermTab = ({
 
           return (
             <Link
-              className="hover:tw-underline tw-cursor-pointer help-text"
+              className="cursor-pointer help-text"
               data-testid={name}
               to={getGlossaryPath(record.fullyQualifiedName || record.name)}>
               {name}
@@ -273,7 +273,7 @@ const GlossaryTermTab = ({
       <Col span={24}>
         <div className="d-flex justify-end">
           <Button
-            className="tw-text-primary tw-rounded m-b-sm"
+            className="text-primary m-b-sm"
             size="small"
             type="text"
             onClick={toggleExpandAll}>

@@ -163,9 +163,9 @@ const Services = ({
                 <Col key={service.name} lg={8} xl={6}>
                   <Card className="w-full" size="small">
                     <div
-                      className="d-flex tw-justify-between text-grey-muted"
+                      className="d-flex justify-between text-grey-muted"
                       data-testid="service-card">
-                      <div className="d-flex flex-col tw-justify-between tw-truncate">
+                      <div className="d-flex flex-col justify-between truncate">
                         <div>
                           <Link
                             to={getServiceDetailsPath(
@@ -174,7 +174,7 @@ const Services = ({
                             )}>
                             <button>
                               <h6
-                                className="tw-text-base tw-text-grey-body tw-font-medium tw-text-left tw-truncate tw-w-48"
+                                className="text-base text-grey-body font-medium text-left truncate w-48"
                                 data-testid={`service-name-${getEntityName(
                                   service
                                 )}`}
@@ -184,7 +184,7 @@ const Services = ({
                             </button>
                           </Link>
                           <div
-                            className="tw-text-grey-body tw-pb-1 tw-break-all description-text"
+                            className="text-grey-body break-all description-text"
                             data-testid="service-description">
                             {service.description ? (
                               <RichTextEditorPreviewer
@@ -200,17 +200,15 @@ const Services = ({
                           {getOptionalFields(service, serviceName)}
                         </div>
                         <div className="" data-testid="service-type">
-                          <label className="tw-mb-0">{`${t(
-                            'label.type'
-                          )}:`}</label>
-                          <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+                          <label>{`${t('label.type')}:`}</label>
+                          <span className="font-normal text-grey-body">
                             {service.serviceType}
                           </span>
                         </div>
                       </div>
-                      <div className="d-flex flex-col tw-justify-between flex-none">
+                      <div className="d-flex flex-col justify-between flex-none">
                         <div
-                          className="d-flex tw-justify-end"
+                          className="d-flex justify-end"
                           data-testid="service-icon">
                           {getServiceLogo(service.serviceType || '', 'h-7')}
                         </div>
