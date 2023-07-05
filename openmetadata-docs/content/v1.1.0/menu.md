@@ -283,6 +283,10 @@ site_menu:
     url: /connectors/database/mariadb
   - category: Connectors / Database / MariaDB / Run Externally
     url: /connectors/database/mariadb/yaml
+  - category: Connectors / Database / MongoDB
+    url: /connectors/database/mongodb
+  - category: Connectors / Database / MongoDB / Run Externally
+    url: /connectors/database/mongodb/yaml
   - category: Connectors / Database / MSSQL
     url: /connectors/database/mssql
   - category: Connectors / Database / MSSQL / Run Externally
@@ -345,13 +349,9 @@ site_menu:
     url: /connectors/database/vertica/yaml
   - category: Connectors / Database / Vertica / Troubleshooting
     url: /connectors/database/vertica/troubleshooting
-  - category: Connectors / Database / MongoDB
-    url: /connectors/database/mongodb
-  - category: Connectors / Database / MongoDB / Run Externally
-    url: /connectors/database/mongodb/yaml
+
   - category: Connectors / Dashboard
     url: /connectors/dashboard
-
   - category: Connectors / Dashboard / Domo Dashboard
     url: /connectors/dashboard/domo-dashboard
   - category: Connectors / Dashboard / Domo Dashboard / Run Externally

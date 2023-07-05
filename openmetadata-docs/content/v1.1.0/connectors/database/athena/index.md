@@ -43,10 +43,6 @@ Configure and schedule Athena metadata and profiler workflows from the OpenMetad
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
 The Athena connector ingests metadata through JDBC connections.
 
 {% note %}
@@ -157,9 +153,17 @@ You can find further information on the Athena connector in the [docs](https://d
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.1.0/connectors/metadata-ingestion.md" 
-  variables={connector: "Athena", connectorPath: "athena"} 
+  file="/v1.1.0/connectors/metadata-ingestion-ui.md" 
+  variables={
+    connector: "Athena", 
+    selectServicePath: "/images/v1.1.0/connectors/athena/select-service.png",
+    addNewServicePath: "/images/v1.1.0/connectors/athena/add-new-service.png",
+    serviceConnectionPath: "/images/v1.1.0/connectors/athena/service-connection.png",
+} 
 /%}
+
+{% stepsContainer %}
+{% extraContent parentTagName="stepsContainer" %}
 
 #### Connection Details
 
@@ -223,175 +227,21 @@ Find more information about the [Role Session Name](https://docs.aws.amazon.com/
 
 Find more information about [Source Identity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity).
 
-- **Database (optional)**: The database of the data source is an optional parameter if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
 - **S3 Staging Directory (optional)**: The S3 staging directory is an optional parameter. Enter a staging directory to override the default staging directory for AWS Athena.
 - **Athena Workgroup (optional)**: The Athena workgroup is an optional parameter. If you wish to have your Athena connection related to an existing AWS workgroup add your workgroup name here.
-- **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
-- **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
-  - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
 
+{% partial file="/v1.1.0/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% step srNumber=6 %}
+{% partial file="/v1.1.0/connectors/test-connection.md" /%}
 
-{% stepDescription title="6. Test the Connection" %}
+{% partial file="/v1.1.0/connectors/database/configure-ingestion.md" /%}
 
-Once the credentials have been added, click on `Test Connection` and Save
-the changes.
-
-{% /stepDescription %}
-
-{% stepVisualInfo %}
-
-{% image
-  src="/images/v1.1.0/connectors/test-connection.png"
-  alt="Test Connection"
-  caption="Test the connection and save the Service" /%}
-
-{% /stepVisualInfo %}
-
-{% /step %}
-
-{% step srNumber=7 %}
-
-{% stepDescription title="7. Configure Metadata Ingestion" %}
-
-In this step we will configure the metadata ingestion pipeline,
-Please follow the instructions below
-
-{% /stepDescription %}
-
-{% stepVisualInfo %}
-
-{% image
-src="/images/v1.1.0/connectors/configure-metadata-ingestion-database.png"
-alt="Configure Metadata Ingestion"
-caption="Configure Metadata Ingestion Page" /%}
-
-{% /stepVisualInfo %}
-
-{% /step %}
-
-{% extraContent parentTagName="stepsContainer" %}
-
-#### Metadata Ingestion Options
-
-- **Name**: This field refers to the name of ingestion pipeline, you can customize the name or use the generated name.
-- **Database Filter Pattern (Optional)**: Use to database filter patterns to control whether or not to include database as part of metadata ingestion.
-  - **Include**: Explicitly include databases by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all databases with names matching one or more of the supplied regular expressions. All other databases will be excluded.
-  - **Exclude**: Explicitly exclude databases by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all databases with names matching one or more of the supplied regular expressions. All other databases will be included.
-- **Schema Filter Pattern (Optional)**: Use to schema filter patterns to control whether to include schemas as part of metadata ingestion.
-  - **Include**: Explicitly include schemas by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all schemas with names matching one or more of the supplied regular expressions. All other schemas will be excluded.
-  - **Exclude**: Explicitly exclude schemas by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all schemas with names matching one or more of the supplied regular expressions. All other schemas will be included.
-- **Table Filter Pattern (Optional)**: Use to table filter patterns to control whether to include tables as part of metadata ingestion.
-  - **Include**: Explicitly include tables by adding a list of comma-separated regular expressions to the Include field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded.
-  - **Exclude**: Explicitly exclude tables by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included.
-- **Include views (toggle)**: Set the Include views toggle to control whether to include views as part of metadata ingestion.
-- **Include tags (toggle)**: Set the 'Include Tags' toggle to control whether to include tags as part of metadata ingestion.
-- **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
-
-- **Mark Deleted Tables (toggle)**: Set the Mark Deleted Tables toggle to flag tables as soft-deleted if they are not present anymore in the source system.
-- **Mark Deleted Tables from Filter Only (toggle)**: Set the Mark Deleted Tables from Filter Only toggle to flag tables as soft-deleted if they are not present anymore within the filtered schema or database only. This flag is useful when you have more than one ingestion pipelines. For example if you have a schema
-{% /extraContent %}
-
-{% step srNumber=8 %}
-
-{% stepDescription title="8. Schedule the Ingestion and Deploy" %}
-
-Scheduling can be set up at an hourly, daily, weekly, or manual cadence. The
-timezone is in UTC. Select a Start Date to schedule for ingestion. It is
-optional to add an End Date.
-
-Review your configuration settings. If they match what you intended,
-click Deploy to create the service and schedule metadata ingestion.
-
-If something doesn't look right, click the Back button to return to the
-appropriate step and change the settings as needed.
-
-After configuring the workflow, you can click on Deploy to create the
-pipeline.
-
-{% /stepDescription %}
-
-{% stepVisualInfo %}
-
-{% image
-src="/images/v1.1.0/connectors/schedule.png"
-alt="Schedule the Workflow"
-caption="Schedule the Ingestion Pipeline and Deploy" /%}
-
-{% /stepVisualInfo %}
-
-{% /step %}
-
-{% step srNumber=9 %}
-
-{% stepDescription title="9. View the Ingestion Pipeline" %}
-
-Once the workflow has been successfully deployed, you can view the
-Ingestion Pipeline running from the Service Page.
-
-{% /stepDescription %}
-
-{% stepVisualInfo %}
-
-{% image
-src="/images/v1.1.0/connectors/view-ingestion-pipeline.png"
-alt="View Ingestion Pipeline"
-caption="View the Ingestion Pipeline from the Service Page" /%}
-
-{% /stepVisualInfo %}
-
-{% /step %}
+{% partial file="/v1.1.0/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-## Troubleshooting
+{% partial file="/v1.1.0/connectors/troubleshooting.md" /%}
 
- ### Workflow Deployment Error
-
-If there were any errors during the workflow deployment process, the
-Ingestion Pipeline Entity will still be created, but no workflow will be
-present in the Ingestion container.
-
-- You can then edit the Ingestion Pipeline and Deploy it again.
-
-- From the Connection tab, you can also Edit the Service if needed.
-
-{% image
-src="/images/v1.1.0/connectors/workflow-deployment-error.png"
-alt="Workflow Deployment Error"
-caption="Edit and Deploy the Ingestion Pipeline" /%}
-
-## Related
-
-{% tilesContainer %}
-
-{% tile
-  title="Usage Workflow"
-  description="Learn more about how to configure the Usage Workflow to ingest Query information from the UI."
-  link="/connectors/ingestion/workflows/usage" /%}
-
-{% tile
-  title="Lineage Workflow"
-  description="Learn more about how to configure the Lineage from the UI."
-  link="/connectors/ingestion/workflows/lineage" /%}
-
-{% tile
-  title="Profiler Workflow"
-  description="Learn more about how to configure the Data Profiler from the UI."
-  link="/connectors/ingestion/workflows/profiler" /%}
-
-{% tile
-  title="Data Quality Workflow"
-  description="Learn more about how to configure the Data Quality tests from the UI."
-  link="/connectors/ingestion/workflows/data-quality" /%}
-
-{% tile
-  icon="mediation"
-  title="dbt Integration"
-  description="Learn more about how to ingest dbt models' definitions and their lineage."
-  link="/connectors/ingestion/workflows/dbt" /%}
-
-{% /tilesContainer %}
+{% partial file="/v1.1.0/connectors/database/related.md" /%}
