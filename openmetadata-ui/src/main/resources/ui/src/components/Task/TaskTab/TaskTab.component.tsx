@@ -107,12 +107,6 @@ export const TaskTab = ({
 
   const isTaskTags = isTagsTask(taskDetails?.type as TaskType);
 
-  const isRequestDescription = isEqual(
-    taskDetails?.type,
-    TaskType.RequestDescription
-  );
-  const isRequestTag = isEqual(taskDetails?.type, TaskType.RequestTag);
-
   const getTaskLinkElement = entityCheck && (
     <Typography.Text className="font-medium text-md">
       <span>{`#${taskDetails?.id} `}</span>
@@ -297,19 +291,18 @@ export const TaskTab = ({
 
   const initialFormValue = useMemo(() => {
     if (isTaskDescription) {
-      const description = isRequestDescription
-        ? taskDetails?.suggestion ?? ''
-        : taskDetails?.oldValue ?? '';
+      const description =
+        taskDetails?.suggestion ?? taskDetails?.oldValue ?? '';
 
       return { description };
     } else {
-      const updatedTags = isRequestTag
-        ? JSON.parse(taskDetails?.suggestion ?? '[]')
-        : JSON.parse(taskDetails?.oldValue ?? '[]');
+      const updatedTags = JSON.parse(
+        taskDetails?.suggestion ?? taskDetails?.oldValue ?? '[]'
+      );
 
       return { updatedTags };
     }
-  }, [taskDetails, isTaskDescription, isRequestDescription, isRequestTag]);
+  }, [taskDetails, isTaskDescription]);
 
   return (
     <Row className="p-y-sm p-x-md" gutter={[0, 24]}>
