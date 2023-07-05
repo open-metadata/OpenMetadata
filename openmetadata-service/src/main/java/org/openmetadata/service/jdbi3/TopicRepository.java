@@ -13,12 +13,30 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.*;
-import static org.openmetadata.service.util.EntityUtil.getSchemaField;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.services.MessagingService;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskDetails;
+import org.openmetadata.schema.type.topic.CleanupPolicy;
+import org.openmetadata.schema.type.topic.TopicSampleData;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.resources.topics.TopicResource;
+import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
+
+import javax.json.JsonPatch;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -29,24 +47,14 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.data.Topic;
-import org.openmetadata.schema.entity.services.MessagingService;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Field;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.topic.CleanupPolicy;
-import org.openmetadata.schema.type.topic.TopicSampleData;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.topics.TopicResource;
-import org.openmetadata.service.security.mask.PIIMasker;
-import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
+
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.util.EntityUtil.getSchemaField;
 
 public class TopicRepository extends EntityRepository<Topic> {
   private static final String TOPIC_UPDATE_FIELDS = "owner,tags,extension,followers";
@@ -262,6 +270,35 @@ public class TopicRepository extends EntityRepository<Topic> {
       EntityUtil.mergeTags(allTags, schemaField.getTags());
     }
     return allTags;
+  }
+
+  @Override
+  public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user)
+      throws IOException {
+    if (entityLink.getFieldName().equals("messageSchema")) {
+      Topic topic = getByName(null, entityLink.getEntityFQN(), getFields("tags"), Include.ALL);
+      Field schemaField =
+          topic.getMessageSchema().getSchemaFields().stream()
+              .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          CatalogExceptionMessage.invalidFieldName("chart", entityLink.getArrayFieldName())));
+
+      String origJson = JsonUtils.pojoToJson(topic);
+      if (EntityUtil.isDescriptionTask(task.getType())) {
+        schemaField.setDescription(newValue);
+      } else if (EntityUtil.isTagTask(task.getType())) {
+        List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
+        schemaField.setTags(tags);
+      }
+      String updatedEntityJson = JsonUtils.pojoToJson(topic);
+      JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
+      patch(null, topic.getId(), user, patch);
+      return;
+    }
+    super.update(task, entityLink, newValue, user);
   }
 
   public static Set<TagLabel> getAllFieldTags(Field field) {
