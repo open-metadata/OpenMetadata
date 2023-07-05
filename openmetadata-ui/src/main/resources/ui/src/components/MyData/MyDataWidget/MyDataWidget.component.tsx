@@ -13,7 +13,7 @@
 import { Button, Card, Col, Row, Typography } from 'antd';
 import AppState from 'AppState';
 import EntityListSkeleton from 'components/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
-import { getUserPath } from 'constants/constants';
+import { getUserPath, ROUTES } from 'constants/constants';
 import { AssetsType } from 'enums/entity.enum';
 import { EntityReference } from 'generated/entity/data/table';
 import { observer } from 'mobx-react';
@@ -21,6 +21,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getUserById } from 'rest/userAPI';
+import { Transi18next } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { getEntityIcon, getEntityLink } from 'utils/TableUtils';
 
@@ -87,40 +88,45 @@ const MyDataWidgetInternal = () => {
         loading={Boolean(isLoading)}>
         <>
           <div className="entity-list-body">
-            {data.length
-              ? data.map((item, index) => {
-                  return (
-                    <div
-                      className="right-panel-list-item flex items-center justify-between"
-                      data-testid={`Recently Viewed-${getEntityName(item)}`}
-                      key={index}>
-                      <div className="d-flex items-center">
-                        <Link
-                          className=""
-                          to={getEntityLink(
-                            item.type || '',
-                            item.fullyQualifiedName as string
-                          )}>
-                          <Button
-                            className="entity-button flex-center p-xss"
-                            icon={
-                              <div className="entity-button-icon m-r-xs">
-                                {getEntityIcon(item.type || '')}
-                              </div>
-                            }
-                            type="text">
-                            <Typography.Text
-                              className="text-left text-xs"
-                              ellipsis={{ tooltip: true }}>
-                              {getEntityName(item)}
-                            </Typography.Text>
-                          </Button>
-                        </Link>
-                      </div>
+            {data.length ? (
+              data.map((item, index) => {
+                return (
+                  <div
+                    className="right-panel-list-item flex items-center justify-between"
+                    data-testid={`Recently Viewed-${getEntityName(item)}`}
+                    key={index}>
+                    <div className="d-flex items-center">
+                      <Link
+                        className=""
+                        to={getEntityLink(
+                          item.type || '',
+                          item.fullyQualifiedName as string
+                        )}>
+                        <Button
+                          className="entity-button flex-center p-xss"
+                          icon={
+                            <div className="entity-button-icon m-r-xs">
+                              {getEntityIcon(item.type || '')}
+                            </div>
+                          }
+                          type="text">
+                          <Typography.Text
+                            className="text-left text-xs"
+                            ellipsis={{ tooltip: true }}>
+                            {getEntityName(item)}
+                          </Typography.Text>
+                        </Button>
+                      </Link>
                     </div>
-                  );
-                })
-              : t('message.no-owned-data')}
+                  </div>
+                );
+              })
+            ) : (
+              <Transi18next
+                i18nKey="message.no-owned-data"
+                renderElement={<Link to={ROUTES.EXPLORE} />}
+              />
+            )}
           </div>
         </>
       </EntityListSkeleton>

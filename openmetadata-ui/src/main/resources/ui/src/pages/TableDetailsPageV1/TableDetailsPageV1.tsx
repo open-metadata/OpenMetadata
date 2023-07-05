@@ -44,7 +44,13 @@ import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getTableTabPath, getVersionPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { mockDatasetData } from 'constants/mockTourData.constants';
-import { EntityTabs, EntityType, FqnPart } from 'enums/entity.enum';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import {
+  EntityTabs,
+  EntityType,
+  FqnPart,
+  TabSpecificField,
+} from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { CreateThread } from 'generated/api/feed/createThread';
 import { JoinedWith, Table } from 'generated/entity/data/table';
@@ -66,6 +72,7 @@ import {
   restoreTable,
 } from 'rest/tableAPI';
 import {
+  addToRecentViewed,
   getCurrentUserId,
   getFeedCounts,
   getPartialNameFromTableFQN,
@@ -81,6 +88,7 @@ import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import './table-details-page-v1.less';
+import TableConstraints from './TableConstraints/TableConstraints';
 
 const TableDetailsPageV1 = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
@@ -106,13 +114,40 @@ const TableDetailsPageV1 = () => {
   const [queryCount, setQueryCount] = useState(0);
 
   const [loading, setLoading] = useState(!isTourOpen);
+  const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const viewUsagePermission = useMemo(
+    () => tablePermissions.ViewAll || tablePermissions.ViewUsage,
+    [tablePermissions]
+  );
+  const viewTestSuitePermission = useMemo(
+    () => tablePermissions.ViewAll || tablePermissions.ViewTests,
+    [tablePermissions]
+  );
 
   const fetchTableDetails = async () => {
     setLoading(true);
     try {
-      const details = await getTableDetailsByFQN(datasetFQN, defaultFields);
+      let fields = defaultFields;
+      if (viewUsagePermission) {
+        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+      }
+      if (viewTestSuitePermission) {
+        fields += `,${TabSpecificField.TESTSUITE}`;
+      }
+      const details = await getTableDetailsByFQN(datasetFQN, fields);
 
       setTableDetails(details);
+      addToRecentViewed({
+        displayName: getEntityName(details),
+        entityType: EntityType.TABLE,
+        fqn: details.fullyQualifiedName ?? '',
+        serviceType: details.serviceType,
+        timestamp: 0,
+        id: details.id,
+      });
     } catch (error) {
       // Error here
     } finally {
@@ -141,10 +176,6 @@ const TableDetailsPageV1 = () => {
   const onCancel = () => {
     setIsEdit(false);
   };
-
-  const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
 
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const {
@@ -217,22 +248,33 @@ const TableDetailsPageV1 = () => {
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const fetchResourcePermission = useCallback(async () => {
-    try {
-      const tablePermission = await getEntityPermissionByFqn(
-        ResourceEntity.TABLE,
-        tableDetails?.id ?? ''
-      );
+  const fetchResourcePermission = useCallback(
+    async (datasetFQN) => {
+      try {
+        const tablePermission = await getEntityPermissionByFqn(
+          ResourceEntity.TABLE,
+          datasetFQN
+        );
 
-      setTablePermissions(tablePermission);
-    } catch (error) {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: t('label.resource-permission-lowercase'),
-        })
-      );
+        setTablePermissions(tablePermission);
+      } catch (error) {
+        showErrorToast(
+          t('server.fetch-entity-permissions-error', {
+            entity: t('label.resource-permission-lowercase'),
+          })
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [getEntityPermissionByFqn, setTablePermissions]
+  );
+
+  useEffect(() => {
+    if (datasetFQN) {
+      fetchResourcePermission(datasetFQN);
     }
-  }, [tableDetails?.id, getEntityPermissionByFqn, setTablePermissions]);
+  }, [datasetFQN]);
 
   const getEntityFeedCount = () => {
     getFeedCounts(
@@ -389,7 +431,7 @@ const TableDetailsPageV1 = () => {
         gutter={[0, 16]}
         id="schemaDetails"
         wrap={false}>
-        <Col className="p-t-sm m-l-lg" flex="auto">
+        <Col className="p-t-sm m-l-lg tab-content-height" flex="auto">
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
               description={tableDetails?.description}
@@ -479,6 +521,7 @@ const TableDetailsPageV1 = () => {
               onSelectionChange={handleTagSelection}
               onThreadLinkSelect={onThreadLinkSelect}
             />
+            <TableConstraints constraints={tableDetails?.tableConstraints} />
           </Space>
         </Col>
       </Row>
@@ -513,11 +556,9 @@ const TableDetailsPageV1 = () => {
           <ActivityFeedProvider>
             <ActivityFeedTab
               columns={tableDetails?.columns}
-              description={tableDetails?.description}
               entityType={EntityType.TABLE}
               fqn={tableDetails?.fullyQualifiedName ?? ''}
               owner={tableDetails?.owner}
-              tags={tableDetails?.tags}
               onFeedUpdate={getEntityFeedCount}
               onUpdateEntityDetails={fetchTableDetails}
             />
@@ -531,11 +572,13 @@ const TableDetailsPageV1 = () => {
             name={t('label.sample-data')}
           />
         ),
-        isHidden: !(
-          tablePermissions.ViewAll || tablePermissions.ViewSampleData
-        ),
+
         key: EntityTabs.SAMPLE_DATA,
-        children: (
+        children: !(
+          tablePermissions.ViewAll || tablePermissions.ViewSampleData
+        ) ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <SampleDataTableComponent
             isTableDeleted={tableDetails?.deleted}
             tableId={tableDetails?.id ?? ''}
@@ -551,13 +594,12 @@ const TableDetailsPageV1 = () => {
             name={t('label.query-plural')}
           />
         ),
-        isHidden: !(
-          tablePermissions.ViewAll ||
-          tablePermissions.ViewBasic ||
-          tablePermissions.ViewQueries
-        ),
         key: EntityTabs.TABLE_QUERIES,
-        children: (
+        children: !(
+          tablePermissions.ViewAll || tablePermissions.ViewQueries
+        ) ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <TableQueries
             isTableDeleted={tableDetails?.deleted}
             tableId={tableDetails?.id ?? ''}
@@ -571,14 +613,14 @@ const TableDetailsPageV1 = () => {
             name={t('label.profiler-amp-data-quality')}
           />
         ),
-        isHidden: !(
+        key: EntityTabs.PROFILER,
+        children: !(
           tablePermissions.ViewAll ||
-          tablePermissions.ViewBasic ||
           tablePermissions.ViewDataProfile ||
           tablePermissions.ViewTests
-        ),
-        key: EntityTabs.PROFILER,
-        children: (
+        ) ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <TableProfilerV1
             isTableDeleted={tableDetails?.deleted}
             permissions={tablePermissions}
@@ -651,7 +693,9 @@ const TableDetailsPageV1 = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
+        children: !tablePermissions.ViewAll ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <CustomPropertyTable
             entityDetails={tableDetails as CustomPropertyProps['entityDetails']}
             entityType={EntityType.TABLE}
@@ -791,15 +835,16 @@ const TableDetailsPageV1 = () => {
     if (isTourOpen || isTourPage) {
       setTableDetails(mockDatasetData.tableDetails as unknown as Table);
     } else {
-      fetchTableDetails();
-      getEntityFeedCount();
+      if (tablePermissions.ViewAll || tablePermissions.ViewBasic) {
+        fetchTableDetails();
+        getEntityFeedCount();
+      }
     }
-  }, [datasetFQN, isTourOpen, isTourPage]);
+  }, [datasetFQN, isTourOpen, isTourPage, tablePermissions]);
 
   useEffect(() => {
     if (tableDetails) {
       fetchQueryCount();
-      fetchResourcePermission();
     }
   }, [tableDetails]);
 
@@ -823,6 +868,15 @@ const TableDetailsPageV1 = () => {
 
   if (loading) {
     return <Loader />;
+  }
+
+  if (!(tablePermissions.ViewAll || tablePermissions.ViewBasic)) {
+    return (
+      <ErrorPlaceHolder
+        className="m-0"
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (!tableDetails) {

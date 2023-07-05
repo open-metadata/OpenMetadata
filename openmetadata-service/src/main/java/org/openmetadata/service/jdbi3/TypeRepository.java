@@ -78,7 +78,7 @@ public class TypeRepository extends EntityRepository<Type> {
 
   @Override
   public void storeRelationships(Type type) {
-    /* Nothing to do */
+    // No relationships to store beyond what is stored in the super class
   }
 
   private void updateTypeMap(Type entity) {

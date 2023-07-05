@@ -13,12 +13,13 @@
 
 package org.openmetadata.service.formatter.decorators;
 
+import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getFormattedMessages;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.ChangeEventConfig;
 import org.openmetadata.service.events.subscription.gchat.GChatMessage;
@@ -64,7 +65,7 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
   }
 
   @Override
-  public GChatMessage buildMessage(ChangeEvent event) {
+  public GChatMessage buildMessage(ChangeEvent event) throws IOException {
     GChatMessage gChatMessage = new GChatMessage();
     GChatMessage.CardsV2 cardsV2 = new GChatMessage.CardsV2();
     GChatMessage.Card card = new GChatMessage.Card();
@@ -80,16 +81,12 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
       gChatMessage.setText(headerText);
       GChatMessage.CardHeader cardHeader = new GChatMessage.CardHeader();
       String cardHeaderText =
-          String.format(
-              headerTemplate,
-              event.getUserName(),
-              event.getEntityType(),
-              ((EntityInterface) event.getEntity()).getName());
+          String.format(headerTemplate, event.getUserName(), event.getEntityType(), (getEntity(event)).getName());
       cardHeader.setTitle(cardHeaderText);
       card.setHeader(cardHeader);
     }
     Map<MessageParser.EntityLink, String> messages =
-        getFormattedMessages(this, event.getChangeDescription(), (EntityInterface) event.getEntity());
+        getFormattedMessages(this, event.getChangeDescription(), getEntity(event));
     List<GChatMessage.Widget> widgets = new ArrayList<>();
     for (Map.Entry<MessageParser.EntityLink, String> entry : messages.entrySet()) {
       GChatMessage.Widget widget = new GChatMessage.Widget();

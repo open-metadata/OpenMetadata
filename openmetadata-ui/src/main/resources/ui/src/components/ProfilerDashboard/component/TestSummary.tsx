@@ -311,7 +311,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
   );
 
   return (
-    <Row data-testid="test-summary-container" gutter={[16, 16]}>
+    <Row data-testid="test-summary-container" gutter={[0, 16]}>
       <Col span={24}>
         {isLoading ? (
           <Loader />

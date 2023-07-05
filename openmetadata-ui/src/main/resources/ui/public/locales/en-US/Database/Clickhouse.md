@@ -56,7 +56,9 @@ $$
 $$section
 ### Host Port $(id="hostPort")
 
-This parameter specifies the host and port of the ClickHouse instance. This should be specified as a string in the format `http://hostname:port` or `https://hostname:port`. For example, you might set the hostPort parameter to `https://localhost:3000`.
+This parameter specifies the host and port of the ClickHouse instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:3000`.
+
+If your database service and Open Metadata are both running via docker locally, use `host.docker.internal:3000` as the value.
 $$
 
 $$section

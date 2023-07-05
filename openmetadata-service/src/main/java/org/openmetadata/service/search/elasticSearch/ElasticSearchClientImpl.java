@@ -211,6 +211,7 @@ public class ElasticSearchClientImpl implements SearchClient {
         LOG.info("{} Updated {}", elasticSearchIndexType.indexName, putMappingResponse.isAcknowledged());
       } else {
         CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
+        request.source(elasticSearchIndexMapping, XContentType.JSON);
         CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
         LOG.info("{} Created {}", elasticSearchIndexType.indexName, createIndexResponse.isAcknowledged());
       }
@@ -285,7 +286,7 @@ public class ElasticSearchClientImpl implements SearchClient {
         searchSourceBuilder = buildAggregateSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
         break;
     }
-    if (!nullOrEmpty(request.getQueryFilter())) {
+    if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
       try {
         XContentParser filterParser =
             XContentType.JSON
@@ -642,7 +643,8 @@ public class ElasticSearchClientImpl implements SearchClient {
         QueryBuilders.queryStringQuery(query)
             .field(FIELD_NAME, 10.0f)
             .field(EntityBuilderConstant.FIELD_DISPLAY_NAME, 10.0f)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM, 1.0f)
+            .field(EntityBuilderConstant.FIELD_NAME_NGRAM, 1.0f)
+            .field("classification.name", 1.0f)
             .field(EntityBuilderConstant.DESCRIPTION, 3.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
@@ -784,7 +786,11 @@ public class ElasticSearchClientImpl implements SearchClient {
             AggregationBuilders.terms("entityType.keyword")
                 .field("entityType.keyword")
                 .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"));
+        .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"))
+        .aggregation(
+            AggregationBuilders.terms("owner.displayName.keyword")
+                .field("owner.displayName.keyword")
+                .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE));
 
     return builder;
   }
@@ -801,7 +807,7 @@ public class ElasticSearchClientImpl implements SearchClient {
 
   @Override
   public ElasticSearchConfiguration.SearchType getSearchType() {
-    return ElasticSearchConfiguration.SearchType.ELASTIC_SEARCH;
+    return ElasticSearchConfiguration.SearchType.ELASTICSEARCH;
   }
 
   @Override
@@ -1153,13 +1159,20 @@ public class ElasticSearchClientImpl implements SearchClient {
 
   @Override
   public void updateClassification(ChangeEvent event) throws IOException {
+    Classification classification = (Classification) event.getEntity();
+    String indexName = ElasticSearchIndexDefinition.ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName;
     if (event.getEventType() == ENTITY_DELETED) {
-      Classification classification = (Classification) event.getEntity();
-      DeleteByQueryRequest request =
-          new DeleteByQueryRequest(ElasticSearchIndexDefinition.ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName);
+      DeleteByQueryRequest request = new DeleteByQueryRequest(indexName);
       String fqnMatch = classification.getName() + ".*";
       request.setQuery(new WildcardQueryBuilder("fullyQualifiedName", fqnMatch));
       deleteEntityFromElasticSearchByQuery(request);
+    } else if (event.getEventType() == ENTITY_UPDATED) {
+      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+      updateByQueryRequest.setQuery(new MatchQueryBuilder("tag.classification.id", classification.getId().toString()));
+      String scriptTxt = "ctx._source.disabled=true";
+      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
+      updateByQueryRequest.setScript(script);
+      updateElasticSearchByQuery(updateByQueryRequest);
     }
   }
 

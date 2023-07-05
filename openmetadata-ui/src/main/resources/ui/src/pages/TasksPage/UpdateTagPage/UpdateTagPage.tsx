@@ -171,7 +171,7 @@ const UpdateTag = () => {
     }
     form.setFieldsValue({
       title: message.trimEnd(),
-      updateTags: getTags(),
+      updatedTags: getTags(),
       assignees: defaultAssignee,
     });
   }, [entityData]);
@@ -219,7 +219,6 @@ const UpdateTag = () => {
                   />
                 </Form.Item>
                 <Form.Item
-                  className="m-y-0"
                   data-testid="assignees"
                   label={`${t('label.assignee-plural')}:`}
                   name="assignees"
@@ -245,7 +244,7 @@ const UpdateTag = () => {
                     label={t('label.update-entity', {
                       entity: t('label.tag-plural'),
                     })}
-                    name="updateTags"
+                    name="updatedTags"
                     rules={[
                       {
                         required: true,

@@ -1,3 +1,5 @@
+import { TestSummary } from 'generated/tests/testSuite';
+
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,5 +13,5 @@
  *  limitations under the License.
  */
 export interface SummaryPanelProps {
-  testSuiteId?: string;
+  testSummary?: TestSummary;
 }

@@ -11,7 +11,9 @@
 """
 .lkml files parser
 """
+import fnmatch
 import traceback
+from pathlib import Path
 from typing import Dict, List, Optional
 
 import lkml
@@ -27,6 +29,8 @@ from metadata.readers.base import Reader, ReadException
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+EXTENSIONS = (".lkml", ".lookml")
 
 
 class LkmlParser:
@@ -61,6 +65,18 @@ class LkmlParser:
 
         self.reader = reader
 
+        self._file_tree: Optional[List[Includes]] = None
+
+    @property
+    def file_tree(self) -> List[Includes]:
+        """
+        Parse the file tree of the repo
+        """
+        if not self._file_tree:
+            self._file_tree = self.reader.get_tree()
+
+        return self._file_tree or []
+
     def parse_file(self, path: Includes) -> Optional[List[Includes]]:
         """
         Internal parser. Parse the file and cache the views
@@ -79,17 +95,7 @@ class LkmlParser:
             return []
 
         try:
-            file = self.reader.read(path)
-            lkml_file = LkmlFile.parse_obj(lkml.load(file))
-            self.parsed_files[path] = file
-
-            # Cache everything
-            self._visited_files[path] = lkml_file.includes
-            for view in lkml_file.views:
-                view.source_file = path
-                self._views_cache[view.name] = view
-
-            return lkml_file.includes
+            return self._process_file(path)
 
         except ReadException as err:
             logger.debug(traceback.format_exc())
@@ -103,6 +109,71 @@ class LkmlParser:
             logger.error(f"Unknown error building the .lkml file from [{path}]: {err}")
 
         return None
+
+    def _process_file(self, path: Includes) -> Optional[List[Includes]]:
+        """
+        Processing of a single path
+        """
+        file = self._read_file(path)
+        lkml_file = LkmlFile.parse_obj(lkml.load(file))
+        self.parsed_files[path] = file
+
+        # Cache everything
+        expanded_includes = self._expand_includes(lkml_file.includes)
+        self._visited_files[path] = expanded_includes
+        for view in lkml_file.views:
+            view.source_file = path
+            self._views_cache[view.name] = view
+
+        return expanded_includes
+
+    def _expand_includes(
+        self, includes: Optional[List[Includes]]
+    ) -> Optional[List[Includes]]:
+        """
+        If we have * in includes, expand them based on the file tree
+        """
+        if not includes:
+            return includes
+
+        return [expanded for path in includes for expanded in self._expand(path)]
+
+    def _expand(self, path: Includes) -> List[Includes]:
+        """
+        Match files in tree if there's any * in the include
+        """
+        suffixes = Path(path).suffixes
+        if "*" in path:
+            if set(suffixes).intersection(set(EXTENSIONS)):
+                return fnmatch.filter(self.file_tree, path)
+            for suffix in EXTENSIONS:
+                res = fnmatch.filter(self.file_tree, Includes(str(path) + suffix))
+                if res:
+                    return res
+            # Nothing matched, we cannot find the file
+            logger.warning(f"We could not match any file from the include {path}")
+            return []
+
+        return [path]
+
+    def _read_file(self, path: Includes) -> str:
+        """
+        Read the LookML file
+        """
+        suffixes = Path(path).suffixes
+
+        # Check if any suffix is in our extension list
+        if not set(suffixes).intersection(set(EXTENSIONS)):
+            for suffix in EXTENSIONS:
+                try:
+                    return self.reader.read(path + suffix)
+                except ReadException as err:
+                    logger.debug(f"Error trying to read the file [{path}]: {err}")
+
+        else:
+            return self.reader.read(path)
+
+        raise ReadException(f"Error trying to read the file [{path}]")
 
     def get_view_from_cache(self, view_name: ViewName) -> Optional[LookMlView]:
         """

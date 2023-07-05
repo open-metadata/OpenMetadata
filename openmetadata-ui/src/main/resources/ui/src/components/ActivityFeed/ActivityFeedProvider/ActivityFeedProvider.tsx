@@ -51,13 +51,16 @@ import { ActivityFeedProviderContextType } from './ActivityFeedProviderContext.i
 
 interface Props {
   children: ReactNode;
+  // To override current userId in case of User profile page
+  // Will update logic to ser userID from props later
+  user?: string;
 }
 
 export const ActivityFeedContext = createContext(
   {} as ActivityFeedProviderContextType
 );
 
-const ActivityFeedProvider = ({ children }: Props) => {
+const ActivityFeedProvider = ({ children, user }: Props) => {
   const { t } = useTranslation();
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [entityPaging, setEntityPaging] = useState<Paging>({} as Paging);
@@ -105,7 +108,11 @@ const ActivityFeedProvider = ({ children }: Props) => {
         setLoading(true);
         const feedFilterType = filterType ?? FeedFilter.ALL;
         const userId =
-          feedFilterType === FeedFilter.ALL ? undefined : currentUser?.id;
+          entityType === EntityType.USER_NAME
+            ? user
+            : feedFilterType === FeedFilter.ALL
+            ? undefined
+            : currentUser?.id;
 
         const { data, paging } = await getAllFeeds(
           entityType !== EntityType.USER_NAME
@@ -360,6 +367,7 @@ const ActivityFeedProvider = ({ children }: Props) => {
       updateEditorFocus,
       setActiveThread,
       entityPaging,
+      userId: user ?? currentUser?.id ?? '',
     };
   }, [
     entityThread,
@@ -379,6 +387,8 @@ const ActivityFeedProvider = ({ children }: Props) => {
     updateEditorFocus,
     setActiveThread,
     entityPaging,
+    user,
+    currentUser,
   ]);
 
   return (

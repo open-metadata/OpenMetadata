@@ -485,7 +485,6 @@ const EntityTable = ({
         width: 250,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFieldTasks={entityFieldTasks}
             entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             getColumnFieldFQN={getColumnFieldFQN(record)}
@@ -511,7 +510,6 @@ const EntityTable = ({
         width: 250,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFieldTasks={entityFieldTasks}
             entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             getColumnFieldFQN={getColumnFieldFQN(record)}

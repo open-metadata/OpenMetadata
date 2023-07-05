@@ -245,7 +245,7 @@ const updateTags = (inTerm) => {
   // visit glossary page
   interceptURL(
     'GET',
-    `/api/v1/search/query?q=%2A&index=tag_search_index&from=0&size=10&query_filter=%7B%7D`,
+    '/api/v1/search/query?q=disabled%3Afalse&index=tag_search_index&from=0&size=10&query_filter=%7B%7D',
     'tags'
   );
   cy.get(
@@ -266,10 +266,16 @@ const updateTags = (inTerm) => {
   const container = inTerm
     ? '[data-testid="tags-input-container"]'
     : '[data-testid="glossary-details"]';
+  cy.wait(1000);
   cy.get(container).scrollIntoView().contains('Personal').should('be.visible');
 };
 
 const updateTerms = (newTerm) => {
+  interceptURL(
+    'GET',
+    '/api/v1/search/query?q=**&from=0&size=10&index=glossary_search_index',
+    'getGlossaryTerm'
+  );
   cy.get('[data-testid="related-term-container"]')
     .scrollIntoView()
     .should('be.visible');
@@ -277,18 +283,13 @@ const updateTerms = (newTerm) => {
     .scrollIntoView()
     .should('be.visible')
     .click({ force: true });
-  interceptURL(
-    'GET',
-    '/api/v1/search/query?q=*&from=0&size=10&index=glossary_search_index',
-    'getGlossaryTerm'
-  );
   cy.get('.ant-select-selection-overflow').should('be.visible').click();
   verifyResponseStatusCode('@getGlossaryTerm', 200);
   cy.get('.ant-select-item-option-content')
     .contains(newTerm)
     .should('be.visible')
     .click();
-  cy.get('[data-testid="save-related-term-btn"]').should('be.visible').click();
+  cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
   verifyResponseStatusCode('@saveGlossaryTermData', 200);
 
   cy.get('[data-testid="related-term-container"]')
@@ -365,7 +366,11 @@ describe('Glossary page should work properly', () => {
 
   it('Create new glossary flow should work properly', () => {
     interceptURL('POST', '/api/v1/glossaries', 'createGlossary');
-    interceptURL('GET', '/api/v1/tags?limit=1000', 'fetchTags');
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=disabled%3Afalse&index=tag_search_index&from=0&size=10&query_filter=%7B%7D',
+      'fetchTags'
+    );
 
     // check for no data placeholder
     cy.get('[data-testid="add-placeholder-button"]')

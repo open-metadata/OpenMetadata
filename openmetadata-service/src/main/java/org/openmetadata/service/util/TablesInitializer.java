@@ -39,6 +39,7 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
 import org.jdbi.v3.core.Jdbi;
@@ -54,6 +55,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.MigrationFile;
 import org.openmetadata.service.migration.api.MigrationStep;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -203,7 +205,7 @@ public final class TablesInitializer {
       execute(config, flyway, schemaMigrationOptionSpecified);
       printToConsoleInDebug(schemaMigrationOptionSpecified + "option successful");
     } catch (Exception e) {
-      printError(schemaMigrationOptionSpecified + "option failed with : " + e);
+      printError(schemaMigrationOptionSpecified + "option failed with : " + ExceptionUtils.getStackTrace(e));
       System.exit(1);
     }
     System.exit(0);
@@ -333,12 +335,13 @@ public final class TablesInitializer {
 
   public static void validateAndRunSystemDataMigrations(
       Jdbi jdbi, ConnectionType connType, boolean ignoreFileChecksum) {
+    DatasourceConfig.initialize(connType.label);
     List<MigrationStep> loadedMigrationFiles = getServerMigrationFiles(connType);
     MigrationWorkflow workflow = new MigrationWorkflow(jdbi, loadedMigrationFiles, ignoreFileChecksum);
     workflow.runMigrationWorkflows();
   }
 
-  private static List<MigrationStep> getServerMigrationFiles(ConnectionType connType) {
+  public static List<MigrationStep> getServerMigrationFiles(ConnectionType connType) {
     List<MigrationStep> migrations = new ArrayList<>();
     try {
       String prefix =

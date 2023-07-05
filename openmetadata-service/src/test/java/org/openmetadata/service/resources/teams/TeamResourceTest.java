@@ -679,7 +679,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
     // Add policies to the team
     String json = JsonUtils.pojoToJson(team);
-    String email = String.format("%s@openmetadata.org", team.getName());
+    String email = "team.!#$%&’*+/=?^_`{|}~-@openmetadata.org"; // Using all the allowed characters in email username
     team.withEmail(email);
     ChangeDescription change = getChangeDescription(team.getVersion());
     fieldAdded(change, "email", email);

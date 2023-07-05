@@ -11,12 +11,13 @@
 """
 Looker general utilities
 """
+from functools import singledispatch
 from typing import List, Sequence, Union, cast
 
 from looker_sdk.sdk.api40.models import LookmlModelExplore, LookmlModelExploreField
 
 from metadata.generated.schema.entity.data.table import Column, DataType
-from metadata.ingestion.source.dashboard.looker.models import LookMlView
+from metadata.ingestion.source.dashboard.looker.models import LookMlField, LookMlView
 
 # Some docs on types https://cloud.google.com/looker/docs/reference/param-dimension-filter-parameter-types
 LOOKER_TYPE_MAP = {
@@ -94,13 +95,13 @@ def get_columns_from_model(
     Obtain the column (measures and dimensions) from the models
     """
     columns = []
-    all_fields = (model.fields.dimensions or []) + (model.fields.measures or [])
+    all_fields = get_model_fields(model)
     for field in cast(Sequence[LookmlModelExploreField], all_fields):
         type_ = LOOKER_TYPE_MAP.get(field.type, DataType.UNKNOWN)
         columns.append(
             Column(
                 name=field.name,
-                displayName=getattr(field, "label_short", field.label),
+                displayName=getattr(field, "label_short", None) or field.label,
                 dataType=type_,
                 # We cannot get the inner type from the sdk of .lkml
                 arrayDataType=DataType.UNKNOWN if type_ == DataType.ARRAY else None,
@@ -110,3 +111,20 @@ def get_columns_from_model(
         )
 
     return columns
+
+
+@singledispatch
+def get_model_fields(
+    model: Union[LookmlModelExplore, LookMlView]
+) -> List[Union[LookmlModelExploreField, LookMlField]]:
+    raise NotImplementedError(f"Missing implementation for type {type(model)}")
+
+
+@get_model_fields.register
+def _(model: LookmlModelExplore) -> List[LookmlModelExploreField]:
+    return (model.fields.dimensions or []) + (model.fields.measures or [])
+
+
+@get_model_fields.register
+def _(model: LookMlView) -> List[LookMlField]:
+    return (model.dimensions or []) + (model.measures or [])

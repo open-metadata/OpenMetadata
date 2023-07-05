@@ -20,6 +20,7 @@ import {
 import { EntityTabs } from 'enums/entity.enum';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import TopicDetails from './TopicDetails.component';
 import { TopicDetailsProps } from './TopicDetails.interface';
 import { TOPIC_DETAILS } from './TopicDetails.mock';
@@ -55,6 +56,7 @@ const topicDetailsProps: TopicDetailsProps = {
   onTopicUpdate: jest.fn(),
   versionHandler: jest.fn(),
   createThread: jest.fn(),
+  topicPermissions: DEFAULT_ENTITY_PERMISSION,
 };
 
 const mockParams = {

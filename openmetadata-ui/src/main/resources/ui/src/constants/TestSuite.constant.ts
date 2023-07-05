@@ -59,3 +59,10 @@ export const TEST_SUITE_STEPPER_BREADCRUMB = [
 ];
 
 export const PROGRESS_BAR_COLOR = '#48ca9e';
+
+export const INITIAL_TEST_SUMMARY = {
+  aborted: 0,
+  failed: 0,
+  success: 0,
+  total: 0,
+};

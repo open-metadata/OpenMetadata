@@ -13,6 +13,6 @@
 
 import { TabSpecificField } from '../enums/entity.enum';
 
-export const defaultFields = `${TabSpecificField.COLUMNS}, ${TabSpecificField.USAGE_SUMMARY}, 
+export const defaultFields = `${TabSpecificField.COLUMNS}, 
 ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.JOINS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}, 
-${TabSpecificField.DATAMODEL},${TabSpecificField.TABLE_CONSTRAINTS},${TabSpecificField.EXTENSION},${TabSpecificField.TESTSUITE},${TabSpecificField.VIEW_DEFINITION}`;
+${TabSpecificField.DATAMODEL},${TabSpecificField.TABLE_CONSTRAINTS},${TabSpecificField.EXTENSION},${TabSpecificField.VIEW_DEFINITION}`;

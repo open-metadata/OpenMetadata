@@ -16,6 +16,8 @@ import org.openmetadata.service.util.JsonUtils;
 public class TestCaseIndex implements ElasticSearchIndex {
   TestCase testCase;
 
+  private static final List<String> excludeFields = List.of("changeDescription");
+
   public TestCaseIndex(TestCase testCase) {
     this.testCase = testCase;
   }
@@ -31,6 +33,7 @@ public class TestCaseIndex implements ElasticSearchIndex {
     List<TestSuite> testSuiteArray = new ArrayList<>();
     testSuiteArray.add(testSuite);
     Map<String, Object> doc = JsonUtils.getMap(testCase);
+    ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     doc.put("testSuites", testSuiteArray);
     return doc;
   }

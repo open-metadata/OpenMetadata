@@ -13,6 +13,8 @@
 
 import { Badge, Button, List, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { EntityTabs } from 'enums/entity.enum';
 import { UserProfileTab } from 'enums/user.enum';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -52,9 +54,11 @@ const NotificationBox = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const [viewAllPath, setViewAllPath] = useState<string>(
-    `${getUserPath(currentUser?.name as string)}/tasks?feedFilter=${
-      FeedFilter.ASSIGNED_TO
-    }`
+    getUserPath(
+      currentUser?.name as string,
+      EntityTabs.ACTIVITY_FEED,
+      ActivityFeedTabs.TASKS
+    )
   );
 
   const notificationDropDownList = useMemo(() => {

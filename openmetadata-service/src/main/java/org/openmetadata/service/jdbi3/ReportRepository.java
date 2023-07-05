@@ -52,8 +52,6 @@ public class ReportRepository extends EntityRepository<Report> {
   public void storeRelationships(Report report) {
     EntityReference service = report.getService();
     addRelationship(service.getId(), report.getId(), service.getType(), Entity.CHART, Relationship.CONTAINS);
-    storeOwner(report, report.getOwner());
-    applyTags(report);
   }
 
   private EntityReference getService(Report report) {

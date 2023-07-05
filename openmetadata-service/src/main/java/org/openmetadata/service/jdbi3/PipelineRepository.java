@@ -212,12 +212,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   public void storeRelationships(Pipeline pipeline) {
     EntityReference service = pipeline.getService();
     addRelationship(service.getId(), pipeline.getId(), service.getType(), Entity.PIPELINE, Relationship.CONTAINS);
-
-    // Add owner relationship
-    storeOwner(pipeline, pipeline.getOwner());
-
-    // Add tag to pipeline relationship
-    applyTags(pipeline);
   }
 
   @Override

@@ -114,8 +114,6 @@ public class TopicRepository extends EntityRepository<Topic> {
   @Override
   public void storeRelationships(Topic topic) {
     setService(topic, topic.getService());
-    storeOwner(topic, topic.getOwner());
-    applyTags(topic);
   }
 
   @Override

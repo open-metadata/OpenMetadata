@@ -24,6 +24,7 @@ import GlossaryPage from './GlossaryPage.component';
 jest.mock('react-router-dom', () => ({
   useHistory: () => ({
     push: jest.fn(),
+    replace: jest.fn(),
   }),
   useParams: jest.fn().mockReturnValue({
     glossaryName: 'GlossaryName',
@@ -37,7 +38,10 @@ jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
 jest.mock('components/PermissionProvider/PermissionProvider', () => {
   return {
     usePermissionProvider: jest.fn(() => ({
-      permissions: {},
+      permissions: {
+        glossary: { ViewAll: true, ViewBasic: true },
+        glossaryTerm: { ViewAll: true, ViewBasic: true },
+      },
     })),
   };
 });
@@ -70,6 +74,10 @@ jest.mock('components/Glossary/GlossaryV1.component', () => {
   ));
 });
 
+jest.mock('../../../utils/Fqn', () => ({
+  split: jest.fn(),
+}));
+
 jest.mock('../GlossaryLeftPanel/GlossaryLeftPanel.component', () => {
   return jest
     .fn()
@@ -80,6 +88,9 @@ jest.mock('../GlossaryLeftPanel/GlossaryLeftPanel.component', () => {
 jest.mock('rest/glossaryAPI', () => ({
   deleteGlossary: jest.fn().mockImplementation(() => Promise.resolve()),
   deleteGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
+  getGlossaryTermByFQN: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ data: MOCK_GLOSSARY })),
   getGlossariesList: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: [MOCK_GLOSSARY] })),

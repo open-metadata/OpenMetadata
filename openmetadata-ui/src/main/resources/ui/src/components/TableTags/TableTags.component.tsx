@@ -17,7 +17,6 @@ import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { EntityType } from 'enums/entity.enum';
-import { ThreadType } from 'generated/entity/feed/thread';
 import { TagSource } from 'generated/type/tagLabel';
 import { EntityFieldThreads } from 'interface/feed.interface';
 import { isEmpty } from 'lodash';
@@ -37,7 +36,6 @@ const TableTags = <T extends TableUnion>({
   hasTagEditAccess,
   entityFieldThreads,
   getColumnFieldFQN,
-  entityFieldTasks,
   showInlineEditTagButton,
   getColumnName,
   onUpdateTagsHandler,
@@ -128,19 +126,6 @@ const TableTags = <T extends TableUnion>({
                       entityFqn,
                       getColumnFieldFQN,
                       Boolean(record?.name?.length)
-                    )}
-
-                    {/*  List Task */}
-                    {getFieldThreadElement(
-                      getColumnName?.(record) ?? '',
-                      EntityField.TAGS,
-                      entityFieldTasks as EntityFieldThreads[],
-                      onThreadLinkSelect,
-                      EntityType.TABLE,
-                      entityFqn,
-                      getColumnFieldFQN,
-                      Boolean(record?.name),
-                      ThreadType.Task
                     )}
                   </>
                 )}

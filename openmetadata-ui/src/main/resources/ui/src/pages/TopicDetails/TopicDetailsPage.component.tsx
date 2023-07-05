@@ -239,6 +239,7 @@ const TopicDetailsPage: FunctionComponent = () => {
       createThread={createThread}
       followTopicHandler={followTopic}
       topicDetails={topicDetails}
+      topicPermissions={topicPermissions}
       unFollowTopicHandler={unFollowTopic}
       versionHandler={versionHandler}
       onTopicUpdate={onTopicUpdate}

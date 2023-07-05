@@ -709,12 +709,6 @@ body .profiler-graph .recharts-active-dot circle {
   width: calc(100% - 330px);
 }
 
-/* page-container v1 */
-
-.full-height {
-  height: calc(100vh - 110px);
-}
-
 /* 64 header + ( 16 + 16 )spacing Y = 96*/
 #left-panel {
   position: fixed;
@@ -872,7 +866,7 @@ code {
 
 .page-not-found-container {
   width: 100%;
-  height: calc(100% - 68px);
+  height: 100vh;
   display: flex;
 }
 

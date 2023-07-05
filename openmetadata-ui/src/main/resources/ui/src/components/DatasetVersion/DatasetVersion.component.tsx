@@ -16,11 +16,13 @@ import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
 import { getVersionPathWithTab } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, isUndefined, toString } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -59,6 +61,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
   deleted = false,
   backHandler,
   versionHandler,
+  entityPermissions,
 }: DatasetVersionProp) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -194,7 +197,9 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
             name={t('label.custom-property-plural')}
           />
         ),
-        children: (
+        children: !entityPermissions.ViewAll ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <CustomPropertyTable
             isVersionView
             entityDetails={
@@ -212,8 +217,13 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
       columns,
       constraintUpdatedColumns,
       currentVersionData,
+      entityPermissions,
     ]
   );
+
+  if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
 
   return (
     <>

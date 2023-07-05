@@ -14,10 +14,12 @@
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
 import VersionTable from 'components/VersionTable/VersionTable.component';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from 'enums/entity.enum';
 import {
   ChangeDescription,
@@ -62,6 +64,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   backHandler,
   versionHandler,
   dataModelFQN,
+  entityPermissions,
 }: DataModelVersionProp) => {
   const { t } = useTranslation();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
@@ -317,6 +320,10 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
     ],
     [description, dataModelFQN, columns]
   );
+
+  if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
 
   return (
     <>

@@ -111,7 +111,7 @@ const GlossaryDetails = ({
       className="glossary-details"
       data-testid="glossary-details"
       gutter={[0, 16]}>
-      <Col span={24}>
+      <Col className="p-x-md" span={24}>
         <GlossaryHeader
           isGlossary
           isVersionView={isVersionView}
@@ -123,12 +123,13 @@ const GlossaryDetails = ({
         />
       </Col>
 
-      <Col span={24}>
-        <Row gutter={[16, 16]}>
-          <Col span={18}>
+      <Col className="border-top p-x-md" span={24}>
+        <Row className="h-full" gutter={[32, 16]}>
+          <Col
+            className="border-right p-y-md glossary-content-container"
+            span={18}>
             <Space className="w-full" direction="vertical" size={24}>
               <DescriptionV1
-                wrapInCard
                 description={description}
                 entityName={glossary.displayName ?? glossary.name}
                 entityType={EntityType.GLOSSARY}
@@ -153,7 +154,7 @@ const GlossaryDetails = ({
               />
             </Space>
           </Col>
-          <Col span={6}>
+          <Col className="p-y-md" span={6}>
             <GlossaryDetailsRightPanel
               isGlossary
               isVersionView={isVersionView}

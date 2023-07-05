@@ -21,7 +21,7 @@ import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
@@ -32,10 +32,11 @@ import {
   removeFollower,
 } from 'rest/mlModelAPI';
 import { getVersionPath } from '../../constants/constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import {
+  addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
   sortTagsCaseInsensitive,
@@ -80,11 +81,28 @@ const MlModelPage = () => {
     }
   };
 
+  const viewUsagePermission = useMemo(
+    () => mlModelPermissions.ViewAll || mlModelPermissions.ViewUsage,
+    [mlModelPermissions]
+  );
+
   const fetchMlModelDetails = async (name: string) => {
     setIsDetailLoading(true);
     try {
-      const res = await getMlModelByFQN(name, defaultFields);
+      let fields = defaultFields;
+      if (viewUsagePermission) {
+        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+      }
+      const res = await getMlModelByFQN(name, fields);
       setMlModelDetail(res);
+      addToRecentViewed({
+        displayName: getEntityName(res),
+        entityType: EntityType.MLMODEL,
+        fqn: res.fullyQualifiedName ?? '',
+        serviceType: res.serviceType,
+        timestamp: 0,
+        id: res.id,
+      });
       setCurrentVersion(res.version?.toString());
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -143,7 +161,7 @@ const MlModelPage = () => {
       const { oldValue } = res.changeDescription.fieldsDeleted[0];
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
-        followers: (mlModelDetail.followers || []).filter(
+        followers: (mlModelDetail.followers ?? []).filter(
           (follower) => follower.id !== oldValue[0].id
         ),
       }));
@@ -162,7 +180,7 @@ const MlModelPage = () => {
       const res = await saveUpdatedMlModelData(updatedMlModel);
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
-        tags: sortTagsCaseInsensitive(res.tags || []),
+        tags: sortTagsCaseInsensitive(res.tags ?? []),
       }));
       setCurrentVersion(res.version?.toString());
     } catch (error) {

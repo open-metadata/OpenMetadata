@@ -51,6 +51,10 @@ const botData = {
   deleted: false,
 };
 
+jest.mock('hooks/authHooks', () => ({
+  useAuth: jest.fn().mockImplementation(() => ({ isAdminUser: true })),
+}));
+
 jest.mock('components/BotDetails/BotDetails.component', () => {
   return jest
     .fn()

@@ -25,7 +25,6 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
 
   public WorkflowResourceTest() {
     super(Entity.WORKFLOW, Workflow.class, WorkflowList.class, "automations/workflows", WorkflowResource.FIELDS);
-    supportsEmptyDescription = true;
   }
 
   @Override

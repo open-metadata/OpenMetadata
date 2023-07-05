@@ -977,3 +977,7 @@ export const getEntityDetailLink = (
 
   return path;
 };
+
+export const getPartialNameFromTopicFQN = (fqn: string): string => {
+  return Fqn.split(fqn).slice(2).join(FQN_SEPARATOR_CHAR);
+};

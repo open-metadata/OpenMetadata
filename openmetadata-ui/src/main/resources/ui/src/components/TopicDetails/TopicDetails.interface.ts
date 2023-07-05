@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { CleanupPolicy, Topic } from '../../generated/entity/data/topic';
 import { SchemaType } from '../../generated/type/schema';
 
 export interface TopicDetailsProps {
   topicDetails: Topic;
+  topicPermissions: OperationPermission;
   createThread: (data: CreateThread) => void;
   followTopicHandler: () => Promise<void>;
   unFollowTopicHandler: () => Promise<void>;

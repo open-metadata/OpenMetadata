@@ -63,6 +63,15 @@ jest.mock('../../utils/DataInsightUtils', () => ({
   getKpiDateFormatByTimeStamp: jest.fn().mockReturnValue('2022-12-08'),
 }));
 
+jest.mock('components/common/ResizablePanels/ResizablePanels', () =>
+  jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <>
+      <div>{firstPanel.children}</div>
+      <div>{secondPanel.children}</div>
+    </>
+  ))
+);
+
 describe('Edit KPI page', () => {
   it('Should render all the components', async () => {
     render(<EditKPIPage />, { wrapper: MemoryRouter });
