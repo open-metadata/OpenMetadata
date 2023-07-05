@@ -104,19 +104,21 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     schema.withDatabase(databaseRef).withService(database.getService());
   }
 
-  @Override
-  public void setInheritedFields(DatabaseSchema schema) throws IOException {
-    Database database = Entity.getEntity(schema.getDatabase(), "owner", Include.ALL);
-    setInheritedProperties(schema, schema.getDatabase().getId());
-  }
-
-  public void setInheritedProperties(DatabaseSchema schema, UUID databaseId) throws IOException {
+  public DatabaseSchema setInheritedFields(DatabaseSchema schema, Fields fields) throws IOException {
     Database database = null;
+    UUID databaseId = schema.getDatabase().getId();
+    // If schema does not have owner, then inherit parent database owner
+    if (fields.contains(FIELD_OWNER) && schema.getOwner() == null) {
+      database = Entity.getEntity(Entity.DATABASE, databaseId, "owner", ALL);
+      schema.withOwner(database.getOwner());
+    }
+
     // If schema does not have its own retention period, then inherit parent database retention period
     if (schema.getRetentionPeriod() == null) {
       database = database == null ? Entity.getEntity(Entity.DATABASE, databaseId, "", ALL) : database;
       schema.withRetentionPeriod(database.getRetentionPeriod());
     }
+    return schema;
   }
 
   @Override
@@ -136,16 +138,11 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   private void populateDatabase(DatabaseSchema schema) throws IOException {
-    Database database = Entity.getEntity(schema.getDatabase(), "owner", ALL);
+    Database database = Entity.getEntity(schema.getDatabase(), "", ALL);
     schema
         .withDatabase(database.getEntityReference())
         .withService(database.getService())
         .withServiceType(database.getServiceType());
-
-    // Carry forward ownership from database, if necessary
-    if (database.getOwner() != null && schema.getOwner() == null) {
-      schema.withOwner(database.getOwner().withDescription("inherited"));
-    }
   }
 
   public class DatabaseSchemaUpdater extends EntityUpdater {

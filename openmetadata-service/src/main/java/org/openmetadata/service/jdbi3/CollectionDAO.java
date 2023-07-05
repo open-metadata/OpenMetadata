@@ -2775,6 +2775,9 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM user_entity WHERE email = :email", connectionType = MYSQL)
     @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM user_entity WHERE email = :email", connectionType = POSTGRES)
     int checkEmailExists(@Bind("email") String email);
+
+    @SqlQuery("SELECT json FROM user_entity WHERE email = :email")
+    String findUserByEmail(@Bind("email") String email);
   }
 
   interface ChangeEventDAO {

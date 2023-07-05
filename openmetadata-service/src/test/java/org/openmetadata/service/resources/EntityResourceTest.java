@@ -421,7 +421,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (runWebhookTests) {
       webhookCallbackResource.clearEvents();
       EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
-      alertResourceTest.startWebhookSubscription(true);
+      alertResourceTest.startWebhookSubscription();
       alertResourceTest.startWebhookEntitySubscriptions(entityType);
     }
   }
