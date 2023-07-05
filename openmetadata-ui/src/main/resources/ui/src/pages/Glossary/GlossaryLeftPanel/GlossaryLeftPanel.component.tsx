@@ -27,6 +27,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { getGlossaryPath } from 'utils/RouterUtils';
+import Fqn from '../../../utils/Fqn';
 import { GlossaryLeftPanelProps } from './GlossaryLeftPanel.interface';
 
 const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
@@ -42,7 +43,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
   );
   const selectedKey = useMemo(() => {
     if (glossaryName) {
-      return glossaryName;
+      return Fqn.split(glossaryName)[0];
     }
 
     return glossaries[0].name;
