@@ -121,7 +121,10 @@ const GlossaryHeader = ({
 
   const handleGlossaryImport = () =>
     history.push(
-      getGlossaryPathWithAction(selectedData.name, EntityAction.IMPORT)
+      getGlossaryPathWithAction(
+        selectedData.fullyQualifiedName ?? '',
+        EntityAction.IMPORT
+      )
     );
 
   const handleVersionClick = async () => {
@@ -181,7 +184,7 @@ const GlossaryHeader = ({
   const handleGlossaryExportClick = useCallback(async () => {
     if (selectedData) {
       showModal({
-        name: selectedData?.name,
+        name: selectedData?.fullyQualifiedName || '',
         onExport: exportGlossaryInCSVFormat,
       });
     }
