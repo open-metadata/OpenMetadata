@@ -63,12 +63,17 @@ const GlossaryPage = () => {
   const isGlossaryActive = useMemo(() => {
     setIsRightPanelLoading(true);
     setSelectedData(undefined);
-    if (glossaryFqn) {
-      return Fqn.split(glossaryFqn).length === 1;
+
+    if (glossaries.length > 0 && glossaryFqn) {
+      const item = glossaries.find(
+        (item) => (item.fullyQualifiedName ?? '') === glossaryFqn
+      );
+
+      return item !== undefined;
     }
 
     return true;
-  }, [glossaryFqn]);
+  }, [glossaries, glossaryFqn]);
 
   const createGlossaryPermission = useMemo(
     () =>
@@ -163,8 +168,9 @@ const GlossaryPage = () => {
         fetchGlossaryTermDetails();
       } else {
         setSelectedData(
-          glossaries.find((glossary) => glossary.name === glossaryFqn) ||
-            glossaries[0]
+          glossaries.find(
+            (glossary) => glossary.fullyQualifiedName === glossaryFqn
+          ) || glossaries[0]
         );
         !glossaryFqn &&
           glossaries[0].fullyQualifiedName &&
@@ -221,7 +227,14 @@ const GlossaryPage = () => {
           })
         );
         setIsLoading(true);
-        history.push(getGlossaryPath());
+        // check if the glossary available
+        const updatedGlossaries = glossaries.filter((item) => item.id !== id);
+        const glossaryPath =
+          updatedGlossaries.length > 0
+            ? getGlossaryPath(updatedGlossaries[0].fullyQualifiedName)
+            : getGlossaryPath();
+
+        history.push(glossaryPath);
         fetchGlossaryList();
       })
       .catch((err: AxiosError) => {
@@ -270,7 +283,7 @@ const GlossaryPage = () => {
         );
         let fqn;
         if (glossaryFqn) {
-          const fqnArr = glossaryFqn.split(FQN_SEPARATOR_CHAR);
+          const fqnArr = Fqn.split(glossaryFqn);
           fqnArr.pop();
           fqn = fqnArr.join(FQN_SEPARATOR_CHAR);
         }
