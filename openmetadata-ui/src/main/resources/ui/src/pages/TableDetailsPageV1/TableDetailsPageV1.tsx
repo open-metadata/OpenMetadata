@@ -72,6 +72,7 @@ import {
   restoreTable,
 } from 'rest/tableAPI';
 import {
+  addToRecentViewed,
   getCurrentUserId,
   getFeedCounts,
   getPartialNameFromTableFQN,
@@ -139,6 +140,14 @@ const TableDetailsPageV1 = () => {
       const details = await getTableDetailsByFQN(datasetFQN, fields);
 
       setTableDetails(details);
+      addToRecentViewed({
+        displayName: getEntityName(details),
+        entityType: EntityType.TABLE,
+        fqn: details.fullyQualifiedName ?? '',
+        serviceType: details.serviceType,
+        timestamp: 0,
+        id: details.id,
+      });
     } catch (error) {
       // Error here
     } finally {
