@@ -336,7 +336,7 @@ export const ENTITIES = {
 };
 
 export const LOGIN = {
-  username: 'admin@openmetadata.org',
+  username: 'admin',
   password: 'admin',
 };
 
