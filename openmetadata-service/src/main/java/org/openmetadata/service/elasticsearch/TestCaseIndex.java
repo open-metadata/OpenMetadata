@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.SneakyThrows;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
@@ -22,8 +23,16 @@ public class TestCaseIndex implements ElasticSearchIndex {
     this.testCase = testCase;
   }
 
+  @SneakyThrows
   public Map<String, Object> buildESDoc() {
+    List<TestSuite> testSuiteArray = new ArrayList<>();
+    for (TestSuite suite : testCase.getTestSuites()) {
+      suite.setChangeDescription(null);
+      testSuiteArray.add(suite);
+    }
+    testCase.setTestSuites(testSuiteArray);
     Map<String, Object> doc = JsonUtils.getMap(testCase);
+    ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     return doc;
   }
 
@@ -48,6 +57,7 @@ public class TestCaseIndex implements ElasticSearchIndex {
         .withFullyQualifiedName(testSuite.getFullyQualifiedName())
         .withDeleted(testSuite.getDeleted())
         .withHref(testSuite.getHref())
-        .withExecutable(testSuite.getExecutable());
+        .withExecutable(testSuite.getExecutable())
+        .withChangeDescription(null);
   }
 }
