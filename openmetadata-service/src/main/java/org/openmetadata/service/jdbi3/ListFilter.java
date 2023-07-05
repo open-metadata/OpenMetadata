@@ -183,9 +183,12 @@ public class ListFilter {
 
   private String getFqnPrefixCondition(String tableName, String fqnPrefix) {
     return tableName == null
-        ? String.format("fqnHash LIKE '%s%s%%'", FullyQualifiedName.buildHash(fqnPrefix), Entity.SEPARATOR)
+        ? String.format(
+            "fqnHash LIKE '%s%s%%'",
+            FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(fqnPrefix)), Entity.SEPARATOR)
         : String.format(
-            "%s.fqnHash LIKE '%s%s%%'", tableName, FullyQualifiedName.buildHash(fqnPrefix), Entity.SEPARATOR);
+            "%s.fqnHash LIKE '%s%s%%'",
+            tableName, FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(fqnPrefix)), Entity.SEPARATOR);
   }
 
   private String getWebhookTypePrefixCondition(String tableName, String typePrefix) {
