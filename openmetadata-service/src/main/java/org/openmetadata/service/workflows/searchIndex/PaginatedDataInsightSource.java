@@ -91,11 +91,13 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
   }
 
   public ResultList<ReportData> getReportDataPagination(String entityFQN, int limit, String after) {
-    int reportDataCount = dao.entityExtensionTimeSeriesDao().listCount(entityFQN);
+    // workaround. Should be fixed in https://github.com/open-metadata/OpenMetadata/issues/12298
+    String upperCaseFQN = entityFQN.substring(0, 1).toUpperCase() + entityFQN.substring(1);
+    int reportDataCount = dao.entityExtensionTimeSeriesDao().listCount(EntityUtil.hash(upperCaseFQN));
     List<CollectionDAO.ReportDataRow> reportDataList =
         dao.entityExtensionTimeSeriesDao()
             .getAfterExtension(
-                EntityUtil.hash(entityFQN), limit + 1, after == null ? "0" : RestUtil.decodeCursor(after));
+                EntityUtil.hash(upperCaseFQN), limit + 1, after == null ? "0" : RestUtil.decodeCursor(after));
     return getAfterExtensionList(reportDataList, after, limit, reportDataCount);
   }
 
