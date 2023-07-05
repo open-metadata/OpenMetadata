@@ -352,7 +352,7 @@ const TestSuiteDetailsPage = () => {
             </Space>
           </Space>
 
-          <div className="d-flex tw-gap-1 tw-mb-2 tw-mt-1 flex-wrap">
+          <div className="d-flex flex-wrap">
             {extraInfo.map((info) => (
               <span className="d-flex" data-testid={info.key} key={info.key}>
                 <EntitySummaryDetails

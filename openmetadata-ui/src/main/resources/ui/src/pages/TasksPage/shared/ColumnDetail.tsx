@@ -22,11 +22,9 @@ const ColumnDetail = ({ column }: { column: Column }) => {
   const { t } = useTranslation();
 
   return !isEmpty(column) && !isUndefined(column) ? (
-    <div className="tw-mb-4" data-testid="column-details">
+    <div data-testid="column-details">
       <div className="d-flex">
-        <span
-          className="text-grey-muted flex-none tw-mr-1"
-          data-testid="column-type">
+        <span className="text-grey-muted flex-none " data-testid="column-type">
           {`${t('label.column-entity', {
             entity: t('label.type-lowercase'),
           })}:`}
@@ -38,13 +36,8 @@ const ColumnDetail = ({ column }: { column: Column }) => {
         </Typography.Paragraph>
       </div>
       {column.tags && column.tags.length ? (
-        <div className="d-flex tw-mt-4" data-testid="column-tags">
-          <SVGIcons
-            alt="icon-tag"
-            className="tw-mr-1"
-            icon="icon-tag-grey"
-            width="12"
-          />
+        <div className="d-flex" data-testid="column-tags">
+          <SVGIcons alt="icon-tag" icon="icon-tag-grey" width="12" />
           <div>{column.tags.map((tag) => `#${tag.tagFQN}`)?.join(' ')}</div>
         </div>
       ) : null}

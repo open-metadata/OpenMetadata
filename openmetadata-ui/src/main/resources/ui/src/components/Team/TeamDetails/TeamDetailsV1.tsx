@@ -31,7 +31,6 @@ import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { ReactComponent as IconRestore } from 'assets/svg/ic-restore.svg';
 import { ReactComponent as IconOpenLock } from 'assets/svg/open-lock.svg';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
 import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
@@ -745,11 +744,7 @@ const TeamDetailsV1 = ({
                 </Col>
 
                 <Col span={3}>
-                  <Switch
-                    checked={currentTeam.isJoinable}
-                    className="tw-mr-2"
-                    size="small"
-                  />
+                  <Switch checked={currentTeam.isJoinable} size="small" />
                 </Col>
               </Row>
             }
@@ -838,11 +833,10 @@ const TeamDetailsV1 = ({
 
   const getTeamHeading = () => {
     return (
-      <div className="tw-text-link text-base">
+      <div className="text-link-color text-base">
         {isHeadingEditing ? (
-          <div className="d-flex items-center tw-gap-1">
-            <input
-              className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
+          <div className="d-flex items-center">
+            <Input
               data-testid="synonyms"
               id="synonyms"
               name="synonyms"
@@ -855,14 +849,12 @@ const TeamDetailsV1 = ({
             />
             <div className="d-flex justify-end" data-testid="buttons">
               <Button
-                className="tw-px-1 tw-py-1  tw-text-sm tw-mr-1"
                 data-testid="cancelAssociatedTag"
                 type="primary"
                 onMouseDown={() => setIsHeadingEditing(false)}>
                 <CloseOutlined />
               </Button>
               <Button
-                className="tw-px-1 tw-py-1  tw-text-sm"
                 data-testid="saveAssociatedTag"
                 type="primary"
                 onMouseDown={handleHeadingSave}>
@@ -871,12 +863,12 @@ const TeamDetailsV1 = ({
             </div>
           </div>
         ) : (
-          <div className="d-flex tw-group" data-testid="team-heading">
+          <div className="d-flex" data-testid="team-heading">
             <Typography.Title ellipsis={{ rows: 1, tooltip: true }} level={5}>
               {heading}
             </Typography.Title>
             {isActionAllowed() && (
-              <div className={classNames('tw-w-5 tw-min-w-max')}>
+              <div>
                 <Tooltip
                   placement="bottomLeft"
                   title={
@@ -1049,9 +1041,7 @@ const TeamDetailsV1 = ({
                   }
                 />
                 {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
-                  <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
-                    {t('label.pipe-symbol')}
-                  </span>
+                  <span>{t('label.pipe-symbol')}</span>
                 ) : null}
               </Fragment>
             ))}

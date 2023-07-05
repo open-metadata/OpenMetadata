@@ -69,7 +69,7 @@ const TestCaseCommonTabContainer = ({
   };
 
   return (
-    <Row className="tw-mt-4" gutter={[16, 16]}>
+    <Row gutter={[16, 16]}>
       {showButton && (
         <Col className="d-flex justify-end" span={24}>
           {hasAccess && (

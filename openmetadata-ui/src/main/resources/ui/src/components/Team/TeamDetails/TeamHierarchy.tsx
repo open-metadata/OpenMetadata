@@ -58,7 +58,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         key: 'teams',
         render: (_, record) => (
           <Link
-            className="hover:tw-underline cursor-pointer"
+            className="cursor-pointer"
             to={getTeamsWithFqnPath(record.fullyQualifiedName || record.name)}>
             {getEntityName(record)}
           </Link>

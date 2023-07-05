@@ -231,7 +231,6 @@ const RequestDescription = () => {
                   })}:`}
                   name="SuggestDescription">
                   <RichTextEditor
-                    className="tw-my-0"
                     initialValue=""
                     placeHolder={t('label.suggest-entity', {
                       entity: t('label.description'),

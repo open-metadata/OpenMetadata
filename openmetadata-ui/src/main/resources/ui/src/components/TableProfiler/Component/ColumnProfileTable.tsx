@@ -249,14 +249,12 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
     <div data-testid="column-profile-table-container">
       {isEmpty(activeColumnFqn) ? (
         <>
-          <div className="tw-w-2/6">
-            <Searchbar
-              placeholder={t('message.find-in-table')}
-              searchValue={searchText}
-              typingInterval={500}
-              onSearch={handleSearchAction}
-            />
-          </div>
+          <Searchbar
+            placeholder={t('message.find-in-table')}
+            searchValue={searchText}
+            typingInterval={500}
+            onSearch={handleSearchAction}
+          />
 
           <Table
             bordered

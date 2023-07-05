@@ -127,16 +127,9 @@ export const getGroupLabel = (index: string, wrapInSelectOption = false) => {
   }
 
   const groupLabel = (
-    <div
-      className={`d-flex items-center ${!wrapInSelectOption ? 'tw-my-2' : ''}`}>
-      <SVGIcons
-        alt="icon"
-        className={`  ${
-          !wrapInSelectOption ? 'tw-w-4 tw-h-4 tw-ml-2' : 'tw-w-3 tw-h-3'
-        }`}
-        icon={icon}
-      />
-      <p className="tw-px-2 text-grey-muted text-xs tw-h-4 tw-mb-0">{label}</p>
+    <div className="d-flex items-center">
+      <SVGIcons alt="icon" icon={icon} />
+      <p className="text-grey-muted text-xs">{label}</p>
     </div>
   );
 
@@ -165,20 +158,18 @@ export const getSuggestionElement = (
 
   const retn = (
     <div
-      className="d-flex items-center hover:tw-bg-body-hover"
+      className="d-flex items-center"
       data-testid={`${getPartialNameFromTableFQN(fqdn, [
         FqnPart.Service,
       ])}-${name}`}
       key={fqdn}>
       <img
         alt={serviceType}
-        className={`inline tw-h-4 ${!wrapInSelectOption ? 'tw-ml-2' : ''}`}
+        className="inline"
         src={serviceTypeLogo(serviceType)}
       />
       <Link
-        className={`tw-text-sm ${
-          !wrapInSelectOption ? 'd-block tw-px-4 tw-py-2' : 'tw-px-2'
-        }`}
+        className={`text-sm ${!wrapInSelectOption ? 'd-block' : ''}`}
         data-testid="data-name"
         id={fqdn.replace(/\./g, '')}
         to={entityLink}

@@ -642,12 +642,12 @@ const TagsPage = () => {
     return (
       <LeftPanelCard id="tags">
         <TagsLeftPanelSkeleton loading={isLoading}>
-          <div className="tw-py-2" data-testid="data-summary-container">
-            <div className="tw-px-3">
-              <h6 className="tw-heading tw-text-sm font-semibold">
+          <div data-testid="data-summary-container">
+            <div>
+              <h6 className="text-sm font-semibold">
                 {t('label.classification-plural')}
               </h6>
-              <div className="tw-mb-3">
+              <div>
                 <Tooltip
                   title={
                     !createClassificationPermission &&
@@ -674,7 +674,7 @@ const TagsPage = () => {
 
             {classifications.map((category: Classification) => (
               <div
-                className={`tw-group align-center content-box cursor-pointer text-grey-body tw-text-body d-flex p-y-xss p-x-sm m-y-xss ${getActiveCatClass(
+                className={`align-center content-box cursor-pointer text-grey-body text-body d-flex p-y-xss p-x-sm m-y-xss ${getActiveCatClass(
                   category.name,
                   currentClassification?.name
                 )}`}
@@ -796,13 +796,13 @@ const TagsPage = () => {
                   )}
                 </div>
               </div>
-              <div className="tw-mt-1" data-testid="usage">
-                <span className="text-grey-muted tw-mr-1">
+              <div data-testid="usage">
+                <span className="text-grey-muted">
                   {`${t('label.usage')}:`}
                 </span>
                 {record.usageCount ? (
                   <Link
-                    className="link-text tw-align-middle"
+                    className="link-text align-middle"
                     data-testid="usage-count"
                     to={getUsageCountLink(record.fullyQualifiedName ?? '')}>
                     {record.usageCount}
@@ -1023,7 +1023,7 @@ const TagsPage = () => {
   if (error) {
     return (
       <ErrorPlaceHolder>
-        <Typography.Paragraph className="tw-text-center tw-m-auto">
+        <Typography.Paragraph className="text-center m-auto">
           {error}
         </Typography.Paragraph>
       </ErrorPlaceHolder>

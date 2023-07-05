@@ -19,7 +19,6 @@ import { usePermissionProvider } from 'components/PermissionProvider/PermissionP
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { capitalize } from 'lodash';
 import React, { Fragment, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { AssetsType, FqnPart } from '../../enums/entity.enum';
@@ -62,7 +61,6 @@ const UserCard = ({
   onRemove,
 }: Props) => {
   const { permissions } = usePermissionProvider();
-  const { t } = useTranslation();
 
   const editPermission = useMemo(() => {
     return checkPermission(Operation.EditAll, ResourceEntity.USER, permissions);
@@ -113,15 +111,7 @@ const UserCard = ({
         break;
     }
 
-    return (
-      <SVGIcons
-        alt="icon"
-        className={classNames('tw-h-4 tw-w-4', {
-          'tw-mt-0.5': type !== AssetsType.DASHBOARD,
-        })}
-        icon={icon}
-      />
-    );
+    return <SVGIcons alt="icon" icon={icon} />;
   };
 
   const getDatasetTitle = (type: string, fqn: string) => {
@@ -161,14 +151,11 @@ const UserCard = ({
 
   return (
     <Card
-      className={classNames('d-flex justify-between tw-py-2 tw-px-3 tw-group', {
-        'tw-py-5 items-center': isDataset,
+      className={classNames('d-flex justify-between', {
+        'items-center': isDataset,
       })}
       data-testid="user-card-container">
-      <div
-        className={`d-flex ${
-          isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1 items-center'
-        }`}>
+      <div className={`d-flex ${isCheckBoxes ? '' : 'items-center'}`}>
         {isIconVisible && !isDataset ? (
           <ProfilePicture
             displayName={item.displayName || item.name}
@@ -181,8 +168,8 @@ const UserCard = ({
 
         <div
           className={classNames(
-            'd-flex tw-justify-center flex-col',
-            isDataset ? 'asset-card-text tw-pl-1' : 'tw-pl-2'
+            'd-flex justify-center flex-col',
+            isDataset ? 'asset-card-text ' : ''
           )}
           data-testid="data-container">
           {isDataset ? (
@@ -190,13 +177,9 @@ const UserCard = ({
           ) : (
             <Fragment>
               <span
-                className={classNames(
-                  'font-normal',
-                  isActionVisible ? 'tw-w-32' : 'tw-w-52',
-                  {
-                    'cursor-pointer hover:tw-underline': Boolean(onTitleClick),
-                  }
-                )}
+                className={classNames('font-normal', {
+                  'cursor-pointer': Boolean(onTitleClick),
+                })}
                 title={item.displayName}
                 onClick={() => {
                   onTitleClick?.(item.fqn);
@@ -208,11 +191,7 @@ const UserCard = ({
                 </Typography.Text>
               </span>
               {item.name && item.name !== item.displayName && (
-                <span
-                  className={classNames(
-                    isActionVisible ? 'tw-w-32' : 'tw-w-52'
-                  )}
-                  title={isIconVisible ? item.name : capitalize(item.name)}>
+                <span title={isIconVisible ? item.name : capitalize(item.name)}>
                   <Typography.Text
                     className="ant-typography-ellipsis-custom"
                     ellipsis={{ tooltip: true }}>
@@ -227,7 +206,7 @@ const UserCard = ({
       {isActionVisible &&
         (isCheckBoxes ? (
           <input
-            className="tw-p-1 custom-checkbox tw-self-center"
+            className="custom-checkbox self-center"
             data-testid="checkboxAddUser"
             type="checkbox"
             onChange={() => {
@@ -236,17 +215,13 @@ const UserCard = ({
           />
         ) : (
           <div className="flex-none">
-            <Tooltip
-              title={
-                editPermission ? t('label.remove') : NO_PERMISSION_FOR_ACTION
-              }>
+            <Tooltip title={editPermission ? '' : NO_PERMISSION_FOR_ACTION}>
               <Button
-                className={classNames('tw-h-8  tw-mb-3')}
                 data-testid="remove"
                 disabled={!editPermission}
                 type="text"
                 onClick={() => onRemove?.(item.id as string)}>
-                <CloseOutlined className="cursor-pointer tw-opacity-0 group-hover:tw-opacity-100" />
+                <CloseOutlined className="cursor-pointer" />
               </Button>
             </Tooltip>
           </div>

@@ -34,7 +34,7 @@ const VersionButton: React.FC<VersionButtonProps> = ({
   const { t } = useTranslation();
   const buttonClassNames = classNames(
     ' ',
-    selected ? 'tw-text-white' : 'text-primary',
+    selected ? 'text-white' : 'text-primary',
     className
   );
 
@@ -53,10 +53,10 @@ const VersionButton: React.FC<VersionButtonProps> = ({
             icon={selected ? 'icon-version-white' : 'icon-version'}
             width="12px"
           />
-          <span className="tw-ml-1">{t('label.version-plural')}</span>
+          <span>{t('label.version-plural')}</span>
         </span>
         <span
-          className={classNames('-l font-medium cursor-pointer tw-pl-1', {
+          className={classNames('font-medium cursor-pointer', {
             '-primary': !selected,
           })}
           data-testid="version-value">

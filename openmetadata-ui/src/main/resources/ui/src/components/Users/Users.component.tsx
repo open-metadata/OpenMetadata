@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
-import { Card, Image, Input, Select, Space, Tabs, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  Image,
+  Input,
+  Select,
+  Space,
+  Tabs,
+  Typography,
+} from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import { AxiosError } from 'axios';
@@ -233,26 +242,21 @@ const Users = ({
             </InlineEdit>
           ) : (
             <Fragment>
-              <span className="text-base font-medium tw-mr-2 tw-overflow-auto">
+              <span className="text-base font-medium">
                 {userData.displayName ||
                   t('label.add-entity', { entity: t('label.display-name') })}
               </span>
-              <button
-                className="tw-ml-2 focus:tw-outline-none"
+              <Button
                 data-testid="edit-displayName"
                 onClick={() => setIsDisplayNameEdit(true)}>
                 <EditIcon color={DE_ACTIVE_COLOR} width={16} />
-              </button>
+              </Button>
             </Fragment>
           )}
         </div>
       );
     } else {
-      return (
-        <p className="tw-mt-2">
-          {getEntityName(userData as unknown as EntityReference)}
-        </p>
-      );
+      return <p>{getEntityName(userData as unknown as EntityReference)}</p>;
     }
   };
 
@@ -310,10 +314,7 @@ const Users = ({
     const teamsElement = (
       <Fragment>
         {getNonDeletedTeams(userData.teams ?? []).map((team, i) => (
-          <div
-            className="tw-mb-2 d-flex items-center tw-gap-2"
-            data-testid={team.name}
-            key={i}>
+          <div className="d-flex items-center" data-testid={team.name} key={i}>
             <IconTeamsGrey height={16} width={16} />
             <Typography.Text
               className="ant-typography-ellipsis-custom w-48"
@@ -338,12 +339,10 @@ const Users = ({
           }}
           title={
             <div className="d-flex items-center justify-between">
-              <h6 className="right-panel-label tw-mb-0">
-                {t('label.team-plural')}
-              </h6>
+              <h6 className="right-panel-label">{t('label.team-plural')}</h6>
             </div>
           }>
-          <div className="tw-mb-4">{teamsElement}</div>
+          <div>{teamsElement}</div>
         </Card>
       );
     } else {
@@ -356,20 +355,17 @@ const Users = ({
           }}
           title={
             <div className="d-flex items-center justify-between">
-              <h6 className="right-panel-label tw-mb-0">
-                {t('label.team-plural')}
-              </h6>
+              <h6 className="right-panel-label">{t('label.team-plural')}</h6>
               {!isTeamsEdit && (
-                <button
-                  className="tw-ml-2 focus:tw-outline-none "
+                <Button
                   data-testid="edit-teams"
                   onClick={() => setIsTeamsEdit(true)}>
                   <EditIcon color={DE_ACTIVE_COLOR} width={16} />
-                </button>
+                </Button>
               )}
             </div>
           }>
-          <div className="tw-mb-4">
+          <div>
             {isTeamsEdit ? (
               <InlineEdit
                 direction="vertical"
@@ -405,14 +401,14 @@ const Users = ({
     const rolesElement = (
       <Fragment>
         {userData.isAdmin && (
-          <div className="tw-mb-2 d-flex items-center tw-gap-2">
-            <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
+          <div className=" d-flex items-center ">
+            <SVGIcons alt="icon" icon={Icons.USERS} />
             <span>{TERM_ADMIN}</span>
           </div>
         )}
         {userData.roles?.map((role, i) => (
-          <div className="tw-mb-2 d-flex items-center tw-gap-2" key={i}>
-            <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
+          <div className="d-flex items-center" key={i}>
+            <SVGIcons alt="icon" icon={Icons.USERS} />
             <Typography.Text
               className="ant-typography-ellipsis-custom w-48"
               ellipsis={{ tooltip: true }}>
@@ -438,9 +434,7 @@ const Users = ({
           }}
           title={
             <div className="d-flex items-center justify-between">
-              <h6 className="right-panel-label tw-mb-0">
-                {t('label.role-plural')}
-              </h6>
+              <h6 className="right-panel-label">{t('label.role-plural')}</h6>
             </div>
           }>
           <div className="roles-container">{rolesElement}</div>
@@ -456,20 +450,17 @@ const Users = ({
           }}
           title={
             <div className="d-flex items-center justify-between">
-              <h6 className="right-panel-label tw-mb-0">
-                {t('label.role-plural')}
-              </h6>
+              <h6 className="right-panel-label">{t('label.role-plural')}</h6>
               {!isRolesEdit && (
-                <button
-                  className="tw-ml-2 focus:tw-outline-none"
+                <Button
                   data-testid="edit-roles"
                   onClick={() => setIsRolesEdit(true)}>
                   <EditIcon color={DE_ACTIVE_COLOR} width={16} />
-                </button>
+                </Button>
               )}
             </div>
           }>
-          <div className="tw-mb-4">
+          <div>
             {isRolesEdit ? (
               <InlineEdit
                 direction="vertical"
@@ -508,16 +499,14 @@ const Users = ({
         }}
         title={
           <div className="d-flex">
-            <h6
-              className="right-panel-label tw-mb-0"
-              data-testid="inherited-roles">
+            <h6 className="right-panel-label " data-testid="inherited-roles">
               {t('label.inherited-role-plural')}
             </h6>
           </div>
         }>
         <Fragment>
           {isEmpty(userData.inheritedRoles) ? (
-            <div className="tw-mb-4">
+            <div>
               <span className="text-grey-muted">
                 {t('message.no-inherited-roles-found')}
               </span>
@@ -525,8 +514,8 @@ const Users = ({
           ) : (
             <div className="d-flex justify-between flex-col">
               {userData.inheritedRoles?.map((inheritedRole, i) => (
-                <div className="tw-mb-2 d-flex items-center tw-gap-2" key={i}>
-                  <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
+                <div className=" d-flex items-center " key={i}>
+                  <SVGIcons alt="icon" icon={Icons.USERS} />
 
                   <Typography.Text
                     className="ant-typography-ellipsis-custom w-48"
@@ -573,8 +562,6 @@ const Users = ({
                 height="150"
                 id={userData?.id || ''}
                 name={userData?.name || ''}
-                textClass="tw-text-5xl"
-                width=""
               />
             </div>
           )}

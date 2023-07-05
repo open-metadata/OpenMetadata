@@ -544,13 +544,12 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
           {isUndefined(profile) && !isDataQuality && (
             <div
-              className=" d-flex items-center -warning  tw-p-2 tw-mb-4"
+              className="d-flex items-center"
               data-testid="no-profiler-placeholder">
               <NoDataIcon />
-              <p className="tw-mb-0 tw-ml-2">
+              <p>
                 {t('message.no-profiler-message')}
                 <Link
-                  className="tw-ml-1"
                   target="_blank"
                   to={{
                     pathname:

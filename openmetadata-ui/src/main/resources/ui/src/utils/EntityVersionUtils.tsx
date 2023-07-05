@@ -304,7 +304,7 @@ export const getSummary = (
   return (
     <Fragment>
       {isDeleteUpdated?.length > 0 ? (
-        <p className="tw-mb-2">
+        <p>
           {isDeleteUpdated
             .map((field) => {
               return field.newValue
@@ -319,7 +319,7 @@ export const getSummary = (
         </p>
       ) : null}
       {fieldsAdded?.length > 0 ? (
-        <p className="tw-mb-2">
+        <p>
           {getSummaryText(
             isPrefix,
             fieldsAdded,
@@ -329,7 +329,7 @@ export const getSummary = (
         </p>
       ) : null}
       {fieldsUpdated?.length ? (
-        <p className="tw-mb-2">
+        <p>
           {getSummaryText(
             isPrefix,
             fieldsUpdated,
@@ -339,7 +339,7 @@ export const getSummary = (
         </p>
       ) : null}
       {fieldsDeleted?.length ? (
-        <p className="tw-mb-2">
+        <p>
           {getSummaryText(
             isPrefix,
             fieldsDeleted,

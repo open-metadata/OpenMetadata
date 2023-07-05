@@ -161,7 +161,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
     return (
       <Button
-        className="p-0 w-7 h-7 flex-none flex-center link-text focus:tw-outline-none hover-cell-icon m-r-xss"
+        className="p-0 w-7 h-7 flex-none flex-center link-text hover-cell-icon m-r-xss"
         data-testid="request-description"
         type="text"
         onClick={() =>
@@ -213,13 +213,13 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             </span>
           )}
         </div>
-        <div className="d-flex tw--mt-1.5">
+        <div className="d-flex">
           {!isReadOnly ? (
             <Fragment>
               {hasDescriptionEditAccess && (
                 <>
                   <Button
-                    className="p-0 tw-self-start flex-center w-7 h-7 d-flex-none hover-cell-icon"
+                    className="p-0 self-start flex-center w-7 h-7 d-flex-none hover-cell-icon"
                     data-testid="edit-button"
                     type="text"
                     onClick={() => setEditFieldDescription(record)}>

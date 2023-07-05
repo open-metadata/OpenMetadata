@@ -26,23 +26,21 @@ const PageNotFound = () => {
     <div
       className="page-not-found-container relative"
       data-testid="no-page-found">
-      <div className="flex-center tw-hw-full tw-absolute tw-inset-0">
+      <div className="flex-center">
         <img alt={t('label.not-found-lowercase')} src={notFoundNumber} />
       </div>
-      <div className="d-flex tw-hw-full tw-absolute tw-inset-0">
-        <div className="tw-hw-full flex-center">
-          <div className="tw-text-center">
-            <h4 className="tw-font-bold tw-text-3xl text-grey-muted">
+      <div className="d-flex">
+        <div className="flex-center">
+          <div className="text-center">
+            <h4 className="font-bold text-grey-muted">
               {t('label.page-not-found')}
             </h4>
-            <p className="tw-text-lg text-grey-muted-muted">
+            <p className="text-lg text-grey-muted-muted">
               {t('message.page-is-not-available')}
             </p>
-            <div className="tw-text-center tw-mt-10" data-testid="route-links">
+            <div className="text-center " data-testid="route-links">
               <Link to={ROUTES.HOME}>
-                <Button className="tw-mr-5" type="primary">
-                  {t('label.go-to-home-page')}
-                </Button>
+                <Button type="primary">{t('label.go-to-home-page')}</Button>
               </Link>
               <Link to={ROUTES.EXPLORE}>
                 <Button ghost type="primary">
@@ -52,7 +50,7 @@ const PageNotFound = () => {
             </div>
           </div>
         </div>
-        <div className="tw-hw-full flex-center">
+        <div className="flex-center">
           <img alt={t('label.not-found-lowercase')} src={notFoundImage} />
         </div>
       </div>

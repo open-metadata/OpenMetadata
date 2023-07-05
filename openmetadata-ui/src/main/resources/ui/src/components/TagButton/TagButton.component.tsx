@@ -43,9 +43,7 @@ const TagButton: React.FC<TagButtonProps> = ({
   versionData,
 }) => {
   const buttonClassNames = classNames(
-    'tag-button-container tw-inline-flex text-xs font-medium rounded-4 whitespace-nowrap bg-white  items-center tw-mr-2 tw-mt-2 font-semibold',
-    { 'tw-pl-2': isRemovable },
-    { 'tw-px-2': !isRemovable },
+    'tag-button-container d-inline-flex text-xs font-medium rounded-4 whitespace-nowrap bg-white  items-center font-semibold',
     { 'diff-added': versionData?.added },
     { 'diff-removed text-grey-muted': versionData?.removed },
     className
@@ -63,8 +61,9 @@ const TagButton: React.FC<TagButtonProps> = ({
         </div>
       </Tooltip>
       {isRemovable && (
+        // TODO: replace it with Icon button
         <span
-          className="tw-py-0.5 tw-px-2  cursor-pointer"
+          className="cursor-pointer"
           data-testid={`remove-${label}-tag`}
           onClick={(e: React.MouseEvent<HTMLElement, MouseEvent>) => {
             e.preventDefault();

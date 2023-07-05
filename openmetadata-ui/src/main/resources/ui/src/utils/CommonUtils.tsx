@@ -211,7 +211,7 @@ export const getTabClasses = (
   tab: number | string,
   activeTab: number | string
 ) => {
-  return 'tw-gh-tabs' + (activeTab === tab ? ' active' : '');
+  return 'gh-tabs' + (activeTab === tab ? ' active' : '');
 };
 
 export const getCountBadge = (
@@ -228,7 +228,7 @@ export const getCountBadge = (
   return (
     <span
       className={classNames(
-        'tw-py-px p-x-xss m-x-xss   text-xs text-center',
+        'p-x-xss m-x-xss   text-xs text-center',
         clsBG,
         className
       )}>
@@ -344,10 +344,8 @@ export const getActiveCatClass = (name: string, activeName = '') => {
 
 export const errorMsg = (value: string) => {
   return (
-    <div className="tw-mt-1">
-      <strong
-        className="tw-text-red-500 text-xs tw-italic"
-        data-testid="error-message">
+    <div>
+      <strong className="text-xs" data-testid="error-message">
         {value}
       </strong>
     </div>
@@ -356,19 +354,15 @@ export const errorMsg = (value: string) => {
 
 export const requiredField = (label: string, excludeSpace = false) => (
   <>
-    {label}{' '}
-    <span className="tw-text-red-500">{!excludeSpace && <>&nbsp;</>}*</span>
+    {label} <span>{!excludeSpace && <>&nbsp;</>}*</span>
   </>
 );
 
-export const getSeparator = (
-  title: string | JSX.Element,
-  hrMarginTop = 'tw-mt-2.5'
-) => {
+export const getSeparator = (title: string | JSX.Element, hrMarginTop = '') => {
   return (
-    <span className="d-flex tw-py-2 text-grey-muted">
+    <span className="d-flex text-grey-muted">
       <hr className={classNames('w-full', hrMarginTop)} />
-      {title && <span className="tw-px-0.5 tw-min-w-max">{title}</span>}
+      {title && <span>{title}</span>}
       <hr className={classNames('w-full', hrMarginTop)} />
     </span>
   );

@@ -32,38 +32,17 @@ export const userPageFilterList = [
   {
     name: t('label.my-data'),
     value: 'OWNER',
-    icon: (
-      <SVGIcons
-        alt="My Data"
-        className="tw-mr-2"
-        icon={Icons.FOLDER}
-        width="16px"
-      />
-    ),
+    icon: <SVGIcons alt="My Data" icon={Icons.FOLDER} width="16px" />,
   },
   {
     name: t('label.mention-plural'),
     value: 'MENTIONS',
-    icon: (
-      <SVGIcons
-        alt="Mentions"
-        className="tw-mr-2"
-        icon={Icons.MENTIONS}
-        width="16px"
-      />
-    ),
+    icon: <SVGIcons alt="Mentions" icon={Icons.MENTIONS} width="16px" />,
   },
   {
     name: t('label.following'),
     value: 'FOLLOWS',
-    icon: (
-      <SVGIcons
-        alt="Following"
-        className="tw-mr-2"
-        icon={Icons.STAR}
-        width="16px"
-      />
-    ),
+    icon: <SVGIcons alt="Following" icon={Icons.STAR} width="16px" />,
   },
 ];
 
@@ -100,7 +79,7 @@ export const commonUserDetailColumns = (): ColumnsType<User> => [
     key: 'username',
     render: (_, record) => (
       <Link
-        className="hover:tw-underline cursor-pointer"
+        className="cursor-pointer"
         data-testid={record.name}
         to={getUserPath(record.fullyQualifiedName || record.name)}>
         {getEntityName(record)}
@@ -122,7 +101,7 @@ export const commonUserDetailColumns = (): ColumnsType<User> => [
           <Space wrap data-testid="policy-link" size={4}>
             {record.teams.slice(0, LIST_CAP).map((team) => (
               <Link
-                className="hover:tw-underline cursor-pointer"
+                className="cursor-pointer"
                 key={uniqueId()}
                 to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
                 {getEntityName(team)}
@@ -135,7 +114,7 @@ export const commonUserDetailColumns = (): ColumnsType<User> => [
                   <Space wrap size={4}>
                     {record.teams.slice(LIST_CAP).map((team) => (
                       <Link
-                        className="hover:tw-underline cursor-pointer"
+                        className="cursor-pointer"
                         key={uniqueId()}
                         to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
                         {getEntityName(team)}
@@ -143,9 +122,9 @@ export const commonUserDetailColumns = (): ColumnsType<User> => [
                     ))}
                   </Space>
                 }
-                overlayClassName="tw-w-40 tw-text-center"
+                overlayClassName="text-center"
                 trigger="click">
-                <Tag className="tw-ml-1" data-testid="plus-more-count">{`+${
+                <Tag data-testid="plus-more-count">{`+${
                   listLength - LIST_CAP
                 } more`}</Tag>
               </Popover>
@@ -170,7 +149,7 @@ export const commonUserDetailColumns = (): ColumnsType<User> => [
           <Space wrap data-testid="policy-link" size={4}>
             {record.roles.slice(0, LIST_CAP).map((role) => (
               <Link
-                className="hover:tw-underline cursor-pointer"
+                className="cursor-pointer"
                 key={uniqueId()}
                 to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
                 {getEntityName(role)}
@@ -183,7 +162,7 @@ export const commonUserDetailColumns = (): ColumnsType<User> => [
                   <Space wrap size={4}>
                     {record.roles.slice(LIST_CAP).map((role) => (
                       <Link
-                        className="hover:tw-underline cursor-pointer"
+                        className="cursor-pointer"
                         key={uniqueId()}
                         to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
                         {getEntityName(role)}
@@ -191,9 +170,9 @@ export const commonUserDetailColumns = (): ColumnsType<User> => [
                     ))}
                   </Space>
                 }
-                overlayClassName="tw-w-40 tw-text-center"
+                overlayClassName="text-center"
                 trigger="click">
-                <Tag className="tw-ml-1" data-testid="plus-more-count">{`+${
+                <Tag data-testid="plus-more-count">{`+${
                   listLength - LIST_CAP
                 } more`}</Tag>
               </Popover>

@@ -12,7 +12,16 @@
  */
 
 import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Popover, Row, Space, Table, Tooltip } from 'antd';
+import {
+  Button,
+  Col,
+  Divider,
+  Popover,
+  Row,
+  Space,
+  Table,
+  Tooltip,
+} from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as ExternalLinkIcon } from 'assets/svg/external-links.svg';
 import { AxiosError } from 'axios';
@@ -179,10 +188,6 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
     }
   };
 
-  const separator = (
-    <span className="tw-inline-block tw-text-gray-400 tw-self-center">|</span>
-  );
-
   const confirmDelete = (id: string, name: string) => {
     setDeleteSelection({
       id,
@@ -260,7 +265,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
               {getLoadingStatus(currTriggerId, ingestion.id, t('label.run'))}
             </Button>
           </Tooltip>
-          {separator}
+          <Divider type="vertical" />
           <Tooltip
             title={
               editPermission
@@ -328,17 +333,14 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                 viewPermission ? name : t('message.no-permission-to-view')
               }>
               <a
-                className="link-text tw-mr-2"
+                className="link-text"
                 data-testid="airflow-tree-view"
                 href={`${airFlowEndPoint}`}
                 rel="noopener noreferrer"
                 target="_blank">
                 <Space>
                   {name}
-                  <ExternalLinkIcon
-                    className="tw-align-middle tw-ml-1"
-                    width={16}
-                  />
+                  <ExternalLinkIcon className="align-middle" width={16} />
                 </Space>
               </a>
             </Tooltip>
@@ -402,7 +404,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                 {record.enabled ? (
                   <Fragment>
                     {getTriggerDeployButton(record)}
-                    {separator}
+                    <Divider type="vertical" />
                     <Tooltip
                       title={
                         editPermission
@@ -442,7 +444,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     </Button>
                   </Tooltip>
                 )}
-                {separator}
+                <Divider type="vertical" />
                 <Tooltip
                   title={
                     editPermission
@@ -466,7 +468,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     {t('label.edit')}
                   </Button>
                 </Tooltip>
-                {separator}
+                <Divider type="vertical" />
                 <Tooltip
                   title={
                     deletePermission
@@ -493,7 +495,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     )}
                   </Button>
                 </Tooltip>
-                {separator}
+                <Divider type="vertical" />
                 <Tooltip
                   title={
                     editPermission
@@ -513,7 +515,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                     {t('label.kill')}
                   </Button>
                 </Tooltip>
-                {separator}
+                <Divider type="vertical" />
                 <Tooltip
                   title={
                     viewPermission

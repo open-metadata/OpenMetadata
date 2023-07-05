@@ -117,7 +117,7 @@ export const getHeaderLabel = (
     <Fragment>
       {isMainNode ? (
         <span
-          className="tw-break-words description-text tw-self-center font-medium"
+          className="description-text self-center font-medium"
           data-testid="lineage-entity">
           {name || prepareLabel(type, fqn, false)}
         </span>
@@ -415,9 +415,7 @@ export const getDataLabel = (
     return label;
   } else {
     return (
-      <span
-        className="tw-break-words tw-self-center w-72"
-        data-testid="lineage-entity">
+      <span className="self-center w-72" data-testid="lineage-entity">
         {type === 'table' && databaseName && schemaName ? (
           <span className="d-block text-xs custom-lineage-heading">
             {databaseName}
@@ -433,7 +431,7 @@ export const getDataLabel = (
 
 export const getDeletedLineagePlaceholder = () => {
   return (
-    <div className="tw-mt-4 tw-ml-4 d-flex tw-justify-center font-medium items-center  -main -md tw-p-8">
+    <div className="d-flex justify-center font-medium items-center">
       <span>
         {t('message.lineage-data-is-not-available-for-deleted-entities')}
       </span>
@@ -547,11 +545,11 @@ export const getUniqueFlowElements = (elements: CustomFlow[]) => {
  */
 export const getNodeRemoveButton = (onClick: () => void) => {
   return (
-    <button
-      className="tw-absolute tw--top-3.5 tw--right-3 cursor-pointer tw-z-9999 tw-bg-body-hover -full"
+    <Button
+      className="absolute cursor-pointer bg-body-hover"
       onClick={() => onClick()}>
       <SVGIcons alt="times-circle" icon="icon-times-circle" width="16px" />
-    </button>
+    </Button>
   );
 };
 

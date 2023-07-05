@@ -788,7 +788,7 @@ const DatabaseDetails: FunctionComponent = () => {
                         />
                         {extraInfo.length !== 1 &&
                         index < extraInfo.length - 1 ? (
-                          <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
+                          <span className="d-inline-block">
                             {t('label.pipe-symbol')}
                           </span>
                         ) : null}

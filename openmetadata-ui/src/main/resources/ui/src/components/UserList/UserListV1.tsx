@@ -130,7 +130,7 @@ const UserListV1: FC<UserListV1Props> = ({
         render: (_, record) => (
           <Space
             align="center"
-            className="w-full tw-justify-center action-icons"
+            className="w-full justify-center action-icons"
             size={8}>
             {showRestore && (
               <Tooltip placement="bottom" title={t('label.restore')}>

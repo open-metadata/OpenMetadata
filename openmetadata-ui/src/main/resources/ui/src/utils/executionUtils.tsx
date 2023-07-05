@@ -39,11 +39,7 @@ export interface ViewDataInterface {
 
 export const StatusIndicator = ({ status }: StatusIndicatorInterface) => (
   <Space>
-    <SVGIcons
-      alt="result"
-      className="tw-w-4"
-      icon={getStatusBadgeIcon(status)}
-    />
+    <SVGIcons alt="result" icon={getStatusBadgeIcon(status)} />
     <p>
       {status === StatusType.Successful
         ? MenuOptions[StatusType.Successful]
@@ -156,7 +152,7 @@ export const getTreeData = (
                 }>
                 <SVGIcons
                   alt="result"
-                  className="tw-w-6 mr-2 mb-2"
+                  className="mr-2 mb-2"
                   icon={getStatusBadgeIcon(status.executionStatus)}
                 />
               </Tooltip>

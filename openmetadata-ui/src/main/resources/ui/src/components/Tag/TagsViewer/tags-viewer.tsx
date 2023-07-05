@@ -41,7 +41,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
     (tag: EntityTags, index: number, style?: React.CSSProperties) => (
       <Tags
         className={classNames(
-          { 'diff-added tw-mx-1': tag?.added },
+          { 'diff-added m-x-sm': tag?.added },
           { 'diff-removed': tag?.removed }
         )}
         key={index}
