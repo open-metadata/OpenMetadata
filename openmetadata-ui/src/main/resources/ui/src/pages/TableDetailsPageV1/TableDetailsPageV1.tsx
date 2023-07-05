@@ -556,11 +556,9 @@ const TableDetailsPageV1 = () => {
           <ActivityFeedProvider>
             <ActivityFeedTab
               columns={tableDetails?.columns}
-              description={tableDetails?.description}
               entityType={EntityType.TABLE}
               fqn={tableDetails?.fullyQualifiedName ?? ''}
               owner={tableDetails?.owner}
-              tags={tableDetails?.tags}
               onFeedUpdate={getEntityFeedCount}
               onUpdateEntityDetails={fetchTableDetails}
             />
