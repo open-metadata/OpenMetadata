@@ -220,7 +220,9 @@ const GlossaryV1 = ({
         reviewers: formData.reviewers.map(
           (item) => item.fullyQualifiedName || ''
         ),
-        glossary: activeGlossaryTerm?.glossary?.name || selectedData.name,
+        glossary:
+          activeGlossaryTerm?.glossary?.name ||
+          (selectedData.fullyQualifiedName ?? ''),
         parent: activeGlossaryTerm?.fullyQualifiedName,
       });
       onTermModalSuccess();

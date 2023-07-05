@@ -42,7 +42,6 @@ import {
 import { checkPermission } from 'utils/PermissionsUtils';
 import { getGlossaryPath, getGlossaryTermsPath } from 'utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
-import Fqn from '../../../utils/Fqn';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
 
 const GlossaryPage = () => {
@@ -63,12 +62,17 @@ const GlossaryPage = () => {
   const isGlossaryActive = useMemo(() => {
     setIsRightPanelLoading(true);
     setSelectedData(undefined);
-    if (glossaryFqn) {
-      return Fqn.split(glossaryFqn).length === 1;
+
+    if (glossaries.length > 0 && glossaryFqn) {
+      const item = glossaries.find(
+        (item) => (item.fullyQualifiedName ?? '') === glossaryFqn
+      );
+
+      return item !== undefined;
     }
 
     return true;
-  }, [glossaryFqn]);
+  }, [glossaries, glossaryFqn]);
 
   const createGlossaryPermission = useMemo(
     () =>
@@ -163,8 +167,9 @@ const GlossaryPage = () => {
         fetchGlossaryTermDetails();
       } else {
         setSelectedData(
-          glossaries.find((glossary) => glossary.name === glossaryFqn) ||
-            glossaries[0]
+          glossaries.find(
+            (glossary) => glossary.fullyQualifiedName === glossaryFqn
+          ) || glossaries[0]
         );
         !glossaryFqn &&
           glossaries[0].fullyQualifiedName &&
