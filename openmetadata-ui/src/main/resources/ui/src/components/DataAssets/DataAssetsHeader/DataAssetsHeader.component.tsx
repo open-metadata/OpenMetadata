@@ -54,6 +54,7 @@ import { useHistory } from 'react-router-dom';
 import { getActiveAnnouncement, getFeedCount } from 'rest/feedsAPI';
 import { getCurrentUserId, getEntityDetailLink } from 'utils/CommonUtils';
 import {
+  getBreadcrumbForContainer,
   getBreadcrumbForEntitiesWithServiceOnly,
   getBreadcrumbForTable,
   getEntityFeedLink,
@@ -339,8 +340,7 @@ export const DataAssetsHeader = ({
           </>
         );
 
-        returnData.breadcrumbs =
-          getBreadcrumbForEntitiesWithServiceOnly(containerDetails);
+        returnData.breadcrumbs = getBreadcrumbForContainer(containerDetails);
 
         break;
 
