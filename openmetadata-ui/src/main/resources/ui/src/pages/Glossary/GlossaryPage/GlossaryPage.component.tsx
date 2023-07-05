@@ -42,6 +42,7 @@ import {
 import { checkPermission } from 'utils/PermissionsUtils';
 import { getGlossaryPath, getGlossaryTermsPath } from 'utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+import Fqn from '../../../utils/Fqn';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
 
 const GlossaryPage = () => {
@@ -275,7 +276,7 @@ const GlossaryPage = () => {
         );
         let fqn;
         if (glossaryFqn) {
-          const fqnArr = glossaryFqn.split(FQN_SEPARATOR_CHAR);
+          const fqnArr = Fqn.split(glossaryFqn);
           fqnArr.pop();
           fqn = fqnArr.join(FQN_SEPARATOR_CHAR);
         }

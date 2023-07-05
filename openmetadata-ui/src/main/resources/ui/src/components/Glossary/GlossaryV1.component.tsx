@@ -301,7 +301,7 @@ const GlossaryV1 = ({
   }, [id, isGlossaryActive, isVersionsView, action]);
 
   return isImportAction ? (
-    <ImportGlossary glossaryName={selectedData.name} />
+    <ImportGlossary glossaryName={selectedData.fullyQualifiedName ?? ''} />
   ) : (
     <>
       {isLoading && <Loader />}
