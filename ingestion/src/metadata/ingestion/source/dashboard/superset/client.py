@@ -109,7 +109,7 @@ class SupersetAPIClient:
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the dashboard count")
-        return []
+        return 0
 
     def fetch_dashboards(self, current_page: int, page_size: int):
         """
@@ -133,7 +133,7 @@ class SupersetAPIClient:
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the dashboard list")
-        return []
+        return None
 
     def fetch_total_charts(self) -> int:
         """
@@ -151,7 +151,7 @@ class SupersetAPIClient:
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the chart count")
-        return []
+        return 0
 
     def fetch_charts(self, current_page: int, page_size: int):
         """
@@ -175,7 +175,7 @@ class SupersetAPIClient:
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the dashboard list")
-        return []
+        return None
 
     def fetch_charts_with_id(self, chart_id: str):
         response = self.client.get(f"/chart/{chart_id}")
@@ -199,7 +199,7 @@ class SupersetAPIClient:
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the dashboard list")
-        return []
+        return None
 
     def fetch_database(self, database_id: str):
         """
@@ -219,4 +219,4 @@ class SupersetAPIClient:
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the database list")
-        return []
+        return None
