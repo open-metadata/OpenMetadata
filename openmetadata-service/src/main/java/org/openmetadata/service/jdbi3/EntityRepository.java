@@ -689,7 +689,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     T originalEntity = dao.findEntityById(entityId);
 
     // Validate User
-    User user = daoCollection.userDAO().findEntityByName(updatedBy);
+    User user = daoCollection.userDAO().findEntityByName(FullyQualifiedName.quoteName(updatedBy));
     UUID userId = user.getId();
     if (Boolean.TRUE.equals(user.getDeleted())) {
       throw new IllegalArgumentException(CatalogExceptionMessage.deletedUser(userId));
