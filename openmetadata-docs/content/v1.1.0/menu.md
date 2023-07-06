@@ -399,14 +399,14 @@ site_menu:
     url: /connectors/messaging/kafka/yaml
   - category: Connectors / Messaging / Kafka / Troubleshooting
     url: /connectors/messaging/kafka/troubleshooting
-  - category: Connectors / Messaging / Redpanda
-    url: /connectors/messaging/redpanda
-  - category: Connectors / Messaging / Redpanda / Run Externally
-    url: /connectors/messaging/redpanda/yaml
   - category: Connectors / Messaging / Kinesis
     url: /connectors/messaging/kinesis
   - category: Connectors / Messaging / Kinesis / Run Externally
     url: /connectors/messaging/kinesis/yaml
+  - category: Connectors / Messaging / Redpanda
+    url: /connectors/messaging/redpanda
+  - category: Connectors / Messaging / Redpanda / Run Externally
+    url: /connectors/messaging/redpanda/yaml
 
   - category: Connectors / Pipeline
     url: /connectors/pipeline
