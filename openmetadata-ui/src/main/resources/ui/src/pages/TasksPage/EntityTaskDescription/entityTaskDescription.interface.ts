@@ -10,24 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import { EntityType } from 'enums/entity.enum';
 import { ThreadType } from 'generated/api/feed/createThread';
-import { Container } from 'generated/entity/data/container';
 import { EntityFieldThreads } from 'interface/feed.interface';
-import { ReactNode } from 'react';
 
-export type CellRendered<T, K extends keyof T> = (
-  value: T[K],
-  record: T,
-  index: number
-) => ReactNode;
-
-export interface ContainerDataModelProps {
-  dataModel: Container['dataModel'];
-  hasDescriptionEditAccess: boolean;
-  hasTagEditAccess: boolean;
-  isReadOnly: boolean;
+export interface EntityTaskDescriptionProps {
+  data: {
+    fqn?: string;
+    description?: string;
+  };
   entityFqn: string;
+  entityType: EntityType;
   entityFieldThreads: EntityFieldThreads[];
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
-  onUpdate: (updatedDataModel: Container['dataModel']) => Promise<void>;
 }

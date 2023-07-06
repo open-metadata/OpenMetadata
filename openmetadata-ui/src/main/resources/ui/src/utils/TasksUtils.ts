@@ -13,6 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { EntityField } from 'constants/Feeds.constants';
 import { Change, diffWordsWithSpace } from 'diff';
 import i18Next from 'i18next';
 import { isEqual, isUndefined } from 'lodash';
@@ -53,7 +54,7 @@ import { defaultFields as DashboardFields } from './DashboardDetailsUtils';
 import { defaultFields as DatabaseSchemaFields } from './DatabaseSchemaDetailsUtils';
 import { defaultFields as DataModelFields } from './DataModelsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';
-import { getEntityName } from './EntityUtils';
+import { ENTITY_LINK_SEPARATOR, getEntityName } from './EntityUtils';
 import { getEntityFQN, getEntityType } from './FeedUtils';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
@@ -401,3 +402,62 @@ export const isDescriptionTask = (taskType: TaskType) =>
 
 export const isTagsTask = (taskType: TaskType) =>
   [TaskType.RequestTag, TaskType.UpdateTag].includes(taskType);
+
+export const getEntityTaskDetails = (
+  entityType: EntityType
+): {
+  fqnPart: FqnPart[];
+  entityField: string;
+} => {
+  let fqnPartTypes: FqnPart;
+  let entityField: string;
+  switch (entityType) {
+    case EntityType.TABLE:
+      fqnPartTypes = FqnPart.NestedColumn;
+      entityField = EntityField.COLUMNS;
+
+      break;
+
+    case EntityType.TOPIC:
+      fqnPartTypes = FqnPart.Topic;
+      entityField = `${EntityField.MESSAGE_SCHEMA}${ENTITY_LINK_SEPARATOR}${EntityField.SCHEMA_FIELDS}`;
+
+      break;
+
+    case EntityType.DASHBOARD:
+      fqnPartTypes = FqnPart.Database;
+      entityField = EntityField.CHARTS;
+
+      break;
+
+    case EntityType.PIPELINE:
+      fqnPartTypes = FqnPart.Schema;
+      entityField = EntityField.TASKS;
+
+      break;
+
+    case EntityType.MLMODEL:
+      fqnPartTypes = FqnPart.Schema;
+      entityField = EntityField.ML_FEATURES;
+
+      break;
+
+    case EntityType.CONTAINER:
+      fqnPartTypes = FqnPart.NestedColumn;
+      entityField = `${EntityField.DATA_MODEL}${ENTITY_LINK_SEPARATOR}${EntityField.COLUMNS}`;
+
+      break;
+
+    case EntityType.DASHBOARD_DATA_MODEL:
+      fqnPartTypes = FqnPart.Table;
+      entityField = EntityField.COLUMNS;
+
+      break;
+
+    default:
+      fqnPartTypes = FqnPart.Table;
+      entityField = EntityField.COLUMNS;
+  }
+
+  return { fqnPart: [fqnPartTypes], entityField };
+};

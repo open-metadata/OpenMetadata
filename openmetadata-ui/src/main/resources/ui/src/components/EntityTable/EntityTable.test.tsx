@@ -107,6 +107,7 @@ const mockEntityTableProp = {
   hasEditAccess: false,
   joins: [],
   entityFieldThreads: [],
+  hasDescriptionEditAccess: true,
   isReadOnly: false,
   entityFqn: 'bigquery_gcp.ecommerce.shopify.raw_product_catalog',
   owner: {} as Table['owner'],

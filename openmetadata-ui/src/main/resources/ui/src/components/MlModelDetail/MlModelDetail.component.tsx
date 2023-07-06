@@ -85,9 +85,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
     EntityFieldThreadCount[]
   >([]);
-  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
 
   const [mlModelPermissions, setPipelinePermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
@@ -127,7 +124,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     [AppState.nonSecureUserDetails, AppState.userDetails]
   );
 
-  const { mlModelTags, isFollowing, tier } = useMemo(() => {
+  const { mlModelTags, isFollowing, tier, entityFqn } = useMemo(() => {
     return {
       ...mlModelDetail,
       tier: getTierTags(mlModelDetail.tags ?? []),
@@ -136,6 +133,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       isFollowing: mlModelDetail.followers?.some(
         ({ id }: { id: string }) => id === currentUser?.id
       ),
+      entityFqn: mlModelDetail.fullyQualifiedName ?? '',
     };
   }, [mlModelDetail]);
 
@@ -144,7 +142,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       EntityType.MLMODEL,
       mlModelFqn,
       setEntityFieldThreadCount,
-      setEntityFieldTaskCount,
       setFeedCount
     );
   };
@@ -409,10 +406,16 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   onThreadLinkSelect={handleThreadLinkSelect}
                 />
                 <MlModelFeaturesList
+                  entityFieldThreads={getEntityFieldThreadCounts(
+                    EntityField.ML_FEATURES,
+                    entityFieldThreadCount
+                  )}
+                  entityFqn={entityFqn}
                   handleFeaturesUpdate={onFeaturesUpdate}
                   isDeleted={mlModelDetail.deleted}
                   mlFeatures={mlModelDetail.mlFeatures}
                   permissions={mlModelPermissions}
+                  onThreadLinkSelect={handleThreadLinkSelect}
                 />
               </div>
             </Col>
@@ -534,7 +537,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       mlModelPermissions,
       isEdit,
       entityFieldThreadCount,
-      entityFieldTaskCount,
       getMlHyperParameters,
       getMlModelStore,
       onCancel,

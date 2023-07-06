@@ -27,11 +27,9 @@ const SchemaTab: FunctionComponent<Props> = ({
   hasTagEditAccess,
   entityFieldThreads,
   onThreadLinkSelect,
-  onEntityFieldSelect,
   isReadOnly = false,
   entityFqn,
   tableConstraints,
-  entityFieldTasks,
 }: Props) => {
   const [searchText, setSearchText] = useState('');
 
@@ -53,7 +51,6 @@ const SchemaTab: FunctionComponent<Props> = ({
 
       <EntityTableV1
         columnName={columnName}
-        entityFieldTasks={entityFieldTasks}
         entityFieldThreads={entityFieldThreads}
         entityFqn={entityFqn}
         hasDescriptionEditAccess={hasDescriptionEditAccess}
@@ -63,7 +60,6 @@ const SchemaTab: FunctionComponent<Props> = ({
         searchText={lowerCase(searchText)}
         tableColumns={columns}
         tableConstraints={tableConstraints}
-        onEntityFieldSelect={onEntityFieldSelect}
         onThreadLinkSelect={onThreadLinkSelect}
         onUpdate={onUpdate}
       />
