@@ -266,6 +266,7 @@ const updateTags = (inTerm) => {
   const container = inTerm
     ? '[data-testid="tags-input-container"]'
     : '[data-testid="glossary-details"]';
+  cy.wait(1000);
   cy.get(container).scrollIntoView().contains('Personal').should('be.visible');
 };
 

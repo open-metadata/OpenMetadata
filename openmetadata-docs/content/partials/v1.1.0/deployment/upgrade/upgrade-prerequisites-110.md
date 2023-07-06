@@ -107,6 +107,15 @@ If you are upgrading production this is the recommended version to upgrade to.
 
 ## Breaking Changes for 1.1 Stable Release
 
+{% note noteType="Warning" %}
+
+The Release 1.1.0 migration process will modify the structure of all your data. Depending on the number of records in the database,
+**this process can take up quite some time to run**. Please wait until it gets executed end-to-end.
+
+Make sure your data has been backed up before running the migration.
+
+{% /note %}
+
 ### Update `sort_buffer_size` (MySQL) or `work_mem` (Postgres)
 
 Before running the migrations, it is important to update these parameters to ensure there are no runtime errors.

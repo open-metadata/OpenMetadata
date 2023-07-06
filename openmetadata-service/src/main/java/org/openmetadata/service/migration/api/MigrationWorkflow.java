@@ -3,10 +3,12 @@ package org.openmetadata.service.migration.api;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.service.jdbi3.MigrationDAO;
+import org.openmetadata.service.migration.Migration;
 
 @Slf4j
 public class MigrationWorkflow {
@@ -24,6 +26,28 @@ public class MigrationWorkflow {
 
     // Filter Migrations to Be Run
     this.migrations = filterAndGetMigrationsToRun(migrationSteps);
+  }
+
+  public static void validateMigrationsForServer(Jdbi jdbi, List<MigrationStep> migrations) {
+    if (!migrations.isEmpty()) {
+      migrations.sort(Comparator.comparing(MigrationStep::getMigrationVersion));
+      String maxMigration = migrations.get(migrations.size() - 1).getMigrationVersion();
+      Optional<String> lastMigratedServer = Migration.lastMigratedServer(jdbi);
+      if (lastMigratedServer.isEmpty()) {
+        throw new IllegalStateException(
+            "Could not validate Server migrations in the database. Make sure you have run `./bootstrap/bootstrap_storage.sh migrate-all` at least once.");
+      } else {
+        if (lastMigratedServer.get().compareTo(maxMigration) < 0) {
+          throw new IllegalStateException(
+              "There are pending migrations to be run on the database."
+                  + " Please backup your data and run `./bootstrap/bootstrap_storage.sh migrate-all`."
+                  + " You can find more information on upgrading OpenMetadata at"
+                  + " https://docs.open-metadata.org/deployment/upgrade ");
+        }
+      }
+    } else {
+      LOG.info("No Server Migration Files Found in the system.");
+    }
   }
 
   private List<MigrationStep> filterAndGetMigrationsToRun(List<MigrationStep> migrations) {

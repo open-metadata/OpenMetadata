@@ -90,9 +90,9 @@ import org.openmetadata.service.util.ResultList;
 public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
-  static final String TABLE_PATCH_FIELDS = "owner,tags,tableConstraints,tablePartition,extension,followers";
+  static final String PATCH_FIELDS = "owner,tags,tableConstraints,tablePartition,extension,followers";
   // Table fields that can be updated in a PUT request
-  static final String TABLE_UPDATE_FIELDS = "owner,tags,tableConstraints,tablePartition,dataModel,extension,followers";
+  static final String UPDATE_FIELDS = "owner,tags,tableConstraints,tablePartition,dataModel,extension,followers";
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
@@ -112,8 +112,8 @@ public class TableRepository extends EntityRepository<Table> {
         Table.class,
         daoCollection.tableDAO(),
         daoCollection,
-        TABLE_PATCH_FIELDS,
-        TABLE_UPDATE_FIELDS);
+        PATCH_FIELDS,
+        UPDATE_FIELDS);
   }
 
   @Override
@@ -133,16 +133,20 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public void setInheritedFields(Table table) throws IOException {
-    setInheritedProperties(table, table.getDatabaseSchema().getId());
-  }
+  public Table setInheritedFields(Table table, Fields fields) throws IOException {
+    DatabaseSchema schema = null;
+    // If table does not have owner, then inherit it from parent databaseSchema
+    if (fields.contains(FIELD_OWNER) && table.getOwner() == null) {
+      schema = Entity.getEntity(DATABASE_SCHEMA, table.getDatabaseSchema().getId(), "owner", ALL);
+      table.withOwner(schema.getOwner());
+    }
 
-  public void setInheritedProperties(Table table, UUID schemaId) throws IOException {
     // If table does not have retention period, then inherit it from parent databaseSchema
     if (table.getRetentionPeriod() == null) {
-      DatabaseSchema schema = Entity.getEntity(DATABASE_SCHEMA, schemaId, "", ALL);
+      schema = schema == null ? Entity.getEntity(DATABASE_SCHEMA, table.getDatabaseSchema().getId(), "", ALL) : schema;
       table.withRetentionPeriod(schema.getRetentionPeriod());
     }
+    return table;
   }
 
   private void setDefaultFields(Table table) throws IOException {
@@ -605,17 +609,12 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void prepare(Table table) throws IOException {
-    DatabaseSchema schema = Entity.getEntity(table.getDatabaseSchema(), "owner", ALL);
+    DatabaseSchema schema = Entity.getEntity(table.getDatabaseSchema(), "", ALL);
     table
         .withDatabaseSchema(schema.getEntityReference())
         .withDatabase(schema.getDatabase())
         .withService(schema.getService())
         .withServiceType(schema.getServiceType());
-
-    // Carry forward ownership from database schema
-    if (table.getOwner() == null && schema.getOwner() != null) {
-      table.setOwner(schema.getOwner().withDescription("inherited"));
-    }
 
     // Validate column tags
     addDerivedColumnTags(table.getColumns());

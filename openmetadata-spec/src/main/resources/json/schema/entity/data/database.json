@@ -107,6 +107,10 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "domain" : {
+      "description": "Domain the Database belongs to. When not set, the Database inherits the domain from the database service it belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["name", "service"],

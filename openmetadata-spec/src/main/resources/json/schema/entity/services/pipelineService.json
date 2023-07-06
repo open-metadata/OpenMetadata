@@ -180,6 +180,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "domain" : {
+      "description": "Domain the Pipeline service belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": [

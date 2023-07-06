@@ -91,12 +91,11 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   public void setupGlossaries() throws IOException {
-    GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
-    CreateGlossary createGlossary = glossaryResourceTest.createRequest("g1", "", "", null);
-    GLOSSARY1 = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+    CreateGlossary createGlossary = createRequest("g1", "", "", null);
+    GLOSSARY1 = createEntity(createGlossary, ADMIN_AUTH_HEADERS);
 
-    createGlossary = glossaryResourceTest.createRequest("g2", "", "", null);
-    GLOSSARY2 = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+    createGlossary = createRequest("g2", "", "", null);
+    GLOSSARY2 = createEntity(createGlossary, ADMIN_AUTH_HEADERS);
 
     GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
     CreateGlossaryTerm createGlossaryTerm =
@@ -531,12 +530,5 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
       assertTagPrefixAbsent(table.getTags(), previousTermFqn);
       assertTagPrefixAbsent(table.getColumns().get(0).getTags(), previousTermFqn);
     }
-  }
-
-  private static String quoteName(String name) {
-    if (name != null && !name.contains("\"")) {
-      return name.contains(".") ? "\\\"" + name + "\\\"" : name;
-    }
-    return name;
   }
 }

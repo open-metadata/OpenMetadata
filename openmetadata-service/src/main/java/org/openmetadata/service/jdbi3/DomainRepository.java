@@ -33,7 +33,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class DomainRepository extends EntityRepository<Domain> {
-  private static final String UPDATE_FIELDS = "owner,experts";
+  private static final String UPDATE_FIELDS = "parent,children,owner,experts";
 
   public DomainRepository(CollectionDAO dao) {
     super(
@@ -50,8 +50,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   public Domain setFields(Domain entity, Fields fields) throws IOException {
     entity.withParent(fields.contains("parent") ? getParent(entity) : null);
     entity.withChildren(fields.contains("children") ? getChildren(entity) : null);
-    entity.withExperts(fields.contains("experts") ? getExperts(entity) : null);
-    return entity.withOwner(fields.contains("owner") ? getOwner(entity) : null);
+    return entity.withExperts(fields.contains("experts") ? getExperts(entity) : null);
   }
 
   private EntityReference getParent(Domain entity) throws IOException {
