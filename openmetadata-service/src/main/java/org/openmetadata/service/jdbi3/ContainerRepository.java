@@ -228,8 +228,8 @@ public class ContainerRepository extends EntityRepository<Container> {
   public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user)
       throws IOException {
     // TODO move this as the first check
-    if (entityLink.getFieldName().equals("columns")) {
-      Container container = getByName(null, entityLink.getEntityFQN(), getFields("columns,tags"), Include.ALL);
+    if (entityLink.getFieldName().equals("dataModel")) {
+      Container container = getByName(null, entityLink.getEntityFQN(), getFields("dataModel,tags"), Include.ALL);
       Column column =
           container.getDataModel().getColumns().stream()
               .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))

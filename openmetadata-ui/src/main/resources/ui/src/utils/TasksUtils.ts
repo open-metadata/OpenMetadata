@@ -54,7 +54,7 @@ import { defaultFields as DashboardFields } from './DashboardDetailsUtils';
 import { defaultFields as DatabaseSchemaFields } from './DatabaseSchemaDetailsUtils';
 import { defaultFields as DataModelFields } from './DataModelsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';
-import { ENTITY_LINK_SEPARATOR, getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityUtils';
 import { getEntityFQN, getEntityType } from './FeedUtils';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
@@ -420,7 +420,7 @@ export const getEntityTaskDetails = (
 
     case EntityType.TOPIC:
       fqnPartTypes = FqnPart.Topic;
-      entityField = `${EntityField.MESSAGE_SCHEMA}${ENTITY_LINK_SEPARATOR}${EntityField.SCHEMA_FIELDS}`;
+      entityField = EntityField.MESSAGE_SCHEMA;
 
       break;
 
@@ -444,7 +444,7 @@ export const getEntityTaskDetails = (
 
     case EntityType.CONTAINER:
       fqnPartTypes = FqnPart.NestedColumn;
-      entityField = `${EntityField.DATA_MODEL}${ENTITY_LINK_SEPARATOR}${EntityField.COLUMNS}`;
+      entityField = EntityField.DATA_MODEL;
 
       break;
 
