@@ -410,6 +410,10 @@ site_menu:
 
   - category: Connectors / Pipeline
     url: /connectors/pipeline
+  - category: Connectors / Pipeline / Airbyte
+    url: /connectors/pipeline/airbyte
+  - category: Connectors / Pipeline / Airbyte / Run Externally
+    url: /connectors/pipeline/airbyte/yaml
   - category: Connectors / Pipeline / Airflow
     url: /connectors/pipeline/airflow
   - category: Connectors / Pipeline / Airflow / Run Externally
@@ -424,34 +428,30 @@ site_menu:
     url: /connectors/pipeline/airflow/mwaa
   - category: Connectors / Pipeline / Airflow / GCS Composer
     url: /connectors/pipeline/airflow/gcs-composer
-  - category: Connectors / Pipeline / Airbyte
-    url: /connectors/pipeline/airbyte
-  - category: Connectors / Pipeline / Airbyte / Run Externally
-    url: /connectors/pipeline/airbyte/yaml
-  - category: Connectors / Pipeline / Nifi
-    url: /connectors/pipeline/nifi
-  - category: Connectors / Pipeline / Nifi / Run Externally
-    url: /connectors/pipeline/nifi/yaml
-  - category: Connectors / Pipeline / Databricks Pipeline
-    url: /connectors/pipeline/databricks-pipeline
-  - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
-    url: /connectors/pipeline/databricks-pipeline/yaml
-  - category: Connectors / Pipeline / Glue Pipeline
-    url: /connectors/pipeline/glue-pipeline
-  - category: Connectors / Pipeline / Glue Pipeline / Run Externally
-    url: /connectors/pipeline/glue-pipeline/yaml
-  - category: Connectors / Pipeline / Fivetran
-    url: /connectors/pipeline/fivetran
-  - category: Connectors / Pipeline / Fivetran / Run Externally
-    url: /connectors/pipeline/fivetran/yaml
   - category: Connectors / Pipeline / Dagster
     url: /connectors/pipeline/dagster
   - category: Connectors / Pipeline / Dagster / Run Externally
     url: /connectors/pipeline/dagster/yaml
+  - category: Connectors / Pipeline / Databricks Pipeline
+    url: /connectors/pipeline/databricks-pipeline
+  - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
+    url: /connectors/pipeline/databricks-pipeline/yaml
   - category: Connectors / Pipeline / Domo Pipeline
     url: /connectors/pipeline/domo-pipeline
   - category: Connectors / Pipeline / Domo Pipeline / Run Externally
     url: /connectors/pipeline/domo-pipeline/yaml
+  - category: Connectors / Pipeline / Fivetran
+    url: /connectors/pipeline/fivetran
+  - category: Connectors / Pipeline / Fivetran / Run Externally
+    url: /connectors/pipeline/fivetran/yaml
+  - category: Connectors / Pipeline / Glue Pipeline
+    url: /connectors/pipeline/glue-pipeline
+  - category: Connectors / Pipeline / Glue Pipeline / Run Externally
+    url: /connectors/pipeline/glue-pipeline/yaml
+  - category: Connectors / Pipeline / Nifi
+    url: /connectors/pipeline/nifi
+  - category: Connectors / Pipeline / Nifi / Run Externally
+    url: /connectors/pipeline/nifi/yaml
   - category: Connectors / Pipeline / Spline
     url: /connectors/pipeline/spline
   - category: Connectors / Pipeline / Spline / Run Externally
