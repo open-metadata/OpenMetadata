@@ -12,6 +12,7 @@
 [![openmetadata](https://img.shields.io/endpoint?url=https://cloud.cypress.io/badge/simple/a9yxci/main&style=social&logo=cypress)](https://cloud.cypress.io/projects/a9yxci/runs)
 </div>
 
+
 - [What is OpenMetadata?](#what-is-openmetadata )
 - [Features](#features)
 - [Try our Sandbox](#try-our-sandbox)
