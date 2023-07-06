@@ -56,6 +56,7 @@ import {
 } from 'utils/RouterUtils';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
 import { showErrorToast } from 'utils/ToastUtils';
+import Fqn from '../../../utils/Fqn';
 
 export interface GlossaryHeaderProps {
   isVersionView?: boolean;
@@ -120,7 +121,10 @@ const GlossaryHeader = ({
 
   const handleGlossaryImport = () =>
     history.push(
-      getGlossaryPathWithAction(selectedData.name, EntityAction.IMPORT)
+      getGlossaryPathWithAction(
+        selectedData.fullyQualifiedName ?? '',
+        EntityAction.IMPORT
+      )
     );
 
   const handleVersionClick = async () => {
@@ -180,7 +184,7 @@ const GlossaryHeader = ({
   const handleGlossaryExportClick = useCallback(async () => {
     if (selectedData) {
       showModal({
-        name: selectedData?.name,
+        name: selectedData?.fullyQualifiedName || '',
         onExport: exportGlossaryInCSVFormat,
       });
     }
@@ -321,7 +325,7 @@ const GlossaryHeader = ({
       return;
     }
 
-    const arr = fqn.split(FQN_SEPARATOR_CHAR);
+    const arr = !isGlossary ? Fqn.split(fqn) : [];
     const dataFQN: Array<string> = [];
     const newData = [
       {
