@@ -29,7 +29,7 @@ def get_long_description():
 # Add here versions required for multiple plugins
 VERSIONS = {
     "airflow": "apache-airflow==2.3.3",
-    "avro": "avro~=1.11",
+    "avro": "avro<=1.11.1",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
