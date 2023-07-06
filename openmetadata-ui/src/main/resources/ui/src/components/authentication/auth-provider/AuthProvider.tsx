@@ -19,6 +19,7 @@ import { LoginCallback } from '@okta/okta-react';
 import appState from 'AppState';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
+import { compare } from 'fast-json-patch';
 import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfiguration';
 import { isEmpty, isNil, isNumber } from 'lodash';
 import { observer } from 'mobx-react';
@@ -36,7 +37,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import axiosClient from 'rest/index';
 import { fetchAuthenticationConfig, fetchAuthorizerConfig } from 'rest/miscAPI';
-import { getLoggedInUser, updateUser } from 'rest/userAPI';
+import { getLoggedInUser, updateUserDetail } from 'rest/userAPI';
 import { NO_AUTH } from '../../../constants/auth.constants';
 import { REDIRECT_PATHNAME, ROUTES } from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/axios.enum';
@@ -211,35 +212,13 @@ export const AuthProvider = ({
 
   const getUpdatedUser = (updatedData: User, existingData: User) => {
     // PUT method for users api only excepts below fields
-    const {
-      isAdmin,
-      teams,
-      timezone,
-      name,
-      description,
-      displayName,
-      profile,
-      email,
-      isBot,
-      roles,
-    } = { ...existingData, ...updatedData };
-    const teamIds = teams?.map((team) => team.id);
-    const roleIds = roles?.map((role) => role.id);
-    updateUser({
-      isAdmin,
-      teams: teamIds,
-      timezone,
-      name,
-      description,
-      displayName,
-      profile,
-      email,
-      isBot,
-      roles: roleIds,
-    } as User)
+    const updatedUserData = { ...existingData, ...updatedData };
+    const jsonPatch = compare(existingData, updatedUserData);
+
+    updateUserDetail(existingData.id, jsonPatch)
       .then((res) => {
-        if (res.data) {
-          appState.updateUserDetails(res.data);
+        if (res) {
+          appState.updateUserDetails({ ...existingData, ...res });
         } else {
           throw t('server.unexpected-response');
         }

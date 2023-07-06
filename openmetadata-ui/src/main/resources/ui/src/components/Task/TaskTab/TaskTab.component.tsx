@@ -29,7 +29,6 @@ import ActivityFeedEditor from 'components/ActivityFeed/ActivityFeedEditor/Activ
 import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from 'components/common/PopOverCard/EntityPopOverCard';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { TaskOperation } from 'constants/Feeds.constants';
 import { TaskType } from 'generated/api/feed/createThread';
 import { TaskDetails, ThreadTaskStatus } from 'generated/entity/feed/thread';
@@ -43,16 +42,14 @@ import {
   TaskActionMode,
 } from 'pages/TasksPage/TasksPage.interface';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { updateTask } from 'rest/feedsAPI';
 import { getNameFromFQN } from 'utils/CommonUtils';
-import { ENTITY_LINK_SEPARATOR } from 'utils/EntityUtils';
-import { getEntityField, getEntityFQN, prepareFeedLink } from 'utils/FeedUtils';
+import { getEntityFQN, prepareFeedLink } from 'utils/FeedUtils';
 import { getEntityLink } from 'utils/TableUtils';
 import {
-  getColumnObject,
   isDescriptionTask,
   isTagsTask,
   TASK_ACTION_LIST,
@@ -63,15 +60,13 @@ import { ReactComponent as TaskCloseIcon } from '/assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '/assets/svg/ic-open-task.svg';
 
 export const TaskTab = ({
-  task,
+  taskThread,
   owner,
   entityType,
-  tags,
-  description,
   ...rest
 }: TaskTabProps) => {
-  const { task: taskDetails } = task;
-  const entityFQN = getEntityFQN(task.about) ?? '';
+  const { task: taskDetails } = taskThread;
+  const entityFQN = getEntityFQN(taskThread.about) ?? '';
   const entityCheck = !isUndefined(entityFQN) && !isUndefined(entityType);
   const { t } = useTranslation();
   const [form] = Form.useForm();
@@ -90,27 +85,8 @@ export const TaskTab = ({
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
 
-  const entityField = useMemo(() => {
-    return getEntityField(task.about);
-  }, [task]);
-
-  const columnObject = useMemo(() => {
-    // prepare column from entityField
-    const column = entityField?.split(ENTITY_LINK_SEPARATOR)?.slice(-2)?.[0];
-
-    // prepare column value by replacing double quotes
-    const columnValue = column?.replaceAll(/^"|"$/g, '') || '';
-
-    /**
-     * Get column name by spliting columnValue with FQN Separator
-     */
-    const columnName = columnValue.split(FQN_SEPARATOR_CHAR).pop();
-
-    return getColumnObject(columnName ?? '', rest.columns || []);
-  }, [task, rest.columns]);
-
   const isOwner = isEqual(owner?.id, currentUser?.id);
-  const isCreator = isEqual(task.createdBy, currentUser?.name);
+  const isCreator = isEqual(taskThread.createdBy, currentUser?.name);
 
   const checkIfUserPartOfTeam = useCallback(
     (teamId: string): boolean => {
@@ -216,34 +192,12 @@ export const TaskTab = ({
 
   const hasTaskUpdateAccess = () => hasEditAccess() || isPartOfAssigneeTeam;
 
-  // prepare current tags for update tags task
-  const getCurrentTags = () => {
-    if (!isEmpty(columnObject) && entityField) {
-      return columnObject.tags ?? [];
-    } else {
-      return tags ?? [];
-    }
-  };
-
-  // prepare current description for update description task
-  const currentDescription = () => {
-    if (entityField && !isEmpty(columnObject)) {
-      return columnObject.description || '';
-    } else {
-      return description || '';
-    }
-  };
-
   const onSave = (message: string) => {
-    postFeed(message, task?.id ?? '').catch(() => {
+    postFeed(message, taskThread?.id ?? '').catch(() => {
       // ignore since error is displayed in toast in the parent promise.
       // Added block for sonar code smell
     });
   };
-
-  useEffect(() => {
-    form.setFieldValue('description', currentDescription());
-  }, [columnObject, entityField, currentDescription]);
 
   const handleMenuItemClick: MenuProps['onClick'] = (info) => {
     if (info.key === TaskActionMode.EDIT) {
@@ -276,19 +230,26 @@ export const TaskTab = ({
       return null;
     }
 
+    const parsedSuggestion = [
+      'RequestDescription',
+      'UpdateDescription',
+    ].includes(taskDetails?.type ?? '')
+      ? taskDetails?.suggestion
+      : JSON.parse(taskDetails?.suggestion || '[]');
+
     return (
       <Space
         className="m-t-sm items-end w-full"
         data-testid="task-cta-buttons"
         size="small">
-        {isCreator && (
+        {(isCreator || hasTaskUpdateAccess()) && (
           <Button onClick={onTaskReject}>{t('label.close')}</Button>
         )}
         {hasTaskUpdateAccess() ? (
           <>
             {['RequestDescription', 'RequestTag'].includes(
               taskDetails?.type ?? ''
-            ) && isEmpty(taskDetails?.suggestion) ? (
+            ) && isEmpty(parsedSuggestion) ? (
               <Button
                 type="primary"
                 onClick={() =>
@@ -328,6 +289,21 @@ export const TaskTab = ({
     isCreator,
   ]);
 
+  const initialFormValue = useMemo(() => {
+    if (isTaskDescription) {
+      const description =
+        taskDetails?.suggestion ?? taskDetails?.oldValue ?? '';
+
+      return { description };
+    } else {
+      const updatedTags = JSON.parse(
+        taskDetails?.suggestion ?? taskDetails?.oldValue ?? '[]'
+      );
+
+      return { updatedTags };
+    }
+  }, [taskDetails, isTaskDescription]);
+
   return (
     <Row className="p-y-sm p-x-md" gutter={[0, 24]}>
       <Col className="d-flex items-center" span={24}>
@@ -362,7 +338,7 @@ export const TaskTab = ({
             </Typography.Text>
             <OwnerLabel
               hasPermission={false}
-              owner={{ name: task.createdBy, type: 'user', id: '' }}
+              owner={{ name: taskThread.createdBy, type: 'user', id: '' }}
               onUpdate={noop}
             />
           </div>
@@ -373,35 +349,32 @@ export const TaskTab = ({
           <DescriptionTask
             hasEditAccess={hasEditAccess()}
             isTaskActionEdit={false}
-            suggestion={task.task?.suggestion ?? ''}
-            taskDetail={task}
-            value={currentDescription()}
+            taskThread={taskThread}
             onChange={(value) => form.setFieldValue('description', value)}
           />
         )}
 
         {isTaskTags && (
           <TagsTask
-            currentTags={getCurrentTags()}
             hasEditAccess={hasEditAccess()}
             isTaskActionEdit={false}
             task={taskDetails}
-            value={JSON.parse(taskDetails?.suggestion ?? '[]')}
+            onChange={(value) => form.setFieldValue('updatedTags', value)}
           />
         )}
 
         <div className="m-l-lg">
-          {task?.posts?.map((reply) => (
+          {taskThread?.posts?.map((reply) => (
             <ActivityFeedCardV1
               isPost
-              feed={task}
+              feed={taskThread}
               hidePopover={false}
               key={reply.id}
               post={reply}
             />
           ))}
         </div>
-        {task.task?.status === ThreadTaskStatus.Open && (
+        {taskDetails?.status === ThreadTaskStatus.Open && (
           <ActivityFeedEditor onSave={onSave} onTextChange={setComment} />
         )}
 
@@ -414,16 +387,20 @@ export const TaskTab = ({
         open={showEditTaskModel}
         title={`${t('label.edit-entity', {
           entity: t('label.task-lowercase'),
-        })} #${taskDetails?.id} ${task.message}`}
+        })} #${taskDetails?.id} ${taskThread.message}`}
         width={768}
         onCancel={() => setShowEditTaskModel(false)}
         onOk={form.submit}>
-        <Form form={form} layout="vertical" onFinish={onEditAndSuggest}>
+        <Form
+          form={form}
+          initialValues={initialFormValue}
+          layout="vertical"
+          onFinish={onEditAndSuggest}>
           {isTaskTags ? (
             <Form.Item
               data-testid="tags-label"
               label={t('label.tag-plural')}
-              name="updateTags"
+              name="updatedTags"
               rules={[
                 {
                   required: true,
@@ -431,12 +408,13 @@ export const TaskTab = ({
                     fieldText: t('label.tag-plural'),
                   }),
                 },
-              ]}>
+              ]}
+              trigger="onChange">
               <TagsTask
                 isTaskActionEdit
-                currentTags={getCurrentTags()}
                 hasEditAccess={hasEditAccess()}
                 task={taskDetails}
+                onChange={(value) => form.setFieldValue('updatedTags', value)}
               />
             </Form.Item>
           ) : (
@@ -452,13 +430,11 @@ export const TaskTab = ({
                   }),
                 },
               ]}
-              valuePropName="suggestion">
+              trigger="onTextChange">
               <DescriptionTask
                 isTaskActionEdit
                 hasEditAccess={hasEditAccess()}
-                suggestion={task.task?.suggestion ?? ''}
-                taskDetail={task}
-                value={currentDescription()}
+                taskThread={taskThread}
                 onChange={(value) => form.setFieldValue('description', value)}
               />
             </Form.Item>
