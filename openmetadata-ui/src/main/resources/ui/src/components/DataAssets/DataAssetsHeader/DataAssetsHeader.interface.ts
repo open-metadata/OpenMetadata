@@ -17,6 +17,7 @@ import { EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
+import { Database } from 'generated/entity/data/database';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
 import { Table } from 'generated/entity/data/table';
@@ -24,21 +25,23 @@ import { Topic } from 'generated/entity/data/topic';
 import { EntityReference } from 'generated/entity/type';
 import { ReactNode } from 'react';
 
-export type DataAssetsSourceMapping = {
-  [EntityType.TABLE]: Table;
-  [EntityType.TOPIC]: Topic;
-  [EntityType.DASHBOARD]: Dashboard;
-  [EntityType.PIPELINE]: Pipeline;
-  [EntityType.MLMODEL]: Mlmodel;
-  [EntityType.CONTAINER]: Container;
-};
+export type DataAssetType =
+  | Table
+  | Topic
+  | Dashboard
+  | Pipeline
+  | Mlmodel
+  | Container
+  | DashboardDataModel;
 
 export type DataAssetsHeaderProps = {
   permissions: OperationPermission;
+  allowSoftDelete?: boolean;
+  isRecursiveDelete?: boolean;
   onTierUpdate: (tier?: string) => Promise<void>;
   onOwnerUpdate: (owner?: EntityReference) => Promise<void>;
-  onVersionClick: () => void;
-  onFollowClick: () => Promise<void>;
+  onVersionClick?: () => void;
+  onFollowClick?: () => Promise<void>;
   onRestoreDataAsset: () => Promise<void>;
   onDisplayNameUpdate: (data: EntityName) => Promise<void>;
 } & (
@@ -49,6 +52,7 @@ export type DataAssetsHeaderProps = {
   | DataAssetMlmodel
   | DataAssetContainer
   | DataAssetDashboardDataModel
+  | DataAssetDatabase
 );
 
 export interface DataAssetTable {
@@ -83,6 +87,11 @@ export interface DataAssetContainer {
 export interface DataAssetDashboardDataModel {
   dataAsset: DashboardDataModel;
   entityType: EntityType.DASHBOARD_DATA_MODEL;
+}
+
+export interface DataAssetDatabase {
+  dataAsset: Database;
+  entityType: EntityType.DATABASE;
 }
 
 export interface DataAssetHeaderInfo {
