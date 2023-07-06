@@ -348,7 +348,7 @@ class DatabaseServiceSource(
                 entity_type=Table,
                 entity_source_state=self.database_source_state,
                 mark_deleted_entity=self.source_config.markDeletedTables,
-                params={"database": schema.fullyQualifiedName.__root__},
+                params={"databaseSchema": schema.fullyQualifiedName.__root__},
             )
 
         # Delete the schema
