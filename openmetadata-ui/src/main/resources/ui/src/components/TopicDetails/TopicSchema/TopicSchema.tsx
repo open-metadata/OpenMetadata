@@ -23,7 +23,10 @@ import {
   Typography,
 } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
+import { Key } from 'antd/lib/table/interface';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { ReactComponent as DownUpArrowIcon } from 'assets/svg/ic-down-up-arrow.svg';
+import { ReactComponent as UpDownArrowIcon } from 'assets/svg/ic-up-down-arrow.svg';
 import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
@@ -81,9 +84,26 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   const history = useHistory();
   const { t } = useTranslation();
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.FIELDS
   );
+
+  const getAllRowKeys = (data: Field[]) => {
+    let keys: string[] = [];
+    data.forEach((item) => {
+      if (item.children && item.children.length > 0) {
+        keys.push(item.name);
+        keys = [...keys, ...getAllRowKeys(item.children)];
+      }
+    });
+
+    return keys;
+  };
+
+  const schemaAllRowKeys = useMemo(() => {
+    return getAllRowKeys(messageSchema?.schemaFields ?? []);
+  }, [messageSchema?.schemaFields]);
 
   const getColumnName = (cell: Field) => {
     const fqn = cell?.fullyQualifiedName || '';
@@ -128,6 +148,18 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     } else {
       setEditFieldDescription(undefined);
     }
+  };
+
+  const toggleExpandAll = () => {
+    if (expandedRowKeys.length > 0) {
+      setExpandedRowKeys([]);
+    } else {
+      setExpandedRowKeys(schemaAllRowKeys);
+    }
+  };
+
+  const handleExpandedRowsChange = (keys: readonly Key[]) => {
+    setExpandedRowKeys(keys as string[]);
   };
 
   const onUpdateDescriptionHandler = (cell: Field) => {
@@ -377,7 +409,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         <>
           {!isEmpty(messageSchema?.schemaFields) &&
             showSchemaDisplayTypeSwitch && (
-              <Col span={24}>
+              <Col className="d-flex items-center justify-between" span={24}>
                 <Radio.Group value={viewType} onChange={handleViewChange}>
                   <Radio.Button value={SchemaViewType.FIELDS}>
                     {t('label.field-plural')}
@@ -386,6 +418,24 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
                     {t('label.text')}
                   </Radio.Button>
                 </Radio.Group>
+
+                <Button
+                  className="text-primary rounded-4"
+                  size="small"
+                  type="text"
+                  onClick={toggleExpandAll}>
+                  <Space align="center" size={4}>
+                    {expandedRowKeys.length === schemaAllRowKeys.length ? (
+                      <DownUpArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
+                    ) : (
+                      <UpDownArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
+                    )}
+
+                    {expandedRowKeys.length === schemaAllRowKeys.length
+                      ? t('label.collapse-all')
+                      : t('label.expand-all')}
+                  </Space>
+                </Button>
               </Col>
             )}
           <Col span={24}>
@@ -403,22 +453,26 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
                 />
               )
             ) : (
-              <Table
-                bordered
-                className={className}
-                columns={columns}
-                data-testid="topic-schema-fields-table"
-                dataSource={messageSchema?.schemaFields}
-                expandable={{
-                  ...getTableExpandableConfig<Field>(),
-                  rowExpandable: (record) => !isEmpty(record.children),
-                  defaultExpandAllRows,
-                }}
-                pagination={false}
-                rowKey="name"
-                scroll={TABLE_SCROLL_VALUE}
-                size="small"
-              />
+              <>
+                <Table
+                  bordered
+                  className={className}
+                  columns={columns}
+                  data-testid="topic-schema-fields-table"
+                  dataSource={messageSchema?.schemaFields}
+                  expandable={{
+                    ...getTableExpandableConfig<Field>(),
+                    rowExpandable: (record) => !isEmpty(record.children),
+                    onExpandedRowsChange: handleExpandedRowsChange,
+                    defaultExpandAllRows,
+                    expandedRowKeys,
+                  }}
+                  pagination={false}
+                  rowKey="name"
+                  scroll={TABLE_SCROLL_VALUE}
+                  size="small"
+                />
+              </>
             )}
           </Col>
         </>

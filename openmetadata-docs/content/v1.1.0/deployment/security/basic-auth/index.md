@@ -107,4 +107,4 @@ Following are valid value for transportation strategy:
 - `SMTPS`: If SMTP port is 465 use this
 - `SMTP_TLS`: If SMTP port is 587 use this
 
-{% partial file="configure-ingestion.md" /%}
+{% partial file="/v1.1.0/deployment/configure-ingestion.md" /%}

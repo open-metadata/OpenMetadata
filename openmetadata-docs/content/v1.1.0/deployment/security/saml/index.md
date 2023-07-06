@@ -111,4 +111,4 @@ More specific details on different IDPs can be found below:
   {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-{% partial file="configure-ingestion.md" /%}
+{% partial file="/v1.1.0/deployment/configure-ingestion.md" /%}
