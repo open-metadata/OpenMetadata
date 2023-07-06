@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
-import React, { ReactNode } from 'react';
+import { act, render, screen } from '@testing-library/react';
+import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import DashboardVersion from './DashboardVersion.component';
 import { DashboardVersionProp } from './DashboardVersion.interface';
 import {
@@ -22,7 +23,7 @@ import {
   mockTagChangeVersion,
 } from './dashboardVersion.mock';
 
-jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
+jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest
     .fn()
     .mockImplementation(() => <div>RichTextEditorPreviewer.component</div>);
@@ -32,21 +33,21 @@ jest.mock('components/common/description/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>Description.component</div>);
 });
 
-jest.mock('../EntityVersionTimeLine/EntityVersionTimeLine', () => {
+jest.mock('components/EntityVersionTimeLine/EntityVersionTimeLine', () => {
   return jest
     .fn()
     .mockImplementation(() => <div>EntityVersionTimeLine.component</div>);
 });
 
-jest.mock('../Loader/Loader', () => {
+jest.mock('components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);
 });
 
-jest.mock('components/containers/PageLayoutV1', () => {
+jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
   return jest
     .fn()
-    .mockImplementation(({ children }: { children: ReactNode }) => (
-      <div data-testid="PageLayoutV1">{children}</div>
+    .mockImplementation(() => (
+      <div data-testid="ErrorPlaceHolder">ErrorPlaceHolder</div>
     ));
 });
 
@@ -54,32 +55,24 @@ JSON.parse = jest.fn().mockReturnValue([]);
 
 describe('Test DashboardVersion page', () => {
   it('Checks if the page has all the proper components rendered', async () => {
-    const { container } = render(
-      <DashboardVersion {...dashboardVersionProps} />,
-      {
+    await act(async () => {
+      render(<DashboardVersion {...dashboardVersionProps} />, {
         wrapper: MemoryRouter,
-      }
-    );
+      });
+    });
 
-    const dashboardVersionContainer = await findByTestId(
-      container,
-      'dashboard-version-container'
-    );
-    const versionData = await findByTestId(container, 'version-data');
-    const schemaTable = await findByTestId(container, 'schema-table');
+    const versionData = await screen.findByTestId('version-data');
+    const schemaTable = await screen.findByTestId('schema-table');
 
-    const entityVersionTimeLine = await findByText(
-      container,
+    const entityVersionTimeLine = await screen.findByText(
       'EntityVersionTimeLine.component'
     );
-    const tabs = await findByTestId(container, 'tabs');
-    const description = await findByText(container, 'Description.component');
-    const richTextEditorPreviewer = await findByText(
-      container,
+    const tabs = await screen.findByTestId('tabs');
+    const description = await screen.findByText('Description.component');
+    const richTextEditorPreviewer = await screen.findByText(
       'RichTextEditorPreviewer.component'
     );
 
-    expect(dashboardVersionContainer).toBeInTheDocument();
     expect(versionData).toBeInTheDocument();
     expect(schemaTable).toBeInTheDocument();
     expect(entityVersionTimeLine).toBeInTheDocument();
@@ -89,37 +82,32 @@ describe('Test DashboardVersion page', () => {
   });
 
   it('Checks if the page has all the proper components rendered, if change version is related to tags', async () => {
-    const { container } = render(
-      <DashboardVersion
-        {...dashboardVersionProps}
-        currentVersionData={
-          mockTagChangeVersion as DashboardVersionProp['currentVersionData']
+    await act(async () => {
+      render(
+        <DashboardVersion
+          {...dashboardVersionProps}
+          currentVersionData={
+            mockTagChangeVersion as DashboardVersionProp['currentVersionData']
+          }
+        />,
+        {
+          wrapper: MemoryRouter,
         }
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+      );
+    });
 
-    const dashboardVersionContainer = await findByTestId(
-      container,
-      'dashboard-version-container'
-    );
-    const versionData = await findByTestId(container, 'version-data');
-    const schemaTable = await findByTestId(container, 'schema-table');
+    const versionData = await screen.findByTestId('version-data');
+    const schemaTable = await screen.findByTestId('schema-table');
 
-    const entityVersionTimeLine = await findByText(
-      container,
+    const entityVersionTimeLine = await screen.findByText(
       'EntityVersionTimeLine.component'
     );
-    const tabs = await findByTestId(container, 'tabs');
-    const description = await findByText(container, 'Description.component');
-    const richTextEditorPreviewer = await findByText(
-      container,
+    const tabs = await screen.findByTestId('tabs');
+    const description = await screen.findByText('Description.component');
+    const richTextEditorPreviewer = await screen.findByText(
       'RichTextEditorPreviewer.component'
     );
 
-    expect(dashboardVersionContainer).toBeInTheDocument();
     expect(versionData).toBeInTheDocument();
     expect(schemaTable).toBeInTheDocument();
     expect(entityVersionTimeLine).toBeInTheDocument();
@@ -129,30 +117,26 @@ describe('Test DashboardVersion page', () => {
   });
 
   it('Checks if the page has all the proper components rendered, if the dashboard deleted is undefined', async () => {
-    const { container } = render(
-      <DashboardVersion
-        {...dashboardVersionProps}
-        currentVersionData={mockNoChartData}
-        deleted={undefined}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    await act(async () => {
+      render(
+        <DashboardVersion
+          {...dashboardVersionProps}
+          currentVersionData={mockNoChartData}
+          deleted={undefined}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
 
-    const dashboardVersionContainer = await findByTestId(
-      container,
-      'dashboard-version-container'
-    );
-    const versionData = await findByTestId(container, 'version-data');
-    const entityVersionTimeLine = await findByText(
-      container,
+    const versionData = await screen.findByTestId('version-data');
+    const entityVersionTimeLine = await screen.findByText(
       'EntityVersionTimeLine.component'
     );
-    const tabs = await findByTestId(container, 'tabs');
-    const description = await findByText(container, 'Description.component');
+    const tabs = await screen.findByTestId('tabs');
+    const description = await screen.findByText('Description.component');
 
-    expect(dashboardVersionContainer).toBeInTheDocument();
     expect(versionData).toBeInTheDocument();
     expect(entityVersionTimeLine).toBeInTheDocument();
     expect(tabs).toBeInTheDocument();
@@ -160,20 +144,53 @@ describe('Test DashboardVersion page', () => {
   });
 
   it('If version is loading it should show loading component', async () => {
-    const { container } = render(
-      <DashboardVersion {...dashboardVersionProps} isVersionLoading />,
-      {
+    await act(async () => {
+      render(<DashboardVersion {...dashboardVersionProps} isVersionLoading />, {
         wrapper: MemoryRouter,
-      }
-    );
+      });
+    });
 
-    const dashboardVersionContainer = await findByTestId(
-      container,
-      'dashboard-version-container'
+    const entityVersionTimeLine = await screen.findByText(
+      'EntityVersionTimeLine.component'
     );
-    const loader = await findByText(container, 'Loader.component');
+    const loader = await screen.findByText('Loader.component');
 
-    expect(dashboardVersionContainer).toBeInTheDocument();
+    expect(entityVersionTimeLine).toBeInTheDocument();
     expect(loader).toBeInTheDocument();
+  });
+
+  it('ErrorPlaceholder should be displayed in case of no view permissions', async () => {
+    await act(async () => {
+      render(
+        <DashboardVersion
+          {...dashboardVersionProps}
+          entityPermissions={DEFAULT_ENTITY_PERMISSION}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    const versionData = screen.queryByTestId('version-data');
+    const schemaTable = screen.queryByTestId('schema-table');
+
+    const tabs = screen.queryByTestId('tabs');
+    const description = screen.queryByText('Description.component');
+    const richTextEditorPreviewer = screen.queryByText(
+      'RichTextEditorPreviewer.component'
+    );
+    const entityVersionTimeLine = screen.queryByText(
+      'EntityVersionTimeLine.component'
+    );
+    const errorPlaceHolder = screen.getByTestId('ErrorPlaceHolder');
+
+    expect(entityVersionTimeLine).toBeNull();
+    expect(versionData).toBeNull();
+    expect(schemaTable).toBeNull();
+    expect(tabs).toBeNull();
+    expect(description).toBeNull();
+    expect(richTextEditorPreviewer).toBeNull();
+    expect(errorPlaceHolder).toBeInTheDocument();
   });
 });

@@ -500,6 +500,7 @@ export const DataAssetsHeader = ({
                 </Button>
                 <Button
                   className="w-16 p-0"
+                  data-testid="version-button"
                   icon={<Icon component={VersionIcon} />}
                   onClick={onVersionClick}>
                   <Typography.Text>{version}</Typography.Text>
