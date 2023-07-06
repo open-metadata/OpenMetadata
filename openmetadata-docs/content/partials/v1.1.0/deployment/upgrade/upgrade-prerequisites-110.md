@@ -376,6 +376,65 @@ impacts BigQuery, Datalake and any other source where you are directly passing t
 ...
 ```
 
+
+### Data Quality
+#### From
+```yaml
+source:
+  type: TestSuite
+  serviceName: MyAwesomeTestSuite
+  sourceConfig:
+    config:
+      type: TestSuite
+    
+processor:
+  type: "orm-test-runner"
+  config:
+    testSuites:
+      - name: test_suite_one
+        description: this is a test testSuite to confirm test suite workflow works as expected
+        testCases:
+          - name: a_column_test
+            description: A test case
+            testDefinitionName: columnValuesToBeBetween
+            entityLink: "<#E::table::local_redshift.dev.dbt_jaffle.customers::columns::number_of_orders>"     
+            parameterValues:
+              - name: minValue
+                value: 2
+              - name: maxValue
+                value: 20
+```
+
+#### To
+```yaml
+source:
+  type: TestSuite
+  serviceName: <your_service_name>
+  sourceConfig:
+    config:
+      type: TestSuite
+      entityFullyQualifiedName: <entityFqn>
+
+processor:
+  type: "orm-test-runner"
+  config:
+    forceUpdate: <false|true>
+    testCases:
+      - name: <testCaseName>
+        testDefinitionName: columnValueLengthsToBeBetween
+        columnName: <columnName>
+        parameterValues:
+          - name: minLength
+            value: 10
+          - name: maxLength
+            value: 25
+      - name: <testCaseName>
+        testDefinitionName: tableRowCountToEqual
+        parameterValues:
+          - name: value
+            value: 10
+```
+
 ### Other changes
 
 - Glue now supports custom database names via `databaseName`.

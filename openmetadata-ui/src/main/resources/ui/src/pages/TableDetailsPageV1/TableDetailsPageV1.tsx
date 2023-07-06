@@ -431,7 +431,7 @@ const TableDetailsPageV1 = () => {
         gutter={[0, 16]}
         id="schemaDetails"
         wrap={false}>
-        <Col className="p-t-sm m-l-lg tab-content-height" flex="auto">
+        <Col className="p-t-sm m-l-lg tab-content-height p-r-lg" flex="auto">
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
               description={tableDetails?.description}
