@@ -91,7 +91,7 @@ GRANT SELECT ON ALL TABLES IN SCHEMA <schema> TO openmetadata;
 {% partial 
   file="/v1.1.0/connectors/metadata-ingestion-ui.md" 
   variables={
-    connector: "Athena", 
+    connector: "Vertica", 
     selectServicePath: "/images/v1.1.0/connectors/vertica/select-service.png",
     addNewServicePath: "/images/v1.1.0/connectors/vertica/add-new-service.png",
     serviceConnectionPath: "/images/v1.1.0/connectors/vertica/service-connection.png",

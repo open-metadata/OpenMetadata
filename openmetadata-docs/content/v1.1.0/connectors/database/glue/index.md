@@ -39,10 +39,6 @@ Configure and schedule Glue metadata and profiler workflows from the OpenMetadat
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
 User must have `glue:GetDatabases` and `glue:GetTables` permissions to ingest the basic metadata.
 
 ## Metadata Ingestion
@@ -50,7 +46,7 @@ User must have `glue:GetDatabases` and `glue:GetTables` permissions to ingest th
 {% partial
 file="/v1.1.0/connectors/metadata-ingestion-ui.md"
 variables={
-connector: "Athena",
+connector: "Glue",
 selectServicePath: "/images/v1.1.0/connectors/glue/select-service.png",
 addNewServicePath: "/images/v1.1.0/connectors/glue/add-new-service.png",
 serviceConnectionPath: "/images/v1.1.0/connectors/glue/service-connection.png",

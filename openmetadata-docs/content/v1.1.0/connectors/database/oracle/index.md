@@ -66,7 +66,7 @@ GRANT CREATE SESSION TO new_role;
 {% partial 
   file="/v1.1.0/connectors/metadata-ingestion-ui.md" 
   variables={
-    connector: "Athena", 
+    connector: "Oracle", 
     selectServicePath: "/images/v1.1.0/connectors/oracle/select-service.png",
     addNewServicePath: "/images/v1.1.0/connectors/oracle/add-new-service.png",
     serviceConnectionPath: "/images/v1.1.0/connectors/oracle/service-connection.png",

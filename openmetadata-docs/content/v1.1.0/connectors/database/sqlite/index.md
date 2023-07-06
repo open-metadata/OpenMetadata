@@ -49,7 +49,7 @@ To extract metadata, the user needs to be able to perform `.tables`, `.schema`, 
 {% partial 
   file="/v1.1.0/connectors/metadata-ingestion-ui.md" 
   variables={
-    connector: "Athena", 
+    connector: "SQLite", 
     selectServicePath: "/images/v1.1.0/connectors/sqlite/select-service.png",
     addNewServicePath: "/images/v1.1.0/connectors/sqlite/add-new-service.png",
     serviceConnectionPath: "/images/v1.1.0/connectors/sqlite/service-connection.png",

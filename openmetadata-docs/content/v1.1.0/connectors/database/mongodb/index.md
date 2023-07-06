@@ -49,7 +49,7 @@ To fetch the metadata from MongoDB to OpenMetadata, the MongoDB user must have a
 {% partial 
   file="/v1.1.0/connectors/metadata-ingestion-ui.md" 
   variables={
-    connector: "Athena", 
+    connector: "MongoDB", 
     selectServicePath: "/images/v1.1.0/connectors/mongodb/select-service.png",
     addNewServicePath: "/images/v1.1.0/connectors/mongodb/add-new-service.png",
     serviceConnectionPath: "/images/v1.1.0/connectors/mongodb/service-connection.png",

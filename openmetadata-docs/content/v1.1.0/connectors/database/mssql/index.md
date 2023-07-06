@@ -98,7 +98,7 @@ For details step please refer to this [link](https://docs.microsoft.com/en-us/sq
 {% partial 
   file="/v1.1.0/connectors/metadata-ingestion-ui.md" 
   variables={
-    connector: "Athena", 
+    connector: "MSSQL", 
     selectServicePath: "/images/v1.1.0/connectors/mssql/select-service.png",
     addNewServicePath: "/images/v1.1.0/connectors/mssql/add-new-service.png",
     serviceConnectionPath: "/images/v1.1.0/connectors/mssql/service-connection.png",

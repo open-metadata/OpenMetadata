@@ -77,7 +77,7 @@ permissions on the Storage Account:
 {% partial 
   file="/v1.1.0/connectors/metadata-ingestion-ui.md" 
   variables={
-    connector: "Athena", 
+    connector: "Datalake", 
     selectServicePath: "/images/v1.1.0/connectors/datalake/select-service.png",
     addNewServicePath: "/images/v1.1.0/connectors/datalake/add-new-service.png",
     serviceConnectionPath: "/images/v1.1.0/connectors/datalake/service-connection.png",

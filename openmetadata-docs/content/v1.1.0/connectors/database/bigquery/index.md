@@ -89,7 +89,7 @@ link="/connectors/database/bigquery/roles"
 {% partial
   file="/v1.1.0/connectors/metadata-ingestion-ui.md"
   variables={
-    connector: "Athena",
+    connector: "BigQuery",
     selectServicePath: "/images/v1.1.0/connectors/bigquery/select-service.png",
     addNewServicePath: "/images/v1.1.0/connectors/bigquery/add-new-service.png",
     serviceConnectionPath: "/images/v1.1.0/connectors/bigquery/service-connection.png",

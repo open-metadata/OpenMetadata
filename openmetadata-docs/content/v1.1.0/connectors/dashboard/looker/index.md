@@ -25,10 +25,6 @@ Configure and schedule Looker metadata and profiler workflows from the OpenMetad
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
 There are two types of metadata we ingest from Looker:
 - Dashboards & Charts
 - LookML Models
@@ -53,118 +49,17 @@ out of LookML Views, including their lineage to the source databases.
 
 ## Metadata Ingestion
 
+{% partial 
+  file="/v1.1.0/connectors/metadata-ingestion-ui.md" 
+  variables={
+    connector: "Looker", 
+    selectServicePath: "/images/v1.1.0/connectors/looker/select-service.png",
+    addNewServicePath: "/images/v1.1.0/connectors/looker/add-new-service.png",
+    serviceConnectionPath: "/images/v1.1.0/connectors/looker/service-connection.png",
+} 
+/%}
+
 {% stepsContainer %}
-
-{% step srNumber=1 %}
-
-{% stepDescription title="1. Visit the Services Page" %}
-
-The first step is ingesting the metadata from your sources. Under
-Settings, you will find a Services link an external source system to
-OpenMetadata. Once a service is created, it can be used to configure
-metadata, usage, and profiler workflows.
-
-To visit the Services page, select Services from the Settings menu.
-
-{% /stepDescription %}
-
-{% stepVisualInfo %}
-
-{% image
-src="/images/v1.1.0/connectors/visit-services.png"
-alt="Visit Services Page"
-caption="Find Dashboard option on left panel of the settings page" /%}
-
-{% /stepVisualInfo %}
-
-{% /step %}
-
-{% step srNumber=2 %}
-
-{% stepDescription title="2. Create a New Service" %}
-
-Click on the 'Add New Service' button to start the Service creation.
-
-{% /stepDescription %}
-
-{% stepVisualInfo %}
-
-{% image
-src="/images/v1.1.0/connectors/create-service.png"
-alt="Create a new service"
-caption="Add a new Service from the Dashboard Services page" /%}
-
-{% /stepVisualInfo %}
-
-{% /step %}
-
-{% step srNumber=3 %}
-
-{% stepDescription title="3. Select the Service Type" %}
-
-Select Looker as the service type and click Next.
-
-{% /stepDescription %}
-
-{% stepVisualInfo %}
-
-{% image
-  src="/images/v1.1.0/connectors/looker/select-service.png"
-  alt="Select Service"
-  caption="Select your service from the list" /%}
-
-{% /stepVisualInfo %}
-
-{% /step %}
-
-{% step srNumber=4 %}
-
-{% stepDescription title="4. Name and Describe your Service" %}
-
-Provide a name and description for your service as illustrated below.
-
-#### Service Name
-
-OpenMetadata uniquely identifies services by their Service Name. Provide
-a name that distinguishes your deployment from other services, including
-the other {connector} services that you might be ingesting metadata
-from.
-
-{% /stepDescription %}
-
-{% stepVisualInfo %}
-
-{% image
-  src="/images/v1.1.0/connectors/looker/add-new-service.png"
-  alt="Add New Service"
-  caption="Provide a Name and description for your Service" /%}
-
-{% /stepVisualInfo %}
-
-{% /step %}
-
-{% step srNumber=5 %}
-
-{% stepDescription title="5. Configure the Service Connection" %}
-
-In this step, we will configure the connection settings required for
-this connector. Please follow the instructions below to ensure that
-you've configured the connector to read from your looker service as
-desired.
-
-{% /stepDescription %}
-
-{% stepVisualInfo %}
-
-{% image
-  src="/images/v1.1.0/connectors/looker/service-connection.png"
-  alt="Configure service connection"
-  caption="Configure the service connection by filling the form" /%}
-
-{% /stepVisualInfo %}
-
-{% /step %}
-
 {% extraContent parentTagName="stepsContainer" %}
 
 #### Connection Details
@@ -183,138 +78,14 @@ Follow these [steps](https://docs.github.com/en/authentication/keeping-your-acco
 
 When configuring, give repository access to `Only select repositories` and choose the one containing your LookML files. Then, we only need `Repository Permissions` as `Read-only` for `Contents`.
 
-
 {% /extraContent %}
 
-{% step srNumber=6 %}
+{% partial file="/v1.1.0/connectors/test-connection.md" /%}
 
-{% stepDescription title="6. Test the Connection" %}
+{% partial file="/v1.1.0/connectors/dashboard/configure-ingestion.md" /%}
 
-Once the credentials have been added, click on `Test Connection` and Save
-the changes.
-
-{% /stepDescription %}
-
-{% stepVisualInfo %}
-
-{% image
-  src="/images/v1.1.0/connectors/test-connection.png"
-  alt="Test Connection"
-  caption="Test the connection and save the Service" /%}
-
-{% /stepVisualInfo %}
-
-{% /step %}
-
-{% step srNumber=7 %}
-
-{% stepDescription title="7. Configure Metadata Ingestion" %}
-
-In this step we will configure the metadata ingestion pipeline,
-Please follow the instructions below
-
-{% /stepDescription %}
-
-{% stepVisualInfo %}
-
-{% image
-src="/images/v1.1.0/connectors/configure-metadata-ingestion-dashboard.png"
-alt="Configure Metadata Ingestion"
-caption="Configure Metadata Ingestion Page" /%}
-
-{% /stepVisualInfo %}
-
-{% /step %}
-
-{% extraContent parentTagName="stepsContainer" %}
-
-#### Metadata Ingestion Options
-
-- **Name**: This field refers to the name of ingestion pipeline, you can customize the name or use the generated name.
-- **Dashboard Filter Pattern (Optional)**: Use it to control whether to include dashboard as part of metadata ingestion.
-    - **Include**: Explicitly include dashboards by adding a list of comma-separated regular expressions to the 'Include' field. OpenMetadata will include all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be excluded.
-    - **Exclude**: Explicitly exclude dashboards by adding a list of comma-separated regular expressions to the 'Exclude' field. OpenMetadata will exclude all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be included.
-- **Chart Pattern (Optional)**: Use it to control whether to include charts as part of metadata ingestion.
-    - **Include**: Explicitly include charts by adding a list of comma-separated regular expressions to the 'Include' field. OpenMetadata will include all charts with names matching one or more of the supplied regular expressions. All other charts will be excluded.
-    - **Exclude**: Explicitly exclude charts by adding a list of comma-separated regular expressions to the 'Exclude' field. OpenMetadata will exclude all charts with names matching one or more of the supplied regular expressions. All other charts will be included.
-- **Data Model Pattern (Optional)**: Use it to control whether to include data modes as part of metadata ingestion.
-    - **Include**: Explicitly include data models by adding a list of comma-separated regular expressions to the 'Include' field. OpenMetadata will include all data models with names matching one or more of the supplied regular expressions. All other data models will be excluded.
-    - **Exclude**: Explicitly exclude data models by adding a list of comma-separated regular expressions to the 'Exclude' field. OpenMetadata will exclude all data models with names matching one or more of the supplied regular expressions. All other data models will be included.
-- **Database Service Name (Optional)**: Enter the name of Database Service which is already ingested in OpenMetadata to create lineage between dashboards and database tables.
-- **Enable Debug Log (toggle)**: Set the 'Enable Debug Log' toggle to set the default log level to debug, these logs can be viewed later in Airflow.
-- **Include Owners (toggle)**: Set the 'Include Owners' toggle to control whether to include owners to the ingested entity if the owner email matches with a user stored in the OM server as part of metadata ingestion. If the ingested entity already exists and has an owner, the owner will not be overwritten.
-- **Include Tags (toggle)**: Set the 'Include Tags' toggle to control whether to include tags in metadata ingestion.
-- **Include Data Models (toggle)**: Set the 'Include Data Models' toggle to control whether to include tags as part of metadata ingestion.
-- **Mark Deleted Dashboards (toggle)**: Set the 'Mark Deleted Dashboards' toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
-
-{% /extraContent %}
-
-{% step srNumber=8 %}
-
-{% stepDescription title="8. Schedule the Ingestion and Deploy" %}
-
-Scheduling can be set up at an hourly, daily, or weekly cadence. The
-timezone is in UTC. Select a Start Date to schedule for ingestion. It is
-optional to add an End Date.
-
-Review your configuration settings. If they match what you intended,
-click Deploy to create the service and schedule metadata ingestion.
-
-If something doesn't look right, click the Back button to return to the
-appropriate step and change the settings as needed.
-
-After configuring the workflow, you can click on Deploy to create the
-pipeline.
-
-{% /stepDescription %}
-
-{% stepVisualInfo %}
-
-{% image
-src="/images/v1.1.0/connectors/schedule.png"
-alt="Schedule the Workflow"
-caption="Schedule the Ingestion Pipeline and Deploy" /%}
-
-{% /stepVisualInfo %}
-
-{% /step %}
-
-{% step srNumber=9 %}
-
-{% stepDescription title="9. View the Ingestion Pipeline" %}
-
-Once the workflow has been successfully deployed, you can view the
-Ingestion Pipeline running from the Service Page.
-
-{% /stepDescription %}
-
-{% stepVisualInfo %}
-
-{% image
-src="/images/v1.1.0/connectors/view-ingestion-pipeline.png"
-alt="View Ingestion Pipeline"
-caption="View the Ingestion Pipeline from the Service Page" /%}
-
-{% /stepVisualInfo %}
-
-{% /step %}
+{% partial file="/v1.1.0/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-## Troubleshooting
-
- ### Workflow Deployment Error
-
-If there were any errors during the workflow deployment process, the
-Ingestion Pipeline Entity will still be created, but no workflow will be
-present in the Ingestion container.
-
-- You can then edit the Ingestion Pipeline and Deploy it again.
-
-- From the Connection tab, you can also Edit the Service if needed.
-
-{% image
-src="/images/v1.1.0/connectors/workflow-deployment-error.png"
-alt="Workflow Deployment Error"
-caption="Edit and Deploy the Ingestion Pipeline" /%}
-
+{% partial file="/v1.1.0/connectors/troubleshooting.md" /%}

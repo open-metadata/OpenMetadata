@@ -372,6 +372,10 @@ site_menu:
     url: /connectors/dashboard/powerbi
   - category: Connectors / Dashboard / PowerBI / Run Externally
     url: /connectors/dashboard/powerbi/yaml
+  - category: Connectors / Dashboard / QuickSight
+    url: /connectors/dashboard/quicksight
+  - category: Connectors / Dashboard / QuickSight / Run Externally
+    url: /connectors/dashboard/quicksight/yaml
   - category: Connectors / Dashboard / Redash
     url: /connectors/dashboard/redash
   - category: Connectors / Dashboard / Redash / Run Externally
@@ -386,10 +390,7 @@ site_menu:
     url: /connectors/dashboard/tableau
   - category: Connectors / Dashboard / Tableau / Run Externally
     url: /connectors/dashboard/tableau/yaml
-  - category: Connectors / Dashboard / QuickSight
-    url: /connectors/dashboard/quicksight
-  - category: Connectors / Dashboard / QuickSight / Run Externally
-    url: /connectors/dashboard/quicksight/yaml
+
   - category: Connectors / Messaging
     url: /connectors/messaging
   - category: Connectors / Messaging / Kafka

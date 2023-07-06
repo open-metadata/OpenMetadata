@@ -76,7 +76,7 @@ For the usage and lineage workflow, the user will need `SELECT` privilege. You c
 {% partial 
   file="/v1.1.0/connectors/metadata-ingestion-ui.md" 
   variables={
-    connector: "Athena", 
+    connector: "Clickhouse", 
     selectServicePath: "/images/v1.1.0/connectors/clickhouse/select-service.png",
     addNewServicePath: "/images/v1.1.0/connectors/clickhouse/add-new-service.png",
     serviceConnectionPath: "/images/v1.1.0/connectors/clickhouse/service-connection.png",

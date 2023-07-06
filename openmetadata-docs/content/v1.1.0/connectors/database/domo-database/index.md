@@ -47,7 +47,7 @@ For questions related to scopes, click [here](https://developer.domo.com/portal/
 {% partial 
   file="/v1.1.0/connectors/metadata-ingestion-ui.md" 
   variables={
-    connector: "Athena", 
+    connector: "Domo Database", 
     selectServicePath: "/images/v1.1.0/connectors/domodatabase/select-service.png",
     addNewServicePath: "/images/v1.1.0/connectors/domodatabase/add-new-service.png",
     serviceConnectionPath: "/images/v1.1.0/connectors/domodatabase/service-connection.png",

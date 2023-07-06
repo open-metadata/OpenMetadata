@@ -51,7 +51,7 @@ To deploy OpenMetadata, check the Deployment guides.
 {% partial 
   file="/v1.1.0/connectors/metadata-ingestion-ui.md" 
   variables={
-    connector: "Athena", 
+    connector: "Databricks", 
     selectServicePath: "/images/v1.1.0/connectors/databricks/select-service.png",
     addNewServicePath: "/images/v1.1.0/connectors/databricks/add-new-service.png",
     serviceConnectionPath: "/images/v1.1.0/connectors/databricks/service-connection.png",

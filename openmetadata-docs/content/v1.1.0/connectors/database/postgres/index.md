@@ -69,7 +69,7 @@ GRANT pg_read_all_stats TO your_user;
 {% partial 
   file="/v1.1.0/connectors/metadata-ingestion-ui.md" 
   variables={
-    connector: "Athena", 
+    connector: "Postgres", 
     selectServicePath: "/images/v1.1.0/connectors/postgres/select-service.png",
     addNewServicePath: "/images/v1.1.0/connectors/postgres/add-new-service.png",
     serviceConnectionPath: "/images/v1.1.0/connectors/postgres/service-connection.png",

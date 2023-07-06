@@ -49,7 +49,7 @@ These are the permissions you will require to fetch the metadata from Salesforce
 {% partial 
   file="/v1.1.0/connectors/metadata-ingestion-ui.md" 
   variables={
-    connector: "Athena", 
+    connector: "Salesforce", 
     selectServicePath: "/images/v1.1.0/connectors/salesforce/select-service.png",
     addNewServicePath: "/images/v1.1.0/connectors/salesforce/add-new-service.png",
     serviceConnectionPath: "/images/v1.1.0/connectors/salesforce/service-connection.png",

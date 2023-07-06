@@ -66,7 +66,7 @@ Executing the profiler workflow or data quality tests, will require the user to 
 {% partial 
   file="/v1.1.0/connectors/metadata-ingestion-ui.md" 
   variables={
-    connector: "Athena", 
+    connector: "Singlestore", 
     selectServicePath: "/images/v1.1.0/connectors/singlestore/select-service.png",
     addNewServicePath: "/images/v1.1.0/connectors/singlestore/add-new-service.png",
     serviceConnectionPath: "/images/v1.1.0/connectors/singlestore/service-connection.png",

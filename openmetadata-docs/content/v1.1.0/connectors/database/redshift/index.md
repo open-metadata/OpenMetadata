@@ -69,7 +69,7 @@ For the usage and lineage workflow, the user will need `SELECT` privilege on `ST
 {% partial 
   file="/v1.1.0/connectors/metadata-ingestion-ui.md" 
   variables={
-    connector: "Athena", 
+    connector: "Redshift", 
     selectServicePath: "/images/v1.1.0/connectors/redshift/select-service.png",
     addNewServicePath: "/images/v1.1.0/connectors/redshift/add-new-service.png",
     serviceConnectionPath: "/images/v1.1.0/connectors/redshift/service-connection.png",

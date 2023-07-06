@@ -93,7 +93,7 @@ You can find more information about the `account_usage` schema [here](https://do
 {% partial 
   file="/v1.1.0/connectors/metadata-ingestion-ui.md" 
   variables={
-    connector: "Athena", 
+    connector: "Snowflake", 
     selectServicePath: "/images/v1.1.0/connectors/snowflake/select-service.png",
     addNewServicePath: "/images/v1.1.0/connectors/snowflake/add-new-service.png",
     serviceConnectionPath: "/images/v1.1.0/connectors/snowflake/service-connection.png",

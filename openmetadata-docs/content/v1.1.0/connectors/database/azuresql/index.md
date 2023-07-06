@@ -61,7 +61,7 @@ GRANT SELECT TO Mary;
 {% partial 
   file="/v1.1.0/connectors/metadata-ingestion-ui.md" 
   variables={
-    connector: "Athena", 
+    connector: "Azure SQL", 
     selectServicePath: "/images/v1.1.0/connectors/azuresql/select-service.png",
     addNewServicePath: "/images/v1.1.0/connectors/azuresql/add-new-service.png",
     serviceConnectionPath: "/images/v1.1.0/connectors/azuresql/service-connection.png",

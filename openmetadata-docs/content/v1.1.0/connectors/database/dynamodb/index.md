@@ -38,10 +38,6 @@ Configure and schedule DynamoDB metadata workflows from the OpenMetadata UI:
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
 The DynamoDB connector ingests metadata using the DynamoDB boto3 client.
 
 OpenMetadata retrieves information about all tables in the AWS account, the user must have permissions to perform the `dynamodb:ListTables` operation.
@@ -70,7 +66,7 @@ For more information on Dynamodb permissions visit the [AWS DynamoDB official do
 {% partial 
   file="/v1.1.0/connectors/metadata-ingestion-ui.md" 
   variables={
-    connector: "Athena", 
+    connector: "DynamoDB", 
     selectServicePath: "/images/v1.1.0/connectors/dynamodb/select-service.png",
     addNewServicePath: "/images/v1.1.0/connectors/dynamodb/add-new-service.png",
     serviceConnectionPath: "/images/v1.1.0/connectors/dynamodb/service-connection.png",

@@ -49,7 +49,7 @@ To deploy OpenMetadata, check the Deployment guides.
 {% partial 
   file="/v1.1.0/connectors/metadata-ingestion-ui.md" 
   variables={
-    connector: "Athena", 
+    connector: "PinotDB", 
     selectServicePath: "/images/v1.1.0/connectors/pinotdb/select-service.png",
     addNewServicePath: "/images/v1.1.0/connectors/pinotdb/add-new-service.png",
     serviceConnectionPath: "/images/v1.1.0/connectors/pinotdb/service-connection.png",
