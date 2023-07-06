@@ -41,7 +41,7 @@ export default class EntityLink {
    * @returns entity type
    */
   static getEntityType(entityLink) {
-    return EntityLink.split(entityLink)[0];
+    return this.split(entityLink)[0];
   }
 
   /**
@@ -50,7 +50,7 @@ export default class EntityLink {
    * @returns entity fqn
    */
   static getEntityFqn(entityLink) {
-    return EntityLink.split(entityLink)[1];
+    return this.split(entityLink)[1];
   }
 
   /**
@@ -59,12 +59,12 @@ export default class EntityLink {
    * @returns entity field
    */
   static getEntityField(entityLink) {
-    const entityType = EntityLink.getEntityType(entityLink);
+    const entityType = this.getEntityType(entityLink);
     if (entityType === 'table') {
-      return EntityLink.split(entityLink)[2];
+      return this.split(entityLink)[2];
     }
 
-    return EntityLink.split(entityLink)[-1];
+    return this.split(entityLink)[-1];
   }
 
   /**
@@ -73,7 +73,7 @@ export default class EntityLink {
    * @returns column name for table entity
    */
   static getTableColumnName(entityLink) {
-    return EntityLink.split(entityLink)[3];
+    return this.split(entityLink)[3];
   }
 
   /**
@@ -82,7 +82,7 @@ export default class EntityLink {
    * @returns column field for table entity
    */
   static getTableColumnField(entityLink) {
-    return EntityLink.split(entityLink)[4];
+    return this.split(entityLink)[4];
   }
 
   /**
