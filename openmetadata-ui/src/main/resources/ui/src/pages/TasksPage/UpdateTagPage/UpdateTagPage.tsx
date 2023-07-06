@@ -171,7 +171,7 @@ const UpdateTag = () => {
     }
     form.setFieldsValue({
       title: message.trimEnd(),
-      updateTags: getTags(),
+      updatedTags: getTags(),
       assignees: defaultAssignee,
     });
   }, [entityData]);
@@ -244,7 +244,7 @@ const UpdateTag = () => {
                     label={t('label.update-entity', {
                       entity: t('label.tag-plural'),
                     })}
-                    name="updateTags"
+                    name="updatedTags"
                     rules={[
                       {
                         required: true,

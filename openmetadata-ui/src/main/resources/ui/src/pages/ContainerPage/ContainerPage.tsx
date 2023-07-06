@@ -72,6 +72,7 @@ import {
   restoreContainer,
 } from 'rest/storageAPI';
 import {
+  addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
   getFeedCounts,
@@ -159,6 +160,14 @@ const ContainerPage = () => {
         'parent,dataModel,owner,tags,followers,extension',
         Include.All
       );
+      addToRecentViewed({
+        displayName: getEntityName(response),
+        entityType: EntityType.CONTAINER,
+        fqn: response.fullyQualifiedName ?? '',
+        serviceType: response.serviceType,
+        timestamp: 0,
+        id: response.id,
+      });
       setContainerData({
         ...response,
         tags: sortTagsCaseInsensitive(response.tags || []),

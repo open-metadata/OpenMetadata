@@ -12,6 +12,7 @@
  */
 
 import { diffArrays } from 'diff';
+import { TagLabel } from 'generated/type/tagLabel';
 import React, { FC, Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -19,7 +20,6 @@ import {
   Thread,
   ThreadTaskStatus,
 } from '../../../generated/entity/feed/thread';
-import { TagLabel } from '../../../generated/type/tagLabel';
 import { TagsDiffView } from './TagsDiffView';
 import { TagsTabs } from './TagsTabs';
 import TagSuggestion from './TagSuggestion';
@@ -28,18 +28,14 @@ interface TagsTaskProps {
   task: Thread['task'];
   isTaskActionEdit: boolean;
   hasEditAccess: boolean;
-  currentTags: TagLabel[];
-  value?: TagLabel[];
-  onChange?: (newTags: TagLabel[]) => void;
+  onChange: (newTags: TagLabel[]) => void;
 }
 
 const TagsTask: FC<TagsTaskProps> = ({
-  value = [],
-  onChange,
   isTaskActionEdit,
   hasEditAccess,
   task,
-  currentTags,
+  onChange,
 }) => {
   const { t } = useTranslation();
 
@@ -105,7 +101,10 @@ const TagsTask: FC<TagsTaskProps> = ({
             {isRequestTag && (
               <div data-testid="request-tags">
                 {isTaskActionEdit && hasEditAccess ? (
-                  <TagSuggestion value={value} onChange={onChange} />
+                  <TagSuggestion
+                    value={JSON.parse(suggestion ?? '[]')}
+                    onChange={onChange}
+                  />
                 ) : (
                   suggestedTagsDiff
                 )}
@@ -115,8 +114,8 @@ const TagsTask: FC<TagsTaskProps> = ({
               <div data-testid="update-tags">
                 {isTaskActionEdit && hasEditAccess ? (
                   <TagsTabs
-                    tags={currentTags}
-                    value={value}
+                    tags={JSON.parse(oldValue ?? '[]')}
+                    value={JSON.parse(suggestion ?? '[]')}
                     onChange={onChange}
                   />
                 ) : (
