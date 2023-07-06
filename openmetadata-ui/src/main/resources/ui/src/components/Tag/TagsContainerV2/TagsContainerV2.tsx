@@ -170,7 +170,6 @@ const TagsContainerV2 = ({
   const renderTags = useMemo(
     () => (
       <TagsViewer
-        isTextPlaceholder
         showNoDataPlaceholder={showNoDataPlaceholder}
         tags={tags?.[tagType] ?? []}
         type="border"
