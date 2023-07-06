@@ -53,7 +53,7 @@ Then, prepare the Atlas Service and configure the Ingestion:
 - **Host and Port**: Host and port of the Atlas service.
 - **Username**: username to connect  to the Atlas. This user should have privileges to read all the metadata in Atlas.
 - **Password**: password to connect  to the Atlas.
-- **databaseServiceName**: source database of the data source(Database service that you created from UI. example- local_hive)
+- **databaseServiceName**: source database of the data source. This is the service we created before: e.g., `local_hive`)
 - **messagingServiceName**: messaging service source of the data source.
 - **Entity Type**: Name of the entity type in Atlas.
 
