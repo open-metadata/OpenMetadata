@@ -198,6 +198,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         form.resetFields();
         onCancel();
       }}
+      cancelText={t('label.cancel')}
       closable={false}
       confirmLoading={isLoadingOnSave}
       maskClosable={false}
@@ -212,16 +213,17 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       ) : (
         <Form
           className="tw-h-70vh tw-overflow-auto"
+          data-testid="edit-test-form"
           form={form}
           layout="vertical"
           name="tableTestForm"
           onFinish={handleFormSubmit}>
           <Form.Item required label={`${t('label.table')}`} name="table">
-            <Input disabled />
+            <Input disabled data-testid="table-name" />
           </Form.Item>
           {isColumn && (
             <Form.Item required label={`${t('label.column')}`} name="column">
-              <Input disabled />
+              <Input disabled data-testid="column-name" />
             </Form.Item>
           )}
           <Form.Item
@@ -234,10 +236,17 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
                 message: t('message.entity-name-validation'),
               },
             ]}>
-            <Input disabled placeholder={t('message.enter-test-case-name')} />
+            <Input
+              disabled
+              data-testid="test-name"
+              placeholder={t('message.enter-test-case-name')}
+            />
           </Form.Item>
           <Form.Item label={t('label.display-name')} name="displayName">
-            <Input placeholder={t('message.enter-test-case-name')} />
+            <Input
+              data-testid="test-display-name"
+              placeholder={t('message.enter-test-case-name')}
+            />
           </Form.Item>
           <Form.Item
             required
@@ -245,7 +254,11 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
               entity: t('label.type'),
             })}:`}
             name="testDefinition">
-            <Input disabled placeholder={t('message.enter-test-case-name')} />
+            <Input
+              disabled
+              data-testid="test-definition"
+              placeholder={t('message.enter-test-case-name')}
+            />
           </Form.Item>
 
           {GenerateParamsField()}
