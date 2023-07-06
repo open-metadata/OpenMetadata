@@ -28,6 +28,7 @@ import org.openmetadata.schema.type.Votes;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 
 /** Interface to be implemented by all entities to provide a way to access all the common fields. */
+@SuppressWarnings("unused")
 public interface EntityInterface {
   // Lower case entity name to canonical entity name map
   Map<String, String> CANONICAL_ENTITY_NAME_MAP = new HashMap<>();
@@ -81,6 +82,14 @@ public interface EntityInterface {
     return null;
   }
 
+  default EntityReference getDomain() {
+    return null;
+  }
+
+  default List<EntityReference> getDataProducts() {
+    return null;
+  }
+
   void setId(UUID id);
 
   void setDescription(String description);
@@ -112,6 +121,14 @@ public interface EntityInterface {
   }
 
   default void setExtension(Object extension) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setDomain(EntityReference entityReference) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setDataProducts(List<EntityReference> dataProducts) {
     /* no-op implementation to be overridden */
   }
 

@@ -50,6 +50,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -332,7 +333,8 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
     return copy(new Domain(), create, user)
         .withDomainType(create.getDomainType())
         .withFullyQualifiedName(create.getName())
-        .withParent(getEntityReference(Entity.DOMAIN, create.getParent()))
+        .withParent(
+            Entity.getEntityReference(getEntityReference(Entity.DOMAIN, create.getParent()), Include.NON_DELETED))
         .withExperts(EntityUtil.populateEntityReferences(getEntityReferences(Entity.USER, experts)));
   }
 }

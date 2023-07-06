@@ -422,11 +422,10 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
   @Override
   public JwtResponse loginUser(LoginRequest loginRequest) throws IOException, TemplateException {
-    String userName =
-        loginRequest.getEmail().contains("@") ? loginRequest.getEmail().split("@")[0] : loginRequest.getEmail();
+    String userName = loginRequest.getEmail();
     checkIfLoginBlocked(userName);
     User storedUser = lookUserInProvider(userName);
-    validatePassword(storedUser, loginRequest.getPassword());
+    validatePassword(userName, storedUser, loginRequest.getPassword());
     return getJwtResponse(storedUser, loginConfiguration.getJwtTokenExpiryTime());
   }
 
@@ -438,9 +437,9 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public void recordFailedLoginAttempt(User storedUser) throws TemplateException, IOException {
-    loginAttemptCache.recordFailedLogin(storedUser.getName());
-    int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(storedUser.getName());
+  public void recordFailedLoginAttempt(String providedIdentity, User storedUser) throws TemplateException, IOException {
+    loginAttemptCache.recordFailedLogin(providedIdentity);
+    int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(providedIdentity);
     if (failedLoginAttempt == loginConfiguration.getMaxLoginFailAttempts()) {
       EmailUtil.getInstance()
           .sendAccountStatus(
@@ -452,7 +451,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     }
   }
 
-  public void validatePassword(User storedUser, String reqPassword) throws TemplateException, IOException {
+  public void validatePassword(String providedIdentity, User storedUser, String reqPassword)
+      throws TemplateException, IOException {
     // when basic auth is enabled and the user is created through the API without password, the stored auth mechanism
     // for the user is null
     if (storedUser.getAuthenticationMechanism() == null) {
@@ -464,18 +464,26 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     String storedHashPassword = storedData.get("password");
     if (!BCrypt.verifyer().verify(reqPassword.toCharArray(), storedHashPassword).verified) {
       // record Failed Login Attempts
-      recordFailedLoginAttempt(storedUser);
+      recordFailedLoginAttempt(providedIdentity, storedUser);
       throw new AuthenticationException(INVALID_USERNAME_PASSWORD);
     }
   }
 
   @Override
   public User lookUserInProvider(String userName) {
-    User storedUser;
+    User storedUser = null;
     try {
-      storedUser =
-          userRepository.getByName(
-              null, userName, new EntityUtil.Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+      if (userName.contains("@")) {
+        // lookup by User Email
+        storedUser =
+            userRepository.getByEmail(
+                null, userName, new EntityUtil.Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+      } else {
+        storedUser =
+            userRepository.getByName(
+                null, userName, new EntityUtil.Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+      }
+
       if (storedUser != null && Boolean.TRUE.equals(storedUser.getIsBot())) {
         throw new CustomExceptionMessage(BAD_REQUEST, INVALID_USERNAME_PASSWORD);
       }

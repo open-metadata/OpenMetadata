@@ -25,6 +25,7 @@ import {
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getExplorePath, PAGE_SIZE } from 'constants/constants';
 import { delimiterRegex } from 'constants/regex.constants';
+import { ExplorePageTabs } from 'enums/Explore.enum';
 import { SearchIndex } from 'enums/search.enum';
 import i18next from 'i18next';
 import { isEmpty, isUndefined, toLower } from 'lodash';
@@ -307,11 +308,24 @@ export const getUsageCountLink = (tagFQN: string) => {
   const type = tagFQN.startsWith('Tier') ? 'tier' : 'tags';
 
   return getExplorePath({
+    tab: ExplorePageTabs.TABLES,
     extraParameters: {
-      facetFilter: {
-        [`${type}.tagFQN`]: [tagFQN],
-      },
+      page: '1',
+      quickFilter: JSON.stringify({
+        query: {
+          bool: {
+            must: [
+              {
+                bool: {
+                  should: [{ term: { [`${type}.tagFQN`]: tagFQN } }],
+                },
+              },
+            ],
+          },
+        },
+      }),
     },
+    isPersistFilters: false,
   });
 };
 
