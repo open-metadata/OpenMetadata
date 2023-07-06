@@ -3167,6 +3167,11 @@
     mkdirp "^1.0.4"
     path-browserify "^1.0.1"
 
+"@types/antlr4@^4.11.2":
+  version "4.11.2"
+  resolved "https://registry.yarnpkg.com/@types/antlr4/-/antlr4-4.11.2.tgz#46b70713b38eecb2d1a8e2ffd14544367067b41e"
+  integrity sha512-WVDiUppozGAKAL76KbXX63A4U4a0HfHM/5X7+GWzen7OaS/7eJEMdd61B+Hhl52Kedcmr80/jNeeWrM3Z/icig==
+
 "@types/asn1js@^2.0.2":
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/@types/asn1js/-/asn1js-2.0.2.tgz#bb1992291381b5f06e22a829f2ae009267cdf8c5"

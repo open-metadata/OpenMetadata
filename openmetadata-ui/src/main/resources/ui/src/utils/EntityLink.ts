@@ -23,7 +23,7 @@ export default class EntityLink {
    * @param string entityLink
    * @returns list of entity link parts
    */
-  static split(entityLink) {
+  static split(entityLink: string) {
     const chars = new antlr4.InputStream(entityLink);
     const lexer = new EntityLinkLexer(chars);
     const tokens = new antlr4.CommonTokenStream(lexer);
@@ -40,7 +40,7 @@ export default class EntityLink {
    * @param string entityLink
    * @returns entity type
    */
-  static getEntityType(entityLink) {
+  static getEntityType(entityLink: string) {
     return this.split(entityLink)[0];
   }
 
@@ -49,7 +49,7 @@ export default class EntityLink {
    * @param string entityLink
    * @returns entity fqn
    */
-  static getEntityFqn(entityLink) {
+  static getEntityFqn(entityLink: string) {
     return this.split(entityLink)[1];
   }
 
@@ -58,7 +58,7 @@ export default class EntityLink {
    * @param string entityLink
    * @returns entity field
    */
-  static getEntityField(entityLink) {
+  static getEntityField(entityLink: string) {
     const entityType = this.getEntityType(entityLink);
     if (entityType === 'table') {
       return this.split(entityLink)[2];
@@ -72,7 +72,7 @@ export default class EntityLink {
    * @param string entityLink
    * @returns column name for table entity
    */
-  static getTableColumnName(entityLink) {
+  static getTableColumnName(entityLink: string) {
     return this.split(entityLink)[3];
   }
 
@@ -81,7 +81,7 @@ export default class EntityLink {
    * @param string entityLink
    * @returns column field for table entity
    */
-  static getTableColumnField(entityLink) {
+  static getTableColumnField(entityLink: string) {
     return this.split(entityLink)[4];
   }
 
@@ -91,7 +91,7 @@ export default class EntityLink {
    * @param string | undefined columnName
    * @returns entity link for table
    */
-  static getTableEntityLink(tableFqn, columnName) {
+  static getTableEntityLink(tableFqn: string, columnName: string) {
     if (columnName) {
       return `<#E${ENTITY_LINK_SEPARATOR}table${ENTITY_LINK_SEPARATOR}${tableFqn}${ENTITY_LINK_SEPARATOR}columns${ENTITY_LINK_SEPARATOR}${columnName}>`;
     } else {
@@ -105,7 +105,7 @@ export default class EntityLink {
    * @param string entityFqn
    * @returns entityLink
    */
-  static getEntityLink(entityType, entityFqn) {
+  static getEntityLink(entityType: string, entityFqn: string) {
     return `<#E${ENTITY_LINK_SEPARATOR}${entityType}${ENTITY_LINK_SEPARATOR}${entityFqn}>`;
   }
 }
