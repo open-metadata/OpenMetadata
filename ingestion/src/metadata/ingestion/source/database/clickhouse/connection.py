@@ -41,7 +41,7 @@ def get_connection(connection: ClickhouseConnection) -> Engine:
     Create Clickhouse connection
     """
     if connection.secure or connection.keyfile:
-        if connection.connectionArguments:
+        if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
         if connection.secure:
             connection.connectionArguments.__root__["secure"] = connection.secure
