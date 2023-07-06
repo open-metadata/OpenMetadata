@@ -89,7 +89,7 @@ the whole process.
 The drawback here? You need to install some requirements, which is not always possible. Here you have two alternatives,
 either you use the `PythonVirtualenvOperator`, or read below on how to run the ingestion with the `DockerOperator`.
 
-{% partial file="run-connectors-class.md" /%}
+{% partial file="/v1.1.0/deployment/run-connectors-class.md" /%}
 
 ## Docker Operator
 
