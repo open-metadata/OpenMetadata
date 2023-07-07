@@ -15,6 +15,11 @@ import { Row, Typography } from 'antd';
 import React from 'react';
 import { RightPanelProps } from '../AddDataQualityTest.interface';
 
+/**
+ * @deprecated will be removed
+ * I don't feel any good use of this component,
+ * If it's for common use move this to component/common so that others can use it
+ */
 const RightPanel: React.FC<RightPanelProps> = ({ data }) => {
   return (
     <Row>

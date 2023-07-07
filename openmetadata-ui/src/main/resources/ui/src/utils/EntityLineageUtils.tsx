@@ -14,25 +14,24 @@
 import { CheckOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { CustomEdge } from 'components/EntityLineage/CustomEdge.component';
-import CustomNodeV1 from 'components/EntityLineage/CustomNodeV1.component';
+import { CustomEdge } from 'components/Entity/EntityLineage/CustomEdge.component';
+import CustomNodeV1 from 'components/Entity/EntityLineage/CustomNodeV1.component';
 import {
   CustomEdgeData,
   CustomElement,
   CustomFlow,
-  Edge as InterfaceEdge,
   EdgeData,
   EdgeTypeEnum,
   EntityReferenceChild,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
-  ModifiedColumn,
   NodeIndexMap,
   SelectedEdge,
   SelectedNode,
-} from 'components/EntityLineage/EntityLineage.interface';
+} from 'components/Entity/EntityLineage/EntityLineage.interface';
 import Loader from 'components/Loader/Loader';
+import { ModifiedColumn } from 'components/TableProfiler/TableProfiler.interface';
 import dagre from 'dagre';
 import { t } from 'i18next';
 import {

@@ -26,14 +26,13 @@ import ContainerChildren from 'components/ContainerDetail/ContainerChildren/Cont
 import ContainerDataModel from 'components/ContainerDetail/ContainerDataModel/ContainerDataModel';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
+import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
 import {
-  Edge,
   EdgeData,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
-} from 'components/EntityLineage/EntityLineage.interface';
+} from 'components/Entity/EntityLineage/EntityLineage.interface';
 import Loader from 'components/Loader/Loader';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -50,7 +49,7 @@ import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { CreateThread, ThreadType } from 'generated/api/feed/createThread';
 import { Container } from 'generated/entity/data/container';
-import { EntityLineage } from 'generated/type/entityLineage';
+import { Edge, EntityLineage } from 'generated/type/entityLineage';
 import { EntityReference } from 'generated/type/entityReference';
 import { Include } from 'generated/type/include';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';

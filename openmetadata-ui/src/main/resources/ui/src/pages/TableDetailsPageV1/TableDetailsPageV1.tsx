@@ -25,7 +25,7 @@ import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlac
 import QueryViewer from 'components/common/QueryViewer/QueryViewer.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
+import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
 import Loader from 'components/Loader/Loader';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';

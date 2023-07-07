@@ -85,7 +85,8 @@ const UserPage = withSuspenseFallback(
 
 const GlossaryVersionPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../components/GlossaryVersion/GlossaryVersion.component')
+    () =>
+      import('components/Glossary/GlossaryVersion/GlossaryVersion.component')
   )
 );
 

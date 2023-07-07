@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
+import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
 import { Container } from 'generated/entity/data/container';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
