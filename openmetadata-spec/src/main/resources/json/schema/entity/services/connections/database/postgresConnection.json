@@ -1,5 +1,5 @@
 {
-  "$id": "/entity/services/connections/database/postgresConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/postgresConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "PostgresConnection",
   "description": "Postgres Database Connection Config",
@@ -9,13 +9,17 @@
     "postgresType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Postgres"],
+      "enum": [
+        "Postgres"
+      ],
       "default": "Postgres"
     },
     "postgresScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["postgresql+psycopg2", "pgspider+psycopg2"],
+      "enum": [
+        "postgresql+psycopg2", "pgspider+psycopg2"
+      ],
       "default": "postgresql+psycopg2"
     }
   },
@@ -122,5 +126,9 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username", "database"]
+  "required": [
+    "hostPort",
+    "username",
+    "database"
+  ]
 }

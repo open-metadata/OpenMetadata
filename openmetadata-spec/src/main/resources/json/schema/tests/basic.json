@@ -1,5 +1,5 @@
 {
-  "$id": "/tests/basic.json",
+  "$id": "https://open-metadata.org/schema/tests/basic.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Basic",
   "description": "This schema defines basic types that are used by other test schemas.",
@@ -90,7 +90,8 @@
           "description": "Schema to capture test case result.",
           "javaType": "org.openmetadata.schema.tests.type.TestCaseFailureStatus",
           "type": "object",
-          "properties": {
+          "properties": 
+          {
             "testCaseFailureStatusType": {
               "description": "Status of Test Case Acknowledgement.",
               "javaType": "org.openmetadata.schema.tests.type.TestCaseFailureStatusType",
@@ -112,13 +113,7 @@
               "description": "Reason of Test Case resolution.",
               "javaType": "org.openmetadata.schema.tests.type.TestCaseFailureReason",
               "type": "string",
-              "enum": [
-                "FalsePositive",
-                "MissingData",
-                "Duplicates",
-                "OutOfBounds",
-                "Other"
-              ],
+              "enum": ["FalsePositive", "MissingData", "Duplicates", "OutOfBounds", "Other"],
               "javaEnums": [
                 {
                   "name": "FalsePositive"

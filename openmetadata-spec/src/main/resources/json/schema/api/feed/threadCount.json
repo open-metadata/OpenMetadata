@@ -1,5 +1,5 @@
 {
-  "$id": "/api/feed/threadCount.json",
+  "$id": "https://open-metadata.org/schema/api/feed/threadCount.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Count of threads related to an entity",
   "description": "This schema defines the type for reporting the count of threads related to an entity.",

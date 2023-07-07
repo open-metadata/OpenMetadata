@@ -1,5 +1,5 @@
 {
-  "$id": "/entity/policies/accessControl/resourceDescriptor.json",
+  "$id": "https://open-metadata.org/schema/entity/policies/accessControl/resourceDescriptor.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ResourceDescriptor",
   "description": "Resource descriptor",

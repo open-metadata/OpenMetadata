@@ -1,5 +1,5 @@
 {
-  "$id": "/entity/services/connections/storage/s3Connection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/storage/s3Connection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "S3 Connection",
   "description": "S3 Connection.",
@@ -38,5 +38,7 @@
     }
   },
   "additionalProperties": false,
-  "required": ["awsConfig"]
+  "required": [
+    "awsConfig"
+  ]
 }

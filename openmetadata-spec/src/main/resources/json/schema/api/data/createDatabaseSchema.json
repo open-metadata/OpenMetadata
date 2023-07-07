@@ -1,11 +1,13 @@
 {
-  "$id": "/api/data/createDatabaseSchema.json",
+  "$id": "https://open-metadata.org/schema/api/data/createDatabaseSchema.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateDatabaseSchemaRequest",
   "description": "Create Database Schema entity request",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.data.CreateDatabaseSchema",
-  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
   "properties": {
     "name": {
       "description": "Name that identifies this database schema instance uniquely.",
@@ -35,7 +37,7 @@
       },
       "default": null
     },
-    "retentionPeriod": {
+    "retentionPeriod" : {
       "description": "Retention period of the data in the database. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`.",
       "$ref": "../../type/basic.json#/definitions/duration"
     },
@@ -43,11 +45,14 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
-    "domain": {
+    "domain" : {
       "description": "Fully qualified name of the domain the Database Schema belongs to.",
       "type": "string"
     }
   },
-  "required": ["name", "database"],
+  "required": [
+    "name",
+    "database"
+  ],
   "additionalProperties": false
 }

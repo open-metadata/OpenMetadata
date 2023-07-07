@@ -1,5 +1,5 @@
 {
-  "$id": "/email/smtpSettings.json",
+  "$id": "https://open-metadata.org/schema/email/smtpSettings.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SmtpSettings",
   "description": "This schema defines the SMTP Settings for sending Email",
@@ -52,12 +52,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "serverEndpoint",
-    "serverPort",
-    "username",
-    "password",
-    "senderMail",
-    "openMetadataUrl"
-  ]
+  "required": ["serverEndpoint", "serverPort", "username", "password", "senderMail", "openMetadataUrl"]
 }

@@ -1,5 +1,5 @@
 {
-  "$id": "/entity/services/mlmodelService.json",
+  "$id": "https://open-metadata.org/schema/entity/services/mlmodelService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MlModelService",
   "description": "MlModel Service Entity, such as MlFlow.",
@@ -132,7 +132,7 @@
       "type": "boolean",
       "default": false
     },
-    "domain": {
+    "domain" : {
       "description": "Domain the MLModel service belongs to.",
       "$ref": "../../type/entityReference.json"
     }

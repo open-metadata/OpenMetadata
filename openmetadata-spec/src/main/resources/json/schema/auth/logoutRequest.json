@@ -1,5 +1,5 @@
 {
-  "$id": "/api/auth/logoutRequest.json",
+  "$id": "https://open-metadata.org/schema/api/auth/logoutRequest.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LogoutRequest",
   "description": "This schema defines Logout Request.",
@@ -24,5 +24,7 @@
     }
   },
   "additionalProperties": false,
-  "required": ["token"]
+  "required": [
+    "token"
+  ]
 }

@@ -1,5 +1,5 @@
 {
-  "$id": "/api/tests/createTestCase.json",
+  "$id": "https://open-metadata.org/schema/api/tests/createTestCase.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateTestCaseRequest",
   "description": "Test is a test definition to capture data quality tests.",

@@ -1,5 +1,5 @@
 {
-  "$id": "/api/data/createDashboardDataModel.json",
+  "$id": "https://open-metadata.org/schema/api/data/createDashboardDataModel.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateDashboardDataModelRequest",
   "description": "Create Dashboard Data Model entity request.",
@@ -59,7 +59,7 @@
       "description": "Name of the project / workspace / collection in which the dataModel is contained",
       "type": "string"
     },
-    "domain": {
+    "domain" : {
       "description": "Fully qualified name of the domain the Dashboard Data Model belongs to.",
       "type": "string"
     }

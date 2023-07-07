@@ -1,5 +1,5 @@
 {
-  "$id": "/entity/configuration/authorizerConfiguration.json",
+  "$id": "https://open-metadata.org/schema/entity/configuration/authorizerConfiguration.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AuthorizerConfiguration",
   "description": "This schema defines the Authorization Configuration.",
@@ -60,13 +60,6 @@
       "type": "boolean"
     }
   },
-  "required": [
-    "className",
-    "containerRequestFilter",
-    "adminPrincipals",
-    "principalDomain",
-    "enforcePrincipalDomain",
-    "enableSecureSocketConnection"
-  ],
+  "required": ["className", "containerRequestFilter", "adminPrincipals", "principalDomain", "enforcePrincipalDomain", "enableSecureSocketConnection"],
   "additionalProperties": false
 }

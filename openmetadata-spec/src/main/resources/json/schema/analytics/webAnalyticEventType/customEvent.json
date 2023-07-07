@@ -1,5 +1,5 @@
 {
-  "$id": "/analytics/customEvent.json",
+  "$id": "https://open-metadata.org/schema/analytics/customEvent.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "customData",
   "type": "object",
@@ -9,33 +9,35 @@
     "customEventTypes": {
       "description": "Type of events that can be performed",
       "type": "string",
-      "enum": ["CLICK"]
+      "enum": [
+        "CLICK"
+      ]
     }
   },
   "properties": {
-    "fullUrl": {
-      "description": "complete URL of the page",
-      "$ref": "../basic.json#/definitions/fullUrl"
-    },
-    "url": {
-      "description": "url part after the domain specification",
-      "$ref": "../basic.json#/definitions/url"
-    },
-    "hostname": {
-      "description": "domain name",
-      "$ref": "../basic.json#/definitions/hostname"
-    },
-    "sessionId": {
-      "description": "Unique ID identifying a session",
-      "$ref": "../basic.json#/definitions/sessionId"
-    },
-    "eventType": {
-      "description": "Type of event that was performed",
-      "$ref": "#/definitions/customEventTypes"
-    },
-    "eventValue": {
-      "description": "Value of the event",
-      "type": "string"
-    }
-  }
+        "fullUrl": {
+          "description": "complete URL of the page",
+          "$ref": "../basic.json#/definitions/fullUrl"
+        },
+        "url": {
+          "description": "url part after the domain specification",
+          "$ref": "../basic.json#/definitions/url"
+        },
+        "hostname": {
+          "description": "domain name",
+          "$ref": "../basic.json#/definitions/hostname"
+        },
+        "sessionId": {
+          "description": "Unique ID identifying a session",
+          "$ref": "../basic.json#/definitions/sessionId"
+        },
+        "eventType": {
+          "description": "Type of event that was performed",
+          "$ref": "#/definitions/customEventTypes"
+        },
+        "eventValue": {
+            "description": "Value of the event",
+            "type": "string"
+            }
+        }
 }

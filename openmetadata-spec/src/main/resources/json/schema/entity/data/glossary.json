@@ -1,5 +1,5 @@
 {
-  "$id": "/entity/data/glossary.json",
+  "$id": "https://open-metadata.org/schema/entity/data/glossary.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Glossary",
   "description": "This schema defines the Glossary entity. A Glossary is collection of hierarchical GlossaryTerms.",
@@ -66,9 +66,9 @@
       },
       "default": null
     },
-    "termCount": {
+    "termCount" : {
       "description": "Total number of terms in the glossary. This includes all the children in the hierarchy.",
-      "type": "integer",
+      "type" : "integer",
       "minimum": 0
     },
     "changeDescription": {
@@ -80,19 +80,19 @@
       "type": "boolean",
       "default": false
     },
-    "provider": {
+    "provider" : {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },
-    "disabled": {
+    "disabled" : {
       "description": "System glossary can't be deleted. Use this flag to disable them.",
       "type": "boolean"
     },
-    "mutuallyExclusive": {
-      "description": "Glossary terms that are direct children in this glossary are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity.",
-      "type": "boolean",
-      "default": "false"
+    "mutuallyExclusive" : {
+      "description" : "Glossary terms that are direct children in this glossary are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity.",
+      "type" : "boolean",
+      "default" : "false"
     },
-    "domain": {
+    "domain" : {
       "description": "Domain the Glossary belongs to.",
       "$ref": "../../type/entityReference.json"
     }

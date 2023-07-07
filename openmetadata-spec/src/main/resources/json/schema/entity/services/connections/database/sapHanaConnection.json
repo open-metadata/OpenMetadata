@@ -1,5 +1,5 @@
 {
-  "$id": "/entity/services/connections/database/sapHanaConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/sapHanaConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SapHanaConnection",
   "description": "Sap Hana Database Connection Config",

@@ -1,5 +1,5 @@
 {
-  "$id": "/entity/data/database.json",
+  "$id": "https://open-metadata.org/schema/entity/data/database.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Database",
   "$comment": "@om-entity-type",
@@ -100,7 +100,7 @@
       "type": "boolean",
       "default": false
     },
-    "retentionPeriod": {
+    "retentionPeriod" : {
       "description": "Retention period of the data in the database. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`.",
       "$ref": "../../type/basic.json#/definitions/duration"
     },
@@ -108,7 +108,7 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
-    "domain": {
+    "domain" : {
       "description": "Domain the Database belongs to. When not set, the Database inherits the domain from the database service it belongs to.",
       "$ref": "../../type/entityReference.json"
     }

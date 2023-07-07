@@ -1,13 +1,15 @@
 {
-  "$id": "/entity/events/webhook.json",
+  "$id": "https://open-metadata.org/schema/entity/events/webhook.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Webhook",
   "description": "This schema defines webhook for receiving events from OpenMetadata.",
   "type": "object",
   "javaType": "org.openmetadata.schema.type.Webhook",
-  "javaInterfaces": ["org.openmetadata.schema.SubscriptionAction"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.SubscriptionAction"
+  ],
   "definitions": {
-    "entityName": {
+    "entityName" : {
       "description": "Unique name of the application receiving webhook events.",
       "type": "string",
       "minLength": 1,

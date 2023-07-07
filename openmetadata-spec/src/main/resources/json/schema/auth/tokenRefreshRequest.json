@@ -1,5 +1,5 @@
 {
-  "$id": "/auth/tokenRefreshRequest.json",
+  "$id": "https://open-metadata.org/schema/auth/tokenRefreshRequest.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "TokenRefreshRequest",
   "description": "This schema defines the Token Refresh Request",
@@ -11,6 +11,8 @@
       "type": "string"
     }
   },
-  "required": ["refreshToken"],
+  "required": [
+    "refreshToken"
+  ],
   "additionalProperties": false
 }

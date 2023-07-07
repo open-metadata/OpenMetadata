@@ -1,5 +1,5 @@
 {
-  "$id": "/api/data/createPipeline.json",
+  "$id": "https://open-metadata.org/schema/api/data/createPipeline.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreatePipelineRequest",
   "description": "Create Pipeline entity request",
@@ -69,7 +69,7 @@
       "type": "string",
       "default": null
     },
-    "domain": {
+    "domain" : {
       "description": "Fully qualified name of the domain the Pipeline belongs to.",
       "type": "string"
     }

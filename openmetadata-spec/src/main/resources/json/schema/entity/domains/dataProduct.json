@@ -1,5 +1,5 @@
 {
-  "$id": "/entity/domains/dataProduct.json",
+  "$id": "https://open-metadata.org/schema/entity/domains/dataProduct.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DataProduct",
   "description": "A `Data Product` or `Data as a Product` is a logical unit that contains all components to process and store domain data for analytical or data-intensive use cases made available to data consumers.",
@@ -50,7 +50,7 @@
     "experts": {
       "description": "List of of users who are experts for this Data Product.",
       "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList",
-      "default": null
+      "default" : null
     },
     "domain": {
       "description": "Domain or sub-domain to which this Data Product belongs to.",

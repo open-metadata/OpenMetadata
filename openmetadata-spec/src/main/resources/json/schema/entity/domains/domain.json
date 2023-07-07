@@ -1,5 +1,5 @@
 {
-  "$id": "/entity/domains/domain.json",
+  "$id": "https://open-metadata.org/schema/entity/domains/domain.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Domain",
   "description": "A `Domain` is a bounded context that is aligned with a Business Unit or a function within an organization.",

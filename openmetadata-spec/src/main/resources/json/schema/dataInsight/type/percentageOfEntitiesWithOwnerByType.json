@@ -1,11 +1,13 @@
 {
-  "$id": "/dataInsight/type/percentageOfEntitiesWithOwnerByType.json",
+  "$id": "https://open-metadata.org/schema/dataInsight/type/percentageOfEntitiesWithOwnerByType.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "PercentageOfEntitiesWithOwnerByType",
   "description": "percentageOfEntitiesWithOwnerByType data blob",
   "type": "object",
   "javaType": "org.openmetadata.schema.dataInsight.type.PercentageOfEntitiesWithOwnerByType",
-  "javaInterfaces": ["org.openmetadata.schema.DataInsightInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.DataInsightInterface"
+  ],
   "properties": {
     "timestamp": {
       "description": "timestamp",

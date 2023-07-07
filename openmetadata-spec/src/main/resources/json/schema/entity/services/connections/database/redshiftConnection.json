@@ -1,5 +1,5 @@
 {
-  "$id": "/entity/services/connections/database/redshiftConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/redshiftConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "RedshiftConnection",
   "description": "Redshift  Connection Config",
@@ -62,14 +62,7 @@
     "sslMode": {
       "title": "SSL Mode",
       "description": "SSL Mode to connect to redshift database.",
-      "enum": [
-        "disable",
-        "allow",
-        "prefer",
-        "require",
-        "verify-ca",
-        "verify-full"
-      ],
+      "enum": ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"],
       "default": "disable"
     },
     "sslConfig": {

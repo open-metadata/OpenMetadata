@@ -1,5 +1,5 @@
 {
-  "$id": "/entity/configuration/jwtTokenConfiguration.json",
+  "$id": "https://open-metadata.org/schema/entity/configuration/jwtTokenConfiguration.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "JWTTokenConfiguration",
   "description": "This schema defines the JWT Configuration.",

@@ -1,5 +1,5 @@
 {
-  "$id": "/api/auth/generateToken.json",
+  "$id": "https://open-metadata.org/schema/api/auth/generateToken.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Generate JWT Token Request",
   "description": "Generate JWT Token Request.",

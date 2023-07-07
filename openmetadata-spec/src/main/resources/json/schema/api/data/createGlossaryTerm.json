@@ -1,5 +1,5 @@
 {
-  "$id": "/api/data/createGlossaryTerm.json",
+  "$id": "https://open-metadata.org/schema/api/data/createGlossaryTerm.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateGlossaryTermRequest",
   "description": "Create Glossary term entity request",
@@ -10,7 +10,7 @@
   "properties": {
     "glossary": {
       "description": "FullyQualifiedName of the glossary that this term is part of.",
-      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "parent": {
       "description": "Fully qualified name of  the parent glossary term.",
@@ -37,9 +37,9 @@
     },
     "relatedTerms": {
       "description": "Other array of glossary term fully qualified names that are related to this glossary term.",
-      "type": "array",
+      "type" : "array",
       "items": {
-        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
       }
     },
     "references": {
@@ -51,9 +51,9 @@
     },
     "reviewers": {
       "description": "User names of the reviewers for this glossary.",
-      "type": "array",
-      "items": {
-        "$ref": "../../entity/teams/user.json#/definitions/entityName"
+      "type" : "array",
+      "items" : {
+        "$ref" : "../../entity/teams/user.json#/definitions/entityName"
       }
     },
     "owner": {
@@ -68,13 +68,13 @@
       },
       "default": null
     },
-    "provider": {
+    "provider" : {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },
-    "mutuallyExclusive": {
-      "description": "Glossary terms that are children of this term are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity from this group. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity.",
-      "type": "boolean",
-      "default": "false"
+    "mutuallyExclusive" : {
+      "description" : "Glossary terms that are children of this term are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity from this group. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity.",
+      "type" : "boolean",
+      "default" : "false"
     }
   },
   "required": ["glossary", "name", "description"],

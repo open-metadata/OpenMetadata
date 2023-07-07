@@ -1,5 +1,5 @@
 {
-  "$id": "/api/dataInsight/kpi/createKpiRequest.json",
+  "$id": "https://open-metadata.org/schema/api/dataInsight/kpi/createKpiRequest.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateKpiRequest",
   "description": "Schema corresponding to a Kpi.",
@@ -46,14 +46,6 @@
       "$ref": "../../../dataInsight/kpi/basic.json#/definitions/kpiTargetType"
     }
   },
-  "required": [
-    "name",
-    "description",
-    "dataInsightChart",
-    "startDate",
-    "endDate",
-    "targetDefinition",
-    "metricType"
-  ],
+  "required": ["name", "description", "dataInsightChart", "startDate", "endDate", "targetDefinition", "metricType"],
   "additionalProperties": false
 }

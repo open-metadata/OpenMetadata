@@ -1,5 +1,5 @@
 {
-  "$id": "/entity/policies/policy.json",
+  "$id": "https://open-metadata.org/schema/entity/policies/policy.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Policy",
   "description": "A `Policy` defines control that needs to be applied across different Data Entities.",
@@ -70,11 +70,11 @@
       "description": "Set of rules that the policy contains.",
       "$ref": "#/definitions/rules"
     },
-    "teams": {
+    "teams" : {
       "description": "Teams that use this policy directly and not through roles.",
       "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     },
-    "roles": {
+    "roles" : {
       "description": "Roles that use this policy.",
       "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     },
@@ -83,23 +83,23 @@
       "$ref": "../../type/entityReference.json",
       "default": null
     },
-    "allowDelete": {
+    "allowDelete" : {
       "description": "Some system policies can't be deleted",
-      "type": "boolean"
+      "type" : "boolean"
     },
-    "allowEdit": {
+    "allowEdit" : {
       "description": "Some system roles can't be edited",
-      "type": "boolean"
+      "type" : "boolean"
     },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
     },
-    "provider": {
+    "provider" : {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },
-    "disabled": {
+    "disabled" : {
       "description": "System policy can't be deleted. Use this flag to disable them.",
       "type": "boolean"
     }

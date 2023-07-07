@@ -1,5 +1,5 @@
 {
-  "$id": "/entity/services/connections/database/athenaConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/athenaConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AthenaConnection",
   "description": "AWS Athena Connection Config",
@@ -32,7 +32,7 @@
       "$ref": "#/definitions/athenaScheme",
       "default": "awsathena+rest"
     },
-
+    
     "awsConfig": {
       "title": "AWS Credentials Configuration",
       "$ref": "../../../../security/credentials/awsCredentials.json"

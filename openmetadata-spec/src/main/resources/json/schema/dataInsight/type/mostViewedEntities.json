@@ -1,5 +1,5 @@
 {
-  "$id": "/dataInsight/type/mostViewedEntities.json",
+  "$id": "https://open-metadata.org/schema/dataInsight/type/mostViewedEntities.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MostViewedEntities",
   "description": "pageViewsByEntities data blob",

@@ -1,5 +1,5 @@
 {
-  "$id": "/entity/services/connections/dashboard/quickSightConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/quickSightConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "QuickSightConnection",
   "description": "QuickSight Connection Config",
@@ -9,7 +9,9 @@
     "quickSightType": {
       "description": "QuickSight service type",
       "type": "string",
-      "enum": ["QuickSight"],
+      "enum": [
+        "QuickSight"
+      ],
       "default": "QuickSight"
     }
   },
@@ -33,7 +35,11 @@
       "title": "Identity Type",
       "description": "The authentication method that the user uses to sign in.",
       "type": "string",
-      "enum": ["IAM", "QUICKSIGHT", "ANONYMOUS"],
+      "enum": [
+        "IAM",
+        "QUICKSIGHT",
+        "ANONYMOUS"
+      ],
       "default": "IAM"
     },
     "namespace": {
@@ -46,5 +52,8 @@
     }
   },
   "additionalProperties": false,
-  "required": ["awsConfig", "awsAccountId"]
+  "required": [
+    "awsConfig",
+    "awsAccountId"
+  ]
 }

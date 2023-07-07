@@ -1,5 +1,5 @@
 {
-  "$id": "/metadataIngestion/testSuitePipeline.json",
+  "$id": "https://open-metadata.org/schema/metadataIngestion/testSuitePipeline.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "TestSuitePipeline",
   "description": "TestSuite Pipeline Configuration.",

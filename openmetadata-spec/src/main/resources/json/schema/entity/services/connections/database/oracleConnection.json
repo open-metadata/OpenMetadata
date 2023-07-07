@@ -1,5 +1,5 @@
 {
-  "$id": "/entity/services/connections/database/oracleConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/oracleConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "OracleConnection",
   "description": "Oracle Database Connection Config",
@@ -20,7 +20,7 @@
     },
     "OracleDatabaseSchema": {
       "title": "Database Schema",
-      "type": "object",
+      "type":"object",
       "properties": {
         "databaseSchema": {
           "title": "DatabaseSchema",
@@ -32,7 +32,7 @@
     },
     "OracleServiceName": {
       "title": "Oracle Service Name",
-      "type": "object",
+      "type":"object",
       "properties": {
         "oracleServiceName": {
           "title": "Oracle Service Name",

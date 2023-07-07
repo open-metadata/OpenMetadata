@@ -1,5 +1,5 @@
 {
-  "$id": "/api/services/createMetadataService.json",
+  "$id": "https://open-metadata.org/schema/api/services/createMetadataService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateMetadataServiceRequest",
   "description": "Create Metadata Service entity request",

@@ -1,5 +1,5 @@
 {
-  "$id": "/dataInsight/dataInsightChart.json",
+  "$id": "https://open-metadata.org/schema/dataInsight/dataInsightChart.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DataInsightChart",
   "description": "DataInsightChart represents the definition of a chart with its parameters",

@@ -1,5 +1,5 @@
 {
-  "$id": "/entity/services/connections/database/hiveConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/hiveConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "HiveConnection",
   "description": "Hive SQL Connection Config",
@@ -52,17 +52,7 @@
       "title": "Authentication Mode",
       "description": "Authentication mode to connect to hive.",
       "type": "string",
-      "enum": [
-        "NONE",
-        "LDAP",
-        "KERBEROS",
-        "CUSTOM",
-        "NOSASL",
-        "BASIC",
-        "GSSAPI",
-        "JWT",
-        "PLAIN"
-      ],
+      "enum": ["NONE", "LDAP", "KERBEROS", "CUSTOM", "NOSASL", "BASIC", "GSSAPI", "JWT", "PLAIN"],
       "default": "NONE"
     },
     "kerberosServiceName": {

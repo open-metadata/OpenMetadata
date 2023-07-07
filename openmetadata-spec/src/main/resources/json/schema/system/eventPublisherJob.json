@@ -1,5 +1,5 @@
 {
-  "$id": "/system/eventPublisherJob.json",
+  "$id": "https://open-metadata.org/schema/system/eventPublisherJob.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "EventPublisherResult",
   "description": "This schema defines Event Publisher Job.",
@@ -10,7 +10,7 @@
       "description": "Failure details are set only when `status` is not `success`.",
       "type": "object",
       "properties": {
-        "context": {
+        "context" : {
           "description": "Additional Context for Failure.",
           "type": "string"
         },
@@ -56,16 +56,16 @@
       "type": "object",
       "properties": {
         "sourceStats": {
-          "$ref": "#/definitions/stepStats"
+          "$ref" : "#/definitions/stepStats"
         },
         "processorStats": {
-          "$ref": "#/definitions/stepStats"
+          "$ref" : "#/definitions/stepStats"
         },
         "sinkStats": {
-          "$ref": "#/definitions/stepStats"
+          "$ref" : "#/definitions/stepStats"
         },
         "jobStats": {
-          "$ref": "#/definitions/stepStats"
+          "$ref" : "#/definitions/stepStats"
         }
       },
       "additionalProperties": false
@@ -73,12 +73,18 @@
     "runMode": {
       "description": "This schema publisher run modes.",
       "type": "string",
-      "enum": ["stream", "batch"]
+      "enum": [
+        "stream",
+        "batch"
+      ]
     },
     "publisherType": {
       "description": "This schema event Publisher Types",
       "type": "string",
-      "enum": ["elasticSearch", "kafka"]
+      "enum": [
+        "elasticSearch",
+        "kafka"
+      ]
     }
   },
   "properties": {
@@ -131,17 +137,17 @@
           "$ref": "#/definitions/failureDetails",
           "default": null
         },
-        "processorError": {
+        "processorError" : {
           "type": "object",
           "$ref": "#/definitions/failureDetails",
           "default": null
         },
-        "sinkError": {
+        "sinkError" : {
           "type": "object",
           "$ref": "#/definitions/failureDetails",
           "default": null
         },
-        "jobError": {
+        "jobError" : {
           "type": "object",
           "$ref": "#/definitions/failureDetails",
           "default": null

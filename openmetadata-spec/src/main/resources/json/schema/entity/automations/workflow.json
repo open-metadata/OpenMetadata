@@ -1,5 +1,5 @@
 {
-  "$id": "/entity/automations/workflow.json",
+  "$id": "https://open-metadata.org/schema/entity/automations/workflow.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Workflow",
   "description": "A unit of work that will be triggered as an API call to the OpenMetadata server.",
@@ -11,7 +11,9 @@
       "javaType": "org.openmetadata.schema.entity.automations.WorkflowType",
       "description": "This enum defines the type for which this workflow applies to.",
       "type": "string",
-      "enum": ["TEST_CONNECTION"]
+      "enum": [
+        "TEST_CONNECTION"
+      ]
     },
     "workflowStatus": {
       "javaType": "org.openmetadata.schema.entity.automations.WorkflowStatus",

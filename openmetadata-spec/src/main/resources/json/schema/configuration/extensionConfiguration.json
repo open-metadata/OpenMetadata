@@ -1,5 +1,5 @@
 {
-  "$id": "/entity/configuration/extensionConfiguration.json",
+  "$id": "https://open-metadata.org/schema/entity/configuration/extensionConfiguration.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ExtensionConfiguration",
   "description": "This schema defines the OpenMetadata Extensions Configuration.",
@@ -29,7 +29,7 @@
     }
   },
   "properties": {
-    "resourcePackage": {
+    "resourcePackage" : {
       "description": "Resources Package name for Extension.",
       "type": "array",
       "items": {

@@ -1,23 +1,23 @@
 {
-  "$id": "/type/basic.json",
+  "$id": "https://open-metadata.org/schema/type/basic.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Basic",
   "description": "This schema defines basic common types that are used by other schemas.",
   "definitions": {
-    "integer": {
-      "$comment": "@om-field-type",
+    "integer" : {
+      "$comment" : "@om-field-type",
       "description": "An integer type.",
-      "type": "integer"
+      "type" : "integer"
     },
-    "number": {
-      "$comment": "@om-field-type",
+    "number" : {
+      "$comment" : "@om-field-type",
       "description": "A numeric type that includes integer or floating point numbers.",
-      "type": "integer"
+      "type" : "integer"
     },
-    "string": {
-      "$comment": "@om-field-type",
+    "string" : {
+      "$comment" : "@om-field-type",
       "description": "A String type.",
-      "type": "string"
+      "type" : "string"
     },
     "uuid": {
       "description": "Unique id used to identify an entity.",
@@ -25,7 +25,7 @@
       "format": "uuid"
     },
     "email": {
-      "$comment": "@om-field-type",
+      "$comment" : "@om-field-type",
       "description": "Email address of a user or other entities.",
       "type": "string",
       "format": "email",
@@ -34,7 +34,7 @@
       "maxLength": 127
     },
     "timestamp": {
-      "$comment": "@om-field-type",
+      "$comment" : "@om-field-type",
       "description": "Timestamp in Unix epoch time milliseconds.",
       "@comment": "Note that during code generation this is converted into long",
       "type": "integer",
@@ -46,7 +46,7 @@
       "format": "uri"
     },
     "timeInterval": {
-      "$comment": "@om-field-type",
+      "$comment" : "@om-field-type",
       "type": "object",
       "description": "Time interval in unixTimeMillis.",
       "javaType": "org.openmetadata.schema.type.TimeInterval",
@@ -63,24 +63,24 @@
       "additionalProperties": false
     },
     "duration": {
-      "$comment": "@om-field-type",
+      "$comment" : "@om-field-type",
       "description": "Duration in ISO 8601 format in UTC. Example - 'P23DT23H'.",
       "type": "string"
     },
     "date": {
-      "$comment": "@om-field-type",
+      "$comment" : "@om-field-type",
       "description": "Date in ISO 8601 format in UTC. Example - '2018-11-13'.",
       "type": "string",
       "format": "date"
     },
     "dateTime": {
-      "$comment": "@om-field-type",
+      "$comment" : "@om-field-type",
       "description": "Date and time in ISO 8601 format. Example - '2018-11-13T20:20:39+00:00'.",
       "type": "string",
       "format": "date-time"
     },
     "time": {
-      "$comment": "@om-field-type",
+      "$comment" : "@om-field-type",
       "description": "time in ISO 8601 format. Example - '20:20:39+00:00'.",
       "type": "string",
       "format": "time"
@@ -109,7 +109,7 @@
       "maxLength": 256
     },
     "sqlQuery": {
-      "$comment": "@om-field-type",
+      "$comment" : "@om-field-type",
       "description": "SQL query statement. Example - 'select * from orders'.",
       "type": "string"
     },
@@ -118,7 +118,7 @@
       "type": "string"
     },
     "markdown": {
-      "$comment": "@om-field-type",
+      "$comment" : "@om-field-type",
       "description": "Text in Markdown format.",
       "type": "string"
     },
@@ -130,7 +130,7 @@
       "description": "JSON schema encoded as string. This will be used to validate the JSON fields using this schema.",
       "type": "string"
     },
-    "entityExtension": {
+    "entityExtension" : {
       "description": "Entity extension data with custom attributes added to the entity."
     },
     "providerType": {
@@ -147,14 +147,14 @@
         ".{1,}": { "type": "string" }
       }
     },
-    "status": {
+    "status" : {
       "description": "State of an action over API.",
-      "type": "string",
-      "enum": ["success", "failure", "aborted", "partialSuccess"]
+      "type" : "string",
+      "enum" : ["success", "failure", "aborted", "partialSuccess"]
     },
-    "sourceUrl": {
+    "sourceUrl" : {
       "description": "Source Url of the respective entity.",
-      "type": "string",
+      "type" : "string",
       "format": "url"
     }
   }

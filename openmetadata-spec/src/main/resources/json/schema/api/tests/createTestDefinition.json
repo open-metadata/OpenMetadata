@@ -1,5 +1,5 @@
 {
-  "$id": "/api/data/createTestDefinition.json",
+  "$id": "https://open-metadata.org/schema/api/data/createTestDefinition.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateTestDefinitionRequest",
   "description": "Schema corresponding to a Test Definition",
@@ -45,6 +45,6 @@
       }
     }
   },
-  "required": ["name", "description", "entityType", "testPlatforms"],
+  "required": ["name", "description","entityType", "testPlatforms"],
   "additionalProperties": false
 }

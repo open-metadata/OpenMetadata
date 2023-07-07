@@ -1,5 +1,5 @@
 {
-  "$id": "/entity/utils/entitiesCount.json",
+  "$id": "https://open-metadata.org/schema/entity/utils/entitiesCount.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Entities Count",
   "description": "This schema defines Entities Count. This contains aggregated entities count.",

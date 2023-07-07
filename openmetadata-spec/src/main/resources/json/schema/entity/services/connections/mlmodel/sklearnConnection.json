@@ -1,5 +1,5 @@
 {
-  "$id": "/entity/services/connections/mlmodel/sklearnConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/mlmodel/sklearnConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SklearnConnection",
   "description": "Sklearn Connection Config",

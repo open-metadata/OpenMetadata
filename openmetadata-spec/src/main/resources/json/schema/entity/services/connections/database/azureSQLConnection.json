@@ -1,5 +1,5 @@
 {
-  "$id": "/entity/services/connections/database/azureSQLConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/azureSQLConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AzureSQLConnection",
   "description": "Azure SQL Connection Config",
