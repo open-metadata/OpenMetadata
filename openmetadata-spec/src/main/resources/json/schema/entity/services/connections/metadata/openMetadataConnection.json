@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/metadata/openMetadataConnection.json",
+  "$id": "/entity/services/connections/metadata/openMetadataConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "OpenMetadataConnection",
   "description": "OpenMetadata Connection Config",

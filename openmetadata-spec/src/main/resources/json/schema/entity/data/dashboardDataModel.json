@@ -1,12 +1,15 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/data/dashboardDataModel.json",
+  "$id": "/entity/data/dashboardDataModel.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DashboardDataModel",
   "$comment": "@om-entity-type",
   "description": "Dashboard Data Model entity definition. Data models are the schemas used to build dashboards, charts, or other data assets.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.DashboardDataModel",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface", "org.openmetadata.schema.ColumnsEntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.ColumnsEntityInterface"
+  ],
   "definitions": {
     "dataModelType": {
       "javaType": "org.openmetadata.schema.type.DataModelType",
@@ -138,15 +141,11 @@
       "description": "Name of the project / workspace / collection in which the dataModel is contained",
       "type": "string"
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the Dashboard Data Model belongs to. When not set, the Dashboard model inherits the domain from the dashboard service it belongs to.",
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": [
-    "name",
-    "dataModelType",
-    "columns"
-  ],
+  "required": ["name", "dataModelType", "columns"],
   "additionalProperties": false
 }

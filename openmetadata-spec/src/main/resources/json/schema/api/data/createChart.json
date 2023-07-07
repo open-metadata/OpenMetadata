@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/api/data/createChart.json",
+  "$id": "/api/data/createChart.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateChartRequest",
   "description": "Create Chart entity request",
@@ -42,15 +42,15 @@
       "description": "Link to the chart service where this chart is hosted in",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
-    "domain" : {
+    "domain": {
       "description": "Fully qualified name of the domain the Chart belongs to.",
-      "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
-    "dataProducts" : {
+    "dataProducts": {
       "description": "List of fully qualified names of data products this entity is part of.",
       "type": "array",
-      "items" : {
-        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
       }
     }
   },

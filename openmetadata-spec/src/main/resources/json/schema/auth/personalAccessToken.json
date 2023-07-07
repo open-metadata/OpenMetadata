@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/auth/personalAccessToken.json",
+  "$id": "/auth/personalAccessToken.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "PersonalAccessToken",
   "description": "This schema defines Personal Access Token Schema.",
@@ -33,10 +33,6 @@
       "type": "string"
     }
   },
-  "required": [
-    "token",
-    "userId",
-    "expiryDate"
-  ],
+  "required": ["token", "userId", "expiryDate"],
   "additionalProperties": false
 }

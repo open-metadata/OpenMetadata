@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/database/trinoConnection.json",
+  "$id": "/entity/services/connections/database/trinoConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "TrinoConnection",
   "description": "Trino Connection Config",

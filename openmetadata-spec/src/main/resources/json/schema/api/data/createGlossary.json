@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/api/data/createGlossary.json",
+  "$id": "/api/data/createGlossary.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateGlossaryRequest",
   "description": "Create Glossary entity request",
@@ -39,15 +39,15 @@
       },
       "default": null
     },
-    "provider" : {
+    "provider": {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },
-    "mutuallyExclusive" : {
-      "description" : "Glossary terms that are direct children in this glossary are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity.",
-      "type" : "boolean",
-      "default" : "false"
+    "mutuallyExclusive": {
+      "description": "Glossary terms that are direct children in this glossary are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity.",
+      "type": "boolean",
+      "default": "false"
     },
-    "domain" : {
+    "domain": {
       "description": "Fully qualified name of the domain the Glossary belongs to.",
       "type": "string"
     }

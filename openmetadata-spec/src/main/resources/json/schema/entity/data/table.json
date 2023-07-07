@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/data/table.json",
+  "$id": "/entity/data/table.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Table",
   "$comment": "@om-entity-type",
@@ -7,7 +7,8 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Table",
   "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface", "org.openmetadata.schema.ColumnsEntityInterface"
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.ColumnsEntityInterface"
   ],
   "definitions": {
     "entityName": {
@@ -20,10 +21,7 @@
     "profileSampleType": {
       "description": "Type of Profile Sample (percentage or rows)",
       "type": "string",
-      "enum": [
-        "PERCENTAGE",
-        "ROWS"
-      ],
+      "enum": ["PERCENTAGE", "ROWS"],
       "default": "PERCENTAGE"
     },
     "tableType": {
@@ -149,12 +147,7 @@
       "javaType": "org.openmetadata.schema.type.ColumnConstraint",
       "description": "This enum defines the type for column constraint.",
       "type": "string",
-      "enum": [
-        "NULL",
-        "NOT_NULL",
-        "UNIQUE",
-        "PRIMARY_KEY"
-      ],
+      "enum": ["NULL", "NOT_NULL", "UNIQUE", "PRIMARY_KEY"],
       "default": null,
       "additionalProperties": false
     },
@@ -314,10 +307,7 @@
           "default": null
         }
       },
-      "required": [
-        "name",
-        "dataType"
-      ],
+      "required": ["name", "dataType"],
       "additionalProperties": false
     },
     "joinedWith": {
@@ -331,10 +321,7 @@
           "type": "integer"
         }
       },
-      "required": [
-        "fullyQualifiedName",
-        "joinCount"
-      ],
+      "required": ["fullyQualifiedName", "joinCount"],
       "additionalProperties": false
     },
     "columnJoins": {
@@ -591,21 +578,14 @@
           "default": null
         }
       },
-      "required": [
-        "name",
-        "timestamp"
-      ],
+      "required": ["name", "timestamp"],
       "additionalProperties": false
     },
     "dmlOperationType": {
       "javaType": "org.openmetadata.schema.type.DmlOperationType",
       "description": "This schema defines the type of DML operation.",
       "type": "string",
-      "enum": [
-        "UPDATE",
-        "INSERT",
-        "DELETE"
-      ]
+      "enum": ["UPDATE", "INSERT", "DELETE"]
     },
     "systemProfile": {
       "description": "This schema defines the System Profile object holding profile data from system tables.",
@@ -676,12 +656,7 @@
         "partitionIntervalUnit": {
           "description": "unit used for the partition interval",
           "type": "string",
-          "enum": [
-            "YEAR",
-            "MONTH",
-            "DAY",
-            "HOUR"
-          ]
+          "enum": ["YEAR", "MONTH", "DAY", "HOUR"]
         },
         "partitionValues": {
           "description": "unit used for the partition interval",
@@ -774,16 +749,12 @@
           "format": "date-time"
         }
       },
-      "required": [
-        "timestamp"
-      ],
+      "required": ["timestamp"],
       "additionalProperties": false
     },
     "modelType": {
       "$comment": "Currently only DBT model type is supported",
-      "enum": [
-        "DBT"
-      ],
+      "enum": ["DBT"],
       "javaEnums": [
         {
           "name": "DBT"
@@ -846,10 +817,7 @@
           "$ref": "../../type/basic.json#/definitions/dateTime"
         }
       },
-      "required": [
-        "modelType",
-        "sql"
-      ],
+      "required": ["modelType", "sql"],
       "additionalProperties": false
     }
   },
@@ -995,7 +963,7 @@
       "type": "boolean",
       "default": false
     },
-    "retentionPeriod" : {
+    "retentionPeriod": {
       "description": "Retention period of the data in the table. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. When not set, the retention period is inherited from the parent database schema, if it exists.",
       "$ref": "../../type/basic.json#/definitions/duration"
     },
@@ -1007,19 +975,15 @@
       "description": "Source URL of table.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the table belongs to. When not set, the table inherits the domain from the database schema it belongs to.",
       "$ref": "../../type/entityReference.json"
     },
-    "dataProducts" : {
+    "dataProducts": {
       "description": "List of of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     }
   },
-  "required": [
-    "id",
-    "name",
-    "columns"
-  ],
+  "required": ["id", "name", "columns"],
   "additionalProperties": false
 }

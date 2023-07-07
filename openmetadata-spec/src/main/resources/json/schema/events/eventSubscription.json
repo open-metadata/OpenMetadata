@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/events/eventSubscription.json",
+  "$id": "/events/eventSubscription.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "EventSubscription",
   "description": "This schema defines the EventSubscription entity. An Event Subscription has trigger, filters and Subscription",
@@ -16,7 +16,11 @@
     "alertType": {
       "description": "Type of Alerts supported.",
       "type": "string",
-      "enum": ["ChangeEvent", "DataInsightReport", "Task/Conversation/Announcement"],
+      "enum": [
+        "ChangeEvent",
+        "DataInsightReport",
+        "Task/Conversation/Announcement"
+      ],
       "default": "ChangeEvent"
     },
     "subscriptionType": {
@@ -206,7 +210,7 @@
     },
     "trigger": {
       "description": "Trigger information for Alert.",
-      "$ref": "#/definitions/trigger" 
+      "$ref": "#/definitions/trigger"
     },
     "filteringRules": {
       "description": "Set of rules that the Event Subscription Contains to allow conditional control for alerting.",
@@ -246,7 +250,7 @@
       "type": "boolean",
       "default": false
     },
-    "provider" : {
+    "provider": {
       "$ref": "../type/basic.json#/definitions/providerType"
     }
   },

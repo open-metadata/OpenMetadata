@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/database/datalakeConnection.json",
+  "$id": "/entity/services/connections/database/datalakeConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DatalakeConnection",
   "description": "Datalake Connection Config",
@@ -9,9 +9,7 @@
     "datalakeType": {
       "description": "Service type.",
       "type": "string",
-      "enum": [
-        "Datalake"
-      ],
+      "enum": ["Datalake"],
       "default": "Datalake"
     }
   },
@@ -72,7 +70,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "configSource"
-  ]
+  "required": ["configSource"]
 }

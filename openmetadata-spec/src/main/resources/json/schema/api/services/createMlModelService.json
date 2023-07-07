@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/api/services/createMlmodelService.json",
+  "$id": "/api/services/createMlmodelService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateMlModelServiceRequest",
   "description": "Create MlModel service entity request",
@@ -38,7 +38,7 @@
       "description": "Owner of this mlModel service.",
       "$ref": "../../type/entityReference.json"
     },
-    "domain" : {
+    "domain": {
       "description": "Fully qualified name of the domain the MLModel Service belongs to.",
       "type": "string"
     }

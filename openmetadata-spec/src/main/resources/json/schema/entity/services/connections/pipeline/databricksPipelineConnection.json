@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/DatabricksPipelineConnection.json",
+  "$id": "/entity/services/connections/pipeline/DatabricksPipelineConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DatabricksPipelineConnection",
   "description": "Databricks Connection Config",
@@ -9,9 +9,7 @@
     "databricksType": {
       "description": "Service type.",
       "type": "string",
-      "enum": [
-        "DatabricksPipeline"
-      ],
+      "enum": ["DatabricksPipeline"],
       "default": "DatabricksPipeline"
     }
   },
@@ -48,8 +46,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "hostPort",
-    "token"
-  ]
+  "required": ["hostPort", "token"]
 }

@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/type/entityLineage.json",
+  "$id": "/type/entityLineage.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Entity Lineage",
   "description": "The `Lineage` for a given data asset, has information of the input datasets used and the ETL pipeline that created it.",
@@ -7,45 +7,45 @@
   "javaType": "org.openmetadata.schema.type.EntityLineage",
   "definitions": {
     "columnLineage": {
-      "type" : "object",
+      "type": "object",
       "properties": {
-        "fromColumns" : {
+        "fromColumns": {
           "description": "One or more source columns identified by fully qualified column name used by transformation function to create destination column.",
-          "type" : "array",
-          "items" : {
-            "$ref" : "../type/basic.json#/definitions/fullyQualifiedEntityName"
+          "type": "array",
+          "items": {
+            "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
           }
         },
-        "toColumn" : {
+        "toColumn": {
           "description": "Destination column identified by fully qualified column name created by the transformation of source columns.",
-          "$ref" : "../type/basic.json#/definitions/fullyQualifiedEntityName"
+          "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
         },
-        "function" : {
+        "function": {
           "description": "Transformation function applied to source columns to create destination column. That is `function(fromColumns) -> toColumn`.",
-          "$ref" : "../type/basic.json#/definitions/sqlFunction"
+          "$ref": "../type/basic.json#/definitions/sqlFunction"
         }
       }
     },
-    "lineageDetails" : {
-      "description" : "Lineage details including sqlQuery + pipeline + columnLineage.",
-      "type" : "object",
+    "lineageDetails": {
+      "description": "Lineage details including sqlQuery + pipeline + columnLineage.",
+      "type": "object",
       "properties": {
-        "sqlQuery" : {
+        "sqlQuery": {
           "description": "SQL used for transformation.",
-          "$ref" : "../type/basic.json#/definitions/sqlQuery"
+          "$ref": "../type/basic.json#/definitions/sqlQuery"
         },
-        "columnsLineage" : {
-          "description" : "Lineage information of how upstream columns were combined to get downstream column.",
-          "type" : "array",
-          "items" : {
-            "$ref" : "#/definitions/columnLineage"
+        "columnsLineage": {
+          "description": "Lineage information of how upstream columns were combined to get downstream column.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/columnLineage"
           }
         },
-        "pipeline" : {
+        "pipeline": {
           "description": "Pipeline where the sqlQuery is periodically run.",
-          "$ref" : "../type/entityReference.json"
+          "$ref": "../type/entityReference.json"
         },
-        "description" :{
+        "description": {
           "description": "description of lineage",
           "type": "string"
         }

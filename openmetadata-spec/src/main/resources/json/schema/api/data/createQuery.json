@@ -1,13 +1,11 @@
 {
-  "$id": "https://open-metadata.org/schema/api/data/createQuery.json",
+  "$id": "/api/data/createQuery.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateQueryRequest",
   "description": "Create Query Request",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.data.CreateQuery",
-  "javaInterfaces": [
-    "org.openmetadata.schema.CreateEntity"
-  ],
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
   "properties": {
     "name": {
       "description": "Name of a Query in case of User Creation.",
@@ -44,9 +42,9 @@
     },
     "users": {
       "description": "UserName of the user running the query.",
-      "type" : "array",
+      "type": "array",
       "items": {
-        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
       }
     },
     "queryDate": {

@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/teams/role.json",
+  "$id": "/entity/teams/role.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Role",
   "description": "A `Role` is a collection of `Policies` that provides access control. A user or a team can be assigned one or multiple roles that provide privileges to a user and members of a team to perform the job function.",
@@ -51,13 +51,13 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "allowDelete" : {
+    "allowDelete": {
       "description": "Some system roles can't be deleted",
-      "type" : "boolean"
+      "type": "boolean"
     },
-    "allowEdit" : {
+    "allowEdit": {
       "description": "Some system roles can't be edited",
-      "type" : "boolean"
+      "type": "boolean"
     },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
@@ -76,10 +76,10 @@
       "description": "Teams that have this role assigned to them.",
       "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     },
-    "provider" : {
+    "provider": {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },
-    "disabled" : {
+    "disabled": {
       "description": "System policy can't be deleted. Use this flag to disable them.",
       "type": "boolean"
     }

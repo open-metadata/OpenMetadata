@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/security/client/samlSSOClientConfig.json",
+  "$id": "/security/client/samlSSOClientConfig.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SamlSSOClientConfig",
   "description": "SAML SSO client security configs.",

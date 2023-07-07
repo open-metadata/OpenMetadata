@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/policies/accessControl/ResourcePermission.json",
+  "$id": "/entity/policies/accessControl/ResourcePermission.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ResourcePermission",
   "description": "A set of permissions for a user that shows what operation is denied, allowed, or not allowed for all the resources.",

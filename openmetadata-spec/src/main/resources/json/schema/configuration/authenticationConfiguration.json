@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/configuration/authenticationConfiguration.json",
+  "$id": "/entity/configuration/authenticationConfiguration.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AuthenticationConfiguration",
   "description": "This schema defines the Authentication Configuration.",
@@ -54,6 +54,14 @@
       "$ref": "../../schema/security/client/samlSSOClientConfig.json"
     }
   },
-  "required": ["provider", "providerName", "publicKeyUrls", "authority", "callbackUrl", "clientId", "jwtPrincipalClaims"],
+  "required": [
+    "provider",
+    "providerName",
+    "publicKeyUrls",
+    "authority",
+    "callbackUrl",
+    "clientId",
+    "jwtPrincipalClaims"
+  ],
   "additionalProperties": false
 }

@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/data/pipeline.json",
+  "$id": "/entity/data/pipeline.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Pipeline",
   "$comment": "@om-entity-type",
@@ -254,11 +254,10 @@
       "type": "string",
       "default": null
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the Pipeline belongs to. When not set, the pipeline inherits the domain from the Pipeline service it belongs to.",
       "$ref": "../../type/entityReference.json"
     }
-
   },
   "required": ["id", "name", "service"],
   "additionalProperties": false

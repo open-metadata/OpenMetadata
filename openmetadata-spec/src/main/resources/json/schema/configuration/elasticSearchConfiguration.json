@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/configuration/elasticSearchConfiguration.json",
+  "$id": "/entity/configuration/elasticSearchConfiguration.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ElasticSearchConfiguration",
   "description": "This schema defines the Elastic Search Configuration.",
@@ -10,11 +10,7 @@
       "javaType": "org.openmetadata.schema.type.IndexMappingLanguage",
       "description": "This schema defines the language options available for search index mappings.",
       "type": "string",
-      "enum": [
-        "EN",
-        "JP",
-        "ZH"
-      ],
+      "enum": ["EN", "JP", "ZH"],
       "default": "EN"
     }
   },
@@ -72,13 +68,18 @@
     "searchType": {
       "description": "This enum defines the search Type elastic/open search.",
       "type": "string",
-      "enum": [
-        "elasticsearch",
-        "opensearch"
-      ],
+      "enum": ["elasticsearch", "opensearch"],
       "default": "elasticsearch"
     }
   },
-  "required": ["host", "port", "scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],
+  "required": [
+    "host",
+    "port",
+    "scheme",
+    "connectionTimeoutSecs",
+    "socketTimeoutSecs",
+    "batchSize",
+    "searchIndexMappingLanguage"
+  ],
   "additionalProperties": false
 }

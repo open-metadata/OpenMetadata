@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/type/csvErrorType.json",
+  "$id": "/type/csvErrorType.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "csvErrorType",
   "type": "string",

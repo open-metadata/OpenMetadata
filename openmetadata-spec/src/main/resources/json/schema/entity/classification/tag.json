@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/classification/tag.json",
+  "$id": "/entity/classification/tag.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Tag",
   "description": "A `Tag` entity is used for classification or categorization. It is a term defined under `Classification` entity. Tags are used to label the entities and entity fields, such as Tables, and Columns.",

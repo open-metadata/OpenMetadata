@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/type/csvFile.json",
+  "$id": "/type/csvFile.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "csvFile",
   "description": "Represents a CSV file.",
@@ -17,13 +17,13 @@
           "type": "boolean",
           "default": false
         },
-        "description" : {
+        "description": {
           "description": "Description of the header field for documentation purposes.",
-          "$ref" : "basic.json#/definitions/markdown"
+          "$ref": "basic.json#/definitions/markdown"
         },
-        "examples" : {
+        "examples": {
           "description": "Example values for the field",
-          "type" : "array",
+          "type": "array",
           "items": {
             "type": "string"
           }
@@ -36,8 +36,8 @@
       "javaType": "org.openmetadata.schema.type.csv.CsvRecord",
       "description": "Represents a CSV record that contains one row values separated by a separator.",
       "type": "array",
-      "items" : {
-        "type" : "string"
+      "items": {
+        "type": "string"
       }
     }
   },

@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/messaging/customMessagingConnection.json",
+  "$id": "/entity/services/connections/messaging/customMessagingConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CustomMessagingConnection",
   "description": "Custom Messaging Service Connection to build a source that is not supported by OpenMetadata yet.",

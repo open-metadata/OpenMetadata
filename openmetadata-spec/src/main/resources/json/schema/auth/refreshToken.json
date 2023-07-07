@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/auth/refreshToken.json",
+  "$id": "/auth/refreshToken.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "RefreshToken",
   "description": "This schema defines Refresh Token Schema.",
@@ -33,10 +33,6 @@
       "$ref": "../type/basic.json#/definitions/timestamp"
     }
   },
-  "required": [
-    "token",
-    "userId",
-    "expiryDate"
-  ],
+  "required": ["token", "userId", "expiryDate"],
   "additionalProperties": false
 }
