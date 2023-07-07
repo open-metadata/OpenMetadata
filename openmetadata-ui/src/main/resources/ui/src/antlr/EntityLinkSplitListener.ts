@@ -10,35 +10,42 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import EntityLinkListener from '../generated/antlr/EntityLinkListener';
 
+interface Context {
+  getText: () => string;
+}
+
 export default class EntityLinkSplitListener extends EntityLinkListener {
+  private entityLinkParts: string[];
+
   constructor() {
     super();
     this.entityLinkParts = [];
   }
 
   // Enter a parse tree produced by EntityLinkParser#entityType.
-  enterEntityType(ctx) {
+  enterEntityType(ctx: Context) {
     this.entityLinkParts.push(ctx.getText());
   }
 
   // Enter a parse tree produced by EntityLinkParser#entityAttribute.
-  enterEntityAttribute(ctx) {
+  enterEntityAttribute(ctx: Context) {
     this.entityLinkParts.push(ctx.getText());
   }
 
   // Enter a parse tree produced by EntityLinkParser#entityFqn.
-  enterEntityFqn(ctx) {
+  enterEntityFqn(ctx: Context) {
     this.entityLinkParts.push(ctx.getText());
   }
 
   // Enter a parse tree produced by EntityLinkParser#entityField.
-  enterEntityField(ctx) {
+  enterEntityField(ctx: Context) {
     this.entityLinkParts.push(ctx.getText());
   }
 
-  split() {
+  split(): string[] {
     return this.entityLinkParts;
   }
 }
