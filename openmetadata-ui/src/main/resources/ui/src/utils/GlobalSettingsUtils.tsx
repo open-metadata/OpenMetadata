@@ -133,7 +133,7 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: <TableIcon className="side-panel-icons" />,
         },
         {
-          label: i18next.t('label.messaging-plural'),
+          label: i18next.t('label.messaging'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.MESSAGING_SERVICE,
             permissions

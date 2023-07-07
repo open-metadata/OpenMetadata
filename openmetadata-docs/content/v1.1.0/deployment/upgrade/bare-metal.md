@@ -12,7 +12,7 @@ This guide will help you upgrade an OpenMetadata deployment using release binari
 This guide assumes that you have an OpenMetadata deployment that you installed and configured following the
 [Bare Metal deployment](/deployment/bare-metal) guide.
 
-{% partial file="upgrade-prerequisites-110.md" /%}
+{% partial file="/v1.1.0/deployment/upgrade/upgrade-prerequisites-110.md" /%}
 
 # Upgrade process
 
