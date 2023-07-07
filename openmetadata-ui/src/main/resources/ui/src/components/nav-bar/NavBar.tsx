@@ -21,7 +21,6 @@ import {
   Space,
   Tooltip,
 } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
 import { ReactComponent as Help } from 'assets/svg/ic-help.svg';
 import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -463,18 +462,12 @@ const NavBar = ({
             trigger={['click']}>
             <Help height={20} width={20} />
           </Dropdown>
-
-          <div className="profile-dropdown " data-testid="dropdown-profile">
+          <div className="profile-dropdown" data-testid="dropdown-profile">
             <Dropdown
               menu={{
-                items: profileDropdown.map(
-                  (dd) =>
-                    ({
-                      title: dd.name,
-                      icon: dd.icon,
-                    } as ItemType)
-                ),
-              }}>
+                items: profileDropdown,
+              }}
+              trigger={['click']}>
               <Tooltip placement="bottom" title="Profile" trigger="hover">
                 {isImgUrlValid ? (
                   <div className="profile-image circle">
