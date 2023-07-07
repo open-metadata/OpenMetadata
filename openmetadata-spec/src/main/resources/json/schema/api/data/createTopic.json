@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/api/data/createTopic.json",
+  "$id": "/api/data/createTopic.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateTopicRequest",
   "description": "Create a topic entity request",

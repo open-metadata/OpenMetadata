@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/events/eventFilterRule.json",
+  "$id": "/events/eventFilterRule.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "EventFilterRule",
   "description": "Describes an Event Filter Rule",

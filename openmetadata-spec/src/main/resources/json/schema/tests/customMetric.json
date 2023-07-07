@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/tests/customMetric.json",
+  "$id": "/tests/customMetric.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CustomMetric",
   "description": "Custom Metric definition that we will associate with a column.",

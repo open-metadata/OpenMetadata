@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/domains/createDomain.json",
+  "$id": "/entity/domains/createDomain.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "createDomain",
   "description": "Create Domain API request",

@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/api/services/createDashboardService.json",
+  "$id": "/api/services/createDashboardService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateDashboardServiceRequest",
   "description": "Create Dashboard service entity request",

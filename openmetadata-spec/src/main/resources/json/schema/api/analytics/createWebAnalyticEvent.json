@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/api/tests/createWebAnalyticEvent.json",
+  "$id": "/api/tests/createWebAnalyticEvent.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateWebAnalyticEvent",
   "description": "Payload to create a web analytic event",

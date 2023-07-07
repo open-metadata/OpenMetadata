@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/classification/classification.json",
+  "$id": "/entity/classification/classification.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Classification",
   "description": "A `Classification` entity contains hierarchical terms called tags used for categorizing and classifying data assets and other entities.",

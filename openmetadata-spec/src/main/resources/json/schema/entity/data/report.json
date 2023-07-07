@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/data/report.json",
+  "$id": "/entity/data/report.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Report",
   "description": "This schema defines the Report entity. `Reports` are static information computed from data periodically that includes data in text, table, and visual form.",

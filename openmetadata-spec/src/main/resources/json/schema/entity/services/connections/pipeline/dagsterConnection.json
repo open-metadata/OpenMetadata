@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/dagsterConnection.json",
+  "$id": "/entity/services/connections/pipeline/dagsterConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DagsterConnection",
   "description": "Dagster Metadata Database Connection Config",

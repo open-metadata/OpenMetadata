@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/type/schema.json",
+  "$id": "/type/schema.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Topic",
   "$comment": "@om-entity-type",

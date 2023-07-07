@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/api/data/createTestSuite.json",
+  "$id": "/api/data/createTestSuite.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateTestSuiteRequest",
   "description": "Schema corresponding to a Test Suite",

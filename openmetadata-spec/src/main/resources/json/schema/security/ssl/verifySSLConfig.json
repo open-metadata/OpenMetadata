@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/security/ssl/verifySSLConfig.json",
+  "$id": "/security/ssl/verifySSLConfig.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "VerifySSLConfig",
   "description": "Client configuration to validate SSL certificates.",

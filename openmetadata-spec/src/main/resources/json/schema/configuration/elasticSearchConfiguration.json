@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/configuration/elasticSearchConfiguration.json",
+  "$id": "/entity/configuration/elasticSearchConfiguration.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ElasticSearchConfiguration",
   "description": "This schema defines the Elastic Search Configuration.",

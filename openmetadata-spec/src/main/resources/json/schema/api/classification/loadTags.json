@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/api/classification/loadTags.json",
+  "$id": "/api/classification/loadTags.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "loadTags",
   "description": "Load classifications and tags",

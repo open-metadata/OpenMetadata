@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/policies/policy.json",
+  "$id": "/entity/policies/policy.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Policy",
   "description": "A `Policy` defines control that needs to be applied across different Data Entities.",

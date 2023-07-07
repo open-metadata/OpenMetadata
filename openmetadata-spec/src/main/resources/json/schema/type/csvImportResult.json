@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/type/csvImportResult.json",
+  "$id": "/type/csvImportResult.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "csvImportResult",
   "description": "Represents result of importing a CSV file. Detailed error is provided on if the CSV file is conformant and failure to load any of the records in the CSV file.",

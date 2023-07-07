@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/messagingService.json",
+  "$id": "/entity/services/messagingService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Messaging Service",
   "description": "This schema defines the Messaging Service entity, such as Kafka and Pulsar.",

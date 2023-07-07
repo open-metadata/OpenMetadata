@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/bots.json",
+  "$id": "/entity/bots.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Bot",
   "description": "This schema defines a Bot entity. A bot automates tasks, such as adding description, identifying the importance of data. It performs this task as a special user in the system.",

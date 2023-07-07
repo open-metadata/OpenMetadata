@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/api/services/createPipelineService.json",
+  "$id": "/api/services/createPipelineService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreatePipelineServiceRequest",
   "description": "Create Pipeline service entity request",

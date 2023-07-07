@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/api/data/createGlossary.json",
+  "$id": "/api/data/createGlossary.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateGlossaryRequest",
   "description": "Create Glossary entity request",

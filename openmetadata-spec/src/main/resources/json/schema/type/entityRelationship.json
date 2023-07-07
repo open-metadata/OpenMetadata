@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/type/entityRelationship.json",
+  "$id": "/type/entityRelationship.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "EntityRelationship",
   "description": "This schema defines the EntityRelationship type used for establishing relationship between two entities. EntityRelationship is used for capturing relationships from one entity to another. For example, a database contains tables.",

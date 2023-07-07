@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/tableauConnection.json",
+  "$id": "/entity/services/connections/dashboard/tableauConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "TableauConnection",
   "description": "Tableau Connection Config",

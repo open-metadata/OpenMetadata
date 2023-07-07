@@ -1,5 +1,5 @@
 {
-    "$id": "https://open-metadata.org/schema/analytics/webAnalyticUserActivityReportData.json",
+    "$id": "/analytics/webAnalyticUserActivityReportData.json",
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "webAnalyticUserActivityReportData",
     "type": "object",
