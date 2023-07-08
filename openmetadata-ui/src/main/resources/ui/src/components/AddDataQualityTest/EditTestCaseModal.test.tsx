@@ -50,11 +50,15 @@ describe('EditTestCaseModal Component', () => {
     render(<EditTestCaseModal {...mockProps} />);
 
     expect(await screen.findByTestId('edit-test-form')).toBeInTheDocument();
-    expect(await screen.findByTestId('table-name')).toBeInTheDocument();
-    expect(await screen.findByTestId('column-name')).toBeInTheDocument();
-    expect(await screen.findByTestId('test-name')).toBeInTheDocument();
-    expect(await screen.findByTestId('test-display-name')).toBeInTheDocument();
-    expect(await screen.findByTestId('test-definition')).toBeInTheDocument();
+    expect(await screen.findByLabelText('label.table')).toBeInTheDocument();
+    expect(await screen.findByLabelText('label.column')).toBeInTheDocument();
+    expect(await screen.findByLabelText('label.name')).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText('label.display-name')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText('label.test-entity')
+    ).toBeInTheDocument();
     expect(
       await screen.findByText('RichTextEditor.component')
     ).toBeInTheDocument();
@@ -68,21 +72,25 @@ describe('EditTestCaseModal Component', () => {
   it('table, name, test definition, should be disabled', async () => {
     render(<EditTestCaseModal {...mockProps} />);
 
-    expect(await screen.findByTestId('table-name')).toBeDisabled();
-    expect(await screen.findByTestId('column-name')).toBeDisabled();
-    expect(await screen.findByTestId('test-name')).toBeDisabled();
-    expect(await screen.findByTestId('test-definition')).toBeDisabled();
+    expect(await screen.findByLabelText('label.name')).toBeDisabled();
+    expect(await screen.findByLabelText('label.column')).toBeDisabled();
+    expect(await screen.findByLabelText('label.table')).toBeDisabled();
+    expect(await screen.findByLabelText('label.test-entity')).toBeDisabled();
   });
 
   it('fields should have data based on testCase value', async () => {
     render(<EditTestCaseModal {...mockProps} />);
 
-    expect(await screen.findByTestId('table-name')).toHaveValue('dim_address');
-    expect(await screen.findByTestId('column-name')).toHaveValue('last_name');
-    expect(await screen.findByTestId('test-name')).toHaveValue(
+    expect(await screen.findByLabelText('label.table')).toHaveValue(
+      'dim_address'
+    );
+    expect(await screen.findByLabelText('label.column')).toHaveValue(
+      'last_name'
+    );
+    expect(await screen.findByLabelText('label.name')).toHaveValue(
       'column_values_to_match_regex'
     );
-    expect(await screen.findByTestId('test-definition')).toHaveValue(
+    expect(await screen.findByLabelText('label.test-entity')).toHaveValue(
       'columnValuesToMatchRegex'
     );
   });

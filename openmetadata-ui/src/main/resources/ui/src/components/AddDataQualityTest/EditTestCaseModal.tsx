@@ -218,17 +218,17 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
           layout="vertical"
           name="tableTestForm"
           onFinish={handleFormSubmit}>
-          <Form.Item required label={`${t('label.table')}`} name="table">
-            <Input disabled data-testid="table-name" />
+          <Form.Item required label={t('label.table')} name="table">
+            <Input disabled />
           </Form.Item>
           {isColumn && (
-            <Form.Item required label={`${t('label.column')}`} name="column">
-              <Input disabled data-testid="column-name" />
+            <Form.Item required label={t('label.column')} name="column">
+              <Input disabled />
             </Form.Item>
           )}
           <Form.Item
             required
-            label={`${t('label.name')}`}
+            label={t('label.name')}
             name="name"
             rules={[
               {
@@ -236,34 +236,23 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
                 message: t('message.entity-name-validation'),
               },
             ]}>
-            <Input
-              disabled
-              data-testid="test-name"
-              placeholder={t('message.enter-test-case-name')}
-            />
+            <Input disabled placeholder={t('message.enter-test-case-name')} />
           </Form.Item>
           <Form.Item label={t('label.display-name')} name="displayName">
-            <Input
-              data-testid="test-display-name"
-              placeholder={t('message.enter-test-case-name')}
-            />
+            <Input placeholder={t('message.enter-test-case-name')} />
           </Form.Item>
           <Form.Item
             required
-            label={`${t('label.test-entity', {
+            label={t('label.test-entity', {
               entity: t('label.type'),
-            })}:`}
+            })}
             name="testDefinition">
-            <Input
-              disabled
-              data-testid="test-definition"
-              placeholder={t('message.enter-test-case-name')}
-            />
+            <Input disabled placeholder={t('message.enter-test-case-name')} />
           </Form.Item>
 
           {GenerateParamsField()}
 
-          <Form.Item label={`${t('label.description')}`} name="description">
+          <Form.Item label={t('label.description')} name="description">
             <RichTextEditor
               height="200px"
               initialValue={testCase?.description || ''}
