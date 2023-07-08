@@ -13,18 +13,18 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TestCaseFailureStatusType } from 'generated/tests/testCase';
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { TestCaseStatusModal } from './TestCaseStatusModal.component';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 
 const mockProps: TestCaseStatusModalProps = {
   open: true,
   onCancel: jest.fn(),
-  onSubmit: jest.fn(),
+  onSubmit: jest.fn().mockImplementation(() => Promise.resolve()),
 };
 
 jest.mock('components/common/rich-text-editor/RichTextEditor', () => {
-  return jest.fn().mockReturnValue(<div>RichTextEditor</div>);
+  return forwardRef(jest.fn().mockReturnValue(<div>RichTextEditor</div>));
 });
 jest.mock('generated/tests/testCase', () => ({
   ...jest.requireActual('generated/tests/testCase'),
@@ -40,7 +40,7 @@ describe('TestCaseStatusModal component', () => {
     render(<TestCaseStatusModal {...mockProps} />);
 
     expect(await screen.findByTestId('update-status-form')).toBeInTheDocument();
-    expect(await screen.findByTestId('select-status')).toBeInTheDocument();
+    expect(await screen.findByLabelText('label.status')).toBeInTheDocument();
     expect(await screen.findByText('label.cancel')).toBeInTheDocument();
     expect(await screen.findByText('label.submit')).toBeInTheDocument();
   });
@@ -53,8 +53,8 @@ describe('TestCaseStatusModal component', () => {
       />
     );
 
-    expect(await screen.findByTestId('select-status')).toBeInTheDocument();
-    expect(await screen.findByTestId('select-reason')).toBeInTheDocument();
+    expect(await screen.findByLabelText('label.status')).toBeInTheDocument();
+    expect(await screen.findByLabelText('label.reason')).toBeInTheDocument();
     expect(await screen.findByText('RichTextEditor')).toBeInTheDocument();
   });
 
@@ -76,7 +76,7 @@ describe('TestCaseStatusModal component', () => {
   it('should call onSubmit function, on click of save button', async () => {
     render(<TestCaseStatusModal {...mockProps} />);
     const submitBtn = await screen.findByText('label.submit');
-    const status = await screen.findByRole('combobox');
+    const status = await screen.findByLabelText('label.status');
 
     await act(async () => {
       userEvent.click(status);

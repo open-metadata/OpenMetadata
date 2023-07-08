@@ -82,7 +82,6 @@ export const TestCaseStatusModal = ({
             },
           ]}>
           <Select
-            data-testid="select-status"
             placeholder={t('label.please-select-entity', {
               entity: t('label.status'),
             })}>
@@ -105,7 +104,6 @@ export const TestCaseStatusModal = ({
                 },
               ]}>
               <Select
-                data-testid="select-reason"
                 placeholder={t('label.please-select-entity', {
                   entity: t('label.reason'),
                 })}>
