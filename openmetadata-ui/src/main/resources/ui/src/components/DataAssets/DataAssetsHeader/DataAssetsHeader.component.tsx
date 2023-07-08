@@ -37,6 +37,7 @@ import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
+import { Database } from 'generated/entity/data/database';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
 import { Table } from 'generated/entity/data/table';
@@ -56,6 +57,7 @@ import { getCurrentUserId, getEntityDetailLink } from 'utils/CommonUtils';
 import {
   getBreadcrumbForEntitiesWithServiceOnly,
   getBreadcrumbForTable,
+  getEntityBreadcrumbs,
   getEntityFeedLink,
   getEntityName,
 } from 'utils/EntityUtils';
@@ -66,6 +68,7 @@ import { showErrorToast } from 'utils/ToastUtils';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
+  DataAssetType,
 } from './DataAssetsHeader.interface';
 
 export const ExtraInfoLabel = ({
@@ -108,6 +111,7 @@ export const ExtraInfoLink = ({
 );
 
 export const DataAssetsHeader = ({
+  allowSoftDelete = true,
   dataAsset,
   onOwnerUpdate,
   onTierUpdate,
@@ -115,6 +119,7 @@ export const DataAssetsHeader = ({
   onVersionClick,
   onFollowClick,
   entityType,
+  isRecursiveDelete,
   onRestoreDataAsset,
   onDisplayNameUpdate,
 }: DataAssetsHeaderProps) => {
@@ -133,13 +138,23 @@ export const DataAssetsHeader = ({
   );
   const [copyTooltip, setCopyTooltip] = useState<string>();
 
+  const excludeEntityService = [EntityType.DATABASE].includes(entityType);
+  const hasFollowers = 'followers' in dataAsset;
+
   const { entityName, tier, isFollowing, version, followers } = useMemo(
     () => ({
-      isFollowing: dataAsset.followers?.some(({ id }) => id === USERId),
+      isFollowing: hasFollowers
+        ? (dataAsset as DataAssetType).followers?.some(
+            ({ id }) => id === USERId
+          )
+        : false,
+      followers: hasFollowers
+        ? (dataAsset as DataAssetType).followers?.length
+        : 0,
+
       tier: getTierTags(dataAsset.tags ?? []),
       entityName: getEntityName(dataAsset),
       version: dataAsset.version,
-      followers: dataAsset.followers?.length,
     }),
     [dataAsset, USERId]
   );
@@ -363,6 +378,16 @@ export const DataAssetsHeader = ({
 
         break;
 
+      case EntityType.DATABASE:
+        const databaseDetails = dataAsset as Database;
+
+        returnData.breadcrumbs = getEntityBreadcrumbs(
+          databaseDetails,
+          EntityType.DATABASE
+        );
+
+        break;
+
       case EntityType.TABLE:
       default:
         const tableDetails = dataAsset as Table;
@@ -492,27 +517,36 @@ export const DataAssetsHeader = ({
           <Space className="items-end w-full" direction="vertical" size={16}>
             <Space>
               <ButtonGroup size="small">
-                <Button
-                  className="w-16 p-0"
-                  icon={<Icon component={TaskOpenIcon} />}
-                  onClick={handleOpenTaskClick}>
-                  <Typography.Text>{taskCount}</Typography.Text>
-                </Button>
-                <Button
-                  className="w-16 p-0"
-                  icon={<Icon component={VersionIcon} />}
-                  onClick={onVersionClick}>
-                  <Typography.Text>{version}</Typography.Text>
-                </Button>
-                <Button
-                  className="w-16 p-0"
-                  data-testid="entity-follow-button"
-                  icon={
-                    <Icon component={isFollowing ? StarFilledIcon : StarIcon} />
-                  }
-                  onClick={onFollowClick}>
-                  <Typography.Text>{followers}</Typography.Text>
-                </Button>
+                {!excludeEntityService && (
+                  <>
+                    <Button
+                      className="w-16 p-0"
+                      icon={<Icon component={TaskOpenIcon} />}
+                      onClick={handleOpenTaskClick}>
+                      <Typography.Text>{taskCount}</Typography.Text>
+                    </Button>
+
+                    <Button
+                      className="w-16 p-0"
+                      icon={<Icon component={VersionIcon} />}
+                      onClick={onVersionClick}>
+                      <Typography.Text>{version}</Typography.Text>
+                    </Button>
+
+                    <Button
+                      className="w-16 p-0"
+                      data-testid="entity-follow-button"
+                      icon={
+                        <Icon
+                          component={isFollowing ? StarFilledIcon : StarIcon}
+                        />
+                      }
+                      onClick={onFollowClick}>
+                      <Typography.Text>{followers}</Typography.Text>
+                    </Button>
+                  </>
+                )}
+
                 <Tooltip
                   open={!isEmpty(copyTooltip)}
                   placement="bottomRight"
@@ -523,7 +557,7 @@ export const DataAssetsHeader = ({
                   />
                 </Tooltip>
                 <ManageButton
-                  allowSoftDelete={!dataAsset.deleted}
+                  allowSoftDelete={!dataAsset.deleted && allowSoftDelete}
                   canDelete={permissions.Delete}
                   deleted={dataAsset.deleted}
                   displayName={dataAsset.displayName}
@@ -534,6 +568,7 @@ export const DataAssetsHeader = ({
                   entityId={dataAsset.id}
                   entityName={entityName}
                   entityType={entityType}
+                  isRecursiveDelete={isRecursiveDelete}
                   onAnnouncementClick={
                     permissions?.EditAll
                       ? () => setIsAnnouncementDrawer(true)

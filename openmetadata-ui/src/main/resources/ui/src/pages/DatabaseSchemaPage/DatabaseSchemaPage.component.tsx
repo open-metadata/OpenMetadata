@@ -502,6 +502,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             </Link>
           );
         },
+        className: 'truncate w-max-500',
       },
       {
         title: t('label.description'),

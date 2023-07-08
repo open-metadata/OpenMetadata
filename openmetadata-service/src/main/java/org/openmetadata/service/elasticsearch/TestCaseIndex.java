@@ -26,9 +26,11 @@ public class TestCaseIndex implements ElasticSearchIndex {
   @SneakyThrows
   public Map<String, Object> buildESDoc() {
     List<TestSuite> testSuiteArray = new ArrayList<>();
-    for (TestSuite suite : testCase.getTestSuites()) {
-      suite.setChangeDescription(null);
-      testSuiteArray.add(suite);
+    if (testCase.getTestSuites() != null) {
+      for (TestSuite suite : testCase.getTestSuites()) {
+        suite.setChangeDescription(null);
+        testSuiteArray.add(suite);
+      }
     }
     testCase.setTestSuites(testSuiteArray);
     Map<String, Object> doc = JsonUtils.getMap(testCase);
