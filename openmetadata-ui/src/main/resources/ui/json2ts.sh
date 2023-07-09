@@ -25,13 +25,14 @@ addLicensing(){
 generateTmpSchemaFile() {
     schema_file=$1
     tmp_schema_file=$2
-    jq '(."$id" |= sub("https://open-metadata.org/schema";"/tmp";"i"))' $schema_file > $tmp_schema_file
+    jq '(."$id" |= sub("https://open-metadata.org/schema";"";"i"))' $schema_file > $tmp_schema_file
 }
 
 generateType(){
     tmp_schema_file=$1
     output_file=$2
     #generate ts
+    echo "Generating ${output_file} from specification at ${tmp_schema_file}"
     ./node_modules/.bin/quicktype -s schema $tmp_schema_file  -o $output_file --just-types > /dev/null 2>&1
 }
 
