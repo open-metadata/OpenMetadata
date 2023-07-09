@@ -39,7 +39,6 @@ jobs:
           sudo make install_antlr_cli
 
       - name: Setup jq
-        if: steps.cache-output.outputs.exit-code == 0
         run: |
 	  sudo apt-get update
 	  sudo apt-get install jq
