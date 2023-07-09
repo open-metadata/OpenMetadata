@@ -38,6 +38,11 @@ jobs:
         run: |
           sudo make install_antlr_cli
 
+      - name: Setup jq
+        run: |
+	  sudo apt-get update
+	  sudo apt-get install jq
+
       - name: Build OpenMetadata Server Application
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
