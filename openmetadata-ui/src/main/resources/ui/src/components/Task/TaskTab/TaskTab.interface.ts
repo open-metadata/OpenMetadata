@@ -14,14 +14,11 @@ import { EntityType } from 'enums/entity.enum';
 import { Column } from 'generated/entity/data/table';
 import { Thread } from 'generated/entity/feed/thread';
 import { EntityReference } from 'generated/entity/type';
-import { TagLabel } from 'generated/type/tagLabel';
 
 export type TaskTabProps = {
-  task: Thread;
+  taskThread: Thread;
   owner?: EntityReference;
-  tags?: TagLabel[];
   onUpdateEntityDetails?: () => void;
-  description?: string;
 } & (
   | TableTaskTabProps
   | { columns?: undefined; entityType: Exclude<EntityType, EntityType.TABLE> }

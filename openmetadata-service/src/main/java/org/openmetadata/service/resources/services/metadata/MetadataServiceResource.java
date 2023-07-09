@@ -53,6 +53,7 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -252,7 +253,8 @@ public class MetadataServiceResource
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    MetadataService metadataService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    MetadataService metadataService =
+        getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
     return decryptOrNullify(securityContext, metadataService);
   }
 
@@ -464,7 +466,7 @@ public class MetadataServiceResource
       @Parameter(description = "Name of the metadata service", schema = @Schema(type = "string")) @PathParam("name")
           String name)
       throws IOException {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), false, hardDelete);
   }
 
   @PUT

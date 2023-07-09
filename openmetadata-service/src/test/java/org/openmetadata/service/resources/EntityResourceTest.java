@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
@@ -113,7 +114,6 @@ import org.elasticsearch.xcontent.XContentParser;
 import org.elasticsearch.xcontent.json.JsonXContent;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.junit.Assert;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -141,6 +141,8 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.DataProduct;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
@@ -172,6 +174,8 @@ import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.domains.DataProductResourceTest;
+import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
@@ -328,6 +332,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static final String C4 = "\"c.4\"";
   public static List<Column> COLUMNS;
 
+  public static Domain DOMAIN;
+  public static Domain SUB_DOMAIN;
+  public static DataProduct DOMAIN_DATA_PRODUCT;
+  public static DataProduct SUB_DOMAIN_DATA_PRODUCT;
+
   public static final TestConnectionResult TEST_CONNECTION_RESULT =
       new TestConnectionResult()
           .withStatus(TestConnectionResultStatus.SUCCESSFUL)
@@ -405,12 +414,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new KpiResourceTest().setupKpi();
     new BotResourceTest().setupBots();
     new QueryResourceTest().setupQuery(test);
+    new DomainResourceTest().setupDomains(test);
+    new DataProductResourceTest().setupDataProducts(test);
 
     runWebhookTests = new Random().nextBoolean();
     if (runWebhookTests) {
       webhookCallbackResource.clearEvents();
       EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
-      alertResourceTest.startWebhookSubscription(true);
+      alertResourceTest.startWebhookSubscription();
       alertResourceTest.startWebhookEntitySubscriptions(entityType);
     }
   }
@@ -556,10 +567,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     List<UUID> createdUUIDs = new ArrayList<>();
     for (int i = 0; i < maxEntities; i++) {
-      createdUUIDs.add(
-          createEntity(createRequest(getEntityName(test, i + 1), "", null, null), ADMIN_AUTH_HEADERS).getId());
+      createdUUIDs.add(createEntity(createRequest(test, i + 1), ADMIN_AUTH_HEADERS).getId());
     }
-    T entity = createEntity(createRequest(getEntityName(test, 0), "", null, null), ADMIN_AUTH_HEADERS);
+    T entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
     deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
 
     Predicate<T> matchDeleted = e -> e.getId().equals(entity.getId());
@@ -578,7 +588,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       int totalRecords = allEntities.getData().size();
       printEntities(allEntities);
 
-      // List entity with "limit" set from 1 to maxTables size with random jumps (to reduce the test time)
+      // List entity with "limit" set from 1 to maxEntities size with random jumps (to reduce the test time)
       // Each time compare the returned list with allTables list to make sure right results are returned
       for (int limit = 1; limit < maxEntities; limit += random.nextInt(5) + 1) {
         String after = null;
@@ -589,7 +599,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         ResultList<T> backwardPage;
         boolean foundDeleted = false;
         do { // For each limit (or page size) - forward scroll till the end
-          LOG.debug("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
+          LOG.debug(
+              "Limit {} forward pageCount {} indexInAllTables {} totalRecords {} afterCursor {}",
+              limit,
+              pageCount,
+              indexInAllTables,
+              totalRecords,
+              after);
           forwardPage = listEntities(queryParams, limit, null, after, ADMIN_AUTH_HEADERS);
           foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted) || foundDeleted;
           after = forwardPage.getPaging().getAfter();
@@ -621,7 +637,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         indexInAllTables = totalRecords - limit - forwardPage.getData().size();
         foundDeleted = false;
         do {
-          LOG.debug("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
+          LOG.debug(
+              "Limit {} backward pageCount {} indexInAllTables {} totalRecords {} afterCursor {}",
+              limit,
+              pageCount,
+              indexInAllTables,
+              totalRecords,
+              after);
           forwardPage = listEntities(queryParams, limit, before, null, ADMIN_AUTH_HEADERS);
           foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted) || foundDeleted;
           printEntities(forwardPage);
@@ -1647,10 +1669,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       }
       for (ElasticSearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType :
           ElasticSearchIndexDefinition.ElasticSearchIndexType.values()) {
-        // check all the indexes are created sucessfully
-        Assert.assertTrue(
-            "Index name not found in Elasticsearch response " + elasticSearchIndexType.indexName,
-            indexNamesFromResponse.contains(elasticSearchIndexType.indexName));
+        // check all the indexes are created successfully
+        assertTrue(
+            indexNamesFromResponse.contains(elasticSearchIndexType.indexName),
+            "Index name not found in Elasticsearch response " + elasticSearchIndexType.indexName);
       }
       client.close();
     }
@@ -1706,7 +1728,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         entityIds.add(sourceAsMap.get("id").toString());
       }
       // verify if it is deleted from the search as well
-      assertTrue(!entityIds.contains(entity.getId().toString()));
+      assertFalse(entityIds.contains(entity.getId().toString()));
     }
   }
 
@@ -1758,11 +1780,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       for (SearchHit hit : hits) {
         Map<String, Object> sourceAsMap = hit.getSourceAsMap();
         if (sourceAsMap.get("id").toString().equals(entity.getId().toString())) {
+          @SuppressWarnings("unchecked")
           List<Map<String, String>> listTags = (List<Map<String, String>>) sourceAsMap.get("tags");
-          listTags.forEach(
-              tempMap -> {
-                fqnList.add(tempMap.get("tagFQN"));
-              });
+          listTags.forEach(tempMap -> fqnList.add(tempMap.get("tagFQN")));
           break;
         }
       }
@@ -1777,16 +1797,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       for (SearchHit hit : hits) {
         Map<String, Object> sourceAsMap = hit.getSourceAsMap();
         if (sourceAsMap.get("id").toString().equals(entity.getId().toString())) {
+          @SuppressWarnings("unchecked")
           List<Map<String, String>> listTags = (List<Map<String, String>>) sourceAsMap.get("tags");
-          listTags.forEach(
-              tempMap -> {
-                fqnList.add(tempMap.get("tagFQN"));
-              });
+          listTags.forEach(tempMap -> fqnList.add(tempMap.get("tagFQN")));
           break;
         }
       }
       // check if the relationships of tag are also deleted in search
-      assertTrue(!fqnList.contains(tagLabel.getTagFQN()));
+      assertFalse(fqnList.contains(tagLabel.getTagFQN()));
     }
   }
 
@@ -1794,14 +1812,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     Map<String, ContextParser<Object, ? extends Aggregation>> map = new HashMap<>();
     map.put(TopHitsAggregationBuilder.NAME, (p, c) -> ParsedTopHits.fromXContent(p, (String) c));
     map.put(StringTerms.NAME, (p, c) -> ParsedStringTerms.fromXContent(p, (String) c));
-    List<NamedXContentRegistry.Entry> entries =
-        map.entrySet().stream()
-            .map(
-                entry ->
-                    new NamedXContentRegistry.Entry(
-                        Aggregation.class, new ParseField(entry.getKey()), entry.getValue()))
-            .collect(Collectors.toList());
-    return entries;
+    return map.entrySet().stream()
+        .map(
+            entry ->
+                new NamedXContentRegistry.Entry(Aggregation.class, new ParseField(entry.getKey()), entry.getValue()))
+        .collect(Collectors.toList());
   }
 
   private static SearchResponse getResponseFormSearch(String indexName) throws HttpResponseException {
@@ -1813,8 +1828,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       XContentParser parser =
           JsonXContent.jsonXContent.createParser(registry, DeprecationHandler.IGNORE_DEPRECATIONS, result);
       response = SearchResponse.fromXContent(parser);
-    } catch (IOException e) {
-      System.out.println("exception " + e);
     } catch (Exception e) {
       System.out.println("exception " + e);
     }
@@ -2504,7 +2517,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
    * elements of T, validate lists
    */
   public <P> void assertListProperty(List<P> expected, List<P> actual, BiConsumer<P, P> validate) {
-    if (expected == null && actual == null) {
+    if (nullOrEmpty(expected) && nullOrEmpty(actual)) {
       return;
     }
 
@@ -2516,6 +2529,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   protected void assertEntityReferences(List<EntityReference> expectedList, List<EntityReference> actualList) {
+    if (nullOrEmpty(expectedList) && nullOrEmpty(actualList)) {
+      return;
+    }
     for (EntityReference expected : expectedList) {
       EntityReference actual =
           actualList.stream().filter(a -> EntityUtil.entityReferenceMatch.test(a, expected)).findAny().orElse(null);

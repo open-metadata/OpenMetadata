@@ -152,7 +152,10 @@ $$
 
 $$section
 ### Host Port $(id="hostPort")
-Host and port of the MySQL service. This should be specified as a string in the format `hostname:port`. E.g., `localhost:3306`, `host.docker.internal:3306`.
+
+This parameter specifies the host and port of the MySQL instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:3306`.
+
+If your database service and Open Metadata are both running via docker locally, use `host.docker.internal:3306` as the value.
 $$
 
 $$section

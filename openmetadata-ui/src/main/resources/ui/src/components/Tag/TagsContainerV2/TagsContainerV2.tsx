@@ -14,7 +14,7 @@
 import { Button, Col, Form, Row, Space, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { TableTagsProps } from 'components/TableTags/TableTags.interface';
-import { DE_ACTIVE_COLOR, PAGE_SIZE } from 'constants/constants';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
@@ -26,14 +26,10 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { getGlossaryTerms } from 'rest/glossaryAPI';
 import { searchQuery } from 'rest/searchAPI';
-import { getTags } from 'rest/tagAPI';
-import {
-  formatSearchGlossaryTermResponse,
-  formatSearchTagsResponse,
-} from 'utils/APIUtils';
+import { formatSearchGlossaryTermResponse } from 'utils/APIUtils';
 import { getEntityFeedLink } from 'utils/EntityUtils';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
-import { getTagPlaceholder } from 'utils/TagsUtils';
+import { fetchTagsElasticSearch, getTagPlaceholder } from 'utils/TagsUtils';
 import {
   getRequestTagsPath,
   getUpdateTagsPath,
@@ -82,40 +78,6 @@ const TagsContainerV2 = ({
     [tags, tagType]
   );
 
-  const fetchTags = useCallback(
-    async (
-      searchQueryParam: string,
-      page: number
-    ): Promise<{
-      data: {
-        label: string;
-        value: string;
-      }[];
-      paging: Paging;
-    }> => {
-      const tagResponse = await searchQuery({
-        query: searchQueryParam ? searchQueryParam : '*',
-        pageNumber: page,
-        pageSize: PAGE_SIZE,
-        queryFilter: {},
-        searchIndex: SearchIndex.TAG,
-      });
-
-      return {
-        data: formatSearchTagsResponse(tagResponse.hits.hits ?? []).map(
-          (item) => ({
-            label: item.fullyQualifiedName ?? '',
-            value: item.fullyQualifiedName ?? '',
-          })
-        ),
-        paging: {
-          total: tagResponse.hits.total.value,
-        },
-      };
-    },
-    [getTags]
-  );
-
   const fetchGlossaryList = useCallback(
     async (
       searchQueryParam: string,
@@ -153,12 +115,12 @@ const TagsContainerV2 = ({
   const fetchAPI = useCallback(
     (searchValue: string, page: number) => {
       if (tagType === TagSource.Classification) {
-        return fetchTags(searchValue, page);
+        return fetchTagsElasticSearch(searchValue, page);
       } else {
         return fetchGlossaryList(searchValue, page);
       }
     },
-    [tagType, fetchTags, fetchGlossaryList]
+    [tagType, fetchGlossaryList]
   );
 
   const showNoDataPlaceholder = useMemo(
@@ -311,32 +273,27 @@ const TagsContainerV2 = ({
   const header = useMemo(() => {
     return (
       showHeader && (
-        <div className="d-flex justify-between m-b-xss">
-          <div className="d-flex items-center">
-            <Typography.Text className="right-panel-label">
-              {isGlossaryType
-                ? t('label.glossary-term')
-                : t('label.tag-plural')}
-            </Typography.Text>
-
-            {permission && !isEmpty(tags?.[tagType]) && !isEditTags && (
-              <Button
-                className="cursor-pointer flex-center m-l-xss"
-                data-testid="edit-button"
-                icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                size="small"
-                type="text"
-                onClick={handleAddClick}
-              />
-            )}
-          </div>
+        <Space align="center" className="m-b-xss w-full" size="middle">
+          <Typography.Text className="right-panel-label">
+            {isGlossaryType ? t('label.glossary-term') : t('label.tag-plural')}
+          </Typography.Text>
           {permission && (
             <Row gutter={8}>
+              {!isEmpty(tags?.[tagType]) && !isEditTags && (
+                <Button
+                  className="cursor-pointer flex-center"
+                  data-testid="edit-button"
+                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                  size="small"
+                  type="text"
+                  onClick={handleAddClick}
+                />
+              )}
               {tagType === TagSource.Classification && requestTagElement}
               {onThreadLinkSelect && conversationThreadElement}
             </Row>
           )}
-        </div>
+        </Space>
       )
     );
   }, [

@@ -97,8 +97,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   @Override
   public void storeRelationships(Glossary glossary) {
-    storeOwner(glossary, glossary.getOwner());
-    applyTags(glossary);
     for (EntityReference reviewer : listOrEmpty(glossary.getReviewers())) {
       addRelationship(reviewer.getId(), glossary.getId(), Entity.USER, Entity.GLOSSARY, Relationship.REVIEWS);
     }

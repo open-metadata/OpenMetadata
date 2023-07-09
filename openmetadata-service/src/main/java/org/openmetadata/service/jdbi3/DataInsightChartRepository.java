@@ -88,6 +88,6 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
 
   @Override
   public void storeRelationships(DataInsightChart entity) {
-    storeOwner(entity, entity.getOwner());
+    // No relationships to store beyond what is stored in the super class
   }
 }

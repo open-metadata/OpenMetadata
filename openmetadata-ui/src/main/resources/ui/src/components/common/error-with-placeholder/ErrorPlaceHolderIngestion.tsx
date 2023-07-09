@@ -57,7 +57,7 @@ const ErrorPlaceHolderIngestion = () => {
               className="justify-center w-full"
               direction="vertical"
               size={16}>
-              <IconCollateSupport />
+              <IconCollateSupport height={100} width={100} />
               <Typography>{t('message.pipeline-scheduler-message')}</Typography>
             </Space>
           )}

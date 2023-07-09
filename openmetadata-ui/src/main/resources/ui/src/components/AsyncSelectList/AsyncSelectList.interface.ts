@@ -22,6 +22,7 @@ export interface AsyncSelectListProps {
   mode?: 'multiple';
   placeholder?: string;
   debounceTimeout?: number;
+  defaultValue?: string[];
   onChange?: (newValue: string | string[]) => void;
   fetchOptions: (
     search: string,

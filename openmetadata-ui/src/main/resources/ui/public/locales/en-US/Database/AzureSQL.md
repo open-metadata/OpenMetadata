@@ -41,7 +41,9 @@ $$
 $$section
 ### Host Port $(id="hostPort")
 
-Host and port of the AzureSQL service. For example: `azure-sql-service-name.database.windows.net:1433`
+This parameter specifies the host and port of the AzureSQL instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `azure-sql-service-name.database.windows.net:1433`.
+
+If your database service and Open Metadata are both running via docker locally, use `host.docker.internal:3000` as the value.
 $$
 
 $$section

@@ -25,42 +25,30 @@ import { DescriptionTabs } from './DescriptionTabs';
 import { DiffView } from './DiffView';
 
 interface DescriptionTaskProps {
-  taskDetail: Thread;
+  taskThread: Thread;
   isTaskActionEdit: boolean;
   hasEditAccess: boolean;
-  suggestion: string;
-  value: string;
   onChange: (value: string) => void;
 }
 
 const DescriptionTask: FC<DescriptionTaskProps> = ({
-  taskDetail,
+  taskThread,
   isTaskActionEdit,
   hasEditAccess,
-  suggestion,
-  value: currentDescription = '',
   onChange,
 }) => {
+  const { task } = taskThread;
   const { t } = useTranslation();
 
-  const isRequestDescription = isEqual(
-    taskDetail.task?.type,
-    TaskType.RequestDescription
-  );
+  const isRequestDescription = isEqual(task?.type, TaskType.RequestDescription);
 
-  const isUpdateDescription = isEqual(
-    taskDetail.task?.type,
-    TaskType.UpdateDescription
-  );
+  const isUpdateDescription = isEqual(task?.type, TaskType.UpdateDescription);
 
-  const isTaskClosed = isEqual(
-    taskDetail.task?.status,
-    ThreadTaskStatus.Closed
-  );
+  const isTaskClosed = isEqual(task?.status, ThreadTaskStatus.Closed);
 
   const getDiffView = () => {
-    const oldValue = taskDetail.task?.oldValue;
-    const newValue = taskDetail.task?.newValue;
+    const oldValue = task?.oldValue;
+    const newValue = task?.newValue;
     if (!oldValue && !newValue) {
       return (
         <div className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3">
@@ -73,10 +61,7 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
       return (
         <DiffView
           className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3"
-          diffArr={getDescriptionDiff(
-            taskDetail?.task?.oldValue || '',
-            taskDetail?.task?.newValue || ''
-          )}
+          diffArr={getDescriptionDiff(oldValue ?? '', newValue ?? '')}
         />
       );
     }
@@ -87,8 +72,8 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
    * @returns Suggested description diff
    */
   const getSuggestedDescriptionDiff = () => {
-    const newDescription = taskDetail?.task?.suggestion;
-    const oldDescription = taskDetail?.task?.oldValue;
+    const newDescription = task?.suggestion;
+    const oldDescription = task?.oldValue;
 
     const diffs = getDescriptionDiff(
       oldDescription || '',
@@ -116,7 +101,7 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
                 {isTaskActionEdit && hasEditAccess ? (
                   <RichTextEditor
                     height="208px"
-                    initialValue={suggestion}
+                    initialValue={task?.suggestion ?? ''}
                     placeHolder={t('label.add-entity', {
                       entity: t('label.description'),
                     })}
@@ -135,8 +120,8 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
               <div data-testid="update-description">
                 {isTaskActionEdit && hasEditAccess ? (
                   <DescriptionTabs
-                    suggestion={suggestion}
-                    value={currentDescription}
+                    suggestion={task?.suggestion ?? ''}
+                    value={task?.oldValue ?? ''}
                     onChange={onChange}
                   />
                 ) : (

@@ -161,8 +161,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     EntityReference service = mlModel.getService();
     addRelationship(service.getId(), mlModel.getId(), service.getType(), MLMODEL, Relationship.CONTAINS);
 
-    storeOwner(mlModel, mlModel.getOwner());
-
     setDashboard(mlModel, mlModel.getDashboard());
 
     if (mlModel.getDashboard() != null) {
@@ -172,7 +170,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     setMlFeatureSourcesLineage(mlModel);
-    applyTags(mlModel);
   }
 
   /**

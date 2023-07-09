@@ -267,11 +267,11 @@ const AddQueryPage = () => {
                     <Tooltip
                       placement="top"
                       title={
-                        !permissions.query.Create && NO_PERMISSION_FOR_ACTION
+                        !permissions.query?.Create && NO_PERMISSION_FOR_ACTION
                       }>
                       <Button
                         data-testid="save-btn"
-                        disabled={!permissions.query.Create}
+                        disabled={!permissions.query?.Create}
                         htmlType="submit"
                         loading={isSaving}
                         type="primary">

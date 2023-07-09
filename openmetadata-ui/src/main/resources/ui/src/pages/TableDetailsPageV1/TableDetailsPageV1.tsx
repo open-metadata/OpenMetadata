@@ -72,6 +72,7 @@ import {
   restoreTable,
 } from 'rest/tableAPI';
 import {
+  addToRecentViewed,
   getCurrentUserId,
   getFeedCounts,
   getPartialNameFromTableFQN,
@@ -113,47 +114,40 @@ const TableDetailsPageV1 = () => {
   const [queryCount, setQueryCount] = useState(0);
 
   const [loading, setLoading] = useState(!isTourOpen);
+  const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const viewUsagePermission = useMemo(
+    () => tablePermissions.ViewAll || tablePermissions.ViewUsage,
+    [tablePermissions]
+  );
+  const viewTestSuitePermission = useMemo(
+    () => tablePermissions.ViewAll || tablePermissions.ViewTests,
+    [tablePermissions]
+  );
 
   const fetchTableDetails = async () => {
     setLoading(true);
     try {
-      const details = await getTableDetailsByFQN(datasetFQN, defaultFields);
+      let fields = defaultFields;
+      if (viewUsagePermission) {
+        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+      }
+      if (viewTestSuitePermission) {
+        fields += `,${TabSpecificField.TESTSUITE}`;
+      }
+      const details = await getTableDetailsByFQN(datasetFQN, fields);
 
       setTableDetails(details);
-    } catch (error) {
-      // Error here
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchUsageDetails = async () => {
-    setLoading(true);
-    try {
-      const { usageSummary } = await getTableDetailsByFQN(
-        datasetFQN,
-        TabSpecificField.USAGE_SUMMARY
-      );
-
-      setTableDetails((table) =>
-        table ? { ...table, usageSummary } : undefined
-      );
-    } catch (error) {
-      // Error here
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchTestSuiteDetails = async () => {
-    setLoading(true);
-    try {
-      const { testSuite } = await getTableDetailsByFQN(
-        datasetFQN,
-        TabSpecificField.TESTSUITE
-      );
-
-      setTableDetails((table) => (table ? { ...table, testSuite } : undefined));
+      addToRecentViewed({
+        displayName: getEntityName(details),
+        entityType: EntityType.TABLE,
+        fqn: details.fullyQualifiedName ?? '',
+        serviceType: details.serviceType,
+        timestamp: 0,
+        id: details.id,
+      });
     } catch (error) {
       // Error here
     } finally {
@@ -182,10 +176,6 @@ const TableDetailsPageV1 = () => {
   const onCancel = () => {
     setIsEdit(false);
   };
-
-  const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
 
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const {
@@ -258,22 +248,33 @@ const TableDetailsPageV1 = () => {
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const fetchResourcePermission = useCallback(async () => {
-    try {
-      const tablePermission = await getEntityPermissionByFqn(
-        ResourceEntity.TABLE,
-        tableDetails?.id ?? ''
-      );
+  const fetchResourcePermission = useCallback(
+    async (datasetFQN) => {
+      try {
+        const tablePermission = await getEntityPermissionByFqn(
+          ResourceEntity.TABLE,
+          datasetFQN
+        );
 
-      setTablePermissions(tablePermission);
-    } catch (error) {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: t('label.resource-permission-lowercase'),
-        })
-      );
+        setTablePermissions(tablePermission);
+      } catch (error) {
+        showErrorToast(
+          t('server.fetch-entity-permissions-error', {
+            entity: t('label.resource-permission-lowercase'),
+          })
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [getEntityPermissionByFqn, setTablePermissions]
+  );
+
+  useEffect(() => {
+    if (datasetFQN) {
+      fetchResourcePermission(datasetFQN);
     }
-  }, [tableDetails?.id, getEntityPermissionByFqn, setTablePermissions]);
+  }, [datasetFQN]);
 
   const getEntityFeedCount = () => {
     getFeedCounts(
@@ -430,7 +431,7 @@ const TableDetailsPageV1 = () => {
         gutter={[0, 16]}
         id="schemaDetails"
         wrap={false}>
-        <Col className="p-t-sm m-l-lg" flex="auto">
+        <Col className="p-t-sm m-l-lg tab-content-height p-r-lg" flex="auto">
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
               description={tableDetails?.description}
@@ -555,11 +556,9 @@ const TableDetailsPageV1 = () => {
           <ActivityFeedProvider>
             <ActivityFeedTab
               columns={tableDetails?.columns}
-              description={tableDetails?.description}
               entityType={EntityType.TABLE}
               fqn={tableDetails?.fullyQualifiedName ?? ''}
               owner={tableDetails?.owner}
-              tags={tableDetails?.tags}
               onFeedUpdate={getEntityFeedCount}
               onUpdateEntityDetails={fetchTableDetails}
             />
@@ -836,21 +835,16 @@ const TableDetailsPageV1 = () => {
     if (isTourOpen || isTourPage) {
       setTableDetails(mockDatasetData.tableDetails as unknown as Table);
     } else {
-      fetchTableDetails();
-      getEntityFeedCount();
-      if (tablePermissions.ViewUsage) {
-        fetchUsageDetails();
-      }
-      if (tablePermissions.ViewTests) {
-        fetchTestSuiteDetails();
+      if (tablePermissions.ViewAll || tablePermissions.ViewBasic) {
+        fetchTableDetails();
+        getEntityFeedCount();
       }
     }
-  }, [datasetFQN, isTourOpen, isTourPage]);
+  }, [datasetFQN, isTourOpen, isTourPage, tablePermissions]);
 
   useEffect(() => {
     if (tableDetails) {
       fetchQueryCount();
-      fetchResourcePermission();
     }
   }, [tableDetails]);
 
@@ -877,7 +871,12 @@ const TableDetailsPageV1 = () => {
   }
 
   if (!(tablePermissions.ViewAll || tablePermissions.ViewBasic)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="m-0"
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (!tableDetails) {

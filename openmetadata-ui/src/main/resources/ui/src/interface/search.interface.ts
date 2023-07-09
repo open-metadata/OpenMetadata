@@ -142,6 +142,7 @@ export type SearchRequest<
   sortOrder?: string;
   includeDeleted?: boolean;
   trackTotalHits?: boolean;
+  filters?: string;
 } & (
   | {
       fetchSource: true;

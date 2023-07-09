@@ -258,7 +258,11 @@ const GlossaryTermTab = ({
         doc={GLOSSARIES_DOCS}
         heading={t('label.glossary-term')}
         permission={permissions.Create}
-        type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        type={
+          permissions.Create
+            ? ERROR_PLACEHOLDER_TYPE.CREATE
+            : ERROR_PLACEHOLDER_TYPE.NO_DATA
+        }
         onClick={handleAddGlossaryTermClick}
       />
     );

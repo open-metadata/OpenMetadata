@@ -709,12 +709,6 @@ body .profiler-graph .recharts-active-dot circle {
   width: calc(100% - 330px);
 }
 
-/* page-container v1 */
-
-.full-height {
-  height: calc(100vh - 110px);
-}
-
 /* 64 header + ( 16 + 16 )spacing Y = 96*/
 #left-panel {
   position: fixed;
@@ -1151,12 +1145,6 @@ div.ant-typography-ellipsis-custom {
   padding-right: 60px !important;
 }
 
-/* antd switch css */
-.ant-switch-checked {
-  background: #0968da;
-}
-/* antd switch css */
-
 .ant-empty-tasks {
   margin-top: 32px;
 }
@@ -1168,11 +1156,6 @@ div.ant-typography-ellipsis-custom {
 
 .activity-feed-card-text pre {
   white-space: pre-wrap; /* Since CSS 2.1 */
-}
-/* Feed text pre tag CSS */
-
-.ant-switch-checked {
-  background: rgb(244, 240, 253);
 }
 
 /* 64 header + ( 16 + 16 )spacing Y = 96*/

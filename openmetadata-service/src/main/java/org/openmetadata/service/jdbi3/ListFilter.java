@@ -8,6 +8,7 @@ import java.util.Map;
 import lombok.Getter;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -81,7 +82,7 @@ public class ListFilter {
 
   public String getServiceCondition(String tableName) {
     String service = queryParams.get("service");
-    return service == null ? "" : getFqnPrefixCondition(tableName, service);
+    return service == null ? "" : getFqnPrefixCondition(tableName, EntityInterfaceUtil.quoteName(service));
   }
 
   public String getParentCondition(String tableName) {
@@ -172,7 +173,7 @@ public class ListFilter {
         return "json->>'executable' = 'true'";
       case ("logical"):
         if (DatasourceConfig.getInstance().isMySQL()) {
-          return "JSON_UNQUOTE(JSON_EXTRACT(json, '$.executable')) = 'false'";
+          return "JSON_UNQUOTE(JSON_EXTRACT(json, '$.executable')) = 'false' OR JSON_UNQUOTE(JSON_EXTRACT(json, '$.executable')) IS NULL";
         }
         return "json->>'executable' = 'false'";
       default:

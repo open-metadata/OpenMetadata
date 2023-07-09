@@ -73,7 +73,8 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "dashboards")
 public class DashboardResource extends EntityResource<Dashboard, DashboardRepository> {
   public static final String COLLECTION_PATH = "v1/dashboards/";
-  protected static final String FIELDS = "owner,charts,followers,tags,usageSummary,extension,dataModels";
+  protected static final String FIELDS =
+      "owner,charts,followers,tags,usageSummary,extension,dataModels," + "domain,dataProducts";
 
   @Override
   public Dashboard addHref(UriInfo uriInfo, Dashboard dashboard) {

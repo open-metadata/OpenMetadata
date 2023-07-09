@@ -20,7 +20,7 @@ import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { updateChart } from 'rest/chartAPI';
@@ -101,29 +101,20 @@ const DashboardDetailsPage = () => {
     return patchDashboardDetails(dashboardId, jsonPatch);
   };
 
-  const fetchUsageSummaryDetails = async (dashboardFQN: string) => {
-    setLoading(true);
-
-    try {
-      const res = await getDashboardByFqn(
-        dashboardFQN,
-        TabSpecificField.USAGE_SUMMARY
-      );
-
-      const { usageSummary } = res;
-      setDashboardDetails((dashboard) => ({ ...dashboard, usageSummary }));
-    } catch (error) {
-      // Error here
-    } finally {
-      setLoading(false);
-    }
-  };
+  const viewUsagePermission = useMemo(
+    () => dashboardPermissions.ViewAll || dashboardPermissions.ViewUsage,
+    [dashboardPermissions]
+  );
 
   const fetchDashboardDetail = async (dashboardFQN: string) => {
     setLoading(true);
 
     try {
-      const res = await getDashboardByFqn(dashboardFQN, defaultFields);
+      let fields = defaultFields;
+      if (viewUsagePermission) {
+        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+      }
+      const res = await getDashboardByFqn(dashboardFQN, fields);
 
       const { id, fullyQualifiedName, charts: ChartIds, serviceType } = res;
       setDashboardDetails(res);
@@ -293,9 +284,6 @@ const DashboardDetailsPage = () => {
   useEffect(() => {
     if (dashboardPermissions.ViewAll || dashboardPermissions.ViewBasic) {
       fetchDashboardDetail(dashboardFQN);
-    }
-    if (dashboardPermissions.ViewUsage) {
-      fetchUsageSummaryDetails(dashboardFQN);
     }
   }, [dashboardFQN, dashboardPermissions]);
 

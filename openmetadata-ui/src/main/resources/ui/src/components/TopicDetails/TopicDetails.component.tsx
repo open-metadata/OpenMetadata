@@ -19,9 +19,12 @@ import ActivityFeedProvider, {
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import QueryViewer from 'components/common/QueryViewer/QueryViewer.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
+import SampleDataTopic from 'components/SampleDataTopic/SampleDataTopic';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { getTopicDetailsPath } from 'constants/constants';
@@ -50,9 +53,6 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
-import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
-import SampleDataTopic from '../SampleDataTopic/SampleDataTopic';
-import SchemaEditor from '../schema-editor/SchemaEditor';
 import { TopicDetailsProps } from './TopicDetails.interface';
 import TopicSchemaFields from './TopicSchema/TopicSchema';
 
@@ -271,7 +271,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         key: EntityTabs.SCHEMA,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-l-lg" flex="auto">
+            <Col className="p-t-sm m-x-lg" flex="auto">
               <div className="d-flex flex-col gap-4">
                 <DescriptionV1
                   description={topicDetails.description}
@@ -294,6 +294,15 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   onThreadLinkSelect={onThreadLinkSelect}
                 />
                 <TopicSchemaFields
+                  entityFieldTasks={getEntityFieldThreadCounts(
+                    EntityField.COLUMNS,
+                    entityFieldTaskCount
+                  )}
+                  entityFieldThreads={getEntityFieldThreadCounts(
+                    EntityField.COLUMNS,
+                    entityFieldThreadCount
+                  )}
+                  entityFqn={topicDetails.fullyQualifiedName ?? ''}
                   hasDescriptionEditAccess={
                     topicPermissions.EditAll || topicPermissions.EditDescription
                   }
@@ -302,6 +311,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   }
                   isReadOnly={Boolean(topicDetails.deleted)}
                   messageSchema={topicDetails.messageSchema}
+                  onThreadLinkSelect={onThreadLinkSelect}
                   onUpdate={handleSchemaFieldsUpdate}
                 />
               </div>
@@ -383,13 +393,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         label: <TabsLabel id={EntityTabs.CONFIG} name={t('label.config')} />,
         key: EntityTabs.CONFIG,
         children: (
-          <Card className="m-md w-auto" data-testid="config-details">
-            <SchemaEditor
-              className="custom-code-mirror-theme"
-              editorClass="table-query-editor"
-              value={JSON.stringify(topicDetails.topicConfig)}
-            />
-          </Card>
+          <QueryViewer
+            sqlQuery={JSON.stringify(topicDetails.topicConfig)}
+            title={t('label.config')}
+          />
         ),
       },
       {
@@ -417,7 +424,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
+        children: !topicPermissions.ViewAll ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <CustomPropertyTable
             entityDetails={topicDetails as CustomPropertyProps['entityDetails']}
             entityType={EntityType.TOPIC}
@@ -465,6 +474,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         </Col>
         <Col span={24}>
           <Tabs
+            destroyInactiveTabPane
             activeKey={activeTab ?? EntityTabs.SCHEMA}
             className="entity-details-page-tabs"
             data-testid="tabs"

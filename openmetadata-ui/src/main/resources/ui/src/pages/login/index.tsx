@@ -194,9 +194,9 @@ const SigninPage = () => {
   const onClickForgotPassword = () => history.push(ROUTES.FORGOT_PASSWORD);
 
   return (
-    <div className="d-flex flex-col h-full">
-      <Row className="flex bg-body-main flex-grow" data-testid="signin-page">
-        <Col span={10}>
+    <div className="d-flex flex-col h-full bg-white">
+      <Row className="flex flex-grow" data-testid="signin-page">
+        <Col span={8}>
           <div
             className={classNames('mt-24 text-center flex-center flex-col', {
               'sso-container': !isAuthProviderBasic,
@@ -308,7 +308,7 @@ const SigninPage = () => {
             )}
           </div>
         </Col>
-        <Col className="relative" span={14}>
+        <Col className="relative" span={16}>
           <div className="absolute inset-0">
             <img
               alt="bg-image"

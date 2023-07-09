@@ -94,8 +94,6 @@ public class KpiRepository extends EntityRepository<Kpi> {
   public void storeRelationships(Kpi kpi) {
     // Add relationship from Kpi to dataInsightChart
     addRelationship(kpi.getId(), kpi.getDataInsightChart().getId(), KPI, DATA_INSIGHT_CHART, Relationship.USES);
-    // Add kpi owner relationship
-    storeOwner(kpi, kpi.getOwner());
   }
 
   @Transaction

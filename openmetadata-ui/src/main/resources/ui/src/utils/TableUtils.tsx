@@ -51,12 +51,13 @@ import {
   getPipelineDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
+  getTableTabPath,
   getTagsDetailsPath,
   getTopicDetailsPath,
   TEXT_BODY_COLOR,
 } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
-import { EntityType, FqnPart } from '../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
 import {
@@ -271,6 +272,12 @@ export const getEntityLink = (
 
     case EntityType.DASHBOARD_DATA_MODEL:
       return getDataModelDetailsPath(fullyQualifiedName);
+
+    case EntityType.TEST_CASE:
+      return `${getTableTabPath(
+        getTableFQNFromColumnFQN(fullyQualifiedName),
+        EntityTabs.PROFILER
+      )}?activeTab=Data Quality`;
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:

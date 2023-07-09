@@ -13,7 +13,9 @@
 
 package org.openmetadata.service;
 
+import static org.openmetadata.service.migration.api.MigrationWorkflow.validateMigrationsForServer;
 import static org.openmetadata.service.util.MicrometerBundleSingleton.webAnalyticEvents;
+import static org.openmetadata.service.util.TablesInitializer.getServerMigrationFiles;
 
 import io.dropwizard.Application;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
@@ -86,6 +88,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationConfiguration;
+import org.openmetadata.service.migration.api.MigrationStep;
 import org.openmetadata.service.monitoring.EventMonitor;
 import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
@@ -131,7 +134,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     validateConfiguration(catalogConfig);
 
     // init for dataSourceFactory
-    DatasourceConfig.initialize(catalogConfig);
+    DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
 
     ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
@@ -338,6 +341,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
               + " You can find more information on upgrading OpenMetadata at"
               + " https://docs.open-metadata.org/deployment/upgrade ");
     }
+
+    LOG.info("Validating Server migrations");
+    List<MigrationStep> loadedMigrationFiles = getServerMigrationFiles(DatasourceConfig.getConnectionType());
+    validateMigrationsForServer(jdbi, loadedMigrationFiles);
   }
 
   private void validateConfiguration(OpenMetadataApplicationConfig catalogConfig) throws ConfigurationException {
@@ -459,12 +466,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       WebSocketUpgradeFilter.configure(environment.getApplicationContext());
       NativeWebSocketServletContainerInitializer.configure(
           environment.getApplicationContext(),
-          (context, container) -> {
-            container.addMapping(
-                new ServletPathSpec(pathSpec),
-                (servletUpgradeRequest, servletUpgradeResponse) ->
-                    new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
-          });
+          (context, container) ->
+              container.addMapping(
+                  new ServletPathSpec(pathSpec),
+                  (servletUpgradeRequest, servletUpgradeResponse) ->
+                      new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer())));
     } catch (ServletException ex) {
       LOG.error("Websocket Upgrade Filter error : " + ex.getMessage());
     }
