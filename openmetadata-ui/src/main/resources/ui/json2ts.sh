@@ -34,6 +34,13 @@ generateType(){
     #generate ts
     echo "Generating ${output_file} from specification at ${tmp_schema_file}"
     ./node_modules/.bin/quicktype -s schema $tmp_schema_file  -o $output_file --just-types > /dev/null 2>&1
+
+    if [ -s $output_file ]
+    then
+        addLicensing "$output_file"
+    else
+        rm -f "$output_file"
+    fi
 }
 
 getTypes(){
