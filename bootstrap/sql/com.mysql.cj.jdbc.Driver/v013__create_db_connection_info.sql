@@ -361,3 +361,8 @@ SET json = JSON_INSERT(
 where serviceType = 'Airflow' 
 AND JSON_EXTRACT(json, '$.connection.config.connection.type') in ('Postgres', 'Mysql')
 AND JSON_EXTRACT(json, '$.connection.config.connection.password') IS NOT NULL;
+
+-- Fix hash migration for query_entity which does not have FQN informed
+update query_entity
+SET json = JSON_INSERT(json, '$.fullyQualifiedName', JSON_EXTRACT(json, '$.name'))
+WHERE JSON_EXTRACT(json, '$.fullyQualifiedName') is null;

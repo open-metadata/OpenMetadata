@@ -191,4 +191,7 @@ WHERE serviceType = 'Airflow'
 and json#>'{connection,config,connection,type}' IN ('"Mysql"', '"Postgres"')
 and json#>'{connection,config,connection,password}' is not null;
   
-  
+-- Fix hash migration for query_entity which does not have FQN informed
+update query_entity
+SET json = jsonb_set(json::jsonb, '{fullyQualifiedName}', json#>'{name}')
+WHERE json#>'{fullyQualifiedName}' is null;
