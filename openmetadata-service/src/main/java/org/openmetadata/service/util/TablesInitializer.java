@@ -14,6 +14,7 @@
 package org.openmetadata.service.util;
 
 import static org.flywaydb.core.internal.info.MigrationInfoDumper.dumpToAsciiTable;
+import static org.openmetadata.sdk.PipelineServiceClient.HEALTHY_STATUS;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
@@ -45,13 +46,17 @@ import org.flywaydb.core.api.MigrationVersion;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.IngestionPipelineDeployment;
 import org.openmetadata.service.migration.MigrationFile;
 import org.openmetadata.service.migration.api.MigrationStep;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
@@ -284,6 +289,8 @@ public final class TablesInitializer {
         // Validate and Run System Data Migrations
         validateAndRunSystemDataMigrations(
             jdbi, ConnectionType.from(config.getDataSourceFactory().getDriverClass()), ignoreServerFileChecksum);
+        // Redeploy Ingestion Pipelines
+        redeployIngestionPipelines(jdbi, config.getPipelineServiceClientConfiguration());
         break;
       case INFO:
         printToConsoleMandatory(dumpToAsciiTable(flyway.info().all()));
@@ -339,6 +346,18 @@ public final class TablesInitializer {
     List<MigrationStep> loadedMigrationFiles = getServerMigrationFiles(connType);
     MigrationWorkflow workflow = new MigrationWorkflow(jdbi, loadedMigrationFiles, ignoreFileChecksum);
     workflow.runMigrationWorkflows();
+  }
+
+  public static void redeployIngestionPipelines(Jdbi jdbi, PipelineServiceClientConfiguration config) {
+    PipelineServiceClient pipelineServiceClient = PipelineServiceClientFactory.createPipelineServiceClient(config);
+    String status = pipelineServiceClient.getServiceStatusBackoff();
+    if (!HEALTHY_STATUS.equals(status)) {
+      printToConsoleMandatory("Cannot redeploy Ingestion Pipelines: Pipeline Service Client status unhealthy.");
+    }
+    else {
+      IngestionPipelineDeployment ingestionPipelineDeployment = new IngestionPipelineDeployment(jdbi, pipelineServiceClient);
+      ingestionPipelineDeployment.runIngestionPipelineDeployment();
+    }
   }
 
   public static List<MigrationStep> getServerMigrationFiles(ConnectionType connType) {
