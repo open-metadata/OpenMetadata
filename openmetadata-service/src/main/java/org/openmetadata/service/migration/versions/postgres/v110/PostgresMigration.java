@@ -74,8 +74,7 @@ public class PostgresMigration implements MigrationStep {
     List<String> queryList =
         List.of(
             // Add missing FQN to query_entity
-            "UPDATE query_entity SET json = jsonb_set(json::jsonb, '{fullyQualifiedName}', json#>'{name}') WHERE json#>'{fullyQualifiedName}' IS NULL"
-        );
+            "UPDATE query_entity SET json = jsonb_set(json::jsonb, '{fullyQualifiedName}', json#>'{name}') WHERE json#>'{fullyQualifiedName}' IS NULL");
     performSqlExecutionAndUpdation(this, migrationDAO, handle, queryList);
   }
 
