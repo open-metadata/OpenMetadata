@@ -40,8 +40,8 @@ jobs:
 
       - name: Setup jq
         run: |
-	  sudo apt-get update
-	  sudo apt-get install jq
+          sudo apt-get update
+          sudo apt-get install jq
 
       - name: Build OpenMetadata Server Application
         env:
