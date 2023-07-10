@@ -71,7 +71,8 @@ SET json = jsonb_set(
         )
         FROM jsonb_array_elements(json->'tasks') AS t
     )
-);
+)
+where json#>'{tasks}' is not null;
 
 
 -- Modify migrations for service connection of postgres and mysql to move password under authType
