@@ -129,7 +129,7 @@ public final class DatabaseUtil {
             || dataType == ColumnDataType.VARBINARY)
         && column.getDataLength() == null) {
       throw new IllegalArgumentException(
-          "For column data types char, varchar, binary, varbinary dataLength " + "must not be null");
+          "For column data types char, varchar, binary, varbinary dataLength must not be null");
     }
   }
 
@@ -141,7 +141,7 @@ public final class DatabaseUtil {
     }
 
     if (dataType == ColumnDataType.ARRAY && (column.getArrayDataType() == null)) {
-      throw new IllegalArgumentException("For column data type array, arrayDataType " + "must not be null");
+      throw new IllegalArgumentException("For column data type array, arrayDataType must not be null");
     }
   }
 

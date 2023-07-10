@@ -90,7 +90,7 @@ public class CloudWatchEventMonitorTest {
 
   @Test
   void buildMetricNamespaceTest() {
-    assertEquals(eventMonitor.buildMetricNamespace(NAMESPACE), EXPECTED_NAMESPACE);
+    assertEquals(EXPECTED_NAMESPACE, eventMonitor.buildMetricNamespace(NAMESPACE));
   }
 
   @Test

@@ -28,4 +28,8 @@ public class EntityBuilderConstant {
   public static final String DESCRIPTION = "description";
   public static final String QUERY = "query";
   public static final String QUERY_NGRAM = "query.ngram";
+
+  private EntityBuilderConstant() {
+    /* private constructor for utility class */
+  }
 }
