@@ -78,7 +78,7 @@ v17.3.0
 > rpm --version
 RPM version 4.17.0
 
-> jq --version                                                                                       21:00  harsha@Harshas-MacBook-Air
+> jq --version                                                                                       
 jq-1.6
 
 ```
