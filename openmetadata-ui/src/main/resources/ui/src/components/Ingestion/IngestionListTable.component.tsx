@@ -44,7 +44,6 @@ function IngestionListTable({
   ingestionData,
   deleteSelection,
   permissions,
-  pipelineNameColWidth,
   pipelineType,
 }: IngestionListTableProps) {
   const { t } = useTranslation();
@@ -130,7 +129,7 @@ function IngestionListTable({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        width: pipelineNameColWidth ?? 500,
+        width: 500,
         render: renderNameField,
       },
       {

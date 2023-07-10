@@ -211,292 +211,213 @@ site_menu:
     url: /connectors/database
   - category: Connectors / Database / Athena
     url: /connectors/database/athena
-  - category: Connectors / Database / Athena / Airflow
-    url: /connectors/database/athena/airflow
-  - category: Connectors / Database / Athena / CLI
-    url: /connectors/database/athena/cli
+  - category: Connectors / Database / Athena / Run Externally
+    url: /connectors/database/athena/yaml
   - category: Connectors / Database / AzureSQL
     url: /connectors/database/azuresql
-  - category: Connectors / Database / AzureSQL / Airflow
-    url: /connectors/database/azuresql/airflow
-  - category: Connectors / Database / AzureSQL / CLI
-    url: /connectors/database/azuresql/cli
+  - category: Connectors / Database / AzureSQL / Run Externally
+    url: /connectors/database/azuresql/yaml
   - category: Connectors / Database / AzureSQL / Troubleshooting
     url: /connectors/database/azuresql/troubleshooting
   - category: Connectors / Database / BigQuery
     url: /connectors/database/bigquery
-  - category: Connectors / Database / BigQuery / Airflow
-    url: /connectors/database/bigquery/airflow
-  - category: Connectors / Database / BigQuery / CLI
-    url: /connectors/database/bigquery/cli
+  - category: Connectors / Database / BigQuery / Run Externally
+    url: /connectors/database/bigquery/yaml
   - category: Connectors / Database / BigQuery / Roles
     url: /connectors/database/bigquery/roles
   - category: Connectors / Database / Clickhouse
     url: /connectors/database/clickhouse
-  - category: Connectors / Database / Clickhouse / Airflow
-    url: /connectors/database/clickhouse/airflow
-  - category: Connectors / Database / Clickhouse / CLI
-    url: /connectors/database/clickhouse/cli
+  - category: Connectors / Database / Clickhouse / Run Externally
+    url: /connectors/database/clickhouse/yaml
   - category: Connectors / Database / Databricks
     url: /connectors/database/databricks
-  - category: Connectors / Database / Databricks / Airflow
-    url: /connectors/database/databricks/airflow
-  - category: Connectors / Database / Databricks / CLI
-    url: /connectors/database/databricks/cli
+  - category: Connectors / Database / Databricks / Run Externally
+    url: /connectors/database/databricks/yaml
   - category: Connectors / Database / Databricks / Troubleshooting
     url: /connectors/database/databricks/troubleshooting
   - category: Connectors / Database / Datalake
     url: /connectors/database/datalake
-  - category: Connectors / Database / Datalake / Airflow
-    url: /connectors/database/datalake/airflow
-  - category: Connectors / Database / Datalake / CLI
-    url: /connectors/database/datalake/cli
+  - category: Connectors / Database / Datalake / Run Externally
+    url: /connectors/database/datalake/yaml
   - category: Connectors / Database / Datalake / Troubleshooting
     url: /connectors/database/datalake/troubleshooting
   - category: Connectors / Database / DB2
     url: /connectors/database/db2
-  - category: Connectors / Database / DB2 / Airflow
-    url: /connectors/database/db2/airflow
-  - category: Connectors / Database / DB2 / CLI
-    url: /connectors/database/db2/cli
+  - category: Connectors / Database / DB2 / Run Externally
+    url: /connectors/database/db2/yaml
   - category: Connectors / Database / DeltaLake
     url: /connectors/database/deltalake
-  - category: Connectors / Database / DeltaLake / Airflow
-    url: /connectors/database/deltalake/airflow
-  - category: Connectors / Database / DeltaLake / CLI
-    url: /connectors/database/deltalake/cli
+  - category: Connectors / Database / DeltaLake / Run Externally
+    url: /connectors/database/deltalake/yaml
   - category: Connectors / Database / Domo Database
     url: /connectors/database/domo-database
-  - category: Connectors / Database / Domo Database / Airflow
-    url: /connectors/database/domo-database/airflow
-  - category: Connectors / Database / Domo Database / CLI
-    url: /connectors/database/domo-database/cli
+  - category: Connectors / Database / Domo Database / Run Externally
+    url: /connectors/database/domo-database/yaml
   - category: Connectors / Database / Domo Database / Troubleshoot
     url: /connectors/database/domo-database/troubleshoot
   - category: Connectors / Database / Druid
     url: /connectors/database/druid
-  - category: Connectors / Database / Druid / Airflow
-    url: /connectors/database/druid/airflow
-  - category: Connectors / Database / Druid / CLI
-    url: /connectors/database/druid/cli
+  - category: Connectors / Database / Druid / Run Externally
+    url: /connectors/database/druid/yaml
   - category: Connectors / Database / DynamoDB
     url: /connectors/database/dynamodb
-  - category: Connectors / Database / DynamoDB / Airflow
-    url: /connectors/database/dynamodb/airflow
-  - category: Connectors / Database / DynamoDB / CLI
-    url: /connectors/database/dynamodb/cli
+  - category: Connectors / Database / DynamoDB / Run Externally
+    url: /connectors/database/dynamodb/yaml
   - category: Connectors / Database / Glue
     url: /connectors/database/glue
-  - category: Connectors / Database / Glue / Airflow
-    url: /connectors/database/glue/airflow
-  - category: Connectors / Database / Glue / CLI
-    url: /connectors/database/glue/cli
+  - category: Connectors / Database / Glue / Run Externally
+    url: /connectors/database/glue/yaml
   - category: Connectors / Database / Hive
     url: /connectors/database/hive
-  - category: Connectors / Database / Hive / Airflow
-    url: /connectors/database/hive/airflow
-  - category: Connectors / Database / Hive / CLI
-    url: /connectors/database/hive/cli
+  - category: Connectors / Database / Hive / Run Externally
+    url: /connectors/database/hive/yaml
   - category: Connectors / Database / Hive / Troubleshooting
     url: /connectors/database/hive/troubleshooting
   - category: Connectors / Database / Impala
     url: /connectors/database/impala
-  - category: Connectors / Database / Impala / Airflow
-    url: /connectors/database/impala/airflow
-  - category: Connectors / Database / Impala / CLI
-    url: /connectors/database/impala/cli
+  - category: Connectors / Database / Impala / Run Externally
+    url: /connectors/database/impala/yaml
   - category: Connectors / Database / Impala / Troubleshooting
     url: /connectors/database/impala/troubleshooting
   - category: Connectors / Database / MariaDB
     url: /connectors/database/mariadb
-  - category: Connectors / Database / MariaDB / Airflow
-    url: /connectors/database/mariadb/airflow
-  - category: Connectors / Database / MariaDB / CLI
-    url: /connectors/database/mariadb/cli
+  - category: Connectors / Database / MariaDB / Run Externally
+    url: /connectors/database/mariadb/yaml
+  - category: Connectors / Database / MongoDB
+    url: /connectors/database/mongodb
+  - category: Connectors / Database / MongoDB / Run Externally
+    url: /connectors/database/mongodb/yaml
   - category: Connectors / Database / MSSQL
     url: /connectors/database/mssql
-  - category: Connectors / Database / MSSQL / Airflow
-    url: /connectors/database/mssql/airflow
-  - category: Connectors / Database / MSSQL / CLI
-    url: /connectors/database/mssql/cli
+  - category: Connectors / Database / MSSQL / Run Externally
+    url: /connectors/database/mssql/yaml
   - category: Connectors / Database / MySQL
     url: /connectors/database/mysql
-  - category: Connectors / Database / MySQL / Airflow
-    url: /connectors/database/mysql/airflow
-  - category: Connectors / Database / MySQL / CLI
-    url: /connectors/database/mysql/cli
+  - category: Connectors / Database / MySQL / Run Externally
+    url: /connectors/database/mysql/yaml
   - category: Connectors / Database / Oracle
     url: /connectors/database/oracle
-  - category: Connectors / Database / Oracle / Airflow
-    url: /connectors/database/oracle/airflow
-  - category: Connectors / Database / Oracle / CLI
-    url: /connectors/database/oracle/cli
+  - category: Connectors / Database / Oracle / Run Externally
+    url: /connectors/database/oracle/yaml
   - category: Connectors / Database / PinotDB
     url: /connectors/database/pinotdb
-  - category: Connectors / Database / PinotDB / Airflow
-    url: /connectors/database/pinotdb/airflow
-  - category: Connectors / Database / PinotDB / CLI
-    url: /connectors/database/pinotdb/cli
+  - category: Connectors / Database / PinotDB / Run Externally
+    url: /connectors/database/pinotdb/yaml
   - category: Connectors / Database / Postgres
     url: /connectors/database/postgres
-  - category: Connectors / Database / Postgres / Airflow
-    url: /connectors/database/postgres/airflow
-  - category: Connectors / Database / Postgres / CLI
-    url: /connectors/database/postgres/cli
+  - category: Connectors / Database / Postgres / Run Externally
+    url: /connectors/database/postgres/yaml
   - category: Connectors / Database / Postgres / Troubleshooting
     url: /connectors/database/postgres/troubleshooting
   - category: Connectors / Database / Presto
     url: /connectors/database/presto
-  - category: Connectors / Database / Presto / Airflow
-    url: /connectors/database/presto/airflow
-  - category: Connectors / Database / Presto / CLI
-    url: /connectors/database/presto/cli
+  - category: Connectors / Database / Presto / Run Externally
+    url: /connectors/database/presto/yaml
   - category: Connectors / Database / Redshift
     url: /connectors/database/redshift
-  - category: Connectors / Database / Redshift / Airflow
-    url: /connectors/database/redshift/airflow
-  - category: Connectors / Database / Redshift / CLI
-    url: /connectors/database/redshift/cli
+  - category: Connectors / Database / Redshift / Run Externally
+    url: /connectors/database/redshift/yaml
   - category: Connectors / Database / Redshift / Troubleshooting
     url: /connectors/database/redshift/troubleshooting
   - category: Connectors / Database / Salesforce
     url: /connectors/database/salesforce
-  - category: Connectors / Database / Salesforce / Airflow
-    url: /connectors/database/salesforce/airflow
-  - category: Connectors / Database / Salesforce / CLI
-    url: /connectors/database/salesforce/cli
+  - category: Connectors / Database / Salesforce / Run Externally
+    url: /connectors/database/salesforce/yaml
   - category: Connectors / Database / SAP Hana
     url: /connectors/database/sap-hana
-  - category: Connectors / Database / SAP Hana / Airflow
-    url: /connectors/database/sap-hana/airflow
-  - category: Connectors / Database / SAP Hana / CLI
-    url: /connectors/database/sap-hana/cli
+  - category: Connectors / Database / SAP Hana / Run Externally
+    url: /connectors/database/sap-hana/yaml
   - category: Connectors / Database / SingleStore
     url: /connectors/database/singlestore
-  - category: Connectors / Database / SingleStore / Airflow
-    url: /connectors/database/singlestore/airflow
-  - category: Connectors / Database / SingleStore / CLI
-    url: /connectors/database/singlestore/cli
+  - category: Connectors / Database / SingleStore / Run Externally
+    url: /connectors/database/singlestore/yaml
   - category: Connectors / Database / Snowflake
     url: /connectors/database/snowflake
-  - category: Connectors / Database / Snowflake / Airflow
-    url: /connectors/database/snowflake/airflow
-  - category: Connectors / Database / Snowflake / CLI
-    url: /connectors/database/snowflake/cli
+  - category: Connectors / Database / Snowflake / Run Externally
+    url: /connectors/database/snowflake/yaml
   - category: Connectors / Database / SQLite
     url: /connectors/database/sqlite
-  - category: Connectors / Database / SQLite / Airflow
-    url: /connectors/database/sqlite/airflow
-  - category: Connectors / Database / SQLite / CLI
-    url: /connectors/database/sqlite/cli
+  - category: Connectors / Database / SQLite / Run Externally
+    url: /connectors/database/sqlite/yaml
   - category: Connectors / Database / Trino
     url: /connectors/database/trino
-  - category: Connectors / Database / Trino / Airflow
-    url: /connectors/database/trino/airflow
-  - category: Connectors / Database / Trino / CLI
-    url: /connectors/database/trino/cli
+  - category: Connectors / Database / Trino / Run Externally
+    url: /connectors/database/trino/yaml
   - category: Connectors / Database / Vertica
     url: /connectors/database/vertica
-  - category: Connectors / Database / Vertica / Airflow
-    url: /connectors/database/vertica/airflow
-  - category: Connectors / Database / Vertica / CLI
-    url: /connectors/database/vertica/cli
+  - category: Connectors / Database / Vertica / Run Externally
+    url: /connectors/database/vertica/yaml
   - category: Connectors / Database / Vertica / Troubleshooting
     url: /connectors/database/vertica/troubleshooting
-  - category: Connectors / Database / MongoDB
-    url: /connectors/database/mongodb
-  - category: Connectors / Database / MongoDB / Airflow
-    url: /connectors/database/mongodb/airflow
-  - category: Connectors / Database / MongoDB / CLI
-    url: /connectors/database/mongodb/cli
+
   - category: Connectors / Dashboard
     url: /connectors/dashboard
-
   - category: Connectors / Dashboard / Domo Dashboard
     url: /connectors/dashboard/domo-dashboard
-  - category: Connectors / Dashboard / Domo Dashboard / Airflow
-    url: /connectors/dashboard/domo-dashboard/airflow
-  - category: Connectors / Dashboard / Domo Dashboard / CLI
-    url: /connectors/dashboard/domo-dashboard/cli
+  - category: Connectors / Dashboard / Domo Dashboard / Run Externally
+    url: /connectors/dashboard/domo-dashboard/yaml
   - category: Connectors / Dashboard / Looker
     url: /connectors/dashboard/looker
-  - category: Connectors / Dashboard / Looker / Airflow
-    url: /connectors/dashboard/looker/airflow
-  - category: Connectors / Dashboard / Looker / CLI
-    url: /connectors/dashboard/looker/cli
+  - category: Connectors / Dashboard / Looker / Run Externally
+    url: /connectors/dashboard/looker/yaml
   - category: Connectors / Dashboard / Metabase
     url: /connectors/dashboard/metabase
-  - category: Connectors / Dashboard / Metabase / Airflow
-    url: /connectors/dashboard/metabase/airflow
-  - category: Connectors / Dashboard / Metabase / CLI
-    url: /connectors/dashboard/metabase/cli
+  - category: Connectors / Dashboard / Metabase / Run Externally
+    url: /connectors/dashboard/metabase/yaml
   - category: Connectors / Dashboard / Mode
     url: /connectors/dashboard/mode
-  - category: Connectors / Dashboard / Mode / Airflow
-    url: /connectors/dashboard/mode/airflow
-  - category: Connectors / Dashboard / Mode / CLI
-    url: /connectors/dashboard/mode/cli
+  - category: Connectors / Dashboard / Mode / Run Externally
+    url: /connectors/dashboard/mode/yaml
   - category: Connectors / Dashboard / PowerBI
     url: /connectors/dashboard/powerbi
-  - category: Connectors / Dashboard / PowerBI / Airflow
-    url: /connectors/dashboard/powerbi/airflow
-  - category: Connectors / Dashboard / PowerBI / CLI
-    url: /connectors/dashboard/powerbi/cli
+  - category: Connectors / Dashboard / PowerBI / Run Externally
+    url: /connectors/dashboard/powerbi/yaml
+  - category: Connectors / Dashboard / QuickSight
+    url: /connectors/dashboard/quicksight
+  - category: Connectors / Dashboard / QuickSight / Run Externally
+    url: /connectors/dashboard/quicksight/yaml
   - category: Connectors / Dashboard / Redash
     url: /connectors/dashboard/redash
-  - category: Connectors / Dashboard / Redash / Airflow
-    url: /connectors/dashboard/redash/airflow
-  - category: Connectors / Dashboard / Redash / CLI
-    url: /connectors/dashboard/redash/cli
+  - category: Connectors / Dashboard / Redash / Run Externally
+    url: /connectors/dashboard/redash/yaml
   - category: Connectors / Dashboard / Superset
     url: /connectors/dashboard/superset
-  - category: Connectors / Dashboard / Superset / Airflow
-    url: /connectors/dashboard/superset/airflow
-  - category: Connectors / Dashboard / Superset / CLI
-    url: /connectors/dashboard/superset/cli
+  - category: Connectors / Dashboard / Superset / Run Externally
+    url: /connectors/dashboard/superset/yaml
   - category: Connectors / Dashboard / Superset / SSO
     url: /connectors/dashboard/superset/sso
   - category: Connectors / Dashboard / Tableau
     url: /connectors/dashboard/tableau
-  - category: Connectors / Dashboard / Tableau / Airflow
-    url: /connectors/dashboard/tableau/airflow
-  - category: Connectors / Dashboard / Tableau / CLI
-    url: /connectors/dashboard/tableau/cli
-  - category: Connectors / Dashboard / QuickSight
-    url: /connectors/dashboard/quicksight
-  - category: Connectors / Dashboard / QuickSight / Airflow
-    url: /connectors/dashboard/quicksight/airflow
-  - category: Connectors / Dashboard / QuickSight / CLI
-    url: /connectors/dashboard/quicksight/cli
+  - category: Connectors / Dashboard / Tableau / Run Externally
+    url: /connectors/dashboard/tableau/yaml
+
   - category: Connectors / Messaging
     url: /connectors/messaging
   - category: Connectors / Messaging / Kafka
     url: /connectors/messaging/kafka
-  - category: Connectors / Messaging / Kafka / Airflow
-    url: /connectors/messaging/kafka/airflow
-  - category: Connectors / Messaging / Kafka / CLI
-    url: /connectors/messaging/kafka/cli
+  - category: Connectors / Messaging / Kafka / Run Externally
+    url: /connectors/messaging/kafka/yaml
   - category: Connectors / Messaging / Kafka / Troubleshooting
     url: /connectors/messaging/kafka/troubleshooting
-  - category: Connectors / Messaging / Redpanda
-    url: /connectors/messaging/redpanda
-  - category: Connectors / Messaging / Redpanda / Airflow
-    url: /connectors/messaging/redpanda/airflow
-  - category: Connectors / Messaging / Redpanda / CLI
-    url: /connectors/messaging/redpanda/cli
   - category: Connectors / Messaging / Kinesis
     url: /connectors/messaging/kinesis
-  - category: Connectors / Messaging / Kinesis / Airflow
-    url: /connectors/messaging/kinesis/airflow
-  - category: Connectors / Messaging / Kinesis / CLI
-    url: /connectors/messaging/kinesis/cli
+  - category: Connectors / Messaging / Kinesis / Run Externally
+    url: /connectors/messaging/kinesis/yaml
+  - category: Connectors / Messaging / Redpanda
+    url: /connectors/messaging/redpanda
+  - category: Connectors / Messaging / Redpanda / Run Externally
+    url: /connectors/messaging/redpanda/yaml
 
   - category: Connectors / Pipeline
     url: /connectors/pipeline
+  - category: Connectors / Pipeline / Airbyte
+    url: /connectors/pipeline/airbyte
+  - category: Connectors / Pipeline / Airbyte / Run Externally
+    url: /connectors/pipeline/airbyte/yaml
   - category: Connectors / Pipeline / Airflow
     url: /connectors/pipeline/airflow
-  - category: Connectors / Pipeline / Airflow / CLI
-    url: /connectors/pipeline/airflow/cli
+  - category: Connectors / Pipeline / Airflow / Run Externally
+    url: /connectors/pipeline/airflow/yaml
   - category: Connectors / Pipeline / Airflow / Lineage Backend
     url: /connectors/pipeline/airflow/lineage-backend
   - category: Connectors / Pipeline / Airflow / Lineage Operator
@@ -507,93 +428,63 @@ site_menu:
     url: /connectors/pipeline/airflow/mwaa
   - category: Connectors / Pipeline / Airflow / GCS Composer
     url: /connectors/pipeline/airflow/gcs-composer
-  - category: Connectors / Pipeline / Airbyte
-    url: /connectors/pipeline/airbyte
-  - category: Connectors / Pipeline / Airbyte / Airflow
-    url: /connectors/pipeline/airbyte/airflow
-  - category: Connectors / Pipeline / Airbyte / CLI
-    url: /connectors/pipeline/airbyte/cli
-  - category: Connectors / Pipeline / Nifi
-    url: /connectors/pipeline/nifi
-  - category: Connectors / Pipeline / Nifi / Airflow
-    url: /connectors/pipeline/nifi/airflow
-  - category: Connectors / Pipeline / Nifi / CLI
-    url: /connectors/pipeline/nifi/cli
-  - category: Connectors / Pipeline / Databricks Pipeline
-    url: /connectors/pipeline/databricks-pipeline
-  - category: Connectors / Pipeline / Databricks Pipeline / Airflow
-    url: /connectors/pipeline/databricks-pipeline/airflow
-  - category: Connectors / Pipeline / Databricks Pipeline / CLI
-    url: /connectors/pipeline/databricks-pipeline/cli
-  - category: Connectors / Pipeline / Glue Pipeline
-    url: /connectors/pipeline/glue-pipeline
-  - category: Connectors / Pipeline / Glue Pipeline / Airflow
-    url: /connectors/pipeline/glue-pipeline/airflow
-  - category: Connectors / Pipeline / Glue Pipeline / CLI
-    url: /connectors/pipeline/glue-pipeline/cli
-  - category: Connectors / Pipeline / Fivetran
-    url: /connectors/pipeline/fivetran
-  - category: Connectors / Pipeline / Fivetran / Airflow
-    url: /connectors/pipeline/fivetran/airflow
-  - category: Connectors / Pipeline / Fivetran / CLI
-    url: /connectors/pipeline/fivetran/cli
   - category: Connectors / Pipeline / Dagster
     url: /connectors/pipeline/dagster
-  - category: Connectors / Pipeline / Dagster / Airflow
-    url: /connectors/pipeline/dagster/airflow
-  - category: Connectors / Pipeline / Dagster / CLI
-    url: /connectors/pipeline/dagster/cli
+  - category: Connectors / Pipeline / Dagster / Run Externally
+    url: /connectors/pipeline/dagster/yaml
+  - category: Connectors / Pipeline / Databricks Pipeline
+    url: /connectors/pipeline/databricks-pipeline
+  - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
+    url: /connectors/pipeline/databricks-pipeline/yaml
   - category: Connectors / Pipeline / Domo Pipeline
     url: /connectors/pipeline/domo-pipeline
-  - category: Connectors / Pipeline / Domo Pipeline / Airflow
-    url: /connectors/pipeline/domo-pipeline/airflow
-  - category: Connectors / Pipeline / Domo Pipeline / CLI
-    url: /connectors/pipeline/domo-pipeline/cli
+  - category: Connectors / Pipeline / Domo Pipeline / Run Externally
+    url: /connectors/pipeline/domo-pipeline/yaml
+  - category: Connectors / Pipeline / Fivetran
+    url: /connectors/pipeline/fivetran
+  - category: Connectors / Pipeline / Fivetran / Run Externally
+    url: /connectors/pipeline/fivetran/yaml
+  - category: Connectors / Pipeline / Glue Pipeline
+    url: /connectors/pipeline/glue-pipeline
+  - category: Connectors / Pipeline / Glue Pipeline / Run Externally
+    url: /connectors/pipeline/glue-pipeline/yaml
+  - category: Connectors / Pipeline / Nifi
+    url: /connectors/pipeline/nifi
+  - category: Connectors / Pipeline / Nifi / Run Externally
+    url: /connectors/pipeline/nifi/yaml
   - category: Connectors / Pipeline / Spline
     url: /connectors/pipeline/spline
-  - category: Connectors / Pipeline / Spline / Airflow
-    url: /connectors/pipeline/spline/airflow
-  - category: Connectors / Pipeline / Spline / CLI
-    url: /connectors/pipeline/spline/cli
+  - category: Connectors / Pipeline / Spline / Run Externally
+    url: /connectors/pipeline/spline/yaml
 
   - category: Connectors / ML Model
     url: /connectors/ml-model
   - category: Connectors / ML Model / MLflow
     url: /connectors/ml-model/mlflow
-  - category: Connectors / ML Model / MLflow / Airflow
-    url: /connectors/ml-model/mlflow/airflow
-  - category: Connectors / ML Model / MLflow / CLI
-    url: /connectors/ml-model/mlflow/cli
+  - category: Connectors / ML Model / MLflow / Run Externally
+    url: /connectors/ml-model/mlflow/yaml
   - category: Connectors / ML Model / Sagemaker
     url: /connectors/ml-model/sagemaker
-  - category: Connectors / ML Model / Sagemaker / Airflow
-    url: /connectors/ml-model/sagemaker/airflow
-  - category: Connectors / ML Model / Sagemaker / CLI
-    url: /connectors/ml-model/sagemaker/cli
+  - category: Connectors / ML Model / Sagemaker / Run Externally
+    url: /connectors/ml-model/sagemaker/yaml
 
   - category: Connectors / Storage
     url: /connectors/storage
   - category: Connectors / Storage / S3
     url: /connectors/storage/s3
-  - category: Connectors / Storage / S3 / Airflow
-    url: /connectors/storage/s3/airflow
-  - category: Connectors / Storage / S3 / CLI
-    url: /connectors/storage/s3/cli
+  - category: Connectors / Storage / S3 / Run Externally
+    url: /connectors/storage/s3/yaml
 
   - category: Connectors / Metadata
     url: /connectors/metadata
   - category: Connectors / Metadata / Amundsen
     url: /connectors/metadata/amundsen
-  - category: Connectors / Metadata / Amundsen / Airflow
-    url: /connectors/metadata/amundsen/airflow
-  - category: Connectors / Metadata / Amundsen / CLI
-    url: /connectors/metadata/amundsen/cli
+  - category: Connectors / Metadata / Amundsen / Run Externally
+    url: /connectors/metadata/amundsen/yaml
   - category: Connectors / Metadata / Atlas
     url: /connectors/metadata/atlas
-  - category: Connectors / Metadata / Atlas / Airflow
-    url: /connectors/metadata/atlas/airflow
-  - category: Connectors / Metadata / Atlas / CLI
-    url: /connectors/metadata/atlas/cli
+  - category: Connectors / Metadata / Atlas / Run Externally
+    url: /connectors/metadata/atlas/yaml
 
   - category: Connectors / Custom Connectors
     url: /connectors/custom-connectors

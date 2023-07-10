@@ -151,4 +151,4 @@ For the Ldap we need to set:
 - `adminPrincipals`: This is the list of admin Principal for the OpenMetadata , if mail in ldap is example@openmetadata.org, then if we want this user to be admin in the OM, we should add 'example', in this list.
 - `principalDomain`: Company Domain.
 
-{% partial file="configure-ingestion.md" /%}
+{% partial file="/v1.1.0/deployment/configure-ingestion.md" /%}

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
@@ -177,13 +176,11 @@ const LineagePage = () => {
     <PageLayoutV1 className="p-x-lg" pageTitle={t('label.lineage')}>
       <div className="lineage-page-container page-container">
         <TitleBreadcrumb titleLinks={titleBreadcrumb} />
-        <Card className="h-full" size="default">
-          <EntityLineageComponent
-            hasEditAccess
-            isFullScreen
-            entityType={entityType}
-          />
-        </Card>
+        <EntityLineageComponent
+          hasEditAccess
+          isFullScreen
+          entityType={entityType}
+        />
       </div>
     </PageLayoutV1>
   );

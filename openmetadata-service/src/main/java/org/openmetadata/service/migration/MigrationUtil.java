@@ -382,43 +382,61 @@ public class MigrationUtil {
       MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(test.getEntityLink());
       // Create new Logical Test Suite
       String testSuiteFqn = entityLink.getEntityFQN() + ".testSuite";
+      TestSuite stored;
       try {
-        // Check if the test Suite Exists, this brings the data on nameHash basis
-        TestSuite stored =
-            testSuiteRepository.getByName(
-                null, FullyQualifiedName.quoteName(testSuiteFqn), new EntityUtil.Fields(List.of("id")), Include.ALL);
-        testSuiteRepository.addRelationship(stored.getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
-      } catch (EntityNotFoundException ex) {
-        TestSuite newExecutableTestSuite =
-            getTestSuite(
-                    collectionDAO,
-                    new CreateTestSuite()
-                        .withName(testSuiteFqn)
-                        .withExecutableEntityReference(entityLink.getEntityFQN()),
-                    "ingestion-bot")
-                .withExecutable(false);
-        // Create
-        testSuiteRepository.create(null, newExecutableTestSuite);
-        // Here we aer manually adding executable relationship since the table Repository is not registered and result
-        // into null for entity type table
-        testSuiteRepository.addRelationship(
-            newExecutableTestSuite.getExecutableEntityReference().getId(),
-            newExecutableTestSuite.getId(),
-            Entity.TABLE,
-            TEST_SUITE,
-            Relationship.CONTAINS);
+        // If entity is found by Hash it is already migrated
+        testSuiteRepository.getByName(
+            null,
+            EntityInterfaceUtil.quoteName(FullyQualifiedName.buildHash(testSuiteFqn)),
+            new EntityUtil.Fields(List.of("id")),
+            Include.ALL);
+      } catch (EntityNotFoundException entityNotFoundException) {
+        try {
+          // Check if the test Suite Exists, this brings the data on nameHash basis
+          stored =
+              testSuiteRepository.getByName(
+                  null, EntityInterfaceUtil.quoteName(testSuiteFqn), new EntityUtil.Fields(List.of("id")), Include.ALL);
+          testSuiteRepository.addRelationship(
+              stored.getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+          stored.setExecutable(true);
+          stored.setName(FullyQualifiedName.buildHash(testSuiteFqn));
+          // the update() method here internally calls FullyQualifiedName.buildHash so not adding it
+          stored.setFullyQualifiedName(EntityInterfaceUtil.quoteName(FullyQualifiedName.buildHash(testSuiteFqn)));
+          stored.setDisplayName(testSuiteFqn);
+          testSuiteRepository.getDao().update(stored);
+        } catch (EntityNotFoundException ex) {
+          TestSuite newExecutableTestSuite =
+              getTestSuite(
+                      collectionDAO,
+                      new CreateTestSuite()
+                          .withName(FullyQualifiedName.buildHash(testSuiteFqn))
+                          .withDisplayName(testSuiteFqn)
+                          .withExecutableEntityReference(entityLink.getEntityFQN()),
+                      "ingestion-bot")
+                  .withExecutable(false);
+          // Create
+          testSuiteRepository.create(null, newExecutableTestSuite);
+          // Here we aer manually adding executable relationship since the table Repository is not registered and result
+          // into null for entity type table
+          testSuiteRepository.addRelationship(
+              newExecutableTestSuite.getExecutableEntityReference().getId(),
+              newExecutableTestSuite.getId(),
+              Entity.TABLE,
+              TEST_SUITE,
+              Relationship.CONTAINS);
 
-        // add relationship from testSuite to TestCases
-        testSuiteRepository.addRelationship(
-            newExecutableTestSuite.getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+          // add relationship from testSuite to TestCases
+          testSuiteRepository.addRelationship(
+              newExecutableTestSuite.getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
 
-        // Not a good approach but executable cannot be set true before
-        TestSuite temp =
-            testSuiteRepository
-                .getDao()
-                .findEntityByName(FullyQualifiedName.quoteName(newExecutableTestSuite.getName()));
-        temp.setExecutable(true);
-        testSuiteRepository.getDao().update(temp);
+          // Not a good approach but executable cannot be set true before
+          TestSuite temp =
+              testSuiteRepository
+                  .getDao()
+                  .findEntityByName(EntityInterfaceUtil.quoteName(FullyQualifiedName.buildHash(testSuiteFqn)));
+          temp.setExecutable(true);
+          testSuiteRepository.getDao().update(temp);
+        }
       }
     }
 

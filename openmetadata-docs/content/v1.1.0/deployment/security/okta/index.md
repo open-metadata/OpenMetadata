@@ -160,4 +160,4 @@ After the applying these steps, you can update the configuration of your deploym
   {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-{% partial file="configure-ingestion.md" /%}
+{% partial file="/v1.1.0/deployment/configure-ingestion.md" /%}
