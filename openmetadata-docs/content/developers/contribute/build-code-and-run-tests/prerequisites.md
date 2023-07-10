@@ -11,6 +11,7 @@ OpenMetadata being a full stack project, we use the following for development:
 - [Docker 20 or higher](https://docs.docker.com/engine/install/)
 - [Java JDK 11](https://docs.oracle.com/en/java/javase/11/install/overview-jdk-installation.html)
 - [Antlr 4.9.2](https://www.antlr.org/) - `sudo make install_antlr_cli`
+- [JQ](https://jqlang.github.io/jq/) - `brew install jq` (osx)  `apt-get install jq` (Ubuntu)
 - [Maven 3.5.x or higher](https://maven.apache.org/install.html) - (with Java JDK 11)
 - [Python 3.7 or higher](https://www.python.org/downloads/)
 - [Node >=16.0.0 & Node <= 18.0.0](https://nodejs.org/en/download/)
@@ -76,6 +77,10 @@ v17.3.0
 
 > rpm --version
 RPM version 4.17.0
+
+> jq --version                                                                                       
+jq-1.6
+
 ```
 
 ### Install pre-commit hooks
