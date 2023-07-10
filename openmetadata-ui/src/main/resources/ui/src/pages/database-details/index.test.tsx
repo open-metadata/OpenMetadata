@@ -39,16 +39,6 @@ const mockDatabase = {
   },
 };
 
-const mockServiceData = {
-  id: 'bc13e95f-83ac-458a-9528-f4ca26657568',
-  type: 'databaseService',
-  name: 'bigquery_gcp',
-  description: '',
-  deleted: false,
-  href: 'http://localhost:8585/api/v1/services/databaseServices/bc13e95f-83ac-458a-9528-f4ca26657568',
-  jdbc: { driverClass: 'jdbc', connectionUrl: 'jdbc://localhost' },
-};
-
 const mockSchemaData = {
   data: [
     {
@@ -98,59 +88,6 @@ const mockSchemaData = {
     },
   ],
   paging: { after: 'ZMbpLOqQQsREk_7DmEOr', total: 12 },
-};
-
-const mockAllFeeds = {
-  data: [
-    {
-      id: 'ac2e6128-9f23-4f28-acf8-31d50b06f8cc',
-      type: 'Task',
-      href: 'http://localhost:8585/api/v1/feed/ac2e6128-9f23-4f28-acf8-31d50b06f8cc',
-      threadTs: 1664445686074,
-      about: '<#E::table::sample_data.ecommerce_db.shopify.raw_order::tags>',
-      entityId: 'c514ca18-2ea4-44b1-aa06-0c66bc0cd355',
-      createdBy: 'bharatdussa',
-      updatedAt: 1664445691373,
-      updatedBy: 'bharatdussa',
-      resolved: false,
-      message: 'Update tags for table',
-      postsCount: 1,
-      posts: [
-        {
-          id: 'd497bea2-0bfe-4a9f-9ce6-d560129fef4a',
-          message: 'Resolved the Task with Tag(s) - PersonalData.Personal',
-          postTs: 1664445691368,
-          from: 'bharatdussa',
-          reactions: [],
-        },
-      ],
-      reactions: [],
-      task: {
-        id: 11,
-        type: 'UpdateTag',
-        assignees: [
-          {
-            id: 'f187364d-114c-4426-b941-baf6a15f70e4',
-            type: 'user',
-            name: 'bharatdussa',
-            fullyQualifiedName: 'bharatdussa',
-            displayName: 'Bharat Dussa',
-            deleted: false,
-          },
-        ],
-        status: 'Closed',
-        closedBy: 'bharatdussa',
-        closedAt: 1664445691340,
-        oldValue:
-          '[{"tagFQN":"PersonalData.Personal","description":"","source":"Classification","labelType":"Manual","state":"Suggested"},]',
-        suggestion:
-          '[{"tagFQN":"PersonalData.Personal","description":"","source":"Classification","labelType":"Manual","state":"Suggested"},]',
-        newValue:
-          '[{"tagFQN":"PersonalData.Personal","description":"","source":"Classification","labelType":"Manual","state":"Suggested"},]',
-      },
-    },
-  ],
-  paging: { after: 'MTY2NDQ0NDcyODY1MA==', total: 134 },
 };
 
 const mockFeedCount = {
@@ -209,6 +146,19 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
+jest.mock(
+  'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
+  () => ({
+    useActivityFeedProvider: jest.fn().mockImplementation(() => ({
+      postFeed: jest.fn(),
+      deleteFeed: jest.fn(),
+      updateFeed: jest.fn(),
+    })),
+    __esModule: true,
+    default: 'ActivityFeedProvider',
+  })
+);
+
 jest.mock('../../AppState', () => {
   return jest.fn().mockReturnValue({
     inPageSearchText: '',
@@ -229,60 +179,24 @@ jest.mock('rest/databaseAPI', () => ({
 }));
 
 jest.mock('rest/feedsAPI', () => ({
-  getAllFeeds: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(mockAllFeeds)),
   getFeedCount: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockFeedCount)),
-
-  postFeedById: jest.fn().mockImplementation(() => Promise.resolve({})),
-
   postThread: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('rest/serviceAPI', () => ({
-  getServiceById: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockServiceData })),
-}));
-
 jest.mock('../../utils/TableUtils', () => ({
-  getOwnerFromId: jest.fn().mockReturnValue({
-    name: 'owner',
-    id: 'string',
-    type: 'user',
-  }),
   getUsagePercentile: jest.fn().mockReturnValue('Medium - 45th pctile'),
   getTierTags: jest.fn().mockImplementation(() => ({})),
   getTagsWithoutTier: jest.fn().mockImplementation(() => []),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
-  getCurrentUserId: jest
-    .fn()
-    .mockReturnValue('5d5ca778-8bee-4ea0-bcb6-b17d92f7ef96'),
-  isEven: jest.fn().mockReturnValue(true),
-  getEntityName: jest.fn().mockReturnValue('entityname'),
-}));
-
-jest.mock('components/Tag/Tags/tags', () => {
-  return jest.fn().mockReturnValue(<span>Tag</span>);
-});
-
 jest.mock('components/common/next-previous/NextPrevious', () => {
   return jest.fn().mockReturnValue(<div>NextPrevious</div>);
 });
 
-jest.mock(
-  'components/common/title-breadcrumb/title-breadcrumb.component',
-  () => {
-    return jest.fn().mockReturnValue(<div>TitleBreadcrumb</div>);
-  }
-);
-
-jest.mock('components/FeedEditor/FeedEditor', () => {
-  return jest.fn().mockReturnValue(<p>FeedEditor</p>);
+jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () => {
+  return jest.fn().mockReturnValue(<div>TagsContainerV2</div>);
 });
 
 jest.mock('../../utils/TagsUtils', () => ({
@@ -309,37 +223,36 @@ jest.mock(
   })
 );
 
-jest.mock('components/common/description/Description', () => {
+jest.mock('components/common/description/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
-
-jest.mock('components/common/EntitySummaryDetails/EntitySummaryDetails', () => {
-  return jest
-    .fn()
-    .mockReturnValue(
-      <p data-testid="entity-summary-details">EntitySummaryDetails component</p>
-    );
-});
-
-jest.mock('components/common/DeleteWidget/DeleteWidgetModal', () => {
-  return jest
-    .fn()
-    .mockReturnValue(
-      <p data-testid="delete-entity">DeleteWidgetModal component</p>
-    );
-});
-
-jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
-  jest.fn().mockReturnValue(<p>Sidebar</p>)
-);
 
 jest.mock('components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => children);
 });
 
-jest.mock('components/Entity/EntityHeader/EntityHeader.component', () => ({
-  EntityHeader: jest.fn().mockImplementation(() => <p>EntityHeader</p>),
-}));
+jest.mock(
+  'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
+  () => {
+    return jest.fn().mockReturnValue(<p>ActivityFeedTab</p>);
+  }
+);
+
+jest.mock(
+  'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel',
+  () => {
+    return jest.fn().mockReturnValue(<p>ActivityThreadPanel</p>);
+  }
+);
+
+jest.mock(
+  'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
+  () => ({
+    DataAssetsHeader: jest
+      .fn()
+      .mockImplementation(() => <p>DataAssetsHeader</p>),
+  })
+);
 
 describe('Test DatabaseDetails page', () => {
   it('Component should render', async () => {
@@ -347,11 +260,8 @@ describe('Test DatabaseDetails page', () => {
       wrapper: MemoryRouter,
     });
 
-    const entityHeader = await findByText(container, 'EntityHeader');
-    const descriptionContainer = await findByTestId(
-      container,
-      'description-container'
-    );
+    const entityHeader = await findByText(container, 'DataAssetsHeader');
+    const descriptionContainer = await findByText(container, 'Description');
     const databaseTable = await findByTestId(
       container,
       'database-databaseSchemas'
@@ -421,11 +331,8 @@ describe('Test DatabaseDetails page', () => {
       wrapper: MemoryRouter,
     });
 
-    const entityHeader = await findByText(container, 'EntityHeader');
-    const descriptionContainer = await findByTestId(
-      container,
-      'description-container'
-    );
+    const entityHeader = await findByText(container, 'DataAssetsHeader');
+    const descriptionContainer = await findByText(container, 'Description');
     const databaseTable = await findByTestId(
       container,
       'database-databaseSchemas'

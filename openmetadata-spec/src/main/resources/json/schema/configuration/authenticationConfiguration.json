@@ -51,7 +51,7 @@
     },
     "samlConfiguration": {
       "description": "Saml Configuration that is applicable only when the provider is Saml",
-      "$ref": "../../schema/security/client/samlSSOClientConfig.json"
+      "$ref": "../security/client/samlSSOClientConfig.json"
     }
   },
   "required": ["provider", "providerName", "publicKeyUrls", "authority", "callbackUrl", "clientId", "jwtPrincipalClaims"],

@@ -10,11 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from 'antd';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { EntityTags } from 'Models';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   isVersionView?: boolean;
@@ -29,6 +31,7 @@ const TagsInput: React.FC<Props> = ({
   onTagsUpdate,
   isVersionView,
 }) => {
+  const { t } = useTranslation();
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
     const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => {
       return {
@@ -59,7 +62,14 @@ const TagsInput: React.FC<Props> = ({
   return (
     <div className="tags-input-container" data-testid="tags-input-container">
       {isVersionView ? (
-        <TagsViewer sizeCap={-1} tags={tags} type="border" />
+        <>
+          <div>
+            <Typography.Text className="right-panel-label">
+              {t('label.tag-plural')}
+            </Typography.Text>
+          </div>
+          <TagsViewer sizeCap={-1} tags={tags} type="border" />
+        </>
       ) : (
         <TagsContainerV2
           permission={editable}

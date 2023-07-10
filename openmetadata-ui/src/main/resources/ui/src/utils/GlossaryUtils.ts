@@ -122,16 +122,26 @@ export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
   const nodes: Record<string, GlossaryTerm> = {};
   const tree: GlossaryTerm[] = [];
 
-  data.forEach((obj) => {
+  // Sorting children having parent first to avoid duplicates
+  const sortedData = [...data].sort((a, b) => {
+    if (a.parent && !b.parent) {
+      return 1;
+    } else if (!a.parent && b.parent) {
+      return -1;
+    } else {
+      return 0;
+    }
+  });
+
+  sortedData.forEach((obj) => {
     if (obj.fullyQualifiedName) {
       nodes[obj.fullyQualifiedName] = {
         ...obj,
         children: obj.children?.length ? [] : undefined,
       };
       const parentNode =
-        obj.parent &&
-        obj.parent.fullyQualifiedName &&
-        nodes[obj.parent.fullyQualifiedName];
+        obj.parent?.fullyQualifiedName && nodes[obj.parent.fullyQualifiedName];
+
       parentNode &&
         nodes[obj.fullyQualifiedName] &&
         parentNode.children?.push(
