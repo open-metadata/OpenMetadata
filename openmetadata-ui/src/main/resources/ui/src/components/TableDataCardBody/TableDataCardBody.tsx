@@ -41,7 +41,6 @@ const TableDataCardBody: FunctionComponent<Props> = ({
           <RichTextEditorPreviewer
             className="max-two-lines"
             markdown={description}
-            maxLength={350}
             showReadMoreBtn={false}
           />
         ) : (
