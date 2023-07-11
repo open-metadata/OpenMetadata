@@ -36,4 +36,4 @@ AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
 docker compose --env-file ~/openmetadata_azure.env up -d
 ```
 
-{% partial file="configure-ingestion.md" /%}
+{% partial file="/v1.1.0/deployment/configure-ingestion.md" /%}

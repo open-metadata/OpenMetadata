@@ -30,10 +30,13 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ResultList;
 
 public class PIIMasker {
-
   public static final String SENSITIVE_PII_TAG = "PII.Sensitive";
   public static final String MASKED_VALUE = "********";
   public static final String MASKED_NAME = "[MASKED]";
+
+  private PIIMasker() {
+    /* Private constructor for Utility class */
+  }
 
   public static Table getSampleData(Table table) {
     TableData sampleData = table.getSampleData();

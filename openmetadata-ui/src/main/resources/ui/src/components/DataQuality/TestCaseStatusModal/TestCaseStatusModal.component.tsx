@@ -51,6 +51,7 @@ export const TestCaseStatusModal = ({
 
   return (
     <Modal
+      cancelText={t('label.cancel')}
       closable={false}
       okButtonProps={{
         form: 'update-status-form',
@@ -63,6 +64,7 @@ export const TestCaseStatusModal = ({
       width={750}
       onCancel={onCancel}>
       <Form<TestCaseFailureStatus>
+        data-testid="update-status-form"
         form={form}
         id="update-status-form"
         initialValues={data}

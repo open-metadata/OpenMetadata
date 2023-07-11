@@ -71,7 +71,8 @@ SET json = jsonb_set(
         )
         FROM jsonb_array_elements(json->'tasks') AS t
     )
-);
+)
+where json#>'{tasks}' is not null;
 
 
 -- Modify migrations for service connection of postgres and mysql to move password under authType
@@ -190,5 +191,3 @@ jsonb_build_object('password',json#>'{connection,config,connection,password}')
 WHERE serviceType = 'Airflow'
 and json#>'{connection,config,connection,type}' IN ('"Mysql"', '"Postgres"')
 and json#>'{connection,config,connection,password}' is not null;
-  
-  

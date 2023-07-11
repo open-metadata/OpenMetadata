@@ -22,15 +22,7 @@ public final class SecretsUtil {
     /* Final Class */
   }
 
-  /**
-   * Returns an error message when it is related to an Unrecognized field
-   *
-   * @param message the message to be formatted if the Unrecognized field is between quotes
-   * @param defaultMessage default message to be formatted if the Unrecognized field is not between quotes
-   * @param exceptionMessage the exception message
-   * @param type the type of error
-   * @return null if the message does not contain 'Unrecognized field' in the exception message
-   */
+  /** Returns an error message when it is related to an Unrecognized field */
   public static String buildExceptionMessageUnrecognizedField(
       String message, String defaultMessage, String exceptionMessage, String type) {
     if (exceptionMessage != null && exceptionMessage.contains("Unrecognized field")) {
