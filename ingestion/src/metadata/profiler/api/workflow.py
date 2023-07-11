@@ -19,54 +19,50 @@ Workflow definition for the ORM Profiler.
 import traceback
 from typing import Iterable, Optional, cast
 
-from pydantic import ValidationError
-
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    DatalakeConnection,
-)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.entity.services.connections.serviceConnection import (
-    ServiceConnection,
-)
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
-    PipelineState,
-)
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import \
+    DatalakeConnection
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import \
+    OpenMetadataConnection
+from metadata.generated.schema.entity.services.connections.serviceConnection import \
+    ServiceConnection
+from metadata.generated.schema.entity.services.databaseService import \
+    DatabaseService
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import \
+    PipelineState
 from metadata.generated.schema.entity.services.serviceType import ServiceType
-from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
-    DatabaseServiceProfilerPipeline,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataWorkflowConfig,
-)
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import \
+    DatabaseServiceProfilerPipeline
+from metadata.generated.schema.metadataIngestion.workflow import \
+    OpenMetadataWorkflowConfig
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.models.custom_types import ServiceWithConnectionType
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
+from metadata.ingestion.source.connections import (get_connection,
+                                                   get_test_connection_fn)
+from metadata.profiler.api.models import (ProfilerProcessorConfig,
+                                          ProfilerResponse)
 from metadata.profiler.processor.core import Profiler
-from metadata.profiler.source.base_profiler_source import BaseProfilerSource
-from metadata.profiler.source.profiler_source_factory import profiler_source_factory
+from metadata.profiler.source.base.profiler_source import ProfilerSource
+from metadata.profiler.source.profiler_source_factory import \
+    profiler_source_factory
 from metadata.timer.repeated_timer import RepeatedTimer
 from metadata.timer.workflow_reporter import get_ingestion_status_timer
 from metadata.utils import fqn
-from metadata.utils.class_helper import (
-    get_service_class_from_service_type,
-    get_service_type_from_source_type,
-)
-from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
+from metadata.utils.class_helper import (get_service_class_from_service_type,
+                                         get_service_type_from_source_type)
+from metadata.utils.filters import (filter_by_database, filter_by_schema,
+                                    filter_by_table)
 from metadata.utils.importer import get_sink
 from metadata.utils.logger import profiler_logger
 from metadata.utils.workflow_output_handler import print_profiler_status
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
+from pydantic import ValidationError
 
 logger = profiler_logger()
 
@@ -261,7 +257,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         yield from self.filter_entities(tables)
 
     def run_profiler(
-        self, entity: Table, profiler_source: BaseProfilerSource
+        self, entity: Table, profiler_source: ProfilerSource
     ) -> Optional[ProfilerResponse]:
         """
         Main logic for the profiler workflow

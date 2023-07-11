@@ -97,6 +97,8 @@ class ProfilerTest(TestCase):
             None,
             None,
             None,
+            5,
+            43200
         )
 
     @classmethod

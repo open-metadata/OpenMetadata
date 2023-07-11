@@ -13,19 +13,21 @@
 Test Metrics behavior
 """
 import os
-from unittest import TestCase
-from unittest.mock import patch
+from unittest import TestCase, mock
 from uuid import uuid4
 
+import boto3
+import botocore
 from sqlalchemy import TEXT, Column, Date, DateTime, Integer, String, Time
 from sqlalchemy.orm import declarative_base
+import moto
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
-from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
 )
+from metadata.profiler.interface.profiler_interface import  ProfilerInterface
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler
@@ -46,6 +48,10 @@ class User(Base):
     doe = Column(Date)  # date of employment
 
 
+class FakeConnection:
+    def client(self):
+        return None
+
 class DatalakeMetricsTest(TestCase):
     """
     Run checks on different metrics
@@ -54,24 +60,16 @@ class DatalakeMetricsTest(TestCase):
     import pandas as pd
 
     root_dir = os.path.dirname(os.path.abspath(__file__))
-    csv_dir = "custom_csv"
+    csv_dir = "../custom_csv"
     df1 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"))
     df2 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"))
 
-    @patch.object(
-        PandasProfilerInterface,
-        "get_connection_client",
-        return_value=None,
-    )
-    @patch.object(
-        PandasInterfaceMixin,
-        "return_ometa_dataframes_sampled",
-        return_value=[df1, df2],
-    )
-    def __init__(
-        self, methodName, return_ometa_dataframes_sampled, get_connection_client
-    ):
-        super().__init__(methodName)
+    @classmethod
+    def setUpClass(cls):
+        """
+        Setup the test class. We won't mock S3 with moto as we want to test that metrics are computed
+        correctly on a list of dataframes.
+        """
         table_entity = Table(
             id=uuid4(),
             name="user",
@@ -83,16 +81,21 @@ class DatalakeMetricsTest(TestCase):
             ],
         )
 
-        self.datalake_profiler_interface = PandasProfilerInterface(
-            entity=table_entity,
-            service_connection_config=None,
-            ometa_client=None,
-            thread_count=None,
-            profile_sample_config=None,
-            source_config=None,
-            sample_query=None,
-            table_partition_config=None,
-        )
+        with (
+            mock.patch("metadata.profiler.interface.profiler_interface.get_connection", return_value=FakeConnection) as mock_get_connection,
+            mock.patch.object(PandasProfilerInterface, "_convert_table_to_list_of_dataframe_objects", return_value=[cls.df1, cls.df2]) as mocked_dfs,
+        ):
+            cls.datalake_profiler_interface = PandasProfilerInterface(
+                entity=table_entity,
+                service_connection_config=None,
+                ometa_client=None,
+                thread_count=None,
+                profile_sample_config=None,
+                source_config=None,
+                sample_query=None,
+                table_partition_config=None,
+            )
+
 
     def test_count(self):
         """
@@ -624,6 +627,3 @@ class DatalakeMetricsTest(TestCase):
 
         assert res.get(User.age.name)[Metrics.SUM.name] == 141
 
-    @classmethod
-    def tearDownClass(cls) -> None:
-        return super().tearDownClass()

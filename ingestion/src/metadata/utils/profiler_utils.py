@@ -41,36 +41,6 @@ class QueryResult(BaseModel):
     rows: Optional[int] = None
 
 
-class ColumnLike:
-    """We don't have column information at this stage (only metric entities)
-    we'll create a column like onject with the attributes needed in handle_array()
-
-    Attrs:
-        is_array (bool): is array or not
-        array_col (Optional[str]): column name for the array column
-    """
-
-    def __init__(self, _is_array: bool, _array_col: Optional[str]) -> None:
-        self._is_array = _is_array
-        self._array_col = _array_col
-
-    @classmethod
-    def create(cls, kwargs: dict) -> "ColumnLike":
-        """instantiate the class with the required logic
-
-        Args:
-            is_array (bool): is array or not
-            array_col (Optional[str]): column name for the array column
-
-        Returns:
-            ColumnLike: ColumnLike isntante
-        """
-        try:
-            return cls(is_array(kwargs), kwargs.pop("array_col"))
-        except KeyError:
-            return cls(False, None)
-
-
 def clean_up_query(query: str) -> str:
     """remove comments and newlines from query"""
     return sqlparse.format(query, strip_comments=True).replace("\\n", "")
