@@ -92,9 +92,13 @@ SnowflakeDialect.get_unique_constraints = get_unique_constraints
 SnowflakeDialect._get_schema_columns = (  # pylint: disable=protected-access
     get_schema_columns
 )
-SnowflakeDialect._get_schema_primary_keys = get_schema_primary_keys # pylint: disable=protected-access
+SnowflakeDialect._get_schema_primary_keys = (
+    get_schema_primary_keys  # pylint: disable=protected-access
+)
 Inspector.get_table_names = get_table_names_reflection
-SnowflakeDialect._current_database_schema = _current_database_schema # pylint: disable=protected-access
+SnowflakeDialect._current_database_schema = (
+    _current_database_schema  # pylint: disable=protected-access
+)
 
 
 class SnowflakeSource(CommonDbSourceService):
