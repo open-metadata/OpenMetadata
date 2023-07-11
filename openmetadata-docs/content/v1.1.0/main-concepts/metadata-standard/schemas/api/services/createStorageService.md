@@ -5,15 +5,19 @@ slug: /main-concepts/metadata-standard/schemas/api/services/createstorageservice
 
 # CreateStorageServiceRequest
 
-*Create Storage service entity request*
+*Create Storage Service entity request*
 
 ## Properties
 
 - **`name`**: Name that identifies the this entity instance uniquely. Refer to *../../type/basic.json#/definitions/entityName*.
-- **`displayName`** *(string)*: Display Name that identifies this storage service.
-- **`description`**: Description of Storage entity. Refer to *../../type/basic.json#/definitions/markdown*.
-- **`serviceType`**: Refer to *../../type/storage.json#/definitions/storageServiceType*.
-- **`owner`**: Owner of this storage service. Refer to *../../type/entityReference.json*.
+- **`displayName`** *(string)*: Display Name that identifies this storage service. It could be title or label from the source services.
+- **`description`**: Description of storage service entity. Refer to *../../type/basic.json#/definitions/markdown*.
+- **`serviceType`**: Refer to *../../entity/services/storageService.json#/definitions/storageServiceType*.
+- **`connection`**: Refer to *../../entity/services/storageService.json#/definitions/storageConnection*.
+- **`tags`** *(array)*: Tags for this Object Store Service. Default: `None`.
+  - **Items**: Refer to *../../type/tagLabel.json*.
+- **`owner`**: Owner of this object store service. Refer to *../../type/entityReference.json*.
+- **`domain`** *(string)*: Fully qualified name of the domain the Storage Service belongs to.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.

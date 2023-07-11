@@ -816,7 +816,6 @@ public class ElasticSearchClientImpl implements SearchClient {
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
         ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
     UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, event.getEntityId().toString());
-    ElasticSearchIndex index;
 
     switch (event.getEventType()) {
       case ENTITY_CREATED:
@@ -848,6 +847,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     updateElasticSearch(updateRequest);
   }
 
+  @Override
   public void updateSearchForEntityUpdated(
       ElasticSearchIndexDefinition.ElasticSearchIndexType indexType, String entityType, ChangeEvent event)
       throws IOException {
@@ -1184,7 +1184,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     UUID testSuiteId = testSuite.getId();
 
     if (event.getEventType() == ENTITY_DELETED) {
-      if (testSuite.getExecutable()) {
+      if (Boolean.TRUE.equals(testSuite.getExecutable())) {
         DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexType.indexName);
         deleteByQueryRequest.setQuery(new MatchQueryBuilder("testSuites.id", testSuiteId.toString()));
         deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
@@ -1263,7 +1263,7 @@ public class ElasticSearchClientImpl implements SearchClient {
       case ENTITY_DELETED:
         EntityReference testSuiteReference = ((TestCase) event.getEntity()).getTestSuite();
         TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, testSuiteReference.getId(), "", Include.ALL);
-        if (testSuite.getExecutable()) {
+        if (Boolean.TRUE.equals(testSuite.getExecutable())) {
           // Delete the test case from the index if deleted from an executable test suite
           DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, event.getEntityId().toString());
           deleteEntityFromElasticSearch(deleteRequest);
@@ -1349,6 +1349,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     }
   }
 
+  @Override
   public UpdateRequest applyESChangeEvent(ChangeEvent event) {
     String entityType = event.getEntityType();
     ElasticSearchIndexDefinition.ElasticSearchIndexType esIndexType =
@@ -1397,16 +1398,9 @@ public class ElasticSearchClientImpl implements SearchClient {
     return new UpdateRequest(IndexUtil.ENTITY_TYPE_TO_INDEX_MAP.get(entityType), entityId).script(script);
   }
 
-  /**
-   * @param data
-   * @param options
-   * @return
-   * @throws IOException
-   */
   @Override
   public BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
-    BulkResponse response = client.bulk(data, RequestOptions.DEFAULT);
-    return response;
+    return client.bulk(data, RequestOptions.DEFAULT);
   }
 
   @Override
@@ -1447,17 +1441,6 @@ public class ElasticSearchClientImpl implements SearchClient {
     return dateWithDataMap;
   }
 
-  /**
-   * @param startTs
-   * @param endTs
-   * @param tier
-   * @param team
-   * @param dataInsightChartName
-   * @param dataReportIndex
-   * @return
-   * @throws IOException
-   * @throws ParseException
-   */
   @Override
   public Response listDataInsightChartResult(
       Long startTs,

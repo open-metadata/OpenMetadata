@@ -151,6 +151,7 @@
     "@testing-library/react": "^9.3.2",
     "@testing-library/react-hooks": "^5.0.3",
     "@testing-library/user-event": "^7.1.2",
+    "@types/antlr4": "^4.11.2",
     "@types/classnames": "^2.3.1",
     "@types/codemirror": "^0.0.104",
     "@types/dagre": "^0.7.47",
