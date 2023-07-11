@@ -57,9 +57,9 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   editAnnouncementPermission,
   showUserAvatar = true,
 }) => {
-  const entityType = getEntityType(entityLink as string);
-  const entityFQN = getEntityFQN(entityLink as string);
-  const entityField = getEntityField(entityLink as string);
+  const entityType = getEntityType(entityLink ?? '');
+  const entityFQN = getEntityFQN(entityLink ?? '');
+  const entityField = getEntityField(entityLink ?? '');
 
   const currentUser = AppState.getCurrentUserDetails();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -211,9 +211,9 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
               <FeedCardHeader
                 className="tw-pl-2"
                 createdBy={feedDetail.from}
-                entityFQN={entityFQN as string}
-                entityField={entityField as string}
-                entityType={entityType as string}
+                entityFQN={entityFQN}
+                entityField={entityField ?? ''}
+                entityType={entityType}
                 feedType={feedType}
                 isEntityFeed={isEntityFeed}
                 task={task}
