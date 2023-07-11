@@ -45,7 +45,6 @@ import org.flywaydb.core.api.MigrationVersion;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.fernet.Fernet;
@@ -181,7 +180,6 @@ public final class TablesInitializer {
             confFilePath);
     Fernet.getInstance().setFernetKey(config);
     DataSourceFactory dataSourceFactory = config.getDataSourceFactory();
-    ElasticSearchConfiguration esConfig = config.getElasticSearchConfiguration();
     if (dataSourceFactory == null) {
       throw new RuntimeException("No database in config file");
     }

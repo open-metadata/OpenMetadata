@@ -51,7 +51,9 @@ public class JWTTokenGenerator {
   private String issuer;
   private String kid;
 
-  private JWTTokenGenerator() {}
+  private JWTTokenGenerator() {
+    /* Private constructor for singleton */
+  }
 
   public static JWTTokenGenerator getInstance() {
     return INSTANCE;

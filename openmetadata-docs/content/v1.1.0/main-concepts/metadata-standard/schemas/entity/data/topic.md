@@ -5,7 +5,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/topic
 
 # Topic
 
-*This schema defines the Topic entity. A topic is a feed into which message are published to by publishers and read from by consumers in a messaging service.*
+*A `Topic` is a feed or an event stream in a `Messaging Service` into which publishers publish messages and consumed by consumers.*
 
 ## Properties
 
@@ -19,8 +19,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/topic
 - **`updatedBy`** *(string)*: User who made the update.
 - **`service`**: Link to the messaging cluster/service where this topic is hosted in. Refer to *../../type/entityReference.json*.
 - **`serviceType`**: Service type where this topic is hosted in. Refer to *../services/messagingService.json#/definitions/messagingServiceType*.
-- **`schemaText`** *(string)*: Schema used for message serialization. Optional as some topics may not have associated schemas.
-- **`schemaType`**: Schema used for message serialization. Refer to *#/definitions/schemaType*.
+- **`messageSchema`**: Refer to *../../type/schema.json*.
 - **`partitions`** *(integer)*: Number of partitions into which the topic is divided. Minimum: `1`.
 - **`cleanupPolicies`** *(array)*: Topic clean up policies. For Kafka - `cleanup.policy` configuration.
   - **Items**: Refer to *#/definitions/cleanupPolicy*.
@@ -32,15 +31,17 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/topic
 - **`topicConfig`**: Contains key/value pair of topic configuration. Refer to *#/definitions/topicConfig*.
 - **`sampleData`**: Sample data for a topic. Refer to *#/definitions/topicSampleData*. Default: `None`.
 - **`owner`**: Owner of this topic. Refer to *../../type/entityReference.json*.
-- **`followers`**: Followers of this table. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
+- **`followers`**: Followers of this table. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
 - **`tags`** *(array)*: Tags for this table. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
 - **`href`**: Link to the resource corresponding to this entity. Refer to *../../type/basic.json#/definitions/href*.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
+- **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
+- **`domain`**: Domain the Topic belongs to. When not set, the Topic inherits the domain from the messaging service it belongs to. Refer to *../../type/entityReference.json*.
+- **`dataProducts`**: List of of data products this entity is part of. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
 ## Definitions
 
-- **`schemaType`**: Schema type used for the message. Must be one of: `['Avro', 'Protobuf', 'JSON', 'Other']`.
 - **`cleanupPolicy`**: Topic clean up policy. For Kafka - `cleanup.policy` configuration. Must be one of: `['delete', 'compact']`.
 - **`topicConfig`** *(object)*: Contains key/value pair of topic configuration.
 - **`topicSampleData`** *(object)*: This schema defines the type to capture sample data for a topic. Cannot contain additional properties.
@@ -48,4 +49,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/topic
     - **Items** *(string)*
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.

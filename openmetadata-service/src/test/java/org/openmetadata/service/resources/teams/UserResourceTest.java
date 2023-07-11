@@ -787,7 +787,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             .withAuthenticationMechanism(authMechanism);
     User user = createEntity(create, authHeaders("ingestion-bot-jwt@email.com"));
     user = getEntity(user.getId(), "*", ADMIN_AUTH_HEADERS);
-    assertEquals(user.getRoles().size(), 1);
+    assertEquals(1, user.getRoles().size());
     TestUtils.put(
         getResource(String.format("users/generateToken/%s", user.getId())),
         new GenerateTokenRequest().withJWTTokenExpiry(JWTTokenExpiry.Seven),
@@ -795,7 +795,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         ADMIN_AUTH_HEADERS);
     user = getEntity(user.getId(), "*", ADMIN_AUTH_HEADERS);
     assertNull(user.getAuthenticationMechanism());
-    assertEquals(user.getRoles().size(), 1);
+    assertEquals(1, user.getRoles().size());
     JWTAuthMechanism jwtAuthMechanism =
         TestUtils.get(
             getResource(String.format("users/token/%s", user.getId())), JWTAuthMechanism.class, ADMIN_AUTH_HEADERS);

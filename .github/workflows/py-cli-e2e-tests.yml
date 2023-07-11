@@ -44,7 +44,7 @@ jobs:
         python-version: 3.9
 
     - name: configure aws credentials
-      if: contains(['quicksight','datalake_s3'], matrix.e2e-test)
+      if: contains('quicksight', matrix.e2e-test) || contains('datalake_s3', matrix.e2e-test)
       uses: aws-actions/configure-aws-credentials@v1
       with:
         role-to-assume: ${{ secrets.E2E_AWS_IAM_ROLE_ARN }}

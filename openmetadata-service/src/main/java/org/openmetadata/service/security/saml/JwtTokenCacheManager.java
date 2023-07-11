@@ -24,10 +24,11 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 @Slf4j
 public class JwtTokenCacheManager {
   private static final JwtTokenCacheManager INSTANCE = new JwtTokenCacheManager();
-  private final ExpiringMap<String, LogoutRequest> tokenEventMap;
+  private static final ExpiringMap<String, LogoutRequest> tokenEventMap =
+      ExpiringMap.builder().variableExpiration().maxSize(1000).build();
 
   private JwtTokenCacheManager() {
-    this.tokenEventMap = ExpiringMap.builder().variableExpiration().maxSize(1000).build();
+    /* Private constructor for singleton */
   }
 
   public static JwtTokenCacheManager getInstance() {

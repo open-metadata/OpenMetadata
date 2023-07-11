@@ -616,7 +616,7 @@ public class FeedRepository {
                   updated.getEntityId().toString(),
                   updated.getAnnouncement().getStartTime(),
                   updated.getAnnouncement().getEndTime());
-      if (announcements.size() > 0) {
+      if (!announcements.isEmpty()) {
         throw new IllegalArgumentException(ANNOUNCEMENT_OVERLAP);
       }
     }
@@ -915,10 +915,7 @@ public class FeedRepository {
     if (user != null) {
       teamNames =
           listOrEmpty(user.getTeams()).stream()
-              .map(
-                  x -> {
-                    return FullyQualifiedName.buildHash(x.getFullyQualifiedName());
-                  })
+              .map(x -> FullyQualifiedName.buildHash(x.getFullyQualifiedName()))
               .collect(Collectors.toList());
     }
     return nullOrEmpty(teamNames) ? List.of(StringUtils.EMPTY) : teamNames;

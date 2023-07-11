@@ -16,8 +16,8 @@ slug: /main-concepts/metadata-standard/schemas/api/services/ingestionpipelines/c
 - **`sourceConfig`**: Refer to *../../../metadataIngestion/workflow.json#/definitions/sourceConfig*.
 - **`airflowConfig`**: Refer to *../../../entity/services/ingestionPipelines/ingestionPipeline.json#/definitions/airflowConfig*.
 - **`loggerLevel`**: Set the logging level for the workflow. Refer to *../../../metadataIngestion/workflow.json#/definitions/logLevels*.
-- **`service`**: Link to the database service where this database is hosted in. Refer to *../../../type/entityReference.json*.
-- **`owner`**: Owner of this Pipeline. Refer to *../../../type/entityReference.json*. Default: `None`.
+- **`service`**: Link to the service for which ingestion pipeline is ingesting the metadata. Refer to *../../../type/entityReference.json*.
+- **`owner`**: Owner of this Pipeline. Refer to *../../../type/entityReference.json*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.

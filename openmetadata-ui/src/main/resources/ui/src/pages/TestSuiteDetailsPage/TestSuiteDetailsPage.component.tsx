@@ -305,6 +305,7 @@ const TestSuiteDetailsPage = () => {
               {(testSuitePermissions.EditAll ||
                 testSuitePermissions.EditTests) && (
                 <Button
+                  data-testid="add-test-case-btn"
                   type="primary"
                   onClick={() => setIsTestCaseModalOpen(true)}>
                   {t('label.add-entity', {

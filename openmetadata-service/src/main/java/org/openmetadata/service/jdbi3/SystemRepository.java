@@ -144,16 +144,13 @@ public class SystemRepository {
 
   public void updateSetting(Settings setting) {
     try {
-      switch (setting.getConfigType()) {
-        case EMAIL_CONFIGURATION:
-          SmtpSettings emailConfig = JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
-          setting.setConfigValue(encryptEmailSetting(emailConfig));
-          break;
-        case SLACK_APP_CONFIGURATION:
-          SlackAppConfiguration appConfiguration =
-              JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
-          setting.setConfigValue(encryptSlackAppSetting(appConfiguration));
-          break;
+      if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
+        SmtpSettings emailConfig = JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
+        setting.setConfigValue(encryptEmailSetting(emailConfig));
+      } else if (setting.getConfigType() == SettingsType.SLACK_APP_CONFIGURATION) {
+        SlackAppConfiguration appConfiguration =
+            JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
+        setting.setConfigValue(encryptSlackAppSetting(appConfiguration));
       }
       dao.insertSettings(setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
       // Invalidate Cache
