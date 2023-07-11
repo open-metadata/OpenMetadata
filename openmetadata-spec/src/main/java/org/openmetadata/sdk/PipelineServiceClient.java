@@ -39,6 +39,7 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.Status;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.sdk.exception.PipelineServiceVersionException;
 
@@ -68,6 +69,7 @@ public abstract class PipelineServiceClient {
   private static final Integer MAX_ATTEMPTS = 3;
   private static final Integer BACKOFF_TIME_SECONDS = 5;
   public static final String HEALTHY_STATUS = "healthy";
+  public static final String UNHEALTHY_STATUS = "unhealthy";
   public static final String STATUS_KEY = "status";
 
   public static final Map<String, String> TYPE_TO_TASK =
@@ -159,13 +161,13 @@ public abstract class PipelineServiceClient {
   }
 
   /** To build the response of getServiceStatus */
-  public Map<String, String> buildHealthyStatus(String ingestionVersion) {
-    return Map.of("status", "healthy", "version", ingestionVersion, "platform", this.getPlatform());
+  public Status buildHealthyStatus(String ingestionVersion) {
+    return new Status().withStatus(HEALTHY_STATUS).withVersion(ingestionVersion).withPlatform(this.getPlatform());
   }
 
   /** To build the response of getServiceStatus */
-  public Map<String, String> buildUnhealthyStatus(String reason) {
-    return Map.of("status", "unhealthy", "reason", reason, "platform", this.getPlatform());
+  public Status buildUnhealthyStatus(String reason) {
+    return new Status().withStatus(UNHEALTHY_STATUS).withReason(reason).withPlatform(this.getPlatform());
   }
 
   public final Response getHostIp() {
@@ -213,7 +215,7 @@ public abstract class PipelineServiceClient {
           try {
             Response response = getServiceStatus();
             Map<String, String> responseMap = (Map<String, String>) response.getEntity();
-            return responseMap.get(STATUS_KEY) == null ? "unhealthy" : responseMap.get(STATUS_KEY);
+            return responseMap.get(STATUS_KEY) == null ? UNHEALTHY_STATUS : responseMap.get(STATUS_KEY);
           } catch (Exception e) {
             throw new RuntimeException(e);
           }
@@ -253,9 +255,6 @@ public abstract class PipelineServiceClient {
   /* Get the all last run logs of a deployed pipeline */
   public abstract Response killIngestion(IngestionPipeline ingestionPipeline);
 
-  /*
-  Get the Pipeline Service host IP to whitelist in source systems
-  Should return a map in the shape {"ip": "111.11.11.1"}
-  */
+  /* Get the Pipeline Service host IP to whitelist in source systems. Should return a map in the shape "ip: 111.11.11.1" */
   public abstract Map<String, String> requestGetHostIp();
 }

@@ -35,6 +35,7 @@ import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineS
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.Status;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
@@ -243,10 +244,10 @@ public class AirflowRESTClient extends PipelineServiceClient {
         String ingestionVersion = responseJSON.getString("version");
 
         if (Boolean.TRUE.equals(validServerClientVersions(ingestionVersion))) {
-          Map<String, String> status = buildHealthyStatus(ingestionVersion);
+          Status status = buildHealthyStatus(ingestionVersion);
           return Response.ok(status, MediaType.APPLICATION_JSON_TYPE).build();
         } else {
-          Map<String, String> status =
+          Status status =
               buildUnhealthyStatus(buildVersionMismatchErrorMessage(ingestionVersion, SERVER_VERSION));
           return Response.ok(status, MediaType.APPLICATION_JSON_TYPE).build();
         }
@@ -254,7 +255,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
 
       // Auth error when accessing the APIs
       if (response.statusCode() == 401 || response.statusCode() == 403) {
-        Map<String, String> status =
+        Status status =
             buildUnhealthyStatus(
                 String.format("Authentication failed for user [%s] trying to access the Airflow APIs.", this.username));
         return Response.ok(status, MediaType.APPLICATION_JSON_TYPE).build();
@@ -262,14 +263,14 @@ public class AirflowRESTClient extends PipelineServiceClient {
 
       // APIs URL not found
       if (response.statusCode() == 404) {
-        Map<String, String> status =
+        Status status =
             buildUnhealthyStatus("Airflow APIs not found. Please follow the installation guide.");
 
         return Response.ok(status, MediaType.APPLICATION_JSON_TYPE).build();
       }
 
     } catch (Exception e) {
-      Map<String, String> status =
+      Status status =
           buildUnhealthyStatus(String.format("Failed to get REST status due to [%s].", e.getMessage()));
 
       return Response.ok(status, MediaType.APPLICATION_JSON_TYPE).build();
