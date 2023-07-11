@@ -5,7 +5,7 @@ slug: /main-concepts/metadata-standard/schemas/type/tableusagecount
 
 # Table Usage Count
 
-*This model is the linking between the usage stage and bulksink steps*
+*This model is the linking between the usage stage and bulk sink steps*
 
 ## Properties
 
@@ -15,7 +15,7 @@ slug: /main-concepts/metadata-standard/schemas/type/tableusagecount
 - **`count`** *(integer)*: Usage count of table. Default: `1`.
 - **`databaseSchema`** *(string)*: Database schema of the associated with table.
 - **`sqlQueries`** *(array)*: List of SQL Queries associated with table.
-  - **Items**: Refer to *../entity/data/table.json#/definitions/sqlQuery*.
+  - **Items**: Refer to *../api/data/createQuery.json*.
 - **`joins`** *(array)*: List of joins associated with table.
   - **Items**: Refer to *#/definitions/tableColumnJoin*.
 - **`serviceName`** *(string)*: Name that identifies this database service.
@@ -30,4 +30,4 @@ slug: /main-concepts/metadata-standard/schemas/type/tableusagecount
     - **Items**: Refer to *#/definitions/tableColumn*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.

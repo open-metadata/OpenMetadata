@@ -5,7 +5,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/mlmodel
 
 # MlModel
 
-*This schema defines the Model entity. Models are algorithms trained on data to find patterns or make predictions.*
+*This schema defines the Model entity. `Machine Learning Models` are algorithms trained on data to find patterns or make predictions.*
 
 ## Properties
 
@@ -25,7 +25,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/mlmodel
 - **`server`**: Endpoint that makes the ML Model available, e.g,. a REST API serving the data or computing predictions. Refer to *../../type/basic.json#/definitions/href*.
 - **`href`**: Link to the resource corresponding to this entity. Refer to *../../type/basic.json#/definitions/href*.
 - **`owner`**: Owner of this ML Model. Refer to *../../type/entityReference.json*.
-- **`followers`**: Followers of this ML Model. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
+- **`followers`**: Followers of this ML Model. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
 - **`tags`** *(array)*: Tags for this ML Model. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
 - **`usageSummary`**: Latest usage information for this ML Model. Refer to *../../type/usageDetails.json*. Default: `None`.
@@ -36,6 +36,8 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/mlmodel
 - **`serviceType`**: Service type where this pipeline is hosted in. Refer to *../services/mlmodelService.json#/definitions/mlModelServiceType*.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
+- **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
+- **`domain`**: Domain the MLModel belongs to. When not set, the MLModel inherits the domain from the ML Model Service it belongs to. Refer to *../../type/entityReference.json*.
 ## Definitions
 
 - **`featureType`** *(string)*: This enum defines the type of data stored in a ML Feature. Must be one of: `['numerical', 'categorical']`.
@@ -67,4 +69,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/mlmodel
   - **`imageRepository`**: Container Repository with the ML Model image. Refer to *../../type/basic.json#/definitions/href*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.

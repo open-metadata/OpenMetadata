@@ -10,7 +10,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/glossary
 ## Properties
 
 - **`id`**: Unique identifier of a glossary instance. Refer to *../../type/basic.json#/definitions/uuid*.
-- **`name`** *(string)*: Preferred name for the glossary term. Refer to *#/definitions/name*.
+- **`name`**: Name of the glossary. Refer to *../../type/basic.json#/definitions/entityName*.
 - **`fullyQualifiedName`**: FullyQualifiedName same as name. Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*.
 - **`displayName`** *(string)*: Display Name that identifies this glossary.
 - **`description`**: Description of the glossary. Refer to *../../type/basic.json#/definitions/markdown*.
@@ -24,11 +24,13 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/glossary
 - **`usageCount`** *(integer)*: Count of how many times terms from this glossary are used.
 - **`tags`** *(array)*: Tags for this glossary. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
+- **`termCount`** *(integer)*: Total number of terms in the glossary. This includes all the children in the hierarchy. Minimum: `0`.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
-## Definitions
+- **`provider`**: Refer to *../../type/basic.json#/definitions/providerType*.
+- **`disabled`** *(boolean)*: System glossary can't be deleted. Use this flag to disable them.
+- **`mutuallyExclusive`** *(boolean)*: Glossary terms that are direct children in this glossary are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity. Default: `false`.
+- **`domain`**: Domain the Glossary belongs to. Refer to *../../type/entityReference.json*.
 
-- **`name`**: Name that identifies a glossary term. Refer to *../../type/basic.json#/definitions/entityName*.
 
-
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.
