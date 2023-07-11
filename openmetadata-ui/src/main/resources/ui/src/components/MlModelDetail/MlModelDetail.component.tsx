@@ -63,13 +63,13 @@ import MlModelFeaturesList from './MlModelFeaturesList';
 
 const MlModelDetail: FC<MlModelDetailProp> = ({
   mlModelDetail,
+  fetchMlModel,
   followMlModelHandler,
   unFollowMlModelHandler,
   descriptionUpdateHandler,
   settingsUpdateHandler,
   updateMlModelFeatures,
   onExtensionUpdate,
-
   createThread,
   versionHandler,
   tagUpdateHandler,
@@ -474,6 +474,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               entityType={EntityType.MLMODEL}
               fqn={mlModelDetail?.fullyQualifiedName ?? ''}
               onFeedUpdate={fetchEntityFeedCount}
+              onUpdateEntityDetails={fetchMlModel}
             />
           </ActivityFeedProvider>
         ),

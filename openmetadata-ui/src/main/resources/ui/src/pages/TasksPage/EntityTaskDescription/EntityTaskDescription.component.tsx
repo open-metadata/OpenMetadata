@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Popover, Space } from 'antd';
+import { Button, Space, Tooltip } from 'antd';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
@@ -87,29 +87,26 @@ const EntityTaskDescription = ({
             ? onUpdateDescriptionHandler()
             : onRequestDescriptionHandler()
         }>
-        <Popover
+        <Tooltip
           destroyTooltipOnHide
-          content={
+          title={
             hasDescription
               ? t('message.request-update-description')
               : t('message.request-description')
-          }
-          overlayClassName="ant-popover-request-description"
-          trigger="hover"
-          zIndex={9999}>
+          }>
           <IconRequest
             height={14}
             name={t('message.request-description')}
             style={{ color: DE_ACTIVE_COLOR }}
             width={14}
           />
-        </Popover>
+        </Tooltip>
       </Button>
     );
   };
 
   return (
-    <Space align="center" size={4}>
+    <Space size="small">
       {getRequestDescriptionElement()}
       {getFieldThreadElement(
         columnName,
@@ -118,8 +115,7 @@ const EntityTaskDescription = ({
         onThreadLinkSelect,
         entityType,
         entityFqn,
-        `${entityField}${ENTITY_LINK_SEPARATOR}${columnName}${ENTITY_LINK_SEPARATOR}description`,
-        Boolean(data)
+        `${entityField}${ENTITY_LINK_SEPARATOR}${columnName}${ENTITY_LINK_SEPARATOR}${EntityField.DESCRIPTION}`
       )}
     </Space>
   );

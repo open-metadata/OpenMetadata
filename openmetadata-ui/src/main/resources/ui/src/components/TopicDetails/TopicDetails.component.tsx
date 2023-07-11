@@ -58,6 +58,7 @@ import TopicSchemaFields from './TopicSchema/TopicSchema';
 
 const TopicDetails: React.FC<TopicDetailsProps> = ({
   topicDetails,
+  fetchTopic,
   followTopicHandler,
   unFollowTopicHandler,
   versionHandler,
@@ -361,6 +362,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               entityType={EntityType.TOPIC}
               fqn={topicDetails?.fullyQualifiedName ?? ''}
               onFeedUpdate={getEntityFeedCount}
+              onUpdateEntityDetails={fetchTopic}
             />
           </ActivityFeedProvider>
         ),

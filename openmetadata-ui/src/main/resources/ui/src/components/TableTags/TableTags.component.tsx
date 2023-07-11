@@ -48,19 +48,17 @@ const TableTags = <T extends TableUnion>({
           }}>
           <>
             {!isReadOnly && (
-              <div className="d-flex items-center">
-                <EntityTaskTags
-                  data={{
-                    fqn: record.fullyQualifiedName ?? '',
-                    tags: record.tags ?? [],
-                  }}
-                  entityFieldThreads={entityFieldThreads}
-                  entityFqn={entityFqn}
-                  entityType={entityType}
-                  tagSource={type}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
-              </div>
+              <EntityTaskTags
+                data={{
+                  fqn: record.fullyQualifiedName ?? '',
+                  tags: record.tags ?? [],
+                }}
+                entityFieldThreads={entityFieldThreads}
+                entityFqn={entityFqn}
+                entityType={entityType}
+                tagSource={type}
+                onThreadLinkSelect={onThreadLinkSelect}
+              />
             )}
           </>
         </TagsContainerV2>

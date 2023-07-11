@@ -28,6 +28,7 @@ export interface ChartsPermissions {
 export interface DashboardDetailsProps {
   charts: Array<ChartType>;
   dashboardDetails: Dashboard;
+  fetchDashboard: () => void;
   createThread: (data: CreateThread) => void;
   followDashboardHandler: () => Promise<void>;
   unFollowDashboardHandler: () => Promise<void>;

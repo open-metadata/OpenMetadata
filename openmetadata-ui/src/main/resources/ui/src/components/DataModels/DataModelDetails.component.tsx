@@ -46,6 +46,7 @@ import ModelTab from './ModelTab/ModelTab.component';
 const DataModelDetails = ({
   dataModelData,
   dataModelPermissions,
+  fetchDataModel,
   createThread,
   handleFollowDataModel,
   handleUpdateTags,
@@ -271,6 +272,7 @@ const DataModelDetails = ({
               entityType={EntityType.DASHBOARD_DATA_MODEL}
               fqn={dataModelData?.fullyQualifiedName ?? ''}
               onFeedUpdate={getEntityFeedCount}
+              onUpdateEntityDetails={fetchDataModel}
             />
           </ActivityFeedProvider>
         ),

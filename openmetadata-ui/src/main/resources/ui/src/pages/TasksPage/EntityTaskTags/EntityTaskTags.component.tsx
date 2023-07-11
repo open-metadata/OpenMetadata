@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Tooltip } from 'antd';
+import { Space, Tooltip } from 'antd';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
@@ -55,17 +55,15 @@ const EntityTaskTags = ({
       : columnName;
   }, [data.fqn]);
 
-  const onRequestTagsHandler = () => {
+  const onRequestTagsHandler = () =>
     history.push(
       getRequestTagsPath(entityType, entityFqn, entityField, columnName)
     );
-  };
 
-  const onUpdateTagsHandler = () => {
+  const onUpdateTagsHandler = () =>
     history.push(
       getUpdateTagsPath(entityType, entityFqn, entityField, columnName)
     );
-  };
 
   const getRequestTagsElement = useMemo(() => {
     const hasTags = !isEmpty(data.tags);
@@ -79,18 +77,13 @@ const EntityTaskTags = ({
             ? t('label.update-request-tag-plural')
             : t('label.request-tag-plural')
         }>
-        <Button
-          className="p-0 w-7 h-7 flex-center m-r-xss link-text hover-cell-icon"
+        <IconRequest
+          className="hover-cell-icon cursor-pointer"
           data-testid="request-tags"
-          icon={
-            <IconRequest
-              height={14}
-              name={t('label.request-tag-plural')}
-              style={{ color: DE_ACTIVE_COLOR }}
-              width={14}
-            />
-          }
-          type="text"
+          height={14}
+          name={t('label.request-tag-plural')}
+          style={{ color: DE_ACTIVE_COLOR }}
+          width={14}
           onClick={() =>
             hasTags ? onUpdateTagsHandler() : onRequestTagsHandler()
           }
@@ -100,7 +93,7 @@ const EntityTaskTags = ({
   }, [onUpdateTagsHandler, onRequestTagsHandler]);
 
   return (
-    <Space align="center" size={4}>
+    <Space size="middle">
       {/*  Request and Update tags */}
       {tagSource === TagSource.Classification && getRequestTagsElement}
 
@@ -112,8 +105,7 @@ const EntityTaskTags = ({
         onThreadLinkSelect,
         entityType,
         entityFqn,
-        `${entityField}${ENTITY_LINK_SEPARATOR}${columnName}${ENTITY_LINK_SEPARATOR}${EntityField.TAGS}`,
-        Boolean(data)
+        `${entityField}${ENTITY_LINK_SEPARATOR}${columnName}${ENTITY_LINK_SEPARATOR}${EntityField.TAGS}`
       )}
     </Space>
   );

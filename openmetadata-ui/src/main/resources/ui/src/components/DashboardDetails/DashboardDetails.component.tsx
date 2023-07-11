@@ -69,10 +69,11 @@ import {
 import TableDescription from 'components/TableDescription/TableDescription.component';
 
 const DashboardDetails = ({
+  charts,
+  dashboardDetails,
+  fetchDashboard,
   followDashboardHandler,
   unFollowDashboardHandler,
-  dashboardDetails,
-  charts,
   chartDescriptionUpdateHandler,
   chartTagUpdateHandler,
   versionHandler,
@@ -640,6 +641,7 @@ const DashboardDetails = ({
               entityType={EntityType.DASHBOARD}
               fqn={dashboardDetails?.fullyQualifiedName ?? ''}
               onFeedUpdate={getEntityFeedCount}
+              onUpdateEntityDetails={fetchDashboard}
             />
           </ActivityFeedProvider>
         ),

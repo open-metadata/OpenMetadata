@@ -77,9 +77,10 @@ import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interfa
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
 const PipelineDetails = ({
-  pipelineDetails,
-  descriptionUpdateHandler,
   followers,
+  pipelineDetails,
+  fetchPipeline,
+  descriptionUpdateHandler,
   followPipelineHandler,
   unFollowPipelineHandler,
   settingsUpdateHandler,
@@ -642,6 +643,7 @@ const PipelineDetails = ({
               entityType={EntityType.PIPELINE}
               fqn={pipelineDetails?.fullyQualifiedName ?? ''}
               onFeedUpdate={getEntityFeedCount}
+              onUpdateEntityDetails={fetchPipeline}
             />
           </ActivityFeedProvider>
         ),

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { TagOption } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -202,28 +202,5 @@ describe('Test EntityTable Component', () => {
     );
 
     expect(requestDescriptionButton[0]).toBeInTheDocument();
-  });
-
-  it('Should render start thread button', async () => {
-    render(<EntityTableV1 {...mockEntityTableProp} />, {
-      wrapper: MemoryRouter,
-    });
-
-    const entityTable = await screen.findByTestId('entity-table');
-
-    expect(entityTable).toBeInTheDocument();
-
-    const startThreadButton = await screen.findAllByTestId(
-      'start-field-thread'
-    );
-
-    expect(startThreadButton[0]).toBeInTheDocument();
-
-    fireEvent.click(
-      startThreadButton[0],
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
-
-    expect(onThreadLinkSelect).toHaveBeenCalled();
   });
 });
