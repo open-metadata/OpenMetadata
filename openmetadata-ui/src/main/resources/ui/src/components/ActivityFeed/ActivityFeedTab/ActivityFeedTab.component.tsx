@@ -350,6 +350,7 @@ export const ActivityFeedTab = ({
         )}
         <ActivityFeedListV1
           hidePopover
+          isForFeedTab
           activeFeedId={selectedThread?.id}
           emptyPlaceholderText={placeholderText}
           feedList={threads}
@@ -383,6 +384,7 @@ export const ActivityFeedTab = ({
                 />
               </div>
               <FeedPanelBodyV1
+                isForFeedTab
                 isOpenInDrawer
                 showThread
                 feed={selectedThread}
