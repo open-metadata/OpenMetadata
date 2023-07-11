@@ -45,7 +45,6 @@
   },
   "required": [
     "token",
-    "user",
     "tokenType",
     "tokenStatus",
     "expiryDate"
