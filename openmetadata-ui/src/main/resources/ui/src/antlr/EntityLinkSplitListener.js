@@ -13,39 +13,33 @@
 
 import EntityLinkListener from '../generated/antlr/EntityLinkListener';
 
-interface Context {
-  getText: () => string;
-}
-
 export default class EntityLinkSplitListener extends EntityLinkListener {
-  private entityLinkParts: string[];
-
   constructor() {
     super();
     this.entityLinkParts = [];
   }
 
   // Enter a parse tree produced by EntityLinkParser#entityType.
-  enterEntityType(ctx: Context) {
+  enterEntityType(ctx) {
     this.entityLinkParts.push(ctx.getText());
   }
 
   // Enter a parse tree produced by EntityLinkParser#entityAttribute.
-  enterEntityAttribute(ctx: Context) {
+  enterEntityAttribute(ctx) {
     this.entityLinkParts.push(ctx.getText());
   }
 
   // Enter a parse tree produced by EntityLinkParser#entityFqn.
-  enterEntityFqn(ctx: Context) {
+  enterEntityFqn(ctx) {
     this.entityLinkParts.push(ctx.getText());
   }
 
   // Enter a parse tree produced by EntityLinkParser#entityField.
-  enterEntityField(ctx: Context) {
+  enterEntityField(ctx) {
     this.entityLinkParts.push(ctx.getText());
   }
 
-  split(): string[] {
+  split() {
     return this.entityLinkParts;
   }
 }
