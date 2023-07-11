@@ -98,6 +98,7 @@ jobs:
 
       - name: Generating Data Models
         run: |
+          pip install --upgrade pip
           sudo make install_antlr_cli
           make install_dev generate
 

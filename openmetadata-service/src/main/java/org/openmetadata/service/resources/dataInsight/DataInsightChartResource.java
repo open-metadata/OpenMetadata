@@ -67,8 +67,8 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "analytics")
 public class DataInsightChartResource extends EntityResource<DataInsightChart, DataInsightChartRepository> {
-  private static SearchClient searchClient;
-  private static CollectionDAO collectionDao;
+  private SearchClient searchClient;
+  private final CollectionDAO collectionDao;
   public static final String COLLECTION_PATH = DataInsightChartRepository.COLLECTION_PATH;
   public static final String FIELDS = "owner";
 
@@ -81,7 +81,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
 
   public DataInsightChartResource(CollectionDAO dao, Authorizer authorizer) {
     super(DataInsightChart.class, new DataInsightChartRepository(dao), authorizer);
-    this.collectionDao = dao;
+    collectionDao = dao;
   }
 
   public static class DataInsightChartList extends ResultList<DataInsightChart> {
@@ -98,7 +98,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
           InstantiationException, IllegalAccessException {
     // instantiate an elasticsearch client
     if (config.getElasticSearchConfiguration() != null) {
-      this.searchClient = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), collectionDao);
+      searchClient = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), collectionDao);
     }
     // Find the existing webAnalyticEventTypes and add them from json files
     List<DataInsightChart> dataInsightCharts = repository.getEntitiesFromSeedData(".*json/data/dataInsight/.*\\.json$");
@@ -460,13 +460,9 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
           @QueryParam("endTs")
           Long endTs)
       throws IOException, ParseException {
-
     OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
-
-    Response response =
-        searchClient.listDataInsightChartResult(startTs, endTs, tier, team, dataInsightChartName, dataReportIndex);
-    return response;
+    return searchClient.listDataInsightChartResult(startTs, endTs, tier, team, dataInsightChartName, dataReportIndex);
   }
 
   private DataInsightChart getDataInsightChart(CreateDataInsightChart create, String user) throws IOException {

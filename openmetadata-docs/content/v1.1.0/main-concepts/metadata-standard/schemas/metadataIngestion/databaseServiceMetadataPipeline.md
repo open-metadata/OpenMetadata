@@ -10,35 +10,18 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/databaseservice
 ## Properties
 
 - **`type`**: Pipeline type. Refer to *#/definitions/databaseMetadataConfigType*. Default: `DatabaseMetadata`.
-- **`markDeletedTables`** *(boolean)*: Optional configuration to soft delete tables in OpenMetadata if the source tables are deleted. Default: `True`.
+- **`markDeletedTables`** *(boolean)*: This is an optional configuration for enabling soft deletion of tables. When this option is enabled, only tables that have been deleted from the source will be soft deleted, and this will apply solely to the schema that is currently being ingested via the pipeline. Any related entities such as test suites or lineage information that were associated with those tables will also be deleted. Default: `True`.
+- **`markAllDeletedTables`** *(boolean)*: This is an optional configuration for enabling soft deletion of tables. When this option is enabled, only tables that have been deleted from the source will be soft deleted, and this will apply to all the schemas available in the data source. Any related entities such as test suites or lineage information that were associated with those tables will also be deleted. Do not enable this option when you have multiple metadata ingestion pipelines. Also make sure to enable the markDeletedTables option for this to work. Default: `False`.
 - **`includeTables`** *(boolean)*: Optional configuration to turn off fetching metadata for tables. Default: `True`.
 - **`includeViews`** *(boolean)*: Optional configuration to turn off fetching metadata for views. Default: `True`.
-- **`includeTags`** *(boolean)*: Optional configuration to turn off fetching metadata for tags. Default: `True`.
+- **`includeTags`** *(boolean)*: Optional configuration to toggle the tags ingestion. Default: `True`.
+- **`useFqnForFiltering`** *(boolean)*: Regex will be applied on fully qualified name (e.g service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name). Default: `False`.
 - **`schemaFilterPattern`**: Regex to only fetch tables or databases that matches the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
 - **`tableFilterPattern`**: Regex exclude tables or databases that matches the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
 - **`databaseFilterPattern`**: Regex to only fetch databases that matches the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
-- **`dbtConfigSource`**: Available sources to fetch DBT catalog and manifest files.
 ## Definitions
 
 - **`databaseMetadataConfigType`** *(string)*: Database Source Config Metadata Pipeline type. Must be one of: `['DatabaseMetadata']`. Default: `DatabaseMetadata`.
-- **`dbtBucketDetails`** *(object)*: Details of the bucket where the dbt files are stored. Cannot contain additional properties.
-  - **`dbtBucketName`** *(string)*: Name of the bucket where the dbt files are stored.
-  - **`dbtObjectPrefix`** *(string)*: Path of the folder where the dbt files are stored.
-- **`dbtCloudConfig`** *(object)*: DBT Catalog and Manifest HTTP path configuration. Cannot contain additional properties.
-  - **`dbtCloudAuthToken`** *(string)*: DBT cloud account authentication token.
-  - **`dbtCloudAccountId`** *(string)*: DBT cloud account Id.
-- **`dbtLocalConfig`** *(object)*: DBT Catalog and Manifest file path config. Cannot contain additional properties.
-  - **`dbtCatalogFilePath`** *(string)*: DBT catalog file path to extract dbt models with their column schemas.
-  - **`dbtManifestFilePath`** *(string)*: DBT manifest file path to extract dbt models and associate with tables.
-- **`dbtHttpConfig`** *(object)*: DBT Catalog and Manifest HTTP path configuration. Cannot contain additional properties.
-  - **`dbtCatalogHttpPath`** *(string)*: DBT catalog http file path to extract dbt models with their column schemas.
-  - **`dbtManifestHttpPath`** *(string)*: DBT manifest http file path to extract dbt models and associate with tables.
-- **`dbtS3Config`**: DBT Catalog and Manifest files in S3 bucket. We will search for catalog.json and manifest.json.
-  - **`dbtSecurityConfig`**: Refer to *../security/credentials/awsCredentials.json*.
-  - **`dbtPrefixConfig`**: Refer to *#/definitions/dbtBucketDetails*.
-- **`dbtGCSConfig`**: DBT Catalog and Manifest files in GCS storage. We will search for catalog.json and manifest.json.
-  - **`dbtSecurityConfig`**: Refer to *../security/credentials/gcpCredentials.json*.
-  - **`dbtPrefixConfig`**: Refer to *#/definitions/dbtBucketDetails*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.

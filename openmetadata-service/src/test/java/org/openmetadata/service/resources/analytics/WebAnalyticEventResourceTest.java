@@ -101,7 +101,7 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
             TestUtils.dateToTimestamp("2022-10-11"),
             ADMIN_AUTH_HEADERS);
 
-    assertEquals(webAnalyticEventDataResultList.getData().size(), 1);
+    assertEquals(1, webAnalyticEventDataResultList.getData().size());
 
     ResultList<WebAnalyticEventData> emptyWebAnalyticEventDataResultList =
         getWebAnalyticEventData(
@@ -110,7 +110,7 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
             TestUtils.dateToTimestamp("2022-10-10"),
             ADMIN_AUTH_HEADERS);
 
-    assertEquals(emptyWebAnalyticEventDataResultList.getData().size(), 0);
+    assertEquals(0, emptyWebAnalyticEventDataResultList.getData().size());
   }
 
   @Test

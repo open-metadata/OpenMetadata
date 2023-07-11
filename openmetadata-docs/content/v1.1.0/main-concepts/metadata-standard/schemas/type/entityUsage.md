@@ -14,4 +14,4 @@ slug: /main-concepts/metadata-standard/schemas/type/entityusage
   - **Items**: Refer to *usageDetails.json*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.

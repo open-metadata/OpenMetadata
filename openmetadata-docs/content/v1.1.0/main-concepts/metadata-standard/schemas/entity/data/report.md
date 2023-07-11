@@ -5,7 +5,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/report
 
 # Report
 
-*This schema defines the Report entity. Reports are static information computed from data periodically that includes data in text, table, and visual form.*
+*This schema defines the Report entity. `Reports` are static information computed from data periodically that includes data in text, table, and visual form.*
 
 ## Properties
 
@@ -25,4 +25,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/report
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.

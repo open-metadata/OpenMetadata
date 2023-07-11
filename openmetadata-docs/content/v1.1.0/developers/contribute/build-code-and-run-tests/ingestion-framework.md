@@ -72,7 +72,7 @@ docker compose down -v && docker compose up --build
 
 ## Running tests
 
-To run the tests, you'll to install some packages via `make install_test`.
+To run the tests, you'll need to install some packages via `make install_test`.
 
 You can validate the environment by running `make coverage` from the root directory. Note that from some tests, having 
 the OpenMetadata server instance up is required as they interact with the API.

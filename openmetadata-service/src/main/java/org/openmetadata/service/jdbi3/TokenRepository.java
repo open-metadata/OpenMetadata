@@ -32,10 +32,6 @@ public class TokenRepository {
     dao.getTokenDAO().insert(JsonUtils.pojoToJson(tokenInterface));
   }
 
-  public void updateToken(TokenInterface tokenInterface) throws JsonProcessingException {
-    dao.getTokenDAO().update(tokenInterface.getToken().toString(), JsonUtils.pojoToJson(tokenInterface));
-  }
-
   public void deleteToken(String token) {
     try {
       dao.getTokenDAO().delete(token);

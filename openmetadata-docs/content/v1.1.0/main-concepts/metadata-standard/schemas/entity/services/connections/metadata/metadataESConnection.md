@@ -10,24 +10,16 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metad
 ## Properties
 
 - **`type`**: Service Type. Refer to *#/definitions/metadataESType*. Default: `MetadataES`.
-- **`includeTopics`** *(boolean)*: Include Topics for Indexing. Default: `true`.
-- **`includeTables`** *(boolean)*: Include Tables for Indexing. Default: `true`.
-- **`includeDashboards`** *(boolean)*: Include Dashboards for Indexing. Default: `true`.
-- **`includePipelines`** *(boolean)*: Include Pipelines for Indexing. Default: `true`.
-- **`includeMlModels`** *(boolean)*: Include MlModels for Indexing. Default: `true`.
-- **`includeUsers`** *(boolean)*: Include Users for Indexing. Default: `true`.
-- **`includeTeams`** *(boolean)*: Include Teams for Indexing. Default: `true`.
-- **`includeGlossaryTerms`** *(boolean)*: Include Glossary Terms for Indexing. Default: `true`.
-- **`includePolicy`** *(boolean)*: Include Tags for Policy. Default: `True`.
-- **`includeMessagingServices`** *(boolean)*: Include Messaging Services for Indexing. Default: `True`.
-- **`includeDatabaseServices`** *(boolean)*: Include Database Services for Indexing. Default: `True`.
-- **`includePipelineServices`** *(boolean)*: Include Pipeline Services for Indexing. Default: `True`.
-- **`includeTags`** *(boolean)*: Include Tags for Indexing. Default: `True`.
-- **`limitRecords`** *(integer)*: Limit the number of records for Indexing. Default: `1000`.
+- **`entities`** *(array)*: List of entities that you need to reindex. Default: `['table', 'topic', 'dashboard', 'pipeline', 'mlmodel', 'user', 'team', 'glossaryTerm', 'tag', 'entityReportData', 'webAnalyticEntityViewReportData', 'webAnalyticUserActivityReportData', 'container', 'query']`.
+  - **Items** *(string)*
+- **`recreateIndex`** *(boolean)*: Default: `True`.
+- **`runMode`**: Refer to *../../../../system/eventPublisherJob.json#/definitions/runMode*.
+- **`searchIndexMappingLanguage`**: Recreate Indexes with updated Language. Refer to *../../../../configuration/elasticSearchConfiguration.json#/definitions/searchIndexMappingLanguage*.
+- **`batchSize`** *(integer)*: Maximum number of events sentx in a batch (Default 10). Default: `100`.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
 ## Definitions
 
 - **`metadataESType`** *(string)*: Metadata to Elastic Search type. Must be one of: `['MetadataES']`. Default: `MetadataES`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.

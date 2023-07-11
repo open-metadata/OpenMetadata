@@ -52,6 +52,7 @@ public class PostgresMigration implements MigrationStep {
   @Override
   public void preDDL() {
     // FQNHASH
+    preDDLFixQueryEntityFQN();
     preDDLFQNHashing();
   }
 
@@ -68,6 +69,14 @@ public class PostgresMigration implements MigrationStep {
 
   @Override
   public void close() {}
+
+  private void preDDLFixQueryEntityFQN() {
+    List<String> queryList =
+        List.of(
+            // Add missing FQN to query_entity
+            "UPDATE query_entity SET json = jsonb_set(json::jsonb, '{fullyQualifiedName}', json#>'{name}') WHERE json#>'{fullyQualifiedName}' IS NULL");
+    performSqlExecutionAndUpdation(this, migrationDAO, handle, queryList);
+  }
 
   private void preDDLFQNHashing() {
     // These are DDL Statements and will cause an Implicit commit even if part of transaction still committed inplace
