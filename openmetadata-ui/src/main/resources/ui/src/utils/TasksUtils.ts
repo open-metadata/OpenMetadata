@@ -190,7 +190,7 @@ export const fetchOptions = (
     .catch((err: AxiosError) => showErrorToast(err));
 };
 
-export const getColumnsDetailsEntity = (
+export const getEntityColumnsDetails = (
   entityType: string,
   entityData: EntityData
 ) => {
@@ -228,19 +228,18 @@ export const getColumnObject = (
   entityType: EntityType,
   chartData?: Chart[]
 ): EntityColumnProps => {
-  let columnObject: EntityColumnProps = {} as {
-    description: string;
-    tags: TagLabel[];
-  };
+  let columnObject: EntityColumnProps = {} as EntityColumnProps;
+
   for (let index = 0; index < columns.length; index++) {
     const column = columns[index];
     if (isEqual(column.name, columnName)) {
       columnObject = {
         description: column.description ?? '',
         tags:
-          column.tags ?? entityType === EntityType.DASHBOARD
+          column.tags ??
+          (entityType === EntityType.DASHBOARD
             ? chartData?.find((item) => item.name === columnName)?.tags ?? []
-            : [],
+            : []),
       };
 
       break;

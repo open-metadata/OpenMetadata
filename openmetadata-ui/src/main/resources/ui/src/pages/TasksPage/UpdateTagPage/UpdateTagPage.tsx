@@ -47,7 +47,7 @@ import {
   fetchOptions,
   getBreadCrumbList,
   getColumnObject,
-  getColumnsDetailsEntity,
+  getEntityColumnsDetails,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
@@ -94,11 +94,11 @@ const UpdateTag = () => {
 
     return getColumnObject(
       column[0],
-      getColumnsDetailsEntity(entityType, entityData),
+      getEntityColumnsDetails(entityType, entityData),
       entityType as EntityType,
       chartData
     );
-  }, [field, entityData, chartData]);
+  }, [field, entityData, chartData, entityType]);
 
   const getTags = () => {
     if (!isEmpty(columnObject) && !isUndefined(columnObject)) {

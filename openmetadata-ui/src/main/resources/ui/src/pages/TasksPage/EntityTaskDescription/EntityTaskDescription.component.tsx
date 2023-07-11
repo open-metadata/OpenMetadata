@@ -52,20 +52,9 @@ const EntityTaskDescription = ({
       : columnName;
   }, [data.fqn]);
 
-  const onUpdateDescriptionHandler = () => {
+  const handleDescriptionHandler = (hasDescription: boolean) => {
     history.push(
-      getUpdateDescriptionPath(
-        entityType,
-        entityFqn as string,
-        entityField,
-        columnName
-      )
-    );
-  };
-
-  const onRequestDescriptionHandler = () => {
-    history.push(
-      getRequestDescriptionPath(
+      (hasDescription ? getUpdateDescriptionPath : getRequestDescriptionPath)(
         entityType,
         entityFqn as string,
         entityField,
@@ -82,11 +71,7 @@ const EntityTaskDescription = ({
         className="p-0 w-7 h-7 flex-none flex-center link-text focus:tw-outline-none hover-cell-icon"
         data-testid="request-description"
         type="text"
-        onClick={() =>
-          hasDescription
-            ? onUpdateDescriptionHandler()
-            : onRequestDescriptionHandler()
-        }>
+        onClick={() => handleDescriptionHandler(hasDescription)}>
         <Tooltip
           destroyTooltipOnHide
           title={

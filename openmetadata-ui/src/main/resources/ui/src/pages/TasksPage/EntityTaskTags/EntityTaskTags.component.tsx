@@ -55,15 +55,16 @@ const EntityTaskTags = ({
       : columnName;
   }, [data.fqn]);
 
-  const onRequestTagsHandler = () =>
+  const handleTagHandler = (hasTags: boolean) => {
     history.push(
-      getRequestTagsPath(entityType, entityFqn, entityField, columnName)
+      (hasTags ? getUpdateTagsPath : getRequestTagsPath)(
+        entityType,
+        entityFqn,
+        entityField,
+        columnName
+      )
     );
-
-  const onUpdateTagsHandler = () =>
-    history.push(
-      getUpdateTagsPath(entityType, entityFqn, entityField, columnName)
-    );
+  };
 
   const getRequestTagsElement = useMemo(() => {
     const hasTags = !isEmpty(data.tags);
@@ -84,13 +85,11 @@ const EntityTaskTags = ({
           name={t('label.request-tag-plural')}
           style={{ color: DE_ACTIVE_COLOR }}
           width={14}
-          onClick={() =>
-            hasTags ? onUpdateTagsHandler() : onRequestTagsHandler()
-          }
+          onClick={() => handleTagHandler(hasTags)}
         />
       </Tooltip>
     );
-  }, [onUpdateTagsHandler, onRequestTagsHandler]);
+  }, [data]);
 
   return (
     <Space size="middle">

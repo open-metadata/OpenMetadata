@@ -44,7 +44,7 @@ import {
   fetchOptions,
   getBreadCrumbList,
   getColumnObject,
-  getColumnsDetailsEntity,
+  getEntityColumnsDetails,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
@@ -88,10 +88,10 @@ const UpdateDescription = () => {
 
     return getColumnObject(
       column[0],
-      getColumnsDetailsEntity(entityType, entityData),
+      getEntityColumnsDetails(entityType, entityData),
       entityType as EntityType
     );
-  }, [field, entityData]);
+  }, [field, entityData, entityType]);
 
   const getDescription = () => {
     if (!isEmpty(columnObject) && !isUndefined(columnObject)) {
