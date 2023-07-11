@@ -14,7 +14,11 @@ slug: /main-concepts/metadata-standard/schemas/api/services/createpipelineservic
 - **`description`**: Description of pipeline service entity. Refer to *../../type/basic.json#/definitions/markdown*.
 - **`serviceType`**: Refer to *../../entity/services/pipelineService.json#/definitions/pipelineServiceType*.
 - **`connection`**: Refer to *../../entity/services/pipelineService.json#/definitions/pipelineConnection*.
+- **`tags`** *(array)*: Tags for this Pipeline Service. Default: `None`.
+  - **Items**: Refer to *../../type/tagLabel.json*.
 - **`owner`**: Owner of this pipeline service. Refer to *../../type/entityReference.json*.
+- **`scheduleInterval`** *(string)*: Scheduler Interval for the pipeline in cron format. Default: `None`.
+- **`domain`** *(string)*: Fully qualified name of the domain the Pipeline Service belongs to.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.

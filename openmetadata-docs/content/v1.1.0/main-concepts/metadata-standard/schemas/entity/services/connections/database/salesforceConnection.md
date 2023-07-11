@@ -13,14 +13,16 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`username`** *(string)*: Username to connect to the Salesforce. This user should have privileges to read all the metadata in Redshift.
 - **`password`** *(string)*: Password to connect to the Salesforce.
 - **`securityToken`** *(string)*: Salesforce Security Token.
-- **`hostPort`** *(string)*: Host and port of the Salesforce service.
 - **`sobjectName`** *(string)*: Salesforce Object Name.
+- **`databaseName`** *(string)*: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
+- **`salesforceApiVersion`** *(string)*: API version of the Salesforce instance. Default: `42.0`.
+- **`salesforceDomain`** *(string)*: Domain of Salesforce instance. Default: `login`.
 - **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
 - **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
-- **`supportsProfiler`**: Refer to *../connectionBasicType.json#/definitions/supportsProfiler*.
 ## Definitions
 
 - **`salesforceType`** *(string)*: Service type. Must be one of: `['Salesforce']`. Default: `Salesforce`.
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.

@@ -12,9 +12,12 @@ slug: /main-concepts/metadata-standard/schemas/api/services/createdatabaseservic
 - **`name`**: Name that identifies the this entity instance uniquely. Refer to *../../type/basic.json#/definitions/entityName*.
 - **`displayName`** *(string)*: Display Name that identifies this database service.
 - **`description`**: Description of Database entity. Refer to *../../type/basic.json#/definitions/markdown*.
+- **`tags`** *(array)*: Tags for this Database Service. Default: `None`.
+  - **Items**: Refer to *../../type/tagLabel.json*.
 - **`serviceType`**: Refer to *../../entity/services/databaseService.json#/definitions/databaseServiceType*.
 - **`connection`**: Refer to *../../entity/services/databaseService.json#/definitions/databaseConnection*.
 - **`owner`**: Owner of this database service. Refer to *../../type/entityReference.json*.
+- **`domain`** *(string)*: Fully qualified name of the domain the Database Service belongs to.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.
