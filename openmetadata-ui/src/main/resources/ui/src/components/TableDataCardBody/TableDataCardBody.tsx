@@ -39,8 +39,9 @@ const TableDataCardBody: FunctionComponent<Props> = ({
       <div className="m-b-sm description-text" data-testid="description-text">
         {description.trim() ? (
           <RichTextEditorPreviewer
+            className="max-two-lines"
             markdown={description}
-            maxLength={150}
+            maxLength={350}
             showReadMoreBtn={false}
           />
         ) : (
