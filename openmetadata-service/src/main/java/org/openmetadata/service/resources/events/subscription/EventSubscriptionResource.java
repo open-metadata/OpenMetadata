@@ -95,8 +95,6 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   public static final String FIELDS = "owner,filteringRules";
   private final CollectionDAO daoCollection;
 
-  private SearchClient searchClient;
-
   @Override
   public EventSubscription addHref(UriInfo uriInfo, EventSubscription entity) {
     Entity.withHref(uriInfo, entity.getOwner());
@@ -124,6 +122,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
+    SearchClient searchClient;
     try {
       repository.initSeedDataFromResources();
       EventsSubscriptionRegistry.initialize(listOrEmpty(EventSubscriptionResource.getDescriptors()));
@@ -145,7 +144,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
               .listAllEventsSubscriptions(daoCollection.eventSubscriptionDAO().getTableName());
       List<EventSubscription> eventSubList = JsonUtils.readObjects(listAllEventsSubscriptions, EventSubscription.class);
       eventSubList.forEach(
-          (subscription) -> {
+          subscription -> {
             if (subscription.getSubscriptionType() != ACTIVITY_FEED) {
               repository.addSubscriptionPublisher(subscription);
             }
