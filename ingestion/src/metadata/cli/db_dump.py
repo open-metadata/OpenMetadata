@@ -71,7 +71,6 @@ def clean_str(raw: str, engine: Engine) -> str:
 
 
 @singledispatch
-# pylint: disable=line-too-long
 def clean_col(column_raw: Optional[Union[dict, str]], engine: Engine) -> str:
     return (
         single_quote_wrap(clean_str(str(column_raw), engine))
