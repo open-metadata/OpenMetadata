@@ -149,7 +149,7 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   public void validateCreatedEntity(
       StorageService service, CreateStorageService createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    assertEquals(service.getName(), service.getName());
+    assertEquals(createRequest.getName(), service.getName());
     StorageConnection expectedConnection = createRequest.getConnection();
     StorageConnection actualConnection = service.getConnection();
     validateConnection(expectedConnection, actualConnection, service.getServiceType());
