@@ -212,24 +212,14 @@ describe('Add and Remove Owner and Tier', () => {
     );
 
     // Click on edit owner button
-    cy.get('[data-testid="edit-owner"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="edit-owner"]').click();
     verifyResponseStatusCode('@waitForUsers', 200);
 
-    cy.get('.user-team-select-popover')
-      .contains('Users')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('.user-team-select-popover').contains('Users').click();
 
     cy.get('[data-testid="selectable-list"]')
       .eq(1)
-      .should('exist')
-      .should('be.visible')
       .find(`[title="${OWNER}"]`)
-      .should('be.visible')
       .click();
 
     verifyResponseStatusCode('@patchOwner', 200);
