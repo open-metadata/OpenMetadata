@@ -18,16 +18,16 @@ from uuid import uuid4
 
 import boto3
 import botocore
+import moto
 from sqlalchemy import TEXT, Column, Date, DateTime, Integer, String, Time
 from sqlalchemy.orm import declarative_base
-import moto
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
 from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
 )
-from metadata.profiler.interface.profiler_interface import  ProfilerInterface
+from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler
@@ -51,6 +51,7 @@ class User(Base):
 class FakeConnection:
     def client(self):
         return None
+
 
 class DatalakeMetricsTest(TestCase):
     """
@@ -82,8 +83,15 @@ class DatalakeMetricsTest(TestCase):
         )
 
         with (
-            mock.patch("metadata.profiler.interface.profiler_interface.get_connection", return_value=FakeConnection) as mock_get_connection,
-            mock.patch.object(PandasProfilerInterface, "_convert_table_to_list_of_dataframe_objects", return_value=[cls.df1, cls.df2]) as mocked_dfs,
+            mock.patch(
+                "metadata.profiler.interface.profiler_interface.get_connection",
+                return_value=FakeConnection,
+            ) as mock_get_connection,
+            mock.patch.object(
+                PandasProfilerInterface,
+                "_convert_table_to_list_of_dataframe_objects",
+                return_value=[cls.df1, cls.df2],
+            ) as mocked_dfs,
         ):
             cls.datalake_profiler_interface = PandasProfilerInterface(
                 entity=table_entity,
@@ -95,7 +103,6 @@ class DatalakeMetricsTest(TestCase):
                 sample_query=None,
                 table_partition_config=None,
             )
-
 
     def test_count(self):
         """
@@ -626,4 +633,3 @@ class DatalakeMetricsTest(TestCase):
         )
 
         assert res.get(User.age.name)[Metrics.SUM.name] == 141
-

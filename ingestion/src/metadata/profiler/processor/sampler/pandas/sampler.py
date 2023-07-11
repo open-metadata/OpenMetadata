@@ -15,9 +15,16 @@ for the profiler
 import math
 import random
 from typing import cast
-from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import TableRowInsertedCountToBeBetweenValidator
 
-from metadata.generated.schema.entity.data.table import PartitionIntervalType, PartitionProfilerConfig, ProfileSampleType, TableData
+from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import (
+    TableRowInsertedCountToBeBetweenValidator,
+)
+from metadata.generated.schema.entity.data.table import (
+    PartitionIntervalType,
+    PartitionProfilerConfig,
+    ProfileSampleType,
+    TableData,
+)
 from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
 
 
@@ -32,20 +39,14 @@ class DatalakeSampler(SamplerInterface):
 
     def _partitioned_table(self):
         """Get partitioned table"""
-        self._partition_details = cast(
-            PartitionProfilerConfig, self._partition_details
-        )
+        self._partition_details = cast(PartitionProfilerConfig, self._partition_details)
         partition_field = self._partition_details.partitionColumnName
         if (
             self._partition_details.partitionIntervalType
             == PartitionIntervalType.COLUMN_VALUE
         ):
             return [
-                df[
-                    df[partition_field].isin(
-                        self._partition_details.partitionValues
-                    )
-                ]
+                df[df[partition_field].isin(self._partition_details.partitionValues)]
                 for df in self.table
             ]
         if (
@@ -77,13 +78,9 @@ class DatalakeSampler(SamplerInterface):
         cols, rows = self.get_col_row(data_frame=self._rdn_sample_from_user_query())
         return TableData(columns=cols, rows=rows)
 
-
     def _rdn_sample_from_user_query(self):
         """Generate sample from user query"""
-        return [
-            df.query(self._profile_sample_query) for df in self.table
-        ]
-
+        return [df.query(self._profile_sample_query) for df in self.table]
 
     def _get_sampled_dataframe(self):
         """
@@ -92,25 +89,23 @@ class DatalakeSampler(SamplerInterface):
         random.shuffle(self.table)  # we'll shuffle the list of dataframes
         # sampling data based on profiler config (if any)
         if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
-                try:
-                    profile_sample = self.profile_sample / 100
-                except TypeError:
-                    # if the profile sample is not a number or is None
-                    # we'll set it to 100
-                    profile_sample = self.profile_sample = 100
-                return [
-                    df.sample(
-                        frac=profile_sample,
-                        random_state=random.randint(0, 100),
-                        replace=True,
-                    )
-                    for df in self.table
-                ]
+            try:
+                profile_sample = self.profile_sample / 100
+            except TypeError:
+                # if the profile sample is not a number or is None
+                # we'll set it to 100
+                profile_sample = self.profile_sample = 100
+            return [
+                df.sample(
+                    frac=profile_sample,
+                    random_state=random.randint(0, 100),
+                    replace=True,
+                )
+                for df in self.table
+            ]
 
         # we'll distribute the sample size equally among the dataframes
-        sample_rows_per_chunk: int = math.floor(
-            self.profile_sample / len(self.table)
-        )
+        sample_rows_per_chunk: int = math.floor(self.profile_sample / len(self.table))
         num_rows = sum(len(df) for df in self.table)
 
         # if we have less rows than the sample size
@@ -142,7 +137,7 @@ class DatalakeSampler(SamplerInterface):
 
     def random_sample(self):
         """Generate random sample from the table
-        
+
         Returns:
             List[DataFrame]
         """
@@ -162,7 +157,7 @@ class DatalakeSampler(SamplerInterface):
 
         Returns:
             TableData:
-        """        
+        """
         if self._profile_sample_query:
             return self._fetch_sample_data_from_user_query()
 

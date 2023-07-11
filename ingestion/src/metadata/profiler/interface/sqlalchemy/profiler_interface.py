@@ -38,6 +38,7 @@ from metadata.profiler.orm.functions.table_metric_construct import (
     table_metric_construct_factory,
 )
 from metadata.profiler.processor.runner import QueryRunner
+from metadata.profiler.processor.sampler.sampler_factory import sampler_factory
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
@@ -64,7 +65,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
     sqlalchemy.
     """
 
-    # pylint: disable=too-many-instance-attributes,too-many-arguments
+    # pylint: disable=too-many-arguments
 
     def __init__(
         self,
@@ -103,6 +104,20 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
     @property
     def table(self):
         return self._table
+
+    def _get_sampler(self, **kwargs):
+        """get sampler object"""
+        session = kwargs.get("session")
+        table = kwargs["table"]
+
+        return sampler_factory.create(
+            self.service_connection_config.__class__.__name__,
+            client=session or self.session,
+            table=table,
+            profile_sample_config=self.profile_sample_config,
+            partition_details=self.partition_details,
+            profile_sample_query=self.profile_query,
+        )
 
     @staticmethod
     def _is_array_column(column) -> Dict[str, Union[Optional[str], bool]]:
@@ -537,9 +552,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         Returns:
             dictionnary of results
         """
-        sampler = self._get_sampler(
-            table=kwargs.get("table")
-        )
+        sampler = self._get_sampler(table=kwargs.get("table"))
         sample = sampler.random_sample()
         try:
             return metric(column).fn(sample, column_results, self.session)

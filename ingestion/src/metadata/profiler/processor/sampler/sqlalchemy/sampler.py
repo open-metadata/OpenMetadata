@@ -12,7 +12,7 @@
 Helper module to handle data sampling
 for the profiler
 """
-from typing import Dict, List, Optional, Union, cast
+from typing import Union, cast
 
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
@@ -29,8 +29,8 @@ from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.orm.registry import Dialects
-from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
 from metadata.profiler.processor.handle_partition import partition_filter_handler
+from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
 from metadata.utils.sqa_utils import (
     build_query_filter,
     dispatch_to_date_or_datetime,
@@ -129,11 +129,7 @@ class SQASampler(SamplerInterface):
 
         # Add new RandomNumFn column
         rnd = self.get_sample_query()
-        sqa_columns = [
-            col
-            for col in inspect(rnd).c
-            if col.name != RANDOM_LABEL
-        ]
+        sqa_columns = [col for col in inspect(rnd).c if col.name != RANDOM_LABEL]
 
         sqa_sample = (
             self.client.query(*sqa_columns)

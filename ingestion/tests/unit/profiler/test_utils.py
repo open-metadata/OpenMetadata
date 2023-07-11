@@ -13,7 +13,6 @@
 Tests utils function for the profiler
 """
 
-import os
 from datetime import datetime
 from unittest import TestCase
 
@@ -105,6 +104,7 @@ def test_is_array():
     assert kwargs["is_array"] is False
     assert is_array(kwargs) is False
     assert not kwargs
+
 
 def test_get_snowflake_system_queries():
     """Test get snowflake system queries"""

@@ -34,13 +34,19 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableProfile,
 )
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import DatalakeConnection
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
     SQLiteScheme,
 )
-from metadata.profiler.interface.pandas.profiler_interface import PandasProfilerInterface
-from metadata.profiler.interface.profiler_interface_factory import profiler_interface_factory
+from metadata.profiler.interface.pandas.profiler_interface import (
+    PandasProfilerInterface,
+)
+from metadata.profiler.interface.profiler_interface_factory import (
+    profiler_interface_factory,
+)
 from metadata.profiler.metrics.core import (
     ComposedMetric,
     MetricTypes,
@@ -60,9 +66,11 @@ class User(declarative_base()):
     comments = Column(TEXT)
     age = Column(Integer)
 
+
 class FakeConnection:
     def client(self):
         return None
+
 
 class SQAInterfaceTestMultiThread(TestCase):
 
@@ -85,10 +93,15 @@ class SQAInterfaceTestMultiThread(TestCase):
     )
 
     with (
-        patch("metadata.profiler.interface.profiler_interface.get_connection",
-              return_value=FakeConnection) as mock_get_connection,
-        patch.object(PandasProfilerInterface, "_convert_table_to_list_of_dataframe_objects",
-                     return_value=[df1, df2]) as mocked_dfs,
+        patch(
+            "metadata.profiler.interface.profiler_interface.get_connection",
+            return_value=FakeConnection,
+        ) as mock_get_connection,
+        patch.object(
+            PandasProfilerInterface,
+            "_convert_table_to_list_of_dataframe_objects",
+            return_value=[df1, df2],
+        ) as mocked_dfs,
     ):
         datalake_profiler_interface = PandasProfilerInterface(
             entity=table_entity,
@@ -207,7 +220,9 @@ class SQAInterfaceTestMultiThread(TestCase):
             if profile.name == "name"
         ][0]
         age_column_profile = [
-            profile for profile in profile_request.columnProfile if profile.name == "age"
+            profile
+            for profile in profile_request.columnProfile
+            if profile.name == "age"
         ][0]
         assert name_column_profile.nullCount == 0.0
         assert age_column_profile.median == 33.0

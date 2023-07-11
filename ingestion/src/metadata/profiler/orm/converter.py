@@ -14,7 +14,7 @@ Converter logic to transform an OpenMetadata Table Entity
 to an SQLAlchemy ORM class.
 """
 
-from typing import List, Optional, cast
+from typing import Optional, cast
 
 import sqlalchemy
 from sqlalchemy import MetaData
@@ -141,7 +141,7 @@ def build_orm_col(idx: int, col: Column, table_service_type) -> sqlalchemy.Colum
         type_=map_types(col, table_service_type),
         primary_key=not bool(idx),  # The first col seen is used as PK
         quote=check_if_should_quote_column_name(table_service_type)
-              or check_snowflake_case_sensitive(table_service_type, col.name.__root__),
+        or check_snowflake_case_sensitive(table_service_type, col.name.__root__),
         key=str(
             col.name.__root__
         ).lower(),  # Add lowercase column name as key for snowflake case sensitive columns

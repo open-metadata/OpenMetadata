@@ -15,14 +15,18 @@ Bigquery Profiler source
 
 from copy import deepcopy
 
-from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import \
-    BigQueryConnection
-from metadata.generated.schema.entity.services.databaseService import \
-    DatabaseService
-from metadata.generated.schema.metadataIngestion.workflow import \
-    OpenMetadataWorkflowConfig
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
 from metadata.generated.schema.security.credentials.gcpValues import (
-    GcpCredentialsValues, MultipleProjectId, SingleProjectId)
+    GcpCredentialsValues,
+    MultipleProjectId,
+    SingleProjectId,
+)
 from metadata.profiler.source.base.profiler_source import ProfilerSource
 
 

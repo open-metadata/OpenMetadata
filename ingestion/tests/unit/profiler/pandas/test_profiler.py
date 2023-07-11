@@ -43,7 +43,9 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteScheme,
 )
 from metadata.ingestion.source import sqa_types
-from metadata.profiler.interface.pandas.profiler_interface import PandasProfilerInterface
+from metadata.profiler.interface.pandas.profiler_interface import (
+    PandasProfilerInterface,
+)
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
@@ -62,6 +64,7 @@ class User(Base):
     fullname = Column(String(256))
     nickname = Column(String(256))
     age = Column(Integer)
+
 
 class FakeConnection:
     def client(self):
@@ -91,10 +94,15 @@ class ProfilerTest(TestCase):
         ],
     )
     with (
-        patch("metadata.profiler.interface.profiler_interface.get_connection",
-              return_value=FakeConnection) as mock_get_connection,
-        patch.object(PandasProfilerInterface, "_convert_table_to_list_of_dataframe_objects",
-                     return_value=[df1, df2]) as mocked_dfs,
+        patch(
+            "metadata.profiler.interface.profiler_interface.get_connection",
+            return_value=FakeConnection,
+        ) as mock_get_connection,
+        patch.object(
+            PandasProfilerInterface,
+            "_convert_table_to_list_of_dataframe_objects",
+            return_value=[df1, df2],
+        ) as mocked_dfs,
     ):
         datalake_profiler_interface = PandasProfilerInterface(
             entity=table_entity,
@@ -156,7 +164,9 @@ class ProfilerTest(TestCase):
             thirdQuartile=40.0,
             interQuartileRange=9.5,
             nonParametricSkew=0.3284875724552587,
-            histogram=Histogram(boundaries=["30.00 to 41.97", "41.97 and up"], frequencies=[3,1]),
+            histogram=Histogram(
+                boundaries=["30.00 to 41.97", "41.97 and up"], frequencies=[3, 1]
+            ),
             missingCount=None,
             missingPercentage=None,
         )

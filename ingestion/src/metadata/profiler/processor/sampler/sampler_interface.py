@@ -14,13 +14,14 @@ Interface for sampler
 
 from abc import ABC, abstractmethod
 from typing import Dict, Optional
-from metadata.generated.schema.entity.data.table import TableData
 
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.profiler.api.models import ProfileSampleConfig
 
 
 class SamplerInterface(ABC):
     """Sampler interface"""
+
     def __init__(
         self,
         client,

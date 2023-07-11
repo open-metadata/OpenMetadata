@@ -16,13 +16,10 @@ supporting sqlalchemy abstraction layer
 
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, Union
-from metadata.ingestion.api.processor import ProfilerProcessorStatus
-from metadata.ingestion.source.connections import get_connection
 
 from sqlalchemy import Column
 from typing_extensions import Self
 
-from metadata.profiler.processor.sampler.sampler_factory import sampler_factory
 from metadata.generated.schema.entity.data.table import (
     PartitionProfilerConfig,
     Table,
@@ -35,7 +32,9 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseCo
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
+from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import get_connection
 from metadata.profiler.api.models import ProfileSampleConfig, TableConfig
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.partition import get_partition_details
@@ -44,7 +43,7 @@ from metadata.utils.partition import get_partition_details
 class ProfilerInterface(ABC):
     """Protocol interface for the profiler processor"""
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments,unused-argument
     def __init__(
         self,
         service_connection_config: Union[DatabaseConnection, DatalakeConnection],
@@ -78,7 +77,6 @@ class ProfilerInterface(ABC):
             table_partition_config if not self.profile_query else None
         )
         self.timeout_seconds = timeout_seconds
-
 
     @abstractmethod
     def _get_sampler(self):
@@ -216,20 +214,6 @@ class ProfilerInterface(ABC):
             return entity_config.partitionConfig
 
         return get_partition_details(entity)
-
-    def _get_sampler(self, **kwargs):
-        """get sampler object"""
-        session = kwargs.get("session")
-        table = kwargs["table"]
-
-        return sampler_factory.create(
-            self.service_connection_config.__class__.__name__,
-            client=session or self.session,
-            table=table,
-            profile_sample_config=self.profile_sample_config,
-            partition_details=self.partition_details,
-            profile_sample_query=self.profile_query,
-        )
 
     @property
     @abstractmethod

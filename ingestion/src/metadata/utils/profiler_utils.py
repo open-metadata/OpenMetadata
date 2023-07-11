@@ -21,7 +21,6 @@ import sqlparse
 from pydantic import BaseModel
 
 from metadata.utils.logger import profiler_logger
-from metadata.utils.sqa_utils import is_array
 
 logger = profiler_logger()
 

@@ -48,6 +48,7 @@ class FakeConnection:
     def client(self):
         return None
 
+
 class DatalakeSampleTest(TestCase):
     """
     Run checks on different metrics
@@ -97,10 +98,15 @@ class DatalakeSampleTest(TestCase):
         Prepare Ingredients
         """
         with (
-            patch("metadata.profiler.interface.profiler_interface.get_connection",
-                       return_value=FakeConnection) as mock_get_connection,
-            patch.object(PandasProfilerInterface, "_convert_table_to_list_of_dataframe_objects",
-                              return_value=[cls.df1, cls.df2]) as mocked_dfs,
+            patch(
+                "metadata.profiler.interface.profiler_interface.get_connection",
+                return_value=FakeConnection,
+            ) as mock_get_connection,
+            patch.object(
+                PandasProfilerInterface,
+                "_convert_table_to_list_of_dataframe_objects",
+                return_value=[cls.df1, cls.df2],
+            ) as mocked_dfs,
         ):
             cls.datalake_profiler_interface = PandasProfilerInterface(
                 entity=cls.table_entity,
@@ -133,10 +139,15 @@ class DatalakeSampleTest(TestCase):
         """
 
         with (
-            patch("metadata.profiler.interface.profiler_interface.get_connection",
-                       return_value=FakeConnection) as mock_get_connection,
-            patch.object(PandasProfilerInterface, "_convert_table_to_list_of_dataframe_objects",
-                              return_value=[self.df1, self.df2]) as mocked_dfs,
+            patch(
+                "metadata.profiler.interface.profiler_interface.get_connection",
+                return_value=FakeConnection,
+            ) as mock_get_connection,
+            patch.object(
+                PandasProfilerInterface,
+                "_convert_table_to_list_of_dataframe_objects",
+                return_value=[self.df1, self.df2],
+            ) as mocked_dfs,
         ):
             datalake_profiler_interface = PandasProfilerInterface(
                 entity=self.table_entity,
@@ -178,7 +189,6 @@ class DatalakeSampleTest(TestCase):
         third_quartile = Metrics.THIRD_QUARTILE.value
         iqr = Metrics.IQR.value
 
-
         profiler = Profiler(
             hist,
             count,
@@ -194,7 +204,6 @@ class DatalakeSampleTest(TestCase):
         # The sum of all frequencies should be sampled
         assert sum(res.get(User.age.name)[Metrics.HISTOGRAM.name]["frequencies"]) < 30
 
-
     def test_sample_data(self):
         """
         We should be able to pick up sample data from the sampler
@@ -208,7 +217,6 @@ class DatalakeSampleTest(TestCase):
         assert len(sample_data.columns) == 8
         # we drop na values when fecthing sample data
         assert len(sample_data.rows) == 4
-
 
     def test_sample_from_user_query(self):
         """

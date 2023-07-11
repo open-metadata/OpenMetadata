@@ -120,7 +120,7 @@ class partition_filter_handler:
                         .cte(f"{_self.table.__tablename__}_rnd")
                     )
                 query_results = _self._build_query(*args, **kwargs).select_from(
-                     _self._sample if self.sampled else _self.table
+                    _self._sample if self.sampled else _self.table
                 )
                 return query_results.first() if self.first else query_results.all()
             return func(_self, *args, **kwargs)
