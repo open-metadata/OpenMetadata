@@ -579,11 +579,8 @@ For Airflow providers, you will want to pull the provider versions from [the mat
 
 Also note that the ingestion workflow function must be entirely self contained as it will run by itself in the virtualenv. Any imports it needs, including the configuration, must exist within the function itself.
 
-<<<<<<<< HEAD:openmetadata-docs/content/v1.1.0/connectors/ingestion/deployment/running-from-mwaa.md
 ### Extracting MWAA Metadata
 
-========
->>>>>>>> docs-sso-airflow:openmetadata-docs/content/v1.1.0/connectors/pipeline/airflow/mwaa.md
 As the ingestion process will be happening locally in MWAA, we can prepare a DAG with the following YAML
 configuration:
 
