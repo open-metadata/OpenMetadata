@@ -6,14 +6,8 @@ import static org.openmetadata.service.events.scheduled.PipelineServiceStatusJob
 import static org.openmetadata.service.events.scheduled.PipelineServiceStatusJobHandler.JOB_CONTEXT_METER_REGISTRY;
 import static org.openmetadata.service.events.scheduled.PipelineServiceStatusJobHandler.JOB_CONTEXT_PIPELINE_SERVICE_CLIENT;
 
-import io.github.resilience4j.retry.Retry;
-import io.github.resilience4j.retry.RetryConfig;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
-import java.time.Duration;
-import java.util.Map;
-import java.util.function.Supplier;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.quartz.Job;

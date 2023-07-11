@@ -21,6 +21,7 @@ import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineS
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.Status;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 
@@ -33,27 +34,27 @@ public class NoopClient extends PipelineServiceClient {
   }
 
   @Override
-  public Response getServiceStatus() {
+  public Status getServiceStatus() {
     return null;
   }
 
   @Override
-  public Response runAutomationsWorkflow(Workflow workflow) {
+  public Status runAutomationsWorkflow(Workflow workflow) {
     return null;
   }
 
   @Override
-  public String deployPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+  public Status deployPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     throw new PipelineServiceClientException(String.format(EXCEPTION_MSG, "deploy"));
   }
 
   @Override
-  public String runPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+  public Status runPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     throw new PipelineServiceClientException(String.format(EXCEPTION_MSG, "run"));
   }
 
   @Override
-  public String deletePipeline(IngestionPipeline ingestionPipeline) {
+  public Status deletePipeline(IngestionPipeline ingestionPipeline) {
     throw new PipelineServiceClientException(String.format(EXCEPTION_MSG, "delete"));
   }
 
@@ -63,7 +64,7 @@ public class NoopClient extends PipelineServiceClient {
   }
 
   @Override
-  public IngestionPipeline toggleIngestion(IngestionPipeline ingestionPipeline) {
+  public Status toggleIngestion(IngestionPipeline ingestionPipeline) {
     throw new PipelineServiceClientException(String.format(EXCEPTION_MSG, "toggle"));
   }
 
@@ -73,7 +74,7 @@ public class NoopClient extends PipelineServiceClient {
   }
 
   @Override
-  public Response killIngestion(IngestionPipeline ingestionPipeline) {
+  public Status killIngestion(IngestionPipeline ingestionPipeline) {
     throw new PipelineServiceClientException(String.format(EXCEPTION_MSG, "kill"));
   }
 

@@ -6,9 +6,9 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.Status",
   "properties": {
-    "status": {
-      "description": "Status code / message response. E.g., `healthy`.",
-      "type": "string"
+    "code": {
+      "description": "Status code",
+      "type": "integer"
     },
     "reason": {
       "description": "Extra information to be sent back to the client, such as error traces.",
@@ -24,5 +24,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["status", "platform"]
+  "required": ["code", "platform"]
 }

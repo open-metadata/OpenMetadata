@@ -110,7 +110,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public String deployPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+  public Status deployPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     HttpResponse<String> response;
     try {
       String deployEndpoint = "%s/%s/deploy";
@@ -119,12 +119,11 @@ public class AirflowRESTClient extends PipelineServiceClient {
       response = post(deployUrl, pipelinePayload);
       if (response.statusCode() == 200) {
         ingestionPipeline.setDeployed(true);
-        return response.body();
+        return new Status().withCode(200).withReason(response.body()).withPlatform(this.getPlatform());
       }
     } catch (Exception e) {
       throw IngestionPipelineDeploymentException.byMessage(ingestionPipeline.getName(), e.getMessage());
     }
-
     throw new PipelineServiceClientException(
         String.format(
             "%s Failed to deploy Ingestion Pipeline due to airflow API returned %s and response %s",
@@ -132,21 +131,26 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public String deletePipeline(IngestionPipeline ingestionPipeline) {
+  public Status deletePipeline(IngestionPipeline ingestionPipeline) {
     String pipelineName = ingestionPipeline.getName();
+    HttpResponse<String> response;
     try {
       String deleteEndpoint = "%s/%s/delete?dag_id=%s";
-      HttpResponse<String> response =
-          deleteRequestAuthenticatedForJsonContent(deleteEndpoint, serviceURL, API_ENDPOINT, pipelineName);
-      return response.body();
+      response = deleteRequestAuthenticatedForJsonContent(deleteEndpoint, serviceURL, API_ENDPOINT, pipelineName);
+      if (response.statusCode() == 200) {
+        return new Status().withCode(200).withPlatform(this.getPlatform());
+      }
     } catch (Exception e) {
       LOG.error(String.format("Failed to delete Airflow Pipeline %s from Airflow DAGS", pipelineName));
     }
-    return null;
+    return new Status()
+        .withCode(500)
+        .withReason(String.format("Failed to delete Airflow Pipeline %s from Airflow DAGS", pipelineName))
+        .withPlatform(this.getPlatform());
   }
 
   @Override
-  public String runPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+  public Status runPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     String pipelineName = ingestionPipeline.getName();
     HttpResponse<String> response;
     try {
@@ -156,7 +160,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       requestPayload.put(DAG_ID, pipelineName);
       response = post(triggerUrl, requestPayload.toString());
       if (response.statusCode() == 200) {
-        return response.body();
+        return new Status().withCode(200).withReason(response.body()).withPlatform(this.getPlatform());
       }
     } catch (Exception e) {
       throw IngestionPipelineDeploymentException.byMessage(pipelineName, e.getMessage());
@@ -167,7 +171,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public IngestionPipeline toggleIngestion(IngestionPipeline ingestionPipeline) {
+  public Status toggleIngestion(IngestionPipeline ingestionPipeline) {
     HttpResponse<String> response;
     try {
       String toggleEndPoint;
@@ -181,10 +185,10 @@ public class AirflowRESTClient extends PipelineServiceClient {
         response = post(toggleUrl, requestPayload.toString());
         if (response.statusCode() == 200) {
           ingestionPipeline.setEnabled(false);
-          return ingestionPipeline;
+          return new Status().withCode(200).withReason(response.body()).withPlatform(this.getPlatform());
         } else if (response.statusCode() == 404) {
           ingestionPipeline.setDeployed(false);
-          return ingestionPipeline;
+          return new Status().withCode(404).withReason(response.body()).withPlatform(this.getPlatform());
         }
         // otherwise, enable it back
       } else {
@@ -193,10 +197,10 @@ public class AirflowRESTClient extends PipelineServiceClient {
         response = post(toggleUrl, requestPayload.toString());
         if (response.statusCode() == 200) {
           ingestionPipeline.setEnabled(true);
-          return ingestionPipeline;
+          return new Status().withCode(200).withReason(response.body()).withPlatform(this.getPlatform());
         } else if (response.statusCode() == 404) {
           ingestionPipeline.setDeployed(false);
-          return ingestionPipeline;
+          return new Status().withCode(404).withReason(response.body()).withPlatform(this.getPlatform());
         }
       }
     } catch (Exception e) {
@@ -233,7 +237,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
    * Auth failed when accessing Airflow APIs 3. Different versions between server and client
    */
   @Override
-  public Response getServiceStatus() {
+  public Status getServiceStatus() {
     HttpResponse<String> response;
     try {
       response = getRequestAuthenticatedForJsonContent("%s/%s/health-auth", serviceURL, API_ENDPOINT);
@@ -244,42 +248,32 @@ public class AirflowRESTClient extends PipelineServiceClient {
         String ingestionVersion = responseJSON.getString("version");
 
         if (Boolean.TRUE.equals(validServerClientVersions(ingestionVersion))) {
-          Status status = buildHealthyStatus(ingestionVersion);
-          return Response.ok(status, MediaType.APPLICATION_JSON_TYPE).build();
+          return buildHealthyStatus(ingestionVersion);
         } else {
-          Status status =
-              buildUnhealthyStatus(buildVersionMismatchErrorMessage(ingestionVersion, SERVER_VERSION));
-          return Response.ok(status, MediaType.APPLICATION_JSON_TYPE).build();
+          return buildUnhealthyStatus(buildVersionMismatchErrorMessage(ingestionVersion, SERVER_VERSION));
         }
       }
 
       // Auth error when accessing the APIs
       if (response.statusCode() == 401 || response.statusCode() == 403) {
-        Status status =
+        return
             buildUnhealthyStatus(
                 String.format("Authentication failed for user [%s] trying to access the Airflow APIs.", this.username));
-        return Response.ok(status, MediaType.APPLICATION_JSON_TYPE).build();
       }
 
       // APIs URL not found
       if (response.statusCode() == 404) {
-        Status status =
-            buildUnhealthyStatus("Airflow APIs not found. Please follow the installation guide.");
-
-        return Response.ok(status, MediaType.APPLICATION_JSON_TYPE).build();
+        return buildUnhealthyStatus("Airflow APIs not found. Please follow the installation guide.");
       }
 
     } catch (Exception e) {
-      Status status =
-          buildUnhealthyStatus(String.format("Failed to get REST status due to [%s].", e.getMessage()));
-
-      return Response.ok(status, MediaType.APPLICATION_JSON_TYPE).build();
+      return buildUnhealthyStatus(String.format("Failed to get REST status due to [%s].", e.getMessage()));
     }
     throw new PipelineServiceClientException(String.format("Failed to get REST status due to %s.", response.body()));
   }
 
   @Override
-  public Response runAutomationsWorkflow(Workflow workflow) {
+  public Status runAutomationsWorkflow(Workflow workflow) {
     HttpResponse<String> response;
     try {
       String automationsEndpoint = "%s/%s/run_automation";
@@ -287,7 +281,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       String workflowPayload = JsonUtils.pojoToJson(workflow);
       response = post(automationsUrl, workflowPayload);
       if (response.statusCode() == 200) {
-        return Response.status(200, response.body()).build();
+        return new Status().withCode(200).withReason(response.body()).withPlatform(this.getPlatform());
       }
     } catch (Exception e) {
       throw IngestionPipelineDeploymentException.byMessage(workflow.getName(), e.getMessage());
@@ -299,7 +293,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public Response killIngestion(IngestionPipeline ingestionPipeline) {
+  public Status killIngestion(IngestionPipeline ingestionPipeline) {
     HttpResponse<String> response;
     try {
       String killEndPoint = "%s/%s/kill";
@@ -308,7 +302,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       requestPayload.put(DAG_ID, ingestionPipeline.getName());
       response = post(killUrl, requestPayload.toString());
       if (response.statusCode() == 200) {
-        return Response.status(200, response.body()).build();
+        return new Status().withCode(200).withReason(response.body()).withPlatform(this.getPlatform());
       }
     } catch (Exception e) {
       throw PipelineServiceClientException.byMessage("Failed to kill running workflows", e.getMessage());

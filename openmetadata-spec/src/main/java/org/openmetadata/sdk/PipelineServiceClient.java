@@ -13,6 +13,8 @@
 
 package org.openmetadata.sdk;
 
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
@@ -26,9 +28,6 @@ import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-
-import io.github.resilience4j.retry.Retry;
-import io.github.resilience4j.retry.RetryConfig;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -162,12 +161,12 @@ public abstract class PipelineServiceClient {
 
   /** To build the response of getServiceStatus */
   public Status buildHealthyStatus(String ingestionVersion) {
-    return new Status().withStatus(HEALTHY_STATUS).withVersion(ingestionVersion).withPlatform(this.getPlatform());
+    return new Status().withCode(200).withVersion(ingestionVersion).withPlatform(this.getPlatform());
   }
 
   /** To build the response of getServiceStatus */
   public Status buildUnhealthyStatus(String reason) {
-    return new Status().withStatus(UNHEALTHY_STATUS).withReason(reason).withPlatform(this.getPlatform());
+    return new Status().withCode(500).withReason(reason).withPlatform(this.getPlatform());
   }
 
   public final Response getHostIp() {
@@ -195,10 +194,7 @@ public abstract class PipelineServiceClient {
     }
   }
 
-  /**
-   * Check the pipeline service status with an exception backoff
-   * to make sure we don't raise any false positives.
-   */
+  /** Check the pipeline service status with an exception backoff to make sure we don't raise any false positives. */
   public String getServiceStatusBackoff() {
     RetryConfig retryConfig =
         RetryConfig.<String>custom()
@@ -213,9 +209,8 @@ public abstract class PipelineServiceClient {
     Supplier<String> responseSupplier =
         () -> {
           try {
-            Response response = getServiceStatus();
-            Map<String, String> responseMap = (Map<String, String>) response.getEntity();
-            return responseMap.get(STATUS_KEY) == null ? UNHEALTHY_STATUS : responseMap.get(STATUS_KEY);
+            Status status = getServiceStatus();
+            return status.getCode() != 200 ? UNHEALTHY_STATUS : HEALTHY_STATUS;
           } catch (Exception e) {
             throw new RuntimeException(e);
           }
@@ -225,35 +220,35 @@ public abstract class PipelineServiceClient {
   }
 
   /* Check the status of pipeline service to ensure it is healthy */
-  public abstract Response getServiceStatus();
+  public abstract Status getServiceStatus();
 
   /**
    * This workflow can be used to execute any necessary async automations from the pipeline service. This will be the
    * new Test Connection endpoint. The UI can create a new workflow and trigger it in the server, and keep polling the
    * results.
    */
-  public abstract Response runAutomationsWorkflow(Workflow workflow);
+  public abstract Status runAutomationsWorkflow(Workflow workflow);
 
   /* Deploy a pipeline to the pipeline service */
-  public abstract String deployPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service);
+  public abstract Status deployPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service);
 
   /* Deploy run the pipeline at the pipeline service */
-  public abstract String runPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service);
+  public abstract Status runPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service);
 
   /* Stop and delete a pipeline at the pipeline service */
-  public abstract String deletePipeline(IngestionPipeline ingestionPipeline);
+  public abstract Status deletePipeline(IngestionPipeline ingestionPipeline);
 
   /* Get the status of a deployed pipeline */
   public abstract List<PipelineStatus> getQueuedPipelineStatus(IngestionPipeline ingestionPipeline);
 
   /* Toggle the state of an Ingestion Pipeline as enabled/disabled */
-  public abstract IngestionPipeline toggleIngestion(IngestionPipeline ingestionPipeline);
+  public abstract Status toggleIngestion(IngestionPipeline ingestionPipeline);
 
   /* Get the all last run logs of a deployed pipeline */
   public abstract Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline, String after);
 
   /* Get the all last run logs of a deployed pipeline */
-  public abstract Response killIngestion(IngestionPipeline ingestionPipeline);
+  public abstract Status killIngestion(IngestionPipeline ingestionPipeline);
 
   /* Get the Pipeline Service host IP to whitelist in source systems. Should return a map in the shape "ip: 111.11.11.1" */
   public abstract Map<String, String> requestGetHostIp();
