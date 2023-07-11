@@ -88,6 +88,10 @@ def parse_xlets(xlet: List[dict]) -> Optional[Dict[str, List[str]]]:
     Parse airflow xlets for V1
     :param xlet: airflow v2 xlet dict
     :return: dictionary of xlet list or None
+
+    [{'__var': {'tables': ['sample_data.ecommerce_db.shopify.fact_order']},
+        '__type': 'dict'}]
+
     """
     # This branch is for lineage parser op
     if isinstance(xlet, list) and len(xlet) and isinstance(xlet[0], dict):

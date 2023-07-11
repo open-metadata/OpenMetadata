@@ -22,10 +22,18 @@ slug: /main-concepts/metadata-standard/schemas/type/changeevent
 ## Definitions
 
 - **`eventType`** *(string)*: Type of event. Must be one of: `['entityCreated', 'entityUpdated', 'entitySoftDeleted', 'entityDeleted']`.
-- **`eventFilter`** *(object)*: Cannot contain additional properties.
+- **`entityTypes`** *(string)*: Type of event. Must be one of: `['All', 'Chart', 'Dashboard', 'Database', 'Database Schema', 'Glossary', 'Glossary Term', 'Location', 'Metrics', 'Ml Model', 'Pipeline', 'Report', 'Table', 'Topic', 'Test Case']`.
+- **`fieldTypes`** *(string)*: Type of event. Must be one of: `['All', 'Display Name', 'Description', 'Owner', 'Location', 'Tags', 'Usage Summary', 'Followers', 'Sample Data', 'Synonyms', 'Glossary', 'Test Case Result Success', 'Test Case Result Failed', 'Test Case Result Aborted']`.
+- **`filters`** *(object)*: Cannot contain additional properties.
   - **`eventType`**: Event type that is being requested. Refer to *#/definitions/eventType*.
-  - **`entities`** *(array)*: Entities for which the events are needed. Example - `table`, `topic`, etc. **When not set, events for all the entities will be provided**.
+  - **`include`** *(array)*: Field which are allowed to pass. Default: `['all']`.
     - **Items** *(string)*
+  - **`exclude`** *(array)*: Field which are not allowed to pass. Default: `[]`.
+    - **Items** *(string)*
+- **`eventFilter`** *(object)*: Represents a Filter attached to a entity. Cannot contain additional properties.
+  - **`entityType`** *(string)*: Entity type for filter , example : topic , table, dashboard, mlmodel , etc.
+  - **`filters`** *(array)*: List of operations supported by the resource.
+    - **Items**: Refer to *#/definitions/filters*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.
