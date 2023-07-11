@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import javax.net.ssl.SSLContext;
-import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
@@ -256,9 +255,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
 
       // Auth error when accessing the APIs
       if (response.statusCode() == 401 || response.statusCode() == 403) {
-        return
-            buildUnhealthyStatus(
-                String.format("Authentication failed for user [%s] trying to access the Airflow APIs.", this.username));
+        return buildUnhealthyStatus(
+            String.format("Authentication failed for user [%s] trying to access the Airflow APIs.", this.username));
       }
 
       // APIs URL not found

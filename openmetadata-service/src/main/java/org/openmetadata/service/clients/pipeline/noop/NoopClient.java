@@ -15,7 +15,6 @@ package org.openmetadata.service.clients.pipeline.noop;
 
 import java.util.List;
 import java.util.Map;
-import javax.ws.rs.core.Response;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.entity.automations.Workflow;

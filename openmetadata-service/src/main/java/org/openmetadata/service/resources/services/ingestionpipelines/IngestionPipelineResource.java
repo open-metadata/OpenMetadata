@@ -525,8 +525,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         @ApiResponse(
             responseCode = "200",
             description = "The ingestion",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = Status.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Status.class))),
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
   public Status triggerIngestion(
