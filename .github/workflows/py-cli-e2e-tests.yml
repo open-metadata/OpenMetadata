@@ -136,7 +136,7 @@ jobs:
         E2E_QUICKSIGHT_REGION: ${{ secrets.E2E_QUICKSIGHT_REGION }}
         E2E_DATALAKE_S3_BUCKET_NAME: ${{ secrets.E2E_DATALAKE_S3_BUCKET_NAME }}
         E2E_DATALAKE_S3_PREFIX: ${{ secrets.E2E_DATALAKE_S3_PREFIX }}
-        E2E_DATALAKE_S3_REGION: ${{ E2E_DATALAKE_S3_REGION }}
+        E2E_DATALAKE_S3_REGION: ${{ secrets.E2E_DATALAKE_S3_REGION }}
       run: |
         source env/bin/activate
         export SITE_CUSTOMIZE_PATH=$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())))")/sitecustomize.py
