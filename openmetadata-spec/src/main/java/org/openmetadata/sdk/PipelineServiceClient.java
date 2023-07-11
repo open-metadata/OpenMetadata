@@ -17,13 +17,18 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -60,6 +65,10 @@ public abstract class PipelineServiceClient {
   protected static final String AUTH_HEADER = "Authorization";
   protected static final String CONTENT_HEADER = "Content-Type";
   protected static final String CONTENT_TYPE = "application/json";
+  private static final Integer MAX_ATTEMPTS = 3;
+  private static final Integer BACKOFF_TIME_SECONDS = 5;
+  public static final String HEALTHY_STATUS = "healthy";
+  public static final String STATUS_KEY = "status";
 
   public static final Map<String, String> TYPE_TO_TASK =
       Map.of(
@@ -182,6 +191,35 @@ public abstract class PipelineServiceClient {
                   + "https://api.my-ip.io/ip reachable from your network or that the `hostIp` setting is configured.");
       return Response.ok(body, MediaType.APPLICATION_JSON_TYPE).build();
     }
+  }
+
+  /**
+   * Check the pipeline service status with an exception backoff
+   * to make sure we don't raise any false positives.
+   */
+  public String getServiceStatusBackoff() {
+    RetryConfig retryConfig =
+        RetryConfig.<String>custom()
+            .maxAttempts(MAX_ATTEMPTS)
+            .waitDuration(Duration.ofMillis(BACKOFF_TIME_SECONDS * 1_000L))
+            .retryOnResult(response -> !HEALTHY_STATUS.equals(response))
+            .failAfterMaxAttempts(false)
+            .build();
+
+    Retry retry = Retry.of("getServiceStatus", retryConfig);
+
+    Supplier<String> responseSupplier =
+        () -> {
+          try {
+            Response response = getServiceStatus();
+            Map<String, String> responseMap = (Map<String, String>) response.getEntity();
+            return responseMap.get(STATUS_KEY) == null ? "unhealthy" : responseMap.get(STATUS_KEY);
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        };
+
+    return retry.executeSupplier(responseSupplier);
   }
 
   /* Check the status of pipeline service to ensure it is healthy */
