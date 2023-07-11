@@ -42,6 +42,10 @@ class Task(BaseModel):
     start_date: Optional[datetime]
     end_date: Optional[datetime]
 
+    # Allow picking up data from key `inlets` and `_inlets`
+    class Config:
+        allow_population_by_field_name = True
+
 
 class TaskList(BaseModel):
     __root__: List[Task]
