@@ -318,8 +318,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return ResourceContext.builder().resource(entityType).entityRepository(dao);
   }
 
-  public static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};
-  public static final MetadataOperation[] VIEW_BASIC_OPERATIONS = {MetadataOperation.VIEW_BASIC};
+  protected static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};
+  protected static final MetadataOperation[] VIEW_BASIC_OPERATIONS = {MetadataOperation.VIEW_BASIC};
 
   private MetadataOperation[] getViewOperations(Fields fields) {
     if (fields.getFieldList().isEmpty()) {

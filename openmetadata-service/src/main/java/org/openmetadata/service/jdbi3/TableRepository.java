@@ -693,7 +693,6 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) throws IOException {
-    // TODO move this as the first check
     validateEntityLinkFieldExists(entityLink, task.getType());
     if (entityLink.getFieldName().equals("columns")) {
       Table table = getByName(null, entityLink.getEntityFQN(), getFields("columns,tags"), Include.ALL);

@@ -282,7 +282,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
 
   @Test
   @Order(1) // Run this test first as other tables created in other tests will interfere with listing
-  void get_ContainerListWithDifferentFields_200(TestInfo testInfo) throws IOException {
+  void get_ContainerListWithDifferentFields_200() throws IOException {
     /*
      *                 root_container
      *                       |
@@ -395,7 +395,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
   }
 
   @Test
-  void test_mutuallyExclusiveTags(TestInfo testInfo) {
+  void test_mutuallyExclusiveTags() {
     // Apply mutually exclusive tags to a Container
     CreateContainer create =
         new CreateContainer()
@@ -448,7 +448,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
   }
 
   @Test
-  void post_put_patch_complexDataModelColumnTypes(TestInfo test) throws IOException {
+  void post_put_patch_complexDataModelColumnTypes() throws IOException {
     Column c1 = getColumn(C1, ARRAY, USER_ADDRESS_TAG_LABEL).withArrayDataType(INT).withDataTypeDisplay("array<int>");
     Column c2_a = getColumn("a", INT, USER_ADDRESS_TAG_LABEL);
     Column c2_b = getColumn("b", CHAR, USER_ADDRESS_TAG_LABEL);

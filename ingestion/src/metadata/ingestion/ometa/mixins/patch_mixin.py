@@ -162,9 +162,17 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
-        instance: Optional[T] = self._fetch_entity_if_exists(
-            entity=entity, entity_id=source.id
-        )
+        if isinstance(source, TestCase):
+            instance: Optional[T] = self._fetch_entity_if_exists(
+                entity=entity,
+                entity_id=source.id,
+                fields=["testDefinition", "testSuite"],
+            )
+        else:
+            instance: Optional[T] = self._fetch_entity_if_exists(
+                entity=entity, entity_id=source.id
+            )
+
         if not instance:
             return None
 

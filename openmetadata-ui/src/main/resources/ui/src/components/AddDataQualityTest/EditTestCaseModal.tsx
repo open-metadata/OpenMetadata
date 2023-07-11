@@ -198,6 +198,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         form.resetFields();
         onCancel();
       }}
+      cancelText={t('label.cancel')}
       closable={false}
       confirmLoading={isLoadingOnSave}
       maskClosable={false}
@@ -212,21 +213,22 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       ) : (
         <Form
           className="tw-h-70vh tw-overflow-auto"
+          data-testid="edit-test-form"
           form={form}
           layout="vertical"
           name="tableTestForm"
           onFinish={handleFormSubmit}>
-          <Form.Item required label={`${t('label.table')}`} name="table">
+          <Form.Item required label={t('label.table')} name="table">
             <Input disabled />
           </Form.Item>
           {isColumn && (
-            <Form.Item required label={`${t('label.column')}`} name="column">
+            <Form.Item required label={t('label.column')} name="column">
               <Input disabled />
             </Form.Item>
           )}
           <Form.Item
             required
-            label={`${t('label.name')}`}
+            label={t('label.name')}
             name="name"
             rules={[
               {
@@ -241,16 +243,16 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
           </Form.Item>
           <Form.Item
             required
-            label={`${t('label.test-entity', {
+            label={t('label.test-entity', {
               entity: t('label.type'),
-            })}:`}
+            })}
             name="testDefinition">
             <Input disabled placeholder={t('message.enter-test-case-name')} />
           </Form.Item>
 
           {GenerateParamsField()}
 
-          <Form.Item label={`${t('label.description')}`} name="description">
+          <Form.Item label={t('label.description')} name="description">
             <RichTextEditor
               height="200px"
               initialValue={testCase?.description || ''}
