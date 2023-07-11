@@ -16,8 +16,6 @@ from Csv and Tsv file formats
 from functools import singledispatch
 from typing import Any
 
-import pandas as pd
-
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
 )
@@ -42,6 +40,8 @@ CSV_SEPARATOR = ","
 
 
 def read_from_pandas(path: str, separator: str, storage_options=None):
+    import pandas as pd  # pylint: disable=import-outside-toplevel
+
     chunk_list = []
     with pd.read_csv(
         path, sep=separator, chunksize=CHUNKSIZE, storage_options=storage_options

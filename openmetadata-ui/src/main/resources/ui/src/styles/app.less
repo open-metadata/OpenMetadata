@@ -12,7 +12,8 @@
  */
 
 // common css utils file
-@import url('./variables.less');
+@import (reference) url('./variables.less');
+
 @trigger-btn-hover-bg: #efefef;
 
 // Global css
@@ -84,46 +85,6 @@ a[href].link-text-grey,
   color: @text-grey-muted;
 }
 
-// text color
-.text-primary {
-  color: @primary-color;
-  &:hover {
-    color: @primary-color;
-  }
-}
-.text-color-inherit {
-  color: inherit;
-}
-.error-text {
-  color: #ff4c3b;
-}
-.text-white {
-  color: @white;
-}
-.text-grey-muted {
-  color: @text-grey-muted;
-}
-.text-grey-body {
-  color: @text-color-secondary;
-}
-.text-link-color {
-  color: @link-color;
-}
-.text-gray-400 {
-  color: #9ca3af;
-}
-.text-body {
-  color: @text-color-secondary;
-}
-
-.text-success {
-  color: #008376;
-}
-
-.text-failure {
-  color: #cb2431;
-}
-
 // text alignment
 
 .text-center {
@@ -159,11 +120,6 @@ a[href].link-text-grey,
 .border-t-0 {
   border-top-width: 0px;
 }
-.border-t-1 {
-  border-top-width: 1px;
-  border-style: solid;
-  border-color: @border-color;
-}
 .border-main {
   border-color: @border-color;
 }
@@ -197,8 +153,23 @@ a[href].link-text-grey,
   border-radius: 12px;
 }
 
+// Word break
+
+.break-all {
+  word-break: break-all;
+}
 .break-word {
   word-break: break-word;
+}
+
+// Whitespace
+
+.whitespace-normal {
+  white-space: normal;
+}
+
+.whitespace-pre-wrap {
+  white-space: pre-wrap;
 }
 
 .mx-auto {
@@ -284,6 +255,9 @@ a[href].link-text-grey,
 
 .transform-180 {
   transform: rotate(180deg);
+}
+.transform-90 {
+  transform: rotate(90deg);
 }
 
 .no-underline {
@@ -395,15 +369,21 @@ a[href].link-text-grey,
     font-size: inherit !important;
     color: @text-grey-muted !important;
   }
-}
-
-.link-title:hover {
-  text-decoration: none !important;
+  .link-title:hover {
+    color: @primary-color !important;
+    text-decoration: none !important;
+  }
+  .link-title.inactive-link:hover {
+    color: @text-grey-muted !important;
+  }
 }
 
 // lineage
 .lineage-card {
   height: calc(100vh - 240px);
+  > .ant-card-body {
+    padding: 0;
+  }
 }
 
 // Multiple label in a field with required
@@ -457,11 +437,21 @@ a[href].link-text-grey,
   }
 }
 .entity-tag-right-panel-container {
+  height: @entity-details-tab-height;
+  overflow-y: auto;
   border-left: @global-border;
-  margin-left: 20px;
   padding: 12px 8px 0 8px;
 }
 
 .global-border-radius {
   border-radius: 10px;
+}
+
+.full-height {
+  height: calc(100vh - 64px); // removing only navbar height
+}
+
+.tab-content-height {
+  height: @entity-details-tab-height;
+  overflow-y: scroll;
 }

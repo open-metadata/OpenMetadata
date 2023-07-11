@@ -77,8 +77,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public void storeRelationships(TestSuite entity) throws IOException {
-    storeOwner(entity, entity.getOwner());
-    if (entity.getExecutable()) {
+    if (Boolean.TRUE.equals(entity.getExecutable())) {
       storeExecutableRelationship(entity);
     }
   }
@@ -116,10 +115,6 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
     LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
     return new RestUtil.DeleteResponse<>(updated, changeType);
-  }
-
-  private EntityReference getIngestionPipeline(TestSuite testSuite) throws IOException {
-    return getToEntityRef(testSuite.getId(), Relationship.CONTAINS, Entity.INGESTION_PIPELINE, false);
   }
 
   public class TestSuiteUpdater extends EntityUpdater {

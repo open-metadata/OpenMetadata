@@ -59,8 +59,8 @@ class DbtCliTest(CliDBTBase.TestSuite):
     @staticmethod
     def fqn_dbt_tables() -> List[str]:
         return [
-            "local_redshift.dev.dbt_jaffle.customers",
-            "local_redshift.dev.dbt_jaffle.orders",
+            "local_redshift.dev.dbt_cli_e2e.customers",
+            "local_redshift.dev.dbt_cli_e2e.orders",
         ]
 
     def assert_for_vanilla_ingestion(
@@ -68,7 +68,7 @@ class DbtCliTest(CliDBTBase.TestSuite):
     ) -> None:
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
-        self.assertTrue(len(source_status.filtered) == 8)
+        self.assertTrue(len(source_status.filtered) == 9)
         self.assertTrue(len(source_status.records) >= self.expected_tables())
         self.assertTrue(len(sink_status.failures) == 0)
         self.assertTrue(len(sink_status.warnings) == 0)

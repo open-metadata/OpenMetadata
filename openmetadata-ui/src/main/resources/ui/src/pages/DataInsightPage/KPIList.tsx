@@ -11,14 +11,17 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Space, Table, Tooltip, Typography } from 'antd';
+import { Button, Col, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { EmptyGraphPlaceholder } from 'components/DataInsightDetail/EmptyGraphPlaceholder';
 import Loader from 'components/Loader/Loader';
-import { isEmpty, isUndefined } from 'lodash';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
@@ -37,7 +40,7 @@ import { useAuth } from '../../hooks/authHooks';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { formatDateTime } from '../../utils/TimeUtils';
 
-const KPIList = () => {
+const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
   const history = useHistory();
   const { isAdminUser } = useAuth();
   const { t } = useTranslation();
@@ -124,7 +127,7 @@ const KPIList = () => {
         key: 'actions',
         render: (_, record) => {
           return (
-            <Space>
+            <div className="d-flex items-center">
               <Tooltip
                 placement="left"
                 title={
@@ -133,15 +136,10 @@ const KPIList = () => {
                     : t('message.no-permission-for-action')
                 }>
                 <Button
+                  className="flex-center"
                   data-testid={`edit-action-${getEntityName(record)}`}
                   disabled={!isAdminUser}
-                  icon={
-                    <SVGIcons
-                      alt={t('label.edit')}
-                      icon={Icons.EDIT}
-                      width="18px"
-                    />
-                  }
+                  icon={<EditIcon width="16px" />}
                   type="text"
                   onClick={() => history.push(getKpiPath(record.name))}
                 />
@@ -157,13 +155,13 @@ const KPIList = () => {
                   data-testid={`delete-action-${getEntityName(record)}`}
                   disabled={!isAdminUser}
                   icon={
-                    <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />
+                    <SVGIcons alt="delete" icon={Icons.DELETE} width="16px" />
                   }
                   type="text"
                   onClick={() => setSelectedKpi(record)}
                 />
               </Tooltip>
-            </Space>
+            </div>
           );
         },
       },
@@ -186,13 +184,15 @@ const KPIList = () => {
     fetchKpiList();
   }, []);
 
-  if (isEmpty(kpiList)) {
-    return (
-      <div className="m-t-lg w-full">
+  const noDataPlaceHolder = useMemo(
+    () =>
+      viewKPIPermission ? (
         <EmptyGraphPlaceholder />
-      </div>
-    );
-  }
+      ) : (
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+      ),
+    [viewKPIPermission]
+  );
 
   return (
     <>
@@ -203,6 +203,9 @@ const KPIList = () => {
           data-testid="kpi-table"
           dataSource={kpiList}
           loading={{ spinning: isLoading, indicator: <Loader /> }}
+          locale={{
+            emptyText: noDataPlaceHolder,
+          }}
           pagination={false}
           rowKey="name"
           size="small"

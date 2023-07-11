@@ -17,6 +17,7 @@ import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlac
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TableTags from 'components/TableTags/TableTags.component';
+import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { Column, TagLabel } from 'generated/entity/data/container';
 import { TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, isEmpty, isUndefined, map, toLower } from 'lodash';
@@ -28,10 +29,7 @@ import {
   updateContainerColumnTags,
 } from 'utils/ContainerDetailUtils';
 import { getEntityName } from 'utils/EntityUtils';
-import { fetchGlossaryTerms, getGlossaryTermlist } from 'utils/GlossaryUtils';
-import { getFilterTags } from 'utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from 'utils/TableUtils';
-import { getClassifications, getTaglist } from 'utils/TagsUtils';
 import {
   CellRendered,
   ContainerDataModelProps,
@@ -49,57 +47,12 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   const [editContainerColumnDescription, setEditContainerColumnDescription] =
     useState<Column>();
 
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-  const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
-  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
-  const [glossaryTags, setGlossaryTags] = useState<TagOption[]>([]);
-  const [classificationTags, setClassificationTags] = useState<TagOption[]>([]);
-
-  const fetchGlossaryTags = async () => {
-    setIsGlossaryLoading(true);
-    try {
-      const res = await fetchGlossaryTerms();
-
-      const glossaryTerms: TagOption[] = getGlossaryTermlist(res).map(
-        (tag) => ({ fqn: tag, source: TagSource.Glossary })
-      );
-      setGlossaryTags(glossaryTerms);
-    } catch {
-      setTagFetchFailed(true);
-    } finally {
-      setIsGlossaryLoading(false);
-    }
-  };
-
-  const fetchClassificationTags = async () => {
-    setIsTagLoading(true);
-    try {
-      const res = await getClassifications();
-      const tagList = await getTaglist(res.data);
-
-      const classificationTag: TagOption[] = map(tagList, (tag) => ({
-        fqn: tag,
-        source: TagSource.Classification,
-      }));
-
-      setClassificationTags(classificationTag);
-    } catch {
-      setTagFetchFailed(true);
-    } finally {
-      setIsTagLoading(false);
-    }
-  };
-
   const handleFieldTagsChange = useCallback(
-    async (
-      selectedTags: EntityTags[],
-      editColumnTag: Column,
-      otherTags: TagLabel[]
-    ) => {
-      const newSelectedTags: TagOption[] = map(
-        [...selectedTags, ...otherTags],
-        (tag) => ({ fqn: tag.tagFQN, source: tag.source })
-      );
+    async (selectedTags: EntityTags[], editColumnTag: Column) => {
+      const newSelectedTags: TagOption[] = map(selectedTags, (tag) => ({
+        fqn: tag.tagFQN,
+        source: tag.source,
+      }));
 
       if (newSelectedTags && editColumnTag) {
         const containerDataModel = cloneDeep(dataModel);
@@ -170,6 +123,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         dataIndex: 'name',
         key: 'name',
         accessor: 'name',
+        fixed: 'left',
         width: 300,
         render: (_, record: Column) => (
           <Popover
@@ -224,17 +178,12 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         width: 300,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            dataTestId="classification-tags"
-            fetchTags={fetchClassificationTags}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasTagEditAccess}
             index={index}
             isReadOnly={isReadOnly}
-            isTagLoading={isTagLoading}
             record={record}
-            tagFetchFailed={tagFetchFailed}
-            tagList={classificationTags}
-            tags={getFilterTags(tags)}
+            tags={tags}
             type={TagSource.Classification}
           />
         ),
@@ -247,35 +196,23 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         width: 300,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            dataTestId="glossary-tags"
-            fetchTags={fetchGlossaryTags}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasTagEditAccess}
             index={index}
             isReadOnly={isReadOnly}
-            isTagLoading={isGlossaryLoading}
             record={record}
-            tagFetchFailed={tagFetchFailed}
-            tagList={glossaryTags}
-            tags={getFilterTags(tags)}
+            tags={tags}
             type={TagSource.Glossary}
           />
         ),
       },
     ],
     [
-      classificationTags,
-      tagFetchFailed,
-      glossaryTags,
-      fetchClassificationTags,
-      fetchGlossaryTags,
-      handleFieldTagsChange,
-      hasDescriptionEditAccess,
-      hasTagEditAccess,
-      editContainerColumnDescription,
       isReadOnly,
-      isTagLoading,
-      isGlossaryLoading,
+      hasTagEditAccess,
+      hasDescriptionEditAccess,
+      editContainerColumnDescription,
+      handleFieldTagsChange,
     ]
   );
 
@@ -296,7 +233,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         }}
         pagination={false}
         rowKey="name"
-        scroll={{ x: 1200 }}
+        scroll={TABLE_SCROLL_VALUE}
         size="small"
       />
       {editContainerColumnDescription && (

@@ -34,7 +34,7 @@ import { useHistory } from 'react-router-dom';
 import { addPolicy } from 'rest/rolesAPIV1';
 import { getIsErrorMatch } from 'utils/CommonUtils';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
-import { allowedNameRegEx } from '../../../constants/regex.constants';
+import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import {
   CreatePolicy,
   Effect,
@@ -142,22 +142,15 @@ const AddPolicyPage = () => {
                         required: true,
                         max: 128,
                         min: 1,
-                        message: t('message.field-text-is-required', {
-                          fieldText: t('label.name'),
-                        }),
+                        message: `${t('message.entity-size-in-between', {
+                          entity: `${t('label.name')}`,
+                          max: '128',
+                          min: '1',
+                        })}`,
                       },
                       {
-                        validator: (_, value) => {
-                          if (allowedNameRegEx.test(value)) {
-                            return Promise.reject(
-                              t('message.field-text-is-invalid', {
-                                fieldText: t('label.name'),
-                              })
-                            );
-                          }
-
-                          return Promise.resolve();
-                        },
+                        pattern: ENTITY_NAME_REGEX,
+                        message: t('message.entity-name-validation'),
                       },
                     ]}>
                     <Input

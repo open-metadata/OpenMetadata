@@ -433,13 +433,7 @@ export const getLogEntityPath = (
     return '';
   }
 
-  const testSuitePath = ROUTES.TEST_SUITES.split('/')[1];
-
-  if (path === testSuitePath) {
-    return ROUTES.TEST_SUITES;
-  }
-
-  if (logEntityType === testSuitePath) {
+  if (logEntityType === PipelineType.TestSuite) {
     return getTestSuitePath(path);
   }
 

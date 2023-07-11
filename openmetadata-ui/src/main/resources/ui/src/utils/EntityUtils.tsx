@@ -28,9 +28,12 @@ import {
   SourceType,
 } from 'components/searched-data/SearchedData.interface';
 import { EntityField } from 'constants/Feeds.constants';
+import { GlobalSettingsMenuCategory } from 'constants/GlobalSettings.constants';
 import { ExplorePageTabs } from 'enums/Explore.enum';
+import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
+import { Database } from 'generated/entity/data/database';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Topic } from 'generated/entity/data/topic';
@@ -78,7 +81,8 @@ import {
 } from './CommonUtils';
 import { getEntityFieldThreadCounts } from './FeedUtils';
 import Fqn from './Fqn';
-import { getGlossaryPath } from './RouterUtils';
+import { getGlossaryPath, getSettingPath } from './RouterUtils';
+import { getServiceRouteFromServiceType } from './ServiceUtils';
 import {
   getDataTypeString,
   getTierFromTableTags,
@@ -984,7 +988,10 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
 };
 
 export const getEntityBreadcrumbs = (
-  entity: SearchedDataProps['data'][number]['_source'] | DashboardDataModel,
+  entity:
+    | SearchedDataProps['data'][number]['_source']
+    | DashboardDataModel
+    | Database,
   entityType?: EntityType,
   includeCurrent = false
 ) => {
@@ -1001,7 +1008,7 @@ export const getEntityBreadcrumbs = (
       // eslint-disable-next-line no-case-declarations
       const fqnList = Fqn.split((entity as GlossaryTerm).fullyQualifiedName);
       // eslint-disable-next-line no-case-declarations
-      const tree = fqnList.slice(1, fqnList.length - 1);
+      const tree = fqnList.slice(1, fqnList.length);
 
       return [
         {
@@ -1018,11 +1025,26 @@ export const getEntityBreadcrumbs = (
         })),
       ];
     case EntityType.TAG:
+      // eslint-disable-next-line no-case-declarations
+      const fqnTagList = Fqn.split((entity as Tag).fullyQualifiedName);
+
+      return [
+        ...fqnTagList.map((fqn) => ({
+          name: fqn,
+          url: getTagsDetailsPath(entity?.fullyQualifiedName ?? ''),
+        })),
+      ];
+
+    case EntityType.DATABASE:
       return [
         {
-          name: entity.name,
-          url: getTagsDetailsPath(entity?.fullyQualifiedName ?? ''),
+          name: startCase(ServiceCategory.DATABASE_SERVICES),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(ServiceCategory.DATABASE_SERVICES)
+          ),
         },
+        ...getBreadcrumbForEntitiesWithServiceOnly(entity as Database),
       ];
 
     case EntityType.TOPIC:

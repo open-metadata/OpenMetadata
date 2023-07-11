@@ -12,8 +12,8 @@
  */
 
 import { Modal, Space } from 'antd';
-import AppState from 'AppState';
 import { AxiosError } from 'axios';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { mockDatasetData } from 'constants/mockTourData.constants';
 import {
   debounce,
@@ -38,7 +38,6 @@ import { useHistory, useParams } from 'react-router-dom';
 import ReactFlow, {
   addEdge,
   Background,
-  BackgroundVariant,
   Connection,
   Edge,
   getConnectedEdges,
@@ -154,6 +153,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   isFullScreen = false,
 }: EntityLineageProp) => {
   const { t } = useTranslation();
+  const { isTourOpen } = useTourProvider();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
@@ -223,7 +223,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
   const fetchLineageData = useCallback(
     async (config: LineageConfig) => {
-      if (AppState.isTourOpen) {
+      if (isTourOpen) {
         setPaginationData({});
         setEntityLineage(mockDatasetData.entityLineage);
         setUpdatedLineageData(mockDatasetData.entityLineage);
@@ -275,7 +275,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         if (res && entityLineage) {
           setNodeLoading((prev) => ({ ...prev, id: node.id, state: false }));
           setLeafNode(res, pos);
-          setEntityLineage(getEntityLineage(entityLineage, res, pos));
+          const newLineageData = getEntityLineage(entityLineage, res, pos);
+          setEntityLineage(newLineageData);
+          setUpdatedLineageData(newLineageData);
         }
       } catch (err) {
         setNodeLoading((prev) => ({ ...prev, id: node.id, state: false }));
@@ -1260,6 +1262,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             </div>
           ),
           removeNodeHandler,
+          onNodeExpand: handleNodeExpand,
           isEditMode,
           isNewNode: true,
         },
@@ -1371,10 +1374,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
       return node;
     });
-
-    setTimeout(() => {
-      reactFlowInstance?.fitView();
-    }, 100);
   };
 
   const handleExpandColumnClick = () => {
@@ -1628,7 +1627,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             onPaneClick={onPaneClick}>
             {updatedLineageData && (
               <CustomControlsComponent
-                className="absolute top-1 right-1 bottom-full"
+                className="absolute top-1 right-1 bottom-full p-md"
                 deleted={deleted}
                 fitViewParams={{
                   minZoom: MIN_ZOOM_VALUE,
@@ -1654,9 +1653,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                 onOptionSelect={handleOptionSelect}
               />
             )}
-            {isEditMode && (
-              <Background gap={12} size={1} variant={BackgroundVariant.Lines} />
-            )}
+            <Background gap={12} size={1} />
           </ReactFlow>
         </ReactFlowProvider>
       </div>

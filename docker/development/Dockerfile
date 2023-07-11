@@ -9,17 +9,27 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-FROM alpine:3
+# Build stage
+FROM alpine:3.15 AS build
+
+COPY openmetadata-dist/target/openmetadata-*.tar.gz /
+
+RUN mkdir -p /opt/openmetadata && \
+    tar zxvf openmetadata-*.tar.gz -C /opt/openmetadata --strip-components 1 && \
+    rm openmetadata-*.tar.gz
+
+# Final stage
+FROM alpine:3.15
 
 EXPOSE 8585
 
-RUN  apk update \
-  && apk upgrade \
-  && apk add --update wget curl bash openjdk11 \
-  && rm -rf /var/cache/apk/*
-COPY docker/openmetadata-start.sh ./
-COPY openmetadata-dist/target/openmetadata-*.tar.gz /
-RUN tar zxvf openmetadata-*.tar.gz && \
-    rm openmetadata-*.tar.gz
+RUN apk add --update --no-cache bash openjdk11-jre
+
+COPY --from=build /opt/openmetadata /opt/openmetadata
+COPY docker/openmetadata-start.sh /
+
 RUN chmod 777 openmetadata-start.sh
-CMD ["./openmetadata-start.sh"]
+
+WORKDIR /opt/openmetadata
+ENTRYPOINT [ "/bin/bash" ]
+CMD ["/openmetadata-start.sh"]

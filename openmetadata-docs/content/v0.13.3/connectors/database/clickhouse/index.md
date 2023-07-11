@@ -191,7 +191,7 @@ desired.
 You can find the full list of accepted options [here](https://clickhouse-driver.readthedocs.io/en/latest/api.html#clickhouse_driver.connection.Connection)
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Clickhouse during the connection. These details must be added as Key-Value pairs. 
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
-  - In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "externalbrowser"`
+
 - **Connecting to Clickhouse with SSL Certificate**: You will need to use the `clickhouse+native` connection scheme. Then in the `Connection Options` reference the following key with their value:
   - `verify`: `true`
   - `secure`: `true`

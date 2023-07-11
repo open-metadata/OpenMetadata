@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Tag } from 'generated/entity/classification/tag';
 import { get, isArray, isObject, transform } from 'lodash';
 import { FormattedTableData } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
@@ -127,6 +128,21 @@ export const formatSearchGlossaryTermResponse = (
     fqdn: d._source.fullyQualifiedName,
     fullyQualifiedName: d._source.fullyQualifiedName,
     type: d._source.entityType || 'glossaryTerm',
+  }));
+};
+
+export const formatSearchTagsResponse = (
+  hits: SearchResponse<SearchIndex.TAG>['hits']['hits']
+): Tag[] => {
+  return hits.map((d) => ({
+    name: d._source.name,
+    description: d._source.description,
+    id: d._source.id,
+    classification: d._source.classification,
+    displayName: d._source.displayName,
+    fqdn: d._source.fullyQualifiedName,
+    fullyQualifiedName: d._source.fullyQualifiedName,
+    type: d._source.entityType,
   }));
 };
 

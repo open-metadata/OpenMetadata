@@ -14,8 +14,10 @@ import { Tabs } from 'antd';
 import AppState from 'AppState';
 import ActivityFeedListV1 from 'components/ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
 import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
+import { mockFeedData } from 'constants/mockTourData.constants';
 import { FeedFilter } from 'enums/mydata.enum';
-import { ThreadType } from 'generated/entity/feed/thread';
+import { ThreadTaskStatus, ThreadType } from 'generated/entity/feed/thread';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFeedsWithFilter } from 'rest/feedsAPI';
@@ -25,6 +27,7 @@ import './feeds-widget.less';
 
 const FeedsWidget = () => {
   const { t } = useTranslation();
+  const { isTourOpen } = useTourProvider();
   const [activeTab, setActiveTab] = useState('all');
   const { loading, entityThread, getFeedData } = useActivityFeedProvider();
   const [taskCount, setTaskCount] = useState(0);
@@ -49,7 +52,10 @@ const FeedsWidget = () => {
     } else if (activeTab === 'tasks') {
       getFeedData(FeedFilter.OWNER, undefined, ThreadType.Task)
         .then((data) => {
-          setTaskCount(data.length);
+          const openTasks = data.filter(
+            (item) => item.task?.status === ThreadTaskStatus.Open
+          );
+          setTaskCount(openTasks.length);
         })
         .catch(() => {
           // ignore since error is displayed in toast in the parent promise.
@@ -67,7 +73,8 @@ const FeedsWidget = () => {
       currentUser?.id,
       FeedFilter.OWNER,
       undefined,
-      ThreadType.Task
+      ThreadType.Task,
+      ThreadTaskStatus.Open
     )
       .then((res) => {
         setTaskCount(res.data.length);
@@ -76,6 +83,16 @@ const FeedsWidget = () => {
         showErrorToast(err);
       });
   }, [currentUser]);
+
+  const threads = useMemo(() => {
+    if (activeTab === 'tasks') {
+      return entityThread.filter(
+        (thread) => thread.task?.status === ThreadTaskStatus.Open
+      );
+    }
+
+    return entityThread;
+  }, [activeTab, entityThread]);
 
   return (
     <div className="feeds-widget-container">
@@ -86,9 +103,10 @@ const FeedsWidget = () => {
             key: 'all',
             children: (
               <ActivityFeedListV1
-                feedList={entityThread}
+                emptyPlaceholderText={t('message.no-activity-feed')}
+                feedList={isTourOpen ? mockFeedData : threads}
                 hidePopover={false}
-                isLoading={loading}
+                isLoading={loading && !isTourOpen}
                 showThread={false}
               />
             ),
@@ -98,7 +116,8 @@ const FeedsWidget = () => {
             key: 'mentions',
             children: (
               <ActivityFeedListV1
-                feedList={entityThread}
+                emptyPlaceholderText={t('message.no-mentions')}
+                feedList={threads}
                 hidePopover={false}
                 isLoading={loading}
                 showThread={false}
@@ -115,7 +134,8 @@ const FeedsWidget = () => {
             key: 'tasks',
             children: (
               <ActivityFeedListV1
-                feedList={entityThread}
+                emptyPlaceholderText={t('message.no-tasks-assigned')}
+                feedList={threads}
                 hidePopover={false}
                 isLoading={loading}
                 showThread={false}

@@ -25,10 +25,6 @@ p {
   margin-bottom: 0px;
 }
 
-pre {
-  font-family: 'Source Code Pro', sans-serif;
-}
-
 /* Bootstrap Extended */
 .form-control:focus,
 .btn.focus,
@@ -41,9 +37,6 @@ pre {
 .table td,
 .table th {
   padding: 0.75em;
-}
-.text-success {
-  color: #28a745 !important;
 }
 .text-danger {
   color: #cb2431 !important;
@@ -691,11 +684,6 @@ body .profiler-graph .recharts-active-dot circle {
 .react-flow__node {
   min-width: max-content;
 }
-.react-flow__background {
-  background-image: url('../assets/img/graph-bg.png');
-  background-repeat: repeat;
-}
-
 .leaf-node .react-flow__handle {
   background-color: #6b7280;
 }
@@ -719,12 +707,6 @@ body .profiler-graph .recharts-active-dot circle {
 
 .version-data {
   width: calc(100% - 330px);
-}
-
-/* page-container v1 */
-
-.full-height {
-  height: calc(100vh - 110px);
 }
 
 /* 64 header + ( 16 + 16 )spacing Y = 96*/
@@ -884,7 +866,7 @@ code {
 
 .page-not-found-container {
   width: 100%;
-  height: calc(100% - 68px);
+  height: 100vh;
   display: flex;
 }
 
@@ -1156,18 +1138,12 @@ div.ant-typography-ellipsis-custom {
 
 .ant-dropdown-menu-item-selected {
   color: #0968da;
-  background-color: #7147e825;
+  background-color: #e6f4ff;
 }
 
 .table-query-editor pre.CodeMirror-line {
   padding-right: 60px !important;
 }
-
-/* antd switch css */
-.ant-switch-checked {
-  background: #0968da;
-}
-/* antd switch css */
 
 .ant-empty-tasks {
   margin-top: 32px;
@@ -1180,11 +1156,6 @@ div.ant-typography-ellipsis-custom {
 
 .activity-feed-card-text pre {
   white-space: pre-wrap; /* Since CSS 2.1 */
-}
-/* Feed text pre tag CSS */
-
-.ant-switch-checked {
-  background: rgb(244, 240, 253);
 }
 
 /* 64 header + ( 16 + 16 )spacing Y = 96*/

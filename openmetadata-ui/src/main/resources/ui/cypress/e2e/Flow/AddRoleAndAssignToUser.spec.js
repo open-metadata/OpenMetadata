@@ -106,15 +106,15 @@ describe('Test Add role and assign it to the user', () => {
       .click();
     verifyResponseStatusCode('@generatePassword', 200);
 
-    cy.get(`[id="menu-button-Roles"]`)
-      .should('exist')
-      .should('be.visible')
-      .click();
-
-    cy.get(`[data-testid="${roleName}"]`)
+    cy.get(`[data-testid="roles-dropdown"]`)
       .scrollIntoView()
-      .should('be.visible')
-      .click();
+      .should('be.visible');
+
+    cy.get(`[data-testid="roles-dropdown"]`).click();
+
+    cy.get(`[title="${roleName}"]`).scrollIntoView().should('be.visible');
+
+    cy.get(`[title="${roleName}"]`).click();
 
     cy.get('[data-testid="roles-dropdown"]').click();
     cy.get('[data-testid="save-user"]').scrollIntoView().click();

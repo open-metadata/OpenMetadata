@@ -18,6 +18,7 @@ import ErrorBoundary from 'components/ErrorBoundary/ErrorBoundary';
 import GlobalSearchProvider from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import PermissionProvider from 'components/PermissionProvider/PermissionProvider';
 import AppRouter from 'components/router/AppRouter';
+import TourProvider from 'components/TourProvider/TourProvider';
 import WebSocketProvider from 'components/web-scoket/web-scoket.provider';
 import WebAnalyticsProvider from 'components/WebAnalytics/WebAnalyticsProvider';
 import { TOAST_OPTIONS } from 'constants/Toasts.constants';
@@ -38,19 +39,21 @@ const App: FunctionComponent = () => {
             <ErrorBoundary>
               <ApplicationConfigProvider>
                 <AuthProvider childComponentType={AppRouter}>
-                  <HelmetProvider>
-                    <WebAnalyticsProvider>
-                      <PermissionProvider>
-                        <WebSocketProvider>
-                          <GlobalSearchProvider>
-                            <EntityExportModalProvider>
-                              <AppRouter />
-                            </EntityExportModalProvider>
-                          </GlobalSearchProvider>
-                        </WebSocketProvider>
-                      </PermissionProvider>
-                    </WebAnalyticsProvider>
-                  </HelmetProvider>
+                  <TourProvider>
+                    <HelmetProvider>
+                      <WebAnalyticsProvider>
+                        <PermissionProvider>
+                          <WebSocketProvider>
+                            <GlobalSearchProvider>
+                              <EntityExportModalProvider>
+                                <AppRouter />
+                              </EntityExportModalProvider>
+                            </GlobalSearchProvider>
+                          </WebSocketProvider>
+                        </PermissionProvider>
+                      </WebAnalyticsProvider>
+                    </HelmetProvider>
+                  </TourProvider>
                 </AuthProvider>
               </ApplicationConfigProvider>
             </ErrorBoundary>

@@ -33,6 +33,7 @@ import { AxiosError } from 'axios';
 import { AsyncSelect } from 'components/AsyncSelect/AsyncSelect';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { SubscriptionType } from 'generated/events/api/createEventSubscription';
 import {
   AlertType,
@@ -501,8 +502,14 @@ const AddAlertPage = () => {
                 label={t('label.name')}
                 labelCol={{ span: 24 }}
                 name="name"
-                rules={[{ required: true }]}>
-                <Input disabled={isEditMode} />
+                rules={[
+                  { required: true },
+                  {
+                    pattern: ENTITY_NAME_REGEX,
+                    message: t('message.entity-name-validation'),
+                  },
+                ]}>
+                <Input disabled={isEditMode} placeholder={t('label.name')} />
               </Form.Item>
               <Form.Item
                 label={t('label.description')}

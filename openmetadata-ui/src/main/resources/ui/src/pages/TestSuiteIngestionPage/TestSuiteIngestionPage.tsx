@@ -19,16 +19,21 @@ import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import Loader from 'components/Loader/Loader';
-import { isUndefined, startCase } from 'lodash';
+import { getTableTabPath } from 'constants/constants';
+import { EntityTabs } from 'enums/entity.enum';
+import { isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getIngestionPipelineByFqn } from 'rest/ingestionPipelineAPI';
 import { getTestSuiteByName } from 'rest/testAPI';
-import { ROUTES } from '../../constants/constants';
+import { getEntityName } from 'utils/EntityUtils';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestSuite } from '../../generated/tests/testSuite';
-import { getTestSuitePath } from '../../utils/RouterUtils';
+import {
+  getDataQualityPagePath,
+  getTestSuitePath,
+} from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const TestSuiteIngestionPage = () => {
@@ -71,11 +76,14 @@ const TestSuiteIngestionPage = () => {
       setSlashedBreadCrumb([
         {
           name: t('label.test-suite-plural'),
-          url: ROUTES.TEST_SUITES,
+          url: getDataQualityPagePath(),
         },
         {
-          name: startCase(response.displayName || response.name),
-          url: getTestSuitePath(response.fullyQualifiedName || ''),
+          name: getEntityName(response.executableEntityReference),
+          url: getTableTabPath(
+            response.executableEntityReference?.fullyQualifiedName ?? '',
+            EntityTabs.PROFILER
+          ),
         },
         {
           name: `${ingestionFQN ? t('label.edit') : t('label.add')} ${t(

@@ -29,6 +29,7 @@
 }
 
 .user-page-layout {
+  height: @users-page-tabs-height;
   .page-layout-rightpanel {
     padding-right: 0 !important;
     background-color: @white;
@@ -36,5 +37,22 @@
     border-radius: 0;
     padding-left: 0 !important;
     border-top: 0;
+  }
+}
+
+.user-layout {
+  .activity-feed-tab {
+    .center-container {
+      height: @users-page-tabs-height;
+    }
+    .right-container {
+      height: @users-page-tabs-height;
+    }
+  }
+  .summary-panel-container {
+    height: @users-page-tabs-height;
+  }
+  .explore-search-card {
+    margin: 0 12px;
   }
 }

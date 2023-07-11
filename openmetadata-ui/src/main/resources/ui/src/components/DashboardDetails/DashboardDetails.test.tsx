@@ -19,7 +19,6 @@ import {
 } from '@testing-library/react';
 import { EntityTabs } from 'enums/entity.enum';
 import { ChartType } from 'generated/entity/data/chart';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { mockGlossaryList } from 'mocks/Glossary.mock';
 import { mockTagList } from 'mocks/Tags.mock';
 import React from 'react';
@@ -66,9 +65,6 @@ const dashboardDetailsProps: DashboardDetailsProps = {
   chartTagUpdateHandler: jest.fn(),
   onDashboardUpdate: jest.fn(),
   versionHandler: jest.fn(),
-  feedCount: 0,
-  entityFieldThreadCount: [],
-  entityFieldTaskCount: [],
   createThread: jest.fn(),
 };
 
@@ -162,24 +158,14 @@ jest.mock('../../utils/CommonUtils', () => ({
   getOwnerValue: jest.fn().mockReturnValue('Owner'),
 }));
 
-jest.mock('../../utils/GlossaryUtils', () => ({
-  fetchGlossaryTerms: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(mockGlossaryList)),
-  getGlossaryTermlist: jest.fn().mockImplementation((terms) => {
-    return terms.map((term: GlossaryTerm) => term?.fullyQualifiedName);
-  }),
+jest.mock('../../utils/TagsUtils', () => ({
+  getAllTagsList: jest.fn(() => Promise.resolve(mockTagList)),
+  getTagsHierarchy: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../../utils/TagsUtils', () => ({
-  getClassifications: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockTagList })),
-  getTaglist: jest
-    .fn()
-    .mockImplementation(() =>
-      Promise.resolve(['PersonalData.Personal', 'PersonalData.SpecialCategory'])
-    ),
+jest.mock('../../utils/GlossaryUtils', () => ({
+  getGlossaryTermsList: jest.fn(() => Promise.resolve(mockGlossaryList)),
+  getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
 }));
 
 describe.skip('Test DashboardDetails component', () => {

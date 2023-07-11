@@ -181,6 +181,16 @@ jest.mock('../../utils/CommonUtils', () => ({
   getCountBadge: jest.fn().mockImplementation((count) => <p>{count}</p>),
 }));
 
+jest.mock('utils/TagsUtils', () => ({
+  getAllTagsList: jest.fn().mockImplementation(() => Promise.resolve([])),
+  getTagsHierarchy: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('utils/GlossaryUtils', () => ({
+  getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
+  getGlossaryTermsList: jest.fn().mockImplementation(() => Promise.resolve([])),
+}));
+
 jest.mock('../Execution/Execution.component', () => {
   return jest.fn().mockImplementation(() => <p>Executions</p>);
 });

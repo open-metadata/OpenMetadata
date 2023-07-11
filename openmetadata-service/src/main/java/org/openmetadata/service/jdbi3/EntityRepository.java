@@ -19,9 +19,13 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.DELETED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.DATA_PRODUCT;
+import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
@@ -163,6 +167,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final boolean supportsOwner;
   protected final boolean supportsFollower;
   protected final boolean supportsVotes;
+  protected final boolean supportsDomain;
+  protected final boolean supportsDataProducts;
 
   /** Fields that can be updated during PATCH operation */
   @Getter private final Fields patchFields;
@@ -192,6 +198,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
     this.supportsFollower = allowedFields.contains(FIELD_FOLLOWERS);
     this.supportsVotes = allowedFields.contains(FIELD_VOTES);
+    this.supportsDomain = allowedFields.contains(FIELD_DOMAIN);
+    this.supportsDataProducts = allowedFields.contains(FIELD_DATA_PRODUCTS);
   }
 
   /**
@@ -246,13 +254,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public abstract void storeRelationships(T entity) throws IOException;
 
   /**
-   * This method is called to set inherited property that an entity inherits from its parent.
+   * This method is called to set inherited fields that an entity inherits from its parent.
    *
-   * @see TableRepository#setInheritedFields(Table) for an example implementation
+   * @see TableRepository#setInheritedFields(Table, Fields) for an example implementation
    */
   @SuppressWarnings("unused")
-  public void setInheritedFields(T entity) throws IOException {
-    // Override to set inherited properties
+  public T setInheritedFields(T entity, Fields fields) throws IOException {
+    return entity;
   }
 
   /**
@@ -360,7 +368,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final T get(UriInfo uriInfo, UUID id, Fields fields, Include include) throws IOException {
-    return withHref(uriInfo, setFieldsInternal(dao.findEntityById(id, include), fields));
+    T entity = dao.findEntityById(id, include);
+    setFieldsInternal(entity, fields);
+    setInheritedFields(entity, fields);
+    return withHref(uriInfo, entity);
   }
 
   @Transaction
@@ -547,14 +558,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
     prepare(entity);
     setFullyQualifiedName(entity);
     validateExtension(entity);
+    // Domain is already validated
+  }
+
+  public void storeRelationshipsInternal(T entity) throws IOException {
+    storeOwner(entity, entity.getOwner());
+    applyTags(entity);
+    storeDomain(entity, entity.getDomain());
+    storeDataProducts(entity, entity.getDataProducts());
+    storeRelationships(entity);
   }
 
   T setFieldsInternal(T entity, Fields fields) throws IOException {
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity.getFullyQualifiedName()) : null);
     entity.setExtension(fields.contains(FIELD_EXTENSION) ? getExtension(entity) : null);
+    entity.setDomain(fields.contains(FIELD_DOMAIN) ? getDomain(entity) : null);
+    entity.setDataProducts(fields.contains(FIELD_DATA_PRODUCTS) ? getDataProducts(entity) : null);
     setFields(entity, fields);
-    setInheritedFields(entity);
     return entity;
   }
 
@@ -594,14 +615,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Get all the fields in the original entity that can be updated during PUT operation
     setFieldsInternal(original, putFields);
 
-    EntityReference updatedOwner = updated.getOwner();
-    if (updatedOwner != null
-        && updatedOwner.getDescription() != null
-        && updatedOwner.getDescription().equals("inherited")) {
-      // Don't let inherited ownership overwrite existing ownership
-      updated.setOwner(original.getOwner() != null ? original.getOwner() : updatedOwner);
-    }
-
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
       restoreEntity(updated.getUpdatedBy(), entityType, original.getId());
@@ -611,7 +624,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PUT);
     entityUpdater.update();
     String change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
-    setInheritedFields(updated);
+    setInheritedFields(updated, new Fields(allowedFields));
     return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
@@ -619,6 +632,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) throws IOException {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFieldsInternal(dao.findEntityById(id), patchFields);
+    setInheritedFields(original, patchFields);
 
     // Apply JSON patch to the original entity to get the updated entity
     T updated = JsonUtils.applyPatch(original, patch, entityClass);
@@ -633,7 +647,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
     entityUpdater.update();
     String change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
-    setInheritedFields(updated);
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
@@ -676,7 +689,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     T originalEntity = dao.findEntityById(entityId);
 
     // Validate User
-    User user = daoCollection.userDAO().findEntityByName(updatedBy);
+    User user = daoCollection.userDAO().findEntityByName(FullyQualifiedName.quoteName(updatedBy));
     UUID userId = user.getId();
     if (Boolean.TRUE.equals(user.getDeleted())) {
       throw new IllegalArgumentException(CatalogExceptionMessage.deletedUser(userId));
@@ -824,8 +837,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.entityExtensionDAO().deleteAll(id);
 
     // Delete all the tag labels
-    daoCollection.tagUsageDAO().deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
+    daoCollection
+        .tagUsageDAO()
+        .deleteTagLabelsByTargetPrefix(FullyQualifiedName.buildHash(entityInterface.getFullyQualifiedName()));
 
+    // when the glossary and tag is deleted .. delete its usage
+    daoCollection
+        .tagUsageDAO()
+        .deleteTagLabelsByFqn(FullyQualifiedName.buildHash(entityInterface.getFullyQualifiedName()));
     // Delete all the usage data
     daoCollection.usageDAO().delete(id);
 
@@ -877,8 +896,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private T createNewEntity(T entity) throws IOException {
     storeEntity(entity, false);
     storeExtension(entity);
-    storeRelationships(entity);
-    setInheritedFields(entity);
+    storeRelationshipsInternal(entity);
+    setInheritedFields(entity, new Fields(allowedFields));
     return entity;
   }
 
@@ -889,6 +908,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setOwner(null);
     List<TagLabel> tags = entity.getTags();
     entity.setTags(null);
+    EntityReference domain = entity.getDomain();
+    entity.setDomain(null);
+    List<EntityReference> dataProducts = entity.getDataProducts();
+    entity.setDataProducts(null);
 
     if (update) {
       dao.update(entity.getId(), getFullyQualifiedNameHash(entity), JsonUtils.pojoToJson(entity));
@@ -901,11 +924,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Restore the relationships
     entity.setOwner(owner);
     entity.setTags(tags);
+    entity.setDomain(domain);
+    entity.setDataProducts(dataProducts);
   }
 
   protected void storeTimeSeries(
-      String fullyQualifiedName, String extension, String jsonSchema, String entityJson, Long timestamp, boolean update)
-      throws JsonProcessingException {
+      String fullyQualifiedName,
+      String extension,
+      String jsonSchema,
+      String entityJson,
+      Long timestamp,
+      boolean update) {
     String fqnHash = FullyQualifiedName.buildHash(fullyQualifiedName);
     if (update) {
       daoCollection.entityExtensionTimeSeriesDao().update(fqnHash, extension, entityJson, timestamp);
@@ -921,8 +950,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String entityJson,
       Long timestamp,
       String operation,
-      boolean update)
-      throws JsonProcessingException {
+      boolean update) {
     String fqnHash = FullyQualifiedName.buildHash(fullyQualifiedName);
     if (update) {
       daoCollection
@@ -979,7 +1007,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.entityExtensionTimeSeriesDao().deleteBeforeTimestamp(fqnHash, extension, timestamp);
   }
 
-  public void validateExtension(T entity) {
+  private void validateExtension(T entity) {
     if (entity.getExtension() == null) {
       return;
     }
@@ -1258,7 +1286,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UUID toId, Relationship relationship, String fromEntityType, boolean mustHaveRelationship) throws IOException {
     List<EntityRelationshipRecord> records = findFrom(toId, entityType, relationship, fromEntityType);
     ensureSingleRelationship(entityType, toId, records, relationship.value(), mustHaveRelationship);
-    return records.size() >= 1
+    return !records.isEmpty()
         ? Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
         : null;
   }
@@ -1346,11 +1374,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return !supportsOwner ? null : getFromEntityRef(entity.getId(), Relationship.OWNS, null, false);
   }
 
+  public EntityReference getDomain(T entity) throws IOException {
+    return getFromEntityRef(entity.getId(), Relationship.HAS, DOMAIN, false);
+  }
+
+  private List<EntityReference> getDataProducts(T entity) throws IOException {
+    if (!supportsDataProducts || entity == null) {
+      return null;
+    }
+    List<EntityRelationshipRecord> ids = findFrom(entity.getId(), entityType, Relationship.HAS, DATA_PRODUCT);
+    return EntityUtil.populateEntityReferences(ids, entityType);
+  }
+
   public EntityReference getOwner(EntityReference ref) throws IOException {
     return !supportsOwner ? null : Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
   }
 
-  public void populateOwner(EntityReference owner) throws IOException {
+  protected void populateOwner(EntityReference owner) throws IOException {
     if (owner == null) {
       return;
     }
@@ -1361,15 +1401,39 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void storeOwner(T entity, EntityReference owner) {
     if (supportsOwner && owner != null) {
       // Add relationship owner --- owns ---> ownedEntity
-      LOG.info("Adding owner {}:{} for entity {}:{}", owner.getType(), owner.getId(), entityType, entity.getId());
+      LOG.info(
+          "Adding owner {}:{} for entity {}:{}",
+          owner.getType(),
+          owner.getFullyQualifiedName(),
+          entityType,
+          entity.getId());
       addRelationship(owner.getId(), entity.getId(), owner.getType(), entityType, Relationship.OWNS);
+    }
+  }
+
+  protected void storeDomain(T entity, EntityReference domain) {
+    if (supportsDomain && domain != null) {
+      // Add relationship domain --- has ---> entity
+      LOG.info("Adding domain {} for entity {}:{}", domain.getFullyQualifiedName(), entityType, entity.getId());
+      addRelationship(domain.getId(), entity.getId(), Entity.DOMAIN, entityType, Relationship.HAS);
+    }
+  }
+
+  protected void storeDataProducts(T entity, List<EntityReference> dataProducts) {
+    if (supportsDataProducts && !nullOrEmpty(dataProducts)) {
+      for (EntityReference dataProduct : dataProducts) {
+        // Add relationship dataProduct --- has ---> entity
+        LOG.info(
+            "Adding dataProduct {} for entity {}:{}", dataProduct.getFullyQualifiedName(), entityType, entity.getId());
+        addRelationship(dataProduct.getId(), entity.getId(), Entity.DATA_PRODUCT, entityType, Relationship.HAS);
+      }
     }
   }
 
   /** Remove owner relationship for a given entity */
   private void removeOwner(T entity, EntityReference owner) {
     if (EntityUtil.getId(owner) != null) {
-      LOG.info("Removing owner {}:{} for entity {}", owner.getType(), owner.getId(), entity.getId());
+      LOG.info("Removing owner {}:{} for entity {}", owner.getType(), owner.getFullyQualifiedName(), entity.getId());
       deleteRelationship(owner.getId(), owner.getType(), entity.getId(), entityType, Relationship.OWNS);
     }
   }
@@ -1387,7 +1451,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new Fields(allowedFields, fields);
   }
 
-  public final Fields getFields(List<String> fields) {
+  protected final Fields getFields(List<String> fields) {
     return new Fields(allowedFields, fields);
   }
 
@@ -1444,6 +1508,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return team.getEntityReference();
     }
     return Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL);
+  }
+
+  public EntityReference validateDomain(String domainFqn) throws IOException {
+    if (!supportsDomain || domainFqn == null) {
+      return null;
+    }
+    return Entity.getEntityReferenceByName(Entity.DOMAIN, domainFqn, NON_DELETED);
   }
 
   /** Override this method to support downloading CSV functionality */
@@ -1520,6 +1591,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateOwner();
         updateExtension();
         updateTags(updated.getFullyQualifiedName(), FIELD_TAGS, original.getTags(), updated.getTags());
+        updateDomain();
+        updateDataProducts();
         entitySpecificUpdate();
       }
 
@@ -1575,6 +1648,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
           && recordChange(FIELD_OWNER, origOwner, updatedOwner, true, entityReferenceMatch)) {
         // Update owner for all PATCH operations. For PUT operations, ownership can't be removed
         EntityRepository.this.updateOwner(original, origOwner, updatedOwner);
+      } else {
+        updated.setOwner(origOwner);
       }
     }
 
@@ -1651,6 +1726,47 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       removeExtension(original);
       storeExtension(updated);
+    }
+
+    private void updateDomain() throws JsonProcessingException {
+      if (original.getDomain() == updated.getDomain()) {
+        return;
+      }
+
+      EntityReference origDomain = original.getDomain();
+      EntityReference updatedDomain = updated.getDomain();
+      if ((operation.isPatch() || updatedDomain != null)
+          && recordChange(FIELD_DOMAIN, origDomain, updatedDomain, true, entityReferenceMatch)) {
+        if (origDomain != null) {
+          LOG.info(
+              "Removing domain {} for entity {}", origDomain.getFullyQualifiedName(), original.getFullyQualifiedName());
+          deleteRelationship(origDomain.getId(), Entity.DOMAIN, original.getId(), entityType, Relationship.HAS);
+        }
+        if (updatedDomain != null) {
+          // Add relationship owner --- owns ---> ownedEntity
+          LOG.info(
+              "Adding domain {} for entity {}",
+              updatedDomain.getFullyQualifiedName(),
+              original.getFullyQualifiedName());
+          addRelationship(updatedDomain.getId(), original.getId(), Entity.DOMAIN, entityType, Relationship.HAS);
+        }
+      }
+    }
+
+    private void updateDataProducts() throws JsonProcessingException {
+      if (!supportsDataProducts) {
+        return;
+      }
+      List<EntityReference> origDataProducts = listOrEmpty(original.getDataProducts());
+      List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());
+      updateFromRelationships(
+          "dataProducts",
+          DATA_PRODUCT,
+          origDataProducts,
+          updatedDataProducts,
+          Relationship.HAS,
+          entityType,
+          original.getId());
     }
 
     public final boolean updateVersion(Double oldVersion) {
@@ -1905,7 +2021,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Handle column-specific updates for entities such as Tables, Containers' dataModel or Dashboard Model Entities. */
   abstract class ColumnEntityUpdater extends EntityUpdater {
 
-    public ColumnEntityUpdater(T original, T updated, Operation operation) {
+    protected ColumnEntityUpdater(T original, T updated, Operation operation) {
       super(original, updated, operation);
     }
 

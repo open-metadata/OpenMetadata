@@ -502,6 +502,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             </Link>
           );
         },
+        className: 'truncate w-max-500',
       },
       {
         title: t('label.description'),
@@ -741,7 +742,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                   <ActivityFeedTab
                     entityType={EntityType.DATABASE_SCHEMA}
                     fqn={databaseSchema?.fullyQualifiedName ?? ''}
-                    onFeedUpdate={() => Promise.resolve()}
+                    onFeedUpdate={getEntityFeedCount}
+                    onUpdateEntityDetails={getDetailsByFQN}
                   />
                 </ActivityFeedProvider>
               )}

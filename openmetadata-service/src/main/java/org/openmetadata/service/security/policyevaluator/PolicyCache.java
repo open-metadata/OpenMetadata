@@ -36,11 +36,11 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 @Slf4j
 public class PolicyCache {
   private static final PolicyCache INSTANCE = new PolicyCache();
-  private static volatile boolean INITIALIZED = false;
+  private static volatile boolean initialized = false;
 
-  protected static LoadingCache<UUID, List<CompiledRule>> POLICY_CACHE;
-  private static PolicyRepository POLICY_REPOSITORY;
-  private static Fields FIELDS;
+  protected static LoadingCache<UUID, List<CompiledRule>> policyCache;
+  private static PolicyRepository policyRepository;
+  private static Fields fields;
 
   public static PolicyCache getInstance() {
     return INSTANCE;
@@ -48,18 +48,18 @@ public class PolicyCache {
 
   /** To be called during application startup by Default Authorizer */
   public static void initialize() {
-    if (!INITIALIZED) {
-      POLICY_CACHE =
+    if (!initialized) {
+      policyCache =
           CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new PolicyLoader());
-      POLICY_REPOSITORY = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
-      FIELDS = POLICY_REPOSITORY.getFields("rules");
-      INITIALIZED = true;
+      policyRepository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
+      fields = policyRepository.getFields("rules");
+      initialized = true;
     }
   }
 
   public List<CompiledRule> getPolicyRules(UUID policyId) {
     try {
-      return POLICY_CACHE.get(policyId);
+      return policyCache.get(policyId);
     } catch (ExecutionException | UncheckedExecutionException ex) {
       throw new EntityNotFoundException(ex.getMessage());
     }
@@ -67,7 +67,7 @@ public class PolicyCache {
 
   public void invalidatePolicy(UUID policyId) {
     try {
-      POLICY_CACHE.invalidate(policyId);
+      policyCache.invalidate(policyId);
     } catch (Exception ex) {
       LOG.error("Failed to invalidate cache for policy {}", policyId, ex);
     }
@@ -82,14 +82,14 @@ public class PolicyCache {
   }
 
   public static void cleanUp() {
-    POLICY_CACHE.cleanUp();
-    INITIALIZED = false;
+    policyCache.cleanUp();
+    initialized = false;
   }
 
   static class PolicyLoader extends CacheLoader<UUID, List<CompiledRule>> {
     @Override
     public List<CompiledRule> load(@CheckForNull UUID policyId) throws IOException {
-      Policy policy = POLICY_REPOSITORY.get(null, policyId, FIELDS);
+      Policy policy = policyRepository.get(null, policyId, fields);
       LOG.info("Loaded policy {}:{}", policy.getName(), policy.getId());
       return PolicyCache.getInstance().getRules(policy);
     }

@@ -25,7 +25,7 @@ import { SearchedDataProps } from 'components/searched-data/SearchedData.interfa
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
 import { EntityType } from 'enums/entity.enum';
-import { isEmpty, toLower } from 'lodash';
+import { isEmpty, noop, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
   Fragment,
@@ -40,6 +40,7 @@ import { changePassword } from 'rest/auth-API';
 import { getRoles } from 'rest/rolesAPIV1';
 import { getEntityName } from 'utils/EntityUtils';
 import {
+  DE_ACTIVE_COLOR,
   getUserPath,
   PAGE_SIZE_LARGE,
   TERM_ADMIN,
@@ -240,7 +241,7 @@ const Users = ({
                 className="tw-ml-2 focus:tw-outline-none"
                 data-testid="edit-displayName"
                 onClick={() => setIsDisplayNameEdit(true)}>
-                <EditIcon width={16} />
+                <EditIcon color={DE_ACTIVE_COLOR} width={16} />
               </button>
             </Fragment>
           )}
@@ -272,17 +273,15 @@ const Users = ({
       );
     } else {
       return (
-        <div className="p-x-sm">
-          <p className="m-t-xs">
-            {userData.description || (
-              <span className="text-grey-muted">
-                {t('label.no-entity', {
-                  entity: t('label.description'),
-                })}
-              </span>
-            )}
-          </p>
-        </div>
+        <Typography.Paragraph className="m-b-0">
+          {userData.description || (
+            <span className="text-grey-muted">
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
+            </span>
+          )}
+        </Typography.Paragraph>
       );
     }
   };
@@ -332,14 +331,16 @@ const Users = ({
     if (!isAdminUser && !isAuthDisabled) {
       return (
         <Card
-          className="ant-card-feed relative card-body-border-none"
+          className="ant-card-feed relative card-body-border-none card-padding-y-0"
           key="teams-card"
           style={{
             marginTop: '20px',
           }}
           title={
             <div className="d-flex tw-items-center tw-justify-between">
-              <h6 className="tw-heading tw-mb-0">{t('label.team-plural')}</h6>
+              <h6 className="right-panel-label tw-mb-0">
+                {t('label.team-plural')}
+              </h6>
             </div>
           }>
           <div className="tw-mb-4">{teamsElement}</div>
@@ -348,20 +349,22 @@ const Users = ({
     } else {
       return (
         <Card
-          className="ant-card-feed relative card-body-border-none "
+          className="ant-card-feed relative card-body-border-none card-padding-y-0"
           key="teams-card"
           style={{
             marginTop: '20px',
           }}
           title={
             <div className="d-flex tw-items-center tw-justify-between">
-              <h6 className="tw-heading tw-mb-0">{t('label.team-plural')}</h6>
+              <h6 className="right-panel-label tw-mb-0">
+                {t('label.team-plural')}
+              </h6>
               {!isTeamsEdit && (
                 <button
                   className="tw-ml-2 focus:tw-outline-none "
                   data-testid="edit-teams"
                   onClick={() => setIsTeamsEdit(true)}>
-                  <EditIcon width={16} />
+                  <EditIcon color={DE_ACTIVE_COLOR} width={16} />
                 </button>
               )}
             </div>
@@ -428,14 +431,16 @@ const Users = ({
     if (!isAdminUser && !isAuthDisabled) {
       return (
         <Card
-          className="ant-card-feed relative card-body-border-none"
+          className="ant-card-feed relative card-body-border-none card-padding-y-0"
           key="roles-card "
           style={{
             marginTop: '20px',
           }}
           title={
             <div className="d-flex tw-items-center tw-justify-between">
-              <h6 className="tw-heading tw-mb-0">{t('label.role-plural')}</h6>
+              <h6 className="right-panel-label tw-mb-0">
+                {t('label.role-plural')}
+              </h6>
             </div>
           }>
           <div className="roles-container">{rolesElement}</div>
@@ -444,20 +449,22 @@ const Users = ({
     } else {
       return (
         <Card
-          className="ant-card-feed relative card-body-border-none"
+          className="ant-card-feed relative card-body-border-none card-padding-y-0"
           key="roles-card"
           style={{
             marginTop: '20px',
           }}
           title={
             <div className="d-flex tw-items-center tw-justify-between">
-              <h6 className="tw-heading tw-mb-0">{t('label.role-plural')}</h6>
+              <h6 className="right-panel-label tw-mb-0">
+                {t('label.role-plural')}
+              </h6>
               {!isRolesEdit && (
                 <button
                   className="tw-ml-2 focus:tw-outline-none"
                   data-testid="edit-roles"
                   onClick={() => setIsRolesEdit(true)}>
-                  <EditIcon width={16} />
+                  <EditIcon color={DE_ACTIVE_COLOR} width={16} />
                 </button>
               )}
             </div>
@@ -494,14 +501,16 @@ const Users = ({
   const getInheritedRolesComponent = () => {
     return (
       <Card
-        className="ant-card-feed relative card-body-border-none"
+        className="ant-card-feed relative card-body-border-none card-padding-y-0"
         key="inherited-roles-card-component"
         style={{
           marginTop: '20px',
         }}
         title={
           <div className="d-flex">
-            <h6 className="tw-heading tw-mb-0" data-testid="inherited-roles">
+            <h6
+              className="right-panel-label tw-mb-0"
+              data-testid="inherited-roles">
               {t('label.inherited-role-plural')}
             </h6>
           </div>
@@ -547,7 +556,7 @@ const Users = ({
   const fetchLeftPanel = () => {
     return (
       <div className="p-xs user-profile-antd-card" data-testid="left-panel">
-        <Card className="ant-card-feed relative " key="left-panel-card">
+        <Card className="ant-card-feed relative" key="left-panel-card">
           {isImgUrlValid ? (
             <Image
               alt="profile"
@@ -573,7 +582,11 @@ const Users = ({
           )}
           <Space className="p-sm w-full" direction="vertical" size={8}>
             {getDisplayNameComponent()}
-            <p>{userData.email}</p>
+            <Typography.Paragraph
+              className="m-b-0"
+              ellipsis={{ tooltip: true }}>
+              {userData.email}
+            </Typography.Paragraph>
             {getDescriptionComponent()}
             {isAuthProviderBasic &&
               (isAdminUser || isLoggedinUser) &&
@@ -708,7 +721,7 @@ const Users = ({
                 }
               />
             ) : (
-              <ErrorPlaceHolder>
+              <ErrorPlaceHolder className="m-0">
                 <Typography.Paragraph>
                   {tab === UserPageTabs.MY_DATA
                     ? t('server.you-have-not-action-anything-yet', {
@@ -725,11 +738,11 @@ const Users = ({
       }
       case UserPageTabs.ACTIVITY:
         return (
-          <ActivityFeedProvider>
+          <ActivityFeedProvider user={userData.id}>
             <ActivityFeedTab
               entityType={EntityType.USER_NAME}
               fqn={username}
-              onFeedUpdate={() => Promise.resolve()}
+              onFeedUpdate={noop}
             />
           </ActivityFeedProvider>
         );
@@ -748,7 +761,7 @@ const Users = ({
 
   return (
     <PageLayoutV1
-      className="tw-h-full"
+      className="user-layout h-full"
       leftPanel={fetchLeftPanel()}
       pageTitle={t('label.user')}>
       <div data-testid="table-container">

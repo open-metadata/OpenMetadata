@@ -37,25 +37,40 @@ export const SummaryCard = ({
 
   if (isLoading) {
     return (
-      <div className={classNames('summary-card', className)}>
+      <div
+        className={classNames('summary-card', className)}
+        data-testid="skeleton-loading">
         <Skeleton active loading />
       </div>
     );
   }
 
   return (
-    <Space className={classNames('summary-card', className)}>
+    <Space
+      className={classNames('summary-card', className)}
+      data-testid="summary-card-container">
       <div>
-        <Typography.Paragraph className="summary-card-title">
+        <Typography.Paragraph
+          className="summary-card-title"
+          data-testid="summary-card-title">
           {title}
         </Typography.Paragraph>
-        <Typography.Paragraph className="summary-card-description">
+        <Typography.Paragraph
+          className="summary-card-description"
+          data-testid="summary-card-description">
           {isNumber(value) ? formatNumberWithComma(value) : value}
         </Typography.Paragraph>
       </div>
 
       {showProgressBar && (
-        <Progress className={type} percent={percent} type="circle" width={65} />
+        <Progress
+          className={type}
+          data-testid="progress-bar"
+          format={(percent) => `${percent}%`}
+          percent={percent}
+          type="circle"
+          width={65}
+        />
       )}
     </Space>
   );

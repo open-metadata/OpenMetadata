@@ -42,7 +42,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { getContainerDetailPath, getVersionPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
@@ -72,6 +72,7 @@ import {
   restoreContainer,
 } from 'rest/storageAPI';
 import {
+  addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
   getFeedCounts,
@@ -159,6 +160,14 @@ const ContainerPage = () => {
         'parent,dataModel,owner,tags,followers,extension',
         Include.All
       );
+      addToRecentViewed({
+        displayName: getEntityName(response),
+        entityType: EntityType.CONTAINER,
+        fqn: response.fullyQualifiedName ?? '',
+        serviceType: response.serviceType,
+        timestamp: 0,
+        id: response.id,
+      });
       setContainerData({
         ...response,
         tags: sortTagsCaseInsensitive(response.tags || []),
@@ -589,13 +598,11 @@ const ContainerPage = () => {
   const tabs = useMemo(
     () => [
       {
-        label: (
-          <TabsLabel id={EntityTabs.SCHEMA} name={t('label.detail-plural')} />
-        ),
+        label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
         key: EntityTabs.SCHEMA,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-l-lg" flex="auto">
+            <Col className="p-t-sm m-x-lg" flex="auto">
               <div className="d-flex flex-col gap-4">
                 <DescriptionV1
                   description={description}
@@ -630,21 +637,25 @@ const ContainerPage = () => {
               data-testid="entity-right-panel"
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
-                <TagsContainerV1
+                <TagsContainerV2
                   entityFqn={containerName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.CONTAINER}
-                  permission={hasEditDescriptionPermission}
+                  permission={
+                    hasEditDescriptionPermission && !containerData?.deleted
+                  }
                   selectedTags={tags}
                   tagType={TagSource.Classification}
                   onSelectionChange={handleTagSelection}
                   onThreadLinkSelect={onThreadLinkSelect}
                 />
-                <TagsContainerV1
+                <TagsContainerV2
                   entityFqn={containerName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.CONTAINER}
-                  permission={hasEditDescriptionPermission}
+                  permission={
+                    hasEditDescriptionPermission && !containerData?.deleted
+                  }
                   selectedTags={tags}
                   tagType={TagSource.Glossary}
                   onSelectionChange={handleTagSelection}
@@ -670,7 +681,8 @@ const ContainerPage = () => {
             <ActivityFeedTab
               entityType={EntityType.CONTAINER}
               fqn={containerName}
-              onFeedUpdate={() => Promise.resolve()}
+              onFeedUpdate={getEntityFeedCount}
+              onUpdateEntityDetails={() => fetchContainerDetail(containerName)}
             />
           </ActivityFeedProvider>
         ),
@@ -725,7 +737,9 @@ const ContainerPage = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
+        children: !containerPermissions.ViewAll ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <CustomPropertyTable
             entityDetails={
               containerData as CustomPropertyProps['entityDetails']
@@ -738,6 +752,7 @@ const ContainerPage = () => {
       },
     ],
     [
+      containerData,
       description,
       containerName,
       entityName,

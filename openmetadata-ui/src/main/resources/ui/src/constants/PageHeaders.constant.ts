@@ -55,7 +55,7 @@ export const PAGE_HEADERS = {
     subHeader: i18n.t('message.page-sub-header-for-databases'),
   },
   MESSAGING_SERVICES: {
-    header: i18n.t('label.messaging-plural'),
+    header: i18n.t('label.messaging'),
     subHeader: i18n.t('message.page-sub-header-for-messagings'),
   },
   DASHBOARD_SERVICES: {

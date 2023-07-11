@@ -26,10 +26,12 @@ import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAss
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import TableTags from 'components/TableTags/TableTags.component';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { getDashboardDetailsPath } from 'constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { TagSource } from 'generated/type/schema';
+import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { isEmpty, isUndefined, map } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -37,22 +39,20 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { restoreDashboard } from 'rest/dashboardAPI';
 import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
-import { getFilterTags } from 'utils/TableTags/TableTags.utils';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-links.svg';
 import { EntityField } from '../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
-import { getCurrentUserId, refreshPage } from '../../utils/CommonUtils';
-import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import {
-  fetchGlossaryTerms,
-  getGlossaryTermlist,
-} from '../../utils/GlossaryUtils';
+  getCurrentUserId,
+  getFeedCounts,
+  refreshPage,
+} from '../../utils/CommonUtils';
+import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -76,10 +76,7 @@ const DashboardDetails = ({
   chartDescriptionUpdateHandler,
   chartTagUpdateHandler,
   versionHandler,
-  feedCount,
-  entityFieldThreadCount,
   createThread,
-  entityFieldTaskCount,
   onDashboardUpdate,
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
@@ -93,10 +90,13 @@ const DashboardDetails = ({
     chart: ChartType;
     index: number;
   }>();
-
-  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-  const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
+  const [feedCount, setFeedCount] = useState<number>(0);
+  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
+  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
 
   const [threadLink, setThreadLink] = useState<string>('');
 
@@ -109,9 +109,6 @@ const DashboardDetails = ({
   const [chartsPermissionsArray, setChartsPermissionsArray] = useState<
     Array<ChartsPermissions>
   >([]);
-
-  const [glossaryTags, setGlossaryTags] = useState<TagOption[]>([]);
-  const [classificationTags, setClassificationTags] = useState<TagOption[]>([]);
 
   const {
     owner,
@@ -175,6 +172,20 @@ const DashboardDetails = ({
     }
   }, []);
 
+  const getEntityFeedCount = () => {
+    getFeedCounts(
+      EntityType.DASHBOARD,
+      dashboardFQN,
+      setEntityFieldThreadCount,
+      setEntityFieldTaskCount,
+      setFeedCount
+    );
+  };
+
+  useEffect(() => {
+    getEntityFeedCount();
+  }, [dashboardFQN]);
+
   const getAllChartsPermissions = useCallback(
     async (charts: ChartType[]) => {
       const permissionsArray: Array<ChartsPermissions> = [];
@@ -200,41 +211,6 @@ const DashboardDetails = ({
     },
     [dashboardDetails]
   );
-
-  const fetchGlossaryTags = async () => {
-    setIsGlossaryLoading(true);
-    try {
-      const res = await fetchGlossaryTerms();
-
-      const glossaryTerms: TagOption[] = getGlossaryTermlist(res).map(
-        (tag) => ({ fqn: tag, source: TagSource.Glossary })
-      );
-      setGlossaryTags(glossaryTerms);
-    } catch {
-      setTagFetchFailed(true);
-    } finally {
-      setIsGlossaryLoading(false);
-    }
-  };
-
-  const fetchClassificationTags = async () => {
-    setIsTagLoading(true);
-    try {
-      const res = await getClassifications();
-      const tagList = await getTaglist(res.data);
-
-      const classificationTag: TagOption[] = map(tagList, (tag) => ({
-        fqn: tag,
-        source: TagSource.Classification,
-      }));
-
-      setClassificationTags(classificationTag);
-    } catch {
-      setTagFetchFailed(true);
-    } finally {
-      setIsTagLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (charts) {
@@ -371,14 +347,13 @@ const DashboardDetails = ({
 
   const handleChartTagSelection = async (
     selectedTags: Array<EntityTags>,
-    editColumnTag: ChartType,
-    otherTags: TagLabel[]
+    editColumnTag: ChartType
   ) => {
     if (selectedTags && editColumnTag) {
-      const newSelectedTags: TagOption[] = map(
-        [...selectedTags, ...otherTags],
-        (tag) => ({ fqn: tag.tagFQN, source: tag.source })
-      );
+      const newSelectedTags: TagOption[] = map(selectedTags, (tag) => ({
+        fqn: tag.tagFQN,
+        source: tag.source,
+      }));
 
       const prevTags = editColumnTag.tags?.filter((tag) =>
         newSelectedTags.some((selectedTag) => selectedTag.fqn === tag.tagFQN)
@@ -537,17 +512,12 @@ const DashboardDetails = ({
         render: (tags: TagLabel[], record: ChartType, index: number) => {
           return (
             <TableTags<ChartType>
-              dataTestId="classification-tags"
-              fetchTags={fetchClassificationTags}
               handleTagSelection={handleChartTagSelection}
               hasTagEditAccess={hasEditTagAccess(record)}
               index={index}
               isReadOnly={deleted}
-              isTagLoading={isTagLoading}
               record={record}
-              tagFetchFailed={tagFetchFailed}
-              tagList={classificationTags}
-              tags={getFilterTags(tags)}
+              tags={tags}
               type={TagSource.Classification}
             />
           );
@@ -561,34 +531,18 @@ const DashboardDetails = ({
         width: 300,
         render: (tags: TagLabel[], record: ChartType, index: number) => (
           <TableTags<ChartType>
-            dataTestId="glossary-tags"
-            fetchTags={fetchGlossaryTags}
             handleTagSelection={handleChartTagSelection}
             hasTagEditAccess={hasEditTagAccess(record)}
             index={index}
             isReadOnly={deleted}
-            isTagLoading={isGlossaryLoading}
             record={record}
-            tagFetchFailed={tagFetchFailed}
-            tagList={glossaryTags}
-            tags={getFilterTags(tags)}
+            tags={tags}
             type={TagSource.Glossary}
           />
         ),
       },
     ],
-    [
-      deleted,
-      isTagLoading,
-      isGlossaryLoading,
-      tagFetchFailed,
-      glossaryTags,
-      classificationTags,
-      renderDescription,
-      fetchGlossaryTags,
-      handleChartTagSelection,
-      hasEditTagAccess,
-    ]
+    [deleted, renderDescription, handleChartTagSelection, hasEditTagAccess]
   );
 
   const tabs = useMemo(
@@ -600,7 +554,7 @@ const DashboardDetails = ({
         key: EntityTabs.DETAILS,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-l-lg" flex="auto">
+            <Col className="p-t-sm m-x-lg" flex="auto">
               <div className="d-flex flex-col gap-4">
                 <DescriptionV1
                   description={dashboardDetails.description}
@@ -629,7 +583,6 @@ const DashboardDetails = ({
                 ) : (
                   <Table
                     bordered
-                    className="p-t-xs"
                     columns={tableColumn}
                     data-testid="charts-table"
                     dataSource={charts}
@@ -646,13 +599,14 @@ const DashboardDetails = ({
               data-testid="entity-right-panel"
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
-                <TagsContainerV1
+                <TagsContainerV2
                   entityFqn={dashboardDetails.fullyQualifiedName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.DASHBOARD}
                   permission={
-                    dashboardPermissions.EditAll ||
-                    dashboardPermissions.EditTags
+                    (dashboardPermissions.EditAll ||
+                      dashboardPermissions.EditTags) &&
+                    !dashboardDetails.deleted
                   }
                   selectedTags={dashboardTags}
                   tagType={TagSource.Classification}
@@ -660,13 +614,14 @@ const DashboardDetails = ({
                   onThreadLinkSelect={onThreadLinkSelect}
                 />
 
-                <TagsContainerV1
+                <TagsContainerV2
                   entityFqn={dashboardDetails.fullyQualifiedName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.DASHBOARD}
                   permission={
-                    dashboardPermissions.EditAll ||
-                    dashboardPermissions.EditTags
+                    (dashboardPermissions.EditAll ||
+                      dashboardPermissions.EditTags) &&
+                    !dashboardDetails.deleted
                   }
                   selectedTags={dashboardTags}
                   tagType={TagSource.Glossary}
@@ -693,7 +648,7 @@ const DashboardDetails = ({
             <ActivityFeedTab
               entityType={EntityType.DASHBOARD}
               fqn={dashboardDetails?.fullyQualifiedName ?? ''}
-              onFeedUpdate={() => Promise.resolve()}
+              onFeedUpdate={getEntityFeedCount}
             />
           </ActivityFeedProvider>
         ),
@@ -720,7 +675,9 @@ const DashboardDetails = ({
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
+        children: !dashboardPermissions.ViewAll ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <CustomPropertyTable
             entityDetails={
               dashboardDetails as CustomPropertyProps['entityDetails']

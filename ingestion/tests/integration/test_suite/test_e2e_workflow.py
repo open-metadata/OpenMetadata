@@ -50,7 +50,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 test_suite_config = {
     "source": {
         "type": "custom-database",
-        "serviceName": "test_suite_service_test",
+        "serviceName": "MyRabdomWorkflow",
         "sourceConfig": {
             "config": {
                 "type": "TestSuite",

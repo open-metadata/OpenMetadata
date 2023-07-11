@@ -86,8 +86,8 @@ describe('Test CustomProperty Table Component', () => {
 
     expect(table).toBeInTheDocument();
 
-    const propertyName = await screen.findByText('Name');
-    const propertyValue = await screen.findByText('Value');
+    const propertyName = await screen.findByText('label.name');
+    const propertyValue = await screen.findByText('label.value');
     const rows = await screen.findAllByRole('row');
 
     expect(propertyName).toBeInTheDocument();

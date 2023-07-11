@@ -15,11 +15,10 @@ import { DownOutlined, UpOutlined } from '@ant-design/icons';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
-import { TabSpecificField } from 'enums/entity.enum';
 import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getTopicByFqn } from 'rest/topicsAPI';
+import { getSampleDataByTopicId } from 'rest/topicsAPI';
 import { Transi18next } from 'utils/CommonUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { WORKFLOWS_METADATA_DOCS } from '../../constants/docs.constants';
@@ -75,7 +74,7 @@ const MessageCard = ({ message }: { message: string }) => {
   );
 };
 
-const SampleDataTopic: FC<{ topicFQN: string }> = ({ topicFQN }) => {
+const SampleDataTopic: FC<{ topicId: string }> = ({ topicId }) => {
   const { t } = useTranslation();
   const [data, setData] = useState<TopicSampleData>();
   const [loading, setLoading] = useState(false);
@@ -83,10 +82,7 @@ const SampleDataTopic: FC<{ topicFQN: string }> = ({ topicFQN }) => {
   const fetchTopicSampleData = async () => {
     setLoading(true);
     try {
-      const { sampleData } = await getTopicByFqn(
-        topicFQN,
-        TabSpecificField.SAMPLE_DATA
-      );
+      const { sampleData } = await getSampleDataByTopicId(topicId);
 
       setData(sampleData);
     } catch (error) {

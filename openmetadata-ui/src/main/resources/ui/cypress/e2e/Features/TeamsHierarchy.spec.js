@@ -80,7 +80,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
     cy.get('[data-testid="add-user"]').should('be.visible').click();
 
     // Enter team name
-    cy.get('#create-user-bot-form .ant-select-selector')
+    cy.get('[data-testid="team-select"] .ant-select-selector')
       .should('exist')
       .scrollIntoView()
       .should('be.visible')
@@ -94,7 +94,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
     });
 
     teamNames.forEach((teamName) => {
-      cy.get('#create-user-bot-form .ant-select-selector')
+      cy.get('[data-testid="team-select"] .ant-select-selector')
         .should('exist')
         .scrollIntoView()
         .should('be.visible')

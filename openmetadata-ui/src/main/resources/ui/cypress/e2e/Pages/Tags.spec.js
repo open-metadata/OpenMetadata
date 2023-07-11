@@ -233,8 +233,8 @@ describe('Tags page should work', () => {
   });
 
   it('Use newly created tag to any entity should work', () => {
-    const entity = SEARCH_ENTITY_TABLE.table_1;
-    addNewTagToEntity(entity, `${NEW_TAG.name}`);
+    const entity = SEARCH_ENTITY_TABLE.table_3;
+    addNewTagToEntity(entity, NEW_TAG);
   });
 
   it('Add tag at DatabaseSchema level should work', () => {
@@ -251,7 +251,7 @@ describe('Tags page should work', () => {
     );
     interceptURL('PATCH', '/api/v1/databaseSchemas/*', 'addTags');
 
-    const entity = SEARCH_ENTITY_TABLE.table_2;
+    const entity = SEARCH_ENTITY_TABLE.table_3;
     const tag = 'Sensitive';
 
     visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
@@ -398,7 +398,7 @@ describe('Tags page should work', () => {
     cy.get('@count')
       .invoke('text')
       .then((text) => {
-        expect(text).to.equal('2');
+        expect(text).to.equal('1');
       });
 
     interceptURL(

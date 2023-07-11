@@ -11,9 +11,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -39,12 +37,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
-import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestSummary;
-import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -55,7 +51,6 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
@@ -82,7 +77,7 @@ import org.openmetadata.service.util.ResultList;
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
 
-  static final String FIELDS = "owner,testSuite,testDefinition";
+  static final String FIELDS = "owner,testSuite,testDefinition,testSuites";
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {
@@ -118,7 +113,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       description =
           "Get a list of test. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
-              + "entries in the list using `limit` and `before` or `after` query params.",
+              + "entries in the list using `limit` and `before` or `after` query params."
+              + "Use the `testSuite` field to get the executable Test Suite linked to this test case "
+              + "or use the `testSuites` field to list test suites (executable and logical) linked.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -187,41 +184,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     ResultList<TestCase> tests =
         super.listInternal(
             uriInfo, securityContext, fields, filter, limitParam, before, after, operationContext, resourceContext);
-
-    List<TestCase> maskedTests =
-        tests.getData().stream()
-            .map(
-                testCase -> {
-                  try {
-                    EntityLink testCaseLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
-                    Table table =
-                        Entity.getEntityByName(
-                            Entity.TABLE, testCaseLink.getEntityFQN(), "owner,tags", Include.NON_DELETED);
-
-                    // Ignore table tests
-                    if (testCaseLink.getFieldName() == null) return testCase;
-
-                    Optional<Column> referencedColumn =
-                        table.getColumns().stream()
-                            .filter(
-                                col -> testCaseLink.getFullyQualifiedFieldValue().equals(col.getFullyQualifiedName()))
-                            .findFirst();
-
-                    if (referencedColumn.isPresent()) {
-                      Column col = referencedColumn.get();
-                      // We need the table owner to know if we can authorize the access
-                      boolean authorizePII = authorizer.authorizePII(securityContext, table.getOwner());
-                      return PIIMasker.getTestCase(col, testCase, authorizePII);
-                    }
-                    return testCase;
-                  } catch (IOException e) {
-                    throw new RuntimeException(e);
-                  }
-                })
-            .collect(Collectors.toList());
-
-    tests.setData(maskedTests);
-    return tests;
+    return PIIMasker.getTestCases(tests, authorizer, securityContext);
   }
 
   @GET
@@ -376,7 +339,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     authorizer.authorize(securityContext, operationContext, resourceContext);
     repository.isTestSuiteExecutable(create.getTestSuite());
     test = addHref(uriInfo, repository.create(uriInfo, test));
-    LOG.info("Created {}:{}", Entity.getEntityTypeFromObject(test), test.getId());
     return Response.created(test.getHref()).entity(test).build();
   }
 
@@ -442,7 +404,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     PatchResponse<TestCaseResult> patchResponse =
-        repository.patchTestCaseResults(fqn, timestamp, uriInfo, securityContext.getUserPrincipal().getName(), patch);
+        repository.patchTestCaseResults(fqn, timestamp, securityContext.getUserPrincipal().getName(), patch);
     return patchResponse.toResponse();
   }
 
@@ -684,10 +646,14 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext = new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().entity(testSuite).build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    if (testSuite.getExecutable()) {
+    if (Boolean.TRUE.equals(testSuite.getExecutable())) {
       throw new IllegalArgumentException("You are trying to add test cases to an executable test suite.");
     }
     List<UUID> testCaseIds = createLogicalTestCases.getTestCaseIds();
+
+    if (testCaseIds == null || testCaseIds.isEmpty()) {
+      return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, RestUtil.ENTITY_NO_CHANGE).toResponse();
+    }
 
     int existingTestCaseCount = repository.getTestCaseCount(testCaseIds);
     if (existingTestCaseCount != testCaseIds.size()) {

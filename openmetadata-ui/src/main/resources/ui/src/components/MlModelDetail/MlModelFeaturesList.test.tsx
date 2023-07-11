@@ -122,21 +122,6 @@ jest.mock('../../utils/CommonUtils', () => ({
   getHtmlForNonAdminAction: jest.fn().mockReturnValue('admin action'),
 }));
 
-jest.mock('../../utils/GlossaryUtils', () => ({
-  fetchGlossaryTerms: jest.fn(),
-  getGlossaryTermlist: jest.fn().mockReturnValue([]),
-}));
-
-jest.mock('../../utils/TableUtils', () => ({
-  getEntityLink: jest.fn().mockReturnValue('entityLink'),
-}));
-
-jest.mock('../../utils/TagsUtils', () => ({
-  getClassifications: jest.fn(),
-  getTaglist: jest.fn().mockReturnValue([]),
-  getTagDisplay: jest.fn(),
-}));
-
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
@@ -150,6 +135,16 @@ jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
 jest.mock('components/Tag/Tags/tags', () => {
   return jest.fn().mockImplementation(({ tag }) => <span>{tag.tagFQN}</span>);
 });
+
+jest.mock('utils/TableUtils', () => ({
+  getAllTagsList: jest.fn().mockImplementation(() => Promise.resolve([])),
+  getTagsHierarchy: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('utils/GlossaryUtils', () => ({
+  getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
+  getGlossaryTermsList: jest.fn().mockImplementation(() => Promise.resolve([])),
+}));
 
 const handleFeaturesUpdate = jest.fn();
 

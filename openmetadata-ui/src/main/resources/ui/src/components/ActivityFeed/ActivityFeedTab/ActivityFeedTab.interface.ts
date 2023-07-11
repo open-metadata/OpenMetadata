@@ -13,7 +13,6 @@
 import { EntityType } from 'enums/entity.enum';
 import { Column } from 'generated/entity/data/table';
 import { EntityReference } from 'generated/entity/type';
-import { TagLabel } from 'generated/type/tagLabel';
 
 export type FeedKeys = 'all' | 'mentions' | 'tasks';
 
@@ -26,9 +25,8 @@ export enum ActivityFeedTabs {
 export interface ActivityFeedTabBasicProps {
   fqn: string;
   onFeedUpdate: () => void;
+  onUpdateEntityDetails?: () => void;
   owner?: EntityReference;
-  tags?: TagLabel[];
-  description?: string;
 }
 
 export type ActivityFeedTabProps = ActivityFeedTabBasicProps &

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { EntityType } from 'enums/entity.enum';
 import React from 'react';
 import EntitySummaryPanel from './EntitySummaryPanel.component';
@@ -77,16 +77,30 @@ jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children }) => <>{children}</>),
 }));
 
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermission: jest.fn().mockReturnValue({
+      ViewBasic: true,
+      ViewAll: true,
+    }),
+  }),
+}));
+
 describe('EntitySummaryPanel component tests', () => {
   it('TableSummary should render for table data', async () => {
-    render(
-      <EntitySummaryPanel
-        entityDetails={{
-          details: { ...mockTableEntityDetails, entityType: EntityType.TABLE },
-        }}
-        handleClosePanel={mockHandleClosePanel}
-      />
-    );
+    await act(async () => {
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+    });
 
     const tableSummary = screen.getByTestId('TableSummary');
 
@@ -94,14 +108,19 @@ describe('EntitySummaryPanel component tests', () => {
   });
 
   it('TopicSummary should render for topics data', async () => {
-    render(
-      <EntitySummaryPanel
-        entityDetails={{
-          details: { ...mockTopicEntityDetails, entityType: EntityType.TOPIC },
-        }}
-        handleClosePanel={mockHandleClosePanel}
-      />
-    );
+    await act(async () => {
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockTopicEntityDetails,
+              entityType: EntityType.TOPIC,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+    });
 
     const topicSummary = screen.getByTestId('TopicSummary');
 
@@ -109,17 +128,19 @@ describe('EntitySummaryPanel component tests', () => {
   });
 
   it('DashboardSummary should render for dashboard data', async () => {
-    render(
-      <EntitySummaryPanel
-        entityDetails={{
-          details: {
-            ...mockDashboardEntityDetails,
-            entityType: EntityType.DASHBOARD,
-          },
-        }}
-        handleClosePanel={mockHandleClosePanel}
-      />
-    );
+    await act(async () => {
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockDashboardEntityDetails,
+              entityType: EntityType.DASHBOARD,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+    });
 
     const dashboardSummary = screen.getByTestId('DashboardSummary');
 
@@ -127,17 +148,19 @@ describe('EntitySummaryPanel component tests', () => {
   });
 
   it('PipelineSummary should render for pipeline data', async () => {
-    render(
-      <EntitySummaryPanel
-        entityDetails={{
-          details: {
-            ...mockPipelineEntityDetails,
-            entityType: EntityType.PIPELINE,
-          },
-        }}
-        handleClosePanel={mockHandleClosePanel}
-      />
-    );
+    await act(async () => {
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockPipelineEntityDetails,
+              entityType: EntityType.PIPELINE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+    });
 
     const pipelineSummary = screen.getByTestId('PipelineSummary');
 
@@ -145,17 +168,19 @@ describe('EntitySummaryPanel component tests', () => {
   });
 
   it('MlModelSummary should render for mlModel data', async () => {
-    render(
-      <EntitySummaryPanel
-        entityDetails={{
-          details: {
-            ...mockMlModelEntityDetails,
-            entityType: EntityType.MLMODEL,
-          },
-        }}
-        handleClosePanel={mockHandleClosePanel}
-      />
-    );
+    await act(async () => {
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockMlModelEntityDetails,
+              entityType: EntityType.MLMODEL,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+    });
 
     const mlModelSummary = screen.getByTestId('MlModelSummary');
 

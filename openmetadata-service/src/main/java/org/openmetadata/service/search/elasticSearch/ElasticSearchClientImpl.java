@@ -211,6 +211,7 @@ public class ElasticSearchClientImpl implements SearchClient {
         LOG.info("{} Updated {}", elasticSearchIndexType.indexName, putMappingResponse.isAcknowledged());
       } else {
         CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
+        request.source(elasticSearchIndexMapping, XContentType.JSON);
         CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
         LOG.info("{} Created {}", elasticSearchIndexType.indexName, createIndexResponse.isAcknowledged());
       }
@@ -278,11 +279,14 @@ public class ElasticSearchClientImpl implements SearchClient {
       case "query_search_index":
         searchSourceBuilder = buildQuerySearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
         break;
+      case "test_case_search_index":
+        searchSourceBuilder = buildTestCaseSearch(request.getQuery(), request.getFrom(), request.getSize());
+        break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
         break;
     }
-    if (!nullOrEmpty(request.getQueryFilter())) {
+    if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
       try {
         XContentParser filterParser =
             XContentType.JSON
@@ -639,7 +643,8 @@ public class ElasticSearchClientImpl implements SearchClient {
         QueryBuilders.queryStringQuery(query)
             .field(FIELD_NAME, 10.0f)
             .field(EntityBuilderConstant.FIELD_DISPLAY_NAME, 10.0f)
-            .field(EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM, 1.0f)
+            .field(EntityBuilderConstant.FIELD_NAME_NGRAM, 1.0f)
+            .field("classification.name", 1.0f)
             .field(EntityBuilderConstant.DESCRIPTION, 3.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
@@ -728,6 +733,39 @@ public class ElasticSearchClientImpl implements SearchClient {
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
+  private static SearchSourceBuilder buildTestCaseSearch(String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .field(FIELD_NAME, 10.0f)
+            .field(EntityBuilderConstant.DESCRIPTION, 3.0f)
+            .field("testSuite.fullyQualifiedName", 10.0f)
+            .field("testSuite.name", 10.0f)
+            .field("testSuite.description", 3.0f)
+            .field("entityLink", 3.0f)
+            .field("entityFQN", 10.0f)
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
+
+    HighlightBuilder.Field highlightTestCaseDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
+    highlightTestCaseDescription.highlighterType(EntityBuilderConstant.UNIFIED);
+    HighlightBuilder.Field highlightTestCaseName = new HighlightBuilder.Field(FIELD_NAME);
+    highlightTestCaseName.highlighterType(EntityBuilderConstant.UNIFIED);
+    HighlightBuilder.Field highlightTestSuiteName = new HighlightBuilder.Field("testSuite.name");
+    highlightTestSuiteName.highlighterType(EntityBuilderConstant.UNIFIED);
+    HighlightBuilder.Field highlightTestSuiteDescription = new HighlightBuilder.Field("testSuite.description");
+    highlightTestSuiteDescription.highlighterType(EntityBuilderConstant.UNIFIED);
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightTestCaseDescription);
+    hb.field(highlightTestCaseName);
+    hb.field(highlightTestSuiteName);
+    hb.field(highlightTestSuiteDescription);
+
+    hb.preTags(EntityBuilderConstant.PRE_TAG);
+    hb.postTags(EntityBuilderConstant.POST_TAG);
+
+    return searchBuilder(queryBuilder, hb, from, size);
+  }
+
   private static SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder = QueryBuilders.queryStringQuery(query).lenient(true);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
@@ -748,7 +786,11 @@ public class ElasticSearchClientImpl implements SearchClient {
             AggregationBuilders.terms("entityType.keyword")
                 .field("entityType.keyword")
                 .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"));
+        .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"))
+        .aggregation(
+            AggregationBuilders.terms("owner.displayName.keyword")
+                .field("owner.displayName.keyword")
+                .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE));
 
     return builder;
   }
@@ -765,7 +807,7 @@ public class ElasticSearchClientImpl implements SearchClient {
 
   @Override
   public ElasticSearchConfiguration.SearchType getSearchType() {
-    return ElasticSearchConfiguration.SearchType.ELASTIC_SEARCH;
+    return ElasticSearchConfiguration.SearchType.ELASTICSEARCH;
   }
 
   @Override
@@ -774,7 +816,6 @@ public class ElasticSearchClientImpl implements SearchClient {
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
         ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
     UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, event.getEntityId().toString());
-    ElasticSearchIndex index;
 
     switch (event.getEventType()) {
       case ENTITY_CREATED:
@@ -806,6 +847,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     updateElasticSearch(updateRequest);
   }
 
+  @Override
   public void updateSearchForEntityUpdated(
       ElasticSearchIndexDefinition.ElasticSearchIndexType indexType, String entityType, ChangeEvent event)
       throws IOException {
@@ -1117,13 +1159,20 @@ public class ElasticSearchClientImpl implements SearchClient {
 
   @Override
   public void updateClassification(ChangeEvent event) throws IOException {
+    Classification classification = (Classification) event.getEntity();
+    String indexName = ElasticSearchIndexDefinition.ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName;
     if (event.getEventType() == ENTITY_DELETED) {
-      Classification classification = (Classification) event.getEntity();
-      DeleteByQueryRequest request =
-          new DeleteByQueryRequest(ElasticSearchIndexDefinition.ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName);
+      DeleteByQueryRequest request = new DeleteByQueryRequest(indexName);
       String fqnMatch = classification.getName() + ".*";
       request.setQuery(new WildcardQueryBuilder("fullyQualifiedName", fqnMatch));
       deleteEntityFromElasticSearchByQuery(request);
+    } else if (event.getEventType() == ENTITY_UPDATED) {
+      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+      updateByQueryRequest.setQuery(new MatchQueryBuilder("tag.classification.id", classification.getId().toString()));
+      String scriptTxt = "ctx._source.disabled=true";
+      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
+      updateByQueryRequest.setScript(script);
+      updateElasticSearchByQuery(updateByQueryRequest);
     }
   }
 
@@ -1135,15 +1184,15 @@ public class ElasticSearchClientImpl implements SearchClient {
     UUID testSuiteId = testSuite.getId();
 
     if (event.getEventType() == ENTITY_DELETED) {
-      if (testSuite.getExecutable()) {
+      if (Boolean.TRUE.equals(testSuite.getExecutable())) {
         DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexType.indexName);
-        deleteByQueryRequest.setQuery(new MatchQueryBuilder("testSuite.id", testSuiteId.toString()));
+        deleteByQueryRequest.setQuery(new MatchQueryBuilder("testSuites.id", testSuiteId.toString()));
         deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
       } else {
         UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexType.indexName);
-        updateByQueryRequest.setQuery(new MatchQueryBuilder("testSuite.id", testSuiteId.toString()));
+        updateByQueryRequest.setQuery(new MatchQueryBuilder("testSuites.id", testSuiteId.toString()));
         String scriptTxt =
-            "for (int i = 0; i < ctx._source.testSuite.length; i++) { if (ctx._source.testSuite[i].id == '%s') { ctx._source.testSuite.remove(i) }}";
+            "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].id == '%s') { ctx._source.testSuites.remove(i) }}";
         Script script =
             new Script(
                 ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, String.format(scriptTxt, testSuiteId), new HashMap<>());
@@ -1180,7 +1229,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     if (event.getEventType() == ENTITY_UPDATED) {
       for (EntityReference testcaseReference : testCaseReferences) {
         UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, testcaseReference.getId().toString());
-        String scripText = "ctx._source.testSuite.add(params)";
+        String scripText = "ctx._source.testSuites.add(params)";
         Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scripText, testSuiteDoc);
         updateRequest.script(script);
         updateElasticSearch(updateRequest);
@@ -1214,7 +1263,7 @@ public class ElasticSearchClientImpl implements SearchClient {
       case ENTITY_DELETED:
         EntityReference testSuiteReference = ((TestCase) event.getEntity()).getTestSuite();
         TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, testSuiteReference.getId(), "", Include.ALL);
-        if (testSuite.getExecutable()) {
+        if (Boolean.TRUE.equals(testSuite.getExecutable())) {
           // Delete the test case from the index if deleted from an executable test suite
           DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, event.getEntityId().toString());
           deleteEntityFromElasticSearch(deleteRequest);
@@ -1300,6 +1349,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     }
   }
 
+  @Override
   public UpdateRequest applyESChangeEvent(ChangeEvent event) {
     String entityType = event.getEntityType();
     ElasticSearchIndexDefinition.ElasticSearchIndexType esIndexType =
@@ -1348,16 +1398,9 @@ public class ElasticSearchClientImpl implements SearchClient {
     return new UpdateRequest(IndexUtil.ENTITY_TYPE_TO_INDEX_MAP.get(entityType), entityId).script(script);
   }
 
-  /**
-   * @param data
-   * @param options
-   * @return
-   * @throws IOException
-   */
   @Override
   public BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
-    BulkResponse response = client.bulk(data, RequestOptions.DEFAULT);
-    return response;
+    return client.bulk(data, RequestOptions.DEFAULT);
   }
 
   @Override
@@ -1398,17 +1441,6 @@ public class ElasticSearchClientImpl implements SearchClient {
     return dateWithDataMap;
   }
 
-  /**
-   * @param startTs
-   * @param endTs
-   * @param tier
-   * @param team
-   * @param dataInsightChartName
-   * @param dataReportIndex
-   * @return
-   * @throws IOException
-   * @throws ParseException
-   */
   @Override
   public Response listDataInsightChartResult(
       Long startTs,

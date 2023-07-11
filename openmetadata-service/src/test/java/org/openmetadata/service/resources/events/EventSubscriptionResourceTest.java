@@ -59,7 +59,6 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
     supportedNameCharacters = supportedNameCharacters.replace(" ", ""); // Space not supported
     supportsSoftDelete = false;
     supportsFieldsQueryParam = false;
-    supportsEmptyDescription = true;
   }
 
   @Test
@@ -355,7 +354,7 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
    * Before a test for every entity resource, create a webhook subscription. At the end of the test, ensure all events
    * are delivered over web subscription comparing it with number of events stored in the system.
    */
-  public void startWebhookSubscription(boolean enabled) throws IOException {
+  public void startWebhookSubscription() throws IOException {
     String baseUri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/healthy";
     Webhook webhook = getWebhook(baseUri);
     CreateEventSubscription genericWebhookActionRequest = createRequest("healthy").withSubscriptionConfig(webhook);

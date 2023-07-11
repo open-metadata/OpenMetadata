@@ -256,7 +256,7 @@ const TeamsPage = () => {
         description: data.description,
         teamType: data.teamType as TeamType,
         parents: fqn ? [selectedTeam.id] : undefined,
-        email: data.email,
+        email: data.email || undefined,
       };
       const res = await createTeam(teamData);
       if (res) {

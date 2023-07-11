@@ -28,17 +28,19 @@ SET json = JSON_INSERT(
     JSON_REMOVE(json, '$.connection.config.configSource.securityConfig.gcsConfig'),
     '$.connection.config.configSource.securityConfig.gcpConfig',
     JSON_EXTRACT(json, '$.connection.config.configSource.securityConfig.gcsConfig')
-) where serviceType in ('Datalake');
+) where serviceType in ('Datalake')
+AND JSON_EXTRACT(json, '$.connection.config.configSource.securityConfig.gcsConfig') IS NOT NULL;
 
 
 -- Rename gcsConfig in dbt to gcpConfig
 UPDATE ingestion_pipeline_entity
 SET json = JSON_INSERT(
     JSON_REMOVE(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcsConfig'),
-    '$.sourceConfig.config.dbtConfigdbtSecurityConfig.gcpConfig',
+    '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig',
     JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcsConfig')
 )
-WHERE json -> '$.sourceConfig.config.type' = 'DBT';
+WHERE json -> '$.sourceConfig.config.type' = 'DBT'
+AND JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcsConfig') IS NOT NULL;
 
 -- Rename chartUrl in chart_entity to sourceUrl
 UPDATE chart_entity
@@ -125,95 +127,6 @@ where serviceType in ('Postgres', 'Mysql');
 -- Clean old test connections
 TRUNCATE automations_workflow;
 
-
--- add fullyQualifiedName hash and remove existing columns
-
--- update the OM system tables
-
-ALTER TABLE  field_relationship DROP KEY `PRIMARY`, ADD COLUMN fromFQNHash VARCHAR(256), ADD COLUMN toFQNHash VARCHAR(256),
-DROP INDEX from_index, DROP INDEX to_index, ADD INDEX from_fqnhash_index(fromFQNHash, relation), ADD INDEX to_fqnhash_index(toFQNHash, relation),
- ADD CONSTRAINT  `field_relationship_primary` PRIMARY KEY(fromFQNHash, toFQNHash, relation), MODIFY fromFQN VARCHAR(2096) NOT NULL,
- MODIFY toFQN VARCHAR(2096) NOT NULL;
-
-ALTER TABLE entity_extension_time_series DROP COLUMN entityFQN, ADD COLUMN entityFQNHash VARCHAR (256) NOT NULL;
-
-ALTER TABLE type_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-
-ALTER TABLE event_subscription_entity DROP KEY `name`,  ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-
-ALTER TABLE test_definition DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE test_suite DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE test_case DROP COLUMN fullyQualifiedName,  ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
-     ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
-
-ALTER TABLE web_analytic_event DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
-ALTER TABLE data_insight_chart DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
-ALTER TABLE kpi_entity  DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-
-ALTER TABLE classification  DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);;
-
-ALTER TABLE glossary_term_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
- ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-
-ALTER TABLE tag DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
- ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-
-ALTER TABLE tag_usage DROP index `source`, DROP COLUMN targetFQN, ADD COLUMN tagFQNHash VARCHAR(256), ADD COLUMN targetFQNHash VARCHAR(256),
-     ADD UNIQUE KEY `tag_usage_key` (source, tagFQNHash, targetFQNHash);
-
-ALTER TABLE policy_entity DROP COLUMN fullyQualifiedName,  ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
- ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-
-ALTER TABLE role_entity DROP KEY `name`,  ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE automations_workflow DROP KEY `name`,  ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE test_connection_definition ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash),
-    ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-
-
--- update services
-ALTER TABLE dbservice_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE messaging_service_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE dashboard_service_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE pipeline_service_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE storage_service_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE metadata_service_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE mlmodel_service_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-
-
--- all entity tables
-ALTER TABLE database_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
- ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE database_schema_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
- ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE table_entity DROP COLUMN fullyQualifiedName,  ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
- ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE metric_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
- ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE report_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
- ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE dashboard_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
- ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE chart_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
- ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE ml_model_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
- ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE pipeline_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
- ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE topic_entity DROP COLUMN fullyQualifiedName,  ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
- ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE ingestion_pipeline_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
- ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE storage_container_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
- ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-ALTER TABLE dashboard_data_model_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash),
- ADD COLUMN name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
-
-ALTER TABLE query_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE team_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE user_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE bot_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-ALTER TABLE glossary_entity DROP KEY `name`, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
-
 -- Remove sourceUrl in pipeline_entity from DatabricksPipeline & Fivetran
 UPDATE pipeline_entity
 SET json = JSON_REMOVE(json, '$.sourceUrl')
@@ -223,3 +136,228 @@ WHERE JSON_EXTRACT(json, '$.serviceType') in ('DatabricksPipeline','Fivetran');
 UPDATE dashboard_entity 
 SET json = JSON_REMOVE(json, '$.sourceUrl')
 WHERE JSON_EXTRACT(json, '$.serviceType') in ('Mode');
+
+CREATE TABLE IF NOT EXISTS SERVER_CHANGE_LOG (
+    installed_rank SERIAL,
+    version VARCHAR(256)  PRIMARY KEY,
+    migrationFileName VARCHAR(256) NOT NULL,
+    checksum VARCHAR(256) NOT NULL,
+    installed_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS SERVER_MIGRATION_SQL_LOGS (
+    version VARCHAR(256) NOT NULL,
+    sqlStatement VARCHAR(10000) NOT NULL,
+    checksum VARCHAR(256) PRIMARY KEY,
+    executedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Update test definition parameterValues
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.parameterDefinition'),
+	'$.parameterDefinition',
+	JSON_ARRAY(
+		JSON_OBJECT(
+			'name', 'minValueForMeanInCol',
+			'dataType', 'INT',
+			'required', false,
+			'description', 'Expected mean value for the column to be greater or equal than',
+			'displayName', 'Min'
+		),
+		JSON_OBJECT(
+			'name', 'maxValueForMeanInCol',
+			'dataType', 'INT',
+			'required', false,
+			'description', 'Expected mean value for the column to be lower or equal than',
+			'displayName', 'Max'
+		)
+	)	
+)
+WHERE name = 'columnValueMeanToBeBetween';
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.parameterDefinition'),
+	'$.parameterDefinition',
+	JSON_ARRAY(
+		JSON_OBJECT(
+	        'name', 'minValueForMedianInCol',
+	        'dataType', 'INT',
+	        'required', false,
+	        'description', 'Expected median value for the column to be greater or equal than',
+	        'displayName', 'Min'
+		),
+		JSON_OBJECT(
+        'name', 'maxValueForMedianInCol',
+        'dataType', 'INT',
+        'required', false,
+        'description', 'Expected median value for the column to be lower or equal than',
+        'displayName', 'Max'
+		)
+	)	
+)
+WHERE name = 'columnValueMedianToBeBetween';
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.parameterDefinition'),
+	'$.parameterDefinition',
+	JSON_ARRAY(
+		JSON_OBJECT(
+	        'name', 'minValueForStdDevInCol',
+	        'dataType', 'INT',
+	        'required', false,
+	        'description', 'Expected std. dev value for the column to be greater or equal than',
+	        'displayName', 'Min'
+		),
+		JSON_OBJECT(
+	        'name', 'maxValueForStdDevInCol',
+	        'dataType', 'INT',
+	        'required', false,
+	        'description', 'Expected std. dev value for the column to be lower or equal than',
+	        'displayName', 'Max'
+		)
+	)	
+)
+WHERE name = 'columnValueStdDevToBeBetween';
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.parameterDefinition'),
+	'$.parameterDefinition',
+	JSON_ARRAY(
+		JSON_OBJECT(
+	        'name', 'minLength',
+	        'dataType', 'INT',
+	        'required', false,
+	        'description', 'The {minLength} for the column value. If minLength is not included, maxLength is treated as upperBound and there will be no minimum value length',
+	        'displayName', 'Min'
+		),
+		JSON_OBJECT(
+	        'name', 'maxLength',
+	        'dataType', 'INT',
+	        'required', false,
+	        'description', 'The {maxLength} for the column value. if maxLength is not included, minLength is treated as lowerBound and there will be no maximum value length',
+	        'displayName', 'Max'
+		)
+	)	
+)
+WHERE name = 'columnValueLengthsToBeBetween';
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.parameterDefinition'),
+	'$.parameterDefinition',
+	JSON_ARRAY(
+		JSON_OBJECT(
+        'name', 'minValue',
+        'dataType', 'INT',
+        'required', false,
+        'description', 'The {minValue} value for the column entry. If minValue is not included, maxValue is treated as upperBound and there will be no minimum',
+        'displayName', 'Min'
+		),
+		JSON_OBJECT(
+        'name', 'maxValue',
+        'dataType', 'INT',
+        'required', false,
+        'description', 'The {maxValue} value for the column entry. if maxValue is not included, minValue is treated as lowerBound and there will be no maximum',
+        'displayName', 'Max'
+		)
+	)	
+)
+WHERE name = 'columnValuesToBeBetween';
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.parameterDefinition'),
+	'$.parameterDefinition',
+	JSON_ARRAY(
+		JSON_OBJECT(
+        'name', 'columnNames',
+        'dataType', 'STRING',
+        'required', true,
+        'description', 'Expected columns names of the table to match the ones in {Column Names} -- should be a coma separated string',
+        'displayName', 'Column Names'
+		),
+		JSON_OBJECT(
+        'name', 'ordered',
+        'dataType', 'BOOLEAN',
+        'required', false,
+        'description', 'Whether or not to considered the order of the list when performing the match check',
+        'displayName', 'Ordered'
+		)
+	)	
+)
+WHERE name = 'tableColumnToMatchSet';
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.parameterDefinition'),
+	'$.parameterDefinition',
+	JSON_ARRAY(
+		JSON_OBJECT(
+        'name', 'minValue',
+        'dataType', 'INT',
+        'required', false,
+        'description', 'Expected number of columns should be greater than or equal to {minValue}. If minValue is not included, maxValue is treated as upperBound and there will be no minimum',
+        'displayName', 'Min'
+		),
+		JSON_OBJECT(
+        'name', 'maxValue',
+        'dataType', 'INT',
+        'required', false,
+        'description', 'Expected number of columns should be less than or equal to {maxValue}. If maxValue is not included, minValue is treated as lowerBound and there will be no maximum',
+        'displayName', 'Max'
+		)
+	)	
+)
+WHERE name = 'tableRowCountToBeBetween';
+
+UPDATE test_definition 
+SET json = JSON_INSERT(
+	JSON_REMOVE(json, '$.parameterDefinition'),
+	'$.parameterDefinition',
+	JSON_ARRAY(
+		JSON_OBJECT(
+		     'name', 'sqlExpression',
+        	'displayName', 'SQL Expression',
+        	'description', 'SQL expression to run against the table',
+        	'dataType', 'STRING',
+        	'required', 'true'
+		),
+		JSON_OBJECT(
+			'name', 'strategy',
+	        'displayName', 'Strategy',
+    	    'description', 'Strategy to use to run the custom SQL query (i.e. `SELECT COUNT(<col>)` or `SELECT <col> (defaults to ROWS)',
+        	'dataType', 'ARRAY',
+	        'optionValues', JSON_ARRAY(
+        	    'ROWS',
+            	'COUNT'
+    	    ),
+	        'required', false
+		),
+		JSON_OBJECT(
+			'name', 'threshold',
+        	'displayName', 'Threshold',
+        	'description', 'Threshold to use to determine if the test passes or fails (defaults to 0).',
+        	'dataType', 'NUMBER',
+        	'required', false
+		)
+	)	
+)
+WHERE name = 'tableCustomSQLQuery';
+
+-- Modify migrations for service connection of airflow to move password under authType if 
+-- Connection Type as Mysql or Postgres
+
+UPDATE pipeline_service_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.connection.config.connection.password'),
+    '$.connection.config.connection.authType',
+    JSON_OBJECT(),
+    '$.connection.config.connection.authType.password',
+    JSON_EXTRACT(json, '$.connection.config.connection.password'))
+where serviceType = 'Airflow' 
+AND JSON_EXTRACT(json, '$.connection.config.connection.type') in ('Postgres', 'Mysql')
+AND JSON_EXTRACT(json, '$.connection.config.connection.password') IS NOT NULL;

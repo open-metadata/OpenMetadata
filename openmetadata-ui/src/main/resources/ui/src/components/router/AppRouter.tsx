@@ -41,7 +41,7 @@ const ResetPassword = withSuspenseFallback(
 );
 
 const BasicSignupPage = withSuspenseFallback(
-  React.lazy(() => import('pages/signup/basic-signup.component'))
+  React.lazy(() => import('pages/signup/BasicSignup.component'))
 );
 
 const AppRouter = () => {

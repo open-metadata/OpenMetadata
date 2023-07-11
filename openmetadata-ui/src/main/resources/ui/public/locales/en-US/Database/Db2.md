@@ -56,7 +56,9 @@ $$
 $$section
 ### Host Port $(id="hostPort")
 
-Enter the fully qualified hostname and port number for your DB2 deployment in the Host and Port field.
+This parameter specifies the host and port of the Db2 instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:8000`.
+
+If your database service and Open Metadata are both running via docker locally, use `host.docker.internal:8000` as the value.
 $$
 
 $$section

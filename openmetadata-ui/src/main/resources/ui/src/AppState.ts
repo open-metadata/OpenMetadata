@@ -12,13 +12,11 @@
  */
 
 import { EntityUnion } from 'components/Explore/explore.interface';
-import { EntityTabs } from 'enums/entity.enum';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { action, makeAutoObservable } from 'mobx';
 import { ClientAuth, NewUser } from 'Models';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import { LOCALSTORAGE_USER_PROFILES } from './constants/constants';
-import { CurrentTourPageType } from './enums/tour.enum';
 import { ResourcePermission } from './generated/entity/policies/accessControl/resourcePermission';
 import {
   EntityReference as UserTeams,
@@ -54,10 +52,6 @@ class AppState {
 
   inPageSearchText = '';
   explorePageTab = 'tables';
-
-  isTourOpen = false;
-  currentTourPage: CurrentTourPageType = CurrentTourPageType.MY_DATA_PAGE;
-  activeTabforTourDatasetPage = EntityTabs.SCHEMA;
 
   constructor() {
     makeAutoObservable(this, {
@@ -99,12 +93,6 @@ class AppState {
   updateUsers(data: Array<User>) {
     this.users = data;
     this.nonSecureUserDetails = data[0];
-  }
-  updateActiveTabForTourDatasetPage(data: EntityTabs) {
-    this.activeTabforTourDatasetPage = data;
-  }
-  updateCurrentTourPage(data: CurrentTourPageType) {
-    this.currentTourPage = data;
   }
   updateUserTeam(data: Array<UserTeams>) {
     this.userTeams = data;

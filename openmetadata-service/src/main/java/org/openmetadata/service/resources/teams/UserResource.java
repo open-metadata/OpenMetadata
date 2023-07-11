@@ -159,7 +159,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private boolean isEmailServiceEnabled;
   private AuthenticationConfiguration authenticationConfiguration;
   private final AuthenticatorHandler authHandler;
-  static final String FIELDS = "profile,roles,teams,follows,owns";
+  static final String FIELDS = "profile,roles,teams,follows,owns,domain";
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {

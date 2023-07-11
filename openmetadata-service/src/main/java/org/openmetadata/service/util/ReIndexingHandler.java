@@ -40,7 +40,6 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.Failure;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -51,11 +50,10 @@ import org.openmetadata.service.workflows.searchIndex.SearchIndexWorkflow;
 @Slf4j
 public class ReIndexingHandler {
   public static final String REINDEXING_JOB_EXTENSION = "reindexing.eventPublisher";
-  private static ReIndexingHandler INSTANCE;
-  private static volatile boolean INITIALIZED = false;
+  private static ReIndexingHandler instance;
+  private static volatile boolean initialized = false;
   private static CollectionDAO dao;
   private static SearchClient searchClient;
-  private static ElasticSearchIndexDefinition esIndexDefinition;
   private static ExecutorService threadScheduler;
   private final Map<UUID, SearchIndexWorkflow> REINDEXING_JOB_MAP = new LinkedHashMap<>();
   private static BlockingQueue<Runnable> taskQueue;
@@ -63,17 +61,17 @@ public class ReIndexingHandler {
   private ReIndexingHandler() {}
 
   public static ReIndexingHandler getInstance() {
-    return INSTANCE;
+    return instance;
   }
 
   public static void initialize(SearchClient client, CollectionDAO daoObject) {
-    if (!INITIALIZED) {
+    if (!initialized) {
       searchClient = client;
       dao = daoObject;
       taskQueue = new ArrayBlockingQueue<>(5);
       threadScheduler = new ThreadPoolExecutor(5, 5, 0L, TimeUnit.MILLISECONDS, taskQueue);
-      INSTANCE = new ReIndexingHandler();
-      INITIALIZED = true;
+      instance = new ReIndexingHandler();
+      initialized = true;
     } else {
       LOG.info("Reindexing Handler is already initialized");
     }

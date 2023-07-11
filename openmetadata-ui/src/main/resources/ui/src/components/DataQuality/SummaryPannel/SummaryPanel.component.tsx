@@ -13,15 +13,20 @@
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { INITIAL_TEST_SUMMARY } from 'constants/TestSuite.constant';
 import { TestSummary } from 'generated/tests/testSuite';
+import { isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getTestCaseExecutionSummary } from 'rest/testAPI';
-import {} from 'utils/CommonUtils';
 import { showErrorToast } from 'utils/ToastUtils';
+import { SummaryPanelProps } from './SummaryPanel.interface';
 
-export const SummaryPanel = () => {
+export const SummaryPanel = ({ testSummary }: SummaryPanelProps) => {
   const { t } = useTranslation();
+  const { permissions } = usePermissionProvider();
+  const { testCase: testCasePermission } = permissions;
 
   const [summary, setSummary] = useState<TestSummary>();
   const [isLoading, setIsLoading] = useState(true);
@@ -39,8 +44,16 @@ export const SummaryPanel = () => {
   };
 
   useEffect(() => {
-    fetchTestSummary();
-  }, []);
+    if (
+      isUndefined(testSummary) &&
+      (testCasePermission?.ViewAll || testCasePermission?.ViewBasic)
+    ) {
+      fetchTestSummary();
+    } else {
+      setSummary(testSummary ?? INITIAL_TEST_SUMMARY);
+      setIsLoading(false);
+    }
+  }, [testCasePermission]);
 
   return (
     <Row wrap gutter={[16, 16]}>
@@ -49,7 +62,7 @@ export const SummaryPanel = () => {
           className="h-full"
           isLoading={isLoading}
           showProgressBar={false}
-          title={t('label.total-entity', { entity: t('label.test') })}
+          title={t('label.total-entity', { entity: t('label.test-plural') })}
           total={summary?.total ?? 0}
           value={summary?.total ?? 0}
         />
@@ -78,7 +91,7 @@ export const SummaryPanel = () => {
           title={t('label.failed')}
           total={summary?.total ?? 0}
           type="failed"
-          value={summary?.aborted ?? 0}
+          value={summary?.failed ?? 0}
         />
       </Col>
     </Row>

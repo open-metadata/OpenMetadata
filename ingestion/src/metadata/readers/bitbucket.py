@@ -13,6 +13,7 @@ GitHub client to read files with token auth
 """
 import traceback
 from enum import Enum
+from typing import List
 
 import requests
 
@@ -27,6 +28,7 @@ logger = ingestion_logger()
 
 
 HOST = "https://api.bitbucket.org/2.0"
+PAGE_LENGTH = 100
 
 
 class UrlParts(Enum):
@@ -74,3 +76,48 @@ class BitBucketReader(ApiReader):
             raise ReadException(f"Error fetching file [{path}] from repo: {err}")
 
         raise ReadException(f"Could not fetch file [{path}] from repo")
+
+    def _get_files_from_dir(self, url: str) -> List[str]:
+        """
+        Run the request and return the page results
+        """
+        res = requests.get(
+            url=url + "/?fields=values.path",
+            headers=self.auth_headers,
+            timeout=30,
+        )
+
+        if res.status_code == 200:
+            files = []
+            json_res = res.json()
+            for file in json_res.get("values") or []:
+                path = file.get("path")
+                new_url = url + "/" + path.split("/")[-1]
+
+                # If we have a file, append. Otherwise, call again
+                if "." in path:
+                    files.append(path)
+                else:
+                    files.extend(self._get_files_from_dir(new_url))
+
+            return files
+
+        # If we don't get a 200, raise
+        res.raise_for_status()
+        raise RuntimeError("Could not fetch the tree")
+
+    def _get_tree(self) -> List[str]:
+        """
+        Paginate over the results
+        """
+
+        url = self._build_url(
+            HOST,
+            UrlParts.REPOS.value,
+            self.credentials.repositoryOwner.__root__,
+            self.credentials.repositoryName.__root__,
+            UrlParts.SRC.value,
+            self.credentials.branch,
+        )
+
+        return self._get_files_from_dir(url)

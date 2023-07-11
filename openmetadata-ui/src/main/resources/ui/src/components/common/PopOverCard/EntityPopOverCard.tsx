@@ -14,6 +14,7 @@
 import { Popover } from 'antd';
 import { EntityUnion } from 'components/Explore/explore.interface';
 import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import Loader from 'components/Loader/Loader';
 import React, {
   FC,
   HTMLAttributes,
@@ -31,6 +32,7 @@ import { getMlModelByFQN } from 'rest/mlModelAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTopicByFqn } from 'rest/topicsAPI';
+import { getTableFQNFromColumnFQN } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import AppState from '../../../AppState';
 import { EntityType } from '../../../enums/entity.enum';
@@ -47,6 +49,7 @@ const PopoverContent: React.FC<{
   entityType: string;
 }> = ({ entityFQN, entityType }) => {
   const [entityData, setEntityData] = useState<EntityUnion>({} as EntityUnion);
+  const [loading, setLoading] = useState(false);
 
   const getData = useCallback(() => {
     const setEntityDetails = (entityDetail: EntityUnion) => {
@@ -59,6 +62,13 @@ const PopoverContent: React.FC<{
     switch (entityType) {
       case EntityType.TABLE:
         promise = getTableDetailsByFQN(entityFQN, fields);
+
+        break;
+      case EntityType.TEST_CASE:
+        promise = getTableDetailsByFQN(
+          getTableFQNFromColumnFQN(entityFQN),
+          fields
+        );
 
         break;
       case EntityType.TOPIC:
@@ -99,6 +109,7 @@ const PopoverContent: React.FC<{
     }
 
     if (promise) {
+      setLoading(true);
       promise
         .then((res) => {
           setEntityDetails(res);
@@ -106,6 +117,9 @@ const PopoverContent: React.FC<{
         })
         .catch(() => {
           // do nothing
+        })
+        .finally(() => {
+          setLoading(false);
         });
     }
   }, [entityType, entityFQN]);
@@ -123,10 +137,13 @@ const PopoverContent: React.FC<{
     onMouseOver();
   }, [entityFQN]);
 
+  if (loading) {
+    return <Loader />;
+  }
+
   return (
     <ExploreSearchCard
       id="tabledatacard"
-      showNameHeader={false}
       showTags={false}
       source={{
         ...entityData,

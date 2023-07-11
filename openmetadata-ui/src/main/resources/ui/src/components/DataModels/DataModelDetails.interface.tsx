@@ -16,12 +16,9 @@ import { CreateThread } from 'generated/api/feed/createThread';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Column } from 'generated/entity/data/table';
 import { EntityReference } from 'generated/entity/type';
-import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { EntityTags } from 'Models';
 
 export interface DataModelDetailsProps {
-  entityFieldThreadCount: EntityFieldThreadCount[];
-  feedCount: number;
   dataModelData: DashboardDataModel;
   dataModelPermissions: OperationPermission;
   createThread: (data: CreateThread) => void;

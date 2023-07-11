@@ -17,7 +17,6 @@ import traceback
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List
 
-from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
@@ -49,6 +48,7 @@ from metadata.ingestion.source.connections import get_connection, get_test_conne
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.metadata.atlas.client import AtlasClient
 from metadata.utils import fqn
+from metadata.utils.helpers import get_database_name_for_lineage
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
@@ -196,12 +196,16 @@ class AtlasSource(Source):
                     db_entity = tbl_entity["relationshipAttributes"][
                         self.entity_types["Table"][name]["db"]
                     ]
+                    database_name = get_database_name_for_lineage(
+                        db_service_entity=self.service,
+                        default_db_name=db_entity["displayText"],
+                    )
 
                     database_fqn = fqn.build(
                         self.metadata,
                         entity_type=Database,
                         service_name=self.service.name.__root__,
-                        database_name=db_entity["displayText"],
+                        database_name=database_name,
                     )
                     database_object = self.metadata.get_by_name(
                         entity=Database, fqn=database_fqn
@@ -218,7 +222,7 @@ class AtlasSource(Source):
                         self.metadata,
                         entity_type=DatabaseSchema,
                         service_name=self.service.name.__root__,
-                        database_name=db_entity["displayText"],
+                        database_name=database_name,
                         schema_name=db_entity["displayText"],
                     )
                     database_schema_object = self.metadata.get_by_name(
@@ -244,7 +248,7 @@ class AtlasSource(Source):
                         metadata=self.metadata,
                         entity_type=Table,
                         service_name=self.service.name.__root__,
-                        database_name=db_entity["displayText"],
+                        database_name=database_name,
                         schema_name=db_entity["displayText"],
                         table_name=tbl_attrs["name"],
                     )
@@ -340,72 +344,77 @@ class AtlasSource(Source):
                 continue
         return om_cols
 
-    def get_database_entity(self, database_name: str) -> Database:
-        return CreateDatabaseRequest(
-            name=database_name,
-            service=self.service.fullyQualifiedName,
-        )
-
     def ingest_lineage(self, source_guid, name) -> Iterable[AddLineageRequest]:
         """
         Fetch and ingest lineage
         """
-        lineage_response = self.atlas_client.get_lineage(source_guid)
-        lineage_relations = lineage_response["relations"]
-        tbl_entity = self.atlas_client.get_entity(lineage_response["baseEntityGuid"])
-        for key in tbl_entity["referredEntities"].keys():
-            if not tbl_entity["entities"][0]["relationshipAttributes"].get(
-                self.entity_types["Table"][name]["db"]
-            ):
-                continue
-            db_entity = tbl_entity["entities"][0]["relationshipAttributes"][
-                self.entity_types["Table"][name]["db"]
-            ]
-            if not tbl_entity["referredEntities"].get(key):
-                continue
-            table_name = tbl_entity["referredEntities"][key]["relationshipAttributes"][
-                "table"
-            ]["displayText"]
-            from_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=self.service.name.__root__,
-                database_name=db_entity["displayText"],
-                schema_name=db_entity["displayText"],
-                table_name=table_name,
+        try:
+            lineage_response = self.atlas_client.get_lineage(source_guid)
+            lineage_relations = lineage_response["relations"]
+            tbl_entity = self.atlas_client.get_entity(
+                lineage_response["baseEntityGuid"]
             )
-            from_entity_ref = self.get_lineage_entity_ref(
-                from_fqn, self.metadata_config, "table"
-            )
-            for edge in lineage_relations:
-                if (
-                    lineage_response["guidEntityMap"][edge["toEntityId"]]["typeName"]
-                    == "processor"
+            for key in tbl_entity["referredEntities"].keys():
+                if not tbl_entity["entities"][0]["relationshipAttributes"].get(
+                    self.entity_types["Table"][name]["db"]
                 ):
                     continue
+                db_entity = tbl_entity["entities"][0]["relationshipAttributes"][
+                    self.entity_types["Table"][name]["db"]
+                ]
+                if not tbl_entity["referredEntities"].get(key):
+                    continue
+                table_name = tbl_entity["referredEntities"][key][
+                    "relationshipAttributes"
+                ]["table"]["displayText"]
+                from_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.service.name.__root__,
+                    database_name=get_database_name_for_lineage(
+                        self.service, db_entity["displayText"]
+                    ),
+                    schema_name=db_entity["displayText"],
+                    table_name=table_name,
+                )
+                from_entity_ref = self.get_lineage_entity_ref(
+                    from_fqn, self.metadata_config, "table"
+                )
+                for edge in lineage_relations:
+                    if (
+                        lineage_response["guidEntityMap"][edge["toEntityId"]][
+                            "typeName"
+                        ]
+                        == "processor"
+                    ):
+                        continue
 
-                tbl_entity = self.atlas_client.get_entity(edge["toEntityId"])
-                for key in tbl_entity["referredEntities"]:
-                    db_entity = tbl_entity["entities"][0]["relationshipAttributes"][
-                        self.entity_types["Table"][name]["db"]
-                    ]
+                    tbl_entity = self.atlas_client.get_entity(edge["toEntityId"])
+                    for key in tbl_entity["referredEntities"]:
+                        db_entity = tbl_entity["entities"][0]["relationshipAttributes"][
+                            self.entity_types["Table"][name]["db"]
+                        ]
 
-                    db = self.get_database_entity(db_entity["displayText"])
-                    table_name = tbl_entity["referredEntities"][key][
-                        "relationshipAttributes"
-                    ]["table"]["displayText"]
-                    to_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=self.service.name.__root__,
-                        database_name=db.name.__root__,
-                        schema_name=db_entity["displayText"],
-                        table_name=table_name,
-                    )
-                    to_entity_ref = self.get_lineage_entity_ref(
-                        to_fqn, self.metadata_config, "table"
-                    )
-                    yield from self.yield_lineage(from_entity_ref, to_entity_ref)
+                        table_name = tbl_entity["referredEntities"][key][
+                            "relationshipAttributes"
+                        ]["table"]["displayText"]
+                        to_fqn = fqn.build(
+                            self.metadata,
+                            entity_type=Table,
+                            service_name=self.service.name.__root__,
+                            database_name=get_database_name_for_lineage(
+                                self.service, db_entity["displayText"]
+                            ),
+                            schema_name=db_entity["displayText"],
+                            table_name=table_name,
+                        )
+                        to_entity_ref = self.get_lineage_entity_ref(
+                            to_fqn, self.metadata_config, "table"
+                        )
+                        yield from self.yield_lineage(from_entity_ref, to_entity_ref)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.debug(f"failed to parse lineage due to {exc}")
 
     def get_database_service(self):
         service = self.metadata.create_or_update(

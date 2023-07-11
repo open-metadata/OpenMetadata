@@ -22,6 +22,7 @@ import {
   Typography,
 } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
+import AppState from 'AppState';
 import { AxiosError } from 'axios';
 import AirflowMessageBanner from 'components/common/AirflowMessageBanner/AirflowMessageBanner';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
@@ -51,6 +52,7 @@ import { compare } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Include } from 'generated/type/include';
+import { useAuth } from 'hooks/authHooks';
 import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
 import {
   ExtraInfo,
@@ -61,7 +63,11 @@ import {
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import { getDashboards, getDataModels } from 'rest/dashboardAPI';
+import {
+  getDashboards,
+  getDataModels,
+  ListDataModelParams,
+} from 'rest/dashboardAPI';
 import { getDatabases } from 'rest/databaseAPI';
 import {
   deleteIngestionPipelineById,
@@ -171,6 +177,8 @@ const ServicePage: FunctionComponent = () => {
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+  const { isAdminUser } = useAuth();
+
   const [isEdit, setIsEdit] = useState(false);
   const [description, setDescription] = useState('');
   const [serviceDetails, setServiceDetails] = useState<ServicesType>();
@@ -217,12 +225,15 @@ const ServicePage: FunctionComponent = () => {
   };
 
   const tabs = useMemo(() => {
+    const isOwner = AppState.userDetails.id === serviceDetails?.owner?.id;
+    const showIngestionTab = Boolean(isOwner || isAdminUser);
     const allTabs = getServicePageTabs(
       serviceCategory,
       paging.total,
       ingestionPaging.total,
       servicePermission,
-      dataModelPaging.total
+      dataModelPaging.total,
+      showIngestionTab
     ).map((tab) => ({
       label: (
         <TabsLabel
@@ -237,6 +248,9 @@ const ServicePage: FunctionComponent = () => {
 
     return allTabs;
   }, [
+    AppState,
+    serviceDetails,
+    isAdminUser,
     serviceCategory,
     paging,
     ingestionPaging,
@@ -511,15 +525,15 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
-  const fetchDashboardsDataModel = async (paging?: PagingWithoutTotal) => {
+  const fetchDashboardsDataModel = async (params?: ListDataModelParams) => {
     setIsServiceLoading(true);
     try {
-      const { data, paging: resPaging } = await getDataModels(
-        serviceFQN,
-        'owner,tags,followers',
-        paging,
-        include
-      );
+      const { data, paging: resPaging } = await getDataModels({
+        service: serviceFQN,
+        fields: 'owner,tags,followers',
+        include,
+        ...params,
+      });
       setDataModel(data);
       setDataModelPaging(resPaging);
     } catch (error) {
@@ -602,10 +616,11 @@ const ServicePage: FunctionComponent = () => {
         break;
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
-        if (!isDataModel) {
+        if (isDataModel) {
+          fetchDashboardsDataModel({ ...paging });
+        } else {
           fetchDashboards(paging);
         }
-        fetchDashboardsDataModel(paging);
 
         break;
       }
@@ -708,6 +723,16 @@ const ServicePage: FunctionComponent = () => {
   useEffect(() => {
     getOtherDetails(undefined, activeTab === EntityTabs.DATA_Model);
   }, [activeTab, showDeleted]);
+
+  useEffect(() => {
+    // fetch count for data modal tab, its need only when its dashboard page and data modal tab is not active
+    if (
+      serviceCategory === ServiceCategory.DASHBOARD_SERVICES &&
+      activeTab !== EntityTabs.DATA_Model
+    ) {
+      fetchDashboardsDataModel({ limit: 0 });
+    }
+  }, []);
 
   useEffect(() => {
     if (servicePermission.ViewAll || servicePermission.ViewBasic) {
@@ -1167,9 +1192,12 @@ const ServicePage: FunctionComponent = () => {
             entity: getEntityName(serviceDetails),
           })}>
           {servicePermission.ViewAll || servicePermission.ViewBasic ? (
-            <Row className="page-container" data-testid="service-page">
+            <Row
+              className="page-container"
+              data-testid="service-page"
+              gutter={[0, 8]}>
               {serviceDetails && (
-                <Row className="w-full m-b-xs" wrap={false}>
+                <Row className="w-full" wrap={false}>
                   <Col flex="auto">
                     <EntityHeader
                       breadcrumb={slashedTableName}

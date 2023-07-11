@@ -29,7 +29,7 @@
       "description": "Email address of a user or other entities.",
       "type": "string",
       "format": "email",
-      "pattern": "^\\S+@\\S+\\.\\S+$",
+      "pattern": "^[\\S.!#$%&’*+/=?^_`{|}~-]+@\\S+\\.\\S+$",
       "minLength": 6,
       "maxLength": 127
     },

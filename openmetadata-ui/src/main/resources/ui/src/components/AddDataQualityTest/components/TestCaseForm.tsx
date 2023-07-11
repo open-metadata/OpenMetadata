@@ -13,17 +13,17 @@
 
 import { Button, Form, FormProps, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
+import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { t } from 'i18next';
-import { isEmpty } from 'lodash';
+import { isEmpty, snakeCase } from 'lodash';
+import Qs from 'qs';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { getListTestCase, getListTestDefinitions } from 'rest/testAPI';
 import { getEntityName } from 'utils/EntityUtils';
-import {
-  API_RES_MAX_SIZE,
-  PAGE_SIZE_LARGE,
-} from '../../../constants/constants';
+import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
 import {
   TestCase,
@@ -50,6 +50,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   onCancel,
   table,
 }) => {
+  const history = useHistory();
   const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
   const decodedEntityFQN = getDecodedFqn(entityTypeFQN);
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
@@ -61,15 +62,17 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   );
   const [testCases, setTestCases] = useState<TestCase[]>([]);
 
+  const columnName = Form.useWatch('column', form);
+
   const fetchAllTestDefinitions = async () => {
     try {
       const { data } = await getListTestDefinitions({
-        limit: API_RES_MAX_SIZE,
+        limit: PAGE_SIZE_LARGE,
         entityType: isColumnFqn ? EntityType.Column : EntityType.Table,
         testPlatform: TestPlatform.OpenMetadata,
         supportedDataType: isColumnFqn
           ? table.columns.find(
-              (column) => column.fullyQualifiedName === decodedEntityFQN
+              (column) => column.fullyQualifiedName === columnName
             )?.dataType
           : undefined,
       });
@@ -84,7 +87,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       const { data } = await getListTestCase({
         fields: 'testDefinition',
         limit: PAGE_SIZE_LARGE,
-        entityLink: generateEntityLink(decodedEntityFQN, isColumnFqn),
+        entityLink: generateEntityLink(
+          isColumnFqn ? `${decodedEntityFQN}.${columnName}` : decodedEntityFQN,
+          isColumnFqn
+        ),
       });
 
       setTestCases(data);
@@ -105,7 +111,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
   const GenerateParamsField = useCallback(() => {
     const selectedDefinition = getSelectedTestDefinition();
-    if (selectedDefinition && selectedDefinition.parameterDefinition) {
+    if (selectedDefinition?.parameterDefinition) {
       return <ParameterForm definition={selectedDefinition} table={table} />;
     }
 
@@ -132,10 +138,22 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
             : value,
       })
     );
+    const name =
+      value.testName?.trim() ||
+      `${replaceAllSpacialCharWith_(
+        columnName ? columnName : table.name
+      )}_${snakeCase(selectedTestType)}_${cryptoRandomString({
+        length: 4,
+        type: 'alphanumeric',
+      })}`;
 
     return {
-      name: value.testName,
-      entityLink: generateEntityLink(decodedEntityFQN, isColumnFqn),
+      name,
+      displayName: name,
+      entityLink: generateEntityLink(
+        isColumnFqn ? `${decodedEntityFQN}.${columnName}` : decodedEntityFQN,
+        isColumnFqn
+      ),
       parameterValues: parameterValues as TestCaseParameterValue[],
       testDefinition: value.testTypeId,
       description: markdownRef.current?.getEditorContent(),
@@ -170,29 +188,25 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
   const handleValueChange: FormProps['onValuesChange'] = (value) => {
     if (value.testTypeId) {
-      // const testType = testDefinitions.find(
-      //   (test) => test.fullyQualifiedName === value.testTypeId
-      // );
       setSelectedTestType(value.testTypeId);
-      // const testCount = testCases.filter((test) =>
-      //   test.name.includes(
-      //     `${getNameFromFQN(decodedEntityFQN)}_${testType?.name}`
-      //   )
-      // );
-      // generating dynamic unique name based on entity_testCase_number
-      // const name = `${getNameFromFQN(decodedEntityFQN)}_${testType?.name}${
-      //   testCount.length ? `_${testCount.length}` : ''
-      // }`;
-      // form.setFieldsValue({
-      //   testName: replaceAllSpacialCharWith_(name),
-      // });
     }
   };
 
   useEffect(() => {
-    if (testDefinitions.length === 0) {
-      fetchAllTestDefinitions();
+    fetchAllTestDefinitions();
+    const selectedColumn = table.columns.find(
+      (column) => column.name === columnName
+    );
+    if (selectedColumn) {
+      history.push({
+        search: Qs.stringify({
+          activeColumnFqn: selectedColumn?.fullyQualifiedName,
+        }),
+      });
     }
+  }, [columnName]);
+
+  useEffect(() => {
     if (isEmpty(testCases)) {
       fetchAllTestCases();
     }
@@ -240,12 +254,8 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         name="testName"
         rules={[
           {
-            required: true,
-            message: `${t('label.field-required', { field: t('label.name') })}`,
-          },
-          {
-            pattern: /^[A-Za-z0-9_]*$/g,
-            message: t('message.special-character-not-allowed'),
+            pattern: ENTITY_NAME_REGEX,
+            message: t('message.entity-name-validation'),
           },
           {
             validator: (_, value) => {
@@ -287,6 +297,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
       <Form.Item label={t('label.description')} name="description">
         <RichTextEditor
+          height="200px"
           initialValue={initialValue?.description || ''}
           ref={markdownRef}
           style={{

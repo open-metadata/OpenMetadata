@@ -30,7 +30,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 
 public class SamlSettingsHolder {
-  private static SamlSettingsHolder INSTANCE;
+  private static SamlSettingsHolder instance;
   private Map<String, Object> samlData;
   private SettingsBuilder builder;
   @Getter private Saml2Settings saml2Settings;
@@ -44,8 +44,10 @@ public class SamlSettingsHolder {
   }
 
   public static SamlSettingsHolder getInstance() {
-    if (INSTANCE == null) INSTANCE = new SamlSettingsHolder();
-    return INSTANCE;
+    if (instance == null) {
+      instance = new SamlSettingsHolder();
+    }
+    return instance;
   }
 
   public void initDefaultSettings(OpenMetadataApplicationConfig catalogApplicationConfig)

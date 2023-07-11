@@ -30,13 +30,14 @@ import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from 'components/common/TierCard/TierCard';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { getDashboardDetailsPath } from 'constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
+import { DE_ACTIVE_COLOR, getDashboardDetailsPath } from 'constants/constants';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
+import { Database } from 'generated/entity/data/database';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
 import { Table } from 'generated/entity/data/table';
@@ -47,15 +48,16 @@ import {
   ThreadType,
 } from 'generated/entity/feed/thread';
 import { useClipboard } from 'hooks/useClipBoard';
-import { t } from 'i18next';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { getActiveAnnouncement, getFeedCount } from 'rest/feedsAPI';
 import { getCurrentUserId, getEntityDetailLink } from 'utils/CommonUtils';
 import {
   getBreadcrumbForEntitiesWithServiceOnly,
   getBreadcrumbForTable,
+  getEntityBreadcrumbs,
   getEntityFeedLink,
   getEntityName,
 } from 'utils/EntityUtils';
@@ -66,6 +68,7 @@ import { showErrorToast } from 'utils/ToastUtils';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
+  DataAssetType,
 } from './DataAssetsHeader.interface';
 
 export const ExtraInfoLabel = ({
@@ -108,6 +111,7 @@ export const ExtraInfoLink = ({
 );
 
 export const DataAssetsHeader = ({
+  allowSoftDelete = true,
   dataAsset,
   onOwnerUpdate,
   onTierUpdate,
@@ -115,10 +119,13 @@ export const DataAssetsHeader = ({
   onVersionClick,
   onFollowClick,
   entityType,
+  isRecursiveDelete,
   onRestoreDataAsset,
   onDisplayNameUpdate,
 }: DataAssetsHeaderProps) => {
   const USERId = getCurrentUserId();
+  const { t } = useTranslation();
+  const { isTourPage } = useTourProvider();
   const { onCopyToClipBoard } = useClipboard(window.location.href);
   const [taskCount, setTaskCount] = useState(0);
   const history = useHistory();
@@ -129,14 +136,25 @@ export const DataAssetsHeader = ({
       ) : null,
     [dataAsset]
   );
+  const [copyTooltip, setCopyTooltip] = useState<string>();
+
+  const excludeEntityService = [EntityType.DATABASE].includes(entityType);
+  const hasFollowers = 'followers' in dataAsset;
 
   const { entityName, tier, isFollowing, version, followers } = useMemo(
     () => ({
-      isFollowing: dataAsset.followers?.some(({ id }) => id === USERId),
+      isFollowing: hasFollowers
+        ? (dataAsset as DataAssetType).followers?.some(
+            ({ id }) => id === USERId
+          )
+        : false,
+      followers: hasFollowers
+        ? (dataAsset as DataAssetType).followers?.length
+        : 0,
+
       tier: getTierTags(dataAsset.tags ?? []),
       entityName: getEntityName(dataAsset),
       version: dataAsset.version,
-      followers: dataAsset.followers?.length,
     }),
     [dataAsset, USERId]
   );
@@ -179,8 +197,10 @@ export const DataAssetsHeader = ({
   };
 
   useEffect(() => {
-    fetchActiveAnnouncement();
-    fetchTaskCount();
+    if (dataAsset.fullyQualifiedName && !isTourPage) {
+      fetchActiveAnnouncement();
+      fetchTaskCount();
+    }
   }, [dataAsset.fullyQualifiedName]);
 
   const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(() => {
@@ -189,46 +209,6 @@ export const DataAssetsHeader = ({
       breadcrumbs: [],
     };
     switch (entityType) {
-      default:
-      case EntityType.TABLE:
-        const tableDetails = dataAsset as Table;
-
-        returnData.extraInfo = (
-          <>
-            {tableDetails.tableType && (
-              <ExtraInfoLabel
-                label={t('label.type')}
-                value={tableDetails.tableType}
-              />
-            )}
-            {tableDetails?.usageSummary && (
-              <ExtraInfoLabel
-                label={t('label.usage')}
-                value={getUsagePercentile(
-                  tableDetails.usageSummary?.weeklyStats?.percentileRank || 0,
-                  false
-                )}
-              />
-            )}
-            {tableDetails?.profile?.columnCount && (
-              <ExtraInfoLabel
-                label={t('label.column-plural')}
-                value={tableDetails.profile?.columnCount}
-              />
-            )}
-            {tableDetails?.profile?.rowCount && (
-              <ExtraInfoLabel
-                label={t('label.row-plural')}
-                value={tableDetails.profile?.rowCount}
-              />
-            )}
-          </>
-        );
-
-        returnData.breadcrumbs = getBreadcrumbForTable(tableDetails);
-
-        break;
-
       case EntityType.TOPIC:
         const topicDetails = dataAsset as Topic;
         returnData.breadcrumbs =
@@ -397,6 +377,56 @@ export const DataAssetsHeader = ({
           getBreadcrumbForEntitiesWithServiceOnly(dataModelDetails);
 
         break;
+
+      case EntityType.DATABASE:
+        const databaseDetails = dataAsset as Database;
+
+        returnData.breadcrumbs = getEntityBreadcrumbs(
+          databaseDetails,
+          EntityType.DATABASE
+        );
+
+        break;
+
+      case EntityType.TABLE:
+      default:
+        const tableDetails = dataAsset as Table;
+
+        returnData.extraInfo = (
+          <>
+            {tableDetails.tableType && (
+              <ExtraInfoLabel
+                label={t('label.type')}
+                value={tableDetails.tableType}
+              />
+            )}
+            {tableDetails?.usageSummary && (
+              <ExtraInfoLabel
+                label={t('label.usage')}
+                value={getUsagePercentile(
+                  tableDetails.usageSummary?.weeklyStats?.percentileRank || 0,
+                  false
+                )}
+              />
+            )}
+            {tableDetails?.profile?.columnCount && (
+              <ExtraInfoLabel
+                label={t('label.column-plural')}
+                value={tableDetails.profile?.columnCount}
+              />
+            )}
+            {tableDetails?.profile?.rowCount && (
+              <ExtraInfoLabel
+                label={t('label.row-plural')}
+                value={tableDetails.profile?.rowCount}
+              />
+            )}
+          </>
+        );
+
+        returnData.breadcrumbs = getBreadcrumbForTable(tableDetails);
+
+        break;
     }
 
     return returnData;
@@ -415,6 +445,12 @@ export const DataAssetsHeader = ({
         ActivityFeedTabs.TASKS
       )
     );
+  };
+
+  const handleShareButtonClick = async () => {
+    await onCopyToClipBoard();
+    setCopyTooltip(t('message.copy-to-clipboard'));
+    setTimeout(() => setCopyTooltip(''), 2000);
   };
 
   return (
@@ -456,24 +492,19 @@ export const DataAssetsHeader = ({
                         })}
                       </span>
                     )}
-                    <Tooltip
-                      placement="topRight"
-                      title={
-                        permissions.EditAll || permissions.EditTags
-                          ? ''
-                          : NO_PERMISSION_FOR_ACTION
-                      }>
+
+                    {(permissions.EditAll || permissions.EditTags) && (
                       <Button
                         className="flex-center p-0"
                         data-testid="edit-tier"
                         disabled={
                           !(permissions.EditAll || permissions.EditTags)
                         }
-                        icon={<EditIcon width="14px" />}
+                        icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
                         size="small"
                         type="text"
                       />
-                    </Tooltip>
+                    )}
                   </Space>
                 </TierCard>
                 {extraInfo}
@@ -486,32 +517,47 @@ export const DataAssetsHeader = ({
           <Space className="items-end w-full" direction="vertical" size={16}>
             <Space>
               <ButtonGroup size="small">
-                <Button
-                  className="w-16 p-0"
-                  icon={<Icon component={TaskOpenIcon} />}
-                  onClick={handleOpenTaskClick}>
-                  <Typography.Text>{taskCount}</Typography.Text>
-                </Button>
-                <Button
-                  className="w-16 p-0"
-                  icon={<Icon component={VersionIcon} />}
-                  onClick={onVersionClick}>
-                  <Typography.Text>{version}</Typography.Text>
-                </Button>
-                <Button
-                  className="w-16 p-0"
-                  icon={
-                    <Icon component={isFollowing ? StarFilledIcon : StarIcon} />
-                  }
-                  onClick={onFollowClick}>
-                  <Typography.Text>{followers}</Typography.Text>
-                </Button>
-                <Button
-                  icon={<Icon component={ShareIcon} />}
-                  onClick={onCopyToClipBoard}
-                />
+                {!excludeEntityService && (
+                  <>
+                    <Button
+                      className="w-16 p-0"
+                      icon={<Icon component={TaskOpenIcon} />}
+                      onClick={handleOpenTaskClick}>
+                      <Typography.Text>{taskCount}</Typography.Text>
+                    </Button>
+
+                    <Button
+                      className="w-16 p-0"
+                      icon={<Icon component={VersionIcon} />}
+                      onClick={onVersionClick}>
+                      <Typography.Text>{version}</Typography.Text>
+                    </Button>
+
+                    <Button
+                      className="w-16 p-0"
+                      data-testid="entity-follow-button"
+                      icon={
+                        <Icon
+                          component={isFollowing ? StarFilledIcon : StarIcon}
+                        />
+                      }
+                      onClick={onFollowClick}>
+                      <Typography.Text>{followers}</Typography.Text>
+                    </Button>
+                  </>
+                )}
+
+                <Tooltip
+                  open={!isEmpty(copyTooltip)}
+                  placement="bottomRight"
+                  title={copyTooltip}>
+                  <Button
+                    icon={<Icon component={ShareIcon} />}
+                    onClick={handleShareButtonClick}
+                  />
+                </Tooltip>
                 <ManageButton
-                  allowSoftDelete={!dataAsset.deleted}
+                  allowSoftDelete={!dataAsset.deleted && allowSoftDelete}
                   canDelete={permissions.Delete}
                   deleted={dataAsset.deleted}
                   displayName={dataAsset.displayName}
@@ -521,7 +567,8 @@ export const DataAssetsHeader = ({
                   entityFQN={dataAsset.fullyQualifiedName}
                   entityId={dataAsset.id}
                   entityName={entityName}
-                  entityType={EntityType.TABLE}
+                  entityType={entityType}
+                  isRecursiveDelete={isRecursiveDelete}
                   onAnnouncementClick={
                     permissions?.EditAll
                       ? () => setIsAnnouncementDrawer(true)
@@ -548,8 +595,8 @@ export const DataAssetsHeader = ({
       {isAnnouncementDrawerOpen && (
         <AnnouncementDrawer
           createPermission={permissions?.EditAll}
-          entityFQN={dataAsset.fullyQualifiedName || ''}
-          entityName={entityName || ''}
+          entityFQN={dataAsset.fullyQualifiedName ?? ''}
+          entityName={entityName ?? ''}
           entityType={entityType}
           open={isAnnouncementDrawerOpen}
           onClose={() => setIsAnnouncementDrawer(false)}

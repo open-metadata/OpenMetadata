@@ -79,11 +79,26 @@ const UserPage = () => {
       .finally(() => setIsLoading(false));
   };
 
+  const getQueryFilters = (fetchOwnedEntities: boolean) => {
+    if (fetchOwnedEntities) {
+      const teamsIds = (userData.teams ?? []).map((team) => team.id);
+      const mergedIds = [
+        ...teamsIds.map((id) => `owner.id:${id}`),
+        `owner.id:${userData.id}`,
+      ].join(' OR ');
+
+      return `(${mergedIds})`;
+    } else {
+      return `followers:${userData.id}`;
+    }
+  };
+
   const fetchEntities = async (
     fetchOwnedEntities = false,
     handleEntity: Dispatch<SetStateAction<AssetsDataType>>
   ) => {
     const entity = fetchOwnedEntities ? ownedEntities : followingEntities;
+
     if (userData.id) {
       setIsUserEntitiesLoading(true);
       try {
@@ -91,9 +106,7 @@ const UserPage = () => {
           '',
           entity.currPage,
           PAGE_SIZE,
-          fetchOwnedEntities
-            ? `owner.id:${userData.id}`
-            : `followers:${userData.id}`,
+          getQueryFilters(fetchOwnedEntities),
           '',
           '',
           myDataSearchIndex

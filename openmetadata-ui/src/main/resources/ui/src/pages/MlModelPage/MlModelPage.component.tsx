@@ -21,7 +21,7 @@ import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
@@ -32,14 +32,13 @@ import {
   removeFollower,
 } from 'rest/mlModelAPI';
 import { getVersionPath } from '../../constants/constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
-import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
+  addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
-  getFeedCounts,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -58,14 +57,6 @@ const MlModelPage = () => {
   const [mlModelPermissions, setPipelinePermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
-
-  const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
-  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
 
   const [currentVersion, setCurrentVersion] = useState<string>();
 
@@ -90,21 +81,28 @@ const MlModelPage = () => {
     }
   };
 
-  const fetchEntityFeedCount = () => {
-    getFeedCounts(
-      EntityType.MLMODEL,
-      mlModelFqn,
-      setEntityFieldThreadCount,
-      setEntityFieldTaskCount,
-      setFeedCount
-    );
-  };
+  const viewUsagePermission = useMemo(
+    () => mlModelPermissions.ViewAll || mlModelPermissions.ViewUsage,
+    [mlModelPermissions]
+  );
 
   const fetchMlModelDetails = async (name: string) => {
     setIsDetailLoading(true);
     try {
-      const res = await getMlModelByFQN(name, defaultFields);
+      let fields = defaultFields;
+      if (viewUsagePermission) {
+        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+      }
+      const res = await getMlModelByFQN(name, fields);
       setMlModelDetail(res);
+      addToRecentViewed({
+        displayName: getEntityName(res),
+        entityType: EntityType.MLMODEL,
+        fqn: res.fullyQualifiedName ?? '',
+        serviceType: res.serviceType,
+        timestamp: 0,
+        id: res.id,
+      });
       setCurrentVersion(res.version?.toString());
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -112,6 +110,12 @@ const MlModelPage = () => {
       setIsDetailLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic) {
+      fetchMlModelDetails(mlModelFqn);
+    }
+  }, [mlModelPermissions, mlModelFqn]);
 
   const saveUpdatedMlModelData = (updatedData: Mlmodel) => {
     const jsonPatch = compare(omitBy(mlModelDetail, isUndefined), updatedData);
@@ -128,7 +132,6 @@ const MlModelPage = () => {
         ...preVDetail,
         description: description,
       }));
-      fetchEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -142,7 +145,6 @@ const MlModelPage = () => {
         ...preVDetail,
         followers: [...(mlModelDetail.followers || []), ...newValue],
       }));
-      fetchEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -159,11 +161,10 @@ const MlModelPage = () => {
       const { oldValue } = res.changeDescription.fieldsDeleted[0];
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
-        followers: (mlModelDetail.followers || []).filter(
+        followers: (mlModelDetail.followers ?? []).filter(
           (follower) => follower.id !== oldValue[0].id
         ),
       }));
-      fetchEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -179,10 +180,9 @@ const MlModelPage = () => {
       const res = await saveUpdatedMlModelData(updatedMlModel);
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
-        tags: sortTagsCaseInsensitive(res.tags || []),
+        tags: sortTagsCaseInsensitive(res.tags ?? []),
       }));
       setCurrentVersion(res.version?.toString());
-      fetchEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -205,7 +205,6 @@ const MlModelPage = () => {
         tags: res.tags,
       }));
       setCurrentVersion(res.version?.toString());
-      fetchEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -224,7 +223,6 @@ const MlModelPage = () => {
         mlFeatures: response.mlFeatures,
       }));
       setCurrentVersion(response.version?.toString());
-      fetchEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -235,7 +233,6 @@ const MlModelPage = () => {
       const data = await saveUpdatedMlModelData(updatedMlModel);
       setMlModelDetail(data);
       setCurrentVersion(data.version?.toString());
-      fetchEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -249,7 +246,6 @@ const MlModelPage = () => {
   const createThread = async (data: CreateThread) => {
     try {
       await postThread(data);
-      fetchEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -265,13 +261,6 @@ const MlModelPage = () => {
       getVersionPath(EntityType.MLMODEL, mlModelFqn, currentVersion as string)
     );
   };
-
-  useEffect(() => {
-    if (mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic) {
-      fetchMlModelDetails(mlModelFqn);
-      fetchEntityFeedCount();
-    }
-  }, [mlModelPermissions, mlModelFqn]);
 
   useEffect(() => {
     fetchResourcePermission(mlModelFqn);
@@ -302,9 +291,6 @@ const MlModelPage = () => {
     <MlModelDetailComponent
       createThread={createThread}
       descriptionUpdateHandler={descriptionUpdateHandler}
-      entityFieldTaskCount={entityFieldTaskCount}
-      entityFieldThreadCount={entityFieldThreadCount}
-      feedCount={feedCount}
       followMlModelHandler={followMlModel}
       mlModelDetail={mlModelDetail}
       settingsUpdateHandler={settingsUpdateHandler}

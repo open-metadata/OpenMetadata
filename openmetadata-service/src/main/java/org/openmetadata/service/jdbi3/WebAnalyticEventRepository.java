@@ -48,7 +48,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
 
   @Override
   public void storeRelationships(WebAnalyticEvent entity) {
-    storeOwner(entity, entity.getOwner());
+    // No relationships to store beyond what is stored in the super class
   }
 
   @Transaction

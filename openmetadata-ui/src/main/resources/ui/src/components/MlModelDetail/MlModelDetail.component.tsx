@@ -19,12 +19,15 @@ import ActivityFeedProvider, {
 } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { TagLabel, TagSource } from 'generated/type/schema';
+import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -40,7 +43,11 @@ import { MlHyperParameter } from '../../generated/api/data/createMlModel';
 import { Mlmodel, MlStore } from '../../generated/entity/data/mlmodel';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import { getEmptyPlaceholder, refreshPage } from '../../utils/CommonUtils';
+import {
+  getEmptyPlaceholder,
+  getFeedCounts,
+  refreshPage,
+} from '../../utils/CommonUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -62,10 +69,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   settingsUpdateHandler,
   updateMlModelFeatures,
   onExtensionUpdate,
-  feedCount,
+
   createThread,
-  entityFieldTaskCount,
-  entityFieldThreadCount,
   versionHandler,
   tagUpdateHandler,
 }) => {
@@ -76,6 +81,13 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     useParams<{ tab: EntityTabs; mlModelFqn: string }>();
 
   const [isEdit, setIsEdit] = useState<boolean>(false);
+  const [feedCount, setFeedCount] = useState<number>(0);
+  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
+  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
 
   const [mlModelPermissions, setPipelinePermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
@@ -126,6 +138,22 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       ),
     };
   }, [mlModelDetail]);
+
+  const fetchEntityFeedCount = () => {
+    getFeedCounts(
+      EntityType.MLMODEL,
+      mlModelFqn,
+      setEntityFieldThreadCount,
+      setEntityFieldTaskCount,
+      setFeedCount
+    );
+  };
+
+  useEffect(() => {
+    if (mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic) {
+      fetchEntityFeedCount();
+    }
+  }, [mlModelPermissions, mlModelFqn]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
@@ -357,7 +385,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         key: EntityTabs.FEATURES,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-l-lg" flex="auto">
+            <Col className="p-t-sm m-x-lg" flex="auto">
               <div className="d-flex flex-col gap-4">
                 <DescriptionV1
                   description={mlModelDetail.description}
@@ -393,12 +421,14 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               data-testid="entity-right-panel"
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
-                <TagsContainerV1
+                <TagsContainerV2
                   entityFqn={mlModelDetail.fullyQualifiedName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.MLMODEL}
                   permission={
-                    mlModelPermissions.EditAll || mlModelPermissions.EditTags
+                    (mlModelPermissions.EditAll ||
+                      mlModelPermissions.EditTags) &&
+                    !mlModelDetail.deleted
                   }
                   selectedTags={mlModelTags}
                   tagType={TagSource.Classification}
@@ -406,12 +436,14 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   onThreadLinkSelect={handleThreadLinkSelect}
                 />
 
-                <TagsContainerV1
+                <TagsContainerV2
                   entityFqn={mlModelDetail.fullyQualifiedName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.MLMODEL}
                   permission={
-                    mlModelPermissions.EditAll || mlModelPermissions.EditTags
+                    (mlModelPermissions.EditAll ||
+                      mlModelPermissions.EditTags) &&
+                    !mlModelDetail.deleted
                   }
                   selectedTags={mlModelTags}
                   tagType={TagSource.Glossary}
@@ -438,7 +470,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             <ActivityFeedTab
               entityType={EntityType.MLMODEL}
               fqn={mlModelDetail?.fullyQualifiedName ?? ''}
-              onFeedUpdate={() => Promise.resolve()}
+              onFeedUpdate={fetchEntityFeedCount}
             />
           </ActivityFeedProvider>
         ),
@@ -479,7 +511,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
+        children: !mlModelPermissions.ViewAll ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <CustomPropertyTable
             entityDetails={
               mlModelDetail as CustomPropertyProps['entityDetails']

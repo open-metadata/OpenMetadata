@@ -724,7 +724,9 @@ class LookerSource(DashboardServiceSource):
                     displayName=chart.title or chart.id,
                     description=self.build_chart_description(chart) or None,
                     chartType=get_standard_chart_type(chart.type).value,
-                    sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/dashboard_elements/{chart.id}",
+                    sourceUrl=chart.query.share_url
+                    if chart.query is not None
+                    else f"{clean_uri(self.service_connection.hostPort)}/merge?mid={chart.merge_result_id}",
                     service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
                 self.status.scanned(chart.id)

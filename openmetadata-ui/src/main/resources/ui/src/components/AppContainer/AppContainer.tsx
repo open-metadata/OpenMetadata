@@ -14,7 +14,7 @@ import { Layout } from 'antd';
 import { Content, Header } from 'antd/lib/layout/layout';
 import Sider from 'antd/lib/layout/Sider';
 import AppState from 'AppState';
-import Appbar from 'components/app-bar/Appbar';
+import Appbar from 'components/AppBar/Appbar';
 import LeftSidebar from 'components/MyData/LeftSidebar/LeftSidebar.component';
 import AuthenticatedAppRouter from 'components/router/AuthenticatedAppRouter';
 import { ROUTES } from 'constants/constants';
@@ -39,7 +39,7 @@ const AppContainer = () => {
           <Sider className="left-sidebar-col" width={60}>
             <LeftSidebar />
           </Sider>
-          <Content>
+          <Content className="main-content">
             <AuthenticatedAppRouter />
           </Content>
         </Layout>

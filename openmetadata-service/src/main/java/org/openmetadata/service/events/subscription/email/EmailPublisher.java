@@ -14,9 +14,11 @@
 package org.openmetadata.service.events.subscription.email;
 
 import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.EMAIL;
+import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.util.SubscriptionUtil.buildReceiversListFromActions;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -61,7 +63,7 @@ public class EmailPublisher extends SubscriptionPublisher {
   }
 
   @Override
-  public void sendAlert(EventResource.EventList list) throws InterruptedException, JsonProcessingException {
+  public void sendAlert(EventResource.EventList list) throws JsonProcessingException {
     for (ChangeEvent event : list.getData()) {
       try {
         Set<String> receivers = buildReceiversList(event);
@@ -79,10 +81,10 @@ public class EmailPublisher extends SubscriptionPublisher {
     }
   }
 
-  private Set<String> buildReceiversList(ChangeEvent changeEvent) {
+  private Set<String> buildReceiversList(ChangeEvent changeEvent) throws IOException {
     Set<String> receiverList =
         emailAlertConfig.getReceivers() == null ? new HashSet<>() : emailAlertConfig.getReceivers();
-    EntityInterface entityInterface = (EntityInterface) changeEvent.getEntity();
+    EntityInterface entityInterface = getEntity(changeEvent);
     receiverList.addAll(
         buildReceiversListFromActions(
             emailAlertConfig, EMAIL, daoCollection, entityInterface.getId(), changeEvent.getEntityType()));

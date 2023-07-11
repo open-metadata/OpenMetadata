@@ -113,6 +113,16 @@ export const getTestCaseByFqn = async (
 
   return response;
 };
+export const getTestCaseById = async (
+  id: string,
+  params?: Pick<ListParams, 'fields' | 'include'>
+) => {
+  const response = await APIClient.get<TestCase>(`${testCaseUrl}/${id}`, {
+    params,
+  });
+
+  return response;
+};
 
 export const createTestCase = async (data: CreateTestCase) => {
   const response = await APIClient.post<
@@ -128,7 +138,7 @@ export const updateTestCaseById = async (id: string, data: Operation[]) => {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
 
-  const response = await APIClient.patch<Operation[], AxiosResponse<TestSuite>>(
+  const response = await APIClient.patch<Operation[], AxiosResponse<TestCase>>(
     `${testCaseUrl}/${id}`,
     data,
     configOptions
@@ -137,9 +147,10 @@ export const updateTestCaseById = async (id: string, data: Operation[]) => {
   return response.data;
 };
 
-export const getTestCaseExecutionSummary = async () => {
+export const getTestCaseExecutionSummary = async (testSuiteId?: string) => {
   const response = await APIClient.get<TestSummary>(
-    `${testCaseUrl}/executionSummary`
+    `${testCaseUrl}/executionSummary`,
+    { params: { testSuiteId } }
   );
 
   return response.data;
@@ -152,6 +163,18 @@ export const addTestCaseToLogicalTestSuite = async (
     AddTestCaseToLogicalTestSuiteType,
     AxiosResponse<TestSuite>
   >(`${testCaseUrl}/logicalTestCases`, data);
+
+  return response.data;
+};
+
+export const removeTestCaseFromTestSuite = async (
+  testCaseId: string,
+  testSuiteId: string
+) => {
+  const response = await APIClient.delete<
+    AddTestCaseToLogicalTestSuiteType,
+    AxiosResponse<TestCase>
+  >(`${testCaseUrl}/logicalTestCases/${testSuiteId}/${testCaseId}`);
 
   return response.data;
 };

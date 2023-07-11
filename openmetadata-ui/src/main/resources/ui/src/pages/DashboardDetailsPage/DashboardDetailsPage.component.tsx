@@ -20,7 +20,7 @@ import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { updateChart } from 'rest/chartAPI';
@@ -32,16 +32,14 @@ import {
 } from 'rest/dashboardAPI';
 import { postThread } from 'rest/feedsAPI';
 import { getVersionPath } from '../../constants/constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
-import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
-  getFeedCounts,
 } from '../../utils/CommonUtils';
 import {
   defaultFields,
@@ -69,14 +67,6 @@ const DashboardDetailsPage = () => {
   const [charts, setCharts] = useState<ChartType[]>([]);
   const [isError, setIsError] = useState(false);
 
-  const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
-  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
-
   const [dashboardPermissions, setDashboardPermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
@@ -102,16 +92,6 @@ const DashboardDetailsPage = () => {
     }
   };
 
-  const getEntityFeedCount = () => {
-    getFeedCounts(
-      EntityType.DASHBOARD,
-      dashboardFQN,
-      setEntityFieldThreadCount,
-      setEntityFieldTaskCount,
-      setFeedCount
-    );
-  };
-
   const saveUpdatedDashboardData = (updatedData: Dashboard) => {
     const jsonPatch = compare(
       omitBy(dashboardDetails, isUndefined),
@@ -121,11 +101,20 @@ const DashboardDetailsPage = () => {
     return patchDashboardDetails(dashboardId, jsonPatch);
   };
 
+  const viewUsagePermission = useMemo(
+    () => dashboardPermissions.ViewAll || dashboardPermissions.ViewUsage,
+    [dashboardPermissions]
+  );
+
   const fetchDashboardDetail = async (dashboardFQN: string) => {
     setLoading(true);
 
     try {
-      const res = await getDashboardByFqn(dashboardFQN, defaultFields);
+      let fields = defaultFields;
+      if (viewUsagePermission) {
+        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+      }
+      const res = await getDashboardByFqn(dashboardFQN, fields);
 
       const { id, fullyQualifiedName, charts: ChartIds, serviceType } = res;
       setDashboardDetails(res);
@@ -183,8 +172,6 @@ const DashboardDetailsPage = () => {
           [key]: response[key],
         };
       });
-
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -198,7 +185,6 @@ const DashboardDetailsPage = () => {
         ...prev,
         followers: [...(prev?.followers ?? []), ...newValue],
       }));
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -221,8 +207,6 @@ const DashboardDetailsPage = () => {
             (follower) => follower.id !== oldValue[0].id
           ) ?? [],
       }));
-
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -267,7 +251,6 @@ const DashboardDetailsPage = () => {
         // which leads to wrong PATCH payload sent after further tags removal
         return sortTagsForCharts(charts);
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -288,7 +271,6 @@ const DashboardDetailsPage = () => {
   const createThread = async (data: CreateThread) => {
     try {
       await postThread(data);
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -302,7 +284,6 @@ const DashboardDetailsPage = () => {
   useEffect(() => {
     if (dashboardPermissions.ViewAll || dashboardPermissions.ViewBasic) {
       fetchDashboardDetail(dashboardFQN);
-      getEntityFeedCount();
     }
   }, [dashboardFQN, dashboardPermissions]);
 
@@ -331,9 +312,6 @@ const DashboardDetailsPage = () => {
       charts={charts}
       createThread={createThread}
       dashboardDetails={dashboardDetails}
-      entityFieldTaskCount={entityFieldTaskCount}
-      entityFieldThreadCount={entityFieldThreadCount}
-      feedCount={feedCount}
       followDashboardHandler={followDashboard}
       unFollowDashboardHandler={unFollowDashboard}
       versionHandler={versionHandler}

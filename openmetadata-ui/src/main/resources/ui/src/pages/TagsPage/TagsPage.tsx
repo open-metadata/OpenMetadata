@@ -18,15 +18,16 @@ import {
   Row,
   Space,
   Spin,
+  Switch,
   Table,
   Tooltip,
   Typography,
 } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as IconTag } from 'assets/svg/classification.svg';
 import { ReactComponent as LockIcon } from 'assets/svg/closed-lock.svg';
 import { ReactComponent as IconDisableTag } from 'assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as IconTag } from 'assets/svg/tag-grey.svg';
 import { AxiosError } from 'axios';
 import AppBadge from 'components/common/Badge/Badge.component';
 import Description from 'components/common/description/Description';
@@ -112,6 +113,7 @@ const TagsPage = () => {
   const [editTag, setEditTag] = useState<Tag>();
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isUpdateLoading, setIsUpdateLoading] = useState<boolean>(false);
 
   const [deleteTags, setDeleteTags] = useState<DeleteTagsType>({
     data: undefined,
@@ -217,7 +219,7 @@ const TagsPage = () => {
 
     try {
       const tagsResponse = await getTags({
-        arrQueryFields: ['usageCount', 'disabled'],
+        arrQueryFields: ['usageCount'],
         parent: currentClassificationName,
         after: paging?.after,
         before: paging?.before,
@@ -242,10 +244,7 @@ const TagsPage = () => {
     setIsLoading(true);
 
     try {
-      const response = await getAllClassifications(
-        ['termCount', 'disabled'],
-        1000
-      );
+      const response = await getAllClassifications(['termCount'], 1000);
       setClassifications(response.data);
       if (setCurrent && response.data.length) {
         setCurrentClassification(response.data[0]);
@@ -411,6 +410,8 @@ const TagsPage = () => {
     updatedClassification: Classification
   ) => {
     if (!isUndefined(currentClassification)) {
+      setIsUpdateLoading(true);
+
       const patchData = compare(currentClassification, updatedClassification);
       try {
         const response = await patchClassification(
@@ -448,6 +449,7 @@ const TagsPage = () => {
         }
       } finally {
         setIsEditClassification(false);
+        setIsUpdateLoading(false);
       }
     }
   };
@@ -487,6 +489,15 @@ const TagsPage = () => {
     handleUpdateClassification,
     isClassificationDisabled,
   ]);
+
+  const handleUpdateMutuallyExclusive = async (value: boolean) => {
+    if (!isUndefined(currentClassification)) {
+      handleUpdateClassification({
+        ...currentClassification,
+        mutuallyExclusive: value,
+      });
+    }
+  };
 
   const handleCreatePrimaryTag = async (data: CreateTag) => {
     try {
@@ -677,7 +688,7 @@ const TagsPage = () => {
                   {getEntityName(category)}
                   {category.disabled && (
                     <Badge
-                      className="m-l-xs badge-grey"
+                      className="m-l-xs badge-grey opacity-60"
                       count={t('label.disabled')}
                       data-testid="disabled"
                       size="small"
@@ -1023,158 +1034,187 @@ const TagsPage = () => {
     <PageLayoutV1
       leftPanel={fetchLeftPanel()}
       pageTitle={t('label.tag-plural')}>
-      <div className="full-height page-container" data-testid="tags-container">
-        {currentClassification && (
-          <Row data-testid="header" wrap={false}>
-            <Col flex="auto">
-              <EntityHeaderTitle
-                badge={headerBadge}
-                className={isClassificationDisabled ? 'opacity-60' : ''}
-                displayName={currentClassification.displayName}
-                icon={
-                  <IconTag className="h-9" style={{ color: DE_ACTIVE_COLOR }} />
-                }
-                isDisabled={isClassificationDisabled}
-                name={currentClassification.name}
-                serviceName="classification"
+      {isUpdateLoading ? (
+        <Loader />
+      ) : (
+        <div className="p-x-md" data-testid="tags-container">
+          {currentClassification && (
+            <Row data-testid="header" wrap={false}>
+              <Col flex="auto">
+                <EntityHeaderTitle
+                  badge={headerBadge}
+                  className={isClassificationDisabled ? 'opacity-60' : ''}
+                  displayName={currentClassification.displayName}
+                  icon={
+                    <IconTag
+                      className="h-9"
+                      style={{ color: DE_ACTIVE_COLOR }}
+                    />
+                  }
+                  isDisabled={isClassificationDisabled}
+                  name={currentClassification.name}
+                  serviceName="classification"
+                />
+              </Col>
+
+              <Col className="d-flex justify-end items-start" flex="270px">
+                <Space>
+                  {createPermission && (
+                    <Tooltip title={addTagButtonToolTip}>
+                      <Button
+                        data-testid="add-new-tag-button"
+                        disabled={isClassificationDisabled}
+                        type="primary"
+                        onClick={() => {
+                          setIsAddingTag((prevState) => !prevState);
+                        }}>
+                        {t('label.add-entity', {
+                          entity: t('label.tag'),
+                        })}
+                      </Button>
+                    </Tooltip>
+                  )}
+
+                  {showManageButton && (
+                    <ManageButton
+                      isRecursiveDelete
+                      afterDeleteAction={handleAfterDeleteAction}
+                      allowRename={!isSystemClassification}
+                      allowSoftDelete={false}
+                      canDelete={deletePermission && !isClassificationDisabled}
+                      displayName={
+                        currentClassification.displayName ??
+                        currentClassification.name
+                      }
+                      editDisplayNamePermission={
+                        editDisplayNamePermission && !isClassificationDisabled
+                      }
+                      entityFQN={currentClassification.fullyQualifiedName}
+                      entityId={currentClassification.id}
+                      entityName={currentClassification.name}
+                      entityType={EntityType.CLASSIFICATION}
+                      extraDropdownContent={extraDropdownContent}
+                      onEditDisplayName={handleUpdateDisplayName}
+                    />
+                  )}
+                </Space>
+              </Col>
+            </Row>
+          )}
+
+          <div className="m-b-sm m-t-xs" data-testid="description-container">
+            <Description
+              className={isClassificationDisabled ? 'opacity-60' : ''}
+              description={currentClassification?.description ?? ''}
+              entityName={
+                currentClassification?.displayName ??
+                currentClassification?.name
+              }
+              hasEditAccess={
+                editDescriptionPermission && !isClassificationDisabled
+              }
+              isEdit={isEditClassification}
+              onCancel={() => setIsEditClassification(false)}
+              onDescriptionEdit={() => setIsEditClassification(true)}
+              onDescriptionUpdate={handleUpdateDescription}
+            />
+          </div>
+
+          <div
+            className="m-b-md m-t-xs d-flex justify-end"
+            data-testid="mutually-exclusive-container">
+            <Space align="center" size="small">
+              <Typography.Text
+                className="text-grey-muted"
+                data-testid="mutually-exclusive-classification-label">
+                {t('label.mutually-exclusive')}
+              </Typography.Text>
+
+              <Switch
+                checked={currentClassification?.mutuallyExclusive}
+                data-testid="mutually-exclusive-classification-button"
+                disabled={isClassificationDisabled}
+                onChange={handleUpdateMutuallyExclusive}
               />
-            </Col>
+            </Space>
+          </div>
 
-            <Col className="d-flex justify-end items-start" flex="270px">
-              <Space>
-                {createPermission && (
-                  <Tooltip title={addTagButtonToolTip}>
-                    <Button
-                      data-testid="add-new-tag-button"
-                      disabled={isClassificationDisabled}
-                      type="primary"
-                      onClick={() => {
-                        setIsAddingTag((prevState) => !prevState);
-                      }}>
-                      {t('label.add-entity', {
-                        entity: t('label.tag'),
-                      })}
-                    </Button>
-                  </Tooltip>
-                )}
-
-                {showManageButton && (
-                  <ManageButton
-                    isRecursiveDelete
-                    afterDeleteAction={handleAfterDeleteAction}
-                    allowRename={!isSystemClassification}
-                    allowSoftDelete={false}
-                    canDelete={deletePermission && !isClassificationDisabled}
-                    displayName={
-                      currentClassification.displayName ??
-                      currentClassification.name
-                    }
-                    editDisplayNamePermission={
-                      editDisplayNamePermission && !isClassificationDisabled
-                    }
-                    entityFQN={currentClassification.fullyQualifiedName}
-                    entityId={currentClassification.id}
-                    entityName={currentClassification.name}
-                    entityType={EntityType.CLASSIFICATION}
-                    extraDropdownContent={extraDropdownContent}
-                    onEditDisplayName={handleUpdateDisplayName}
-                  />
-                )}
-              </Space>
-            </Col>
-          </Row>
-        )}
-        <div className="m-b-sm m-t-xs" data-testid="description-container">
-          <Description
+          <Table
+            bordered
             className={isClassificationDisabled ? 'opacity-60' : ''}
-            description={currentClassification?.description ?? ''}
-            entityName={
-              currentClassification?.displayName ?? currentClassification?.name
-            }
-            hasEditAccess={
-              editDescriptionPermission && !isClassificationDisabled
-            }
-            isEdit={isEditClassification}
-            onCancel={() => setIsEditClassification(false)}
-            onDescriptionEdit={() => setIsEditClassification(true)}
-            onDescriptionUpdate={handleUpdateDescription}
+            columns={tableColumn}
+            data-testid="table"
+            dataSource={tags}
+            loading={{
+              indicator: (
+                <Spin indicator={<Loader size="small" />} size="small" />
+              ),
+              spinning: isTagsLoading,
+            }}
+            pagination={false}
+            rowClassName={(record) => (record.disabled ? 'opacity-60' : '')}
+            rowKey="id"
+            size="small"
+          />
+          {paging.total > PAGE_SIZE && (
+            <NextPrevious
+              currentPage={currentPage}
+              pageSize={PAGE_SIZE}
+              paging={paging}
+              pagingHandler={handlePageChange}
+              totalCount={paging.total}
+            />
+          )}
+
+          {/* Classification Form */}
+          {isAddingClassification && (
+            <TagsForm
+              isClassification
+              showMutuallyExclusive
+              data={classifications}
+              header={t('label.adding-new-classification')}
+              isEditing={false}
+              isLoading={isButtonLoading}
+              isTier={isTier}
+              visible={isAddingClassification}
+              onCancel={handleCancel}
+              onSubmit={handleCreateClassification}
+            />
+          )}
+
+          {/* Tags Form */}
+          {isAddingTag && (
+            <TagsForm
+              header={tagsFormHeader}
+              initialValues={editTag}
+              isEditing={!isUndefined(editTag)}
+              isLoading={isButtonLoading}
+              isSystemTag={editTag?.provider === ProviderType.System}
+              isTier={isTier}
+              permissions={tagsFormPermissions}
+              visible={isAddingTag}
+              onCancel={handleCancel}
+              onSubmit={(data) => {
+                if (editTag) {
+                  handleUpdatePrimaryTag({ ...editTag, ...data });
+                } else {
+                  handleCreatePrimaryTag(data);
+                }
+              }}
+            />
+          )}
+
+          <EntityDeleteModal
+            bodyText={getEntityDeleteMessage(deleteTags.data?.name ?? '', '')}
+            entityName={deleteTags.data?.name ?? ''}
+            entityType={t('label.classification')}
+            loadingState={deleteStatus}
+            visible={deleteTags.state}
+            onCancel={() => setDeleteTags({ data: undefined, state: false })}
+            onConfirm={handleConfirmClick}
           />
         </div>
-        <Table
-          bordered
-          className={isClassificationDisabled ? 'opacity-60' : ''}
-          columns={tableColumn}
-          data-testid="table"
-          dataSource={tags}
-          loading={{
-            indicator: (
-              <Spin indicator={<Loader size="small" />} size="small" />
-            ),
-            spinning: isTagsLoading,
-          }}
-          pagination={false}
-          rowClassName={(record) => (record.disabled ? 'opacity-60' : '')}
-          rowKey="id"
-          size="small"
-        />
-        {paging.total > PAGE_SIZE && (
-          <NextPrevious
-            currentPage={currentPage}
-            pageSize={PAGE_SIZE}
-            paging={paging}
-            pagingHandler={handlePageChange}
-            totalCount={paging.total}
-          />
-        )}
-
-        {/* Classification Form */}
-        {isAddingClassification && (
-          <TagsForm
-            isClassification
-            showMutuallyExclusive
-            data={classifications}
-            header={t('label.adding-new-classification')}
-            isEditing={false}
-            isLoading={isButtonLoading}
-            isTier={isTier}
-            visible={isAddingClassification}
-            onCancel={handleCancel}
-            onSubmit={handleCreateClassification}
-          />
-        )}
-
-        {/* Tags Form */}
-        {isAddingTag && (
-          <TagsForm
-            header={tagsFormHeader}
-            initialValues={editTag}
-            isEditing={!isUndefined(editTag)}
-            isLoading={isButtonLoading}
-            isSystemTag={editTag?.provider === ProviderType.System}
-            isTier={isTier}
-            permissions={tagsFormPermissions}
-            visible={isAddingTag}
-            onCancel={handleCancel}
-            onSubmit={(data) => {
-              if (editTag) {
-                handleUpdatePrimaryTag({ ...editTag, ...data });
-              } else {
-                handleCreatePrimaryTag(data);
-              }
-            }}
-          />
-        )}
-
-        <EntityDeleteModal
-          bodyText={getEntityDeleteMessage(deleteTags.data?.name ?? '', '')}
-          entityName={deleteTags.data?.name ?? ''}
-          entityType={t('label.classification')}
-          loadingState={deleteStatus}
-          visible={deleteTags.state}
-          onCancel={() => setDeleteTags({ data: undefined, state: false })}
-          onConfirm={handleConfirmClick}
-        />
-      </div>
+      )}
     </PageLayoutV1>
   );
 };

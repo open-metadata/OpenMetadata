@@ -13,13 +13,12 @@
 
 import { Button, Col, Menu, MenuProps, Row, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { ReactComponent as IconFolder } from 'assets/svg/folder.svg';
+import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
 import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
 import LeftPanelCard from 'components/common/LeftPanelCard/LeftPanelCard';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import GlossaryV1Skeleton from 'components/Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { ROUTES } from 'constants/constants';
 import { Operation } from 'generated/entity/policies/policy';
 import React, { useMemo } from 'react';
@@ -28,6 +27,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { getGlossaryPath } from 'utils/RouterUtils';
+import Fqn from '../../../utils/Fqn';
 import { GlossaryLeftPanelProps } from './GlossaryLeftPanel.interface';
 
 const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
@@ -43,7 +43,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
   );
   const selectedKey = useMemo(() => {
     if (glossaryName) {
-      return glossaryName.split(FQN_SEPARATOR_CHAR)[0];
+      return Fqn.split(glossaryName)[0];
     }
 
     return glossaries[0].name;
@@ -54,9 +54,9 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
       return [
         ...acc,
         {
-          key: glossary.name,
+          key: glossary.fullyQualifiedName ?? '',
           label: getEntityName(glossary),
-          icon: <IconFolder height={16} width={16} />,
+          icon: <GlossaryIcon height={16} width={16} />,
         },
       ];
     }, [] as ItemType[]);

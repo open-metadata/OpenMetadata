@@ -12,7 +12,7 @@
  */
 import { Button, Popover, Tooltip } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { PAGE_SIZE_MEDIUM } from 'constants/constants';
+import { DE_ACTIVE_COLOR, PAGE_SIZE_MEDIUM } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
@@ -130,7 +130,7 @@ export const UserSelectableList = ({
             className="p-0 flex-center"
             data-testid="add-user"
             disabled={!hasPermission}
-            icon={<EditIcon width="14px" />}
+            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
             size="small"
             type="text"
           />

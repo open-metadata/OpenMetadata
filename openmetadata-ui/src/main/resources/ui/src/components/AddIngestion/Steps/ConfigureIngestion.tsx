@@ -12,6 +12,7 @@
  */
 
 import { Button, Form, Space } from 'antd';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { capitalize, isNil } from 'lodash';
 import React, { useMemo, useRef } from 'react';
@@ -243,6 +244,12 @@ const ConfigureIngestion = ({
       formItemProps: {
         initialValue: ingestionName,
       },
+      rules: [
+        {
+          pattern: ENTITY_NAME_REGEX,
+          message: t('message.entity-name-validation'),
+        },
+      ],
     },
   ];
   const includeOwnersField: FieldProp = {

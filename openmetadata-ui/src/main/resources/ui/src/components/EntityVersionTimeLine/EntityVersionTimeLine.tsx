@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import classNames from 'classnames';
 import { capitalize, toString } from 'lodash';
 import React, { Fragment, useState } from 'react';
@@ -98,7 +99,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
               </div>
             ) : null}
             <div
-              className="timeline-content tw-py-2 tw-cursor-pointer"
+              className="timeline-content p-y-xs cursor-pointer"
               onClick={() => versionHandler(toString(currV?.version))}>
               <div className="timeline-wrapper">
                 <span
@@ -116,18 +117,17 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                 <span className={classNames('timeline-line')} />
               </div>
               <div className="tw-grid tw-gap-0.5">
-                <p
-                  className={classNames('tw-text-grey-body tw-font-medium', {
-                    'tw-text-primary-active':
-                      toString(currV?.version) === currentVersion,
+                <Typography.Text
+                  className={classNames(' font-medium', {
+                    'text-primary': toString(currV?.version) === currentVersion,
                   })}>
                   <span>{`v${parseFloat(currV?.version).toFixed(1)}`}</span>
                   {majorVersionChecks() ? (
-                    <span className="tw-ml-2 tw-text-xs tw-font-medium tw-text-grey-body tw-bg-tag tw-px-2 tw-py-0.5 tw-rounded">
+                    <span className="tw-ml-2 text-xs font-medium tw-text-grey-body tw-bg-tag tw-px-2 tw-py-0.5 tw-rounded">
                       {t('label.major')}
                     </span>
                   ) : null}
-                </p>
+                </Typography.Text>
                 <div
                   className={classNames(
                     'tw-text-xs tw-font-normal tw-break-all',

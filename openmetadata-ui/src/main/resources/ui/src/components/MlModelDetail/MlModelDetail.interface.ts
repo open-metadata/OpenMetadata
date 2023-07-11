@@ -14,12 +14,10 @@
 import { HTMLAttributes } from 'react';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
-import { EntityFieldThreadCount } from '../../interface/feed.interface';
 
 export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   mlModelDetail: Mlmodel;
   version?: string;
-  feedCount: number;
   followMlModelHandler: () => Promise<void>;
   unFollowMlModelHandler: () => Promise<void>;
   descriptionUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;
@@ -28,7 +26,5 @@ export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   settingsUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;
   versionHandler: () => void;
   onExtensionUpdate: (updatedMlModel: Mlmodel) => Promise<void>;
-  entityFieldThreadCount: EntityFieldThreadCount[];
-  entityFieldTaskCount: EntityFieldThreadCount[];
   createThread: (data: CreateThread) => void;
 }

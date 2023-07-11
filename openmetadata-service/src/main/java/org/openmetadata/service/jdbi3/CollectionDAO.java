@@ -34,6 +34,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
@@ -80,6 +81,8 @@ import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.domains.DataProduct;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -192,6 +195,12 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   BotDAO botDAO();
+
+  @CreateSqlObject
+  DomainDAO domainDAO();
+
+  @CreateSqlObject
+  DataProductDAO dataProductDAO();
 
   @CreateSqlObject
   EventSubscriptionDAO eventSubscriptionDAO();
@@ -1197,6 +1206,31 @@ public interface CollectionDAO {
         @Bind("jsonSchema") String jsonSchema,
         @Bind("json") String json);
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO field_relationship(fromFQNHash, toFQNHash, fromFQN, toFQN, fromType, toType, relation, jsonSchema, json) "
+                + "VALUES (:fromFQNHash, :toFQNHash, :fromFQN, :toFQN, :fromType, :toType, :relation, :jsonSchema, :json) "
+                + "ON DUPLICATE KEY UPDATE fromFQNHash = :fromFQNHash,"
+                + "toFQNHash = :toFQNHash",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO field_relationship(fromFQNHash, toFQNHash, fromFQN, toFQN, fromType, toType, relation, jsonSchema, json) "
+                + "VALUES (:fromFQNHash, :toFQNHash, :fromFQN, :toFQN, :fromType, :toType, :relation, :jsonSchema, (:json :: jsonb)) "
+                + "ON CONFLICT (fromFQN, toFQN, relation) DO UPDATE SET fromFQNHash = EXCLUDED.fromFQNHash,"
+                + "toFQNHash = EXCLUDED.toFQNHash",
+        connectionType = POSTGRES)
+    void upsertFQNHash(
+        @Bind("fromFQNHash") String fromFQNHash,
+        @Bind("toFQNHash") String toFQNHash,
+        @Bind("fromFQN") String fromFQN,
+        @Bind("toFQN") String toFQN,
+        @Bind("fromType") String fromType,
+        @Bind("toType") String toType,
+        @Bind("relation") int relation,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") String json);
+
     @SqlQuery(
         "SELECT json FROM field_relationship WHERE "
             + "fromFQNHash = :fromFQNHash AND toFQNHash = :toFQNHash AND fromType = :fromType "
@@ -1218,6 +1252,10 @@ public interface CollectionDAO {
         @Bind("fromType") String fromType,
         @Bind("toType") String toType,
         @Bind("relation") int relation);
+
+    @SqlQuery("SELECT * FROM field_relationship")
+    @RegisterRowMapper(FieldRelationShipMapper.class)
+    List<FieldRelationship> listAll();
 
     @SqlQuery(
         "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
@@ -1272,6 +1310,37 @@ public interface CollectionDAO {
         return Triple.of(rs.getString("fromFQN"), rs.getString("toFQN"), rs.getString("json"));
       }
     }
+
+    class FieldRelationShipMapper implements RowMapper<FieldRelationship> {
+      @Override
+      public FieldRelationship map(ResultSet rs, StatementContext ctx) throws SQLException {
+        FieldRelationship result = new FieldRelationship();
+        result.setFromFQNHash(rs.getString("fromFQNHash"));
+        result.setToFQNHash(rs.getString("toFQNHash"));
+        result.setFromFQN(rs.getString("fromFQN"));
+        result.setToFQN(rs.getString("toFQN"));
+        result.setFromType(rs.getString("fromType"));
+        result.setToType(rs.getString("toType"));
+        result.setRelation(rs.getInt("relation"));
+        result.setJsonSchema(rs.getString("jsonSchema"));
+        result.setJson(rs.getString("json"));
+        return result;
+      }
+    }
+
+    @Getter
+    @Setter
+    class FieldRelationship {
+      private String fromFQNHash;
+      private String toFQNHash;
+      private String fromFQN;
+      private String toFQN;
+      private String fromType;
+      private String toType;
+      private int relation;
+      private String jsonSchema;
+      private String json;
+    }
   }
 
   interface BotDAO extends EntityDAO<Bot> {
@@ -1288,6 +1357,50 @@ public interface CollectionDAO {
     @Override
     default String getNameHashColumn() {
       return "nameHash";
+    }
+  }
+
+  interface DomainDAO extends EntityDAO<Domain> {
+    @Override
+    default String getTableName() {
+      return "domain_entity";
+    }
+
+    @Override
+    default Class<Domain> getEntityClass() {
+      return Domain.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+
+    @Override
+    default boolean supportsSoftDelete() {
+      return false;
+    }
+  }
+
+  interface DataProductDAO extends EntityDAO<DataProduct> {
+    @Override
+    default String getTableName() {
+      return "data_product_entity";
+    }
+
+    @Override
+    default Class<DataProduct> getEntityClass() {
+      return DataProduct.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+
+    @Override
+    default boolean supportsSoftDelete() {
+      return false;
     }
   }
 
@@ -1348,7 +1461,7 @@ public interface CollectionDAO {
   interface MetricsDAO extends EntityDAO<Metrics> {
     @Override
     default String getTableName() {
-      return "metrics_entity";
+      return "metric_entity";
     }
 
     @Override
@@ -1609,6 +1722,64 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+
+    @Override
+    default int listCount(ListFilter filter) {
+      String includeEmptyTestSuite = filter.getQueryParam("includeEmptyTestSuite");
+      if (includeEmptyTestSuite != null && !Boolean.parseBoolean(includeEmptyTestSuite)) {
+        String condition =
+            String.format(
+                "INNER JOIN entity_relationship er ON %s.id=er.fromId AND er.relation=%s AND er.toEntity='%s'",
+                getTableName(), CONTAINS.ordinal(), Entity.TEST_SUITE);
+        String mySqlCondition = condition;
+        String postgresCondition = condition;
+
+        mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition(getTableName()));
+        postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
+        return listCount(getTableName(), getNameColumn(), mySqlCondition, postgresCondition);
+      }
+
+      String condition = filter.getCondition(getTableName());
+      return listCount(getTableName(), getNameColumn(), condition, condition);
+    }
+
+    @Override
+    default List<String> listBefore(ListFilter filter, int limit, String before) {
+      String includeEmptyTestSuite = filter.getQueryParam("includeEmptyTestSuite");
+      if (includeEmptyTestSuite != null && !Boolean.parseBoolean(includeEmptyTestSuite)) {
+        String condition =
+            String.format(
+                "INNER JOIN entity_relationship er ON %s.id=er.fromId AND er.relation=%s AND er.toEntity='%s'",
+                getTableName(), CONTAINS.ordinal(), Entity.TEST_SUITE);
+        String mySqlCondition = condition;
+        String postgresCondition = condition;
+
+        mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition(getTableName()));
+        postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
+        return listBefore(getTableName(), getNameColumn(), mySqlCondition, postgresCondition, limit, before);
+      }
+      String condition = filter.getCondition(getTableName());
+      return listBefore(getTableName(), getNameColumn(), condition, condition, limit, before);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String after) {
+      String includeEmptyTestSuite = filter.getQueryParam("includeEmptyTestSuite");
+      if (includeEmptyTestSuite != null && !Boolean.parseBoolean(includeEmptyTestSuite)) {
+        String condition =
+            String.format(
+                "INNER JOIN entity_relationship er ON %s.id=er.fromId AND er.relation=%s AND er.toEntity='%s'",
+                getTableName(), CONTAINS.ordinal(), Entity.TEST_SUITE);
+        String mySqlCondition = condition;
+        String postgresCondition = condition;
+
+        mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition(getTableName()));
+        postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
+        return listAfter(getTableName(), getNameColumn(), mySqlCondition, postgresCondition, limit, after);
+      }
+      String condition = filter.getCondition(getTableName());
+      return listAfter(getTableName(), getNameColumn(), condition, condition, limit, after);
+    }
   }
 
   interface QueryDAO extends EntityDAO<Query> {
@@ -1749,6 +1920,117 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM tag where fqnHash LIKE CONCAT(:fqnHashPrefix, '.%')")
     void deleteTagsByPrefix(@Bind("fqnHashPrefix") String fqnHashPrefix);
+
+    @Override
+    default int listCount(ListFilter filter) {
+      boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
+      String condition =
+          String.format(
+              "INNER JOIN entity_relationship er ON tag.id=er.toId AND er.relation=%s AND er.fromEntity='%s'  "
+                  + "INNER JOIN classification c on er.fromId=c.id",
+              CONTAINS.ordinal(), Entity.CLASSIFICATION);
+      String mySqlCondition = condition;
+      String postgresCondition = condition;
+
+      if (disabled) {
+        mySqlCondition =
+            String.format(
+                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = TRUE)",
+                mySqlCondition);
+        postgresCondition =
+            String.format(
+                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean)  = TRUE)",
+                postgresCondition);
+      } else {
+        mySqlCondition =
+            String.format(
+                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = FALSE)",
+                mySqlCondition);
+        postgresCondition =
+            String.format(
+                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean)  = FALSE)",
+                postgresCondition);
+      }
+
+      mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
+      postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
+      return listCount(getTableName(), getNameColumn(), mySqlCondition, postgresCondition);
+    }
+
+    @Override
+    default List<String> listBefore(ListFilter filter, int limit, String before) {
+      boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
+      String condition =
+          String.format(
+              "INNER JOIN entity_relationship er ON tag.id=er.toId AND er.relation=%s AND er.fromEntity='%s'  "
+                  + "INNER JOIN classification c on er.fromId=c.id",
+              CONTAINS.ordinal(), Entity.CLASSIFICATION);
+
+      String mySqlCondition = condition;
+      String postgresCondition = condition;
+
+      if (disabled) {
+        mySqlCondition =
+            String.format(
+                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = TRUE)",
+                mySqlCondition);
+        postgresCondition =
+            String.format(
+                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean) = TRUE)",
+                postgresCondition);
+      } else {
+        mySqlCondition =
+            String.format(
+                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = FALSE)",
+                mySqlCondition);
+        postgresCondition =
+            String.format(
+                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean)  = FALSE)",
+                postgresCondition);
+      }
+
+      mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
+      postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
+
+      return listBefore(getTableName(), getNameColumn(), mySqlCondition, postgresCondition, limit, before);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String after) {
+      boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
+      String condition =
+          String.format(
+              "INNER JOIN entity_relationship er ON tag.id=er.toId AND er.relation=%s AND er.fromEntity='%s'  "
+                  + "INNER JOIN classification c on er.fromId=c.id",
+              CONTAINS.ordinal(), Entity.CLASSIFICATION);
+
+      String mySqlCondition = condition;
+      String postgresCondition = condition;
+
+      if (disabled) {
+        mySqlCondition =
+            String.format(
+                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = TRUE)",
+                mySqlCondition);
+        postgresCondition =
+            String.format(
+                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean) = TRUE)",
+                postgresCondition);
+      } else {
+        mySqlCondition =
+            String.format(
+                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = FALSE)",
+                mySqlCondition);
+        postgresCondition =
+            String.format(
+                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean)  = FALSE)",
+                postgresCondition);
+      }
+
+      mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
+      postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
+      return listAfter(getTableName(), getNameColumn(), mySqlCondition, postgresCondition, limit, after);
+    }
   }
 
   @RegisterRowMapper(TagLabelMapper.class)
@@ -1782,6 +2064,11 @@ public interface CollectionDAO {
         "SELECT source, tagFQN,  labelType, state FROM tag_usage WHERE targetFQNHash = :targetFQNHash ORDER BY tagFQN")
     List<TagLabel> getTagsInternal(@Bind("targetFQNHash") String targetFQNHash);
 
+    @SqlQuery("SELECT * FROM tag_usage")
+    @Deprecated(since = "Release 1.1")
+    @RegisterRowMapper(TagLabelMapperMigration.class)
+    List<TagLabelMigration> listAll();
+
     @SqlQuery(
         "SELECT COUNT(*) FROM tag_usage "
             + "WHERE (tagFQNHash LIKE CONCAT(:tagFqnHash, '.%') OR tagFQNHash = :tagFqnHash) "
@@ -1794,12 +2081,38 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM tag_usage where tagFQNHash = :tagFQNHash AND source = :source")
     void deleteTagLabels(@Bind("source") int source, @Bind("tagFQNHash") String tagFQNHash);
 
+    @SqlUpdate("DELETE FROM tag_usage where tagFQNHash = :tagFQNHash")
+    void deleteTagLabelsByFqn(@Bind("tagFQNHash") String tagFQNHash);
+
     @SqlUpdate("DELETE FROM tag_usage where tagFQNHash LIKE CONCAT(:tagFQNHash, '.%') AND source = :source")
     void deleteTagLabelsByPrefix(@Bind("source") int source, @Bind("tagFQNHash") String tagFQNHash);
 
     @SqlUpdate(
         "DELETE FROM tag_usage where targetFQNHash = :targetFQNHash OR targetFQNHash LIKE CONCAT(:targetFQNHash, '.%')")
     void deleteTagLabelsByTargetPrefix(@Bind("targetFQNHash") String targetFQNHash);
+
+    @Deprecated(since = "Release 1.1")
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, targetFQN)"
+                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :targetFQN) "
+                + "ON DUPLICATE KEY UPDATE tagFQNHash = :tagFQNHash, targetFQNHash = :targetFQNHash",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, targetFQN) "
+                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :targetFQN) "
+                + "ON CONFLICT (source, tagFQN, targetFQN) "
+                + "DO UPDATE SET tagFQNHash = EXCLUDED.tagFQNHash, targetFQNHash = EXCLUDED.targetFQNHash",
+        connectionType = POSTGRES)
+    void upsertFQNHash(
+        @Bind("source") int source,
+        @Bind("tagFQN") String tagFQN,
+        @Bind("tagFQNHash") String tagFQNHash,
+        @Bind("targetFQNHash") String targetFQNHash,
+        @Bind("labelType") int labelType,
+        @Bind("state") int state,
+        @Bind("targetFQN") String targetFQN);
 
     /** Update all the tagFQN starting with oldPrefix to start with newPrefix due to tag or glossary name change */
     default void updateTagPrefix(int source, String oldPrefix, String newPrefix) {
@@ -1844,6 +2157,50 @@ public interface CollectionDAO {
             .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
             .withState(TagLabel.State.values()[r.getInt("state")])
             .withTagFQN(r.getString("tagFQN"));
+      }
+    }
+
+    @Getter
+    @Setter
+    @Deprecated(since = "Release 1.1")
+    class TagLabelMigration {
+      public int source;
+      public String tagFQN;
+      public String targetFQN;
+      public int labelType;
+      public int state;
+      private String tagFQNHash;
+      public String targetFQNHash;
+    }
+
+    @Deprecated(since = "Release 1.1")
+    class TagLabelMapperMigration implements RowMapper<TagLabelMigration> {
+      @Override
+      public TagLabelMigration map(ResultSet r, StatementContext ctx) throws SQLException {
+        TagLabelMigration tagLabel = new TagLabelMigration();
+
+        tagLabel.setSource(r.getInt("source"));
+        tagLabel.setLabelType(r.getInt("labelType"));
+        tagLabel.setState(r.getInt("state"));
+        tagLabel.setTagFQN(r.getString("tagFQN"));
+        // TODO : Ugly ,  but this is present is lower version and removed on higher version
+        try {
+          // This field is removed in latest
+          tagLabel.setTargetFQN(r.getString("targetFQN"));
+        } catch (Exception ex) {
+          // Nothing to do
+        }
+        try {
+          tagLabel.setTagFQNHash(r.getString("tagFQNHash"));
+        } catch (Exception ex) {
+          // Nothing to do
+        }
+        try {
+          tagLabel.setTargetFQNHash(r.getString("targetFQNHash"));
+        } catch (Exception ex) {
+          // Nothing to do
+        }
+        return tagLabel;
       }
     }
   }
@@ -1980,66 +2337,6 @@ public interface CollectionDAO {
       after = getNameColumn().equals("name") ? FullyQualifiedName.unquoteName(after) : after;
       return listAfter(getTableName(), getNameColumn(), mySqlCondition, postgresCondition, limit, after);
     }
-
-    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table> <mysqlCond>", connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table> <postgresCond>", connectionType = POSTGRES)
-    int listCount(
-        @Define("table") String table,
-        @Define("nameColumn") String nameColumn,
-        @Define("mysqlCond") String mysqlCond,
-        @Define("postgresCond") String postgresCond);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM ("
-                + "SELECT <nameColumn>, json FROM <table> <mysqlCond> AND "
-                + "<nameColumn> < :before "
-                + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
-                "ORDER BY <nameColumn> DESC "
-                + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have fqn)
-                "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY <nameColumn>",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM ("
-                + "SELECT <nameColumn>, json FROM <table> <postgresCond> AND "
-                + "<nameColumn> < :before "
-                + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
-                "ORDER BY <nameColumn> DESC "
-                + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have fqn)
-                "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY <nameColumn>",
-        connectionType = POSTGRES)
-    List<String> listBefore(
-        @Define("table") String table,
-        @Define("nameColumn") String nameColumn,
-        @Define("mysqlCond") String mysqlCond,
-        @Define("postgresCond") String postgresCond,
-        @Bind("limit") int limit,
-        @Bind("before") String before);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM <table> <mysqlCond> AND "
-                + "<nameColumn> > :after "
-                + "ORDER BY <nameColumn> "
-                + "LIMIT :limit",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM <table> <postgresCond> AND "
-                + "<nameColumn> > :after "
-                + "ORDER BY <nameColumn> "
-                + "LIMIT :limit",
-        connectionType = POSTGRES)
-    List<String> listAfter(
-        @Define("table") String table,
-        @Define("nameColumn") String nameColumn,
-        @Define("mysqlCond") String mysqlCond,
-        @Define("postgresCond") String postgresCond,
-        @Bind("limit") int limit,
-        @Bind("after") String after);
 
     default List<String> listTeamsUnderOrganization(String teamId) {
       return listTeamsUnderOrganization(teamId, Relationship.PARENT_OF.ordinal());
@@ -2476,6 +2773,9 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM user_entity WHERE email = :email", connectionType = MYSQL)
     @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM user_entity WHERE email = :email", connectionType = POSTGRES)
     int checkEmailExists(@Bind("email") String email);
+
+    @SqlQuery("SELECT json FROM user_entity WHERE email = :email")
+    String findUserByEmail(@Bind("email") String email);
   }
 
   interface ChangeEventDAO {
@@ -2752,8 +3052,7 @@ public interface CollectionDAO {
     }
 
     default int countOfTestCases(List<UUID> testCaseIds) {
-      return countOfTestCases(
-          getTableName(), testCaseIds.stream().map(testCaseId -> testCaseId.toString()).collect(Collectors.toList()));
+      return countOfTestCases(getTableName(), testCaseIds.stream().map(Object::toString).collect(Collectors.toList()));
     }
 
     @SqlQuery("SELECT count(*) FROM <table> WHERE id IN (<testCaseIds>)")
@@ -3097,6 +3396,40 @@ public interface CollectionDAO {
           throw new RuntimeException(e);
         }
         return new ReportDataRow(rowNumber, reportData);
+      }
+    }
+
+    @SqlQuery("select * from entity_extension_time_series")
+    @RegisterRowMapper(EntityExtensionTimeSeries.class)
+    List<EntityExtensionTimeSeriesTable> listAll();
+
+    @Getter
+    @Setter
+    class EntityExtensionTimeSeriesTable {
+      private String entityFQN;
+      private String extension;
+      private String jsonSchema;
+      private String json;
+      private long timestamp;
+      private String entityFQNHash;
+    }
+
+    class EntityExtensionTimeSeries implements RowMapper<EntityExtensionTimeSeriesTable> {
+      @Override
+      public EntityExtensionTimeSeriesTable map(ResultSet rs, StatementContext ctx) throws SQLException {
+        EntityExtensionTimeSeriesTable result = new EntityExtensionTimeSeriesTable();
+        // TODO : Ugly , after migration this is removed
+        try {
+          result.setEntityFQN(rs.getString("entityFQN"));
+        } catch (Exception ex) {
+          // Nothing
+        }
+        result.setExtension(rs.getString("extension"));
+        result.setJsonSchema(rs.getString("jsonSchema"));
+        result.setJson(rs.getString("json"));
+        result.setTimestamp(rs.getLong("timestamp"));
+        result.setEntityFQNHash(rs.getString("entityFQNHash"));
+        return result;
       }
     }
   }

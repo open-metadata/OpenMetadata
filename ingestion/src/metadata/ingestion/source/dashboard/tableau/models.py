@@ -88,19 +88,19 @@ class CustomSQLTable(TableauBaseModel):
 
 class UpstreamColumn(BaseModel):
     id: str
-    name: str
+    name: Optional[str]
     remoteType: Optional[str]
 
 
 class DatasourceField(BaseModel):
     id: str
-    name: str
+    name: Optional[str]
     upstreamColumns: Optional[List[Union[UpstreamColumn, None]]]
     fullyQualifiedName: Optional[str]
     description: Optional[str]
 
 
-class DownstreamWorkbook(BaseModel):
+class Workbook(BaseModel):
     id: str
     luid: str
     name: str
@@ -108,18 +108,18 @@ class DownstreamWorkbook(BaseModel):
 
 class UpstreamTableColumn(BaseModel):
     id: str
-    name: str
+    name: Optional[str]
 
 
 class TableauDatabase(BaseModel):
     id: str
-    name: str
+    name: Optional[str]
 
 
 class UpstreamTable(BaseModel):
     id: str
     luid: str
-    name: str
+    name: Optional[str]
     fullName: Optional[str]
     schema_: Optional[str] = Field(..., alias="schema")
     columns: Optional[List[UpstreamTableColumn]]
@@ -129,14 +129,19 @@ class UpstreamTable(BaseModel):
 
 class DataSource(BaseModel):
     id: str
-    name: str
+    name: Optional[str]
     fields: Optional[List[DatasourceField]]
-    downstreamWorkbooks: Optional[List[DownstreamWorkbook]]
+    workbook: Optional[Workbook]
     upstreamTables: Optional[List[UpstreamTable]]
 
 
 class TableauDatasources(BaseModel):
-    embeddedDatasources: Optional[List[DataSource]]
+    nodes: Optional[List[DataSource]]
+    totalCount: Optional[int]
+
+
+class TableauDatasourcesConnection(BaseModel):
+    embeddedDatasourcesConnection: Optional[TableauDatasources]
 
 
 class TableauChart(TableauBaseModel):

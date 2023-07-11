@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, Popover, Space, Typography } from 'antd';
+import { Button, Space, Tooltip } from 'antd';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { t } from 'i18next';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
 import React, { Fragment } from 'react';
-import { ReactComponent as IconCommentPlus } from '../assets/svg/add-chat.svg';
 import { ReactComponent as IconComments } from '../assets/svg/comment.svg';
 import { ReactComponent as IconTaskColor } from '../assets/svg/Task-ic.svg';
 import { entityUrlMap } from '../constants/Feeds.constants';
@@ -26,9 +26,10 @@ import { getEntityFeedLink } from './EntityUtils';
 import { getThreadField } from './FeedUtils';
 
 const iconsProps = {
-  height: 16,
+  height: 14,
   name: 'comments',
-  width: 16,
+  width: 14,
+  style: { color: DE_ACTIVE_COLOR },
 };
 
 export const getFieldThreadElement = (
@@ -66,25 +67,20 @@ export const getFieldThreadElement = (
           isTaskType ? ThreadType.Task : ThreadType.Conversation
         );
       }}>
-      <Popover
+      <Tooltip
         destroyTooltipOnHide
-        content={t('label.list-entity', {
-          entity: isTaskType ? t('label.task') : t('label.conversation'),
-        })}
         overlayClassName="ant-popover-request-description"
-        trigger="hover">
+        title={t('label.list-entity', {
+          entity: isTaskType ? t('label.task') : t('label.conversation'),
+        })}>
         <Space align="center" className="w-full h-full" size={4}>
           {isTaskType ? (
             <IconTaskColor {...iconsProps} />
           ) : (
             <IconComments {...iconsProps} />
           )}
-
-          <Typography.Text data-testid="field-thread-count">
-            {threadValue.count}
-          </Typography.Text>
         </Space>
-      </Popover>
+      </Tooltip>
     </Button>
   ) : (
     <Fragment>
@@ -100,15 +96,14 @@ export const getFieldThreadElement = (
               getEntityFeedLink(entityType, entityFqn, entityField)
             );
           }}>
-          <Popover
+          <Tooltip
             destroyTooltipOnHide
-            content={t('label.start-entity', {
-              entity: t('label.conversation'),
-            })}
             overlayClassName="ant-popover-request-description"
-            trigger="hover">
-            <IconCommentPlus {...iconsProps} />
-          </Popover>
+            title={t('label.start-entity', {
+              entity: t('label.conversation'),
+            })}>
+            <IconComments {...iconsProps} />
+          </Tooltip>
         </Button>
       ) : null}
     </Fragment>

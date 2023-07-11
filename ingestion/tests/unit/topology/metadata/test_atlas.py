@@ -336,6 +336,7 @@ class AtlasUnitTest(TestCase):
                         username=None,
                         password=None,
                         hostPort="http://nohost:6000",
+                        databaseName="Reporting",
                     )
                 ),
             )

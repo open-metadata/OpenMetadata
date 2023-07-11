@@ -27,10 +27,6 @@ const GlobalSettingPage = withSuspenseFallback(
   React.lazy(() => import('pages/GlobalSettingPage/GlobalSettingPage'))
 );
 
-const ProfilerDashboardPage = withSuspenseFallback(
-  React.lazy(() => import('pages/ProfilerDashboardPage/ProfilerDashboardPage'))
-);
-
 const MyDataPageV1 = withSuspenseFallback(
   React.lazy(() => import('pages/MyDataPage/MyDataPageV1.component'))
 );
@@ -177,10 +173,6 @@ const UpdateTagsPage = withSuspenseFallback(
   React.lazy(() => import('pages/TasksPage/UpdateTagPage/UpdateTagPage'))
 );
 
-const TaskDetailPage = withSuspenseFallback(
-  React.lazy(() => import('pages/TasksPage/TaskDetailPage/TaskDetailPage'))
-);
-
 const AddRolePage = withSuspenseFallback(
   React.lazy(() => import('pages/RolesPage/AddRolePage/AddRolePage'))
 );
@@ -202,10 +194,6 @@ const AddRulePage = withSuspenseFallback(
 );
 const EditRulePage = withSuspenseFallback(
   React.lazy(() => import('pages/PoliciesPage/PoliciesDetailPage/EditRulePage'))
-);
-
-const TestSuitePage = withSuspenseFallback(
-  React.lazy(() => import('pages/TestSuitePage/TestSuitePage'))
 );
 
 const TestCaseDetailsPage = withSuspenseFallback(
@@ -231,7 +219,9 @@ const EditKPIPage = withSuspenseFallback(
 );
 
 const AddTestSuitePage = withSuspenseFallback(
-  React.lazy(() => import('pages/TestSuitePage/TestSuiteStepper'))
+  React.lazy(
+    () => import('components/TestSuite/TestSuiteStepper/TestSuiteStepper')
+  )
 );
 
 const ContainerPage = withSuspenseFallback(
@@ -335,6 +325,27 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         hasPermission={tagCategoryPermission}
         path={ROUTES.TAG_DETAILS}
       />
+      <Route
+        exact
+        component={() => <GlossaryVersionPage isGlossary />}
+        path={ROUTES.GLOSSARY_VERSION}
+      />
+      <Route
+        exact
+        component={GlossaryVersionPage}
+        path={ROUTES.GLOSSARY_TERMS_VERSION}
+      />
+      <Route
+        exact
+        component={GlossaryVersionPage}
+        path={ROUTES.GLOSSARY_TERMS_VERSION_TAB}
+      />
+      <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
+      <Route
+        exact
+        component={EntityVersionPage}
+        path={ROUTES.ENTITY_VERSION_WITH_TAB}
+      />
       <Route exact component={DatabaseDetails} path={ROUTES.DATABASE_DETAILS} />
       <Route
         exact
@@ -415,21 +426,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route
         exact
-        component={() => <GlossaryVersionPage isGlossary />}
-        path={ROUTES.GLOSSARY_VERSION}
-      />
-      <Route
-        exact
-        component={GlossaryVersionPage}
-        path={ROUTES.GLOSSARY_TERMS_VERSION}
-      />
-      <Route
-        exact
-        component={GlossaryVersionPage}
-        path={ROUTES.GLOSSARY_TERMS_VERSION_TAB}
-      />
-      <Route
-        exact
         component={PipelineDetailsPage}
         path={ROUTES.PIPELINE_DETAILS}
       />
@@ -455,7 +451,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={ContainerPage}
         path={ROUTES.CONTAINER_DETAILS_WITH_SUB_TAB}
       />
-      <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
       <AdminProtectedRoute
         exact
         component={GlossaryPage}
@@ -497,18 +492,21 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
       <Route
         exact
+        component={UserPage}
+        path={ROUTES.USER_PROFILE_WITH_SUB_TAB}
+      />
+
+      <Route exact component={MlModelPage} path={ROUTES.MLMODEL_DETAILS} />
+      <Route
+        exact
+        component={MlModelPage}
+        path={ROUTES.MLMODEL_DETAILS_WITH_SUB_TAB}
+      />
+
+      <Route
+        exact
         component={AddDataQualityTestPage}
         path={ROUTES.ADD_DATA_QUALITY_TEST_CASE}
-      />
-      <Route
-        exact
-        component={ProfilerDashboardPage}
-        path={ROUTES.PROFILER_DASHBOARD}
-      />
-      <Route
-        exact
-        component={ProfilerDashboardPage}
-        path={ROUTES.PROFILER_DASHBOARD_WITH_TAB}
       />
       <Route exact component={AddGlossaryPage} path={ROUTES.ADD_GLOSSARY} />
       <AdminProtectedRoute
@@ -562,7 +560,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.UPDATE_DESCRIPTION}
       />
 
-      <Route exact component={TaskDetailPage} path={ROUTES.TASK_DETAIL} />
       <Route exact component={RequestTagsPage} path={ROUTES.REQUEST_TAGS} />
       <Route exact component={UpdateTagsPage} path={ROUTES.UPDATE_TAGS} />
       <Route
@@ -638,15 +635,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={TestSuiteIngestionPage}
         path={ROUTES.TEST_SUITES_EDIT_INGESTION}
-      />
-      <AdminProtectedRoute
-        exact
-        component={TestSuitePage}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.TEST_SUITE,
-          permissions
-        )}
-        path={ROUTES.TEST_SUITES}
       />
       <AdminProtectedRoute
         exact

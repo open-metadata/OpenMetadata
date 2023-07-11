@@ -14,6 +14,7 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import React from 'react';
+import { VersionStatus } from 'utils/EntityVersionUtils.interface';
 
 interface TagButtonProps {
   label: string;
@@ -27,6 +28,7 @@ interface TagButtonProps {
     event: React.MouseEvent<HTMLElement, MouseEvent>,
     removedTag: string
   ) => void;
+  versionData?: VersionStatus;
 }
 
 const TagButton: React.FC<TagButtonProps> = ({
@@ -38,11 +40,14 @@ const TagButton: React.FC<TagButtonProps> = ({
   removeTag,
   dataTestId = label,
   tooltip = label,
+  versionData,
 }) => {
   const buttonClassNames = classNames(
     'tag-button-container tw-inline-flex text-xs font-medium rounded-4 whitespace-nowrap bg-white tw-border tw-items-center tw-mr-2 tw-mt-2 tw-font-semibold',
     { 'tw-pl-2': isRemovable },
     { 'tw-px-2': !isRemovable },
+    { 'diff-added': versionData?.added },
+    { 'diff-removed text-grey-muted': versionData?.removed },
     className
   );
 
@@ -64,7 +69,9 @@ const TagButton: React.FC<TagButtonProps> = ({
           onClick={(e: React.MouseEvent<HTMLElement, MouseEvent>) => {
             e.preventDefault();
             e.stopPropagation();
-            removeTag && removeTag(e, label);
+            if (removeTag) {
+              removeTag(e, label);
+            }
           }}>
           <CloseOutlined className="tw-text-primary" />
         </span>

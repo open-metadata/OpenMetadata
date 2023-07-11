@@ -21,8 +21,15 @@
   }
 }
 
+.entity-panel-container.ant-drawer-right {
+  .ant-drawer-content-wrapper {
+    box-shadow: none;
+    border: @global-border;
+  }
+}
+
 .entity-panel-container {
-  margin-top: 48px;
+  margin-top: 60px;
   .ant-drawer-header {
     border-bottom: none;
     padding-bottom: 0 !important;
@@ -32,15 +39,8 @@
   }
 
   .entity-info-header-link {
-    &:hover {
-      color: @primary-color;
-      .ant-btn-link > span {
-        color: @primary-color;
-      }
-    }
-
     .ant-btn-link > span {
-      color: @text-color-secondary;
+      color: @primary-color;
     }
   }
 

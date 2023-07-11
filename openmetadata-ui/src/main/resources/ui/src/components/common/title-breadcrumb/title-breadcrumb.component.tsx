@@ -61,7 +61,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   return (
     <TitleBreadcrumbSkeleton titleLinks={titleLinks}>
       <nav className={className} data-testid="breadcrumb">
-        <ol className="rounded-4 d-flex">
+        <ol className="rounded-4 d-flex flex-wrap">
           {titleLinks.map((link, index) => {
             const classes =
               'link-title tw-truncate' +

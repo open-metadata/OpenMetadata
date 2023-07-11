@@ -24,17 +24,19 @@ import EntityLineageComponent from 'components/EntityLineage/EntityLineage.compo
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { getDataModelDetailsPath, getVersionPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { CSMode } from 'enums/codemirror.enum';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
-import { isUndefined, toString } from 'lodash';
+import { EntityFieldThreadCount } from 'interface/feed.interface';
+import { isUndefined, noop, toString } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { getFeedCounts } from 'utils/CommonUtils';
 import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
 import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
 import { getTagsWithoutTier } from 'utils/TableUtils';
@@ -42,8 +44,6 @@ import { DataModelDetailsProps } from './DataModelDetails.interface';
 import ModelTab from './ModelTab/ModelTab.component';
 
 const DataModelDetails = ({
-  entityFieldThreadCount,
-  feedCount,
   dataModelData,
   dataModelPermissions,
   createThread,
@@ -63,6 +63,10 @@ const DataModelDetails = ({
 
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
+  const [feedCount, setFeedCount] = useState<number>(0);
+  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
 
   const {
     hasEditDescriptionPermission,
@@ -90,6 +94,20 @@ const DataModelDetails = ({
         tags: getTagsWithoutTier(dataModelData.tags || []),
       };
     }, [dataModelData]);
+
+  const getEntityFeedCount = () => {
+    getFeedCounts(
+      EntityType.DASHBOARD_DATA_MODEL,
+      dashboardDataModelFQN,
+      setEntityFieldThreadCount,
+      noop,
+      setFeedCount
+    );
+  };
+
+  useEffect(() => {
+    dashboardDataModelFQN && getEntityFeedCount();
+  }, [dashboardDataModelFQN]);
 
   const handleUpdateDisplayName = async (data: EntityName) => {
     if (isUndefined(dataModelData)) {
@@ -143,7 +161,7 @@ const DataModelDetails = ({
   const modelComponent = useMemo(() => {
     return (
       <Row gutter={[0, 16]} wrap={false}>
-        <Col className="p-t-sm m-l-lg" flex="auto">
+        <Col className="p-t-sm m-x-lg" flex="auto">
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
               description={description}
@@ -177,21 +195,21 @@ const DataModelDetails = ({
           data-testid="entity-right-panel"
           flex="320px">
           <Space className="w-full" direction="vertical" size="large">
-            <TagsContainerV1
+            <TagsContainerV2
               entityFqn={dashboardDataModelFQN}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
-              permission={hasEditTagsPermission}
+              permission={hasEditTagsPermission && !dataModelData.deleted}
               selectedTags={tags}
               tagType={TagSource.Classification}
               onSelectionChange={handleTagSelection}
               onThreadLinkSelect={onThreadLinkSelect}
             />
-            <TagsContainerV1
+            <TagsContainerV2
               entityFqn={dashboardDataModelFQN}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
-              permission={hasEditTagsPermission}
+              permission={hasEditTagsPermission && !dataModelData.deleted}
               selectedTags={tags}
               tagType={TagSource.Glossary}
               onSelectionChange={handleTagSelection}
@@ -202,6 +220,7 @@ const DataModelDetails = ({
       </Row>
     );
   }, [
+    dataModelData,
     description,
     dashboardDataModelFQN,
     entityFieldThreadCount,
@@ -246,7 +265,7 @@ const DataModelDetails = ({
             <ActivityFeedTab
               entityType={EntityType.DASHBOARD_DATA_MODEL}
               fqn={dataModelData?.fullyQualifiedName ?? ''}
-              onFeedUpdate={() => Promise.resolve()}
+              onFeedUpdate={getEntityFeedCount}
             />
           </ActivityFeedProvider>
         ),

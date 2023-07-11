@@ -56,6 +56,12 @@
     "testSuite": {
       "$ref": "../type/entityReference.json"
     },
+    "testSuites": {
+      "type": "array",
+      "items": {
+        "$ref": "./testSuite.json"
+      }
+    },
     "parameterValues": {
       "type": "array",
       "items": {

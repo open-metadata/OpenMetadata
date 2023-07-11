@@ -19,7 +19,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { ThreadType } from '../../../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../../../generated/entity/feed/thread';
 import FeedCardHeader from './FeedCardHeader';
 
 const FQN = 'service.database.schema.table';
@@ -37,6 +37,7 @@ jest.mock('../../../../utils/CommonUtils', () => ({
   getPartialNameFromTableFQN: jest.fn().mockImplementation(() => {
     return expectedDisplayName;
   }),
+  getEntityDetailLink: jest.fn().mockImplementation(() => expectedDisplayName),
 }));
 
 jest.mock('../../../../utils/TableUtils', () => ({
@@ -64,6 +65,7 @@ const mockFeedHeaderProps = {
   isEntityFeed: true,
   timeStamp: 1647322547179,
   feedType: ThreadType.Conversation,
+  task: {} as Thread,
 };
 
 describe('Test FeedHeader Component', () => {

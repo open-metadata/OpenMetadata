@@ -9,7 +9,11 @@
 			"maximumMessageSize":167,
 			"cleanupPolicies": ["delete"],
 			"schemaType": "Avro",
-			"schemaText": "{\"namespace\":\"openmetadata.kafka\",\"name\":\"Customer\",\"type\":\"record\",\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"first_name\",\"type\":\"string\"},{\"name\":\"last_name\",\"type\":\"string\"},{\"name\":\"email\",\"type\":\"string\"},{\"name\":\"address_line_1\",\"type\":\"string\"},{\"name\":\"address_line_2\",\"type\":\"string\"},{\"name\":\"post_code\",\"type\":\"string\"},{\"name\":\"country\",\"type\":\"string\"}]}"
+			"schemaText": "{\"namespace\":\"openmetadata.kafka\",\"name\":\"Customer\",\"type\":\"record\",\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"first_name\",\"type\":\"string\"},{\"name\":\"last_name\",\"type\":\"string\"},{\"name\":\"email\",\"type\":\"string\"},{\"name\":\"address_line_1\",\"type\":\"string\"},{\"name\":\"address_line_2\",\"type\":\"string\"},{\"name\":\"post_code\",\"type\":\"string\"},{\"name\":\"country\",\"type\":\"string\"}]}",
+			"sampleData": [
+				"{\"id\": 1, \"first_name\": \"Lévy\", \"country\": \"ES\"}",
+				"{\"id\": 2, \"first_name\": \"Lima\", \"country\": \"ES\"}"
+			]
 		},
 		{
 			"name": "product_events",

@@ -23,6 +23,7 @@ import {
 } from '../../../constants/Feeds.constants';
 import {
   Post,
+  Thread,
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
@@ -56,10 +57,8 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
     onThreadIdSelect(selectedThreadId === id ? '' : id);
   };
 
-  const handleCardClick = (taskId: number, isTask: boolean) => {
-    if (isTask) {
-      history.push(getTaskDetailPath(String(taskId)));
-    }
+  const handleCardClick = (task: Thread, isTask: boolean) => {
+    isTask && history.push(getTaskDetailPath(task));
   };
 
   return (
@@ -112,7 +111,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                         background: isAnnouncement ? `${ANNOUNCEMENT_BG}` : '',
                       }}
                       onClick={() =>
-                        thread.task && handleCardClick(thread.task.id, isTask)
+                        thread.task && handleCardClick(thread, isTask)
                       }>
                       {isTask && (
                         <TaskBadge
@@ -128,7 +127,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                           entityLink={thread.about}
                           feed={mainFeed}
                           feedType={thread.type || ThreadType.Conversation}
-                          taskDetails={thread.task}
+                          task={thread}
                           threadId={thread.id}
                           updateThreadHandler={updateThreadHandler}
                           onConfirmation={onConfirmation}
@@ -162,6 +161,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                               className="tw-ml-9"
                               feed={lastPost as Post}
                               feedType={thread.type || ThreadType.Conversation}
+                              task={thread}
                               threadId={thread.id}
                               updateThreadHandler={updateThreadHandler}
                               onConfirmation={onConfirmation}

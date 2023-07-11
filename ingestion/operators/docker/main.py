@@ -20,8 +20,10 @@ from metadata.data_quality.api.workflow import TestSuiteWorkflow
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineType,
 )
+from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.ingestion.api.workflow import Workflow
 from metadata.profiler.api.workflow import ProfilerWorkflow
+from metadata.utils.logger import set_loggers_level
 
 WORKFLOW_MAP = {
     PipelineType.metadata.value: Workflow,
@@ -98,6 +100,9 @@ def main():
     workflow_config = yaml.safe_load(config)
     if pipeline_run_id:
         workflow_config["pipelineRunId"] = pipeline_run_id
+
+    logger_level = workflow_config.get("workflowConfig", {}).get("loggerLevel")
+    set_loggers_level(logger_level or LogLevels.INFO.value)
 
     workflow = workflow_class.create(workflow_config)
     workflow.execute()

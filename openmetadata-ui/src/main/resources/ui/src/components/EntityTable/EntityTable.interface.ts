@@ -21,7 +21,7 @@ export interface EntityTableProps {
   joins: Array<ColumnJoins>;
   columnName: string;
   hasDescriptionEditAccess?: boolean;
-  hasTagEditAccess?: boolean;
+  hasTagEditAccess: boolean;
   tableConstraints: Table['tableConstraints'];
   searchText?: string;
   isReadOnly?: boolean;

@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space } from 'antd';
+import { Button, Col, Modal, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { AddTestCaseModal } from 'components/AddTestCaseModal/AddTestCaseModal.component';
+import { AddTestCaseList } from 'components/AddTestCaseList/AddTestCaseList.component';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import Description from 'components/common/description/Description';
 import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
@@ -32,24 +32,25 @@ import DataQualityTab from 'components/ProfilerDashboard/component/DataQualityTa
 import { EntityInfo } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { useAuth } from 'hooks/authHooks';
-import { camelCase, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
+import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
+  addTestCaseToLogicalTestSuite,
   getListTestCase,
   getTestSuiteByName,
   ListTestCaseParams,
   updateTestSuiteById,
 } from 'rest/testAPI';
 import { getEntityName } from 'utils/EntityUtils';
+import { getDataQualityPagePath } from 'utils/RouterUtils';
 import {
   getTeamAndUserDetailsPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
   pagingObject,
-  ROUTES,
 } from '../../constants/constants';
 import { ACTION_TYPE, ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -73,7 +74,7 @@ const TestSuiteDetailsPage = () => {
   const hasAccess = isAdminUser || isAuthDisabled;
 
   const afterDeleteAction = () => {
-    history.push(ROUTES.TEST_SUITES);
+    history.push(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
   };
   const [testSuite, setTestSuite] = useState<TestSuite>();
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
@@ -150,8 +151,17 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const afterSubmitAction = () => {
-    fetchTestCases();
+  const handleAddTestCaseSubmit = async (testCaseIds: string[]) => {
+    try {
+      await addTestCaseToLogicalTestSuite({
+        testCaseIds,
+        testSuiteId: testSuite?.id ?? '',
+      });
+      setIsTestCaseModalOpen(false);
+      fetchTestCases();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const fetchTestSuiteByName = async () => {
@@ -163,12 +173,10 @@ const TestSuiteDetailsPage = () => {
       setSlashedBreadCrumb([
         {
           name: t('label.test-suite-plural'),
-          url: ROUTES.TEST_SUITES,
+          url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
         },
         {
-          name: startCase(
-            camelCase(response?.fullyQualifiedName || response?.name)
-          ),
+          name: getEntityName(response),
           url: '',
         },
       ]);
@@ -258,6 +266,16 @@ const TestSuiteDetailsPage = () => {
     });
   };
 
+  const handleTestSuiteUpdate = (testCase?: TestCase) => {
+    if (testCase) {
+      setTestCaseResult((prev) =>
+        prev.map((test) =>
+          test.id === testCase.id ? { ...test, ...testCase } : test
+        )
+      );
+    }
+  };
+
   const extraInfo: Array<ExtraInfo> = useMemo(
     () => [
       {
@@ -311,11 +329,17 @@ const TestSuiteDetailsPage = () => {
               titleLinks={slashedBreadCrumb}
             />
             <Space>
-              <Button
-                type="primary"
-                onClick={() => setIsTestCaseModalOpen(true)}>
-                {t('label.add-entity', { entity: t('label.test-case-plural') })}
-              </Button>
+              {(testSuitePermissions.EditAll ||
+                testSuitePermissions.EditTests) && (
+                <Button
+                  data-testid="add-test-case-btn"
+                  type="primary"
+                  onClick={() => setIsTestCaseModalOpen(true)}>
+                  {t('label.add-entity', {
+                    entity: t('label.test-case-plural'),
+                  })}
+                </Button>
+              )}
               <ManageButton
                 isRecursiveDelete
                 afterDeleteAction={afterDeleteAction}
@@ -362,18 +386,29 @@ const TestSuiteDetailsPage = () => {
               paging: testCasesPaging,
               onPagingClick: handleTestCasePaging,
             }}
+            removeFromTestSuite={{ testSuite: testSuite as TestSuite }}
             testCases={testCaseResult}
-            onTestUpdate={afterSubmitAction}
+            onTestCaseResultUpdate={handleTestSuiteUpdate}
+            onTestUpdate={handleTestSuiteUpdate}
           />
         </Col>
         <Col span={24}>
-          <AddTestCaseModal
-            existingTest={testSuite?.tests ?? []}
+          <Modal
+            centered
+            destroyOnClose
+            closable={false}
+            footer={null}
             open={isTestCaseModalOpen}
-            testSuiteId={testSuite?.id ?? ''}
-            onCancel={() => setIsTestCaseModalOpen(false)}
-            onSubmit={afterSubmitAction}
-          />
+            title={t('label.add-entity', {
+              entity: t('label.test-case-plural'),
+            })}
+            width={750}>
+            <AddTestCaseList
+              existingTest={testSuite?.tests ?? []}
+              onCancel={() => setIsTestCaseModalOpen(false)}
+              onSubmit={handleAddTestCaseSubmit}
+            />
+          </Modal>
         </Col>
       </Row>
     </PageLayoutV1>

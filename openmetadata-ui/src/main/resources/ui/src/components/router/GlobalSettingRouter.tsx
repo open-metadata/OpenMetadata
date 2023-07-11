@@ -232,10 +232,7 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={BotsPageV1}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.BOT,
-          permissions
-        )}
+        hasPermission={false}
         path={getSettingPath(
           GlobalSettingsMenuCategory.INTEGRATIONS,
           GlobalSettingOptions.BOTS
@@ -370,10 +367,7 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={CustomPropertiesPageV1}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.TYPE,
-          permissions
-        )}
+        hasPermission={false}
         path={getSettingCategoryPath(
           GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES
         )}

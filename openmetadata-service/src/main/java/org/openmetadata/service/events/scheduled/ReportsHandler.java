@@ -49,8 +49,8 @@ public class ReportsHandler {
 
   private final SearchClient searchClient;
   private final DataInsightChartRepository chartRepository;
-  private static ReportsHandler INSTANCE;
-  private static volatile boolean INITIALIZED = false;
+  private static ReportsHandler instance;
+  private static volatile boolean initialized = false;
   private final Scheduler reportScheduler = new StdSchedulerFactory().getScheduler();
   private static final ConcurrentHashMap<UUID, JobDetail> reportJobKeyMap = new ConcurrentHashMap<>();
 
@@ -61,7 +61,7 @@ public class ReportsHandler {
   }
 
   public static ReportsHandler getInstance() {
-    if (INITIALIZED) return INSTANCE;
+    if (initialized) return instance;
     throw new DataInsightJobException("Reports Job Handler is not Initialized");
   }
 
@@ -70,9 +70,9 @@ public class ReportsHandler {
   }
 
   public static void initialize(CollectionDAO dao, SearchClient searchClient) throws SchedulerException {
-    if (!INITIALIZED) {
-      INSTANCE = new ReportsHandler(dao, searchClient);
-      INITIALIZED = true;
+    if (!initialized) {
+      instance = new ReportsHandler(dao, searchClient);
+      initialized = true;
     } else {
       LOG.info("Reindexing Handler is already initialized");
     }
@@ -133,8 +133,8 @@ public class ReportsHandler {
   }
 
   public static void shutDown() throws SchedulerException {
-    if (INSTANCE != null) {
-      INSTANCE.reportScheduler.shutdown();
+    if (instance != null) {
+      instance.reportScheduler.shutdown();
     }
   }
 

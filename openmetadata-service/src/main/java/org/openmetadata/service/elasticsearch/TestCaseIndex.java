@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.SneakyThrows;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
@@ -16,15 +17,24 @@ import org.openmetadata.service.util.JsonUtils;
 public class TestCaseIndex implements ElasticSearchIndex {
   TestCase testCase;
 
+  private static final List<String> excludeFields = List.of("changeDescription");
+
   public TestCaseIndex(TestCase testCase) {
     this.testCase = testCase;
   }
 
+  @SneakyThrows
   public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(testCase);
-    if (doc.containsKey("testSuite")) {
-      doc.remove("testSuite"); // we won't update testSuite on testCase update
+    List<TestSuite> testSuiteArray = new ArrayList<>();
+    if (testCase.getTestSuites() != null) {
+      for (TestSuite suite : testCase.getTestSuites()) {
+        suite.setChangeDescription(null);
+        testSuiteArray.add(suite);
+      }
     }
+    testCase.setTestSuites(testSuiteArray);
+    Map<String, Object> doc = JsonUtils.getMap(testCase);
+    ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     return doc;
   }
 
@@ -34,7 +44,8 @@ public class TestCaseIndex implements ElasticSearchIndex {
     List<TestSuite> testSuiteArray = new ArrayList<>();
     testSuiteArray.add(testSuite);
     Map<String, Object> doc = JsonUtils.getMap(testCase);
-    doc.put("testSuite", testSuiteArray); // add the executable test suite on creation
+    ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+    doc.put("testSuites", testSuiteArray);
     return doc;
   }
 
@@ -48,6 +59,7 @@ public class TestCaseIndex implements ElasticSearchIndex {
         .withFullyQualifiedName(testSuite.getFullyQualifiedName())
         .withDeleted(testSuite.getDeleted())
         .withHref(testSuite.getHref())
-        .withExecutable(testSuite.getExecutable());
+        .withExecutable(testSuite.getExecutable())
+        .withChangeDescription(null);
   }
 }

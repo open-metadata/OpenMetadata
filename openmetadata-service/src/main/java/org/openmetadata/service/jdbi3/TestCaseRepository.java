@@ -59,13 +59,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public TestCase setFields(TestCase test, Fields fields) throws IOException {
-    test.setTestSuite(fields.contains(TEST_SUITE_FIELD) ? getTestSuite(test) : null);
+    test.setTestSuites(fields.contains("testSuites") ? getTestSuites(test) : null);
+    test.setTestSuite(fields.contains("testSuite") ? getTestSuite(test) : null);
     test.setTestDefinition(fields.contains("testDefinition") ? getTestDefinition(test) : null);
     return test.withTestCaseResult(fields.contains(TEST_CASE_RESULT_FIELD) ? getTestCaseResult(test) : null);
   }
 
   public RestUtil.PatchResponse<TestCaseResult> patchTestCaseResults(
-      String fqn, Long timestamp, UriInfo uriInfo, String user, JsonPatch patch) throws IOException {
+      String fqn, Long timestamp, String user, JsonPatch patch) throws IOException {
     String change = ENTITY_NO_CHANGE;
     TestCaseResult original =
         JsonUtils.readValue(
@@ -118,7 +119,34 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private EntityReference getTestSuite(TestCase test) throws IOException {
-    return getFromEntityRef(test.getId(), Relationship.CONTAINS, TEST_SUITE, true);
+    // `testSuite` field returns the executable `testSuite` linked to that testCase
+    List<CollectionDAO.EntityRelationshipRecord> records =
+        findFrom(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
+    ensureSingleRelationship(entityType, test.getId(), records, Relationship.CONTAINS.value(), true);
+    for (CollectionDAO.EntityRelationshipRecord testSuiteId : records) {
+      TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL);
+      if (Boolean.TRUE.equals(testSuite.getExecutable())) {
+        return testSuite.getEntityReference();
+      }
+    }
+    return null;
+  }
+
+  private List<TestSuite> getTestSuites(TestCase test) {
+    // `testSuites` field returns all the `testSuite` (executable and logical) linked to that testCase
+    List<CollectionDAO.EntityRelationshipRecord> records =
+        findFrom(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
+    ensureSingleRelationship(entityType, test.getId(), records, Relationship.CONTAINS.value(), true);
+    return records.stream()
+        .map(
+            testSuiteId -> {
+              try {
+                return Entity.<TestSuite>getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL);
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+            })
+        .collect(Collectors.toList());
   }
 
   private EntityReference getTestDefinition(TestCase test) throws IOException {
@@ -169,8 +197,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // Add relationship from test definition to test
     addRelationship(
         test.getTestDefinition().getId(), test.getId(), TEST_DEFINITION, TEST_CASE, Relationship.APPLIED_TO);
-    // Add test owner relationship
-    storeOwner(test, test.getOwner());
   }
 
   @Transaction
@@ -268,7 +294,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   public void isTestSuiteExecutable(String testSuiteFqn) throws IOException {
     TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, testSuiteFqn, null, null);
-    if (!testSuite.getExecutable()) {
+    if (Boolean.FALSE.equals(testSuite.getExecutable())) {
       throw new IllegalArgumentException(
           "Test suite "
               + testSuite.getName()

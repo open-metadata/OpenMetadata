@@ -11,20 +11,35 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Typography } from 'antd';
+import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
+import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
+import SingleColumnProfile from 'components/TableProfiler/Component/SingleColumnProfile';
+import TableProfilerChart from 'components/TableProfiler/Component/TableProfilerChart';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
-import { default as React, useCallback, useMemo, useState } from 'react';
+import Qs from 'qs';
+import {
+  default as React,
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { createExecutableTestSuite, createTestCase } from 'rest/testAPI';
 import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
 import { getTableTabPath } from '../../constants/constants';
-import { STEPS_FOR_ADD_TEST_CASE } from '../../constants/profiler.constant';
-import { EntityType } from '../../enums/entity.enum';
+import {
+  allowedServiceForOperationGraph,
+  DEFAULT_RANGE_DATA,
+  STEPS_FOR_ADD_TEST_CASE,
+} from '../../constants/profiler.constant';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -47,6 +62,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 }: AddDataQualityTestProps) => {
   const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
+  const isTableFqn = dashboardType === ProfilerDashboardType.TABLE;
   const history = useHistory();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [testCaseData, setTestCaseData] = useState<CreateTestCase>();
@@ -82,42 +98,43 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   );
 
   const handleRedirection = () => {
-    history.goBack();
+    history.push({
+      pathname: getTableTabPath(
+        table.fullyQualifiedName ?? '',
+        EntityTabs.PROFILER
+      ),
+      search: Qs.stringify({ activeTab: TableProfilerTab.DATA_QUALITY }),
+    });
   };
 
-  const getTestSuiteFqn = async () => {
-    try {
-      if (isUndefined(table.testSuite)) {
-        const testSuite = {
-          name: `${table.name}.TestSuite`,
-          executableEntityReference: table.fullyQualifiedName,
-          owner,
-        };
-        const response = await createExecutableTestSuite(testSuite);
-        setTestSuiteData(response);
+  const createTestSuite = async () => {
+    const testSuite = {
+      name: `${table.fullyQualifiedName}.testSuite`,
+      executableEntityReference: table.fullyQualifiedName,
+      owner,
+    };
+    const response = await createExecutableTestSuite(testSuite);
+    setTestSuiteData(response);
 
-        return response.fullyQualifiedName ?? '';
-      }
-      setTestSuiteData(table.testSuite);
-
-      return table.testSuite?.fullyQualifiedName ?? '';
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-
-    return '';
+    return response;
   };
+
+  useEffect(() => {
+    setTestSuiteData(table.testSuite);
+  }, [table.testSuite]);
 
   const handleFormSubmit = async (data: CreateTestCase) => {
     setTestCaseData(data);
 
     try {
-      const testSuite = await getTestSuiteFqn();
+      const testSuite = isUndefined(testSuiteData)
+        ? await createTestSuite()
+        : table.testSuite;
 
       const testCasePayload: CreateTestCase = {
         ...data,
         owner,
-        testSuite,
+        testSuite: testSuite?.fullyQualifiedName ?? '',
       };
 
       const testCaseResponse = await createTestCase(testCasePayload);
@@ -183,7 +200,51 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
         onSubmit={handleFormSubmit}
       />
     );
-  }, [activeServiceStep, testCaseRes]);
+  }, [activeServiceStep, testCaseData, testCaseRes, handleFormSubmit, table]);
+
+  const { activeColumnFqn } = useMemo(() => {
+    const param = location.search;
+    const searchData = Qs.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return searchData as { activeColumnFqn: string };
+  }, [location.search]);
+
+  const secondPanel = (
+    <Fragment>
+      <RightPanel
+        data={
+          addIngestion
+            ? INGESTION_DATA
+            : addTestSuiteRightPanel(
+                activeServiceStep,
+                isUndefined(table.testSuite),
+                {
+                  testCase: testCaseData?.name || '',
+                  testSuite: testSuiteData?.name || '',
+                }
+              )
+        }
+      />
+      {isTableFqn && (
+        <TableProfilerChart
+          dateRangeObject={DEFAULT_RANGE_DATA}
+          entityFqn={entityTypeFQN}
+          showOperationGraph={
+            table.serviceType &&
+            allowedServiceForOperationGraph.includes(table.serviceType)
+          }
+        />
+      )}
+      {isColumnFqn && (
+        <SingleColumnProfile
+          activeColumnFqn={activeColumnFqn}
+          dateRangeObject={DEFAULT_RANGE_DATA}
+        />
+      )}
+    </Fragment>
+  );
 
   return (
     <ResizablePanels
@@ -194,62 +255,45 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
             <div className="m-t-md">
               {addIngestion ? (
                 <TestSuiteIngestion
-                  table={table}
                   testSuite={testSuiteData as TestSuite}
                   onCancel={() => setAddIngestion(false)}
                 />
               ) : (
-                <Card className="p-xs">
-                  <Row gutter={[16, 16]}>
-                    <Col span={24}>
-                      <Typography.Paragraph
-                        className="tw-heading tw-text-base"
-                        data-testid="header">
-                        {t('label.add-entity-test', {
-                          entity: isColumnFqn
-                            ? t('label.column')
-                            : t('label.table'),
-                        })}
-                      </Typography.Paragraph>
-                    </Col>
-                    <Col span={24}>
-                      <IngestionStepper
-                        activeStep={activeServiceStep}
-                        steps={STEPS_FOR_ADD_TEST_CASE}
-                      />
-                    </Col>
-                    <Col span={24}>{RenderSelectedTab()}</Col>
-                  </Row>
-                </Card>
+                <Row className="p-xs" gutter={[16, 16]}>
+                  <Col span={24}>
+                    <Typography.Paragraph
+                      className="heading text-base"
+                      data-testid="header">
+                      {t('label.add-entity-test', {
+                        entity: isColumnFqn
+                          ? t('label.column')
+                          : t('label.table'),
+                      })}
+                    </Typography.Paragraph>
+                  </Col>
+                  <Col span={24}>
+                    <IngestionStepper
+                      activeStep={activeServiceStep}
+                      steps={STEPS_FOR_ADD_TEST_CASE}
+                    />
+                  </Col>
+                  <Col span={24}>{RenderSelectedTab()}</Col>
+                </Row>
               )}
             </div>
           </div>
         ),
         minWidth: 700,
-        flex: 0.7,
+        flex: 0.6,
       }}
       pageTitle={t('label.add-entity', {
         entity: t('label.data-quality-test'),
       })}
       secondPanel={{
-        children: (
-          <RightPanel
-            data={
-              addIngestion
-                ? INGESTION_DATA
-                : addTestSuiteRightPanel(
-                    activeServiceStep,
-                    isUndefined(table.testSuite),
-                    {
-                      testCase: testCaseData?.name || '',
-                      testSuite: testSuiteData?.name || '',
-                    }
-                  )
-            }
-          />
-        ),
+        children: secondPanel,
         className: 'p-md service-doc-panel',
         minWidth: 60,
+        flex: 0.4,
         overlay: {
           displayThreshold: 200,
           header: t('label.setup-guide'),

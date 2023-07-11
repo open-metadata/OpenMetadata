@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { Change, diffWordsWithSpace } from 'diff';
 import i18Next from 'i18next';
 import { isEqual, isUndefined } from 'lodash';
@@ -36,19 +37,24 @@ import {
   getServiceDetailsPath,
   PLACEHOLDER_ROUTE_ENTITY_FQN,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
-  PLACEHOLDER_TASK_ID,
   ROUTES,
 } from '../constants/constants';
-import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  FqnPart,
+  TabSpecificField,
+} from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { Column, Table } from '../generated/entity/data/table';
-import { TaskType } from '../generated/entity/feed/thread';
-import { getPartialNameFromTableFQN } from './CommonUtils';
+import { TaskType, Thread } from '../generated/entity/feed/thread';
+import { getEntityDetailLink, getPartialNameFromTableFQN } from './CommonUtils';
 import { defaultFields as DashboardFields } from './DashboardDetailsUtils';
 import { defaultFields as DatabaseSchemaFields } from './DatabaseSchemaDetailsUtils';
 import { defaultFields as DataModelFields } from './DataModelsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';
 import { getEntityName } from './EntityUtils';
+import { getEntityFQN, getEntityType } from './FeedUtils';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
 import { serviceTypeLogo } from './ServiceUtils';
@@ -135,10 +141,16 @@ export const getUpdateTagsPath = (
   return { pathname, search: searchParams.toString() };
 };
 
-export const getTaskDetailPath = (taskId: string) => {
-  const pathname = ROUTES.TASK_DETAIL.replace(PLACEHOLDER_TASK_ID, taskId);
+export const getTaskDetailPath = (task: Thread) => {
+  const entityFQN = getEntityFQN(task.about) ?? '';
+  const entityType = getEntityType(task.about) ?? '';
 
-  return { pathname };
+  return getEntityDetailLink(
+    entityType,
+    entityFQN,
+    EntityTabs.ACTIVITY_FEED,
+    ActivityFeedTabs.TASKS
+  );
 };
 
 export const getDescriptionDiff = (

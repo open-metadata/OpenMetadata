@@ -187,6 +187,7 @@ const CustomControls: FC<ControlProps> = ({
           <Space className="justify-end w-full" size={16}>
             <Button
               ghost
+              className="expand-btn"
               data-testid="expand-column"
               type="primary"
               onClick={onExpandColumnClick}>
