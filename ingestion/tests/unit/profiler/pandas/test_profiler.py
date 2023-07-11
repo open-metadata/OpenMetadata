@@ -15,8 +15,7 @@ Test Profiler behavior
 import os
 from concurrent.futures import TimeoutError
 from datetime import datetime
-from unittest import TestCase
-from unittest.mock import patch
+from unittest import TestCase, mock
 from uuid import uuid4
 
 import pytest
@@ -93,19 +92,20 @@ class ProfilerTest(TestCase):
             )
         ],
     )
-    with (
-        patch(
-            "metadata.profiler.interface.profiler_interface.get_connection",
-            return_value=FakeConnection,
-        ) as mock_get_connection,
-        patch.object(
-            PandasProfilerInterface,
-            "_convert_table_to_list_of_dataframe_objects",
-            return_value=[df1, df2],
-        ) as mocked_dfs,
-    ):
-        datalake_profiler_interface = PandasProfilerInterface(
-            entity=table_entity,
+
+    @classmethod
+    @mock.patch(
+        "metadata.profiler.interface.profiler_interface.get_connection",
+        return_value=FakeConnection,
+    )
+    @mock.patch.object(
+        PandasProfilerInterface,
+        "_convert_table_to_list_of_dataframe_objects",
+        return_value=[df1, df2],
+    )
+    def setUpClass(cls, mock_get_connection, mocked_dfs):
+        cls.datalake_profiler_interface = PandasProfilerInterface(
+            entity=cls.table_entity,
             service_connection_config=None,
             ometa_client=None,
             thread_count=None,

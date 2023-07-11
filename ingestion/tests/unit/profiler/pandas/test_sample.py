@@ -13,8 +13,7 @@
 Test Sample behavior
 """
 import os
-from unittest import TestCase
-from unittest.mock import patch
+from unittest import TestCase, mock
 from uuid import uuid4
 
 from sqlalchemy import TEXT, Column, Integer, String, func
@@ -93,31 +92,29 @@ class DatalakeSampleTest(TestCase):
     )
 
     @classmethod
-    def setUpClass(cls) -> None:
+    @mock.patch(
+        "metadata.profiler.interface.profiler_interface.get_connection",
+        return_value=FakeConnection,
+    )
+    @mock.patch.object(
+        PandasProfilerInterface,
+        "_convert_table_to_list_of_dataframe_objects",
+        return_value=[df1, df2],
+    )
+    def setUpClass(cls, mock_get_connection, mocked_dfs) -> None:
         """
         Prepare Ingredients
         """
-        with (
-            patch(
-                "metadata.profiler.interface.profiler_interface.get_connection",
-                return_value=FakeConnection,
-            ) as mock_get_connection,
-            patch.object(
-                PandasProfilerInterface,
-                "_convert_table_to_list_of_dataframe_objects",
-                return_value=[cls.df1, cls.df2],
-            ) as mocked_dfs,
-        ):
-            cls.datalake_profiler_interface = PandasProfilerInterface(
-                entity=cls.table_entity,
-                service_connection_config=None,
-                ometa_client=None,
-                thread_count=None,
-                profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
-                source_config=None,
-                sample_query=None,
-                table_partition_config=None,
-            )
+        cls.datalake_profiler_interface = PandasProfilerInterface(
+            entity=cls.table_entity,
+            service_connection_config=None,
+            ometa_client=None,
+            thread_count=None,
+            profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
+            source_config=None,
+            sample_query=None,
+            table_partition_config=None,
+        )
 
     def test_random_sampler(self):
         """
@@ -133,32 +130,29 @@ class DatalakeSampleTest(TestCase):
         res = sum(len(r) for r in random_sample)
         assert res < 5
 
-    def test_sample_property(self):
+    @mock.patch(
+        "metadata.profiler.interface.profiler_interface.get_connection",
+        return_value=FakeConnection,
+    )
+    @mock.patch.object(
+        PandasProfilerInterface,
+        "_convert_table_to_list_of_dataframe_objects",
+        return_value=[df1, df2],
+    )
+    def test_sample_property(self, mock_get_connection, mocked_dfs):
         """
         Sample property should be properly generated
         """
-
-        with (
-            patch(
-                "metadata.profiler.interface.profiler_interface.get_connection",
-                return_value=FakeConnection,
-            ) as mock_get_connection,
-            patch.object(
-                PandasProfilerInterface,
-                "_convert_table_to_list_of_dataframe_objects",
-                return_value=[self.df1, self.df2],
-            ) as mocked_dfs,
-        ):
-            datalake_profiler_interface = PandasProfilerInterface(
-                entity=self.table_entity,
-                service_connection_config=None,
-                ometa_client=None,
-                thread_count=None,
-                profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
-                source_config=None,
-                sample_query=None,
-                table_partition_config=None,
-            )
+        datalake_profiler_interface = PandasProfilerInterface(
+            entity=self.table_entity,
+            service_connection_config=None,
+            ometa_client=None,
+            thread_count=None,
+            profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
+            source_config=None,
+            sample_query=None,
+            table_partition_config=None,
+        )
 
         random_sample = datalake_profiler_interface._get_sampler().random_sample()
         res = sum(len(r) for r in random_sample)

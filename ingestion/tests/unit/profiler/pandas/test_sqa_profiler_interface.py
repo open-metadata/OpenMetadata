@@ -15,13 +15,11 @@ Test SQA Interface
 
 import os
 from datetime import datetime, timezone
-from unittest import TestCase
-from unittest.mock import patch
+from unittest import TestCase, mock
 from uuid import uuid4
 
 from sqlalchemy import TEXT, Column, Integer, String, inspect
 from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm.session import Session
 
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
@@ -34,18 +32,8 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableProfile,
 )
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    DatalakeConnection,
-)
-from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
-    SQLiteConnection,
-    SQLiteScheme,
-)
 from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
-)
-from metadata.profiler.interface.profiler_interface_factory import (
-    profiler_interface_factory,
 )
 from metadata.profiler.metrics.core import (
     ComposedMetric,
@@ -72,7 +60,7 @@ class FakeConnection:
         return None
 
 
-class SQAInterfaceTestMultiThread(TestCase):
+class PandasInterfaceTest(TestCase):
 
     import pandas as pd
 
@@ -92,19 +80,19 @@ class SQAInterfaceTestMultiThread(TestCase):
         ],
     )
 
-    with (
-        patch(
-            "metadata.profiler.interface.profiler_interface.get_connection",
-            return_value=FakeConnection,
-        ) as mock_get_connection,
-        patch.object(
-            PandasProfilerInterface,
-            "_convert_table_to_list_of_dataframe_objects",
-            return_value=[df1, df2],
-        ) as mocked_dfs,
-    ):
-        datalake_profiler_interface = PandasProfilerInterface(
-            entity=table_entity,
+    @classmethod
+    @mock.patch(
+        "metadata.profiler.interface.profiler_interface.get_connection",
+        return_value=FakeConnection,
+    )
+    @mock.patch.object(
+        PandasProfilerInterface,
+        "_convert_table_to_list_of_dataframe_objects",
+        return_value=[df1, df2],
+    )
+    def setUp(cls, mock_get_connection, mocked_dfs) -> None:
+        cls.datalake_profiler_interface = PandasProfilerInterface(
+            entity=cls.table_entity,
             service_connection_config=None,
             ometa_client=None,
             thread_count=None,

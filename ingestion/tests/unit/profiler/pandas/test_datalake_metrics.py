@@ -66,7 +66,16 @@ class DatalakeMetricsTest(TestCase):
     df2 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"))
 
     @classmethod
-    def setUpClass(cls):
+    @mock.patch(
+        "metadata.profiler.interface.profiler_interface.get_connection",
+        return_value=FakeConnection,
+    )
+    @mock.patch.object(
+        PandasProfilerInterface,
+        "_convert_table_to_list_of_dataframe_objects",
+        return_value=[df1, df2],
+    )
+    def setUpClass(cls, mock_get_connection, mocked_dfs):
         """
         Setup the test class. We won't mock S3 with moto as we want to test that metrics are computed
         correctly on a list of dataframes.
@@ -82,27 +91,16 @@ class DatalakeMetricsTest(TestCase):
             ],
         )
 
-        with (
-            mock.patch(
-                "metadata.profiler.interface.profiler_interface.get_connection",
-                return_value=FakeConnection,
-            ) as mock_get_connection,
-            mock.patch.object(
-                PandasProfilerInterface,
-                "_convert_table_to_list_of_dataframe_objects",
-                return_value=[cls.df1, cls.df2],
-            ) as mocked_dfs,
-        ):
-            cls.datalake_profiler_interface = PandasProfilerInterface(
-                entity=table_entity,
-                service_connection_config=None,
-                ometa_client=None,
-                thread_count=None,
-                profile_sample_config=None,
-                source_config=None,
-                sample_query=None,
-                table_partition_config=None,
-            )
+        cls.datalake_profiler_interface = PandasProfilerInterface(
+            entity=table_entity,
+            service_connection_config=None,
+            ometa_client=None,
+            thread_count=None,
+            profile_sample_config=None,
+            source_config=None,
+            sample_query=None,
+            table_partition_config=None,
+        )
 
     def test_count(self):
         """
