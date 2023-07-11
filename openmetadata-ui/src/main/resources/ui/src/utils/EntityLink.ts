@@ -24,15 +24,19 @@ export default class EntityLink {
    * @returns list of entity link parts
    */
   static split(entityLink: string) {
-    const chars = new antlr4.InputStream(entityLink);
-    const lexer = new EntityLinkLexer(chars);
-    const tokens = new antlr4.CommonTokenStream(lexer);
-    const parser = new EntityLinkParser(tokens);
-    const tree = parser.entitylink();
-    const splitter = new EntityLinkSplitListener();
-    ParseTreeWalker.DEFAULT.walk(splitter, tree);
+    if (entityLink) {
+      const chars = new antlr4.InputStream(entityLink);
+      const lexer = new EntityLinkLexer(chars);
+      const tokens = new antlr4.CommonTokenStream(lexer);
+      const parser = new EntityLinkParser(tokens);
+      const tree = parser.entitylink();
+      const splitter = new EntityLinkSplitListener();
+      ParseTreeWalker.DEFAULT.walk(splitter, tree);
 
-    return splitter.split();
+      return splitter.split();
+    }
+
+    return [];
   }
 
   /**
