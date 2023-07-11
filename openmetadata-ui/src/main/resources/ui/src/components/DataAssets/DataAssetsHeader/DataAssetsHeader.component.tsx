@@ -53,6 +53,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { getActiveAnnouncement, getFeedCount } from 'rest/feedsAPI';
+import { getContainerByName } from 'rest/storageAPI';
 import { getCurrentUserId, getEntityDetailLink } from 'utils/CommonUtils';
 import {
   getBreadcrumbForContainer,
@@ -123,13 +124,14 @@ export const DataAssetsHeader = ({
   isRecursiveDelete,
   onRestoreDataAsset,
   onDisplayNameUpdate,
-  parentContainers,
 }: DataAssetsHeaderProps) => {
   const USERId = getCurrentUserId();
   const { t } = useTranslation();
   const { isTourPage } = useTourProvider();
   const { onCopyToClipBoard } = useClipboard(window.location.href);
   const [taskCount, setTaskCount] = useState(0);
+  const [parentContainers, setParentContainers] = useState<Container[]>([]);
+  const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
   const history = useHistory();
   const icon = useMemo(
     () =>
@@ -198,12 +200,42 @@ export const DataAssetsHeader = ({
       });
   };
 
+  const fetchContainerParent = async (
+    parentName: string,
+    parents = [] as Container[]
+  ) => {
+    setIsBreadcrumbLoading(true);
+    try {
+      const response = await getContainerByName(parentName, 'parent');
+      const updatedParent = [response, ...parents];
+      if (response?.parent?.fullyQualifiedName) {
+        await fetchContainerParent(
+          response.parent.fullyQualifiedName,
+          updatedParent
+        );
+      } else {
+        setParentContainers(updatedParent);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError, t('server.unexpected-response'));
+    } finally {
+      setIsBreadcrumbLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (dataAsset.fullyQualifiedName && !isTourPage) {
       fetchActiveAnnouncement();
       fetchTaskCount();
     }
-  }, [dataAsset.fullyQualifiedName]);
+    const asset = dataAsset as Container;
+    if (
+      entityType === EntityType.CONTAINER &&
+      asset?.parent?.fullyQualifiedName
+    ) {
+      fetchContainerParent(asset.parent.fullyQualifiedName);
+    }
+  }, [dataAsset]);
 
   const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(() => {
     const returnData: DataAssetHeaderInfo = {
@@ -464,7 +496,10 @@ export const DataAssetsHeader = ({
         <Col className="self-center" span={18}>
           <Row gutter={[16, 12]}>
             <Col span={24}>
-              <TitleBreadcrumb titleLinks={breadcrumbs} />
+              <TitleBreadcrumb
+                loading={isBreadcrumbLoading}
+                titleLinks={breadcrumbs}
+              />
             </Col>
             <Col span={24}>
               <EntityHeaderTitle

@@ -105,7 +105,6 @@ const ContainerPage = () => {
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
 
-  const [parentContainers, setParentContainers] = useState<Container[]>([]);
   const [containerData, setContainerData] = useState<Container>();
   const [containerChildrenData, setContainerChildrenData] = useState<
     Container['children']
@@ -134,27 +133,6 @@ const ContainerPage = () => {
     ThreadType.Conversation
   );
 
-  // data fetching methods
-  const fetchContainerParent = async (
-    parentName: string,
-    parents = [] as Container[]
-  ) => {
-    try {
-      const response = await getContainerByName(parentName, 'parent');
-      const updatedParent = [response, ...parents];
-      if (response?.parent?.fullyQualifiedName) {
-        await fetchContainerParent(
-          response.parent.fullyQualifiedName,
-          updatedParent
-        );
-      } else {
-        setParentContainers(updatedParent);
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError, t('server.unexpected-response'));
-    }
-  };
-
   const fetchContainerDetail = async (containerFQN: string) => {
     setIsLoading(true);
     try {
@@ -175,9 +153,6 @@ const ContainerPage = () => {
         ...response,
         tags: sortTagsCaseInsensitive(response.tags || []),
       });
-      if (response?.parent?.fullyQualifiedName) {
-        await fetchContainerParent(response.parent.fullyQualifiedName);
-      }
     } catch (error) {
       showErrorToast(error as AxiosError);
       setHasError(true);
@@ -798,8 +773,6 @@ const ContainerPage = () => {
 
   useEffect(() => {
     fetchResourcePermission(containerName);
-    // reset parent containers list on containername change
-    setParentContainers([]);
   }, [containerName]);
 
   useEffect(() => {
@@ -842,7 +815,6 @@ const ContainerPage = () => {
           <DataAssetsHeader
             dataAsset={containerData}
             entityType={EntityType.CONTAINER}
-            parentContainers={parentContainers}
             permissions={containerPermissions}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={handleFollowContainer}
