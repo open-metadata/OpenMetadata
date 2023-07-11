@@ -1016,11 +1016,13 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
   ];
 };
 
-export const getBreadcrumbForContainer = (
-  entity: Container,
-  includeCurrent = false
-) => {
-  const { service, parent } = entity;
+export const getBreadcrumbForContainer = (data: {
+  entity: Container;
+  includeCurrent?: boolean;
+  parents?: Container[];
+}) => {
+  const { entity, includeCurrent = false, parents = [] } = data;
+  const { service } = entity;
 
   return [
     {
@@ -1034,16 +1036,14 @@ export const getBreadcrumbForContainer = (
           )
         : '',
     },
-    ...(!isUndefined(parent)
-      ? [
-          {
-            name: getEntityName(parent),
-            url: getEntityLinkFromType(
-              parent?.fullyQualifiedName ?? '',
-              parent?.type as EntityType
-            ),
-          },
-        ]
+    ...(parents.length > 0
+      ? parents.map((parent) => ({
+          name: getEntityName(parent),
+          url: getEntityLinkFromType(
+            parent?.fullyQualifiedName ?? '',
+            EntityType.CONTAINER
+          ),
+        }))
       : []),
     ...(includeCurrent
       ? [

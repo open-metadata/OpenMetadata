@@ -105,7 +105,7 @@ const ContainerPage = () => {
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
 
-  const [, setParentContainers] = useState<Container[]>([]);
+  const [parentContainers, setParentContainers] = useState<Container[]>([]);
   const [containerData, setContainerData] = useState<Container>();
   const [containerChildrenData, setContainerChildrenData] = useState<
     Container['children']
@@ -137,15 +137,18 @@ const ContainerPage = () => {
   // data fetching methods
   const fetchContainerParent = async (
     parentName: string,
-    newContainer = false
+    parents = [] as Container[]
   ) => {
     try {
       const response = await getContainerByName(parentName, 'parent');
-      setParentContainers((prev) =>
-        newContainer ? [response] : [response, ...prev]
-      );
-      if (response.parent && response.parent.fullyQualifiedName) {
-        await fetchContainerParent(response.parent.fullyQualifiedName);
+      const updatedParent = [response, ...parents];
+      if (response?.parent?.fullyQualifiedName) {
+        await fetchContainerParent(
+          response.parent.fullyQualifiedName,
+          updatedParent
+        );
+      } else {
+        setParentContainers(updatedParent);
       }
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
@@ -172,8 +175,8 @@ const ContainerPage = () => {
         ...response,
         tags: sortTagsCaseInsensitive(response.tags || []),
       });
-      if (response.parent && response.parent.fullyQualifiedName) {
-        await fetchContainerParent(response.parent.fullyQualifiedName, true);
+      if (response?.parent?.fullyQualifiedName) {
+        await fetchContainerParent(response.parent.fullyQualifiedName);
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -839,6 +842,7 @@ const ContainerPage = () => {
           <DataAssetsHeader
             dataAsset={containerData}
             entityType={EntityType.CONTAINER}
+            parentContainers={parentContainers}
             permissions={containerPermissions}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={handleFollowContainer}

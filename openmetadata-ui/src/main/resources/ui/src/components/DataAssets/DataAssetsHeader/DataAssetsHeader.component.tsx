@@ -123,6 +123,7 @@ export const DataAssetsHeader = ({
   isRecursiveDelete,
   onRestoreDataAsset,
   onDisplayNameUpdate,
+  parentContainers,
 }: DataAssetsHeaderProps) => {
   const USERId = getCurrentUserId();
   const { t } = useTranslation();
@@ -355,7 +356,10 @@ export const DataAssetsHeader = ({
           </>
         );
 
-        returnData.breadcrumbs = getBreadcrumbForContainer(containerDetails);
+        returnData.breadcrumbs = getBreadcrumbForContainer({
+          entity: containerDetails,
+          parents: parentContainers,
+        });
 
         break;
 
@@ -430,7 +434,7 @@ export const DataAssetsHeader = ({
     }
 
     return returnData;
-  }, [dataAsset, entityType]);
+  }, [dataAsset, entityType, parentContainers]);
 
   const handleOpenTaskClick = () => {
     if (!dataAsset.fullyQualifiedName) {
