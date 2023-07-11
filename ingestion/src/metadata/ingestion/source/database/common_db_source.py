@@ -241,7 +241,7 @@ class CommonDbSourceService(
             if self.source_config.includeTables:
                 for table_and_type in self.query_table_names_and_types(schema_name):
                     table_name = self.standardize_table_name(
-                        schema_name, table_and_type.name
+                        fqn.quote_name(schema_name), fqn.quote_name(table_and_type.name)
                     )
                     table_fqn = fqn.build(
                         self.metadata,
@@ -348,7 +348,7 @@ class CommonDbSourceService(
         Prepare a table request and pass it to the sink
         """
         table_name, table_type = table_name_and_type
-        schema_name = self.context.database_schema.name.__root__
+        schema_name = fqn.quote_name(self.context.database_schema.name.__root__)
         try:
             (
                 columns,

@@ -28,6 +28,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_VIEW_NAMES,
     SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
 )
+from metadata.utils import fqn
 from metadata.utils.sqlalchemy_utils import (
     get_display_datatype,
     get_table_comment_wrapper,
@@ -70,8 +71,11 @@ def get_table_names(self, connection, schema, **kw):
 
     if kw.get("external_tables"):
         query = SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES
-
-    cursor = connection.execute(query.format(schema))
+    cursor = connection.execute(
+        query.format(schema[1:-1])
+        if schema is not None and '"' in schema
+        else query.format(schema)
+    )
     result = [self.normalize_name(row[0]) for row in cursor]
     return result
 
@@ -147,8 +151,14 @@ def get_schema_columns(self, connection, schema, **kw):
         )
         result = connection.execute(
             text(SNOWFLAKE_GET_SCHEMA_COLUMNS),
-            {"table_schema": self.denormalize_name(schema)},
+            {
+                "table_schema": self.denormalize_name(schema[1:-1])
+                if '"' in schema
+                else self.denormalize_name(schema)
+            }
+            # removing " " from schema name because schema name is in the WHERE clause of a query
         )
+
     except sa_exc.ProgrammingError as p_err:
         if p_err.orig.errno == 90030:
             # This means that there are too many tables in the schema, we need to go more granular
@@ -168,7 +178,7 @@ def get_schema_columns(self, connection, schema, **kw):
         identity_start,
         identity_increment,
     ) in result:
-        table_name = self.normalize_name(table_name)
+        table_name = self.normalize_name(fqn.quote_name(table_name))
         column_name = self.normalize_name(column_name)
         if table_name not in ans:
             ans[table_name] = []
@@ -223,3 +233,35 @@ def get_schema_columns(self, connection, schema, **kw):
                 "increment": identity_increment,
             }
     return ans
+
+
+@reflection.cache
+def get_schema_primary_keys(self, connection, schema, **kw):
+    result = connection.execute(
+        text(
+            f"SHOW /* sqlalchemy:_get_schema_primary_keys */PRIMARY KEYS IN SCHEMA {schema}"
+        )
+    )
+    ans = {}
+    for row in result:
+        table_name = self.normalize_name(row._mapping["table_name"])
+        if table_name not in ans:
+            ans[table_name] = {
+                "constrained_columns": [],
+                "name": self.normalize_name(row._mapping["constraint_name"]),
+            }
+        ans[table_name]["constrained_columns"].append(
+            self.normalize_name(row._mapping["column_name"])
+        )
+    return ans
+
+
+@reflection.cache
+def _current_database_schema(self, connection, **kw):
+    res = connection.exec_driver_sql(
+        "select current_database(), current_schema();"
+    ).fetchone()
+    return (
+        self.normalize_name(fqn.quote_name(res[0])),
+        self.normalize_name(res[1]),
+    )
