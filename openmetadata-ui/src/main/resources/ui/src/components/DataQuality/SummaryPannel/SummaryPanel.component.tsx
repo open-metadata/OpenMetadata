@@ -14,12 +14,12 @@ import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { INITIAL_TEST_SUMMARY } from 'constants/TestSuite.constant';
 import { TestSummary } from 'generated/tests/testSuite';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getTestCaseExecutionSummary } from 'rest/testAPI';
-import {} from 'utils/CommonUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { SummaryPanelProps } from './SummaryPanel.interface';
 
@@ -44,12 +44,13 @@ export const SummaryPanel = ({ testSummary }: SummaryPanelProps) => {
   };
 
   useEffect(() => {
-    if (isUndefined(testSummary)) {
-      if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
-        fetchTestSummary();
-      }
+    if (
+      isUndefined(testSummary) &&
+      (testCasePermission?.ViewAll || testCasePermission?.ViewBasic)
+    ) {
+      fetchTestSummary();
     } else {
-      setSummary(testSummary);
+      setSummary(testSummary ?? INITIAL_TEST_SUMMARY);
       setIsLoading(false);
     }
   }, [testCasePermission]);

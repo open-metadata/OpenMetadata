@@ -40,11 +40,11 @@ export const OwnerLabel = ({
 
   const profilePicture = useMemo(() => {
     if (isUndefined(owner)) {
-      return <IconUser height={18} width={18} />;
+      return <IconUser data-testid="no-owner-icon" height={18} width={18} />;
     }
 
     return owner.type === OwnerType.TEAM ? (
-      <IconTeamsGrey height={18} width={18} />
+      <IconTeamsGrey data-testid="team-owner-icon" height={18} width={18} />
     ) : (
       <ProfilePicture
         displayName={displayName}
