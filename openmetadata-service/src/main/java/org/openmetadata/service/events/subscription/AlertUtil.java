@@ -213,13 +213,9 @@ public final class AlertUtil {
 
   public static boolean shouldProcessActivityFeedRequest(ChangeEvent event) {
     // Check Trigger Conditions
-    if (!AlertUtil.shouldTriggerAlert(
-        event.getEntityType(), ActivityFeedAlertCache.getInstance().getActivityFeedAlert().getFilteringRules())) {
-      return false;
-    }
-    // Check Spel Conditions
-    return AlertUtil.evaluateAlertConditions(
-        event, ActivityFeedAlertCache.getInstance().getActivityFeedAlert().getFilteringRules().getRules());
+    FilteringRules filteringRules = ActivityFeedAlertCache.getInstance().getActivityFeedAlert().getFilteringRules();
+    return AlertUtil.shouldTriggerAlert(event.getEntityType(), filteringRules)
+        && AlertUtil.evaluateAlertConditions(event, filteringRules.getRules());
   }
 
   public static SubscriptionStatus buildSubscriptionStatus(

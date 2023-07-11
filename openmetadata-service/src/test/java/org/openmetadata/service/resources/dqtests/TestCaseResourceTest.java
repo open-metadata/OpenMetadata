@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
@@ -389,7 +390,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     ResultList<TestCase> maskedTestCases =
         getTestCases(10, "*", sensitiveColumnLink, false, authHeaders(USER2_REF.getName()));
     assertNull(maskedTestCases.getData().get(0).getDescription());
-    assertEquals(maskedTestCases.getData().get(0).getParameterValues().size(), 0);
+    assertEquals(0, maskedTestCases.getData().get(0).getParameterValues().size());
   }
 
   @Test
@@ -530,8 +531,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             ADMIN_AUTH_HEADERS);
 
     assertEquals(
-        testCaseResultResultList.getData().get(0).getTestCaseFailureStatus().getTestCaseFailureStatusType(),
-        TestCaseFailureStatusType.New);
+        TestCaseFailureStatusType.New,
+        testCaseResultResultList.getData().get(0).getTestCaseFailureStatus().getTestCaseFailureStatusType());
 
     String original = JsonUtils.pojoToJson(testCaseResult);
     testCaseResult
@@ -552,11 +553,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             ADMIN_AUTH_HEADERS);
 
     assertEquals(
-        testCaseResultResultListUpdated.getData().get(0).getTestCaseFailureStatus().getTestCaseFailureStatusType(),
-        TestCaseFailureStatusType.Resolved);
+        TestCaseFailureStatusType.Resolved,
+        testCaseResultResultListUpdated.getData().get(0).getTestCaseFailureStatus().getTestCaseFailureStatusType());
     assertEquals(
-        testCaseResultResultListUpdated.getData().get(0).getTestCaseFailureStatus().getTestCaseFailureReason(),
-        TestCaseFailureReason.FalsePositive);
+        TestCaseFailureReason.FalsePositive,
+        testCaseResultResultListUpdated.getData().get(0).getTestCaseFailureStatus().getTestCaseFailureReason());
   }
 
   @Test
@@ -590,7 +591,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             ADMIN_AUTH_HEADERS);
 
     // patching anything else than the test case failure status should not change anything
-    assertEquals(testCaseResultResultListUpdated.getData().get(0).getTestCaseStatus(), TestCaseStatus.Success);
+    assertEquals(TestCaseStatus.Success, testCaseResultResultListUpdated.getData().get(0).getTestCaseStatus());
   }
 
   @Test
@@ -643,7 +644,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     TestSuite executableTestSuite =
         testSuiteResourceTest.createExecutableTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
 
-    List<TestCase> testCases = new ArrayList<TestCase>();
+    List<TestCase> testCases = new ArrayList<>();
 
     // Create the test cases (need to be created against an executable test suite)
     for (int i = 0; i < 5; i++) {
@@ -717,7 +718,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         createRequest("test_testSuite__" + test.getDisplayName())
             .withTestSuite(executableTestSuite.getFullyQualifiedName());
     TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    List<UUID> testCaseIds = Arrays.asList(testCase.getId());
+    List<UUID> testCaseIds = listOf(testCase.getId());
 
     // Add the test cases to the logical test suite
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);

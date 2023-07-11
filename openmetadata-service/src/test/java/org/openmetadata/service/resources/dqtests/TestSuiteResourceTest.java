@@ -150,7 +150,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     queryParams.put("include", Include.ALL.value());
     TestSuite deletedTestSuite = getEntity(TEST_SUITE1.getId(), queryParams, null, ADMIN_AUTH_HEADERS);
     assertEquals(TEST_SUITE1.getId(), deletedTestSuite.getId());
-    assertEquals(deletedTestSuite.getDeleted(), true);
+    assertEquals(true, deletedTestSuite.getDeleted());
   }
 
   @Test
@@ -186,7 +186,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     CreateTestSuite createTestSuite = createRequest(test);
     TestSuite testSuite = createEntity(createTestSuite, ADMIN_AUTH_HEADERS);
     addTestCasesToLogicalTestSuite(
-        testSuite, testCases1.stream().map(testCaseId -> testCaseId.getId()).collect(Collectors.toList()));
+        testSuite, testCases1.stream().map(EntityReference::getId).collect(Collectors.toList()));
 
     TestSuite logicalTestSuite = getEntity(testSuite.getId(), "*", ADMIN_AUTH_HEADERS);
     executableTestSuite = getEntityByName(executableTestSuite.getFullyQualifiedName(), "*", ADMIN_AUTH_HEADERS);
@@ -227,8 +227,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     assertResponse(
         () ->
             addTestCasesToLogicalTestSuite(
-                executableTestSuite,
-                testCases1.stream().map(testCaseId -> testCaseId.getId()).collect(Collectors.toList())),
+                executableTestSuite, testCases1.stream().map(EntityReference::getId).collect(Collectors.toList())),
         BAD_REQUEST,
         "You are trying to add test cases to an executable test suite.");
   }
@@ -278,7 +277,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     deleteExecutableTestSuite(tableTestSuite.getId(), true, false, ADMIN_AUTH_HEADERS);
     actualTable = tableResourceTest.getEntity(actualTable.getId(), "testSuite", ADMIN_AUTH_HEADERS);
     tableTestSuite = actualTable.getTestSuite();
-    assertEquals(tableTestSuite.getDeleted(), true);
+    assertEquals(true, tableTestSuite.getDeleted());
 
     // Hard delete entity
     deleteExecutableTestSuite(tableTestSuite.getId(), true, true, ADMIN_AUTH_HEADERS);
@@ -311,7 +310,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     HashMap<String, String> queryParams = new HashMap<>();
     queryParams.put("include", Include.ALL.value());
     actualTestSuite = getEntityByName(testSuite.getFullyQualifiedName(), queryParams, "*", ADMIN_AUTH_HEADERS);
-    assertEquals(actualTestSuite.getDeleted(), true);
+    assertEquals(true, actualTestSuite.getDeleted());
 
     // Hard delete entity
     tableResourceTest.deleteEntity(table.getId(), true, true, ADMIN_AUTH_HEADERS);
@@ -334,21 +333,11 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
 
     queryParams.put("testSuiteType", "executable");
     testSuiteResultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    testSuiteResultList
-        .getData()
-        .forEach(
-            ts -> {
-              assertEquals(true, ts.getExecutable());
-            });
+    testSuiteResultList.getData().forEach(ts -> assertEquals(true, ts.getExecutable()));
 
     queryParams.put("testSuiteType", "logical");
     testSuiteResultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    testSuiteResultList
-        .getData()
-        .forEach(
-            ts -> {
-              assertEquals(false, ts.getExecutable());
-            });
+    testSuiteResultList.getData().forEach(ts -> assertEquals(false, ts.getExecutable()));
   }
 
   @Test
@@ -375,7 +364,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   }
 
   @Test
-  public void delete_LogicalTestSuite_200(TestInfo test) throws IOException {
+  void delete_LogicalTestSuite_200(TestInfo test) throws IOException {
     TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
     TableResourceTest tableResourceTest = new TableResourceTest();
     CreateTable tableReq =
@@ -407,14 +396,14 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     CreateTestSuite createTestSuite = createRequest(test);
     TestSuite testSuite = createEntity(createTestSuite, ADMIN_AUTH_HEADERS);
     addTestCasesToLogicalTestSuite(
-        testSuite, testCases.stream().map(testCaseId -> testCaseId.getId()).collect(Collectors.toList()));
+        testSuite, testCases.stream().map(EntityReference::getId).collect(Collectors.toList()));
 
     // We'll delete the logical test suite
     deleteEntity(testSuite.getId(), true, true, ADMIN_AUTH_HEADERS);
 
     // We'll check that the test cases are still present in the executable test suite
     TestSuite actualExecutableTestSuite = getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
-    assertEquals(actualExecutableTestSuite.getTests().size(), 5);
+    assertEquals(5, actualExecutableTestSuite.getTests().size());
   }
 
   public ResultList<TestSuite> getTestSuites(Integer limit, String fields, Map<String, String> authHeaders)
