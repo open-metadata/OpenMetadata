@@ -233,7 +233,7 @@ We support
 
 - Amazon RDS (MySQL) engine version 8 or greater
 - Amazon OpenSearch (ElasticSearch) engine version upto 7.10 or Amazon OpenSearch engine version upto 1.3
-- Amazon RDS (PostgreSQL) engine version between 12 and 14.6
+- Amazon RDS (PostgreSQL) engine version between 12 or greater
 
 For Production Systems, we recommend Amazon RDS to be in Multiple Availibility Zones. For Amazon OpenSearch (or ElasticSearch) Service, we recommend Multiple Availibility Zones with minimum 3 Master Nodes.
 
