@@ -48,7 +48,7 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 public class PipelineRepository extends EntityRepository<Pipeline> {
-  private static final String TASK_FIELD = "tasks";
+  private static final String TASKS_FIELD = "tasks";
   private static final String PIPELINE_UPDATE_FIELDS = "owner,tags,tasks,extension,followers";
   private static final String PIPELINE_PATCH_FIELDS = "owner,tags,tasks,extension,followers";
   public static final String PIPELINE_STATUS_EXTENSION = "pipeline.pipelineStatus";
@@ -79,7 +79,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user)
       throws IOException {
-    if (entityLink.getFieldName().equals("tasks")) {
+    if (entityLink.getFieldName().equals(TASKS_FIELD)) {
       Pipeline pipeline = getByName(null, entityLink.getEntityFQN(), getFields("tasks,tags"), Include.ALL);
       String oldJson = JsonUtils.pojoToJson(pipeline);
       Task pipelineTask =
@@ -109,7 +109,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setService(getContainer(pipeline.getId()));
     pipeline.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(pipeline) : null);
     getTaskTags(fields.contains(FIELD_TAGS), pipeline.getTasks());
-    if (!fields.contains(TASK_FIELD)) {
+    if (!fields.contains(TASKS_FIELD)) {
       pipeline.withTasks(null);
     }
     return pipeline.withPipelineStatus(fields.contains("pipelineStatus") ? getPipelineStatus(pipeline) : null);
@@ -330,7 +330,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         updateTaskDescription(storedTask, updatedTask);
         updateTags(
             storedTask.getFullyQualifiedName(),
-            EntityUtil.getFieldName(TASK_FIELD, updatedTask.getName(), FIELD_TAGS),
+            EntityUtil.getFieldName(TASKS_FIELD, updatedTask.getName(), FIELD_TAGS),
             storedTask.getTags(),
             updatedTask.getTags());
       }
@@ -340,7 +340,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       if (newTasks || removedTasks) {
         List<Task> added = new ArrayList<>();
         List<Task> deleted = new ArrayList<>();
-        recordListChange(TASK_FIELD, origTasks, updatedTasks, added, deleted, taskMatch);
+        recordListChange(TASKS_FIELD, origTasks, updatedTasks, added, deleted, taskMatch);
       }
     }
 

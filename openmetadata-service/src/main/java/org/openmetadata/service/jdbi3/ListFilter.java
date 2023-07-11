@@ -173,7 +173,7 @@ public class ListFilter {
         return "json->>'executable' = 'true'";
       case ("logical"):
         if (DatasourceConfig.getInstance().isMySQL()) {
-          return "JSON_UNQUOTE(JSON_EXTRACT(json, '$.executable')) = 'false'";
+          return "JSON_UNQUOTE(JSON_EXTRACT(json, '$.executable')) = 'false' OR JSON_UNQUOTE(JSON_EXTRACT(json, '$.executable')) IS NULL";
         }
         return "json->>'executable' = 'false'";
       default:

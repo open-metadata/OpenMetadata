@@ -187,10 +187,6 @@ public class OpenSearchClientImpl implements SearchClient {
     return true;
   }
 
-  /**
-   * @param elasticSearchIndexType
-   * @param lang
-   */
   @Override
   public void updateIndex(ElasticSearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType, String lang) {
     try {
@@ -221,7 +217,6 @@ public class OpenSearchClientImpl implements SearchClient {
     }
   }
 
-  /** @param elasticSearchIndexType */
   @Override
   public void deleteIndex(ElasticSearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType) {
     try {
@@ -1335,6 +1330,7 @@ public class OpenSearchClientImpl implements SearchClient {
     }
   }
 
+  @Override
   public UpdateRequest applyOSChangeEvent(ChangeEvent event) {
     String entityType = event.getEntityType();
     ElasticSearchIndexDefinition.ElasticSearchIndexType esIndexType =
@@ -1383,21 +1379,11 @@ public class OpenSearchClientImpl implements SearchClient {
     return new UpdateRequest(IndexUtil.ENTITY_TYPE_TO_INDEX_MAP.get(entityType), entityId).script(script);
   }
 
-  /**
-   * @param data
-   * @param options
-   * @return
-   * @throws IOException
-   */
   @Override
   public BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
     return client.bulk(data, RequestOptions.DEFAULT);
   }
 
-  /**
-   * @param response
-   * @return
-   */
   @Override
   public int getSuccessFromBulkResponse(BulkResponse response) {
     int success = 0;

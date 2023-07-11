@@ -50,19 +50,19 @@ public class TagRepository extends EntityRepository<Tag> {
     entity.setParent(parentTerm);
 
     // Validate Classification
-    EntityReference Classification = Entity.getEntityReference(entity.getClassification(), NON_DELETED);
-    entity.setClassification(Classification);
+    EntityReference classification = Entity.getEntityReference(entity.getClassification(), NON_DELETED);
+    entity.setClassification(classification);
   }
 
   @Override
   public void storeEntity(Tag tag, boolean update) throws IOException {
-    EntityReference Classification = tag.getClassification();
+    EntityReference classification = tag.getClassification();
     EntityReference parent = tag.getParent();
 
     // Parent and Classification are not stored as part of JSON. Build it on the fly based on relationships
     tag.withClassification(null).withParent(null);
     store(tag, update);
-    tag.withClassification(Classification).withParent(parent);
+    tag.withClassification(classification).withParent(parent);
   }
 
   @Override
@@ -131,31 +131,10 @@ public class TagRepository extends EntityRepository<Tag> {
     addRelationship(term.getClassification().getId(), term.getId(), Entity.CLASSIFICATION, TAG, Relationship.CONTAINS);
   }
 
-  private void deleteClassificationRelationship(Tag term) {
-    deleteRelationship(
-        term.getClassification().getId(), Entity.CLASSIFICATION, term.getId(), TAG, Relationship.CONTAINS);
-  }
-
-  private void updateClassificationRelationship(Tag orig, Tag updated) {
-    deleteClassificationRelationship(orig);
-    addClassificationRelationship(updated);
-  }
-
   private void addParentRelationship(Tag term) {
     if (term.getParent() != null) {
       addRelationship(term.getParent().getId(), term.getId(), TAG, TAG, Relationship.CONTAINS);
     }
-  }
-
-  private void deleteParentRelationship(Tag term) {
-    if (term.getParent() != null) {
-      deleteRelationship(term.getParent().getId(), TAG, term.getId(), TAG, Relationship.CONTAINS);
-    }
-  }
-
-  private void updateParentRelationship(Tag orig, Tag updated) {
-    deleteParentRelationship(orig);
-    addParentRelationship(updated);
   }
 
   public class TagUpdater extends EntityUpdater {
@@ -199,14 +178,14 @@ public class TagRepository extends EntityRepository<Tag> {
 
       UUID oldCategoryId = getId(original.getClassification());
       UUID newCategoryId = getId(updated.getClassification());
-      boolean ClassificationChanged = !Objects.equals(oldCategoryId, newCategoryId);
+      boolean classificationChanged = !Objects.equals(oldCategoryId, newCategoryId);
 
       daoCollection.tagDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
       daoCollection
           .tagUsageDAO()
           .rename(
               TagSource.CLASSIFICATION.ordinal(), original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-      if (ClassificationChanged) {
+      if (classificationChanged) {
         updateClassificationRelationship(original, updated);
         recordChange(
             "Classification", original.getClassification(), updated.getClassification(), true, entityReferenceMatch);
@@ -214,6 +193,27 @@ public class TagRepository extends EntityRepository<Tag> {
       if (parentChanged) {
         updateParentRelationship(original, updated);
         recordChange("parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
+      }
+    }
+
+    private void updateClassificationRelationship(Tag orig, Tag updated) {
+      deleteClassificationRelationship(orig);
+      addClassificationRelationship(updated);
+    }
+
+    private void deleteClassificationRelationship(Tag term) {
+      deleteRelationship(
+          term.getClassification().getId(), Entity.CLASSIFICATION, term.getId(), TAG, Relationship.CONTAINS);
+    }
+
+    private void updateParentRelationship(Tag orig, Tag updated) {
+      deleteParentRelationship(orig);
+      addParentRelationship(updated);
+    }
+
+    private void deleteParentRelationship(Tag term) {
+      if (term.getParent() != null) {
+        deleteRelationship(term.getParent().getId(), TAG, term.getId(), TAG, Relationship.CONTAINS);
       }
     }
   }

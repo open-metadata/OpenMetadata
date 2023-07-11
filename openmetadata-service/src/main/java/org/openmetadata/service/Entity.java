@@ -21,6 +21,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -152,18 +153,17 @@ public final class Entity {
   public static final String ALL_RESOURCES = "All";
 
   // ServiceType - Service Entity name map
-  public static final Map<ServiceType, String> SERVICE_TYPE_ENTITY_MAP =
-      new HashMap<>() {
-        {
-          put(ServiceType.DATABASE, DATABASE_SERVICE);
-          put(ServiceType.MESSAGING, MESSAGING_SERVICE);
-          put(ServiceType.DASHBOARD, DASHBOARD_SERVICE);
-          put(ServiceType.PIPELINE, PIPELINE_SERVICE);
-          put(ServiceType.ML_MODEL, MLMODEL_SERVICE);
-          put(ServiceType.METADATA, METADATA_SERVICE);
-          put(ServiceType.STORAGE, STORAGE_SERVICE);
-        }
-      };
+  static final Map<ServiceType, String> SERVICE_TYPE_ENTITY_MAP = new EnumMap<>(ServiceType.class);
+
+  static {
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.DATABASE, DATABASE_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.MESSAGING, MESSAGING_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.DASHBOARD, DASHBOARD_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.PIPELINE, PIPELINE_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.ML_MODEL, MLMODEL_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.METADATA, METADATA_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.STORAGE, STORAGE_SERVICE);
+  }
 
   //
   // List of entities whose changes should not be published to the Activity Feed
@@ -224,8 +224,7 @@ public final class Entity {
     return repository.getDao().findEntityReferenceById(id, include);
   }
 
-  public static EntityReference getEntityReferenceByName(@NonNull String entityType, String fqn, Include include)
-      throws IOException {
+  public static EntityReference getEntityReferenceByName(@NonNull String entityType, String fqn, Include include) {
     if (fqn == null) {
       return null;
     }

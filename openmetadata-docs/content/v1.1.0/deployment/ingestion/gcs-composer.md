@@ -85,7 +85,7 @@ with DAG(
     )
 ```
 
-{% partial file="run-connectors-class.md" /%}
+{% partial file="/v1.1.0/deployment/run-connectors-class.md" /%}
 
 ## Using the Kubernetes Pod Operator
 
