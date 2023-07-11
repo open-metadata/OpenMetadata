@@ -1016,8 +1016,18 @@ export const updateOwner = () => {
       // Clicking on edit owner button
       cy.get('[data-testid="edit-owner"]').should('be.visible').click();
 
+      cy.get('.user-team-select-popover')
+        .contains('Users')
+        .should('exist')
+        .should('be.visible')
+        .click();
+
       cy.get('[data-testid="selectable-list"]')
+        .eq(1)
+        .should('exist')
+        .should('be.visible')
         .find(`[title="${text.trim()}"]`)
+        .should('be.visible')
         .click();
 
       // Asserting the added name
