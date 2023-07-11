@@ -17,17 +17,16 @@ import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 public class ActivityFeedAlertCache {
   private static final ActivityFeedAlertCache INSTANCE = new ActivityFeedAlertCache();
   private static volatile boolean initialized = false;
-  protected static LoadingCache<String, EventSubscription> eventSubCache;
+  protected static final LoadingCache<String, EventSubscription> eventSubCache =
+      CacheBuilder.newBuilder()
+          .maximumSize(1000)
+          .expireAfterWrite(3, TimeUnit.MINUTES)
+          .build(new ActivityFeedAlertLoader());
   protected static EventSubscriptionRepository eventSubscriptionRepository;
   private static String activityFeedAlertName;
 
   public static void initialize(String alertName, EventSubscriptionRepository repo) {
     if (!initialized) {
-      eventSubCache =
-          CacheBuilder.newBuilder()
-              .maximumSize(1000)
-              .expireAfterWrite(3, TimeUnit.MINUTES)
-              .build(new ActivityFeedAlertLoader());
       eventSubscriptionRepository = repo;
       initialized = true;
       activityFeedAlertName = alertName;

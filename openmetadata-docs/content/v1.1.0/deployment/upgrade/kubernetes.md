@@ -14,7 +14,7 @@ This guide assumes that you have an OpenMetadata deployment that you installed a
 
 We also assume that your helm chart release names are `openmetadata` and `openmetadata-dependencies` and namespace used is `default`.
 
-{% partial file="upgrade-prerequisites-110.md" /%}
+{% partial file="/v1.1.0/deployment/upgrade/upgrade-prerequisites-110.md" /%}
 
 # Upgrade Process
 

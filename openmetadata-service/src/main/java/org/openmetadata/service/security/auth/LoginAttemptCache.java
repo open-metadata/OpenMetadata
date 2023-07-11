@@ -10,7 +10,7 @@ import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 
 public class LoginAttemptCache {
-  private int MAX_ATTEMPT = 3;
+  private int maxAttempt = 3;
   private final LoadingCache<String, Integer> attemptsCache;
 
   public LoginAttemptCache(OpenMetadataApplicationConfig config) {
@@ -18,7 +18,7 @@ public class LoginAttemptCache {
     LoginConfiguration loginConfiguration = config.getApplicationConfiguration().getLoginConfig();
     long accessBlockTime = 600;
     if (loginConfiguration != null) {
-      MAX_ATTEMPT = loginConfiguration.getMaxLoginFailAttempts();
+      maxAttempt = loginConfiguration.getMaxLoginFailAttempts();
       accessBlockTime = loginConfiguration.getAccessBlockTime();
     }
     attemptsCache =
@@ -34,8 +34,7 @@ public class LoginAttemptCache {
   }
 
   public LoginAttemptCache(int maxAttempt, int blockTimeInSec) {
-    super();
-    MAX_ATTEMPT = maxAttempt;
+    this.maxAttempt = maxAttempt;
     attemptsCache =
         CacheBuilder.newBuilder()
             .maximumSize(1000)
@@ -65,7 +64,7 @@ public class LoginAttemptCache {
 
   public boolean isLoginBlocked(String key) {
     try {
-      return attemptsCache.get(key) >= MAX_ATTEMPT;
+      return attemptsCache.get(key) >= maxAttempt;
     } catch (ExecutionException e) {
       return false;
     }

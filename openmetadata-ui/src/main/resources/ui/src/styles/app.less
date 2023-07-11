@@ -369,10 +369,13 @@ a[href].link-text-grey,
     font-size: inherit !important;
     color: @text-grey-muted !important;
   }
-}
-
-.link-title:hover {
-  text-decoration: none !important;
+  .link-title:hover {
+    color: @primary-color !important;
+    text-decoration: none !important;
+  }
+  .link-title.inactive-link:hover {
+    color: @text-grey-muted !important;
+  }
 }
 
 // lineage
@@ -435,9 +438,8 @@ a[href].link-text-grey,
 }
 .entity-tag-right-panel-container {
   height: @entity-details-tab-height;
-  overflow-y: scroll;
+  overflow-y: auto;
   border-left: @global-border;
-  margin-left: 20px;
   padding: 12px 8px 0 8px;
 }
 
