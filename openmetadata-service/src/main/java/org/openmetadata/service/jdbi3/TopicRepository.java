@@ -275,15 +275,29 @@ public class TopicRepository extends EntityRepository<Topic> {
   public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user)
       throws IOException {
     if (entityLink.getFieldName().equals("messageSchema")) {
+      String schemaName = entityLink.getArrayFieldName();
+      String childrenSchemaName = "";
+      if (entityLink.getArrayFieldName().contains(".")) {
+        String fieldNameWithoutQuotes =
+            entityLink.getArrayFieldName().substring(1, entityLink.getArrayFieldName().length() - 1);
+        schemaName = fieldNameWithoutQuotes.substring(0, fieldNameWithoutQuotes.indexOf("."));
+        childrenSchemaName = fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
+      }
       Topic topic = getByName(null, entityLink.getEntityFQN(), getFields("tags"), Include.ALL);
-      Field schemaField =
-          topic.getMessageSchema().getSchemaFields().stream()
-              .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
-              .findFirst()
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          CatalogExceptionMessage.invalidFieldName("chart", entityLink.getArrayFieldName())));
+      Field schemaField = null;
+      for (Field field : topic.getMessageSchema().getSchemaFields()) {
+        if (field.getName().equals(schemaName)) {
+          schemaField = field;
+          break;
+        }
+      }
+      if (childrenSchemaName != "" && schemaField != null) {
+        schemaField = getchildrenSchemaField(schemaField.getChildren(), childrenSchemaName);
+      }
+      if (schemaField == null) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.invalidFieldName("schema", entityLink.getArrayFieldName()));
+      }
 
       String origJson = JsonUtils.pojoToJson(topic);
       if (EntityUtil.isDescriptionTask(task.getType())) {
@@ -298,6 +312,27 @@ public class TopicRepository extends EntityRepository<Topic> {
       return;
     }
     super.update(task, entityLink, newValue, user);
+  }
+
+  private static Field getchildrenSchemaField(List<Field> fields, String childrenSchemaName) {
+    Field childrenSchemaField = null;
+    for (Field field : fields) {
+      if (field.getName().equals(childrenSchemaName)) {
+        childrenSchemaField = field;
+        break;
+      }
+    }
+    if (childrenSchemaField == null) {
+      for (int i = 0; i < fields.size(); i++) {
+        if (fields.get(i).getChildren() != null) {
+          childrenSchemaField = getchildrenSchemaField(fields.get(i).getChildren(), childrenSchemaName);
+          if (childrenSchemaField != null) {
+            break;
+          }
+        }
+      }
+    }
+    return childrenSchemaField;
   }
 
   public static Set<TagLabel> getAllFieldTags(Field field) {
