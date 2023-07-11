@@ -55,10 +55,9 @@ public abstract class AbstractAlertPublisher implements EventPublisher {
     }
 
     // Evaluate ChangeEvent Alert Filtering
-    if (eventSubscription.getFilteringRules() != null) {
-      if (!AlertUtil.evaluateAlertConditions(changeEvent, eventSubscription.getFilteringRules().getRules())) {
-        return;
-      }
+    if (eventSubscription.getFilteringRules() != null
+        && !AlertUtil.evaluateAlertConditions(changeEvent, eventSubscription.getFilteringRules().getRules())) {
+      return;
     }
 
     // Batch until either the batch has ended or batch size has reached the max size

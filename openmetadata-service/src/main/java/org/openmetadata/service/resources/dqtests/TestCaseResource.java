@@ -404,7 +404,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     PatchResponse<TestCaseResult> patchResponse =
-        repository.patchTestCaseResults(fqn, timestamp, uriInfo, securityContext.getUserPrincipal().getName(), patch);
+        repository.patchTestCaseResults(fqn, timestamp, securityContext.getUserPrincipal().getName(), patch);
     return patchResponse.toResponse();
   }
 
@@ -646,7 +646,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext = new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().entity(testSuite).build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    if (testSuite.getExecutable()) {
+    if (Boolean.TRUE.equals(testSuite.getExecutable())) {
       throw new IllegalArgumentException("You are trying to add test cases to an executable test suite.");
     }
     List<UUID> testCaseIds = createLogicalTestCases.getTestCaseIds();

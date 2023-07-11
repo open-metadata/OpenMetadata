@@ -514,8 +514,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     Table updatedTable = updateEntity(request, OK, ADMIN_AUTH_HEADERS);
     assertEquals(table.getColumns().get(0).getDescription(), updatedTable.getColumns().get(0).getDescription());
-    assertEquals(updatedTable.getColumns().get(0).getDataType(), CHAR);
-    assertEquals(updatedTable.getColumns().get(0).getDataLength(), 200);
+    assertEquals(CHAR, updatedTable.getColumns().get(0).getDataType());
+    assertEquals(200, updatedTable.getColumns().get(0).getDataLength());
   }
 
   @Test
