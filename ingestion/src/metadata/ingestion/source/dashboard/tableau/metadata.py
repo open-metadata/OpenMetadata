@@ -242,15 +242,6 @@ class TableauSource(DashboardServiceSource):
                     )
                     for chart in self.context.charts
                 ],
-                dataModels=[
-                    fqn.build(
-                        self.metadata,
-                        entity_type=DashboardDataModel,
-                        service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
-                        data_model_name=data_model.name.__root__,
-                    )
-                    for data_model in self.context.dataModels or []
-                ],
                 tags=get_tag_labels(
                     metadata=self.metadata,
                     tags=[tag.label for tag in dashboard_details.tags],
