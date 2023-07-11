@@ -205,14 +205,14 @@ describe('Add and Remove Owner and Tier', () => {
     verifyResponseStatusCode('@getOrganization', 200);
     verifyResponseStatusCode('@teamPermission', 200);
 
-    cy.get('[data-testid="add-user"]').should('be.visible').click();
+    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
     verifyResponseStatusCode('@getUsers', 200);
     cy.get(`.ant-popover [title="${OWNER}"]`).should('be.visible').click();
     verifyResponseStatusCode('@patchOwner', 200);
     cy.get('[data-testid="owner-link"]')
       .should('be.visible')
       .should('contain', OWNER);
-    cy.get('[data-testid="add-user"]').should('be.visible').click();
+    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
     verifyResponseStatusCode('@getUsers', 200);
     cy.get('[data-testid="remove-owner"]').should('be.visible').click();
     verifyResponseStatusCode('@patchOwner', 200);

@@ -1014,7 +1014,7 @@ export const updateOwner = () => {
       cy.get('[data-testid="hiden-layer"]').should('exist').click();
       interceptURL('GET', '/api/v1/users?limit=15', 'getUsers');
       // Clicking on edit owner button
-      cy.get('[data-testid="add-user"]').should('be.visible').click();
+      cy.get('[data-testid="edit-owner"]').should('be.visible').click();
 
       cy.get('[data-testid="selectable-list"]')
         .find(`[title="${text.trim()}"]`)
