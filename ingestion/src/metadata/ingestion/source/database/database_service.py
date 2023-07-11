@@ -380,7 +380,6 @@ class DatabaseServiceSource(
                 if add_to_status:
                     self.status.filter(schema_fqn, "Schema Filtered Out")
                 continue
-            # yield schema_fqn if return_fqn else fqn.quote_name(schema_name)
             yield schema_fqn if return_fqn else schema_name
 
     def mark_tables_as_deleted(self):

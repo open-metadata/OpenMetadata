@@ -236,30 +236,8 @@ def get_schema_columns(self, connection, schema, **kw):
 
 
 @reflection.cache
-def get_schema_primary_keys(
-    self, connection, schema, **kw
-):  # pylint: disable=unused-argument
-    result = connection.execute(
-        text(
-            f"SHOW /* sqlalchemy:_get_schema_primary_keys */PRIMARY KEYS IN SCHEMA {schema}"
-        )
-    )
-    ans = {}
-    for row in result:
-        table_name = self.normalize_name(row._mapping["table_name"])
-        if table_name not in ans:
-            ans[table_name] = {
-                "constrained_columns": [],
-                "name": self.normalize_name(row._mapping["constraint_name"]),
-            }
-        ans[table_name]["constrained_columns"].append(
-            self.normalize_name(row._mapping["column_name"])
-        )
-    return ans
-
-
-@reflection.cache
 def _current_database_schema(self, connection, **kw):  # pylint: disable=unused-argument
+    """Getting table name in quotes"""
     res = connection.exec_driver_sql(
         "select current_database(), current_schema();"
     ).fetchone()
