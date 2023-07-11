@@ -21,3 +21,7 @@ CREATE TABLE IF NOT EXISTS data_product_entity (
     PRIMARY KEY (id),
     UNIQUE (fqnHash)
 );
+
+UPDATE dbservice_entity
+SET json = JSON_REPLACE(json, '$.connection.config.scheme', 'hive')
+WHERE JSON_EXTRACT(json, '$.connection.config.scheme') IN ('impala', 'impala4');
