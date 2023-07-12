@@ -61,7 +61,7 @@ class DynamodbSource(CommonNoSQLSource):
         Method to get list of schema names available within NoSQL db
         need to be overridden by sources
         """
-        yield DEFAULT_DATABASE
+        return [DEFAULT_DATABASE]
 
     def get_table_name_list(self, schema_name: str) -> List[str]:
         """
