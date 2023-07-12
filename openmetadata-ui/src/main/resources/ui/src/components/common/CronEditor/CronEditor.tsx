@@ -14,13 +14,12 @@
 import { Col, Form, Input, Row, Select } from 'antd';
 import classNames from 'classnames';
 import cronstrue from 'cronstrue';
-import { isEmpty, toNumber } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { pluralize } from '../../../utils/CommonUtils';
-import { getCron } from '../../../utils/CronUtils';
+import { getCron, getStateValue } from '../../../utils/CronUtils';
 import {
-  combinations,
   getDayOptions,
   getHourOptions,
   getMinuteOptions,
@@ -28,104 +27,20 @@ import {
   getMonthDaysOptions,
   getMonthOptions,
   getPeriodOptions,
-  SELECTED_PERIOD_OPTIONS,
-  toDisplay,
 } from './CronEditor.constant';
 import {
-  Combination,
   CronEditorProp,
   CronOption,
-  CronType,
-  CronValue,
   SelectedDayOption,
   SelectedHourOption,
-  SelectedYearOption,
   StateValue,
-  ToDisplay,
 } from './CronEditor.interface';
 
 const CronEditor: FC<CronEditorProp> = (props) => {
   const { t } = useTranslation();
-  const getCronType = (cronStr: string) => {
-    for (const c in combinations) {
-      if (combinations[c as keyof Combination].test(cronStr)) {
-        return c;
-      }
-    }
 
-    return undefined;
-  };
-
-  const getStateValue = (valueStr: string) => {
-    const stateVal: StateValue = {
-      selectedPeriod: '',
-      selectedMinOption: {
-        min: 5,
-      },
-      selectedHourOption: {
-        min: 0,
-      },
-      selectedDayOption: {
-        hour: 0,
-        min: 0,
-      },
-      selectedWeekOption: {
-        dow: 1,
-        hour: 0,
-        min: 0,
-      },
-      selectedMonthOption: {
-        dom: 1,
-        hour: 0,
-        min: 0,
-      },
-      selectedYearOption: {
-        dom: 1,
-        mon: 1,
-        hour: 0,
-        min: 0,
-      },
-    };
-    const cronType = getCronType(valueStr);
-
-    const d = valueStr ? valueStr.split(' ') : [];
-    const v: CronValue = {
-      min: d[0],
-      hour: d[1],
-      dom: d[2],
-      mon: d[3],
-      dow: d[4],
-    };
-
-    stateVal.selectedPeriod = cronType || stateVal.selectedPeriod;
-
-    if (!isEmpty(cronType)) {
-      const stateIndex =
-        SELECTED_PERIOD_OPTIONS[(cronType as CronType) || 'hour'];
-      const selectedPeriodObj = stateVal[
-        stateIndex as keyof StateValue
-      ] as SelectedYearOption;
-
-      const targets = toDisplay[cronType as keyof ToDisplay];
-
-      for (const element of targets) {
-        const tgt = element;
-
-        if (tgt === 'time') {
-          selectedPeriodObj.hour = toNumber(v.hour);
-          selectedPeriodObj.min = toNumber(v.min);
-        } else {
-          selectedPeriodObj[tgt as keyof SelectedYearOption] = toNumber(
-            v[tgt as keyof CronValue]
-          );
-        }
-      }
-    }
-
-    return stateVal;
-  };
-  const [value, setCronValue] = useState(props.value || '');
-  const [state, setState] = useState(getStateValue(value));
+  const [value, setCronValue] = useState(props.value ?? '');
+  const [state, setState] = useState(getStateValue(props.value ?? ''));
   const [periodOptions] = useState(getPeriodOptions());
   const [minuteSegmentOptions] = useState(getMinuteSegmentOptions());
   const [minuteOptions] = useState(getMinuteOptions());
@@ -514,10 +429,10 @@ const CronEditor: FC<CronEditorProp> = (props) => {
       selectedWeekOption,
       selectedHourOption,
       selectedMinOption,
+      selectedDayOption,
+      selectedMonthOption,
+      selectedPeriod,
     } = state;
-
-    const hourLabel = findHourOption(selectedYearOption.hour)?.label;
-    const minuteLabel = findMinuteOption(selectedYearOption.min)?.label;
 
     const dateLabel = monthDaysOptions.find((d) => {
       return d.value === selectedYearOption.dom;
@@ -532,21 +447,37 @@ const CronEditor: FC<CronEditorProp> = (props) => {
 
     let retString = '';
 
-    switch (state.selectedPeriod) {
+    switch (selectedPeriod) {
       case 'year':
-        retString = `${cronPeriodString} on ${dateLabel} of ${monthLabel} at ${hourLabel}:${minuteLabel}`;
+        {
+          const hourLabel = findHourOption(selectedYearOption.hour)?.label;
+          const minuteLabel = findMinuteOption(selectedYearOption.min)?.label;
+          retString = `${cronPeriodString} on ${dateLabel} of ${monthLabel} at ${hourLabel}:${minuteLabel}`;
+        }
 
         break;
       case 'month':
-        retString = `${cronPeriodString} on ${dateLabel} at ${hourLabel}:${minuteLabel}`;
+        {
+          const hourLabel = findHourOption(selectedMonthOption.hour)?.label;
+          const minuteLabel = findMinuteOption(selectedMonthOption.min)?.label;
+          retString = `${cronPeriodString} on ${dateLabel} at ${hourLabel}:${minuteLabel}`;
+        }
 
         break;
       case 'week':
-        retString = `${cronPeriodString} on ${dayLabel} at ${hourLabel}:${minuteLabel}`;
+        {
+          const hourLabel = findHourOption(selectedWeekOption.hour)?.label;
+          const minuteLabel = findMinuteOption(selectedWeekOption.min)?.label;
+          retString = `${cronPeriodString} on ${dayLabel} at ${hourLabel}:${minuteLabel}`;
+        }
 
         break;
       case 'day':
-        retString = `${cronPeriodString} at ${hourLabel}:${minuteLabel}`;
+        {
+          const hourLabel = findHourOption(selectedDayOption.hour)?.label;
+          const minuteLabel = findMinuteOption(selectedDayOption.min)?.label;
+          retString = `${cronPeriodString} at ${hourLabel}:${minuteLabel}`;
+        }
 
         break;
       case 'hour':
@@ -569,7 +500,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
     }
 
     return <div data-testid="schedule-description">{retString}</div>;
-  }, [state.selectedPeriod, cronPeriodString, startText, value]);
+  }, [state, cronPeriodString, startText, value]);
 
   return (
     <Row
