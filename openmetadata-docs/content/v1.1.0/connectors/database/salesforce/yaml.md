@@ -39,9 +39,6 @@ Configure and schedule Salesforce metadata and profiler workflows from the OpenM
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
-
-
-
 Following are the permissions you will require to fetch the metadata from Salesforce.
 
 **API Access**: You must have the API Enabled permission in your Salesforce organization.
@@ -141,7 +138,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 {% /codeInfo %}
 
-{% partial file="workflow-config.md" /%}
+{% partial file="/v1.1.0/connectors/workflow-config.md" /%}
 
 #### Advanced Configuration
 

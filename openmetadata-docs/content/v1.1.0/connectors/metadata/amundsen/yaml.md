@@ -13,6 +13,8 @@ Configure and schedule Amundsen metadata and profiler workflows from the OpenMet
 - [Metadata Ingestion](#metadata-ingestion)
 
 
+{% partial file="/v1.1.0/connectors/external-ingestion-deployment.md" /%}
+
 ## Requirements
 
 Before this, you must ingest the database / messaging service you want to get metadata for. 
@@ -95,7 +97,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 {% /codeInfo %}
 
-{% partial file="workflow-config.md" /%}
+{% partial file="/v1.1.0/connectors/workflow-config.md" /%}
 {% /codeInfoContainer %}
 
 {% codeBlock fileName="filename.yaml" %}
