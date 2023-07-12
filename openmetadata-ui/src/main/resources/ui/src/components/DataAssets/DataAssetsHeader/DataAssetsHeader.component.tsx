@@ -228,12 +228,9 @@ export const DataAssetsHeader = ({
       fetchActiveAnnouncement();
       fetchTaskCount();
     }
-    const asset = dataAsset as Container;
-    if (
-      entityType === EntityType.CONTAINER &&
-      asset?.parent?.fullyQualifiedName
-    ) {
-      fetchContainerParent(asset.parent.fullyQualifiedName);
+    if (entityType === EntityType.CONTAINER) {
+      const asset = dataAsset as Container;
+      fetchContainerParent(asset?.parent?.fullyQualifiedName ?? '');
     }
   }, [dataAsset]);
 
