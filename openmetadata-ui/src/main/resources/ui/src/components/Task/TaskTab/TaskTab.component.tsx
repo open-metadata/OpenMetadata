@@ -405,7 +405,10 @@ export const TaskTab = ({
             ) : null}
 
             {isEditAssignee ? (
-              <Form form={assigneesForm} layout="vertical">
+              <Form
+                form={assigneesForm}
+                layout="vertical"
+                onFinish={handleAssigneeUpdate}>
                 <Form.Item
                   data-testid="assignees"
                   label={`${t('label.assignee-plural')}:`}
@@ -428,7 +431,7 @@ export const TaskTab = ({
                         initialAssignees
                       );
                     }}
-                    onSave={handleAssigneeUpdate}>
+                    onSave={() => assigneesForm.submit()}>
                     <Assignees
                       options={options}
                       value={updatedAssignees}
