@@ -24,6 +24,8 @@ UNICODE_REGEX_REPLACEMENT_FILE_PATHS = [
     "ingestion/src/metadata/generated/schema/entity/teams/user.py",
     "ingestion/src/metadata/generated/schema/entity/type.py",
     "ingestion/src/metadata/generated/schema/type/basic.py",
+    "ingestion/src/metadata/generated/schema/api/data/createGlossary.py",
+    "ingestion/src/metadata/generated/schema/api/data/createGlossaryTerm.py",
 ]
 
 datamodel_code_generator.model.pydantic.types.IMPORT_SECRET_STR = Import.from_full_path(
