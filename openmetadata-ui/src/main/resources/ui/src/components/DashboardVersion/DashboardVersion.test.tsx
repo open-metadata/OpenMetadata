@@ -12,6 +12,8 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { ENTITY_PERMISSIONS } from 'mocks/Permissions.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
@@ -22,6 +24,8 @@ import {
   mockNoChartData,
   mockTagChangeVersion,
 } from './dashboardVersion.mock';
+
+const mockPush = jest.fn();
 
 jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest
@@ -50,6 +54,60 @@ jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
       <div data-testid="ErrorPlaceHolder">ErrorPlaceHolder</div>
     ));
 });
+
+jest.mock(
+  'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(() => (
+        <div data-testid="DataAssetsVersionHeader">DataAssetsVersionHeader</div>
+      ))
+);
+
+jest.mock('components/TabsLabel/TabsLabel.component', () =>
+  jest
+    .fn()
+    .mockImplementation(({ name }) => (
+      <div data-testid={`TabsLabel-${name}`}>{name}</div>
+    ))
+);
+
+jest.mock('components/Tag/TagsContainerV1/TagsContainerV1', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="TagsContainerV1">TagsContainerV1</div>
+    ))
+);
+
+jest.mock('components/Tag/TagsViewer/tags-viewer', () =>
+  jest
+    .fn()
+    .mockImplementation(() => <div data-testid="TagsViewer">TagsViewer</div>)
+);
+
+jest.mock('components/common/CustomPropertyTable/CustomPropertyTable', () => ({
+  CustomPropertyTable: jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="CustomPropertyTable">CustomPropertyTable</div>
+    )),
+}));
+
+jest.mock('react-router-dom', () => ({
+  useHistory: jest.fn().mockImplementation(() => ({
+    push: mockPush,
+  })),
+  useParams: jest.fn().mockReturnValue({
+    tab: 'dashboard',
+  }),
+  Link: jest
+    .fn()
+    .mockImplementation(({ children }) => (
+      <div data-testid="Link">{children}</div>
+    )),
+}));
 
 JSON.parse = jest.fn().mockReturnValue([]);
 
@@ -157,6 +215,34 @@ describe('Test DashboardVersion page', () => {
 
     expect(entityVersionTimeLine).toBeInTheDocument();
     expect(loader).toBeInTheDocument();
+  });
+
+  it('New path should be pushed to the history object on click of customProperty tab', async () => {
+    await act(async () => {
+      render(
+        <DashboardVersion
+          {...dashboardVersionProps}
+          entityPermissions={ENTITY_PERMISSIONS}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    const customPropertyTabLabel = screen.getByTestId(
+      'TabsLabel-label.custom-property-plural'
+    );
+
+    expect(customPropertyTabLabel).toBeInTheDocument();
+
+    await act(async () => {
+      userEvent.click(customPropertyTabLabel);
+    });
+
+    expect(mockPush).toHaveBeenCalledWith(
+      '/dashboard/sample_superset.eta_predictions_performance/versions/0.3/custom_properties'
+    );
   });
 
   it('ErrorPlaceholder should be displayed in case of no view permissions', async () => {

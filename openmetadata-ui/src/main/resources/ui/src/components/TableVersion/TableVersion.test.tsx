@@ -15,8 +15,8 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import TableDetailsVersion from './TableVersion.component';
-import { TableVersionMockProps } from './TableVersion.mock';
+import TableVersion from './TableVersion.component';
+import { tableVersionMockProps } from './TableVersion.mock';
 
 const mockPush = jest.fn();
 
@@ -46,13 +46,13 @@ jest.mock('components/Tag/TagsContainerV1/TagsContainerV1', () =>
     ))
 );
 
-jest.mock('components/common/CustomPropertyTable/CustomPropertyTable', () =>
-  jest
+jest.mock('components/common/CustomPropertyTable/CustomPropertyTable', () => ({
+  CustomPropertyTable: jest
     .fn()
     .mockImplementation(() => (
       <div data-testid="CustomPropertyTable">CustomPropertyTable</div>
-    ))
-);
+    )),
+}));
 
 jest.mock('components/common/description/DescriptionV1', () =>
   jest
@@ -102,7 +102,7 @@ jest.mock('react-router-dom', () => ({
 describe('TableVersion tests', () => {
   it('Component should render properly when not loading', async () => {
     await act(async () => {
-      render(<TableDetailsVersion {...TableVersionMockProps} />);
+      render(<TableVersion {...tableVersionMockProps} />);
     });
 
     const dataAssetsVersionHeader = screen.getByTestId(
@@ -126,9 +126,7 @@ describe('TableVersion tests', () => {
 
   it('Only loader should be visible when the isVersionLoading is true', async () => {
     await act(async () => {
-      render(
-        <TableDetailsVersion {...TableVersionMockProps} isVersionLoading />
-      );
+      render(<TableVersion {...tableVersionMockProps} isVersionLoading />);
     });
 
     const loader = screen.getByTestId('Loader');
@@ -153,8 +151,8 @@ describe('TableVersion tests', () => {
   it('Only error placeholder should be displayed in case of no view permissions', async () => {
     await act(async () => {
       render(
-        <TableDetailsVersion
-          {...TableVersionMockProps}
+        <TableVersion
+          {...tableVersionMockProps}
           entityPermissions={DEFAULT_ENTITY_PERMISSION}
         />
       );
@@ -181,11 +179,33 @@ describe('TableVersion tests', () => {
     expect(versionTable).toBeNull();
   });
 
+  it('New path should be pushed to the history object on click of customProperty tab', async () => {
+    await act(async () => {
+      render(<TableVersion {...tableVersionMockProps} />);
+    });
+
+    const customPropertyTabLabel = screen.getByTestId(
+      'TabsLabel-label.custom-property-plural'
+    );
+    const versionTable = screen.getByTestId('VersionTable');
+
+    expect(customPropertyTabLabel).toBeInTheDocument();
+    expect(versionTable).toBeInTheDocument();
+
+    await act(async () => {
+      userEvent.click(customPropertyTabLabel);
+    });
+
+    expect(mockPush).toHaveBeenCalledWith(
+      '/table/sample_data.ecommerce_db.shopify.raw_product_catalog/versions/0.3/custom_properties'
+    );
+  });
+
   it('Custom property tab should show error placeholder in case of no "ViewAll" permission', async () => {
     await act(async () => {
       render(
-        <TableDetailsVersion
-          {...TableVersionMockProps}
+        <TableVersion
+          {...tableVersionMockProps}
           entityPermissions={{ ...DEFAULT_ENTITY_PERMISSION, ViewBasic: true }}
         />
       );

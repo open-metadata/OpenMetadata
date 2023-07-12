@@ -84,7 +84,7 @@ export const mockTableData = {
   deleted: false,
 };
 
-export const TableVersionMockProps: TableVersionProp = {
+export const tableVersionMockProps: TableVersionProp = {
   version: '0.3',
   currentVersionData: mockTableData,
   isVersionLoading: false,

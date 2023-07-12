@@ -13,15 +13,10 @@
 
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { EntityTabs } from 'enums/entity.enum';
 import React from 'react';
-import { MemoryRouter } from 'react-router-dom';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import PipelineVersion from './PipelineVersion.component';
-import {
-  mockColumnDiffPipelineVersionMockProps,
-  pipelineVersionMockProps,
-} from './PipelineVersion.mock';
+import ContainerVersion from './ContainerVersion.component';
+import { containerVersionMockProps } from './ContainerVersion.mock';
 
 const mockPush = jest.fn();
 
@@ -49,20 +44,6 @@ jest.mock('components/Tag/TagsContainerV1/TagsContainerV1', () =>
     .mockImplementation(() => (
       <div data-testid="TagsContainerV1">TagsContainerV1</div>
     ))
-);
-
-jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="RichTextEditorPreviewer">RichTextEditorPreviewer</div>
-    ))
-);
-
-jest.mock('components/Tag/TagsViewer/tags-viewer', () =>
-  jest
-    .fn()
-    .mockImplementation(() => <div data-testid="TagsViewer">TagsViewer</div>)
 );
 
 jest.mock('components/common/CustomPropertyTable/CustomPropertyTable', () => ({
@@ -97,6 +78,14 @@ jest.mock('components/EntityVersionTimeLine/EntityVersionTimeLine', () =>
     ))
 );
 
+jest.mock('components/VersionTable/VersionTable.component', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="VersionTable">VersionTable</div>
+    ))
+);
+
 jest.mock('components/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div data-testid="Loader">Loader</div>)
 );
@@ -106,48 +95,39 @@ jest.mock('react-router-dom', () => ({
     push: mockPush,
   })),
   useParams: jest.fn().mockReturnValue({
-    tab: EntityTabs.PIPELINE,
+    tab: 'container',
   }),
-  Link: jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <div data-testid="Link">{children}</div>
-    )),
 }));
 
-JSON.parse = jest.fn().mockReturnValue([]);
-
-describe('PipelineVersion tests', () => {
+describe('TableVersion tests', () => {
   it('Component should render properly when not loading', async () => {
     await act(async () => {
-      render(<PipelineVersion {...mockColumnDiffPipelineVersionMockProps} />, {
-        wrapper: MemoryRouter,
-      });
+      render(<ContainerVersion {...containerVersionMockProps} />);
     });
 
     const dataAssetsVersionHeader = screen.getByTestId(
       'DataAssetsVersionHeader'
     );
     const description = screen.getByTestId('DescriptionV1');
-    const schemaTabLabel = screen.getByTestId('TabsLabel-label.task-plural');
+    const schemaTabLabel = screen.getByTestId('TabsLabel-label.schema');
     const customPropertyTabLabel = screen.getByTestId(
       'TabsLabel-label.custom-property-plural'
     );
     const entityVersionTimeLine = screen.getByTestId('EntityVersionTimeLine');
-    const schemaTable = screen.getByTestId('schema-table');
+    const versionTable = screen.getByTestId('VersionTable');
 
     expect(dataAssetsVersionHeader).toBeInTheDocument();
     expect(description).toBeInTheDocument();
     expect(schemaTabLabel).toBeInTheDocument();
     expect(customPropertyTabLabel).toBeInTheDocument();
     expect(entityVersionTimeLine).toBeInTheDocument();
-    expect(schemaTable).toBeInTheDocument();
+    expect(versionTable).toBeInTheDocument();
   });
 
   it('Only loader should be visible when the isVersionLoading is true', async () => {
     await act(async () => {
       render(
-        <PipelineVersion {...pipelineVersionMockProps} isVersionLoading />
+        <ContainerVersion {...containerVersionMockProps} isVersionLoading />
       );
     });
 
@@ -160,21 +140,21 @@ describe('PipelineVersion tests', () => {
     const customPropertyTabLabel = screen.queryByTestId(
       'TabsLabel-label.custom-property-plural'
     );
-    const schemaTable = screen.queryByTestId('schema-table');
+    const versionTable = screen.queryByTestId('VersionTable');
 
     expect(loader).toBeInTheDocument();
     expect(entityVersionTimeLine).toBeInTheDocument();
     expect(dataAssetsVersionHeader).toBeNull();
     expect(schemaTabLabel).toBeNull();
     expect(customPropertyTabLabel).toBeNull();
-    expect(schemaTable).toBeNull();
+    expect(versionTable).toBeNull();
   });
 
   it('Only error placeholder should be displayed in case of no view permissions', async () => {
     await act(async () => {
       render(
-        <PipelineVersion
-          {...pipelineVersionMockProps}
+        <ContainerVersion
+          {...containerVersionMockProps}
           entityPermissions={DEFAULT_ENTITY_PERMISSION}
         />
       );
@@ -190,7 +170,7 @@ describe('PipelineVersion tests', () => {
       'TabsLabel-label.custom-property-plural'
     );
     const entityVersionTimeLine = screen.queryByTestId('EntityVersionTimeLine');
-    const schemaTable = screen.queryByTestId('schema-table');
+    const versionTable = screen.queryByTestId('VersionTable');
 
     expect(errorPlaceHolder).toBeInTheDocument();
     expect(loader).toBeNull();
@@ -198,52 +178,49 @@ describe('PipelineVersion tests', () => {
     expect(dataAssetsVersionHeader).toBeNull();
     expect(schemaTabLabel).toBeNull();
     expect(customPropertyTabLabel).toBeNull();
-    expect(schemaTable).toBeNull();
+    expect(versionTable).toBeNull();
   });
 
   it('New path should be pushed to the history object on click of customProperty tab', async () => {
     await act(async () => {
-      render(<PipelineVersion {...pipelineVersionMockProps} />, {
-        wrapper: MemoryRouter,
-      });
+      render(<ContainerVersion {...containerVersionMockProps} />);
     });
 
     const customPropertyTabLabel = screen.getByTestId(
       'TabsLabel-label.custom-property-plural'
     );
+    const versionTable = screen.getByTestId('VersionTable');
 
     expect(customPropertyTabLabel).toBeInTheDocument();
+    expect(versionTable).toBeInTheDocument();
 
     await act(async () => {
       userEvent.click(customPropertyTabLabel);
     });
 
     expect(mockPush).toHaveBeenCalledWith(
-      '/pipeline/sample_airflow.snowflake_etl/versions/0.3/custom_properties'
+      '/container/sample_data.ecommerce_db.shopify.raw_product_catalog/versions/0.3/custom_properties'
     );
   });
 
   it('Custom property tab should show error placeholder in case of no "ViewAll" permission', async () => {
     await act(async () => {
       render(
-        <PipelineVersion
-          {...pipelineVersionMockProps}
+        <ContainerVersion
+          {...containerVersionMockProps}
           entityPermissions={{ ...DEFAULT_ENTITY_PERMISSION, ViewBasic: true }}
-        />,
-        {
-          wrapper: MemoryRouter,
-        }
+        />
       );
     });
 
     const customPropertyTabLabel = screen.getByTestId(
       'TabsLabel-label.custom-property-plural'
     );
-    const schemaTable = screen.getByTestId('schema-table');
+    const versionTable = screen.getByTestId('VersionTable');
     let errorPlaceHolder = screen.queryByTestId('ErrorPlaceHolder');
 
     expect(customPropertyTabLabel).toBeInTheDocument();
-    expect(schemaTable).toBeInTheDocument();
+    expect(versionTable).toBeInTheDocument();
     expect(errorPlaceHolder).toBeNull();
 
     await act(async () => {
