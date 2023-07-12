@@ -137,9 +137,7 @@ class ScanDagsTask(Process):
         scheduler_job.heartrate = 0
 
         # pylint: disable=protected-access
-        run_job(
-            scheduler_job, execute_callable=job_runner._execute
-        )
+        run_job(scheduler_job, execute_callable=job_runner._execute)
 
         return scheduler_job
 
