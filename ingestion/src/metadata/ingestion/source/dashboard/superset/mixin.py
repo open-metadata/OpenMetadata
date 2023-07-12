@@ -207,18 +207,19 @@ class SupersetSourceMixin(DashboardServiceSource):
         datasource_columns = []
         for field in data_source or []:
             try:
-                col_parse = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
-                    field.type if field.type else None
-                )
-                parsed_fields = Column(
-                    dataTypeDisplay=field.type,
-                    dataType=col_parse["dataType"],
-                    name=field.id,
-                    displayName=field.column_name,
-                    description=field.description,
-                    dataLength=col_parse["dataLength"],
-                )
-                datasource_columns.append(parsed_fields)
+                if field.type:
+                    col_parse = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
+                        field.type
+                    )
+                    parsed_fields = Column(
+                        dataTypeDisplay=field.type,
+                        dataType=col_parse["dataType"],
+                        name=field.id,
+                        displayName=field.column_name,
+                        description=field.description,
+                        dataLength=col_parse.get("dataLength", 0),
+                    )
+                    datasource_columns.append(parsed_fields)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error to yield datamodel column: {exc}")
