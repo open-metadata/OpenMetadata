@@ -43,11 +43,11 @@ jest.mock('components/TabsLabel/TabsLabel.component', () =>
     ))
 );
 
-jest.mock('components/Tag/TagsContainerV1/TagsContainerV1', () =>
+jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () =>
   jest
     .fn()
     .mockImplementation(() => (
-      <div data-testid="TagsContainerV1">TagsContainerV1</div>
+      <div data-testid="TagsContainerV2">TagsContainerV2</div>
     ))
 );
 
