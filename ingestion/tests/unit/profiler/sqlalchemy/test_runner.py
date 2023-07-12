@@ -23,7 +23,7 @@ from sqlalchemy.orm import declarative_base
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.profiler.processor.sqlalchemy.sampler import Sampler
+from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.timeout import cls_timeout
 
 Base = declarative_base()
@@ -60,11 +60,10 @@ class RunnerTest(TestCase):
     engine = create_engine("sqlite+pysqlite:///:memory:", echo=False, future=True)
     session = create_and_bind_session(engine)
 
-    sampler = Sampler(
-        session=session,
+    sampler = SQASampler(
+        client=session,
         table=User,
         profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
-        sample_columns=[col.name for col in User.__table__.columns],
     )
     sample = sampler.random_sample()
 
