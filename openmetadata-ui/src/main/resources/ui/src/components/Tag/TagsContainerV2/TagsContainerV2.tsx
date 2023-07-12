@@ -192,11 +192,13 @@ const TagsContainerV2 = ({
     handleSave,
   ]);
 
-  const handleRequestTags = () => {
-    history.push(getRequestTagsPath(entityType as string, entityFqn as string));
-  };
-  const handleUpdateTags = () => {
-    history.push(getUpdateTagsPath(entityType as string, entityFqn as string));
+  const handleTagsTask = (hasTags: boolean) => {
+    history.push(
+      (hasTags ? getUpdateTagsPath : getRequestTagsPath)(
+        entityType as string,
+        entityFqn as string
+      )
+    );
   };
 
   const requestTagElement = useMemo(() => {
@@ -205,7 +207,6 @@ const TagsContainerV2 = ({
     return (
       <Col>
         <Tooltip
-          placement="left"
           title={
             hasTags
               ? t('label.update-request-tag-plural')
@@ -218,18 +219,17 @@ const TagsContainerV2 = ({
             name="request-tags"
             style={{ color: DE_ACTIVE_COLOR }}
             width={14}
-            onClick={hasTags ? handleUpdateTags : handleRequestTags}
+            onClick={() => handleTagsTask(hasTags)}
           />
         </Tooltip>
       </Col>
     );
-  }, [tags?.[tagType], handleUpdateTags, handleRequestTags]);
+  }, [tags?.[tagType], handleTagsTask]);
 
   const conversationThreadElement = useMemo(
     () => (
       <Col>
         <Tooltip
-          placement="left"
           title={t('label.list-entity', {
             entity: t('label.conversation'),
           })}>
@@ -269,19 +269,21 @@ const TagsContainerV2 = ({
           {permission && (
             <Row gutter={12}>
               {!isEmpty(tags?.[tagType]) && !isEditTags && (
-                <EditIcon
-                  className="cursor-pointer"
-                  color={DE_ACTIVE_COLOR}
-                  data-testid="edit-button"
-                  width="14px"
-                  onClick={handleAddClick}
-                />
+                <Col>
+                  <EditIcon
+                    className="cursor-pointer"
+                    color={DE_ACTIVE_COLOR}
+                    data-testid="edit-button"
+                    width="14px"
+                    onClick={handleAddClick}
+                  />
+                </Col>
               )}
               {permission && !isVersionView && (
-                <Row gutter={8}>
+                <>
                   {tagType === TagSource.Classification && requestTagElement}
                   {onThreadLinkSelect && conversationThreadElement}
-                </Row>
+                </>
               )}
             </Row>
           )}

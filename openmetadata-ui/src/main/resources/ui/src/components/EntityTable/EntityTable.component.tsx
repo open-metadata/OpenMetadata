@@ -46,7 +46,6 @@ import {
 } from '../../utils/TableUtils';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { EntityTableProps, TableCellRendered } from './EntityTable.interface';
-import './EntityTable.style.less';
 
 const EntityTable = ({
   tableColumns,
@@ -255,29 +254,27 @@ const EntityTable = ({
     index
   ) => {
     return (
-      <div className="hover-icon-group">
-        <div className="d-inline-block">
-          <TableDescription
-            columnData={{
-              fqn: record.fullyQualifiedName ?? '',
-              description: record.description,
-            }}
-            entityFieldThreads={entityFieldThreads}
-            entityFqn={entityFqn}
-            entityType={EntityType.TABLE}
-            hasEditPermission={hasDescriptionEditAccess}
-            index={index}
-            isReadOnly={isReadOnly}
-            onClick={() => handleUpdate(record, index)}
-            onThreadLinkSelect={onThreadLinkSelect}
-          />
-        </div>
+      <>
+        <TableDescription
+          columnData={{
+            fqn: record.fullyQualifiedName ?? '',
+            description: record.description,
+          }}
+          entityFieldThreads={entityFieldThreads}
+          entityFqn={entityFqn}
+          entityType={EntityType.TABLE}
+          hasEditPermission={hasDescriptionEditAccess}
+          index={index}
+          isReadOnly={isReadOnly}
+          onClick={() => handleUpdate(record, index)}
+          onThreadLinkSelect={onThreadLinkSelect}
+        />
         {getFrequentlyJoinedColumns(
           record?.name,
           joins,
           t('label.frequently-joined-column-plural')
         )}
-      </div>
+      </>
     );
   };
 

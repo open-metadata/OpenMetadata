@@ -315,26 +315,24 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
                 />
               )
             ) : (
-              <>
-                <Table
-                  bordered
-                  className={className}
-                  columns={columns}
-                  data-testid="topic-schema-fields-table"
-                  dataSource={messageSchema?.schemaFields}
-                  expandable={{
-                    ...getTableExpandableConfig<Field>(),
-                    rowExpandable: (record) => !isEmpty(record.children),
-                    onExpandedRowsChange: handleExpandedRowsChange,
-                    defaultExpandAllRows,
-                    expandedRowKeys,
-                  }}
-                  pagination={false}
-                  rowKey="name"
-                  scroll={TABLE_SCROLL_VALUE}
-                  size="small"
-                />
-              </>
+              <Table
+                bordered
+                className={className}
+                columns={columns}
+                data-testid="topic-schema-fields-table"
+                dataSource={messageSchema?.schemaFields}
+                expandable={{
+                  ...getTableExpandableConfig<Field>(),
+                  rowExpandable: (record) => !isEmpty(record.children),
+                  onExpandedRowsChange: handleExpandedRowsChange,
+                  defaultExpandAllRows,
+                  expandedRowKeys,
+                }}
+                pagination={false}
+                rowKey="name"
+                scroll={TABLE_SCROLL_VALUE}
+                size="small"
+              />
             )}
           </Col>
         </>

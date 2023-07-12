@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Space } from 'antd';
+import { Space } from 'antd';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import EntityTaskDescription from 'pages/TasksPage/EntityTaskDescription/EntityTaskDescription.component';
@@ -35,50 +35,42 @@ const TableDescription = ({
 
   return (
     <Space
-      className="w-full tw-group cursor-pointer"
+      className="hover-icon-group"
       data-testid="description"
+      direction="vertical"
       id={`field-description-${index}`}>
-      <div>
-        {columnData.description ? (
-          <RichTextEditorPreviewer markdown={columnData.description} />
-        ) : (
-          <span className="text-grey-muted">
-            {t('label.no-entity', {
-              entity: t('label.description'),
-            })}
-          </span>
-        )}
-      </div>
-      <div className="d-flex tw--mt-1.5">
-        {!isReadOnly ? (
-          <>
-            {hasEditPermission && (
-              <Button
-                className="p-0 tw-self-start flex-center w-7 h-7 d-flex-none hover-cell-icon"
-                data-testid="edit-button"
-                icon={
-                  <EditIcon
-                    height={14}
-                    name={t('label.edit')}
-                    style={{ color: DE_ACTIVE_COLOR }}
-                    width={14}
-                  />
-                }
-                type="text"
-                onClick={onClick}
-              />
-            )}
-
-            <EntityTaskDescription
-              data={columnData}
-              entityFieldThreads={entityFieldThreads}
-              entityFqn={entityFqn}
-              entityType={entityType}
-              onThreadLinkSelect={onThreadLinkSelect}
+      {columnData.description ? (
+        <RichTextEditorPreviewer markdown={columnData.description} />
+      ) : (
+        <span className="text-grey-muted">
+          {t('label.no-entity', {
+            entity: t('label.description'),
+          })}
+        </span>
+      )}
+      {!isReadOnly ? (
+        <Space align="baseline" size="middle">
+          {hasEditPermission && (
+            <EditIcon
+              className="cursor-pointer hover-cell-icon"
+              data-testid="edit-button"
+              height={14}
+              name={t('label.edit')}
+              style={{ color: DE_ACTIVE_COLOR }}
+              width={14}
+              onClick={onClick}
             />
-          </>
-        ) : null}
-      </div>
+          )}
+
+          <EntityTaskDescription
+            data={columnData}
+            entityFieldThreads={entityFieldThreads}
+            entityFqn={entityFqn}
+            entityType={entityType}
+            onThreadLinkSelect={onThreadLinkSelect}
+          />
+        </Space>
+      ) : null}
     </Space>
   );
 };

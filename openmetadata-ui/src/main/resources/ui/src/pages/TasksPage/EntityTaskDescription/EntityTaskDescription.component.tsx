@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Tooltip } from 'antd';
+import { Space, Tooltip } from 'antd';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
@@ -63,36 +63,33 @@ const EntityTaskDescription = ({
     );
   };
 
-  const getRequestDescriptionElement = () => {
-    const hasDescription = Boolean(data?.description ?? '');
+  const requestDescriptionElement = useMemo(() => {
+    const hasDescription = Boolean(data?.description);
 
     return (
-      <Button
-        className="p-0 w-7 h-7 flex-none flex-center link-text focus:tw-outline-none hover-cell-icon"
-        data-testid="request-description"
-        type="text"
-        onClick={() => handleDescriptionHandler(hasDescription)}>
-        <Tooltip
-          destroyTooltipOnHide
-          title={
-            hasDescription
-              ? t('message.request-update-description')
-              : t('message.request-description')
-          }>
-          <IconRequest
-            height={14}
-            name={t('message.request-description')}
-            style={{ color: DE_ACTIVE_COLOR }}
-            width={14}
-          />
-        </Tooltip>
-      </Button>
+      <Tooltip
+        destroyTooltipOnHide
+        title={
+          hasDescription
+            ? t('message.request-update-description')
+            : t('message.request-description')
+        }>
+        <IconRequest
+          className="cursor-pointer hover-cell-icon"
+          data-testid="request-description"
+          height={14}
+          name={t('message.request-description')}
+          style={{ color: DE_ACTIVE_COLOR }}
+          width={14}
+          onClick={() => handleDescriptionHandler(hasDescription)}
+        />
+      </Tooltip>
     );
-  };
+  }, [data]);
 
   return (
-    <Space size="small">
-      {getRequestDescriptionElement()}
+    <Space size="middle">
+      {requestDescriptionElement}
       {getFieldThreadElement(
         columnName,
         EntityField.DESCRIPTION,
