@@ -15,8 +15,7 @@ Test Profiler behavior
 import os
 from concurrent.futures import TimeoutError
 from datetime import datetime
-from unittest import TestCase
-from unittest.mock import patch
+from unittest import TestCase, mock
 from uuid import uuid4
 
 import pytest
@@ -43,6 +42,9 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteScheme,
 )
 from metadata.ingestion.source import sqa_types
+from metadata.profiler.interface.pandas.profiler_interface import (
+    PandasProfilerInterface,
+)
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
@@ -63,18 +65,22 @@ class User(Base):
     age = Column(Integer)
 
 
+class FakeConnection:
+    def client(self):
+        return None
+
+
 class ProfilerTest(TestCase):
     """
     Run checks on different metrics
     """
 
-    db_path = os.path.join(
-        os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db"
-    )
-    sqlite_conn = SQLiteConnection(
-        scheme=SQLiteScheme.sqlite_pysqlite,
-        databaseMode=db_path + "?check_same_thread=False",
-    )
+    import pandas as pd
+
+    root_dir = os.path.dirname(os.path.abspath(__file__))
+    csv_dir = "../custom_csv"
+    df1 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"))
+    df2 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"))
 
     table_entity = Table(
         id=uuid4(),
@@ -86,46 +92,42 @@ class ProfilerTest(TestCase):
             )
         ],
     )
-    with patch.object(
-        SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
-    ):
-        sqa_profiler_interface = SQAProfilerInterface(
-            sqlite_conn,
-            None,
-            table_entity,
-            None,
-            None,
-            None,
-            None,
-        )
 
     @classmethod
-    def setUpClass(cls) -> None:
-        """
-        Prepare Ingredients
-        """
-        User.__table__.create(bind=cls.sqa_profiler_interface.session.get_bind())
-
-        data = [
-            User(name="John", fullname="John Doe", nickname="johnny b goode", age=30),
-            User(name="Jane", fullname="Jone Doe", nickname=None, age=31),
-        ]
-        cls.sqa_profiler_interface.session.add_all(data)
-        cls.sqa_profiler_interface.session.commit()
+    @mock.patch(
+        "metadata.profiler.interface.profiler_interface.get_connection",
+        return_value=FakeConnection,
+    )
+    @mock.patch.object(
+        PandasProfilerInterface,
+        "_convert_table_to_list_of_dataframe_objects",
+        return_value=[df1, df2],
+    )
+    def setUpClass(cls, mock_get_connection, mocked_dfs):
+        cls.datalake_profiler_interface = PandasProfilerInterface(
+            entity=cls.table_entity,
+            service_connection_config=None,
+            ometa_client=None,
+            thread_count=None,
+            profile_sample_config=None,
+            source_config=None,
+            sample_query=None,
+            table_partition_config=None,
+        )
 
     def test_default_profiler(self):
         """
         Check our pre-cooked profiler
         """
         simple = DefaultProfiler(
-            profiler_interface=self.sqa_profiler_interface,
+            profiler_interface=self.datalake_profiler_interface,
         )
         simple.compute_metrics()
 
         profile = simple.get_profile()
 
-        assert profile.tableProfile.rowCount == 2
-        assert profile.tableProfile.columnCount == 5
+        assert profile.tableProfile.rowCount == 5
+        assert profile.tableProfile.columnCount == 8
 
         age_profile = next(
             (
@@ -138,31 +140,35 @@ class ProfilerTest(TestCase):
 
         assert age_profile == ColumnProfile(
             name="age",
-            valuesCount=2,
+            valuesCount=4,
             valuesPercentage=None,
             validCount=None,
             duplicateCount=None,
-            nullCount=0,
-            nullProportion=0.0,
-            uniqueCount=2,
+            nullCount=1.0,
+            nullProportion=0.2,
+            uniqueCount=4.0,
             uniqueProportion=1.0,
             min=30.0,
-            max=31.0,
+            max=45.0,
             minLength=None,
             maxLength=None,
-            mean=30.5,
-            sum=61.0,
-            stddev=0.25,
+            mean=35.25,
+            sum=141.0,
+            stddev=6.849574196011505,
             variance=None,
-            distinctCount=2.0,
+            distinctCount=4.0,
             distinctProportion=1.0,
-            median=30.0,
+            median=33.0,
             timestamp=age_profile.timestamp,
-            firstQuartile=30.0,
-            thirdQuartile=31.0,
-            interQuartileRange=1.0,
-            nonParametricSkew=2.0,
-            histogram=Histogram(boundaries=["30.00 and up"], frequencies=[2]),
+            firstQuartile=30.5,
+            thirdQuartile=40.0,
+            interQuartileRange=9.5,
+            nonParametricSkew=0.3284875724552587,
+            histogram=Histogram(
+                boundaries=["30.00 to 41.97", "41.97 and up"], frequencies=[3, 1]
+            ),
+            missingCount=None,
+            missingPercentage=None,
         )
 
     def test_required_metrics(self):
@@ -180,7 +186,7 @@ class ProfilerTest(TestCase):
             like,
             count,
             like_ratio,
-            profiler_interface=self.sqa_profiler_interface,
+            profiler_interface=self.datalake_profiler_interface,
         )
 
         with pytest.raises(MissingMetricException):
@@ -188,7 +194,7 @@ class ProfilerTest(TestCase):
             Profiler(
                 like,
                 like_ratio,
-                profiler_interface=self.sqa_profiler_interface,
+                profiler_interface=self.datalake_profiler_interface,
             )
 
     def test_skipped_types(self):
@@ -208,7 +214,7 @@ class ProfilerTest(TestCase):
 
         profiler = Profiler(
             Metrics.COUNT.value,
-            profiler_interface=self.sqa_profiler_interface,
+            profiler_interface=self.datalake_profiler_interface,
         )
 
         assert not profiler.column_results
@@ -217,7 +223,7 @@ class ProfilerTest(TestCase):
         """test _check_profile_and_handle returns as expected"""
         profiler = Profiler(
             Metrics.COUNT.value,
-            profiler_interface=self.sqa_profiler_interface,
+            profiler_interface=self.datalake_profiler_interface,
         )
 
         profile = profiler._check_profile_and_handle(
@@ -239,50 +245,22 @@ class ProfilerTest(TestCase):
                 )
             )
 
-    def test_profiler_with_timeout(self):
-        """check timeout is properly used"""
-
-        with patch.object(
-            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
-        ):
-            sqa_profiler_interface = SQAProfilerInterface(
-                self.sqlite_conn,
-                None,
-                self.table_entity,
-                None,
-                None,
-                None,
-                None,
-                timeout_seconds=0,
-            )
-
-        simple = DefaultProfiler(
-            profiler_interface=sqa_profiler_interface,
-        )
-
-        with pytest.raises(TimeoutError):
-            simple.compute_metrics()
-
     def test_profiler_get_col_metrics(self):
         """check getc column metrics"""
         metric_filter = ["mean", "min", "max", "firstQuartile"]
-        self.sqa_profiler_interface.table_entity.tableProfilerConfig = (
+        self.datalake_profiler_interface.table_entity.tableProfilerConfig = (
             TableProfilerConfig(
                 includeColumns=[
-                    ColumnProfilerConfig(columnName="id", metrics=metric_filter)
+                    ColumnProfilerConfig(columnName="age", metrics=metric_filter)
                 ]
             )
         )  # type: ignore
 
         default_profiler = DefaultProfiler(
-            profiler_interface=self.sqa_profiler_interface,
+            profiler_interface=self.datalake_profiler_interface,
         )
 
         column_metrics = default_profiler._prepare_column_metrics()
         for metric in column_metrics:
             if metric[1] is not MetricTypes.Table and metric[2].name == "id":
                 assert all(metric_filter.count(m.name()) for m in metric[0])
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        os.remove(cls.db_path)

@@ -53,7 +53,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.profiler.processor.core import Profiler
-from metadata.profiler.source.base_profiler_source import BaseProfilerSource
+from metadata.profiler.source.base.profiler_source import ProfilerSource
 from metadata.profiler.source.profiler_source_factory import profiler_source_factory
 from metadata.timer.repeated_timer import RepeatedTimer
 from metadata.timer.workflow_reporter import get_ingestion_status_timer
@@ -261,7 +261,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         yield from self.filter_entities(tables)
 
     def run_profiler(
-        self, entity: Table, profiler_source: BaseProfilerSource
+        self, entity: Table, profiler_source: ProfilerSource
     ) -> Optional[ProfilerResponse]:
         """
         Main logic for the profiler workflow
