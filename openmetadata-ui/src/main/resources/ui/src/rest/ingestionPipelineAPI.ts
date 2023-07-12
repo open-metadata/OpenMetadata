@@ -24,7 +24,7 @@ import {
   IngestionPipeline,
   PipelineStatus,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { Status } from '../generated/entity/services/ingestionPipelines/status';
+import { PipelineServiceClientResponse } from '../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
 import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
@@ -155,7 +155,7 @@ export const patchIngestionPipeline = async (id: string, data: Operation[]) => {
 };
 
 export const getAirflowStatus = async () => {
-  const response = await APIClient.get<Status>(
+  const response = await APIClient.get<PipelineServiceClientResponse>(
     '/services/ingestionPipelines/status'
   );
 

@@ -14,14 +14,14 @@
 import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import { getAirflowStatus } from 'rest/ingestionPipelineAPI';
-import { Status } from '../generated/entity/services/ingestionPipelines/status';
+import { PipelineServiceClientResponse } from '../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
 
 interface UseAirflowStatusProps {
   isFetchingStatus: boolean;
   isAirflowAvailable: boolean;
   error: AxiosError | undefined;
-  reason: Status['reason'];
-  platform: Status['platform'];
+  reason: PipelineServiceClientResponse['reason'];
+  platform: PipelineServiceClientResponse['platform'];
   fetchAirflowStatus: () => Promise<void>;
 }
 
@@ -29,8 +29,10 @@ export const useAirflowStatus = (): UseAirflowStatusProps => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isAirflowAvailable, setIsAirflowAvailable] = useState<boolean>(false);
   const [error, setError] = useState<AxiosError>();
-  const [reason, setReason] = useState<Status['reason']>();
-  const [platform, setPlatform] = useState<Status['platform']>('unknown');
+  const [reason, setReason] =
+    useState<PipelineServiceClientResponse['reason']>();
+  const [platform, setPlatform] =
+    useState<PipelineServiceClientResponse['platform']>('unknown');
 
   const fetchAirflowStatus = async () => {
     setIsLoading(true);

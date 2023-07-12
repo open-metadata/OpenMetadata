@@ -13,10 +13,10 @@
 import { renderHook } from '@testing-library/react-hooks';
 
 import { getAirflowStatus } from 'rest/ingestionPipelineAPI';
-import { Status } from '../generated/entity/services/ingestionPipelines/status';
+import { PipelineServiceClientResponse } from '../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
 import { useAirflowStatus } from './useAirflowStatus';
 
-const mockResponse: Status = {
+const mockResponse: PipelineServiceClientResponse = {
   code: 200,
   platform: 'Airflow',
   version: '1.0.0.dev01',

@@ -6,8 +6,8 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.schema.entity.services.ingestionPipelines.Status;
 import org.openmetadata.sdk.PipelineServiceClient;
 
 public class MockPipelineServiceClient extends PipelineServiceClient {
@@ -17,27 +17,29 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
   }
 
   @Override
-  public Status getServiceStatus() {
+  public PipelineServiceClientResponse getServiceStatus() {
     return null;
   }
 
   @Override
-  public Status runAutomationsWorkflow(Workflow workflow) {
+  public PipelineServiceClientResponse runAutomationsWorkflow(Workflow workflow) {
     return null;
   }
 
   @Override
-  public Status deployPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+  public PipelineServiceClientResponse deployPipeline(
+      IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     return null;
   }
 
   @Override
-  public Status runPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+  public PipelineServiceClientResponse runPipeline(
+      IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     return null;
   }
 
   @Override
-  public Status deletePipeline(IngestionPipeline ingestionPipeline) {
+  public PipelineServiceClientResponse deletePipeline(IngestionPipeline ingestionPipeline) {
     return null;
   }
 
@@ -47,7 +49,7 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
   }
 
   @Override
-  public Status toggleIngestion(IngestionPipeline ingestionPipeline) {
+  public PipelineServiceClientResponse toggleIngestion(IngestionPipeline ingestionPipeline) {
     return null;
   }
 
@@ -57,7 +59,7 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
   }
 
   @Override
-  public Status killIngestion(IngestionPipeline ingestionPipeline) {
+  public PipelineServiceClientResponse killIngestion(IngestionPipeline ingestionPipeline) {
     return null;
   }
 

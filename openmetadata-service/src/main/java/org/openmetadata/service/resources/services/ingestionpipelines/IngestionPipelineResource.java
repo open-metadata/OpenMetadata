@@ -60,9 +60,9 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
-import org.openmetadata.schema.entity.services.ingestionPipelines.Status;
 import org.openmetadata.schema.metadataIngestion.MetadataToElasticSearchPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
@@ -474,10 +474,13 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         @ApiResponse(
             responseCode = "200",
             description = "The ingestion",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Status.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineServiceClientResponse.class))),
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
-  public Status deployIngestion(
+  public PipelineServiceClientResponse deployIngestion(
       @Context UriInfo uriInfo,
       @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
@@ -487,7 +490,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   }
 
   @POST
-  @Path("/bulk-deploy")
+  @Path("/bulk/deploy")
   @Operation(
       summary = "Bulk deploy a list of Ingestion Pipeline",
       description = "Bulk deploy a list of Ingestion Pipelines given a list of IDs",
@@ -495,9 +498,12 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         @ApiResponse(
             responseCode = "200",
             description = "List of Statuses of the deployed pipelines",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Status.class)))
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineServiceClientResponse.class)))
       })
-  public List<Status> bulkDeployIngestion(
+  public List<PipelineServiceClientResponse> bulkDeployIngestion(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid List<UUID> pipelineIdList) {
 
     return pipelineIdList.stream()
@@ -506,7 +512,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
               try {
                 return deployPipelineInternal(id, uriInfo, securityContext);
               } catch (Exception e) {
-                return new Status()
+                return new PipelineServiceClientResponse()
                     .withCode(500)
                     .withReason(String.format("Error deploying [%s] due to [%s]", id, e.getMessage()))
                     .withPlatform(pipelineServiceClient.getPlatform());
@@ -525,10 +531,13 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         @ApiResponse(
             responseCode = "200",
             description = "The ingestion",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Status.class))),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineServiceClientResponse.class))),
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
-  public Status triggerIngestion(
+  public PipelineServiceClientResponse triggerIngestion(
       @Context UriInfo uriInfo,
       @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
@@ -584,10 +593,12 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             responseCode = "200",
             description = "The ingestion",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineServiceClientResponse.class))),
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
-  public Status killIngestion(
+  public PipelineServiceClientResponse killIngestion(
       @Context UriInfo uriInfo,
       @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
@@ -626,7 +637,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             description = "Status message",
             content = @Content(mediaType = "application/json"))
       })
-  public Status getRESTStatus(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+  public PipelineServiceClientResponse getRESTStatus(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     return pipelineServiceClient.getServiceStatus();
   }
 
@@ -857,14 +869,15 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     EntityMaskerFactory.getEntityMasker().unmaskIngestionPipeline(ingestionPipeline, originalIngestionPipeline);
   }
 
-  private Status deployPipelineInternal(UUID id, UriInfo uriInfo, SecurityContext securityContext) throws IOException {
+  private PipelineServiceClientResponse deployPipelineInternal(
+      UUID id, UriInfo uriInfo, SecurityContext securityContext) throws IOException {
     Fields fields = getFields(FIELD_OWNER);
     IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
     ingestionPipeline.setOpenMetadataServerConnection(
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
     decryptOrNullify(securityContext, ingestionPipeline, true);
     ServiceEntityInterface service = Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
-    Status status = pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+    PipelineServiceClientResponse status = pipelineServiceClient.deployPipeline(ingestionPipeline, service);
     if (status.getCode() == 200) {
       createOrUpdate(uriInfo, securityContext, ingestionPipeline);
     }

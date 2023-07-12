@@ -36,9 +36,9 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
-import org.openmetadata.schema.entity.services.ingestionPipelines.Status;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.sdk.exception.PipelineServiceVersionException;
 
@@ -160,13 +160,16 @@ public abstract class PipelineServiceClient {
   }
 
   /** To build the response of getServiceStatus */
-  public Status buildHealthyStatus(String ingestionVersion) {
-    return new Status().withCode(200).withVersion(ingestionVersion).withPlatform(this.getPlatform());
+  public PipelineServiceClientResponse buildHealthyStatus(String ingestionVersion) {
+    return new PipelineServiceClientResponse()
+        .withCode(200)
+        .withVersion(ingestionVersion)
+        .withPlatform(this.getPlatform());
   }
 
   /** To build the response of getServiceStatus */
-  public Status buildUnhealthyStatus(String reason) {
-    return new Status().withCode(500).withReason(reason).withPlatform(this.getPlatform());
+  public PipelineServiceClientResponse buildUnhealthyStatus(String reason) {
+    return new PipelineServiceClientResponse().withCode(500).withReason(reason).withPlatform(this.getPlatform());
   }
 
   public final Response getHostIp() {
@@ -209,7 +212,7 @@ public abstract class PipelineServiceClient {
     Supplier<String> responseSupplier =
         () -> {
           try {
-            Status status = getServiceStatus();
+            PipelineServiceClientResponse status = getServiceStatus();
             return status.getCode() != 200 ? UNHEALTHY_STATUS : HEALTHY_STATUS;
           } catch (Exception e) {
             throw new RuntimeException(e);
@@ -220,35 +223,37 @@ public abstract class PipelineServiceClient {
   }
 
   /* Check the status of pipeline service to ensure it is healthy */
-  public abstract Status getServiceStatus();
+  public abstract PipelineServiceClientResponse getServiceStatus();
 
   /**
    * This workflow can be used to execute any necessary async automations from the pipeline service. This will be the
    * new Test Connection endpoint. The UI can create a new workflow and trigger it in the server, and keep polling the
    * results.
    */
-  public abstract Status runAutomationsWorkflow(Workflow workflow);
+  public abstract PipelineServiceClientResponse runAutomationsWorkflow(Workflow workflow);
 
   /* Deploy a pipeline to the pipeline service */
-  public abstract Status deployPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service);
+  public abstract PipelineServiceClientResponse deployPipeline(
+      IngestionPipeline ingestionPipeline, ServiceEntityInterface service);
 
   /* Deploy run the pipeline at the pipeline service */
-  public abstract Status runPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service);
+  public abstract PipelineServiceClientResponse runPipeline(
+      IngestionPipeline ingestionPipeline, ServiceEntityInterface service);
 
   /* Stop and delete a pipeline at the pipeline service */
-  public abstract Status deletePipeline(IngestionPipeline ingestionPipeline);
+  public abstract PipelineServiceClientResponse deletePipeline(IngestionPipeline ingestionPipeline);
 
   /* Get the status of a deployed pipeline */
   public abstract List<PipelineStatus> getQueuedPipelineStatus(IngestionPipeline ingestionPipeline);
 
   /* Toggle the state of an Ingestion Pipeline as enabled/disabled */
-  public abstract Status toggleIngestion(IngestionPipeline ingestionPipeline);
+  public abstract PipelineServiceClientResponse toggleIngestion(IngestionPipeline ingestionPipeline);
 
   /* Get the all last run logs of a deployed pipeline */
   public abstract Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline, String after);
 
   /* Get the all last run logs of a deployed pipeline */
-  public abstract Status killIngestion(IngestionPipeline ingestionPipeline);
+  public abstract PipelineServiceClientResponse killIngestion(IngestionPipeline ingestionPipeline);
 
   /* Get the Pipeline Service host IP to whitelist in source systems. Should return a map in the shape "ip: 111.11.11.1" */
   public abstract Map<String, String> requestGetHostIp();
