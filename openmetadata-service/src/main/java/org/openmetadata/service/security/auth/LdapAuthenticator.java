@@ -7,7 +7,7 @@ import static org.openmetadata.schema.auth.TokenType.REFRESH_TOKEN;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_EMAIL_PASSWORD;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.LDAP_MISSING_ATTR;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAILED_LOGIN_ATTEMPT;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.MULTIPLE_EMAIl_ENTRIES;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.MULTIPLE_EMAIL_ENTRIES;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.unboundid.ldap.sdk.Attribute;
@@ -75,7 +75,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
 
   private LDAPConnectionPool getLdapConnectionPool(LdapConfiguration ldapConfiguration) {
     try {
-      if (ldapConfiguration.getSslEnabled()) {
+      if (Boolean.TRUE.equals(ldapConfiguration.getSslEnabled())) {
         LDAPConnectionOptions connectionOptions = new LDAPConnectionOptions();
         LdapUtil ldapUtil = new LdapUtil();
         SSLUtil sslUtil = new SSLUtil(ldapUtil.getLdapSSLConnection(ldapConfiguration, connectionOptions));
@@ -201,7 +201,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           throw new CustomExceptionMessage(FORBIDDEN, LDAP_MISSING_ATTR);
         }
       } else if (result.getSearchEntries().size() > 1) {
-        throw new CustomExceptionMessage(INTERNAL_SERVER_ERROR, MULTIPLE_EMAIl_ENTRIES);
+        throw new CustomExceptionMessage(INTERNAL_SERVER_ERROR, MULTIPLE_EMAIL_ENTRIES);
       } else {
         throw new CustomExceptionMessage(INTERNAL_SERVER_ERROR, INVALID_EMAIL_PASSWORD);
       }

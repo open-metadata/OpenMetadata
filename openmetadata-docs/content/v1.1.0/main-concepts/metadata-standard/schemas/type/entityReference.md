@@ -17,10 +17,6 @@ slug: /main-concepts/metadata-standard/schemas/type/entityreference
 - **`displayName`** *(string)*: Display Name that identifies this entity.
 - **`deleted`** *(boolean)*: If true the entity referred to has been soft-deleted.
 - **`href`**: Link to the entity resource. Refer to *basic.json#/definitions/href*.
-## Definitions
-
-- **`entityReferenceList`** *(array)*: Default: `None`.
-  - **Items**: Refer to *entityReference.json*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.

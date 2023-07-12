@@ -14,7 +14,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/feed/thread
 - **`href`**: Link to the resource corresponding to this entity. Refer to *../../type/basic.json#/definitions/href*.
 - **`threadTs`**: Timestamp of the when the first post created the thread in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`about`**: Data asset about which this thread is created for with format <#E::{entities}::{entityName}::{field}::{fieldValue}. Refer to *../../type/basic.json#/definitions/entityLink*.
-- **`entityId`**: Entity Id of the entity that the thread belongs to. Refer to *../../type/basic.json#/definitions/uuid*.
+- **`entityId`**: Entity Id of the entity in `about` that the thread belongs to. Refer to *../../type/basic.json#/definitions/uuid*.
 - **`addressedTo`**: User or team this thread is addressed to in format <#E::{entities}::{entityName}::{field}::{fieldValue}. Refer to *../../type/basic.json#/definitions/entityLink*.
 - **`createdBy`** *(string)*: User who created the thread.
 - **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
@@ -26,13 +26,14 @@ slug: /main-concepts/metadata-standard/schemas/entity/feed/thread
   - **Items**: Refer to *#/definitions/post*.
 - **`reactions`**: Reactions for the thread. Refer to *../../type/reaction.json#/definitions/reactionList*.
 - **`task`**: Details about the task. This is only applicable if thread is of type task. Refer to *#/definitions/taskDetails*.
+- **`announcement`**: Details about the announcement. This is only applicable if thread is of type announcement. Refer to *#/definitions/announcementDetails*.
 ## Definitions
 
 - **`taskType`** *(string)*: Type of a task. Must be one of: `['RequestDescription', 'UpdateDescription', 'RequestTag', 'UpdateTag', 'Generic']`.
 - **`taskDetails`** *(object)*: Details about the task. This is only applicable if thread is of type task. Cannot contain additional properties.
   - **`id`** *(integer)*: Unique identifier that identifies the task.
   - **`type`**: Refer to *#/definitions/taskType*.
-  - **`assignees`**: List of users or teams the task is assigned to. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
+  - **`assignees`**: List of users or teams the task is assigned to. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
   - **`status`**: Refer to *#/definitions/threadTaskStatus*.
   - **`closedBy`** *(string)*: The user that closed the task.
   - **`closedAt`**: Timestamp when the task was closed in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
@@ -41,6 +42,10 @@ slug: /main-concepts/metadata-standard/schemas/entity/feed/thread
   - **`newValue`** *(string)*: The new value object that was accepted to complete the task.
 - **`threadTaskStatus`** *(string)*: Status of a task. Must be one of: `['Open', 'Closed']`. Default: `Open`.
 - **`threadType`** *(string)*: Type of thread. Must be one of: `['Conversation', 'Task', 'Announcement']`. Default: `Conversation`.
+- **`announcementDetails`** *(object)*: Details about the announcement. This is only applicable if thread is of type announcement. Cannot contain additional properties.
+  - **`description`** *(string)*: Announcement description in markdown format. See markdown support for more details.
+  - **`startTime`**: Timestamp of the start time from when the announcement should be shown. Refer to *../../type/basic.json#/definitions/timestamp*.
+  - **`endTime`**: Timestamp of when the announcement should end. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`post`** *(object)*: Post within a feed. Cannot contain additional properties.
   - **`id`**: Unique identifier that identifies the post. Refer to *../../type/basic.json#/definitions/uuid*.
   - **`message`** *(string)*: Message in markdown format. See markdown support for more details.
@@ -49,4 +54,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/feed/thread
   - **`reactions`**: Reactions for the post. Refer to *../../type/reaction.json#/definitions/reactionList*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.

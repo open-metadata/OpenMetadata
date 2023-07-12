@@ -5,7 +5,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/metrics
 
 # Metrics
 
-*This schema defines the Metrics entity. Metrics are measurements computed from data such as `Monthly Active Users`. Some of the metrics that measures used to determine performance against an objective are called KPIs or Key Performance Indicators, such as `User Retention`.*
+*This schema defines the Metrics entity. `Metrics` are measurements computed from data such as `Monthly Active Users`. Some of the metrics that measures used to determine performance against an objective are called KPIs or Key Performance Indicators, such as `User Retention`.*
 
 ## Properties
 
@@ -25,6 +25,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/metrics
 - **`usageSummary`**: Latest usage information for this database. Refer to *../../type/usageDetails.json*. Default: `None`.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
+- **`domain`**: Domain the Metrics belongs to. Refer to *../../type/entityReference.json*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.

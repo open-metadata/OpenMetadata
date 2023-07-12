@@ -24,7 +24,7 @@ import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHead
 import EntityVersionTimeLine from 'components/EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from 'components/Loader/Loader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { getVersionPathWithTab } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
@@ -167,7 +167,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         ),
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-l-lg" flex="auto">
+            <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
@@ -195,9 +195,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 {Object.keys(TagSource).map((tagType) => (
-                  <TagsContainerV1
-                    isVersionView
-                    showLimited
+                  <TagsContainerV2
                     entityFqn={currentVersionData.fullyQualifiedName}
                     entityType={EntityType.DASHBOARD}
                     key={tagType}

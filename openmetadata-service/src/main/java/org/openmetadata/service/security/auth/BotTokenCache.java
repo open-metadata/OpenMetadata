@@ -25,12 +25,8 @@ import org.openmetadata.service.util.JsonUtils;
 public class BotTokenCache {
   public static final String EMPTY_STRING = "";
   private static BotTokenCache instance;
-  private final LoadingCache<String, String> BOTS_TOKEN_CACHE;
-
-  public BotTokenCache() {
-    BOTS_TOKEN_CACHE =
-        CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(2, TimeUnit.MINUTES).build(new BotTokenLoader());
-  }
+  private static final LoadingCache<String, String> BOTS_TOKEN_CACHE =
+      CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(2, TimeUnit.MINUTES).build(new BotTokenLoader());
 
   public String getToken(String botName) {
     try {

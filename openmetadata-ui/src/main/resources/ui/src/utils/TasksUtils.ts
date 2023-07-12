@@ -146,7 +146,7 @@ export const getTaskDetailPath = (task: Thread) => {
   const entityType = getEntityType(task.about) ?? '';
 
   return getEntityDetailLink(
-    entityType,
+    entityType as EntityType,
     entityFQN,
     EntityTabs.ACTIVITY_FEED,
     ActivityFeedTabs.TASKS

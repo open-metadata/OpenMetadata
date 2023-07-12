@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { Include } from 'generated/type/include';
 import { PagingResponse, RestoreRequestType } from 'Models';
 import { SystemProfile } from '../generated/api/data/createTableProfile';
 import {
@@ -26,6 +27,17 @@ import { EntityReference } from '../generated/type/entityReference';
 import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
+
+export type TableListParams = {
+  fields?: string;
+  database?: string;
+  databaseSchema?: string;
+  before?: string;
+  after?: string;
+  include?: Include;
+  limit?: number;
+  includeEmptyTestSuite?: boolean;
+};
 
 export const getTableDetails = async (
   id: string,
@@ -223,6 +235,14 @@ export const getLatestTableProfileByFqn = async (fqn: string) => {
   const response = await APIClient.get<Table>(
     `/tables/${encodedFQN}/tableProfile/latest`
   );
+
+  return response.data;
+};
+
+export const getTableList = async (params?: TableListParams) => {
+  const response = await APIClient.get<PagingResponse<Table[]>>('/tables', {
+    params,
+  });
 
   return response.data;
 };

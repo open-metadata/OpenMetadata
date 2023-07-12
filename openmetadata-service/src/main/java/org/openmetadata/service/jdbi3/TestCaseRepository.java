@@ -66,7 +66,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   public RestUtil.PatchResponse<TestCaseResult> patchTestCaseResults(
-      String fqn, Long timestamp, UriInfo uriInfo, String user, JsonPatch patch) throws IOException {
+      String fqn, Long timestamp, String user, JsonPatch patch) throws IOException {
     String change = ENTITY_NO_CHANGE;
     TestCaseResult original =
         JsonUtils.readValue(
@@ -123,25 +123,25 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     List<CollectionDAO.EntityRelationshipRecord> records =
         findFrom(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
     ensureSingleRelationship(entityType, test.getId(), records, Relationship.CONTAINS.value(), true);
-    for (CollectionDAO.EntityRelationshipRecord record : records) {
-      TestSuite testSuite = Entity.getEntity(TEST_SUITE, record.getId(), "", Include.ALL);
-      if (testSuite.getExecutable()) {
+    for (CollectionDAO.EntityRelationshipRecord testSuiteId : records) {
+      TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL);
+      if (Boolean.TRUE.equals(testSuite.getExecutable())) {
         return testSuite.getEntityReference();
       }
     }
     return null;
   }
 
-  private List<TestSuite> getTestSuites(TestCase test) throws IOException {
+  private List<TestSuite> getTestSuites(TestCase test) {
     // `testSuites` field returns all the `testSuite` (executable and logical) linked to that testCase
     List<CollectionDAO.EntityRelationshipRecord> records =
         findFrom(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
     ensureSingleRelationship(entityType, test.getId(), records, Relationship.CONTAINS.value(), true);
     return records.stream()
         .map(
-            record -> {
+            testSuiteId -> {
               try {
-                return Entity.<TestSuite>getEntity(TEST_SUITE, record.getId(), "", Include.ALL);
+                return Entity.<TestSuite>getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL);
               } catch (IOException e) {
                 throw new RuntimeException(e);
               }
@@ -294,7 +294,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   public void isTestSuiteExecutable(String testSuiteFqn) throws IOException {
     TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, testSuiteFqn, null, null);
-    if (!testSuite.getExecutable()) {
+    if (Boolean.FALSE.equals(testSuite.getExecutable())) {
       throw new IllegalArgumentException(
           "Test suite "
               + testSuite.getName()
