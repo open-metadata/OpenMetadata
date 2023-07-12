@@ -33,7 +33,7 @@ from metadata.profiler.interface.sqlalchemy.profiler_interface import (
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import CustomTypes
 from metadata.profiler.processor.core import Profiler
-from metadata.profiler.processor.sqlalchemy.sampler import Sampler
+from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
 
 Base = declarative_base()
 
@@ -96,13 +96,7 @@ class SampleTest(TestCase):
         SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
     ):
         sqa_profiler_interface = SQAProfilerInterface(
-            sqlite_conn,
-            None,
-            table_entity,
-            None,
-            None,
-            None,
-            None,
+            sqlite_conn, None, table_entity, None, None, None, None, 5, 43200
         )
     engine = sqa_profiler_interface.session.get_bind()
     session = sqa_profiler_interface.session
@@ -147,11 +141,10 @@ class SampleTest(TestCase):
         The random sampler should be able to
         generate a random subset of data
         """
-        sampler = Sampler(
-            session=self.session,
+        sampler = SQASampler(
+            client=self.session,
             table=User,
             profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
-            sample_columns=[col.name for col in User.__table__.columns],
         )
         random_sample = sampler.random_sample()
         res = self.session.query(func.count()).select_from(random_sample).first()
@@ -306,12 +299,11 @@ class SampleTest(TestCase):
         """
         We should be able to pick up sample data from the sampler
         """
-        sampler = Sampler(
-            session=self.session,
+        sampler = SQASampler(
+            client=self.session,
             table=User,
-            sample_columns=[col.name for col in User.__table__.columns],
         )
-        sample_data = sampler.fetch_sqa_sample_data()
+        sample_data = sampler.fetch_sample_data()
 
         assert len(sample_data.columns) == 6
         assert len(sample_data.rows) == 30
@@ -352,12 +344,11 @@ class SampleTest(TestCase):
             self.session.add_all(data)
             self.session.commit()
 
-        sampler = Sampler(
-            session=self.session,
+        sampler = SQASampler(
+            client=self.session,
             table=UserBinary,
-            sample_columns=[col.name for col in UserBinary.__table__.columns],
         )
-        sample_data = sampler.fetch_sqa_sample_data()
+        sample_data = sampler.fetch_sample_data()
 
         assert len(sample_data.columns) == 7
         assert len(sample_data.rows) == 10
@@ -382,13 +373,12 @@ class SampleTest(TestCase):
         Test sample data are returned based on user query
         """
         stmt = "SELECT id, name FROM users"
-        sampler = Sampler(
-            session=self.session,
+        sampler = SQASampler(
+            client=self.session,
             table=User,
             profile_sample_query=stmt,
-            sample_columns=[col.name for col in User.__table__.columns],
         )
-        sample_data = sampler.fetch_sqa_sample_data()
+        sample_data = sampler.fetch_sample_data()
 
         assert len(sample_data.columns) == 2
         names = [col.__root__ for col in sample_data.columns]
