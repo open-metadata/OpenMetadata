@@ -10,7 +10,10 @@
   "properties": {
     "name": {
       "description": "Name that identifies this glossary.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^(?U)[\\w'\\- .&()%]+$"
     },
     "displayName": {
       "description": "Display Name that identifies this glossary.",

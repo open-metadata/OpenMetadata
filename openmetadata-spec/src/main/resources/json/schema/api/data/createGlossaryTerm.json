@@ -18,7 +18,10 @@
     },
     "name": {
       "description": "Preferred name for the glossary term.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^(?U)[\\w'\\- .&()%]+$"
     },
     "displayName": {
       "description": "Display Name that identifies this glossary term.",
