@@ -420,6 +420,8 @@ public class OpenSearchClientImpl implements SearchClient {
     hb.field(highlightTasks);
     hb.field(highlightTaskDescriptions);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("tasks.displayName.keyword").field("tasks.displayName.keyword"));
     return addAggregation(searchSourceBuilder);
   }
 
@@ -521,6 +523,10 @@ public class OpenSearchClientImpl implements SearchClient {
     hb.field(highlightChartDescriptions);
 
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
+    searchSourceBuilder
+        .aggregation(
+            AggregationBuilders.terms("dataModels.displayName.keyword").field("dataModels.displayName.keyword"))
+        .aggregation(AggregationBuilders.terms("charts.displayName.keyword").field("charts.displayName.keyword"));
     return addAggregation(searchSourceBuilder);
   }
 
@@ -574,8 +580,9 @@ public class OpenSearchClientImpl implements SearchClient {
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder.aggregation(AggregationBuilders.terms("database.name.keyword").field("database.name.keyword"));
-    searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("databaseSchema.name.keyword").field("databaseSchema.name.keyword"));
+    searchSourceBuilder
+        .aggregation(AggregationBuilders.terms("databaseSchema.name.keyword").field("databaseSchema.name.keyword"))
+        .aggregation(AggregationBuilders.terms("columns.name.keyword").field("columns.name.keyword"));
 
     return addAggregation(searchSourceBuilder);
   }
@@ -635,7 +642,8 @@ public class OpenSearchClientImpl implements SearchClient {
             AggregationBuilders.terms(EntityBuilderConstant.ES_TAG_FQN_FIELD)
                 .field(EntityBuilderConstant.ES_TAG_FQN_FIELD)
                 .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("glossary.name.keyword").field("glossary.name.keyword"));
+        .aggregation(AggregationBuilders.terms("glossary.name.keyword").field("glossary.name.keyword"))
+        .aggregation(AggregationBuilders.terms("owner.name.keyword").field("owner.name.keyword"));
     return searchSourceBuilder;
   }
 
@@ -661,7 +669,8 @@ public class OpenSearchClientImpl implements SearchClient {
     hb.field(highlightTagName);
     hb.preTags(EntityBuilderConstant.PRE_TAG);
     hb.postTags(EntityBuilderConstant.POST_TAG);
-    return searchBuilder(queryBuilder, hb, from, size);
+    return searchBuilder(queryBuilder, hb, from, size)
+        .aggregation(AggregationBuilders.terms("classification.name.keyword").field("classification.name.keyword"));
   }
 
   private static SearchSourceBuilder buildContainerSearchBuilder(String query, int from, int size) {
@@ -703,6 +712,8 @@ public class OpenSearchClientImpl implements SearchClient {
     hb.postTags(EntityBuilderConstant.POST_TAG);
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("dataModel.columns.name.keyword").field("dataModel.columns.name.keyword"));
     return addAggregation(searchSourceBuilder);
   }
 
@@ -788,7 +799,9 @@ public class OpenSearchClientImpl implements SearchClient {
         .aggregation(
             AggregationBuilders.terms("owner.displayName.keyword")
                 .field("owner.displayName.keyword")
-                .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE));
+                .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
+        .aggregation(AggregationBuilders.terms("tags.tagFQN").field("tags.tagFQN"));
+    ;
 
     return builder;
   }
