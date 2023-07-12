@@ -20,6 +20,7 @@ services:
     build:
       context: ../../.
       dockerfile: docker/mysql/Dockerfile_mysql
+    command: "--sort_buffer_size=10M"
     container_name: openmetadata_mysql
     restart: always
     depends_on:
