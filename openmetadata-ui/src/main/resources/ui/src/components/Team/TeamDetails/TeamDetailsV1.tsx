@@ -33,6 +33,7 @@ import { ReactComponent as IconOpenLock } from 'assets/svg/open-lock.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
 import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import {
@@ -67,12 +68,7 @@ import { useHistory, useLocation } from 'react-router-dom';
 import { getSuggestions } from 'rest/miscAPI';
 import { exportTeam, restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../../AppState';
-import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
-  LIST_SIZE,
-  ROUTES,
-} from '../../../constants/constants';
+import { LIST_SIZE, ROUTES } from '../../../constants/constants';
 import { ROLE_DOCS, TEAMS_DOCS } from '../../../constants/docs.constants';
 import { EntityAction, EntityType } from '../../../enums/entity.enum';
 import { OwnerType } from '../../../enums/user.enum';
@@ -309,30 +305,7 @@ const TeamDetailsV1 = ({
     []
   );
 
-  const ownerValue = useMemo(() => {
-    switch (currentTeam.owner?.type) {
-      case 'team':
-        return getTeamAndUserDetailsPath(currentTeam.owner?.name || '');
-      case 'user':
-        return getUserPath(currentTeam.owner?.fullyQualifiedName ?? '');
-      default:
-        return '';
-    }
-  }, [currentTeam]);
-
   const extraInfo: ExtraInfo[] = [
-    {
-      key: 'Owner',
-      value: ownerValue,
-      placeholderText:
-        currentTeam?.owner?.displayName || currentTeam?.owner?.name || '',
-      isLink: true,
-      openInNewTab: false,
-      profileName:
-        currentTeam?.owner?.type === OwnerType.USER
-          ? currentTeam?.owner?.name
-          : undefined,
-    },
     ...(isOrganization
       ? []
       : [
@@ -1030,7 +1003,18 @@ const TeamDetailsV1 = ({
           </div>
           {emailElement}
           <Space size={0}>
-            {extraInfo.map((info, index) => (
+            <OwnerLabel
+              hasPermission={hasAccess}
+              owner={currentTeam?.owner}
+              onUpdate={updateOwner}
+            />
+            {!isOrganization && (
+              <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
+                {t('label.pipe-symbol')}
+              </span>
+            )}
+
+            {extraInfo.map((info) => (
               <Fragment key={uniqueId()}>
                 <EntitySummaryDetails
                   allowTeamOwner={false}
@@ -1048,11 +1032,6 @@ const TeamDetailsV1 = ({
                     entityPermissions.EditAll ? updateTeamType : undefined
                   }
                 />
-                {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
-                  <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
-                    {t('label.pipe-symbol')}
-                  </span>
-                ) : null}
               </Fragment>
             ))}
           </Space>

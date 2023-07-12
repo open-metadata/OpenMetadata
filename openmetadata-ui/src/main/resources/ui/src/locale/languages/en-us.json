@@ -1305,7 +1305,7 @@
     "page-sub-header-for-data-quality": "Build trust in your data with quality tests and build reliable data products.",
     "page-sub-header-for-databases": "Ingest metadata from the most popular database services.",
     "page-sub-header-for-messagings": "Ingest metadata from the most used messaging services.",
-    "page-sub-header-for-metadata": "Ingest metadata from metadata services, right from the UI.",
+    "page-sub-header-for-metadata": "Ingest metadata from metadata services right from the UI.",
     "page-sub-header-for-ml-models": "Ingest metadata from ML Model services through the UI.",
     "page-sub-header-for-pipelines": "Ingest metadata from the most used pipeline services.",
     "page-sub-header-for-policies": "Define policies with a set of rules for fine-grained access control.",

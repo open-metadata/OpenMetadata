@@ -74,10 +74,6 @@ jest.mock('components/Glossary/GlossaryV1.component', () => {
   ));
 });
 
-jest.mock('../../../utils/Fqn', () => ({
-  split: jest.fn(),
-}));
-
 jest.mock('../GlossaryLeftPanel/GlossaryLeftPanel.component', () => {
   return jest
     .fn()
