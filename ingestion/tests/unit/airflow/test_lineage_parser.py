@@ -90,7 +90,7 @@ class TestAirflowLineageParser(TestCase):
         all operators in the DAG
         """
 
-        SLEEP_1 = "sleep 1"
+        sleep_1 = "sleep 1"
 
         with DAG("test_dag", start_date=datetime(2021, 1, 1)) as dag:
             BashOperator(
@@ -101,7 +101,7 @@ class TestAirflowLineageParser(TestCase):
 
             BashOperator(
                 task_id="sleep",
-                bash_command=SLEEP_1,
+                bash_command=sleep_1,
                 outlets={"tables": ["B"]},
             )
 
@@ -118,7 +118,7 @@ class TestAirflowLineageParser(TestCase):
 
             BashOperator(
                 task_id="sleep",
-                bash_command=SLEEP_1,
+                bash_command=sleep_1,
                 outlets={"tables": ["B"]},
             )
 
@@ -139,7 +139,7 @@ class TestAirflowLineageParser(TestCase):
 
             BashOperator(
                 task_id="sleep",
-                bash_command=SLEEP_1,
+                bash_command=sleep_1,
                 outlets={
                     "tables": ["B"],
                     "more_tables": ["Z"],
@@ -165,7 +165,7 @@ class TestAirflowLineageParser(TestCase):
 
             BashOperator(
                 task_id="sleep",
-                bash_command=SLEEP_1,
+                bash_command=sleep_1,
                 outlets={
                     "tables": ["B"],
                 },
