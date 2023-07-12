@@ -929,8 +929,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void storeTimeSeries(
-      String fullyQualifiedName, String extension, String jsonSchema, String entityJson, Long timestamp, boolean update)
-      throws JsonProcessingException {
+      String fullyQualifiedName,
+      String extension,
+      String jsonSchema,
+      String entityJson,
+      Long timestamp,
+      boolean update) {
     String fqnHash = FullyQualifiedName.buildHash(fullyQualifiedName);
     if (update) {
       daoCollection.entityExtensionTimeSeriesDao().update(fqnHash, extension, entityJson, timestamp);
@@ -1282,7 +1286,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UUID toId, Relationship relationship, String fromEntityType, boolean mustHaveRelationship) throws IOException {
     List<EntityRelationshipRecord> records = findFrom(toId, entityType, relationship, fromEntityType);
     ensureSingleRelationship(entityType, toId, records, relationship.value(), mustHaveRelationship);
-    return records.size() >= 1
+    return !records.isEmpty()
         ? Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
         : null;
   }
@@ -2017,7 +2021,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Handle column-specific updates for entities such as Tables, Containers' dataModel or Dashboard Model Entities. */
   abstract class ColumnEntityUpdater extends EntityUpdater {
 
-    public ColumnEntityUpdater(T original, T updated, Operation operation) {
+    protected ColumnEntityUpdater(T original, T updated, Operation operation) {
       super(original, updated, operation);
     }
 

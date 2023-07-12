@@ -30,7 +30,7 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import SourceList from 'components/MlModelDetail/SourceList.component';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { getVersionPathWithTab } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
@@ -272,7 +272,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                                 </Col>
                                 <Col className="m-b-xs" span={24}>
                                   <Row gutter={8} wrap={false}>
-                                    <Col flex="120px">
+                                    <Col flex="130px">
                                       <Typography.Text className="text-grey-muted">
                                         {`${t('label.glossary-term-plural')} :`}
                                       </Typography.Text>
@@ -293,7 +293,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
 
                                 <Col className="m-b-xs" span={24}>
                                   <Row gutter={8} wrap={false}>
-                                    <Col flex="120px">
+                                    <Col flex="130px">
                                       <Typography.Text className="text-grey-muted">
                                         {`${t('label.tag-plural')} :`}
                                       </Typography.Text>
@@ -358,9 +358,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 {Object.keys(TagSource).map((tagType) => (
-                  <TagsContainerV1
-                    isVersionView
-                    showLimited
+                  <TagsContainerV2
                     entityFqn={currentVersionData.fullyQualifiedName}
                     entityType={EntityType.MLMODEL}
                     key={tagType}

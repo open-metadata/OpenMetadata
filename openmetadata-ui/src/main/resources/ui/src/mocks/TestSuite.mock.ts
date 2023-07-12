@@ -673,6 +673,41 @@ export const MOCK_SQL_TEST_CASE = {
   deleted: false,
 } as TestCase;
 
+export const MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX = {
+  id: '4c69c0d7-c173-4f17-b939-737ce0510f66',
+  name: 'columnValuesToMatchRegex',
+  displayName: 'Column Values To Match Regex Pattern',
+  fullyQualifiedName: 'columnValuesToMatchRegex',
+  description:
+    'This schema defines the test ColumnValuesToMatchRegex. Test the values in a column to match a given regular expression. ',
+  entityType: 'COLUMN',
+  testPlatforms: ['OpenMetadata'],
+  supportedDataTypes: [
+    'BYTES',
+    'STRING',
+    'MEDIUMTEXT',
+    'TEXT',
+    'CHAR',
+    'VARCHAR',
+  ],
+  parameterDefinition: [
+    {
+      name: 'regex',
+      displayName: 'RegEx Pattern',
+      dataType: 'STRING',
+      description:
+        'The regular expression the column entries should match. For database without regex support (i.e. MSSQL, AzureSQL) this test will use `LIKE`.',
+      required: true,
+      optionValues: [],
+    },
+  ],
+  version: 0.1,
+  updatedAt: 1682571176093,
+  updatedBy: 'admin',
+  href: 'href',
+  deleted: false,
+};
+
 export const MOCK_CHART_COLLECTION_DATA = {
   data: [
     {

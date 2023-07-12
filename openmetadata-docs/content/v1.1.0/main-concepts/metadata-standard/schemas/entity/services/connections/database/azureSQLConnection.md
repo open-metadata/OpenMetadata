@@ -15,10 +15,11 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`password`** *(string)*: Password to connect to AzureSQL.
 - **`hostPort`** *(string)*: Host and port of the AzureSQL service.
 - **`database`** *(string)*: Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.
-- **`driver`** *(string)*: SQLAlchemy driver for AzureSQL. Default: `ODBC Driver 17 for SQL Server`.
+- **`driver`** *(string)*: SQLAlchemy driver for AzureSQL. Default: `ODBC Driver 18 for SQL Server`.
 - **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
 - **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
+- **`supportsDBTExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsDBTExtraction*.
 - **`supportsProfiler`**: Refer to *../connectionBasicType.json#/definitions/supportsProfiler*.
 - **`supportsDatabase`**: Refer to *../connectionBasicType.json#/definitions/supportsDatabase*.
 ## Definitions
@@ -27,4 +28,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`azureSQLScheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `['mssql+pyodbc']`. Default: `mssql+pyodbc`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.

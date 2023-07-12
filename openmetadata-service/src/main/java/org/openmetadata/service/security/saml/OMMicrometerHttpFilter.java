@@ -52,7 +52,7 @@ public class OMMicrometerHttpFilter implements Filter {
     Timer.Sample timer = Timer.start(prometheusMeterRegistry);
     long startTime = System.nanoTime();
     chain.doFilter(request, response);
-    double elapsed = (double) (System.nanoTime() - startTime) / 1.0E9;
+    double elapsed = (System.nanoTime() - startTime) / 1.0E9;
     String requestPath = ((HttpServletRequest) request).getPathInfo();
     if (CommonUtil.nullOrEmpty(requestPath)) {
       requestPath = ((HttpServletRequest) request).getServletPath();

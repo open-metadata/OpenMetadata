@@ -26,7 +26,7 @@ public class OpenSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
   public BulkResponse write(BulkRequest data, Map<String, Object> contextData) throws SinkException {
     LOG.debug("[EsSearchIndexSink] Processing a Batch of Size: {}", data.numberOfActions());
     try {
-      BulkResponse response = (BulkResponse) client.bulk(data, RequestOptions.DEFAULT);
+      BulkResponse response = client.bulk(data, RequestOptions.DEFAULT);
       //      BulkResponse response = null;
       int currentSuccess = getSuccessFromBulkResponse(response);
       int currentFailed = response.getItems().length - currentSuccess;

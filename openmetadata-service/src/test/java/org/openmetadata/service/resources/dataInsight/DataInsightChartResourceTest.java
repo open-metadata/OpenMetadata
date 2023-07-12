@@ -67,7 +67,7 @@ public class DataInsightChartResourceTest extends EntityResourceTest<DataInsight
   }
 
   @Test
-  void get_data_insight_data_403(TestInfo test) throws IOException, ParseException {
+  void get_data_insight_data_403() throws IOException, ParseException {
     List<Rule> rules = new ArrayList<>();
     CreatePolicy createPolicy;
 
