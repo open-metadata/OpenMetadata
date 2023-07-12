@@ -21,13 +21,13 @@ Configure and schedule Mode metadata and profiler workflows from the OpenMetadat
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
+{% partial file="/v1.1.0/connectors/external-ingestion-deployment.md" /%}
+
 ## Requirements
 
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
-
-
 
 OpenMetadata relies on Mode's API, which is exclusive to members of the Mode Business Workspace. This means that only resources that belong to a Mode Business Workspace can be accessed via the API.
 
@@ -126,7 +126,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 {% /codeInfo %}
 
-{% partial file="workflow-config.md" /%}
+{% partial file="/v1.1.0/connectors/workflow-config.md" /%}
 
 {% /codeInfoContainer %}
 
