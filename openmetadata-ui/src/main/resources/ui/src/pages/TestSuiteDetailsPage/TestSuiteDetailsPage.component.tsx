@@ -17,8 +17,8 @@ import { AddTestCaseList } from 'components/AddTestCaseList/AddTestCaseList.comp
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import Description from 'components/common/description/Description';
 import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
-import EntitySummaryDetails from 'components/common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
@@ -29,10 +29,8 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import DataQualityTab from 'components/ProfilerDashboard/component/DataQualityTab';
-import { EntityInfo } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { useAuth } from 'hooks/authHooks';
-import { ExtraInfo } from 'Models';
 import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -47,18 +45,15 @@ import {
 import { getEntityName } from 'utils/EntityUtils';
 import { getDataQualityPagePath } from 'utils/RouterUtils';
 import {
-  getTeamAndUserDetailsPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
 import { ACTION_TYPE, ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { OwnerType } from '../../enums/user.enum';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
-import { getEntityPlaceHolder } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './TestSuiteDetailsPage.styles.less';
@@ -276,28 +271,6 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const extraInfo: Array<ExtraInfo> = useMemo(
-    () => [
-      {
-        key: EntityInfo.OWNER,
-        value:
-          testOwner?.type === 'team'
-            ? getTeamAndUserDetailsPath(testOwner?.name || '')
-            : getEntityName(testOwner) || '',
-        placeholderText:
-          getEntityPlaceHolder(
-            (testOwner?.displayName as string) || (testOwner?.name as string),
-            testOwner?.deleted
-          ) || '',
-        isLink: testOwner?.type === 'team',
-        openInNewTab: false,
-        profileName:
-          testOwner?.type === OwnerType.USER ? testOwner?.name : undefined,
-      },
-    ],
-    [testOwner]
-  );
-
   useEffect(() => {
     if (testSuitePermissions.ViewAll || testSuitePermissions.ViewBasic) {
       fetchTestSuiteByName();
@@ -354,15 +327,11 @@ const TestSuiteDetailsPage = () => {
           </Space>
 
           <div className="d-flex tw-gap-1 tw-mb-2 tw-mt-1 flex-wrap">
-            {extraInfo.map((info) => (
-              <span className="d-flex" data-testid={info.key} key={info.key}>
-                <EntitySummaryDetails
-                  currentOwner={testSuite?.owner}
-                  data={info}
-                  updateOwner={hasAccess ? onUpdateOwner : undefined}
-                />
-              </span>
-            ))}
+            <OwnerLabel
+              hasPermission={hasAccess}
+              owner={testOwner}
+              onUpdate={onUpdateOwner}
+            />
           </div>
 
           <Space>

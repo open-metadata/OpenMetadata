@@ -45,10 +45,11 @@ import {
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
+import { Include } from 'generated/type/include';
 import { TagLabel } from 'generated/type/tagLabel';
-import { isEmpty, isUndefined, startCase, toNumber } from 'lodash';
+import { isEmpty, isString, isUndefined, startCase } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityTags, ExtraInfo } from 'Models';
+import { EntityTags, ExtraInfo, PagingResponse } from 'Models';
 import React, {
   FunctionComponent,
   useCallback,
@@ -65,7 +66,7 @@ import {
   restoreDatabaseSchema,
 } from 'rest/databaseAPI';
 import { getFeedCount, postThread } from 'rest/feedsAPI';
-import { searchQuery } from 'rest/searchAPI';
+import { getTableList, TableListParams } from 'rest/tableAPI';
 import { default as appState } from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
@@ -79,17 +80,12 @@ import {
 import { EntityField } from '../../constants/Feeds.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
-import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
-import {
-  getQueryStringForSchemaTables,
-  getTablesFromSearchResponse,
-} from '../../utils/DatabaseSchemaDetailsUtils';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -116,7 +112,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     useParams<{ databaseSchemaFQN: string; tab: EntityTabs }>();
   const [isLoading, setIsLoading] = useState(true);
   const [databaseSchema, setDatabaseSchema] = useState<DatabaseSchema>();
-  const [tableData, setTableData] = useState<Array<Table>>([]);
+  const [tableData, setTableData] = useState<PagingResponse<Table[]>>({
+    data: [],
+    paging: { total: 0 },
+  });
   const [tableDataLoading, setTableDataLoading] = useState<boolean>(true);
 
   const [databaseSchemaName, setDatabaseSchemaName] = useState<string>(
@@ -126,8 +125,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     useState<boolean>(true);
   const [isEdit, setIsEdit] = useState(false);
   const [description, setDescription] = useState('');
-
-  const [tableInstanceCount, setTableInstanceCount] = useState<number>(0);
 
   const [error, setError] = useState('');
 
@@ -175,7 +172,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     {
       label: (
         <TabsLabel
-          count={tableInstanceCount}
+          count={tableData.paging.total}
           id={EntityTabs.TABLE}
           isActive={activeTab === EntityTabs.TABLE}
           name={t('label.table-plural')}
@@ -313,28 +310,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       });
   };
 
-  const getSchemaTables = async (
-    pageNumber: number,
-    databaseSchema: DatabaseSchema
-  ) => {
+  const getSchemaTables = async (params?: TableListParams) => {
     setTableDataLoading(true);
     try {
-      setCurrentTablesPage(pageNumber);
-      const res = await searchQuery({
-        query: getQueryStringForSchemaTables(
-          databaseSchema.service,
-          databaseSchema.database,
-          databaseSchema
-        ),
-        pageNumber,
-        sortField: 'name.keyword',
-        sortOrder: 'asc',
-        pageSize: PAGE_SIZE,
-        searchIndex: SearchIndex.TABLE,
-        includeDeleted: showDeletedTables,
+      const res = await getTableList({
+        ...params,
+        databaseSchema: databaseSchemaFQN,
+        include: showDeletedTables ? Include.Deleted : Include.NonDeleted,
       });
-      setTableData(getTablesFromSearchResponse(res));
-      setTableInstanceCount(res.hits.total.value);
+      setTableData(res);
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
@@ -342,10 +326,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     }
   };
 
-  const tablePaginationHandler = (pageNumber: string | number) => {
-    if (!isUndefined(databaseSchema)) {
-      getSchemaTables(toNumber(pageNumber), databaseSchema);
+  const tablePaginationHandler = (
+    cursorValue: string | number,
+    activePage?: number
+  ) => {
+    if (isString(cursorValue)) {
+      const { paging } = tableData;
+      getSchemaTables({ [cursorValue]: paging[cursorValue] });
     }
+    setCurrentTablesPage(activePage ?? INITIAL_PAGING_VALUE);
   };
 
   const onCancel = () => {
@@ -532,7 +521,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             bordered
             columns={tableColumn}
             data-testid="databaseSchema-tables"
-            dataSource={tableData}
+            dataSource={tableData.data}
             locale={{
               emptyText: <FilterTablePlaceHolder />,
             }}
@@ -542,16 +531,13 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           />
         )}
 
-        {tableInstanceCount > PAGE_SIZE && tableData.length > 0 && (
+        {tableData.paging.total > PAGE_SIZE && tableData.data.length > 0 && (
           <NextPrevious
-            isNumberBased
             currentPage={currentTablesPage}
             pageSize={PAGE_SIZE}
-            paging={{
-              total: tableInstanceCount,
-            }}
+            paging={tableData.paging}
             pagingHandler={tablePaginationHandler}
-            totalCount={tableInstanceCount}
+            totalCount={tableData.paging.total}
           />
         )}
       </Col>
@@ -589,8 +575,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [databaseSchemaPermission, databaseSchemaFQN]);
 
   useEffect(() => {
-    tablePaginationHandler(INITIAL_PAGING_VALUE);
-  }, [showDeletedTables, databaseSchema]);
+    if (databaseSchemaFQN) {
+      getSchemaTables();
+    }
+  }, [showDeletedTables, databaseSchemaFQN]);
 
   useEffect(() => {
     fetchDatabaseSchemaPermission();

@@ -40,7 +40,7 @@ Configure and schedule Databricks metadata and profiler workflows from the OpenM
 
 {% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/databricks/yaml"} /%}
 
-## Requirements
+{% partial file="/v1.1.0/connectors/external-ingestion-deployment.md" /%}
 
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.

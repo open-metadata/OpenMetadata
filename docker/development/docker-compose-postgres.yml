@@ -20,6 +20,7 @@ services:
     build:
       context: ../../.
       dockerfile: docker/postgresql/Dockerfile_postgres
+    command: "--sort_buffer_size=10M"
     container_name: openmetadata_postgresql
     restart: always
     depends_on:
