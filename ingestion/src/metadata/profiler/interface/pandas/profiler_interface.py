@@ -20,21 +20,20 @@ from typing import Dict, List
 
 from sqlalchemy import Column
 
-from metadata.generated.schema.entity.data.table import (
-    PartitionProfilerConfig,
-    TableData,
-)
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
-from metadata.ingestion.api.processor import ProfilerProcessorStatus
-from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
+from metadata.ingestion.source.database.datalake.models import (
+    DatalakeTableSchemaWrapper,
+)
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
-from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
+from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
-from metadata.profiler.processor.pandas.sampler import DatalakeSampler
+from metadata.profiler.processor.sampler.sampler_factory import sampler_factory
+from metadata.utils.datalake.datalake_utils import fetch_dataframe
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_like_column import SQALikeColumn, Type
@@ -42,7 +41,7 @@ from metadata.utils.sqa_like_column import SQALikeColumn, Type
 logger = profiler_interface_registry_logger()
 
 
-class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
+class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
     """
     Interface to interact with registry supporting
     sqlalchemy.
@@ -50,45 +49,69 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
 
     # pylint: disable=too-many-arguments
 
-    _profiler_type: str = DatalakeConnection.__name__
-
     def __init__(
         self,
         service_connection_config,
         ometa_client,
-        thread_count,
         entity,
         profile_sample_config,
         source_config,
         sample_query,
-        table_partition_config=None,
-        **_,
+        table_partition_config,
+        thread_count: int = 5,
+        timeout_seconds: int = 43200,
+        **kwargs,
     ):
-        """Instantiate SQA Interface object"""
-        self._thread_count = thread_count
-        self.table_entity = entity
-        self.ometa_client = ometa_client
-        self.source_config = source_config
-        self.service_connection_config = service_connection_config
-        self.client = self.get_connection_client()
-        self.processor_status = ProfilerProcessorStatus()
-        self.processor_status.entity = (
-            self.table_entity.fullyQualifiedName.__root__
-            if self.table_entity.fullyQualifiedName
-            else None
+        """Instantiate Pandas Interface object"""
+
+        super().__init__(
+            service_connection_config,
+            ometa_client,
+            entity,
+            profile_sample_config,
+            source_config,
+            sample_query,
+            table_partition_config,
+            thread_count,
+            timeout_seconds,
         )
-        self.profile_sample_config = profile_sample_config
-        self.profile_query = sample_query
-        self.table_partition_config: PartitionProfilerConfig = table_partition_config
-        self._table = entity
-        self.dfs = self.return_ometa_dataframes_sampled(
-            service_connection_config=self.service_connection_config,
+
+        self.client = self.connection.client
+        self._table = self.table_entity
+        self.dfs = self._convert_table_to_list_of_dataframe_objects()
+
+    def _convert_table_to_list_of_dataframe_objects(self):
+        """From a tablen entity, return the conresponding dataframe object
+
+        Returns:
+            List[DataFrame]
+        """
+        connection_args = self.service_connection_config.configSource.securityConfig
+        data = fetch_dataframe(
+            config_source=self.service_connection_config.configSource,
             client=self.client,
-            table=self.table,
-            profile_sample_config=self.profile_sample_config,
+            file_fqn=DatalakeTableSchemaWrapper(
+                key=self.table_entity.name.__root__,
+                bucket_name=self.table_entity.databaseSchema.name,
+            ),
+            is_profiler=True,
+            connection_kwargs=connection_args,
         )
-        if self.dfs and self.table_partition_config:
-            self.dfs = self.get_partitioned_df(self.dfs)
+
+        if not data:
+            raise TypeError(f"Couldn't fetch {self.table_entity.name.__root__}")
+        return data
+
+    def _get_sampler(self):
+        """Get dataframe sampler from config"""
+        return sampler_factory.create(
+            DatalakeConnection.__name__,
+            client=self.client,
+            table=self.dfs,
+            profile_sample_config=self.profile_sample_config,
+            partition_details=self.partition_details,
+            profile_sample_query=self.profile_query,
+        )
 
     @valuedispatch
     def _get_metrics(self, *args, **kwargs):
@@ -103,6 +126,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         self,
         metric_type: str,
         metrics: List[Metrics],
+        dfs,
         *args,
         **kwargs,
     ):
@@ -118,7 +142,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
 
         try:
             row_dict = {}
-            df_list = [df.where(pd.notnull(df), None) for df in self.dfs]
+            df_list = [df.where(pd.notnull(df), None) for df in dfs]
             for metric in metrics:
                 row_dict[metric.name()] = metric().df_fn(df_list)
             return row_dict
@@ -133,6 +157,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         self,
         metric_type: str,
         metrics: List[Metrics],
+        dfs,
         column,
         *args,
         **kwargs,
@@ -151,7 +176,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         try:
             row_dict = {}
             for metric in metrics:
-                metric_resp = metric(column).df_fn(self.dfs)
+                metric_resp = metric(column).df_fn(dfs)
                 row_dict[metric.name()] = (
                     None if pd.isnull(metric_resp) else metric_resp
                 )
@@ -168,6 +193,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         self,
         metric_type: str,
         metrics: Metrics,
+        dfs,
         column,
         *args,
         **kwargs,
@@ -182,7 +208,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
             dictionnary of results
         """
         col_metric = None
-        col_metric = metrics(column).df_fn(self.dfs)
+        col_metric = metrics(column).df_fn(dfs)
         if not col_metric:
             return None
         return {metrics.name(): col_metric}
@@ -193,6 +219,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         self,
         metric_type: str,
         metrics: Metrics,
+        dfs,
         column,
         *args,
         **kwargs,
@@ -204,7 +231,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         try:
             metric_values = {}
             for metric in metrics:
-                metric_values[metric.name()] = metric(column).df_fn(self.dfs)
+                metric_values[metric.name()] = metric(column).df_fn(dfs)
             return metric_values if metric_values else None
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -232,12 +259,15 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
     ):
         """Run metrics in processor worker"""
         logger.debug(f"Running profiler for {table}")
+        sampler = self._get_sampler()
+        dfs = sampler.random_sample()
         try:
             row = None
             if self.dfs:
                 row = self._get_metrics(
                     metric_type.value,
                     metrics,
+                    dfs,
                     session=self.client,
                     column=column,
                 )
@@ -247,7 +277,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
             logger.error(error)
             self.processor_status.failed_profiler(error, traceback.format_exc())
             row = None
-        if column:
+        if column is not None:
             column = column.name
             self.processor_status.scanned(f"{table.name.__root__}.{column}")
         else:
@@ -263,13 +293,8 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         Returns:
             TableData: sample table data
         """
-        sampler = DatalakeSampler(
-            session=self.client,
-            table=self.dfs,
-            profile_sample_config=self.profile_sample_config,
-            profile_sample_query=self.profile_query,
-        )
-        return sampler.fetch_dl_sample_data()
+        sampler = self._get_sampler()
+        return sampler.fetch_sample_data()
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict
@@ -355,9 +380,6 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
                 for column_name in df.columns
             ]
         return []
-
-    def get_connection_client(self):
-        return get_connection(self.service_connection_config).client
 
     def close(self):
         """Nothing to close with pandas"""

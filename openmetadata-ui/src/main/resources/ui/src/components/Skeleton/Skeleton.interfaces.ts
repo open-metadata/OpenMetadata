@@ -12,7 +12,6 @@
  */
 import { SkeletonProps } from 'antd';
 import { SkeletonButtonProps } from 'antd/lib/skeleton/Button';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface Key {
   key?: React.Key | null | undefined;
@@ -26,7 +25,7 @@ export interface SkeletonInterface extends Children {
   dataLength?: number;
 }
 export interface TitleBreadcrumbSkeletonProps extends Children {
-  titleLinks: TitleBreadcrumbProps['titleLinks'];
+  loading: boolean;
 }
 
 export interface ButtonSkeletonProps

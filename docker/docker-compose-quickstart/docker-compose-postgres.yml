@@ -18,7 +18,7 @@ volumes:
 services:
   postgresql:
     container_name: openmetadata_postgresql
-    image: docker.getcollate.io/openmetadata/postgresql:1.0.1
+    image: docker.getcollate.io/openmetadata/postgresql:1.2.0
     restart: always
     environment:
       POSTGRES_USER: postgres
