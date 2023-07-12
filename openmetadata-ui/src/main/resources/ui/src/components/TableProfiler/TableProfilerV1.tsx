@@ -46,7 +46,14 @@ import {
   toLower,
 } from 'lodash';
 import Qs from 'qs';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import { getLatestTableProfileByFqn } from 'rest/tableAPI';
@@ -116,6 +123,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     return { profile: table?.profile, columns: table?.columns || [] };
   }, [table]);
   const [settingModalVisible, setSettingModalVisible] = useState(false);
+  const allTests = useRef<TestCase[]>([]);
   const [columnTests, setColumnTests] = useState<TestCase[]>([]);
   const [tableTests, setTableTests] = useState<TableTestsType>({
     tests: [],
@@ -130,7 +138,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
 
   const showOperationGraph = useMemo(() => {
-    if (table && table.serviceType) {
+    if (table?.serviceType) {
       return allowedServiceForOperationGraph.includes(table.serviceType);
     }
 
@@ -332,36 +340,41 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     }
   };
 
+  const splitTableAndColumnTest = (data: TestCase[]) => {
+    const columnTestsCase: TestCase[] = [];
+    const tableTests: TableTestsType = {
+      tests: [],
+      results: { ...INITIAL_TEST_RESULT_SUMMARY },
+    };
+    data.forEach((test) => {
+      if (test.entityFQN === table?.fullyQualifiedName) {
+        tableTests.tests.push(test);
+
+        updateTestResults(
+          tableTests.results,
+          test.testCaseResult?.testCaseStatus || ''
+        );
+
+        return;
+      }
+      columnTestsCase.push(test);
+    });
+    setTableTests(tableTests);
+    setColumnTests(columnTestsCase);
+  };
+
   const fetchAllTests = async (params?: ListTestCaseParams) => {
     setIsTestCaseLoading(true);
     try {
       const { data } = await getListTestCase({
+        ...params,
         fields: 'testCaseResult,entityLink,testDefinition,testSuite',
         entityLink: generateEntityLink(table?.fullyQualifiedName || ''),
         includeAllTests: true,
         limit: API_RES_MAX_SIZE,
-        ...params,
       });
-      const columnTestsCase: TestCase[] = [];
-      const tableTests: TableTestsType = {
-        tests: [],
-        results: { ...INITIAL_TEST_RESULT_SUMMARY },
-      };
-      data.forEach((test) => {
-        if (test.entityFQN === table?.fullyQualifiedName) {
-          tableTests.tests.push(test);
-
-          updateTestResults(
-            tableTests.results,
-            test.testCaseResult?.testCaseStatus || ''
-          );
-
-          return;
-        }
-        columnTestsCase.push(test);
-      });
-      setTableTests(tableTests);
-      setColumnTests(columnTestsCase);
+      allTests.current = data;
+      splitTableAndColumnTest(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -369,6 +382,19 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     }
   };
 
+  const handleTestUpdate = useCallback(
+    (testCase?: TestCase) => {
+      if (isUndefined(testCase)) {
+        return;
+      }
+      const updatedTests = allTests.current.map((test) => {
+        return testCase.id === test.id ? { ...test, ...testCase } : test;
+      });
+      splitTableAndColumnTest(updatedTests);
+      allTests.current = updatedTests;
+    },
+    [allTests.current]
+  );
   const handleTestCaseStatusChange = (value: string) => {
     if (value !== selectedTestCaseStatus) {
       setSelectedTestCaseStatus(value);
@@ -620,7 +646,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
               testCases={getFilterTestCase()}
               testSuite={testSuite}
               onTestCaseResultUpdate={handleResultUpdate}
-              onTestUpdate={fetchAllTests}
+              onTestUpdate={handleTestUpdate}
             />
           )}
 
