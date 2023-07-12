@@ -21,6 +21,8 @@ Configure and schedule QuickSight metadata and profiler workflows from the OpenM
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
+{% partial file="/v1.1.0/connectors/external-ingestion-deployment.md" /%}
+
 ## Requirements
 
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
@@ -74,9 +76,6 @@ Here is how to add Permissions to an IAM user.
     ]
 }
 ```
-
-
-
 
 ### Python Requirements
 
@@ -161,7 +160,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 {% /codeInfo %}
 
-{% partial file="workflow-config.md" /%}
+{% partial file="/v1.1.0/connectors/workflow-config.md" /%}
 
 {% /codeInfoContainer %}
 

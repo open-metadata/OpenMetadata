@@ -21,13 +21,13 @@ Configure and schedule Metabase metadata and profiler workflows from the OpenMet
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
+{% partial file="/v1.1.0/connectors/external-ingestion-deployment.md" /%}
+
 ## Requirements
 
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
-
-
 
 **Note:** We have tested Metabase with Versions `0.42.4` and `0.43.4`.
 
@@ -105,7 +105,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 {% /codeInfo %}
 
-{% partial file="workflow-config.md" /%}
+{% partial file="/v1.1.0/connectors/workflow-config.md" /%}
 
 {% /codeInfoContainer %}
 
