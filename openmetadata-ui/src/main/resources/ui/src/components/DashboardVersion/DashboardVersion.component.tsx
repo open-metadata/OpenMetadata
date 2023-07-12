@@ -42,7 +42,8 @@ import {
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
+
+import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import { DashboardVersionProp } from './DashboardVersion.interface';
 

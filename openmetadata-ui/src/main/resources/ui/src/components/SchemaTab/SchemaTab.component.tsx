@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
+import EntityTable from 'components/Entity/EntityTable/EntityTable.component';
 import { t } from 'i18next';
 import { lowerCase } from 'lodash';
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import Searchbar from '../common/searchbar/Searchbar';
-import EntityTableV1 from '../EntityTable/EntityTable.component';
 import { Props } from './SchemaTab.interfaces';
 
 const SchemaTab: FunctionComponent<Props> = ({
@@ -51,7 +51,7 @@ const SchemaTab: FunctionComponent<Props> = ({
         />
       </div>
 
-      <EntityTableV1
+      <EntityTable
         columnName={columnName}
         entityFieldTasks={entityFieldTasks}
         entityFieldThreads={entityFieldThreads}

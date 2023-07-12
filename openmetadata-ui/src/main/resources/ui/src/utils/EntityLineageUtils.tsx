@@ -26,12 +26,12 @@ import {
   LeafNodes,
   LineagePos,
   LoadingNodeState,
+  ModifiedColumn,
   NodeIndexMap,
   SelectedEdge,
   SelectedNode,
 } from 'components/Entity/EntityLineage/EntityLineage.interface';
 import Loader from 'components/Loader/Loader';
-import { ModifiedColumn } from 'components/TableProfiler/TableProfiler.interface';
 import dagre from 'dagre';
 import { t } from 'i18next';
 import {
@@ -1324,7 +1324,7 @@ export const findNodeById = (
   return undefined;
 };
 
-export const addLineageHandler = async (edge: InterfaceEdge): Promise<void> => {
+export const addLineageHandler = async (edge: AddLineage): Promise<void> => {
   try {
     await addLineage(edge);
   } catch (err) {

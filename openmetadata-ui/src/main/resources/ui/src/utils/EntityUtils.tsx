@@ -14,10 +14,11 @@
 import { Popover } from 'antd';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import QueryCount from 'components/common/QueryCount/QueryCount.component';
+
 import {
   LeafNodes,
   LineagePos,
-} from 'components/EntityLineage/EntityLineage.interface';
+} from 'components/Entity/EntityLineage/EntityLineage.interface';
 import {
   EntityUnion,
   EntityWithServices,

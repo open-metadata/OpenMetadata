@@ -14,6 +14,7 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Select, Space, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import TagButton from 'components/TagButton/TagButton.component';
 import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from 'constants/constants';
@@ -29,7 +30,6 @@ import {
   getChangedEntityOldValue,
   getDiffByFieldName,
 } from 'utils/EntityVersionUtils';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 
 interface GlossaryTermSynonymsProps {
   isVersionView?: boolean;

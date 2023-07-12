@@ -20,6 +20,10 @@ import {
   render,
   screen,
 } from '@testing-library/react';
+import {
+  LeafNodes,
+  LoadingNodeState,
+} from 'components/Entity/EntityLineage/EntityLineage.interface';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
@@ -28,10 +32,6 @@ import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
-import {
-  LeafNodes,
-  LoadingNodeState,
-} from '../EntityLineage/EntityLineage.interface';
 import PipelineDetails from './PipelineDetails.component';
 
 /**

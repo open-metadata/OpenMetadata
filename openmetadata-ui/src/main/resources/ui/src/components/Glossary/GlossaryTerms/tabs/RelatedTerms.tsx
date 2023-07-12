@@ -14,6 +14,7 @@
 import { Button, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconFlatDoc } from 'assets/svg/ic-flat-doc.svg';
+import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import TagSelectForm from 'components/Tag/TagsSelectForm/TagsSelectForm.component';
 import TagButton from 'components/TagButton/TagButton.component';
@@ -43,7 +44,6 @@ import {
 import { VersionStatus } from 'utils/EntityVersionUtils.interface';
 import { getEntityReferenceFromGlossary } from 'utils/GlossaryUtils';
 import { getGlossaryPath } from 'utils/RouterUtils';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 
 interface RelatedTermsProps {
   isVersionView?: boolean;

@@ -15,6 +15,7 @@ import Icon from '@ant-design/icons';
 import { Button, Popover, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
+import { ReactComponent as IconRequest } from 'assets/svg/request-icon.svg';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -61,7 +62,6 @@ import {
   getUpdateDescriptionPath,
   getUpdateTagsPath,
 } from 'utils/TasksUtils';
-import { ReactComponent as IconRequest } from '../../assets/svg/request-icon.svg';
 import { EntityTableProps, TableCellRendered } from './EntityTable.interface';
 import './EntityTable.style.less';
 
