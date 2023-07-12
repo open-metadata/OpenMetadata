@@ -205,14 +205,28 @@ describe('Add and Remove Owner and Tier', () => {
     verifyResponseStatusCode('@getOrganization', 200);
     verifyResponseStatusCode('@teamPermission', 200);
 
-    cy.get('[data-testid="add-user"]').should('be.visible').click();
-    verifyResponseStatusCode('@getUsers', 200);
-    cy.get(`.ant-popover [title="${OWNER}"]`).should('be.visible').click();
+    interceptURL(
+      'GET',
+      'api/v1/search/query?q=**%20AND%20isBot:false&from=0&size=0&index=user_search_index',
+      'waitForUsers'
+    );
+
+    // Click on edit owner button
+    cy.get('[data-testid="edit-owner"]').click();
+    verifyResponseStatusCode('@waitForUsers', 200);
+
+    cy.get('.user-team-select-popover').contains('Users').click();
+
+    cy.get('[data-testid="selectable-list"]')
+      .eq(1)
+      .find(`[title="${OWNER}"]`)
+      .click();
+
     verifyResponseStatusCode('@patchOwner', 200);
     cy.get('[data-testid="owner-link"]')
       .should('be.visible')
       .should('contain', OWNER);
-    cy.get('[data-testid="add-user"]').should('be.visible').click();
+    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
     verifyResponseStatusCode('@getUsers', 200);
     cy.get('[data-testid="remove-owner"]').should('be.visible').click();
     verifyResponseStatusCode('@patchOwner', 200);
