@@ -59,7 +59,7 @@ export const TABLE_DROPDOWN_ITEMS = [
   },
   {
     label: t('label.column'),
-    key: 'columns.name',
+    key: 'columns.name.keyword',
   },
 ];
 
@@ -91,14 +91,14 @@ export const TOPIC_DROPDOWN_ITEMS = [
 export const CONTAINER_DROPDOWN_ITEMS = [
   {
     label: t('label.column'),
-    key: 'dataModel.columns.name',
+    key: 'dataModel.columns.name.keyword',
   },
 ];
 
 export const GLOSSARY_DROPDOWN_ITEMS = [
   {
     label: t('label.owner'),
-    key: 'owner.displayName',
+    key: 'owner.displayName.keyword',
   },
   {
     label: t('label.tag'),
@@ -107,6 +107,13 @@ export const GLOSSARY_DROPDOWN_ITEMS = [
   {
     label: t('label.glossary-plural'),
     key: 'glossary.name.keyword',
+  },
+];
+
+export const TAG_DROPDOWN_ITEMS = [
+  {
+    label: t('label.classification'),
+    key: 'classification.name.keyword',
   },
 ];
 

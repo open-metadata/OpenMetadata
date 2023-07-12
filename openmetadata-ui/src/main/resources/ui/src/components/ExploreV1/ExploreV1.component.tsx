@@ -33,7 +33,6 @@ import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalS
 import SearchedData from 'components/searched-data/SearchedData';
 import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from 'enums/common.enum';
-import { EntityType } from 'enums/entity.enum';
 import {
   isEmpty,
   isNil,
@@ -233,10 +232,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
     });
   };
 
-  const showFilters = useMemo(() => {
-    return entityDetails?.entityType !== EntityType.TAG ?? true;
-  }, [entityDetails]);
-
   useEffect(() => {
     const escapeKeyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -305,17 +300,16 @@ const ExploreV1: React.FC<ExploreProps> = ({
                       <Col
                         className="d-flex items-center justify-between"
                         span={24}>
-                        {showFilters && (
-                          <ExploreQuickFilters
-                            aggregations={aggregations}
-                            fields={selectedQuickFilters}
-                            index={activeTabKey}
-                            showDeleted={showDeleted}
-                            onAdvanceSearch={() => toggleModal(true)}
-                            onChangeShowDeleted={onChangeShowDeleted}
-                            onFieldValueSelect={handleQuickFiltersValueSelect}
-                          />
-                        )}
+                        <ExploreQuickFilters
+                          aggregations={aggregations}
+                          fields={selectedQuickFilters}
+                          index={activeTabKey}
+                          showDeleted={showDeleted}
+                          onAdvanceSearch={() => toggleModal(true)}
+                          onChangeShowDeleted={onChangeShowDeleted}
+                          onFieldValueSelect={handleQuickFiltersValueSelect}
+                        />
+
                         <div className="d-flex items-center gap-4 m-l-auto m-r-xs">
                           <span className="flex-center">
                             <Switch
