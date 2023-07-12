@@ -72,9 +72,9 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
   }
 
   @Test
-  void defaultOpenMetadataServiceMustExist(TestInfo test) throws HttpResponseException {
+  void defaultOpenMetadataServiceMustExist() throws HttpResponseException {
     MetadataService service = getEntityByName(DEFAULT_OPENMETADATA_SERVICE_NAME, ADMIN_AUTH_HEADERS);
-    assertEquals(service.getName(), DEFAULT_OPENMETADATA_SERVICE_NAME);
+    assertEquals(DEFAULT_OPENMETADATA_SERVICE_NAME, service.getName());
   }
 
   @Test
@@ -176,12 +176,12 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
         putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
-    assertEquals(updatedService.getTestConnectionResult().getStatus(), TestConnectionResultStatus.SUCCESSFUL);
+    assertEquals(TestConnectionResultStatus.SUCCESSFUL, updatedService.getTestConnectionResult().getStatus());
     assertEquals(updatedService.getConnection(), service.getConnection());
     // Check that the stored data is also correct
     MetadataService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     assertNotNull(stored.getTestConnectionResult());
-    assertEquals(stored.getTestConnectionResult().getStatus(), TestConnectionResultStatus.SUCCESSFUL);
+    assertEquals(TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
     assertEquals(stored.getConnection(), service.getConnection());
   }
 

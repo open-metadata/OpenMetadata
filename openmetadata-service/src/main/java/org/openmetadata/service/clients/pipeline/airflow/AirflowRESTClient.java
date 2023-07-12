@@ -89,7 +89,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
     String truststorePath = (String) config.getParameters().getAdditionalProperties().get(TRUSTSTORE_PATH_KEY);
     String truststorePassword = (String) config.getParameters().getAdditionalProperties().get(TRUSTSTORE_PASSWORD_KEY);
 
-    return SSLUtil.createSSLContext(truststorePath, truststorePassword, "Airflow");
+    return SSLUtil.createSSLContext(truststorePath, truststorePassword, PLATFORM);
   }
 
   public final HttpResponse<String> post(String endpoint, String payload, boolean authenticate)

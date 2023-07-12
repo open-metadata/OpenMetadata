@@ -34,7 +34,7 @@ public class ElasticSearchIndexDefinition {
   private static final Map<ElasticSearchIndexType, Set<String>> INDEX_TO_MAPPING_FIELDS_MAP =
       new EnumMap<>(ElasticSearchIndexType.class);
 
-  private SearchClient searchClient;
+  private final SearchClient searchClient;
 
   static {
     // Populate Entity Type to Index Map
@@ -193,7 +193,7 @@ public class ElasticSearchIndexDefinition {
       return ENTITY_TO_MAPPING_SCHEMA_MAP;
     }
     Map<String, Object> result = new HashMap<>();
-    entities.forEach((entityType) -> result.put(entityType, ENTITY_TO_MAPPING_SCHEMA_MAP.get(entityType)));
+    entities.forEach(entityType -> result.put(entityType, ENTITY_TO_MAPPING_SCHEMA_MAP.get(entityType)));
     return result;
   }
 }

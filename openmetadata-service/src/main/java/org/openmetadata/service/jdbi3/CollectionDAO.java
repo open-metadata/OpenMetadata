@@ -1997,8 +1997,6 @@ public interface CollectionDAO {
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String after) {
-      String parent = filter.getQueryParam("parent");
-
       boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
       String condition =
           String.format(
@@ -3054,8 +3052,7 @@ public interface CollectionDAO {
     }
 
     default int countOfTestCases(List<UUID> testCaseIds) {
-      return countOfTestCases(
-          getTableName(), testCaseIds.stream().map(testCaseId -> testCaseId.toString()).collect(Collectors.toList()));
+      return countOfTestCases(getTableName(), testCaseIds.stream().map(Object::toString).collect(Collectors.toList()));
     }
 
     @SqlQuery("SELECT count(*) FROM <table> WHERE id IN (<testCaseIds>)")

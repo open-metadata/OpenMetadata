@@ -614,16 +614,60 @@ site_menu:
   - category: Main Concepts / Metadata Standard / Schemas
     url: /main-concepts/metadata-standard/schemas
 
-  - category: Main Concepts / Metadata Standard / Schemas / Api / CatalogVersion
-    url: /main-concepts/metadata-standard/schemas/api/catalogversion
+  - category: Main Concepts / Metadata Standard / Schemas / Analytics / Basic
+    url: /main-concepts/metadata-standard/schemas/analytics/basic
+  - category: Main Concepts / Metadata Standard / Schemas / Analytics
+    url: /main-concepts/metadata-standard/schemas/analytics
+  - category: Main Concepts / Metadata Standard / Schemas / Analytics / ReportData
+    url: /main-concepts/metadata-standard/schemas/analytics/reportdata
+  - category: Main Concepts / Metadata Standard / Schemas / Analytics / Reportdatatype / EntityReportData
+    url: /main-concepts/metadata-standard/schemas/analytics/reportdatatype/entityreportdata
+  - category: Main Concepts / Metadata Standard / Schemas / Analytics / Reportdatatype
+    url: /main-concepts/metadata-standard/schemas/analytics/reportdatatype
+  - category: Main Concepts / Metadata Standard / Schemas / Analytics / Reportdatatype / WebAnalyticEntityViewReportData
+    url: /main-concepts/metadata-standard/schemas/analytics/reportdatatype/webanalyticentityviewreportdata
+  - category: Main Concepts / Metadata Standard / Schemas / Analytics / Reportdatatype / WebAnalyticUserActivityReportData
+    url: /main-concepts/metadata-standard/schemas/analytics/reportdatatype/webanalyticuseractivityreportdata
+  - category: Main Concepts / Metadata Standard / Schemas / Analytics / WebAnalyticEvent
+    url: /main-concepts/metadata-standard/schemas/analytics/webanalyticevent
+  - category: Main Concepts / Metadata Standard / Schemas / Analytics / WebAnalyticEventData
+    url: /main-concepts/metadata-standard/schemas/analytics/webanalyticeventdata
+  - category: Main Concepts / Metadata Standard / Schemas / Analytics / Webanalyticeventtype / CustomEvent
+    url: /main-concepts/metadata-standard/schemas/analytics/webanalyticeventtype/customevent
+  - category: Main Concepts / Metadata Standard / Schemas / Analytics / Webanalyticeventtype
+    url: /main-concepts/metadata-standard/schemas/analytics/webanalyticeventtype
+  - category: Main Concepts / Metadata Standard / Schemas / Analytics / Webanalyticeventtype / PageViewEvent
+    url: /main-concepts/metadata-standard/schemas/analytics/webanalyticeventtype/pageviewevent
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Analytics / CreateWebAnalyticEvent
+    url: /main-concepts/metadata-standard/schemas/api/analytics/createwebanalyticevent
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Analytics
+    url: /main-concepts/metadata-standard/schemas/api/analytics
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Automations / CreateWorkflow
+    url: /main-concepts/metadata-standard/schemas/api/automations/createworkflow
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Automations
+    url: /main-concepts/metadata-standard/schemas/api/automations
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Classification / CreateClassification
+    url: /main-concepts/metadata-standard/schemas/api/classification/createclassification
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Classification / CreateTag
+    url: /main-concepts/metadata-standard/schemas/api/classification/createtag
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Classification
+    url: /main-concepts/metadata-standard/schemas/api/classification
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Classification / LoadTags
+    url: /main-concepts/metadata-standard/schemas/api/classification/loadtags
   - category: Main Concepts / Metadata Standard / Schemas / Api / CreateBot
     url: /main-concepts/metadata-standard/schemas/api/createbot
+  - category: Main Concepts / Metadata Standard / Schemas / Api / CreateEventPublisherJob
+    url: /main-concepts/metadata-standard/schemas/api/createeventpublisherjob
   - category: Main Concepts / Metadata Standard / Schemas / Api / CreateType
     url: /main-concepts/metadata-standard/schemas/api/createtype
   - category: Main Concepts / Metadata Standard / Schemas / Api / Data / CreateChart
     url: /main-concepts/metadata-standard/schemas/api/data/createchart
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Data / CreateContainer
+    url: /main-concepts/metadata-standard/schemas/api/data/createcontainer
   - category: Main Concepts / Metadata Standard / Schemas / Api / Data / CreateDashboard
     url: /main-concepts/metadata-standard/schemas/api/data/createdashboard
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Data / CreateDashboardDataModel
+    url: /main-concepts/metadata-standard/schemas/api/data/createdashboarddatamodel
   - category: Main Concepts / Metadata Standard / Schemas / Api / Data / CreateDatabase
     url: /main-concepts/metadata-standard/schemas/api/data/createdatabase
   - category: Main Concepts / Metadata Standard / Schemas / Api / Data / CreateDatabaseSchema
@@ -632,22 +676,36 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/api/data/createglossary
   - category: Main Concepts / Metadata Standard / Schemas / Api / Data / CreateGlossaryTerm
     url: /main-concepts/metadata-standard/schemas/api/data/createglossaryterm
-  - category: Main Concepts / Metadata Standard / Schemas / Api / Data / CreateLocation
-    url: /main-concepts/metadata-standard/schemas/api/data/createlocation
   - category: Main Concepts / Metadata Standard / Schemas / Api / Data / CreateMlModel
     url: /main-concepts/metadata-standard/schemas/api/data/createmlmodel
   - category: Main Concepts / Metadata Standard / Schemas / Api / Data / CreatePipeline
     url: /main-concepts/metadata-standard/schemas/api/data/createpipeline
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Data / CreateQuery
+    url: /main-concepts/metadata-standard/schemas/api/data/createquery
   - category: Main Concepts / Metadata Standard / Schemas / Api / Data / CreateTable
     url: /main-concepts/metadata-standard/schemas/api/data/createtable
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Data / CreateTableProfile
+    url: /main-concepts/metadata-standard/schemas/api/data/createtableprofile
   - category: Main Concepts / Metadata Standard / Schemas / Api / Data / CreateTopic
     url: /main-concepts/metadata-standard/schemas/api/data/createtopic
   - category: Main Concepts / Metadata Standard / Schemas / Api / Data
     url: /main-concepts/metadata-standard/schemas/api/data
-  - category: Main Concepts / Metadata Standard / Schemas / Api / Events / CreateWebhook
-    url: /main-concepts/metadata-standard/schemas/api/events/createwebhook
-  - category: Main Concepts / Metadata Standard / Schemas / Api / Events
-    url: /main-concepts/metadata-standard/schemas/api/events
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Data / RestoreEntity
+    url: /main-concepts/metadata-standard/schemas/api/data/restoreentity
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Datainsight / CreateDataInsightChart
+    url: /main-concepts/metadata-standard/schemas/api/datainsight/createdatainsightchart
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Datainsight
+    url: /main-concepts/metadata-standard/schemas/api/datainsight
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Datainsight / Kpi / CreateKpiRequest
+    url: /main-concepts/metadata-standard/schemas/api/datainsight/kpi/createkpirequest
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Datainsight / Kpi
+    url: /main-concepts/metadata-standard/schemas/api/datainsight/kpi
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Domains / CreateDataProduct
+    url: /main-concepts/metadata-standard/schemas/api/domains/createdataproduct
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Domains / CreateDomain
+    url: /main-concepts/metadata-standard/schemas/api/domains/createdomain
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Domains
+    url: /main-concepts/metadata-standard/schemas/api/domains
   - category: Main Concepts / Metadata Standard / Schemas / Api / Feed / CloseTask
     url: /main-concepts/metadata-standard/schemas/api/feed/closetask
   - category: Main Concepts / Metadata Standard / Schemas / Api / Feed / CreatePost
@@ -666,6 +724,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/api/lineage/addlineage
   - category: Main Concepts / Metadata Standard / Schemas / Api / Lineage
     url: /main-concepts/metadata-standard/schemas/api/lineage
+  - category: Main Concepts / Metadata Standard / Schemas / Api / OpenMetadataServerVersion
+    url: /main-concepts/metadata-standard/schemas/api/openmetadataserverversion
   - category: Main Concepts / Metadata Standard / Schemas / Api / Policies / CreatePolicy
     url: /main-concepts/metadata-standard/schemas/api/policies/createpolicy
   - category: Main Concepts / Metadata Standard / Schemas / Api / Policies
@@ -676,6 +736,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/api/services/createdatabaseservice
   - category: Main Concepts / Metadata Standard / Schemas / Api / Services / CreateMessagingService
     url: /main-concepts/metadata-standard/schemas/api/services/createmessagingservice
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Services / CreateMetadataService
+    url: /main-concepts/metadata-standard/schemas/api/services/createmetadataservice
   - category: Main Concepts / Metadata Standard / Schemas / Api / Services / CreateMlModelService
     url: /main-concepts/metadata-standard/schemas/api/services/createmlmodelservice
   - category: Main Concepts / Metadata Standard / Schemas / Api / Services / CreatePipelineService
@@ -688,16 +750,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/api/services/ingestionpipelines/createingestionpipeline
   - category: Main Concepts / Metadata Standard / Schemas / Api / Services / Ingestionpipelines
     url: /main-concepts/metadata-standard/schemas/api/services/ingestionpipelines
-  - category: Main Concepts / Metadata Standard / Schemas / Api / Services / Ingestionpipelines / TestServiceConnection
-    url: /main-concepts/metadata-standard/schemas/api/services/ingestionpipelines/testserviceconnection
   - category: Main Concepts / Metadata Standard / Schemas / Api / SetOwner
     url: /main-concepts/metadata-standard/schemas/api/setowner
-  - category: Main Concepts / Metadata Standard / Schemas / Api / Tags / CreateTag
-    url: /main-concepts/metadata-standard/schemas/api/tags/createtag
-  - category: Main Concepts / Metadata Standard / Schemas / Api / Tags / CreateTagCategory
-    url: /main-concepts/metadata-standard/schemas/api/tags/createtagcategory
-  - category: Main Concepts / Metadata Standard / Schemas / Api / Tags
-    url: /main-concepts/metadata-standard/schemas/api/tags
   - category: Main Concepts / Metadata Standard / Schemas / Api / Teams / CreateRole
     url: /main-concepts/metadata-standard/schemas/api/teams/createrole
   - category: Main Concepts / Metadata Standard / Schemas / Api / Teams / CreateTeam
@@ -706,20 +760,166 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/api/teams/createuser
   - category: Main Concepts / Metadata Standard / Schemas / Api / Teams
     url: /main-concepts/metadata-standard/schemas/api/teams
-  - category: Main Concepts / Metadata Standard / Schemas / Api / Tests / CreateColumnTest
-    url: /main-concepts/metadata-standard/schemas/api/tests/createcolumntest
   - category: Main Concepts / Metadata Standard / Schemas / Api / Tests / CreateCustomMetric
     url: /main-concepts/metadata-standard/schemas/api/tests/createcustommetric
-  - category: Main Concepts / Metadata Standard / Schemas / Api / Tests / CreateTableTest
-    url: /main-concepts/metadata-standard/schemas/api/tests/createtabletest
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Tests / CreateLogicalTestCases
+    url: /main-concepts/metadata-standard/schemas/api/tests/createlogicaltestcases
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Tests / CreateTestCase
+    url: /main-concepts/metadata-standard/schemas/api/tests/createtestcase
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Tests / CreateTestDefinition
+    url: /main-concepts/metadata-standard/schemas/api/tests/createtestdefinition
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Tests / CreateTestSuite
+    url: /main-concepts/metadata-standard/schemas/api/tests/createtestsuite
   - category: Main Concepts / Metadata Standard / Schemas / Api / Tests
     url: /main-concepts/metadata-standard/schemas/api/tests
+  - category: Main Concepts / Metadata Standard / Schemas / Api / VoteRequest
+    url: /main-concepts/metadata-standard/schemas/api/voterequest
+  - category: Main Concepts / Metadata Standard / Schemas / Auth / BasicAuth
+    url: /main-concepts/metadata-standard/schemas/auth/basicauth
+  - category: Main Concepts / Metadata Standard / Schemas / Auth / BasicLoginRequest
+    url: /main-concepts/metadata-standard/schemas/auth/basicloginrequest
+  - category: Main Concepts / Metadata Standard / Schemas / Auth / ChangePasswordRequest
+    url: /main-concepts/metadata-standard/schemas/auth/changepasswordrequest
+  - category: Main Concepts / Metadata Standard / Schemas / Auth / CreatePersonalToken
+    url: /main-concepts/metadata-standard/schemas/auth/createpersonaltoken
+  - category: Main Concepts / Metadata Standard / Schemas / Auth / EmailRequest
+    url: /main-concepts/metadata-standard/schemas/auth/emailrequest
+  - category: Main Concepts / Metadata Standard / Schemas / Auth / EmailVerificationToken
+    url: /main-concepts/metadata-standard/schemas/auth/emailverificationtoken
+  - category: Main Concepts / Metadata Standard / Schemas / Auth / GenerateToken
+    url: /main-concepts/metadata-standard/schemas/auth/generatetoken
+  - category: Main Concepts / Metadata Standard / Schemas / Auth
+    url: /main-concepts/metadata-standard/schemas/auth
+  - category: Main Concepts / Metadata Standard / Schemas / Auth / JwtAuth
+    url: /main-concepts/metadata-standard/schemas/auth/jwtauth
+  - category: Main Concepts / Metadata Standard / Schemas / Auth / LoginRequest
+    url: /main-concepts/metadata-standard/schemas/auth/loginrequest
+  - category: Main Concepts / Metadata Standard / Schemas / Auth / LogoutRequest
+    url: /main-concepts/metadata-standard/schemas/auth/logoutrequest
+  - category: Main Concepts / Metadata Standard / Schemas / Auth / PasswordResetRequest
+    url: /main-concepts/metadata-standard/schemas/auth/passwordresetrequest
+  - category: Main Concepts / Metadata Standard / Schemas / Auth / PasswordResetToken
+    url: /main-concepts/metadata-standard/schemas/auth/passwordresettoken
+  - category: Main Concepts / Metadata Standard / Schemas / Auth / PersonalAccessToken
+    url: /main-concepts/metadata-standard/schemas/auth/personalaccesstoken
+  - category: Main Concepts / Metadata Standard / Schemas / Auth / RefreshToken
+    url: /main-concepts/metadata-standard/schemas/auth/refreshtoken
+  - category: Main Concepts / Metadata Standard / Schemas / Auth / RegistrationRequest
+    url: /main-concepts/metadata-standard/schemas/auth/registrationrequest
+  - category: Main Concepts / Metadata Standard / Schemas / Auth / RevokePersonalToken
+    url: /main-concepts/metadata-standard/schemas/auth/revokepersonaltoken
+  - category: Main Concepts / Metadata Standard / Schemas / Auth / RevokeToken
+    url: /main-concepts/metadata-standard/schemas/auth/revoketoken
+  - category: Main Concepts / Metadata Standard / Schemas / Auth / ServiceTokenEnum
+    url: /main-concepts/metadata-standard/schemas/auth/servicetokenenum
+  - category: Main Concepts / Metadata Standard / Schemas / Auth / SsoAuth
+    url: /main-concepts/metadata-standard/schemas/auth/ssoauth
+  - category: Main Concepts / Metadata Standard / Schemas / Auth / TokenRefreshRequest
+    url: /main-concepts/metadata-standard/schemas/auth/tokenrefreshrequest
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration / ApplicationConfiguration
+    url: /main-concepts/metadata-standard/schemas/configuration/applicationconfiguration
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration / AuthConfig
+    url: /main-concepts/metadata-standard/schemas/configuration/authconfig
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration / AuthenticationConfiguration
+    url: /main-concepts/metadata-standard/schemas/configuration/authenticationconfiguration
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration / AuthorizerConfiguration
+    url: /main-concepts/metadata-standard/schemas/configuration/authorizerconfiguration
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration / ChangeEventConfiguration
+    url: /main-concepts/metadata-standard/schemas/configuration/changeeventconfiguration
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration / ElasticSearchConfiguration
+    url: /main-concepts/metadata-standard/schemas/configuration/elasticsearchconfiguration
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration / EventHandlerConfiguration
+    url: /main-concepts/metadata-standard/schemas/configuration/eventhandlerconfiguration
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration / ExtensionConfiguration
+    url: /main-concepts/metadata-standard/schemas/configuration/extensionconfiguration
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration / FernetConfiguration
+    url: /main-concepts/metadata-standard/schemas/configuration/fernetconfiguration
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration
+    url: /main-concepts/metadata-standard/schemas/configuration
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration / JwtTokenConfiguration
+    url: /main-concepts/metadata-standard/schemas/configuration/jwttokenconfiguration
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration / KafkaEventConfiguration
+    url: /main-concepts/metadata-standard/schemas/configuration/kafkaeventconfiguration
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration / LdapConfiguration
+    url: /main-concepts/metadata-standard/schemas/configuration/ldapconfiguration
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration / Ldaptruststoreconfig / CustomTrustManagerConfig
+    url: /main-concepts/metadata-standard/schemas/configuration/ldaptruststoreconfig/customtrustmanagerconfig
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration / Ldaptruststoreconfig / HostNameConfig
+    url: /main-concepts/metadata-standard/schemas/configuration/ldaptruststoreconfig/hostnameconfig
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration / Ldaptruststoreconfig
+    url: /main-concepts/metadata-standard/schemas/configuration/ldaptruststoreconfig
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration / Ldaptruststoreconfig / JvmDefaultConfig
+    url: /main-concepts/metadata-standard/schemas/configuration/ldaptruststoreconfig/jvmdefaultconfig
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration / Ldaptruststoreconfig / TrustAllConfig
+    url: /main-concepts/metadata-standard/schemas/configuration/ldaptruststoreconfig/trustallconfig
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration / Ldaptruststoreconfig / TruststoreConfig
+    url: /main-concepts/metadata-standard/schemas/configuration/ldaptruststoreconfig/truststoreconfig
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration / PipelineServiceClientConfiguration
+    url: /main-concepts/metadata-standard/schemas/configuration/pipelineserviceclientconfiguration
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration / SlackAppConfiguration
+    url: /main-concepts/metadata-standard/schemas/configuration/slackappconfiguration
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration / TaskNotificationConfiguration
+    url: /main-concepts/metadata-standard/schemas/configuration/tasknotificationconfiguration
+  - category: Main Concepts / Metadata Standard / Schemas / Configuration / TestResultNotificationConfiguration
+    url: /main-concepts/metadata-standard/schemas/configuration/testresultnotificationconfiguration
+  - category: Main Concepts / Metadata Standard / Schemas / Datainsight / DataInsightChart
+    url: /main-concepts/metadata-standard/schemas/datainsight/datainsightchart
+  - category: Main Concepts / Metadata Standard / Schemas / Datainsight / DataInsightChartResult
+    url: /main-concepts/metadata-standard/schemas/datainsight/datainsightchartresult
+  - category: Main Concepts / Metadata Standard / Schemas / Datainsight
+    url: /main-concepts/metadata-standard/schemas/datainsight
+  - category: Main Concepts / Metadata Standard / Schemas / Datainsight / Kpi / Basic
+    url: /main-concepts/metadata-standard/schemas/datainsight/kpi/basic
+  - category: Main Concepts / Metadata Standard / Schemas / Datainsight / Kpi
+    url: /main-concepts/metadata-standard/schemas/datainsight/kpi
+  - category: Main Concepts / Metadata Standard / Schemas / Datainsight / Kpi / Kpi
+    url: /main-concepts/metadata-standard/schemas/datainsight/kpi/kpi
+  - category: Main Concepts / Metadata Standard / Schemas / Datainsight / Type / DailyActiveUsers
+    url: /main-concepts/metadata-standard/schemas/datainsight/type/dailyactiveusers
+  - category: Main Concepts / Metadata Standard / Schemas / Datainsight / Type
+    url: /main-concepts/metadata-standard/schemas/datainsight/type
+  - category: Main Concepts / Metadata Standard / Schemas / Datainsight / Type / MostActiveUsers
+    url: /main-concepts/metadata-standard/schemas/datainsight/type/mostactiveusers
+  - category: Main Concepts / Metadata Standard / Schemas / Datainsight / Type / MostViewedEntities
+    url: /main-concepts/metadata-standard/schemas/datainsight/type/mostviewedentities
+  - category: Main Concepts / Metadata Standard / Schemas / Datainsight / Type / PageViewsByEntities
+    url: /main-concepts/metadata-standard/schemas/datainsight/type/pageviewsbyentities
+  - category: Main Concepts / Metadata Standard / Schemas / Datainsight / Type / PercentageOfEntitiesWithDescriptionByType
+    url: /main-concepts/metadata-standard/schemas/datainsight/type/percentageofentitieswithdescriptionbytype
+  - category: Main Concepts / Metadata Standard / Schemas / Datainsight / Type / PercentageOfEntitiesWithOwnerByType
+    url: /main-concepts/metadata-standard/schemas/datainsight/type/percentageofentitieswithownerbytype
+  - category: Main Concepts / Metadata Standard / Schemas / Datainsight / Type / TotalEntitiesByTier
+    url: /main-concepts/metadata-standard/schemas/datainsight/type/totalentitiesbytier
+  - category: Main Concepts / Metadata Standard / Schemas / Datainsight / Type / TotalEntitiesByType
+    url: /main-concepts/metadata-standard/schemas/datainsight/type/totalentitiesbytype
+  - category: Main Concepts / Metadata Standard / Schemas / Email / EmailRequest
+    url: /main-concepts/metadata-standard/schemas/email/emailrequest
+  - category: Main Concepts / Metadata Standard / Schemas / Email
+    url: /main-concepts/metadata-standard/schemas/email
+  - category: Main Concepts / Metadata Standard / Schemas / Email / SmtpSettings
+    url: /main-concepts/metadata-standard/schemas/email/smtpsettings
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Automations
+    url: /main-concepts/metadata-standard/schemas/entity/automations
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Automations / TestServiceConnection
+    url: /main-concepts/metadata-standard/schemas/entity/automations/testserviceconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Automations / Workflow
+    url: /main-concepts/metadata-standard/schemas/entity/automations/workflow
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Bot
     url: /main-concepts/metadata-standard/schemas/entity/bot
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Classification / Classification
+    url: /main-concepts/metadata-standard/schemas/entity/classification/classification
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Classification
+    url: /main-concepts/metadata-standard/schemas/entity/classification
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Classification / Tag
+    url: /main-concepts/metadata-standard/schemas/entity/classification/tag
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Data / Chart
     url: /main-concepts/metadata-standard/schemas/entity/data/chart
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Data / Container
+    url: /main-concepts/metadata-standard/schemas/entity/data/container
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Data / Dashboard
     url: /main-concepts/metadata-standard/schemas/entity/data/dashboard
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Data / DashboardDataModel
+    url: /main-concepts/metadata-standard/schemas/entity/data/dashboarddatamodel
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Data / Database
     url: /main-concepts/metadata-standard/schemas/entity/data/database
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Data / DatabaseSchema
@@ -730,14 +930,14 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/data/glossaryterm
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Data
     url: /main-concepts/metadata-standard/schemas/entity/data
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Data / Location
-    url: /main-concepts/metadata-standard/schemas/entity/data/location
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Data / Metrics
     url: /main-concepts/metadata-standard/schemas/entity/data/metrics
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Data / Mlmodel
     url: /main-concepts/metadata-standard/schemas/entity/data/mlmodel
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Data / Pipeline
     url: /main-concepts/metadata-standard/schemas/entity/data/pipeline
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Data / Query
+    url: /main-concepts/metadata-standard/schemas/entity/data/query
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Data / Report
     url: /main-concepts/metadata-standard/schemas/entity/data/report
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Data / Table
@@ -756,24 +956,24 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Policies / Accesscontrol
     url: /main-concepts/metadata-standard/schemas/entity/policies/accesscontrol
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Policies / Accesscontrol / ResourceDescriptor
+    url: /main-concepts/metadata-standard/schemas/entity/policies/accesscontrol/resourcedescriptor
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Policies / Accesscontrol / ResourcePermission
+    url: /main-concepts/metadata-standard/schemas/entity/policies/accesscontrol/resourcepermission
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Policies / Accesscontrol / Rule
     url: /main-concepts/metadata-standard/schemas/entity/policies/accesscontrol/rule
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Policies / Filters
     url: /main-concepts/metadata-standard/schemas/entity/policies/filters
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Policies
     url: /main-concepts/metadata-standard/schemas/entity/policies
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Policies / Lifecycle / DeleteAction
-    url: /main-concepts/metadata-standard/schemas/entity/policies/lifecycle/deleteaction
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Policies / Lifecycle
-    url: /main-concepts/metadata-standard/schemas/entity/policies/lifecycle
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Policies / Lifecycle / MoveAction
-    url: /main-concepts/metadata-standard/schemas/entity/policies/lifecycle/moveaction
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Policies / Lifecycle / Rule
-    url: /main-concepts/metadata-standard/schemas/entity/policies/lifecycle/rule
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Policies / Policy
     url: /main-concepts/metadata-standard/schemas/entity/policies/policy
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / ConnectionBasicType
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/connectionbasictype
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Dashboard / CustomDashboardConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/customdashboardconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Dashboard / DomoDashboardConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/domodashboardconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Dashboard
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Dashboard / LookerConnection
@@ -784,6 +984,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/modeconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Dashboard / PowerBIConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/powerbiconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Dashboard / QuickSightConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/quicksightconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Dashboard / RedashConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/redashconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Dashboard / SupersetConnection
@@ -798,14 +1000,32 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/bigqueryconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / ClickhouseConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/clickhouseconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / Common / BasicAuth
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/common/basicauth
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / Common / IamAuthConfig
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/common/iamauthconfig
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / Common
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/common
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / CustomDatabaseConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/customdatabaseconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / DatabricksConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/databricksconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / Datalake / AzureConfig
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/datalake/azureconfig
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / Datalake / GcsConfig
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/datalake/gcsconfig
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / Datalake
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/datalake
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / Datalake / S3Config
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/datalake/s3config
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / DatalakeConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/datalakeconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / Db2Connection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/db2connection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / DeltaLakeConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/deltalakeconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / DomoDatabaseConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/domodatabaseconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / DruidConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/druidconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / DynamoDBConnection
@@ -814,10 +1034,18 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/glueconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / HiveConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/hiveconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / ImpalaConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/impalaconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / MariaDBConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/mariadbconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / Mongodb
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/mongodb
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / Mongodb / MongoDBValues
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/mongodb/mongodbvalues
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / MongoDBConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/mongodbconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / MssqlConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/mssqlconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / MysqlConnection
@@ -834,8 +1062,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/redshiftconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / SalesforceConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/salesforceconnection
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / SampleDataConnection
-    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/sampledataconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / SapHanaConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/saphanaconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / SingleStoreConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/singlestoreconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / SnowflakeConnection
@@ -848,24 +1076,38 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/verticaconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections
     url: /main-concepts/metadata-standard/schemas/entity/services/connections
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Messaging / CustomMessagingConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/messaging/custommessagingconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Messaging
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/messaging
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Messaging / KafkaConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/messaging/kafkaconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Messaging / KinesisConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/messaging/kinesisconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Messaging / PulsarConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/messaging/pulsarconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Messaging / RedpandaConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/messaging/redpandaconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Messaging / SaslMechanismType
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/messaging/saslmechanismtype
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Metadata / AmundsenConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/metadata/amundsenconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Metadata / AtlasConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/metadata/atlasconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Metadata
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/metadata
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Metadata / MetadataESConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/metadata/metadataesconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Metadata / OpenMetadataConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/metadata/openmetadataconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Mlmodel / CustomMlModelConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/mlmodel/custommlmodelconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Mlmodel
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/mlmodel
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Mlmodel / MlflowConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/mlmodel/mlflowconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Mlmodel / SageMakerConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/mlmodel/sagemakerconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Mlmodel / SklearnConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/mlmodel/sklearnconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / AirbyteConnection
@@ -874,12 +1116,40 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/airflowconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / BackendConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/backendconnection
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / GlueConnection
-    url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/glueconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / CustomPipelineConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/custompipelineconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / DagsterConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/dagsterconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / DatabricksPipelineConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/databrickspipelineconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / DomoPipelineConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/domopipelineconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / FivetranConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/fivetranconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / GluePipelineConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/gluepipelineconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / NifiConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/nificonnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / SplineConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/splineconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / ServiceConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/serviceconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Storage / AdlsConection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/storage/adlsconection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Storage / CustomStorageConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/storage/customstorageconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Storage / GcsConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/storage/gcsconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Storage
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/storage
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Storage / S3Connection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/storage/s3connection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / TestConnectionDefinition
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/testconnectiondefinition
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / TestConnectionResult
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/testconnectionresult
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / DashboardService
     url: /main-concepts/metadata-standard/schemas/entity/services/dashboardservice
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / DatabaseService
@@ -898,48 +1168,102 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/mlmodelservice
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / PipelineService
     url: /main-concepts/metadata-standard/schemas/entity/services/pipelineservice
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / ServiceType
+    url: /main-concepts/metadata-standard/schemas/entity/services/servicetype
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / StorageService
     url: /main-concepts/metadata-standard/schemas/entity/services/storageservice
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Tags
-    url: /main-concepts/metadata-standard/schemas/entity/tags
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Tags / Classification
-    url: /main-concepts/metadata-standard/schemas/entity/classification/classification
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Teams / Authn / GenerateToken
-    url: /main-concepts/metadata-standard/schemas/entity/teams/authn/generatetoken
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Teams / Authn
-    url: /main-concepts/metadata-standard/schemas/entity/teams/authn
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Teams / Authn / JwtAuth
-    url: /main-concepts/metadata-standard/schemas/entity/teams/authn/jwtauth
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Teams / Authn / SsoAuth
-    url: /main-concepts/metadata-standard/schemas/entity/teams/authn/ssoauth
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Teams
     url: /main-concepts/metadata-standard/schemas/entity/teams
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Teams / Role
     url: /main-concepts/metadata-standard/schemas/entity/teams/role
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Teams / Team
     url: /main-concepts/metadata-standard/schemas/entity/teams/team
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Teams / TeamHierarchy
+    url: /main-concepts/metadata-standard/schemas/entity/teams/teamhierarchy
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Teams / User
     url: /main-concepts/metadata-standard/schemas/entity/teams/user
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Type
     url: /main-concepts/metadata-standard/schemas/entity/type
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Utils / EntitiesCount
+    url: /main-concepts/metadata-standard/schemas/entity/utils/entitiescount
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Utils
+    url: /main-concepts/metadata-standard/schemas/entity/utils
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Utils / ServicesCount
+    url: /main-concepts/metadata-standard/schemas/entity/utils/servicescount
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Utils / SupersetApiConnection
+    url: /main-concepts/metadata-standard/schemas/entity/utils/supersetapiconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Events / Api / CreateEventSubscription
+    url: /main-concepts/metadata-standard/schemas/events/api/createeventsubscription
+  - category: Main Concepts / Metadata Standard / Schemas / Events / Api
+    url: /main-concepts/metadata-standard/schemas/events/api
+  - category: Main Concepts / Metadata Standard / Schemas / Events / DataInsightAlertConfig
+    url: /main-concepts/metadata-standard/schemas/events/datainsightalertconfig
+  - category: Main Concepts / Metadata Standard / Schemas / Events / EmailAlertConfig
+    url: /main-concepts/metadata-standard/schemas/events/emailalertconfig
+  - category: Main Concepts / Metadata Standard / Schemas / Events / EntitySpelFilters
+    url: /main-concepts/metadata-standard/schemas/events/entityspelfilters
+  - category: Main Concepts / Metadata Standard / Schemas / Events / EventFilterRule
+    url: /main-concepts/metadata-standard/schemas/events/eventfilterrule
+  - category: Main Concepts / Metadata Standard / Schemas / Events / EventSubscription
+    url: /main-concepts/metadata-standard/schemas/events/eventsubscription
+  - category: Main Concepts / Metadata Standard / Schemas / Events
+    url: /main-concepts/metadata-standard/schemas/events
+  - category: Main Concepts / Metadata Standard / Schemas / Events / SubscriptionResourceDescriptor
+    url: /main-concepts/metadata-standard/schemas/events/subscriptionresourcedescriptor
   - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / DashboardServiceMetadataPipeline
     url: /main-concepts/metadata-standard/schemas/metadataingestion/dashboardservicemetadatapipeline
+  - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / DataInsightPipeline
+    url: /main-concepts/metadata-standard/schemas/metadataingestion/datainsightpipeline
   - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / DatabaseServiceMetadataPipeline
     url: /main-concepts/metadata-standard/schemas/metadataingestion/databaseservicemetadatapipeline
   - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / DatabaseServiceProfilerPipeline
     url: /main-concepts/metadata-standard/schemas/metadataingestion/databaseserviceprofilerpipeline
+  - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / DatabaseServiceQueryLineagePipeline
+    url: /main-concepts/metadata-standard/schemas/metadataingestion/databaseservicequerylineagepipeline
   - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / DatabaseServiceQueryUsagePipeline
     url: /main-concepts/metadata-standard/schemas/metadataingestion/databaseservicequeryusagepipeline
+  - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / DbtPipeline
+    url: /main-concepts/metadata-standard/schemas/metadataingestion/dbtpipeline
+  - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / Dbtconfig / DbtAzureConfig
+    url: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtazureconfig
+  - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / Dbtconfig / DbtBucketDetails
+    url: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtbucketdetails
+  - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / Dbtconfig / DbtCloudConfig
+    url: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtcloudconfig
+  - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / Dbtconfig / DbtGCSConfig
+    url: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtgcsconfig
+  - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / Dbtconfig / DbtHttpConfig
+    url: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbthttpconfig
+  - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / Dbtconfig / DbtLocalConfig
+    url: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtlocalconfig
+  - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / Dbtconfig / DbtS3Config
+    url: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbts3config
+  - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / Dbtconfig
+    url: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig
   - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion
     url: /main-concepts/metadata-standard/schemas/metadataingestion
   - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / MessagingServiceMetadataPipeline
     url: /main-concepts/metadata-standard/schemas/metadataingestion/messagingservicemetadatapipeline
+  - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / MetadataToElasticSearchPipeline
+    url: /main-concepts/metadata-standard/schemas/metadataingestion/metadatatoelasticsearchpipeline
   - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / MlmodelServiceMetadataPipeline
     url: /main-concepts/metadata-standard/schemas/metadataingestion/mlmodelservicemetadatapipeline
   - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / PipelineServiceMetadataPipeline
     url: /main-concepts/metadata-standard/schemas/metadataingestion/pipelineservicemetadatapipeline
+  - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / Storage / ContainerMetadataConfig
+    url: /main-concepts/metadata-standard/schemas/metadataingestion/storage/containermetadataconfig
+  - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / Storage
+    url: /main-concepts/metadata-standard/schemas/metadataingestion/storage
+  - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / StorageServiceMetadataPipeline
+    url: /main-concepts/metadata-standard/schemas/metadataingestion/storageservicemetadatapipeline
+  - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / TestSuitePipeline
+    url: /main-concepts/metadata-standard/schemas/metadataingestion/testsuitepipeline
   - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / Workflow
     url: /main-concepts/metadata-standard/schemas/metadataingestion/workflow
+  - category: Main Concepts / Metadata Standard / Schemas / Monitoring / EventMonitorProvider
+    url: /main-concepts/metadata-standard/schemas/monitoring/eventmonitorprovider
+  - category: Main Concepts / Metadata Standard / Schemas / Monitoring
+    url: /main-concepts/metadata-standard/schemas/monitoring
   - category: Main Concepts / Metadata Standard / Schemas / Security / Client / Auth0SSOClientConfig
     url: /main-concepts/metadata-standard/schemas/security/client/auth0ssoclientconfig
   - category: Main Concepts / Metadata Standard / Schemas / Security / Client / AzureSSOClientConfig
@@ -954,72 +1278,66 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/security/client/oktassoclientconfig
   - category: Main Concepts / Metadata Standard / Schemas / Security / Client / OpenMetadataJWTClientConfig
     url: /main-concepts/metadata-standard/schemas/security/client/openmetadatajwtclientconfig
-  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / AWSCredentials
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Client / SamlSSOClientConfig
+    url: /main-concepts/metadata-standard/schemas/security/client/samlssoclientconfig
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / AccessTokenAuth
+    url: /main-concepts/metadata-standard/schemas/security/credentials/accesstokenauth
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / AwsCredentials
     url: /main-concepts/metadata-standard/schemas/security/credentials/awscredentials
-  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / GcsCredentials
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / AzureCredentials
+    url: /main-concepts/metadata-standard/schemas/security/credentials/azurecredentials
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / BasicAuth
+    url: /main-concepts/metadata-standard/schemas/security/credentials/basicauth
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / BitbucketCredentials
+    url: /main-concepts/metadata-standard/schemas/security/credentials/bitbucketcredentials
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / GcpCredentials
     url: /main-concepts/metadata-standard/schemas/security/credentials/gcpcredentials
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / GcpValues
+    url: /main-concepts/metadata-standard/schemas/security/credentials/gcpvalues
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / GitCredentials
+    url: /main-concepts/metadata-standard/schemas/security/credentials/gitcredentials
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / GithubCredentials
+    url: /main-concepts/metadata-standard/schemas/security/credentials/githubcredentials
   - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials
     url: /main-concepts/metadata-standard/schemas/security/credentials
   - category: Main Concepts / Metadata Standard / Schemas / Security
     url: /main-concepts/metadata-standard/schemas/security
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Secrets
+    url: /main-concepts/metadata-standard/schemas/security/secrets
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Secrets / SecretsManagerClientLoader
+    url: /main-concepts/metadata-standard/schemas/security/secrets/secretsmanagerclientloader
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Secrets / SecretsManagerConfiguration
+    url: /main-concepts/metadata-standard/schemas/security/secrets/secretsmanagerconfiguration
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Secrets / SecretsManagerProvider
+    url: /main-concepts/metadata-standard/schemas/security/secrets/secretsmanagerprovider
+  - category: Main Concepts / Metadata Standard / Schemas / Security / SecurityConfiguration
+    url: /main-concepts/metadata-standard/schemas/security/securityconfiguration
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Ssl
+    url: /main-concepts/metadata-standard/schemas/security/ssl
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Ssl / ValidateSSLClientConfig
+    url: /main-concepts/metadata-standard/schemas/security/ssl/validatesslclientconfig
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Ssl / VerifySSLConfig
+    url: /main-concepts/metadata-standard/schemas/security/ssl/verifysslconfig
+  - category: Main Concepts / Metadata Standard / Schemas / Settings
+    url: /main-concepts/metadata-standard/schemas/settings
+  - category: Main Concepts / Metadata Standard / Schemas / Settings / Settings
+    url: /main-concepts/metadata-standard/schemas/settings/settings
+  - category: Main Concepts / Metadata Standard / Schemas / System / EventPublisherJob
+    url: /main-concepts/metadata-standard/schemas/system/eventpublisherjob
+  - category: Main Concepts / Metadata Standard / Schemas / System
+    url: /main-concepts/metadata-standard/schemas/system
   - category: Main Concepts / Metadata Standard / Schemas / Tests / Basic
     url: /main-concepts/metadata-standard/schemas/tests/basic
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Column / ColumnValueMaxToBeBetween
-    url: /main-concepts/metadata-standard/schemas/tests/column/columnvaluemaxtobebetween
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Column / ColumnValueMeanToBeBetween
-    url: /main-concepts/metadata-standard/schemas/tests/column/columnvaluemeantobebetween
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Column / ColumnValueMedianToBeBetween
-    url: /main-concepts/metadata-standard/schemas/tests/column/columnvaluemediantobebetween
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Column / ColumnValueMinToBeBetween
-    url: /main-concepts/metadata-standard/schemas/tests/column/columnvaluemintobebetween
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Column / ColumnValueStdDevToBeBetween
-    url: /main-concepts/metadata-standard/schemas/tests/column/columnvaluestddevtobebetween
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Column / ColumnValuesLengthsToBeBetween
-    url: /main-concepts/metadata-standard/schemas/tests/column/columnvalueslengthstobebetween
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Column / ColumnValuesMissingCountToBeEqual
-    url: /main-concepts/metadata-standard/schemas/tests/column/columnvaluesmissingcounttobeequal
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Column / ColumnValuesSumToBeBetween
-    url: /main-concepts/metadata-standard/schemas/tests/column/columnvaluessumtobebetween
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Column / ColumnValuesToBeBetween
-    url: /main-concepts/metadata-standard/schemas/tests/column/columnvaluestobebetween
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Column / ColumnValuesToBeInSet
-    url: /main-concepts/metadata-standard/schemas/tests/column/columnvaluestobeinset
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Column / ColumnValuesToBeNotInSet
-    url: /main-concepts/metadata-standard/schemas/tests/column/columnvaluestobenotinset
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Column / ColumnValuesToBeNotNull
-    url: /main-concepts/metadata-standard/schemas/tests/column/columnvaluestobenotnull
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Column / ColumnValuesToBeUnique
-    url: /main-concepts/metadata-standard/schemas/tests/column/columnvaluestobeunique
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Column / ColumnValuesToMatchRegex
-    url: /main-concepts/metadata-standard/schemas/tests/column/columnvaluestomatchregex
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Column / ColumnValuesToNotMatchRegex
-    url: /main-concepts/metadata-standard/schemas/tests/column/columnvaluestonotmatchregex
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Column
-    url: /main-concepts/metadata-standard/schemas/tests/column
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / ColumnTest
-    url: /main-concepts/metadata-standard/schemas/tests/columntest
   - category: Main Concepts / Metadata Standard / Schemas / Tests / CustomMetric
     url: /main-concepts/metadata-standard/schemas/tests/custommetric
   - category: Main Concepts / Metadata Standard / Schemas / Tests
     url: /main-concepts/metadata-standard/schemas/tests
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Table
-    url: /main-concepts/metadata-standard/schemas/tests/table
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Table / TableColumnCountToBeBetween
-    url: /main-concepts/metadata-standard/schemas/tests/table/tablecolumncounttobebetween
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Table / TableColumnCountToEqual
-    url: /main-concepts/metadata-standard/schemas/tests/table/tablecolumncounttoequal
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Table / TableColumnNameToExist
-    url: /main-concepts/metadata-standard/schemas/tests/table/tablecolumnnametoexist
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Table / TableColumnToMatchSet
-    url: /main-concepts/metadata-standard/schemas/tests/table/tablecolumntomatchset
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Table / TableCustomSQLQuery
-    url: /main-concepts/metadata-standard/schemas/tests/table/tablecustomsqlquery
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Table / TableRowCountToBeBetween
-    url: /main-concepts/metadata-standard/schemas/tests/table/tablerowcounttobebetween
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / Table / TableRowCountToEqual
-    url: /main-concepts/metadata-standard/schemas/tests/table/tablerowcounttoequal
-  - category: Main Concepts / Metadata Standard / Schemas / Tests / TableTest
-    url: /main-concepts/metadata-standard/schemas/tests/tabletest
+  - category: Main Concepts / Metadata Standard / Schemas / Tests / TestCase
+    url: /main-concepts/metadata-standard/schemas/tests/testcase
+  - category: Main Concepts / Metadata Standard / Schemas / Tests / TestDefinition
+    url: /main-concepts/metadata-standard/schemas/tests/testdefinition
+  - category: Main Concepts / Metadata Standard / Schemas / Tests / TestSuite
+    url: /main-concepts/metadata-standard/schemas/tests/testsuite
   - category: Main Concepts / Metadata Standard / Schemas / Type / AuditLog
     url: /main-concepts/metadata-standard/schemas/type/auditlog
   - category: Main Concepts / Metadata Standard / Schemas / Type / Basic
@@ -1028,20 +1346,34 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/type/changeevent
   - category: Main Concepts / Metadata Standard / Schemas / Type / CollectionDescriptor
     url: /main-concepts/metadata-standard/schemas/type/collectiondescriptor
+  - category: Main Concepts / Metadata Standard / Schemas / Type / CsvDocumentation
+    url: /main-concepts/metadata-standard/schemas/type/csvdocumentation
+  - category: Main Concepts / Metadata Standard / Schemas / Type / CsvErrorType
+    url: /main-concepts/metadata-standard/schemas/type/csverrortype
+  - category: Main Concepts / Metadata Standard / Schemas / Type / CsvFile
+    url: /main-concepts/metadata-standard/schemas/type/csvfile
+  - category: Main Concepts / Metadata Standard / Schemas / Type / CsvImportResult
+    url: /main-concepts/metadata-standard/schemas/type/csvimportresult
   - category: Main Concepts / Metadata Standard / Schemas / Type / DailyCount
     url: /main-concepts/metadata-standard/schemas/type/dailycount
+  - category: Main Concepts / Metadata Standard / Schemas / Type / DatabaseConnectionConfig
+    url: /main-concepts/metadata-standard/schemas/type/databaseconnectionconfig
   - category: Main Concepts / Metadata Standard / Schemas / Type / EntityHistory
     url: /main-concepts/metadata-standard/schemas/type/entityhistory
   - category: Main Concepts / Metadata Standard / Schemas / Type / EntityLineage
     url: /main-concepts/metadata-standard/schemas/type/entitylineage
   - category: Main Concepts / Metadata Standard / Schemas / Type / EntityReference
     url: /main-concepts/metadata-standard/schemas/type/entityreference
+  - category: Main Concepts / Metadata Standard / Schemas / Type / EntityReferenceList
+    url: /main-concepts/metadata-standard/schemas/type/entityreferencelist
   - category: Main Concepts / Metadata Standard / Schemas / Type / EntityRelationship
     url: /main-concepts/metadata-standard/schemas/type/entityrelationship
   - category: Main Concepts / Metadata Standard / Schemas / Type / EntityUsage
     url: /main-concepts/metadata-standard/schemas/type/entityusage
   - category: Main Concepts / Metadata Standard / Schemas / Type / FilterPattern
     url: /main-concepts/metadata-standard/schemas/type/filterpattern
+  - category: Main Concepts / Metadata Standard / Schemas / Type / Function
+    url: /main-concepts/metadata-standard/schemas/type/function
   - category: Main Concepts / Metadata Standard / Schemas / Type / Include
     url: /main-concepts/metadata-standard/schemas/type/include
   - category: Main Concepts / Metadata Standard / Schemas / Type
@@ -1058,8 +1390,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/type/reaction
   - category: Main Concepts / Metadata Standard / Schemas / Type / Schedule
     url: /main-concepts/metadata-standard/schemas/type/schedule
-  - category: Main Concepts / Metadata Standard / Schemas / Type / Storage
-    url: /main-concepts/metadata-standard/schemas/type/storage
+  - category: Main Concepts / Metadata Standard / Schemas / Type / Schema
+    url: /main-concepts/metadata-standard/schemas/type/schema
   - category: Main Concepts / Metadata Standard / Schemas / Type / TableQuery
     url: /main-concepts/metadata-standard/schemas/type/tablequery
   - category: Main Concepts / Metadata Standard / Schemas / Type / TableUsageCount
@@ -1070,6 +1402,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/type/usagedetails
   - category: Main Concepts / Metadata Standard / Schemas / Type / UsageRequest
     url: /main-concepts/metadata-standard/schemas/type/usagerequest
+  - category: Main Concepts / Metadata Standard / Schemas / Type / Votes
+    url: /main-concepts/metadata-standard/schemas/type/votes
 
   - category: Main Concepts / Metadata Standard / APIs
     url: /main-concepts/metadata-standard/apis

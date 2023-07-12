@@ -5,7 +5,7 @@ slug: /main-concepts/metadata-standard/schemas/type/entitylineage
 
 # Entity Lineage
 
-*This schema defines the type used for lineage of an entity.*
+*The `Lineage` for a given data asset, has information of the input datasets used and the ETL pipeline that created it.*
 
 ## Properties
 
@@ -28,6 +28,7 @@ slug: /main-concepts/metadata-standard/schemas/type/entitylineage
   - **`columnsLineage`** *(array)*: Lineage information of how upstream columns were combined to get downstream column.
     - **Items**: Refer to *#/definitions/columnLineage*.
   - **`pipeline`**: Pipeline where the sqlQuery is periodically run. Refer to *../type/entityReference.json*.
+  - **`description`** *(string)*: description of lineage.
 - **`edge`** *(object)*: Edge in the lineage graph from one entity to another by entity IDs. Cannot contain additional properties.
   - **`fromEntity`**: From entity that is upstream of lineage edge. Refer to *basic.json#/definitions/uuid*.
   - **`toEntity`**: To entity that is downstream of lineage edge. Refer to *basic.json#/definitions/uuid*.
@@ -40,4 +41,4 @@ slug: /main-concepts/metadata-standard/schemas/type/entitylineage
   - **`lineageDetails`**: Optional lineageDetails provided only for table to table lineage edge. Refer to *#/definitions/lineageDetails*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.
