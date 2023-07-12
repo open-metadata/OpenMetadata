@@ -82,7 +82,7 @@ WORKDIR /home/airflow/openmetadata-airflow-apis
 RUN pip install "."
 
 WORKDIR /home/airflow/ingestion
-ARG INGESTION_DEPENDENCY="all"
+ARG INGESTION_DEPENDENCY
 RUN pip install ".[${INGESTION_DEPENDENCY}]"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
