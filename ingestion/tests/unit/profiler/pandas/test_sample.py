@@ -26,7 +26,6 @@ from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
 )
 from metadata.profiler.metrics.registry import Metrics
-from metadata.profiler.orm.registry import CustomTypes
 from metadata.profiler.processor.core import Profiler
 from metadata.profiler.processor.sampler.pandas.sampler import DatalakeSampler
 
