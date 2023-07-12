@@ -10,24 +10,4 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import url('../../../styles/variables.less');
-
-.explore-search-card {
-  background-color: @white;
-  padding: 20px;
-  &.highlight-card {
-    border-left: 4px solid @info-color;
-    box-shadow: none;
-  }
-  .entity-summary-details {
-    font-size: 12px;
-  }
-
-  .max-two-lines {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-  }
-}
+declare module 'antlr4/src/antlr4/tree';
