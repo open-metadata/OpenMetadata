@@ -385,7 +385,7 @@ export const TaskTab = ({
                   {t('label.assignee-plural')}:{' '}
                 </Typography.Text>
                 <AssigneeList
-                  assignees={taskDetails?.assignees || []}
+                  assignees={taskDetails?.assignees ?? []}
                   className="d-flex gap-1"
                   profilePicType="circle"
                   profileWidth="24"
