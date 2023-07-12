@@ -221,7 +221,7 @@ class OMetaGlossaryTest(TestCase):
         """
         res: Glossary = self.metadata.create_or_update(self.create_glossary)
         self.assertIsNotNone(res)
-        self.assertEqual(self.create_glossary.name, res.name)
+        self.assertEqual(self.create_glossary.name, res.name.__root__)
         if self.glossary_entity_id is None:
             self.glossary_entity_id = res.id
 
@@ -237,9 +237,9 @@ class OMetaGlossaryTest(TestCase):
         # Create without parent
         res: GlossaryTerm = self.metadata.create_or_update(self.create_glossary_term_1)
         self.assertIsNotNone(res)
-        self.assertEqual(self.create_glossary_term_1.name, res.name)
+        self.assertEqual(self.create_glossary_term_1.name, res.name.__root__)
         self.assertEqual(
-            f"{self.create_glossary.name.__root__}.{res.name.__root__}",
+            f"{self.create_glossary.name}.{res.name.__root__}",
             res.fullyQualifiedName.__root__,
         )
 
@@ -249,7 +249,7 @@ class OMetaGlossaryTest(TestCase):
         self.create_glossary_term_2.parent = self.glossary_term_1.fullyQualifiedName
         res = self.metadata.create_or_update(self.create_glossary_term_2)
         self.assertIsNotNone(res)
-        self.assertEqual(self.create_glossary_term_2.name, res.name)
+        self.assertEqual(self.create_glossary_term_2.name, res.name.__root__)
         self.assertEqual(model_str(self.create_glossary_term_1.name), res.parent.name)
         if OMetaGlossaryTest.glossary_term_2 is None:
             OMetaGlossaryTest.glossary_term_2 = res
