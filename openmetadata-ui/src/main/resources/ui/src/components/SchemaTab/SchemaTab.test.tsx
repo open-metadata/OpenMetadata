@@ -69,8 +69,8 @@ jest.mock('../SampleDataTable/SampleDataTable.component', () => {
   return jest.fn().mockReturnValue(<p>SampleDataTable</p>);
 });
 
-jest.mock('../EntityTable/EntityTable.component', () => {
-  return jest.fn().mockReturnValue(<p>EntityTableV1</p>);
+jest.mock('../SchemaTable/SchemaTable.component', () => {
+  return jest.fn().mockReturnValue(<p>SchemaTable</p>);
 });
 
 const mockTableConstraints = [
@@ -112,7 +112,7 @@ describe('Test SchemaTab Component', () => {
 
     expect(searchBar).toBeInTheDocument();
 
-    const schemaTable = getByText(container, /EntityTable/i);
+    const schemaTable = getByText(container, /SchemaTable/i);
 
     expect(schemaTable).toBeInTheDocument();
     expect(queryByTestId('sample-data-table')).toBeNull();
