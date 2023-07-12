@@ -204,6 +204,9 @@ export const DataAssetsHeader = ({
     parentName: string,
     parents = [] as Container[]
   ) => {
+    if (isEmpty(parentName)) {
+      return;
+    }
     setIsBreadcrumbLoading(true);
     try {
       const response = await getContainerByName(parentName, 'parent');
@@ -230,7 +233,7 @@ export const DataAssetsHeader = ({
     }
     if (entityType === EntityType.CONTAINER) {
       const asset = dataAsset as Container;
-      fetchContainerParent(asset?.parent?.fullyQualifiedName ?? '');
+      fetchContainerParent(asset.parent?.fullyQualifiedName ?? '');
     }
   }, [dataAsset]);
 
