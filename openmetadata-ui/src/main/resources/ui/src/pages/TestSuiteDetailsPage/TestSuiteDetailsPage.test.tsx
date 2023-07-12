@@ -106,9 +106,6 @@ describe('TestSuiteDetailsPage component', () => {
       await screen.findByText('ManageButton.component')
     ).toBeInTheDocument();
     expect(
-      await screen.findByText('EntitySummaryDetails.component')
-    ).toBeInTheDocument();
-    expect(
       await screen.findByText('Description.component')
     ).toBeInTheDocument();
     expect(

@@ -30,7 +30,7 @@ import BrandImage from 'components/common/BrandImage/BrandImage';
 import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import WhatsNewAlert from 'components/Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component';
 import { CookieStorage } from 'cookie-storage';
-import { EntityTabs } from 'enums/entity.enum';
+import { EntityTabs, EntityType } from 'enums/entity.enum';
 import i18next from 'i18next';
 import { debounce, upperCase } from 'lodash';
 import React, {
@@ -218,7 +218,7 @@ const NavBar = ({
         });
 
         path = getEntityDetailLink(
-          entityType,
+          entityType as EntityType,
           entityFQN,
           EntityTabs.ACTIVITY_FEED,
           ActivityFeedTabs.TASKS
