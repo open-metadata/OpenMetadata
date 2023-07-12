@@ -27,10 +27,10 @@ import { AxiosError } from 'axios';
 import AirflowMessageBanner from 'components/common/AirflowMessageBanner/AirflowMessageBanner';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
-import EntitySummaryDetails from 'components/common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import ErrorPlaceHolderIngestion from 'components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import TestConnection from 'components/common/TestConnection/TestConnection';
@@ -55,7 +55,6 @@ import { Include } from 'generated/type/include';
 import { useAuth } from 'hooks/authHooks';
 import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
 import {
-  ExtraInfo,
   PagingWithoutTotal,
   ServicesUpdateRequest,
   ServiceTypes,
@@ -85,7 +84,6 @@ import { getTopics } from 'rest/topicsAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import {
   getServiceDetailsPath,
-  getTeamAndUserDetailsPath,
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE,
   pagingObject,
@@ -97,7 +95,6 @@ import {
 } from '../../constants/Services.constant';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
-import { OwnerType } from '../../enums/user.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Database } from '../../generated/entity/data/database';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
@@ -258,24 +255,6 @@ const ServicePage: FunctionComponent = () => {
     dataModelPaging,
     activeTab,
   ]);
-
-  const extraInfo: Array<ExtraInfo> = [
-    {
-      key: 'Owner',
-      value:
-        serviceDetails?.owner?.type === 'team'
-          ? getTeamAndUserDetailsPath(serviceDetails?.owner?.name || '')
-          : serviceDetails?.owner?.name || '',
-      placeholderText:
-        serviceDetails?.owner?.displayName || serviceDetails?.owner?.name || '',
-      isLink: serviceDetails?.owner?.type === 'team',
-      openInNewTab: false,
-      profileName:
-        serviceDetails?.owner?.type === OwnerType.USER
-          ? serviceDetails?.owner?.name
-          : undefined,
-    },
-  ];
 
   const isTestingDisabled = useMemo(
     () =>
@@ -1240,20 +1219,13 @@ const ServicePage: FunctionComponent = () => {
 
               <Col span={24}>
                 <Space>
-                  {extraInfo.map((info) => (
-                    <Space data-testid={info.key} key={info.id}>
-                      <EntitySummaryDetails
-                        currentOwner={serviceDetails?.owner}
-                        data={info}
-                        updateOwner={
-                          servicePermission.EditAll ||
-                          servicePermission.EditOwner
-                            ? handleUpdateOwner
-                            : undefined
-                        }
-                      />
-                    </Space>
-                  ))}
+                  <OwnerLabel
+                    hasPermission={
+                      servicePermission.EditAll || servicePermission.EditOwner
+                    }
+                    owner={serviceDetails?.owner}
+                    onUpdate={handleUpdateOwner}
+                  />
                 </Space>
               </Col>
               <Col data-testid="description-container" span={24}>
