@@ -204,7 +204,6 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     () =>
       showLimited ? (
         <TagsViewer
-          isTextPlaceholder
           showNoDataPlaceholder={showNoDataPlaceholder}
           tags={selectedTags}
           type="border"

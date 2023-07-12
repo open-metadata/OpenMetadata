@@ -18,7 +18,6 @@ import { TAG_START_WITH } from 'constants/Tag.constants';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { FunctionComponent, useCallback, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { TagsViewerProps } from './tags-viewer.interface';
@@ -28,10 +27,8 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   tags,
   sizeCap = LIST_SIZE,
   type = 'label',
-  isTextPlaceholder,
   showNoDataPlaceholder = true,
 }: TagsViewerProps) => {
-  const { t } = useTranslation();
   const tagChipStye = {
     margin: '0 0 8px 0',
     justifyContent: 'start',
@@ -65,11 +62,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
     <Space wrap size={4}>
       {isEmpty(sortedTagsBySource) && showNoDataPlaceholder ? (
         <Typography.Text className="text-grey-muted m-r-xss">
-          {isTextPlaceholder
-            ? t('label.no-entity', {
-                entity: t('label.tag-plural'),
-              })
-            : NO_DATA_PLACEHOLDER}
+          {NO_DATA_PLACEHOLDER}
         </Typography.Text>
       ) : sizeCap > -1 ? (
         <>

@@ -187,7 +187,7 @@ export const EntityListWithV1: FunctionComponent<AntdEntityListProp> = ({
                           item.fullyQualifiedName ?? ''
                         )}>
                         <Button
-                          className="entity-button flex-center p-xss"
+                          className="entity-button flex-center p-0 m--ml-1"
                           icon={
                             <div className="entity-button-icon m-r-xs">
                               {getEntityIcon(item.type || '')}
