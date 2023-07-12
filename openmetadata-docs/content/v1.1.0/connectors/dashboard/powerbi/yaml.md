@@ -21,6 +21,8 @@ Configure and schedule PowerBI metadata and profiler workflows from the OpenMeta
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
+{% partial file="/v1.1.0/connectors/external-ingestion-deployment.md" /%}
+
 ## Requirements
 
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
@@ -59,8 +61,6 @@ Please refer [here](https://stackoverflow.com/questions/71001110/power-bi-rest-a
 ### Step 3: Create New PowerBI workspace
 The service principal only works with [new workspaces](https://docs.microsoft.com/en-us/power-bi/collaborate-share/service-create-the-new-workspaces).
 [For reference](https://community.powerbi.com/t5/Service/Error-while-executing-Get-dataset-call-quot-API-is-not/m-p/912360#M85711)
-
-
 
 ### Python Requirements
 
@@ -221,7 +221,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 {% /codeInfo %}
 
-{% partial file="workflow-config.md" /%}
+{% partial file="/v1.1.0/connectors/workflow-config.md" /%}
 
 {% /codeInfoContainer %}
 
