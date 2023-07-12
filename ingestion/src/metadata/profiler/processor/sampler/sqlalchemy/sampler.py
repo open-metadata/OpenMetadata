@@ -12,7 +12,7 @@
 Helper module to handle data sampling
 for the profiler
 """
-from typing import Dict, List, Optional, Union, cast
+from typing import Union, cast
 
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
@@ -30,6 +30,7 @@ from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.handle_partition import partition_filter_handler
+from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
 from metadata.utils.sqa_utils import (
     build_query_filter,
     dispatch_to_date_or_datetime,
@@ -57,72 +58,37 @@ def _object_value_for_elem(self, elem):
 Enum._object_value_for_elem = _object_value_for_elem  # pylint: disable=protected-access
 
 
-class Sampler:
+class SQASampler(SamplerInterface):
     """
     Generates a sample of the data to not
     run the query in the whole table.
     """
-
-    def __init__(
-        self,
-        session: Optional[Session],
-        table: DeclarativeMeta,
-        sample_columns: List[str],
-        profile_sample_config: Optional[ProfileSampleConfig] = None,
-        partition_details: Optional[Dict] = None,
-        profile_sample_query: Optional[str] = None,
-    ):
-        self.profile_sample = None
-        self.profile_sample_type = None
-        self.sample_columns = sample_columns
-        if profile_sample_config:
-            self.profile_sample = profile_sample_config.profile_sample
-            self.profile_sample_type = profile_sample_config.profile_sample_type
-        self.session = session
-        self.table = table
-        self._partition_details = partition_details
-        self._profile_sample_query = profile_sample_query
-        self.sample_limit = 100
-        self._sample_rows = None
 
     @partition_filter_handler(build_sample=True)
     def get_sample_query(self) -> Query:
         """get query for sample data"""
         if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
             return (
-                self.session.query(
-                    *[
-                        self.table.__table__.c.get(
-                            col_name.lower()
-                        )  # key is lowercase. See converter.py line 155
-                        for col_name in self.sample_columns
-                    ],
+                self.client.query(
+                    self.table,
                     (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                 )
-                .select_from(self.table)
                 .suffix_with(
                     f"SAMPLE BERNOULLI ({self.profile_sample or 100})",
                     dialect=Dialects.Snowflake,
                 )
+                .suffix_with(
+                    f"TABLESAMPLE SYSTEM ({self.profile_sample or 100} PERCENT)",
+                    dialect=Dialects.BigQuery,
+                )
                 .cte(f"{self.table.__tablename__}_rnd")
             )
-        table_query = self.session.query(
-            *[
-                self.table.__table__.c.get(col_name.lower())
-                for col_name in self.sample_columns
-            ]  # key is lowercase. See converter.py line 155
-        ).select_from(self.table)
+        table_query = self.client.query(self.table)
         return (
-            self.session.query(
-                *[
-                    self.table.__table__.c.get(
-                        col_name.lower()
-                    )  # key is lowercase. See converter.py line 155
-                    for col_name in self.sample_columns
-                ],
+            self.client.query(
+                self.table,
                 (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL),
             )
-            .select_from(self.table)
             .order_by(RANDOM_LABEL)
             .limit(self.profile_sample)
             .cte(f"{self.table.__tablename__}_rnd")
@@ -134,7 +100,7 @@ class Sampler:
         the full table if no sampling is required.
         """
         if self._profile_sample_query:
-            return self._fetch_sample_data_with_query_object()
+            return self._rdn_sample_from_user_query()
 
         if not self.profile_sample:
             if self._partition_details:
@@ -144,7 +110,7 @@ class Sampler:
 
         # Add new RandomNumFn column
         rnd = self.get_sample_query()
-        session_query = self.session.query(rnd)
+        session_query = self.client.query(rnd)
 
         # Prepare sampled CTE
         sampled = session_query.where(rnd.c.random <= self.profile_sample).cte(
@@ -153,7 +119,7 @@ class Sampler:
         # Assign as an alias
         return aliased(self.table, sampled)
 
-    def fetch_sqa_sample_data(self) -> TableData:
+    def fetch_sample_data(self) -> TableData:
         """
         Use the sampler to retrieve sample data rows as per limit given by user
         :return: TableData to be added to the Table Entity
@@ -163,14 +129,10 @@ class Sampler:
 
         # Add new RandomNumFn column
         rnd = self.get_sample_query()
-        sqa_columns = [
-            col
-            for col in inspect(rnd).c
-            if col.name != RANDOM_LABEL and col.name in self.sample_columns
-        ]
+        sqa_columns = [col for col in inspect(rnd).c if col.name != RANDOM_LABEL]
 
         sqa_sample = (
-            self.session.query(*sqa_columns)
+            self.client.query(*sqa_columns)
             .select_from(rnd)
             .limit(self.sample_limit)
             .all()
@@ -182,7 +144,7 @@ class Sampler:
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """Returns a table data object using results from query execution"""
-        rnd = self.session.execute(f"{self._profile_sample_query}")
+        rnd = self.client.execute(f"{self._profile_sample_query}")
         try:
             columns = [col.name for col in rnd.cursor.description]
         except AttributeError:
@@ -192,9 +154,9 @@ class Sampler:
             rows=[list(row) for row in rnd.fetchmany(100)],
         )
 
-    def _fetch_sample_data_with_query_object(self) -> Query:
+    def _rdn_sample_from_user_query(self) -> Query:
         """Returns sql alchemy object to use when running profiling"""
-        return self.session.query(self.table).from_statement(
+        return self.client.query(self.table).from_statement(
             text(f"{self._profile_sample_query}")
         )
 
@@ -217,15 +179,7 @@ class Sampler:
             return aliased(
                 self.table,
                 (
-                    self.session.query(
-                        *[
-                            self.table.__table__.c.get(
-                                col_name.lower()
-                            )  # key is lowercase. See converter.py line 155
-                            for col_name in self.sample_columns
-                        ]
-                    )
-                    .select_from(self.table)
+                    self.client.query(self.table)
                     .filter(
                         get_value_filter(
                             Column(partition_field),
@@ -243,15 +197,7 @@ class Sampler:
             return aliased(
                 self.table,
                 (
-                    self.session.query(
-                        *[
-                            self.table.__table__.c.get(
-                                col_name.lower()
-                            )  # key is lowercase. See converter.py line 155
-                            for col_name in self.sample_columns
-                        ]
-                    )
-                    .select_from(self.table)
+                    self.client.query(self.table)
                     .filter(
                         get_integer_range_filter(
                             Column(partition_field),
@@ -266,15 +212,7 @@ class Sampler:
         return aliased(
             self.table,
             (
-                self.session.query(
-                    *[
-                        self.table.__table__.c.get(
-                            col_name.lower()
-                        )  # key is lowercase. See converter.py line 155
-                        for col_name in self.sample_columns
-                    ]
-                )
-                .select_from(self.table)
+                self.client.query(self.table)
                 .filter(
                     build_query_filter(
                         [

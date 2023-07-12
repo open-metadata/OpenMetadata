@@ -9,28 +9,25 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Helper module to handle data sampling
-for the profiler
+Interface for sampler
 """
-from typing import Any, Optional
+
+from abc import ABC, abstractmethod
+from typing import Dict, Optional
 
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.profiler.api.models import ProfileSampleConfig
 
-RANDOM_LABEL = "random"
 
-
-class DatalakeSampler:
-    """
-    Generates a sample of the data to not
-    run the query in the whole table.
-    """
+class SamplerInterface(ABC):
+    """Sampler interface"""
 
     def __init__(
         self,
-        session: Optional[Any],
+        client,
         table,
         profile_sample_config: Optional[ProfileSampleConfig] = None,
+        partition_details: Optional[Dict] = None,
         profile_sample_query: Optional[str] = None,
     ):
         self.profile_sample = None
@@ -38,29 +35,29 @@ class DatalakeSampler:
         if profile_sample_config:
             self.profile_sample = profile_sample_config.profile_sample
             self.profile_sample_type = profile_sample_config.profile_sample_type
-        self.session = session
+        self.client = client
         self.table = table
         self._profile_sample_query = profile_sample_query
         self.sample_limit = 100
         self._sample_rows = None
+        self._partition_details = partition_details
 
-    def _fetch_rows(self, data_frame):
-        return data_frame.dropna().values.tolist()
+    @abstractmethod
+    def _rdn_sample_from_user_query(self):
+        """Get random sample from user query"""
+        raise NotImplementedError
 
-    def get_col_row(self, data_frame):
-        """
-        Fetches columns and rows from the data_frame
-        """
-        cols = []
-        rows = []
-        cols = data_frame[0].columns.tolist()
-        # Sample Data should not exceed sample limit
-        for chunk in data_frame:
-            rows.extend(self._fetch_rows(chunk)[: self.sample_limit])
-            if len(rows) >= self.sample_limit:
-                break
-        return cols, rows
+    @abstractmethod
+    def _fetch_sample_data_from_user_query(self) -> TableData:
+        """Fetch sample data from user query"""
+        raise NotImplementedError
 
-    def fetch_dl_sample_data(self) -> TableData:
-        cols, rows = self.get_col_row(data_frame=self.table)
-        return TableData(columns=cols, rows=rows)
+    @abstractmethod
+    def random_sample(self):
+        """Get random sample"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def fetch_sample_data(self) -> TableData:
+        """Fetch sample data"""
+        raise NotImplementedError
