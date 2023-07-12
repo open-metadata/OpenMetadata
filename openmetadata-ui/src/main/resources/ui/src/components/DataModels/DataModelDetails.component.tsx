@@ -237,7 +237,6 @@ const DataModelDetails = ({
     entityName,
     handleTagSelection,
     onThreadLinkSelect,
-    onThreadLinkSelect,
     handleColumnUpdateDataModel,
     handleUpdateDescription,
     getEntityFieldThreadCounts,

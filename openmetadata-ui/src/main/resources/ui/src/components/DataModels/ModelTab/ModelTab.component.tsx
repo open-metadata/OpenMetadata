@@ -169,10 +169,13 @@ const ModelTab = ({
       },
     ],
     [
+      entityFqn,
       isReadOnly,
+      entityFieldThreads,
       hasEditTagsPermission,
       editColumnDescription,
       hasEditDescriptionPermission,
+      onThreadLinkSelect,
       handleFieldTagsChange,
     ]
   );

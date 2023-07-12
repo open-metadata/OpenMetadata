@@ -15,7 +15,7 @@ import { t } from 'i18next';
 import { lowerCase } from 'lodash';
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import Searchbar from '../common/searchbar/Searchbar';
-import EntityTableV1 from '../EntityTable/EntityTable.component';
+import SchemaTable from '../SchemaTable/SchemaTable.component';
 import { Props } from './SchemaTab.interfaces';
 
 const SchemaTab: FunctionComponent<Props> = ({
@@ -49,7 +49,7 @@ const SchemaTab: FunctionComponent<Props> = ({
         />
       </div>
 
-      <EntityTableV1
+      <SchemaTable
         columnName={columnName}
         entityFieldThreads={entityFieldThreads}
         entityFqn={entityFqn}

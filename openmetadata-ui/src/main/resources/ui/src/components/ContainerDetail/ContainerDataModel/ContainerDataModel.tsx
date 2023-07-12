@@ -200,9 +200,13 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     ],
     [
       isReadOnly,
+      entityFqn,
       hasTagEditAccess,
+      entityFieldThreads,
       hasDescriptionEditAccess,
       editContainerColumnDescription,
+      getEntityName,
+      onThreadLinkSelect,
       handleFieldTagsChange,
     ]
   );

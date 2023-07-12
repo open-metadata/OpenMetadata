@@ -466,9 +466,14 @@ const PipelineDetails = ({
     [
       deleted,
       editTask,
+      entityFqn,
       hasTagEditAccess,
       pipelinePermissions,
+      entityFieldThreadCount,
+      getEntityName,
+      onThreadLinkSelect,
       handleTableTagSelection,
+      getEntityFieldThreadCounts,
     ]
   );
 

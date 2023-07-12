@@ -417,7 +417,7 @@ const DashboardDetails = ({
   const entityFieldThreads = useMemo(
     () =>
       getEntityFieldThreadCounts(EntityField.CHARTS, entityFieldThreadCount),
-    [entityFieldThreadCount]
+    [entityFieldThreadCount, getEntityFieldThreadCounts]
   );
 
   const tableColumn: ColumnsType<ChartType> = useMemo(
@@ -534,7 +534,18 @@ const DashboardDetails = ({
         ),
       },
     ],
-    [deleted, handleChartTagSelection, hasEditTagAccess]
+    [
+      deleted,
+      entityFqn,
+      entityFieldThreads,
+      entityFieldThreadCount,
+      chartsPermissionsArray,
+      onThreadLinkSelect,
+      hasEditTagAccess,
+      handleUpdateChart,
+      handleChartTagSelection,
+      getEntityFieldThreadCounts,
+    ]
   );
 
   const tabs = useMemo(

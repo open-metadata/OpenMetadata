@@ -146,7 +146,6 @@ const TopicVersion: FC<TopicVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
-                    isVersionView
                     entityFqn={currentVersionData.fullyQualifiedName}
                     entityType={EntityType.TOPIC}
                     key={tagType}

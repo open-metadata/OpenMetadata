@@ -52,11 +52,11 @@ const EntityTaskDescription = ({
       : columnName;
   }, [data.fqn]);
 
-  const handleDescriptionHandler = (hasDescription: boolean) => {
+  const handleDescriptionTask = (hasDescription: boolean) => {
     history.push(
       (hasDescription ? getUpdateDescriptionPath : getRequestDescriptionPath)(
         entityType,
-        entityFqn as string,
+        entityFqn,
         entityField,
         columnName
       )
@@ -81,7 +81,7 @@ const EntityTaskDescription = ({
           name={t('message.request-description')}
           style={{ color: DE_ACTIVE_COLOR }}
           width={14}
-          onClick={() => handleDescriptionHandler(hasDescription)}
+          onClick={() => handleDescriptionTask(hasDescription)}
         />
       </Tooltip>
     );

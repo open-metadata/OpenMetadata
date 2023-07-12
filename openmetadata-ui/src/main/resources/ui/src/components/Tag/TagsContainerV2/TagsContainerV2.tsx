@@ -39,7 +39,7 @@ import { TagsContainerV2Props } from './TagsContainerV2.interface';
 
 const TagsContainerV2 = ({
   permission,
-  isVersionView,
+  showTaskHandler = true,
   selectedTags,
   entityType,
   entityThreadLink,
@@ -279,7 +279,7 @@ const TagsContainerV2 = ({
                   />
                 </Col>
               )}
-              {permission && !isVersionView && (
+              {showTaskHandler && (
                 <>
                   {tagType === TagSource.Classification && requestTagElement}
                   {onThreadLinkSelect && conversationThreadElement}
@@ -296,7 +296,7 @@ const TagsContainerV2 = ({
     showHeader,
     isEditTags,
     permission,
-    isVersionView,
+    showTaskHandler,
     isGlossaryType,
     requestTagElement,
     conversationThreadElement,

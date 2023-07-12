@@ -196,22 +196,22 @@ export const getEntityColumnsDetails = (
 ) => {
   switch (entityType) {
     case EntityType.TOPIC:
-      return (entityData as Topic).messageSchema?.schemaFields || [];
+      return (entityData as Topic).messageSchema?.schemaFields ?? [];
 
     case EntityType.DASHBOARD:
-      return (entityData as Dashboard).charts || [];
+      return (entityData as Dashboard).charts ?? [];
 
     case EntityType.PIPELINE:
-      return (entityData as Pipeline).tasks || [];
+      return (entityData as Pipeline).tasks ?? [];
 
     case EntityType.MLMODEL:
-      return (entityData as Mlmodel).mlFeatures || [];
+      return (entityData as Mlmodel).mlFeatures ?? [];
 
     case EntityType.CONTAINER:
-      return (entityData as Container).dataModel?.columns || [];
+      return (entityData as Container).dataModel?.columns ?? [];
 
     default:
-      return (entityData as Table).columns || [];
+      return (entityData as Table).columns ?? [];
   }
 };
 
@@ -509,12 +509,6 @@ export const getEntityTaskDetails = (
     case EntityType.CONTAINER:
       fqnPartTypes = FqnPart.Topic;
       entityField = EntityField.DATA_MODEL;
-
-      break;
-
-    case EntityType.DASHBOARD_DATA_MODEL:
-      fqnPartTypes = FqnPart.Table;
-      entityField = EntityField.COLUMNS;
 
       break;
 

@@ -29,7 +29,7 @@ import {
   getUpdateTagsPath,
 } from 'utils/TasksUtils';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
-import { EntityTaskTagsProps } from './entityTaskTags.interface';
+import { EntityTaskTagsProps } from './EntityTaskTags.interface';
 
 const EntityTaskTags = ({
   data,
@@ -55,7 +55,7 @@ const EntityTaskTags = ({
       : columnName;
   }, [data.fqn]);
 
-  const handleTagHandler = (hasTags: boolean) => {
+  const handleTagTask = (hasTags: boolean) => {
     history.push(
       (hasTags ? getUpdateTagsPath : getRequestTagsPath)(
         entityType,
@@ -85,7 +85,7 @@ const EntityTaskTags = ({
           name={t('label.request-tag-plural')}
           style={{ color: DE_ACTIVE_COLOR }}
           width={14}
-          onClick={() => handleTagHandler(hasTags)}
+          onClick={() => handleTagTask(hasTags)}
         />
       </Tooltip>
     );

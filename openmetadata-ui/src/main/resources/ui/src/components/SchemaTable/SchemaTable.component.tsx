@@ -45,9 +45,9 @@ import {
   prepareConstraintIcon,
 } from '../../utils/TableUtils';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { EntityTableProps, TableCellRendered } from './EntityTable.interface';
+import { SchemaTableProps, TableCellRendered } from './SchemaTable.interface';
 
-const EntityTable = ({
+const SchemaTable = ({
   tableColumns,
   searchText,
   onUpdate,
@@ -59,7 +59,7 @@ const EntityTable = ({
   onThreadLinkSelect,
   entityFqn,
   tableConstraints,
-}: EntityTableProps) => {
+}: SchemaTableProps) => {
   const { t } = useTranslation();
 
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
@@ -419,4 +419,4 @@ const EntityTable = ({
   );
 };
 
-export default EntityTable;
+export default SchemaTable;

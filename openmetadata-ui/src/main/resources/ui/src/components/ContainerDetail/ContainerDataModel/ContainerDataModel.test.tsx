@@ -79,7 +79,7 @@ const props = {
       entityLink:
         '<#E::container::s3_storage_sample.departments.finance.expenditures::dataModel::columns::department_id::description>',
       count: 2,
-      entityField: '::dataModel::columns::department_id::description',
+      entityField: 'dataModel::columns::department_id::description',
     },
   ],
   onThreadLinkSelect: jest.fn(),
