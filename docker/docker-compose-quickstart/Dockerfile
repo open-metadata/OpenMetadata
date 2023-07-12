@@ -11,7 +11,7 @@
 
 # Build stage
 FROM alpine:3.15 AS build
-ENV RELEASE_URL="https://github.com/open-metadata/OpenMetadata/releases/download/1.0.0-alpha-release/openmetadata-1.0.0-alpha.tar.gz"
+ENV RELEASE_URL="https://github.com/open-metadata/OpenMetadata/releases/download/1.2.0-release/openmetadata-1.2.0.tar.gz"
 RUN mkdir -p /opt/openmetadata && \
     wget ${RELEASE_URL} && \
     tar zxvf openmetadata-*.tar.gz -C /opt/openmetadata --strip-components 1 && \
@@ -24,7 +24,7 @@ ARG COMMIT_ID
 LABEL maintainer="OpenMetadata"
 LABEL org.open-metadata.image.authors="support@openmetadata.org"
 LABEL org.open-metadata.vendor="OpenMetadata"
-LABEL org.open-metadata.release-version="1.0.0-alpha"
+LABEL org.open-metadata.release-version="1.2.0"
 LABEL org.open-metadata.description="OpenMetadata is an open source platform for metadata management and discovery."
 LABEL org.open-metadata.url="https://open-metadata.org/"
 LABEL org.open-metadata.vcs-url="https://github.com/open-metadata/OpenMetadata"

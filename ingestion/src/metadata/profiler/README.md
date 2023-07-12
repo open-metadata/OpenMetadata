@@ -86,3 +86,14 @@ metadata profile -c path/to/config.yaml
 
 All classes should use `logger = logging.getLogger("Profiler")`. This way we can easily find logs specific
 to the Profiler.
+
+### Class Structure
+The profiler is built in a way that makes it flexible enough to suite different engine and asset types. The workflow creates a profiler source which is responsible to 1) instantiate an interface (handles the logic to compute the different metrics) and 2) instantiate a `Profiler` class (responsible to configure the profiler).
+
+We currently have 2 main categories of interfaces:
+1. `SQLAlchemyInterface`: handles the logic to compute metrics for SQL based assets (e.g. Redshift, Snowflake, MySQL, etc.)
+2. `PanadasInterface`: handles the logic to compute metrics for Pandas based assets (e.g. Datalake connectors)
+
+These interfaces can easily be extended to support connector specificity (e.g. BigQuery Struct computation, etc.).
+
+<img src="../../../../openmetadata-docs/images/connectors/profiler/profilerUMLDiagram.png" width="100%">
