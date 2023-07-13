@@ -53,10 +53,18 @@ class ThirdQuartile(StaticMetric):
         """sqlalchemy function"""
         if is_quantifiable(self.col.type):
             # col fullname is only needed for MySQL and SQLite
-            return MedianFn(column(self.col.name), self.col.table.fullname if self.col.table is not None else None, 0.75)
+            return MedianFn(
+                column(self.col.name),
+                self.col.table.fullname if self.col.table is not None else None,
+                0.75,
+            )
 
         if is_concatenable(self.col.type):
-            return MedianFn(LenFn(column(self.col.name)), self.col.table.fullname if self.col.table is not None else None, 0.75)
+            return MedianFn(
+                LenFn(column(self.col.name)),
+                self.col.table.fullname if self.col.table is not None else None,
+                0.75,
+            )
 
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing Third Quartile"

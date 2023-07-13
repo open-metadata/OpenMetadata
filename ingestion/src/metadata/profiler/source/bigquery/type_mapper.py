@@ -25,6 +25,7 @@ def bigquery_type_mapper(_type_map: dict, col: Column):
     Returns:
         sqlalchemy data type
     """
+    # pylint: disable=import-outside-toplevel
     from sqlalchemy_bigquery import STRUCT
 
     def build_struct(_type_map: dict, col: Column):

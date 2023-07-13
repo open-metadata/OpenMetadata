@@ -26,17 +26,20 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
 
     def _get_struct_columns(self, columns: dict, parent: str):
         """"""
+        # pylint: disable=import-outside-toplevel
         from sqlalchemy_bigquery import STRUCT
+
         columns_list = []
         for key, value in columns.items():
             if not isinstance(value, STRUCT):
                 col = Column(f"{parent}.{key}", value)
                 columns_list.append(col)
             else:
-                col = self._get_struct_columns(value.__dict__.get("_STRUCT_byname"), f"{parent}.{key}")
+                col = self._get_struct_columns(
+                    value.__dict__.get("_STRUCT_byname"), f"{parent}.{key}"
+                )
                 columns_list.extend(col)
         return columns_list
-
 
     def _get_sampler(self, **kwargs):
         """get sampler object"""
@@ -55,12 +58,17 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
 
     def get_columns(self) -> Column:
         """Get columns from table"""
+        # pylint: disable=import-outside-toplevel
         from sqlalchemy_bigquery import STRUCT
 
         columns = []
         for column in inspect(self.table).c:
             if isinstance(column.type, STRUCT):
-                columns.extend(self._get_struct_columns(column.type.__dict__.get("_STRUCT_byname"), column.name))
+                columns.extend(
+                    self._get_struct_columns(
+                        column.type.__dict__.get("_STRUCT_byname"), column.name
+                    )
+                )
             else:
                 columns.append(column)
         return columns
