@@ -10,8 +10,14 @@ slug: /main-concepts/metadata-standard/schemas/type/profile
 ## Properties
 
 - **`images`**: Refer to *#/definitions/imageList*.
+- **`subscription`**: Refer to *#/definitions/messagingProvider*.
 ## Definitions
 
+- **`messagingProvider`** *(object)*: Holds the Subscription Config for different types. Cannot contain additional properties.
+  - **`slack`**: Refer to *../entity/events/webhook.json*.
+  - **`msTeams`**: Refer to *../entity/events/webhook.json*.
+  - **`gChat`**: Refer to *../entity/events/webhook.json*.
+  - **`generic`**: Refer to *../entity/events/webhook.json*.
 - **`imageList`** *(object)*: Links to a list of images of varying resolutions/sizes. Cannot contain additional properties.
   - **`image`** *(string)*
   - **`image24`** *(string)*
@@ -22,4 +28,4 @@ slug: /main-concepts/metadata-standard/schemas/type/profile
   - **`image512`** *(string)*
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.

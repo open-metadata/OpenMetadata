@@ -38,6 +38,11 @@ jobs:
         run: |
           sudo make install_antlr_cli
 
+      - name: Setup jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install jq
+
       - name: Build OpenMetadata Server Application
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -58,7 +63,7 @@ jobs:
     steps:
       - name: Check trigger type
         id: check_trigger
-        run: echo "DOCKER_RELEASE_TAG=1.1.0-beta" >> $GITHUB_OUTPUT
+        run: echo "DOCKER_RELEASE_TAG=1.2.0" >> $GITHUB_OUTPUT
         
       - name: Download application from Artifiact
         uses: actions/download-artifact@v2
@@ -123,7 +128,7 @@ jobs:
       - name: Check trigger type
         id: check_trigger
         if: ${{ env.DOCKER_RELEASE_TAG == '' }} 
-        run: echo "DOCKER_RELEASE_TAG=1.1.0-beta" >> $GITHUB_ENV
+        run: echo "DOCKER_RELEASE_TAG=1.2.0" >> $GITHUB_ENV
 
       - name: Check out the Repo
         uses: actions/checkout@v3

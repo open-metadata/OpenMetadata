@@ -29,3 +29,7 @@ SET json = jsonb_set(json::jsonb #- '{connection,config,includeTempTables}', '{c
 json#>'{connection,config,includeTempTables}')
 where serviceType in ('Snowflake');
 
+
+update dbservice_entity
+set json = jsonb_set(json::jsonb, '{connection,config,scheme}', '"hive"')
+where json#>>'{connection,config,scheme}' in ('impala', 'impala4');

@@ -17,32 +17,13 @@ Configure and schedule S3 metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
-the following docs to connect using Airflow SDK or with the CLI.
-
-{% tilesContainer %}
-
-{% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/storage/s3/airflow"
-  / %}
-{% tile
-    title="Ingest with the CLI"
-    description="Run a one-time ingestion using the metadata CLI"
-    link="/connectors/storage/s3/cli"
-  / %}
-
-{% /tilesContainer %}
+{% partial file="/v1.1.0/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/storage/s3/yaml"} /%}
 
 ## Requirements
 
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
-
-To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
-custom Airflow plugins to handle the workflow deployment.
 
 We need the following permissions in AWS:
 
@@ -279,127 +260,14 @@ information in AWS CloudTrail logs to determine who took actions with a role.
 
 Find more information about [Source Identity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity).
 
-
 {% /extraContent %}
 
-{% step srNumber=6 %}
+{% partial file="/v1.1.0/connectors/test-connection.md" /%}
 
-{% stepDescription title="6. Test the Connection" %}
+{% partial file="/v1.1.0/connectors/storage/configure-ingestion.md" /%}
 
-Once the credentials have been added, click on `Test Connection` and Save
-the changes.
-
-{% /stepDescription %}
-
-{% stepVisualInfo %}
-
-{% image
-  src="/images/v1.1.0/connectors/test-connection.png"
-  alt="Test Connection"
-  caption="Test the connection and save the Service" /%}
-
-{% /stepVisualInfo %}
-
-{% /step %}
-
-{% step srNumber=7 %}
-
-{% stepDescription title="7. Configure Metadata Ingestion" %}
-
-In this step we will configure the metadata ingestion pipeline,
-Please follow the instructions below
-
-{% /stepDescription %}
-
-{% stepVisualInfo %}
-
-{% image
-src="/images/v1.1.0/connectors/configure-metadata-ingestion-storage.png"
-alt="Configure Metadata Ingestion"
-caption="Configure Metadata Ingestion Page" /%}
-
-{% /stepVisualInfo %}
-
-{% /step %}
-
-{% extraContent parentTagName="stepsContainer" %}
-
-#### Metadata Ingestion Options
-
-- **Name**: This field refers to the name of ingestion pipeline, you can customize the name or use the generated name.
-
-- **Mark Deleted Ml Models (toggle):**: Set the Mark Deleted Ml Models toggle to flag ml models as soft-deleted if they are not present anymore in the source system.
-
-{% /extraContent %}
-
-{% step srNumber=8 %}
-
-{% stepDescription title="8. Schedule the Ingestion and Deploy" %}
-
-Scheduling can be set up at an hourly, daily, weekly, or manual cadence. The
-timezone is in UTC. Select a Start Date to schedule for ingestion. It is
-optional to add an End Date.
-
-Review your configuration settings. If they match what you intended,
-click Deploy to create the service and schedule metadata ingestion.
-
-If something doesn't look right, click the Back button to return to the
-appropriate step and change the settings as needed.
-
-After configuring the workflow, you can click on Deploy to create the
-pipeline.
-
-{% /stepDescription %}
-
-{% stepVisualInfo %}
-
-{% image
-src="/images/v1.1.0/connectors/schedule.png"
-alt="Schedule the Workflow"
-caption="Schedule the Ingestion Pipeline and Deploy" /%}
-
-{% /stepVisualInfo %}
-
-{% /step %}
-
-
-{% step srNumber=9 %}
-
-{% stepDescription title="9. View the Ingestion Pipeline" %}
-
-Once the workflow has been successfully deployed, you can view the
-Ingestion Pipeline running from the Service Page.
-
-{% /stepDescription %}
-
-{% stepVisualInfo %}
-
-{% image
-src="/images/v1.1.0/connectors/s3/view-ingestion-pipeline.png"
-alt="View Ingestion Pipeline"
-caption="View the Ingestion Pipeline from the Service Page" /%}
-
-{% /stepVisualInfo %}
-
-{% /step %}
+{% partial file="/v1.1.0/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-## Troubleshooting
-
- ### Workflow Deployment Error
-
-If there were any errors during the workflow deployment process, the
-Ingestion Pipeline Entity will still be created, but no workflow will be
-present in the Ingestion container.
-
-- You can then edit the Ingestion Pipeline and Deploy it again.
-
-- From the Connection tab, you can also Edit the Service if needed.
-
-{% image
-src="/images/v1.1.0/connectors/workflow-deployment-error.png"
-alt="Workflow Deployment Error"
-caption="Edit and Deploy the Ingestion Pipeline" /%}
-
-
+{% partial file="/v1.1.0/connectors/troubleshooting.md" /%}

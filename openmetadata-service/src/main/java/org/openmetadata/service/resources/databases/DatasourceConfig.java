@@ -4,13 +4,16 @@ import lombok.Getter;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 public class DatasourceConfig {
-  private static DatasourceConfig instance;
+  private static final DatasourceConfig instance = new DatasourceConfig();
   private static volatile boolean initialized = false;
   @Getter private static ConnectionType connectionType;
 
+  private DatasourceConfig() {
+    /* Private hidden constructor for singleton */
+  }
+
   public static void initialize(String driverClass) {
     if (!initialized) {
-      instance = new DatasourceConfig();
       connectionType = ConnectionType.from(driverClass);
       initialized = true;
     }

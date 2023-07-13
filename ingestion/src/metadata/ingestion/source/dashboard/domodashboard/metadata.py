@@ -104,7 +104,7 @@ class DomodashboardSource(DashboardServiceSource):
                     if user:
                         return EntityReference(id=user.id.__root__, type="user")
                     logger.warning(
-                        f"No user for found for email {owner_details['email']} in OMD"
+                        f"No user found with email [{owner_details['email']}] in OMD"
                     )
             except Exception as exc:
                 logger.warning(

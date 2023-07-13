@@ -104,6 +104,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     schema.withDatabase(databaseRef).withService(database.getService());
   }
 
+  @Override
   public DatabaseSchema setInheritedFields(DatabaseSchema schema, Fields fields) throws IOException {
     Database database = null;
     UUID databaseId = schema.getDatabase().getId();

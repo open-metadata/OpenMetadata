@@ -18,17 +18,21 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/pipelineservice
 - **`version`**: Metadata version of the entity. Refer to *../../type/entityHistory.json#/definitions/entityVersion*.
 - **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`updatedBy`** *(string)*: User who made the update.
-- **`pipelines`**: References to pipelines deployed for this pipeline service to extract metadata. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
+- **`testConnectionResult`**: Last test connection results for this service. Refer to *connections/testConnectionResult.json*.
+- **`tags`** *(array)*: Tags for this Pipeline Service. Default: `None`.
+  - **Items**: Refer to *../../type/tagLabel.json*.
+- **`pipelines`**: References to pipelines deployed for this pipeline service to extract metadata. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
 - **`connection`**: Refer to *#/definitions/pipelineConnection*.
 - **`owner`**: Owner of this pipeline service. Refer to *../../type/entityReference.json*.
 - **`href`**: Link to the resource corresponding to this pipeline service. Refer to *../../type/basic.json#/definitions/href*.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
+- **`domain`**: Domain the Pipeline service belongs to. Refer to *../../type/entityReference.json*.
 ## Definitions
 
-- **`pipelineServiceType`** *(string)*: Type of pipeline service - Airflow or Prefect. Must be one of: `['Airflow', 'Glue', 'Airbyte']`.
+- **`pipelineServiceType`** *(string)*: Type of pipeline service - Airflow or Prefect. Must be one of: `['Airflow', 'GluePipeline', 'Airbyte', 'Fivetran', 'Dagster', 'Nifi', 'DomoPipeline', 'CustomPipeline', 'DatabricksPipeline', 'Spline']`.
 - **`pipelineConnection`** *(object)*: Pipeline Connection. Cannot contain additional properties.
   - **`config`**
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.

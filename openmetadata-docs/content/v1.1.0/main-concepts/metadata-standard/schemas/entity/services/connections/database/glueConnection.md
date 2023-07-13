@@ -11,13 +11,14 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 
 - **`type`**: Service Type. Refer to *#/definitions/glueType*. Default: `Glue`.
 - **`awsConfig`**: Refer to *../../../../security/credentials/awsCredentials.json*.
-- **`storageServiceName`** *(string)*: AWS storageServiceName Name.
+- **`databaseName`** *(string)*: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
 - **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
 - **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
+- **`supportsDBTExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsDBTExtraction*.
 ## Definitions
 
 - **`glueType`** *(string)*: Service type. Must be one of: `['Glue']`. Default: `Glue`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.

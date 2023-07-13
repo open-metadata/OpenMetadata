@@ -64,16 +64,12 @@ const GlossaryPage = () => {
     setIsRightPanelLoading(true);
     setSelectedData(undefined);
 
-    if (glossaries.length > 0 && glossaryFqn) {
-      const item = glossaries.find(
-        (item) => (item.fullyQualifiedName ?? '') === glossaryFqn
-      );
-
-      return item !== undefined;
+    if (glossaryFqn) {
+      return Fqn.split(glossaryFqn).length === 1;
     }
 
     return true;
-  }, [glossaries, glossaryFqn]);
+  }, [glossaryFqn]);
 
   const createGlossaryPermission = useMemo(
     () =>
@@ -208,7 +204,7 @@ const GlossaryPage = () => {
       });
 
       if (selectedData?.name !== updatedData.name) {
-        history.push(getGlossaryPath(response.name));
+        history.push(getGlossaryPath(response.fullyQualifiedName));
         fetchGlossaryList();
       }
     } catch (error) {

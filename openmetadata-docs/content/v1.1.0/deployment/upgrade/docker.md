@@ -16,7 +16,7 @@ You can find more details about Docker deployment [here](/deployment/docker)
 
 Below we have highlighted the steps needed to upgrade to the latest version with Docker. Make sure to also look [here](/deployment/upgrade/versions/100-to-110) for the specific details related to upgrading to 1.0.0
 
-{% partial file="upgrade-prerequisites-110.md" /%}
+{% partial file="/v1.1.0/deployment/upgrade/upgrade-prerequisites-110.md" /%}
 
 # Upgrade Process
 

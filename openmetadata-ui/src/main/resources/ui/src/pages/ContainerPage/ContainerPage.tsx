@@ -105,7 +105,6 @@ const ContainerPage = () => {
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
 
-  const [, setParentContainers] = useState<Container[]>([]);
   const [containerData, setContainerData] = useState<Container>();
   const [containerChildrenData, setContainerChildrenData] = useState<
     Container['children']
@@ -134,24 +133,6 @@ const ContainerPage = () => {
     ThreadType.Conversation
   );
 
-  // data fetching methods
-  const fetchContainerParent = async (
-    parentName: string,
-    newContainer = false
-  ) => {
-    try {
-      const response = await getContainerByName(parentName, 'parent');
-      setParentContainers((prev) =>
-        newContainer ? [response] : [response, ...prev]
-      );
-      if (response.parent && response.parent.fullyQualifiedName) {
-        await fetchContainerParent(response.parent.fullyQualifiedName);
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError, t('server.unexpected-response'));
-    }
-  };
-
   const fetchContainerDetail = async (containerFQN: string) => {
     setIsLoading(true);
     try {
@@ -172,9 +153,6 @@ const ContainerPage = () => {
         ...response,
         tags: sortTagsCaseInsensitive(response.tags || []),
       });
-      if (response.parent && response.parent.fullyQualifiedName) {
-        await fetchContainerParent(response.parent.fullyQualifiedName, true);
-      }
     } catch (error) {
       showErrorToast(error as AxiosError);
       setHasError(true);
@@ -602,7 +580,7 @@ const ContainerPage = () => {
         key: EntityTabs.SCHEMA,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-l-lg" flex="auto">
+            <Col className="p-t-sm m-x-lg" flex="auto">
               <div className="d-flex flex-col gap-4">
                 <DescriptionV1
                   description={description}
@@ -795,8 +773,6 @@ const ContainerPage = () => {
 
   useEffect(() => {
     fetchResourcePermission(containerName);
-    // reset parent containers list on containername change
-    setParentContainers([]);
   }, [containerName]);
 
   useEffect(() => {

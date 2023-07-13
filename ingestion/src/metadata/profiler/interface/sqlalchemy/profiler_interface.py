@@ -26,12 +26,9 @@ from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import scoped_session
 
 from metadata.generated.schema.entity.data.table import TableData
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
-from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
-from metadata.ingestion.source.connections import get_connection
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
-from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
+from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.static.mean import Mean
@@ -41,7 +38,7 @@ from metadata.profiler.orm.functions.table_metric_construct import (
     table_metric_construct_factory,
 )
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.profiler.processor.sqlalchemy.sampler import Sampler
+from metadata.profiler.processor.sampler.sampler_factory import sampler_factory
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
@@ -62,15 +59,13 @@ def handle_query_exception(msg, exc, session):
     raise RuntimeError(exc)
 
 
-class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
+class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
     """
     Interface to interact with registry supporting
     sqlalchemy.
     """
 
-    # pylint: disable=too-many-instance-attributes,too-many-arguments
-
-    _profiler_type: str = DatabaseConnection.__name__
+    # pylint: disable=too-many-arguments
 
     def __init__(
         self,
@@ -81,44 +76,48 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         source_config,
         sample_query,
         table_partition_config,
+        thread_count: int = 5,
+        timeout_seconds: int = 43200,
         sqa_metadata=None,
-        timeout_seconds=43200,
-        thread_count=5,
-        **_,
+        **kwargs,
     ):
         """Instantiate SQA Interface object"""
-        self._thread_count = thread_count
-        self.table_entity = entity
-        self.ometa_client = ometa_client
-        self.source_config = source_config
-        self.service_connection_config = service_connection_config
-        self.processor_status = ProfilerProcessorStatus()
-        try:
-            fqn = self.table_entity.fullyQualifiedName
-        except AttributeError:
-            self.processor_status.entity = None
-        else:
-            self.processor_status.entity = fqn.__root__ if fqn else None
+
+        super().__init__(
+            service_connection_config,
+            ometa_client,
+            entity,
+            profile_sample_config,
+            source_config,
+            sample_query,
+            table_partition_config,
+            thread_count,
+            timeout_seconds,
+        )
 
         self._table = self._convert_table_to_orm_object(sqa_metadata)
-
-        self.engine = get_connection(service_connection_config)
         self.session_factory = self._session_factory()
         self.session = self.session_factory()
         self.set_session_tag(self.session)
         self.set_catalog(self.session)
 
-        self.profile_sample_config = profile_sample_config
-        self.profile_query = sample_query
-        self.partition_details = (
-            table_partition_config if not self.profile_query else None
-        )
-
-        self.timeout_seconds = timeout_seconds
-
     @property
     def table(self):
         return self._table
+
+    def _get_sampler(self, **kwargs):
+        """get sampler object"""
+        session = kwargs.get("session")
+        table = kwargs["table"]
+
+        return sampler_factory.create(
+            self.service_connection_config.__class__.__name__,
+            client=session or self.session,
+            table=table,
+            profile_sample_config=self.profile_sample_config,
+            partition_details=self.partition_details,
+            profile_sample_query=self.profile_query,
+        )
 
     @staticmethod
     def _is_array_column(column) -> Dict[str, Union[Optional[str], bool]]:
@@ -146,7 +145,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         """Create thread safe session that will be automatically
         garbage collected once the application thread ends
         """
-        return create_and_bind_thread_safe_session(self.engine)
+        return create_and_bind_thread_safe_session(self.connection)
 
     @staticmethod
     def _compute_static_metrics_wo_sum(
@@ -252,7 +251,6 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
                     for metric in metrics
                     if not metric.is_window_metric()
                 ],
-                **self._is_array_column(column),
             )
             return dict(row)
         except ProgrammingError as exc:
@@ -334,7 +332,6 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         try:
             row = runner.select_first_from_sample(
                 *[metric(column).fn() for metric in metrics],
-                **self._is_array_column(column),
             )
         except ProgrammingError as exc:
             if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(
@@ -387,13 +384,9 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
     ):
         """Create thread safe runner"""
         if not hasattr(thread_local, "sampler"):
-            thread_local.sampler = self._instantiate_sampler(
-                session=session,
+            thread_local.sampler = self._get_sampler(
                 table=table,
-                sample_columns=self._get_sample_columns(),
-                profile_sample_config=self.profile_sample_config,
-                partition_details=self.partition_details,
-                profile_sample_query=self.profile_query,
+                session=session,
             )
         return thread_local.sampler
 
@@ -521,16 +514,11 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         Returns:
             TableData: sample table data
         """
-        sampler = self._instantiate_sampler(
-            session=self.session,
+        sampler = self._get_sampler(
             table=table,
-            sample_columns=self._get_sample_columns(),
-            profile_sample_config=self.profile_sample_config,
-            partition_details=self.partition_details,
-            profile_sample_query=self.profile_query,
         )
 
-        return sampler.fetch_sqa_sample_data()
+        return sampler.fetch_sample_data()
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict
@@ -564,14 +552,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         Returns:
             dictionnary of results
         """
-        sampler = self._instantiate_sampler(
-            session=self.session,
-            table=kwargs.get("table"),
-            sample_columns=self._get_sample_columns(),
-            profile_sample_config=self.profile_sample_config,
-            partition_details=self.partition_details,
-            profile_sample_query=self.profile_query,
-        )
+        sampler = self._get_sampler(table=kwargs.get("table"))
         sample = sampler.random_sample()
         try:
             return metric(column).fn(sample, column_results, self.session)
@@ -581,25 +562,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
             self.session.rollback()
             return None
 
-    def _instantiate_sampler(
-        self,
-        session,
-        table,
-        sample_columns,
-        profile_sample_config,
-        partition_details,
-        profile_sample_query,
-    ):
-        return Sampler(
-            session=session,
-            table=table,
-            sample_columns=sample_columns,
-            profile_sample_config=profile_sample_config,
-            partition_details=partition_details,
-            profile_sample_query=profile_sample_query,
-        )
-
     def close(self):
         """Clean up session"""
         self.session.close()
-        self.engine.pool.dispose()
+        self.connection.pool.dispose()

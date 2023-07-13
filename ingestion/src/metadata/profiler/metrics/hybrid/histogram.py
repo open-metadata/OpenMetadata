@@ -195,8 +195,7 @@ class Histogram(HybridMetric):
             starting_bin_bound = ending_bin_bound
             ending_bin_bound += bin_width
 
-        query = handle_array(session.query(*case_stmts), self.col, sample)
-        rows = query.first()
+        rows = session.query(*case_stmts).select_from(sample).first()
 
         if rows:
             return {"boundaries": list(rows.keys()), "frequencies": list(rows)}

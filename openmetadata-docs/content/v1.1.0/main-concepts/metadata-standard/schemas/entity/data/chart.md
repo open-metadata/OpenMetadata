@@ -5,7 +5,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/chart
 
 # Chart
 
-*This schema defines the Chart entity. Charts are built using tables or sql queries by analyzing the data. Charts can be part of Dashboard.*
+*A `Chart` presents data visually. Charts can be part of `Dashboards`.*
 
 ## Properties
 
@@ -18,21 +18,22 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/chart
 - **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`updatedBy`** *(string)*: User who made the update.
 - **`chartType`**: Refer to *#/definitions/chartType*.
-- **`sourceUrl`** *(string)*: Chart URL suffix from its service.
+- **`sourceUrl`**: Chart URL suffix from its service. Refer to *../../type/basic.json#/definitions/sourceUrl*.
 - **`href`**: Link to the resource corresponding to this entity. Refer to *../../type/basic.json#/definitions/href*.
 - **`owner`**: Owner of this dashboard. Refer to *../../type/entityReference.json*.
-- **`tables`**: Link to table used in this chart. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
-- **`followers`**: Followers of this chart. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
+- **`followers`**: Followers of this chart. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
 - **`tags`** *(array)*: Tags for this chart. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
 - **`service`**: Link to service where this dashboard is hosted in. Refer to *../../type/entityReference.json*.
 - **`serviceType`**: Service type where this chart is hosted in. Refer to *../services/dashboardService.json#/definitions/dashboardServiceType*.
-- **`usageSummary`**: Latest usage information for this database. Refer to *../../type/usageDetails.json*. Default: `None`.
+- **`usageSummary`**: Latest usage information for this chart. Refer to *../../type/usageDetails.json*. Default: `None`.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
+- **`domain`**: Domain the Chart belongs to. The Chart inherits domain from the dashboard service it belongs to. Refer to *../../type/entityReference.json*.
+- **`dataProducts`**: List of of data products this entity is part of. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
 ## Definitions
 
 - **`chartType`** *(string)*: This schema defines the type used for describing different types of charts. Must be one of: `['Line', 'Table', 'Bar', 'Area', 'Pie', 'Histogram', 'Scatter', 'Text', 'BoxPlot', 'Other']`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-07-07 05:50:35.981927.

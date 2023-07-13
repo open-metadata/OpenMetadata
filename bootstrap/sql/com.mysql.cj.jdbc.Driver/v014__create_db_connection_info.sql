@@ -33,3 +33,7 @@ SET json = JSON_REMOVE(
     '$.connection.config.includeTempTables'
 )
 WHERE serviceType in ('Snowflake');
+
+UPDATE dbservice_entity
+SET json = JSON_REPLACE(json, '$.connection.config.scheme', 'hive')
+WHERE JSON_EXTRACT(json, '$.connection.config.scheme') IN ('impala', 'impala4');
