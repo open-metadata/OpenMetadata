@@ -34,6 +34,8 @@ Configure and schedule SAP Hana metadata and profiler workflows from the OpenMet
 - [Data Profiler](#data-profiler)
 - [dbt Integration](#dbt-integration)
 
+{% partial file="/v1.1.0/connectors/external-ingestion-deployment.md" /%}
+
 ## Requirements
 
 {%inlineCallout icon="description" bold="OpenMetadata 1.1 or later" href="/deployment"%}

@@ -19,6 +19,7 @@ import { SchemaType } from '../../generated/type/schema';
 export interface TopicDetailsProps {
   topicDetails: Topic;
   topicPermissions: OperationPermission;
+  fetchTopic: () => void;
   createThread: (data: CreateThread) => void;
   followTopicHandler: () => Promise<void>;
   unFollowTopicHandler: () => Promise<void>;
