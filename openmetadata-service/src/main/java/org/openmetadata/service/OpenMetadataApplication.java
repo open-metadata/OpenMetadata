@@ -58,7 +58,6 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jetty.http.pathmap.ServletPathSpec;
-import org.eclipse.jetty.servlet.ErrorPageErrorHandler;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.websocket.server.NativeWebSocketServletContainerInitializer;
@@ -82,6 +81,7 @@ import org.openmetadata.service.events.scheduled.ReportsHandler;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
+import org.openmetadata.service.exception.OMErrorPageHandler;
 import org.openmetadata.service.extension.OpenMetadataExtension;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -437,7 +437,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     CollectionRegistry.initialize(extensionResources);
     CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer, authenticatorHandler);
     environment.jersey().register(new JsonPatchProvider());
-    ErrorPageErrorHandler eph = new ErrorPageErrorHandler();
+    OMErrorPageHandler eph = new OMErrorPageHandler(config.getWebConfiguration());
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");
     environment.getApplicationContext().setErrorHandler(eph);
   }
