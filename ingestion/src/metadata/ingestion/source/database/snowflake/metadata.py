@@ -338,7 +338,7 @@ class SnowflakeSource(CommonDbSourceService):
             TableNameAndType(name=table_name, type_=TableType.Transient)
             for table_name in self.inspector.get_table_names(
                 schema=schema_name,
-                include_temp_tables=self.service_connection.includeTempTables,
+                include_transient_tables=self.service_connection.includeTransientTables,
             )
             or []
         ]

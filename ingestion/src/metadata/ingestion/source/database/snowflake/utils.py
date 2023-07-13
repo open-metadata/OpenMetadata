@@ -65,7 +65,7 @@ def get_table_names_reflection(self, schema=None, **kw):
 
 def get_table_names(self, connection, schema, **kw):
     query = SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES
-    if kw.get("include_temp_tables"):
+    if kw.get("include_transient_tables"):
         query = SNOWFLAKE_GET_TRANSIENT_NAMES
 
     if kw.get("external_tables"):
