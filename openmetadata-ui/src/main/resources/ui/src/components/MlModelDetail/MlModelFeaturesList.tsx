@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Divider, Row, Space, Typography } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { Card, Col, Divider, Row, Space, Typography } from 'antd';
+import TableDescription from 'components/TableDescription/TableDescription.component';
 import TableTags from 'components/TableTags/TableTags.component';
+import { EntityType } from 'enums/entity.enum';
 import { TagSource } from 'generated/type/schema';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
@@ -22,7 +23,6 @@ import { useTranslation } from 'react-i18next';
 import { MlFeature } from '../../generated/entity/data/mlmodel';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { MlModelFeaturesListProp } from './MlModel.interface';
 import SourceList from './SourceList.component';
@@ -32,6 +32,9 @@ const MlModelFeaturesList = ({
   handleFeaturesUpdate,
   permissions,
   isDeleted,
+  entityFqn,
+  entityFieldThreads,
+  onThreadLinkSelect,
 }: MlModelFeaturesListProp) => {
   const { t } = useTranslation();
   const [selectedFeature, setSelectedFeature] = useState<MlFeature>(
@@ -153,6 +156,9 @@ const MlModelFeaturesList = ({
                         <Col flex="auto">
                           <TableTags<MlFeature>
                             showInlineEditTagButton
+                            entityFieldThreads={entityFieldThreads}
+                            entityFqn={entityFqn}
+                            entityType={EntityType.MLMODEL}
                             handleTagSelection={handleTagsChange}
                             hasTagEditAccess={hasEditPermission}
                             index={index}
@@ -160,6 +166,7 @@ const MlModelFeaturesList = ({
                             record={feature}
                             tags={feature.tags ?? []}
                             type={TagSource.Glossary}
+                            onThreadLinkSelect={onThreadLinkSelect}
                           />
                         </Col>
                       </Row>
@@ -175,6 +182,9 @@ const MlModelFeaturesList = ({
                         <Col flex="auto">
                           <TableTags<MlFeature>
                             showInlineEditTagButton
+                            entityFieldThreads={entityFieldThreads}
+                            entityFqn={entityFqn}
+                            entityType={EntityType.MLMODEL}
                             handleTagSelection={handleTagsChange}
                             hasTagEditAccess={hasEditPermission}
                             index={index}
@@ -182,6 +192,7 @@ const MlModelFeaturesList = ({
                             record={feature}
                             tags={feature.tags ?? []}
                             type={TagSource.Classification}
+                            onThreadLinkSelect={onThreadLinkSelect}
                           />
                         </Col>
                       </Row>
@@ -195,31 +206,25 @@ const MlModelFeaturesList = ({
                           </Typography.Text>
                         </Col>
                         <Col flex="auto">
-                          <Space align="start">
-                            {feature.description ? (
-                              <RichTextEditorPreviewer
-                                markdown={feature.description}
-                              />
-                            ) : (
-                              <Typography.Text className="text-grey-muted">
-                                {t('label.no-entity', {
-                                  entity: t('label.description'),
-                                })}
-                              </Typography.Text>
-                            )}
-                            {(permissions.EditAll ||
-                              permissions.EditDescription) && (
-                              <Button
-                                className="m-l-xxs no-border p-0 text-primary h-auto"
-                                icon={<EditIcon width={16} />}
-                                type="text"
-                                onClick={() => {
-                                  setSelectedFeature(feature);
-                                  setEditDescription(true);
-                                }}
-                              />
-                            )}
-                          </Space>
+                          <TableDescription
+                            columnData={{
+                              fqn: feature.fullyQualifiedName ?? '',
+                              description: feature.description,
+                            }}
+                            entityFieldThreads={entityFieldThreads}
+                            entityFqn={entityFqn}
+                            entityType={EntityType.MLMODEL}
+                            hasEditPermission={
+                              permissions.EditAll || permissions.EditDescription
+                            }
+                            index={index}
+                            isReadOnly={isDeleted}
+                            onClick={() => {
+                              setSelectedFeature(feature);
+                              setEditDescription(true);
+                            }}
+                            onThreadLinkSelect={onThreadLinkSelect}
+                          />
                         </Col>
                       </Row>
                     </Col>

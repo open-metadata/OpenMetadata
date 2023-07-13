@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, Popover, Space, Table, Typography } from 'antd';
+import { Popover, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import TableDescription from 'components/TableDescription/TableDescription.component';
 import TableTags from 'components/TableTags/TableTags.component';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { LabelType, State, TagSource } from 'generated/type/schema';
 import {
@@ -30,42 +29,25 @@ import {
   toLower,
 } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
-import { ReactComponent as IconRequest } from '../../assets/svg/request-icon.svg';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { EntityField } from '../../constants/Feeds.constants';
-import { EntityType, FqnPart } from '../../enums/entity.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
-import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { EntityFieldThreads } from '../../interface/feed.interface';
-import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
-  ENTITY_LINK_SEPARATOR,
   getEntityName,
   getFrequentlyJoinedColumns,
 } from '../../utils/EntityUtils';
-import { getFieldThreadElement } from '../../utils/FeedElementUtils';
 import {
   getDataTypeString,
   getTableExpandableConfig,
   makeData,
   prepareConstraintIcon,
 } from '../../utils/TableUtils';
-import {
-  getRequestDescriptionPath,
-  getRequestTagsPath,
-  getUpdateDescriptionPath,
-  getUpdateTagsPath,
-} from '../../utils/TasksUtils';
-import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { EntityTableProps, TableCellRendered } from './EntityTable.interface';
-import './EntityTable.style.less';
+import { SchemaTableProps, TableCellRendered } from './SchemaTable.interface';
 
-const EntityTable = ({
+const SchemaTable = ({
   tableColumns,
   searchText,
   onUpdate,
@@ -77,9 +59,7 @@ const EntityTable = ({
   onThreadLinkSelect,
   entityFqn,
   tableConstraints,
-  entityFieldTasks,
-}: EntityTableProps) => {
-  const history = useHistory();
+}: SchemaTableProps) => {
   const { t } = useTranslation();
 
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
@@ -233,94 +213,8 @@ const EntityTable = ({
     return searchedValue;
   };
 
-  const getColumnName = (cell: Column) => {
-    const fqn = cell?.fullyQualifiedName || '';
-    const columnName = getPartialNameFromTableFQN(fqn, [FqnPart.NestedColumn]);
-    // wrap it in quotes if dot is present
-
-    return columnName.includes(FQN_SEPARATOR_CHAR)
-      ? `"${columnName}"`
-      : columnName;
-  };
-
-  const onRequestDescriptionHandler = (cell: Column) => {
-    const field = EntityField.COLUMNS;
-    const value = getColumnName(cell);
-    history.push(
-      getRequestDescriptionPath(
-        EntityType.TABLE,
-        entityFqn as string,
-        field,
-        value
-      )
-    );
-  };
-
-  const onUpdateDescriptionHandler = (cell: Column) => {
-    const field = EntityField.COLUMNS;
-    const value = getColumnName(cell);
-    history.push(
-      getUpdateDescriptionPath(
-        EntityType.TABLE,
-        entityFqn as string,
-        field,
-        value
-      )
-    );
-  };
-
-  const onRequestTagsHandler = (cell: Column) => {
-    const field = EntityField.COLUMNS;
-    const value = getColumnName(cell);
-    history.push(
-      getRequestTagsPath(EntityType.TABLE, entityFqn as string, field, value)
-    );
-  };
-
-  const onUpdateTagsHandler = (cell: Column) => {
-    const field = EntityField.COLUMNS;
-    const value = getColumnName(cell);
-    history.push(
-      getUpdateTagsPath(EntityType.TABLE, entityFqn as string, field, value)
-    );
-  };
-
   const handleUpdate = (column: Column, index: number) => {
     handleEditColumn(column, index);
-  };
-
-  const getRequestDescriptionElement = (cell: Column) => {
-    const hasDescription = Boolean(cell?.description ?? '');
-
-    return (
-      <Button
-        className="p-0 w-7 h-7 flex-none flex-center link-text focus:tw-outline-none hover-cell-icon m-r-xss"
-        data-testid="request-description"
-        type="text"
-        onClick={() =>
-          hasDescription
-            ? onUpdateDescriptionHandler(cell)
-            : onRequestDescriptionHandler(cell)
-        }>
-        <Popover
-          destroyTooltipOnHide
-          content={
-            hasDescription
-              ? t('message.request-update-description')
-              : t('message.request-description')
-          }
-          overlayClassName="ant-popover-request-description"
-          trigger="hover"
-          zIndex={9999}>
-          <IconRequest
-            height={14}
-            name={t('message.request-description')}
-            style={{ color: DE_ACTIVE_COLOR }}
-            width={14}
-          />
-        </Popover>
-      </Button>
-    );
   };
 
   const renderDataTypeDisplay: TableCellRendered<Column, 'dataTypeDisplay'> = (
@@ -355,91 +249,34 @@ const EntityTable = ({
   };
 
   const renderDescription: TableCellRendered<Column, 'description'> = (
-    description,
+    _,
     record,
     index
   ) => {
     return (
-      <div className="hover-icon-group">
-        <div className="d-inline-block">
-          <Space
-            data-testid="description"
-            direction={isEmpty(description) ? 'horizontal' : 'vertical'}
-            id={`column-description-${index}`}
-            size={4}>
-            <div>
-              {description ? (
-                <RichTextEditorPreviewer markdown={description} />
-              ) : (
-                <span className="text-grey-muted">
-                  {t('label.no-entity', {
-                    entity: t('label.description'),
-                  })}
-                </span>
-              )}
-            </div>
-            <div className="d-flex tw--mt-1.5">
-              {!isReadOnly ? (
-                <Fragment>
-                  {hasDescriptionEditAccess && (
-                    <>
-                      <Button
-                        className="p-0 tw-self-start flex-center w-7 h-7 d-flex-none hover-cell-icon"
-                        type="text"
-                        onClick={() => handleUpdate(record, index)}>
-                        <IconEdit
-                          height={14}
-                          name={t('label.edit')}
-                          style={{ color: DE_ACTIVE_COLOR }}
-                          width={14}
-                        />
-                      </Button>
-                    </>
-                  )}
-                  {getRequestDescriptionElement(record)}
-                  {getFieldThreadElement(
-                    getColumnName(record),
-                    EntityField.DESCRIPTION,
-                    entityFieldThreads as EntityFieldThreads[],
-                    onThreadLinkSelect,
-                    EntityType.TABLE,
-                    entityFqn,
-                    `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
-                      record
-                    )}${ENTITY_LINK_SEPARATOR}description`,
-                    Boolean(record)
-                  )}
-                  {getFieldThreadElement(
-                    getColumnName(record),
-                    EntityField.DESCRIPTION,
-                    entityFieldTasks as EntityFieldThreads[],
-                    onThreadLinkSelect,
-                    EntityType.TABLE,
-                    entityFqn,
-                    `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
-                      record
-                    )}${ENTITY_LINK_SEPARATOR}description`,
-                    Boolean(record),
-                    ThreadType.Task
-                  )}
-                </Fragment>
-              ) : null}
-            </div>
-          </Space>
-        </div>
+      <>
+        <TableDescription
+          columnData={{
+            fqn: record.fullyQualifiedName ?? '',
+            description: record.description,
+          }}
+          entityFieldThreads={entityFieldThreads}
+          entityFqn={entityFqn}
+          entityType={EntityType.TABLE}
+          hasEditPermission={hasDescriptionEditAccess}
+          index={index}
+          isReadOnly={isReadOnly}
+          onClick={() => handleUpdate(record, index)}
+          onThreadLinkSelect={onThreadLinkSelect}
+        />
         {getFrequentlyJoinedColumns(
           record?.name,
           joins,
           t('label.frequently-joined-column-plural')
         )}
-      </div>
+      </>
     );
   };
-
-  const getColumnFieldFQN = (record: Column) =>
-    `${EntityField.COLUMNS}${ENTITY_LINK_SEPARATOR}${getColumnName(
-      record
-    )}${ENTITY_LINK_SEPARATOR}${EntityField.TAGS}`;
 
   const columns: ColumnsType<Column> = useMemo(
     () => [
@@ -487,8 +324,7 @@ const EntityTable = ({
           <TableTags<Column>
             entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
-            getColumnFieldFQN={getColumnFieldFQN(record)}
-            getColumnName={getColumnName}
+            entityType={EntityType.TABLE}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}
             index={index}
@@ -496,9 +332,7 @@ const EntityTable = ({
             record={record}
             tags={tags}
             type={TagSource.Classification}
-            onRequestTagsHandler={onRequestTagsHandler}
             onThreadLinkSelect={onThreadLinkSelect}
-            onUpdateTagsHandler={onUpdateTagsHandler}
           />
         ),
       },
@@ -512,8 +346,7 @@ const EntityTable = ({
           <TableTags<Column>
             entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
-            getColumnFieldFQN={getColumnFieldFQN(record)}
-            getColumnName={getColumnName}
+            entityType={EntityType.TABLE}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}
             index={index}
@@ -521,9 +354,7 @@ const EntityTable = ({
             record={record}
             tags={tags}
             type={TagSource.Glossary}
-            onRequestTagsHandler={onRequestTagsHandler}
             onThreadLinkSelect={onThreadLinkSelect}
-            onUpdateTagsHandler={onUpdateTagsHandler}
           />
         ),
       },
@@ -531,7 +362,6 @@ const EntityTable = ({
     [
       entityFqn,
       isReadOnly,
-      entityFieldTasks,
       entityFieldThreads,
       tableConstraints,
       hasTagEditAccess,
@@ -539,10 +369,7 @@ const EntityTable = ({
       handleTagSelection,
       renderDataTypeDisplay,
       renderDescription,
-      getColumnName,
       handleTagSelection,
-      onRequestTagsHandler,
-      onUpdateTagsHandler,
       onThreadLinkSelect,
     ]
   );
@@ -592,4 +419,4 @@ const EntityTable = ({
   );
 };
 
-export default EntityTable;
+export default SchemaTable;

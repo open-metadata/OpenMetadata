@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,13 +11,17 @@
  *  limitations under the License.
  */
 
-.hover-icon-group {
-  .hover-cell-icon {
-    opacity: 0;
-  }
-  &:hover {
-    .hover-cell-icon {
-      opacity: 100;
-    }
-  }
+import { EntityType } from 'enums/entity.enum';
+import { ThreadType } from 'generated/api/feed/createThread';
+import { EntityFieldThreads } from 'interface/feed.interface';
+
+export interface EntityTaskDescriptionProps {
+  data: {
+    fqn?: string;
+    description?: string;
+  };
+  entityFqn: string;
+  entityType: EntityType;
+  entityFieldThreads: EntityFieldThreads[];
+  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
 }
