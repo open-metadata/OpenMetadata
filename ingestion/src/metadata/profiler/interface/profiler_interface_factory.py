@@ -15,6 +15,9 @@ Factory class for creating profiler interface objects
 
 from typing import cast
 
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
@@ -23,6 +26,9 @@ from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
 )
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
+from metadata.profiler.interface.sqlalchemy.bigquery.profiler_interface import (
+    BigQueryProfilerInterface,
+)
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
@@ -49,6 +55,9 @@ class ProfilerInterfaceFactory:
 
 profiler_interface_factory = ProfilerInterfaceFactory()
 profiler_interface_factory.register(DatabaseConnection.__name__, SQAProfilerInterface)
+profiler_interface_factory.register(
+    BigQueryConnection.__name__, BigQueryProfilerInterface
+)
 profiler_interface_factory.register(
     DatalakeConnection.__name__, PandasProfilerInterface
 )

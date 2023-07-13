@@ -32,7 +32,7 @@ from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
-from metadata.profiler.processor.sampler.sampler_factory import sampler_factory
+from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
 from metadata.utils.datalake.datalake_utils import fetch_dataframe
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
@@ -104,7 +104,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
     def _get_sampler(self):
         """Get dataframe sampler from config"""
-        return sampler_factory.create(
+        return sampler_factory_.create(
             DatalakeConnection.__name__,
             client=self.client,
             table=self.dfs,
