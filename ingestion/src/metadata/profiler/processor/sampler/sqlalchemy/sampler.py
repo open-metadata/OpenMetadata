@@ -15,7 +15,7 @@ for the profiler
 from typing import Union, cast
 
 from sqlalchemy import Column, inspect, text
-from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
+from sqlalchemy.orm import DeclarativeMeta, Query, aliased
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.sql.sqltypes import Enum
 
@@ -25,7 +25,6 @@ from metadata.generated.schema.entity.data.table import (
     ProfileSampleType,
     TableData,
 )
-from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.orm.registry import Dialects
@@ -68,7 +67,7 @@ class SQASampler(SamplerInterface):
     def get_sample_query(self) -> Query:
         """get query for sample data"""
         if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
-            return (
+            rnd = (
                 self.client.query(
                     self.table,
                     (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
@@ -77,11 +76,12 @@ class SQASampler(SamplerInterface):
                     f"SAMPLE BERNOULLI ({self.profile_sample or 100})",
                     dialect=Dialects.Snowflake,
                 )
-                .suffix_with(
-                    f"TABLESAMPLE SYSTEM ({self.profile_sample or 100} PERCENT)",
-                    dialect=Dialects.BigQuery,
-                )
                 .cte(f"{self.table.__tablename__}_rnd")
+            )
+            session_query = self.client.query(rnd)
+
+            return session_query.where(rnd.c.random <= self.profile_sample).cte(
+                f"{self.table.__tablename__}_sample"
             )
         table_query = self.client.query(self.table)
         return (
@@ -109,13 +109,8 @@ class SQASampler(SamplerInterface):
             return self.table
 
         # Add new RandomNumFn column
-        rnd = self.get_sample_query()
-        session_query = self.client.query(rnd)
+        sampled = self.get_sample_query()
 
-        # Prepare sampled CTE
-        sampled = session_query.where(rnd.c.random <= self.profile_sample).cte(
-            f"{self.table.__tablename__}_sample"
-        )
         # Assign as an alias
         return aliased(self.table, sampled)
 
