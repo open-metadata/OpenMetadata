@@ -642,7 +642,7 @@ public class ElasticSearchClientImpl implements SearchClient {
                 .field(EntityBuilderConstant.ES_TAG_FQN_FIELD)
                 .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("glossary.name.keyword").field("glossary.name.keyword"))
-        .aggregation(AggregationBuilders.terms("owner.name.keyword").field("owner.name.keyword"));
+        .aggregation(AggregationBuilders.terms("owner.displayName.keyword").field("owner.displayName.keyword"));
     return searchSourceBuilder;
   }
 
