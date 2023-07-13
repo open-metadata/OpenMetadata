@@ -20,6 +20,7 @@ import {
 import { EntityTabs } from 'enums/entity.enum';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import TopicDetails from './TopicDetails.component';
 import { TopicDetailsProps } from './TopicDetails.interface';
 import { TOPIC_DETAILS } from './TopicDetails.mock';
@@ -50,11 +51,13 @@ const mockUserTeam = [
 
 const topicDetailsProps: TopicDetailsProps = {
   topicDetails: TOPIC_DETAILS,
+  fetchTopic: jest.fn(),
   followTopicHandler: jest.fn(),
   unFollowTopicHandler: jest.fn(),
   onTopicUpdate: jest.fn(),
   versionHandler: jest.fn(),
   createThread: jest.fn(),
+  topicPermissions: DEFAULT_ENTITY_PERMISSION,
 };
 
 const mockParams = {
@@ -88,8 +91,8 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviwer</p>);
 });
 
-jest.mock('components/Tag/TagsContainerV1/TagsContainerV1', () => {
-  return jest.fn().mockReturnValue(<p>TagsContainerV1</p>);
+jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () => {
+  return jest.fn().mockReturnValue(<p>TagsContainerV2</p>);
 });
 
 jest.mock('components/Tag/Tags/tags', () => {

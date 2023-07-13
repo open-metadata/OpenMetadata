@@ -13,7 +13,6 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
 
 public class WorkflowRepository extends EntityRepository<Workflow> {
-
   private static final String UPDATE_FIELDS = "owner";
   private static final String PATCH_FIELDS = "owner,status,response";
 
@@ -67,7 +66,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
 
   @Override
   public void storeRelationships(Workflow entity) {
-    storeOwner(entity, entity.getOwner());
+    // No relationships to store beyond what is stored in the super class
   }
 
   @Override

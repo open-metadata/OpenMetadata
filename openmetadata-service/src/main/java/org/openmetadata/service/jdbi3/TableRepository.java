@@ -78,6 +78,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -89,9 +90,9 @@ import org.openmetadata.service.util.ResultList;
 public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
-  static final String TABLE_PATCH_FIELDS = "owner,tags,tableConstraints,tablePartition,extension,followers";
+  static final String PATCH_FIELDS = "owner,tags,tableConstraints,tablePartition,extension,followers";
   // Table fields that can be updated in a PUT request
-  static final String TABLE_UPDATE_FIELDS = "owner,tags,tableConstraints,tablePartition,dataModel,extension,followers";
+  static final String UPDATE_FIELDS = "owner,tags,tableConstraints,tablePartition,dataModel,extension,followers";
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
@@ -111,8 +112,8 @@ public class TableRepository extends EntityRepository<Table> {
         Table.class,
         daoCollection.tableDAO(),
         daoCollection,
-        TABLE_PATCH_FIELDS,
-        TABLE_UPDATE_FIELDS);
+        PATCH_FIELDS,
+        UPDATE_FIELDS);
   }
 
   @Override
@@ -132,16 +133,20 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public void setInheritedFields(Table table) throws IOException {
-    setInheritedProperties(table, table.getDatabaseSchema().getId());
-  }
+  public Table setInheritedFields(Table table, Fields fields) throws IOException {
+    DatabaseSchema schema = null;
+    // If table does not have owner, then inherit it from parent databaseSchema
+    if (fields.contains(FIELD_OWNER) && table.getOwner() == null) {
+      schema = Entity.getEntity(DATABASE_SCHEMA, table.getDatabaseSchema().getId(), "owner", ALL);
+      table.withOwner(schema.getOwner());
+    }
 
-  public void setInheritedProperties(Table table, UUID schemaId) throws IOException {
     // If table does not have retention period, then inherit it from parent databaseSchema
     if (table.getRetentionPeriod() == null) {
-      DatabaseSchema schema = Entity.getEntity(DATABASE_SCHEMA, schemaId, "", ALL);
+      schema = schema == null ? Entity.getEntity(DATABASE_SCHEMA, table.getDatabaseSchema().getId(), "", ALL) : schema;
       table.withRetentionPeriod(schema.getRetentionPeriod());
     }
+    return table;
   }
 
   private void setDefaultFields(Table table) throws IOException {
@@ -243,7 +248,11 @@ public class TableRepository extends EntityRepository<Table> {
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
 
     // Set the column tags. Will be used to mask the sample data
-    if (!authorizePII) getColumnTags(true, table.getColumns());
+    if (!authorizePII) {
+      getColumnTags(true, table.getColumns());
+      table.setTags(getTags(table.getFullyQualifiedName()));
+      return PIIMasker.getSampleData(table);
+    }
 
     return table;
   }
@@ -472,7 +481,10 @@ public class TableRepository extends EntityRepository<Table> {
     setColumnProfile(table.getColumns());
 
     // Set the column tags. Will be used to hide the data
-    if (!authorizePII) getColumnTags(true, table.getColumns());
+    if (!authorizePII) {
+      getColumnTags(true, table.getColumns());
+      return PIIMasker.getTableProfile(table);
+    }
 
     return table;
   }
@@ -597,17 +609,12 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void prepare(Table table) throws IOException {
-    DatabaseSchema schema = Entity.getEntity(table.getDatabaseSchema(), "owner", ALL);
+    DatabaseSchema schema = Entity.getEntity(table.getDatabaseSchema(), "", ALL);
     table
         .withDatabaseSchema(schema.getEntityReference())
         .withDatabase(schema.getDatabase())
         .withService(schema.getService())
         .withServiceType(schema.getServiceType());
-
-    // Carry forward ownership from database schema
-    if (table.getOwner() == null && schema.getOwner() != null) {
-      table.setOwner(schema.getOwner().withDescription("inherited"));
-    }
 
     // Validate column tags
     addDerivedColumnTags(table.getColumns());
@@ -635,12 +642,6 @@ public class TableRepository extends EntityRepository<Table> {
   public void storeRelationships(Table table) {
     // Add relationship from database to table
     addRelationship(table.getDatabaseSchema().getId(), table.getId(), DATABASE_SCHEMA, TABLE, Relationship.CONTAINS);
-
-    // Add table owner relationship
-    storeOwner(table, table.getOwner());
-
-    // Add tag to table relationship
-    applyTags(table);
   }
 
   @Override
@@ -692,19 +693,31 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) throws IOException {
-    // TODO move this as the first check
     validateEntityLinkFieldExists(entityLink, task.getType());
     if (entityLink.getFieldName().equals("columns")) {
+      String columnName = entityLink.getArrayFieldName();
+      String childrenName = "";
+      if (entityLink.getArrayFieldName().contains(".")) {
+        String fieldNameWithoutQuotes =
+            entityLink.getArrayFieldName().substring(1, entityLink.getArrayFieldName().length() - 1);
+        columnName = fieldNameWithoutQuotes.substring(0, fieldNameWithoutQuotes.indexOf("."));
+        childrenName = fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
+      }
       Table table = getByName(null, entityLink.getEntityFQN(), getFields("columns,tags"), Include.ALL);
-      Column column =
-          table.getColumns().stream()
-              .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
-              .findFirst()
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          CatalogExceptionMessage.invalidFieldName("column", entityLink.getArrayFieldName())));
-
+      Column column = null;
+      for (Column c : table.getColumns()) {
+        if (c.getName().equals(columnName)) {
+          column = c;
+          break;
+        }
+      }
+      if (childrenName != "" && column != null) {
+        column = getChildrenColumn(column.getChildren(), childrenName);
+      }
+      if (column == null) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.invalidFieldName("column", entityLink.getArrayFieldName()));
+      }
       String origJson = JsonUtils.pojoToJson(table);
       if (EntityUtil.isDescriptionTask(task.getType())) {
         column.setDescription(newValue);
@@ -718,6 +731,27 @@ public class TableRepository extends EntityRepository<Table> {
       return;
     }
     super.update(task, entityLink, newValue, user);
+  }
+
+  private static Column getChildrenColumn(List<Column> column, String childrenName) {
+    Column childrenColumn = null;
+    for (Column col : column) {
+      if (col.getName().equals(childrenName)) {
+        childrenColumn = col;
+        break;
+      }
+    }
+    if (childrenColumn == null) {
+      for (int i = 0; i < column.size(); i++) {
+        if (column.get(i).getChildren() != null) {
+          childrenColumn = getChildrenColumn(column.get(i).getChildren(), childrenName);
+          if (childrenColumn != null) {
+            break;
+          }
+        }
+      }
+    }
+    return childrenColumn;
   }
 
   private void getColumnTags(boolean setTags, List<Column> columns) {

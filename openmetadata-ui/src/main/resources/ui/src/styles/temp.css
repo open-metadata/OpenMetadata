@@ -828,27 +828,6 @@ body .list-option.rdw-option-active {
 
 /* EntityLineage Sidebar CSS */
 
-.entity-lineage.sidebar {
-  height: 110%;
-  background: white;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100px;
-  z-index: 200;
-  overflow-y: auto;
-  padding: 8px;
-  transform: translateX(100%);
-  display: none;
-  border-right: 1px solid #d9ceee;
-  transition: transform 0.3s ease-out;
-}
-
-.entity-lineage.sidebar.open {
-  transform: translateX(0);
-  display: block;
-}
-
 /* login slider */
 
 .login-slider.slick-dots li.slick-active button:before {

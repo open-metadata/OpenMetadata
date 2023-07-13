@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Edge } from 'components/EntityLineage/EntityLineage.interface';
 import { ExploreSearchIndex } from 'components/Explore/explore.interface';
+import { WILD_CARD_CHAR } from 'constants/char.constants';
 import { ApplicationConfiguration } from 'generated/configuration/applicationConfiguration';
 import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfiguration';
 import { SearchIndex } from '../enums/search.enum';
@@ -177,7 +178,7 @@ export const getSuggestedTeams = (term: string) => {
 
 export const getUserSuggestions = (term: string) => {
   const params = {
-    q: term,
+    q: term || WILD_CARD_CHAR,
     index: `${SearchIndex.USER},${SearchIndex.TEAM}`,
   };
 

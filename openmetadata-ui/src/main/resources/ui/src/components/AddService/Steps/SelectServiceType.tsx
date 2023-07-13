@@ -80,6 +80,16 @@ const SelectServiceType = ({
     [selectedConnectors]
   );
 
+  const getServiceName = (type: string) => {
+    if (type.includes('Custom')) {
+      return startCase(type);
+    } else if (type === PipelineServiceType.GluePipeline) {
+      return 'Glue Pipeline';
+    }
+
+    return type;
+  };
+
   return (
     <Row>
       <Col span={24}>
@@ -136,7 +146,7 @@ const SelectServiceType = ({
                   </div>
                 </div>
                 <p className="break-word text-center">
-                  {type.includes('Custom') ? startCase(type) : type}
+                  {getServiceName(type)}
                   {BETA_SERVICES.includes(
                     type as DatabaseServiceType | PipelineServiceType
                   ) ? (

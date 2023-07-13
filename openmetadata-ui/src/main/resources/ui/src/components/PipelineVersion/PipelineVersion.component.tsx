@@ -18,12 +18,14 @@ import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { getVersionPathWithTab } from 'constants/constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { TagSource } from 'generated/type/schema';
 import { t } from 'i18next';
@@ -69,6 +71,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   deleted = false,
   backHandler,
   versionHandler,
+  entityPermissions,
 }: PipelineVersionProp) => {
   const history = useHistory();
   const { tab } = useParams<{ tab: EntityTabs }>();
@@ -347,7 +350,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         ),
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-l-lg" flex="auto">
+            <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
@@ -376,9 +379,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 {Object.keys(TagSource).map((tagType) => (
-                  <TagsContainerV1
-                    isVersionView
-                    showLimited
+                  <TagsContainerV2
                     entityFqn={currentVersionData.fullyQualifiedName}
                     entityType={EntityType.PIPELINE}
                     key={tagType}
@@ -400,7 +401,9 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
             name={t('label.custom-property-plural')}
           />
         ),
-        children: (
+        children: !entityPermissions.ViewAll ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <CustomPropertyTable
             isVersionView
             entityDetails={
@@ -412,8 +415,18 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         ),
       },
     ],
-    [description, tableColumn, pipelineVersionTableData, currentVersionData]
+    [
+      description,
+      tableColumn,
+      pipelineVersionTableData,
+      currentVersionData,
+      entityPermissions,
+    ]
   );
+
+  if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
 
   return (
     <>

@@ -30,9 +30,10 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import SourceList from 'components/MlModelDetail/SourceList.component';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { getVersionPathWithTab } from 'constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { MlFeature, Mlmodel } from 'generated/entity/data/mlmodel';
 import { TagSource } from 'generated/type/tagLabel';
@@ -71,6 +72,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   deleted = false,
   backHandler,
   versionHandler,
+  entityPermissions,
 }: MlModelVersionProp) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -208,7 +210,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
         ),
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-l-lg" flex="auto">
+            <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
@@ -270,7 +272,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                                 </Col>
                                 <Col className="m-b-xs" span={24}>
                                   <Row gutter={8} wrap={false}>
-                                    <Col flex="120px">
+                                    <Col flex="130px">
                                       <Typography.Text className="text-grey-muted">
                                         {`${t('label.glossary-term-plural')} :`}
                                       </Typography.Text>
@@ -291,7 +293,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
 
                                 <Col className="m-b-xs" span={24}>
                                   <Row gutter={8} wrap={false}>
-                                    <Col flex="120px">
+                                    <Col flex="130px">
                                       <Typography.Text className="text-grey-muted">
                                         {`${t('label.tag-plural')} :`}
                                       </Typography.Text>
@@ -356,9 +358,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 {Object.keys(TagSource).map((tagType) => (
-                  <TagsContainerV1
-                    isVersionView
-                    showLimited
+                  <TagsContainerV2
                     entityFqn={currentVersionData.fullyQualifiedName}
                     entityType={EntityType.MLMODEL}
                     key={tagType}
@@ -380,7 +380,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
             name={t('label.custom-property-plural')}
           />
         ),
-        children: (
+        children: !entityPermissions.ViewAll ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <CustomPropertyTable
             isVersionView
             entityDetails={
@@ -392,8 +394,12 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
         ),
       },
     ],
-    [description, mlFeaturesData, currentVersionData]
+    [description, mlFeaturesData, currentVersionData, entityPermissions]
   );
+
+  if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
 
   return (
     <>

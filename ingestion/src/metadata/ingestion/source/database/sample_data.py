@@ -63,6 +63,7 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
     TableProfile,
 )
+from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
     CustomDatabaseConnection,
@@ -86,7 +87,7 @@ from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameter
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.schema import Topic
+from metadata.generated.schema.type.schema import Topic as TopicSchema
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -679,7 +680,7 @@ class SampleDataSource(
                     )
                 schema_fields = load_parser_fn(topic["name"], topic["schemaText"])
 
-                create_topic.messageSchema = Topic(
+                create_topic.messageSchema = TopicSchema(
                     schemaText=topic["schemaText"],
                     schemaType=topic["schemaType"],
                     schemaFields=schema_fields,
@@ -687,6 +688,22 @@ class SampleDataSource(
 
             self.status.scanned(f"Topic Scanned: {create_topic.name.__root__}")
             yield create_topic
+
+            if topic.get("sampleData"):
+
+                topic_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Topic,
+                    service_name=self.kafka_service.name.__root__,
+                    topic_name=topic["name"],
+                )
+
+                topic_entity = self.metadata.get_by_name(entity=Topic, fqn=topic_fqn)
+
+                self.metadata.ingest_topic_sample_data(
+                    topic=topic_entity,
+                    sample_data=TopicSampleData(messages=topic["sampleData"]),
+                )
 
     def ingest_looker(self) -> Iterable[Entity]:
         """

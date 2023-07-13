@@ -20,9 +20,10 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
-import java.util.Stack;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -142,9 +143,9 @@ public class SubjectCache {
 
   /** Return true if given list of teams is part of the hierarchy of parentTeam */
   public boolean isInTeam(String parentTeam, EntityReference team) {
-    Stack<EntityReference> stack = new Stack<>();
+    Deque<EntityReference> stack = new ArrayDeque<>();
     stack.push(team); // Start with team and see if the parent matches
-    while (!stack.empty()) {
+    while (!stack.isEmpty()) {
       Team parent = getTeam(stack.pop().getId());
       if (parent.getName().equals(parentTeam)) {
         return true;
@@ -156,13 +157,13 @@ public class SubjectCache {
 
   /** Return true if the given user has any roles the list of roles */
   public boolean hasRole(User user, String role) {
-    Stack<EntityReference> stack = new Stack<>();
+    Deque<EntityReference> stack = new ArrayDeque<>();
     // If user has one of the roles directly assigned then return true
     if (hasRole(user.getRoles(), role)) {
       return true;
     }
     listOrEmpty(user.getTeams()).forEach(stack::push); // Continue to go up the chain of parents
-    while (!stack.empty()) {
+    while (!stack.isEmpty()) {
       Team parent = getTeam(stack.pop().getId());
       if (hasRole(parent.getDefaultRoles(), role)) {
         return true;

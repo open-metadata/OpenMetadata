@@ -128,8 +128,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         service.getType(),
         Entity.INGESTION_PIPELINE,
         Relationship.CONTAINS);
-    storeOwner(ingestionPipeline, ingestionPipeline.getOwner());
-    applyTags(ingestionPipeline);
   }
 
   @Override

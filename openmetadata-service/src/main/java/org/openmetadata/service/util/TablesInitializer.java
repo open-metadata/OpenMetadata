@@ -40,17 +40,18 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.MigrationFile;
 import org.openmetadata.service.migration.api.MigrationStep;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
@@ -180,7 +181,6 @@ public final class TablesInitializer {
             confFilePath);
     Fernet.getInstance().setFernetKey(config);
     DataSourceFactory dataSourceFactory = config.getDataSourceFactory();
-    ElasticSearchConfiguration esConfig = config.getElasticSearchConfiguration();
     if (dataSourceFactory == null) {
       throw new RuntimeException("No database in config file");
     }
@@ -204,7 +204,7 @@ public final class TablesInitializer {
       execute(config, flyway, schemaMigrationOptionSpecified);
       printToConsoleInDebug(schemaMigrationOptionSpecified + "option successful");
     } catch (Exception e) {
-      printError(schemaMigrationOptionSpecified + "option failed with : " + e);
+      printError(schemaMigrationOptionSpecified + "option failed with : " + ExceptionUtils.getStackTrace(e));
       System.exit(1);
     }
     System.exit(0);
@@ -275,11 +275,14 @@ public final class TablesInitializer {
           }
         }
         flyway.migrate();
+        validateAndRunSystemDataMigrations(
+            jdbi, ConnectionType.from(config.getDataSourceFactory().getDriverClass()), ignoreServerFileChecksum);
         break;
       case MIGRATE:
         flyway.migrate();
         // Validate and Run System Data Migrations
-        validateAndRunSystemDataMigrations(jdbi, config, ignoreServerFileChecksum);
+        validateAndRunSystemDataMigrations(
+            jdbi, ConnectionType.from(config.getDataSourceFactory().getDriverClass()), ignoreServerFileChecksum);
         break;
       case INFO:
         printToConsoleMandatory(dumpToAsciiTable(flyway.info().all()));
@@ -348,21 +351,19 @@ public final class TablesInitializer {
     }
   }
 
-  private static void validateAndRunSystemDataMigrations(
-      Jdbi jdbi, OpenMetadataApplicationConfig config, boolean ignoreFileChecksum) {
-    DatasourceConfig.initialize(config);
-    List<MigrationStep> loadedMigrationFiles = getServerMigrationFiles();
-    MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi, DatasourceConfig.getInstance().getDatabaseConnectionType(), loadedMigrationFiles, ignoreFileChecksum);
+  public static void validateAndRunSystemDataMigrations(
+      Jdbi jdbi, ConnectionType connType, boolean ignoreFileChecksum) {
+    DatasourceConfig.initialize(connType.label);
+    List<MigrationStep> loadedMigrationFiles = getServerMigrationFiles(connType);
+    MigrationWorkflow workflow = new MigrationWorkflow(jdbi, loadedMigrationFiles, ignoreFileChecksum);
     workflow.runMigrationWorkflows();
   }
 
-  private static List<MigrationStep> getServerMigrationFiles() {
+  public static List<MigrationStep> getServerMigrationFiles(ConnectionType connType) {
     List<MigrationStep> migrations = new ArrayList<>();
     try {
       String prefix =
-          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+          connType.equals(ConnectionType.MYSQL)
               ? "org.openmetadata.service.migration.versions.mysql"
               : "org.openmetadata.service.migration.versions.postgres";
       Reflections reflections = new Reflections(prefix);

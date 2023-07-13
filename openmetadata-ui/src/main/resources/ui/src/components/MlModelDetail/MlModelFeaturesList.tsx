@@ -11,36 +11,18 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Card,
-  Col,
-  Divider,
-  Row,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { Card, Col, Divider, Row, Space, Typography } from 'antd';
+import TableDescription from 'components/TableDescription/TableDescription.component';
 import TableTags from 'components/TableTags/TableTags.component';
-import {
-  GlossaryTermDetailsProps,
-  TagsDetailsProps,
-} from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
+import { EntityType } from 'enums/entity.enum';
 import { TagSource } from 'generated/type/schema';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  getGlossaryTermHierarchy,
-  getGlossaryTermsList,
-} from 'utils/GlossaryUtils';
-import { getAllTagsList, getTagsHierarchy } from 'utils/TagsUtils';
 import { MlFeature } from '../../generated/entity/data/mlmodel';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { MlModelFeaturesListProp } from './MlModel.interface';
 import SourceList from './SourceList.component';
@@ -50,22 +32,16 @@ const MlModelFeaturesList = ({
   handleFeaturesUpdate,
   permissions,
   isDeleted,
+  entityFqn,
+  entityFieldThreads,
+  onThreadLinkSelect,
 }: MlModelFeaturesListProp) => {
   const { t } = useTranslation();
   const [selectedFeature, setSelectedFeature] = useState<MlFeature>(
     {} as MlFeature
   );
   const [editDescription, setEditDescription] = useState<boolean>(false);
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-  const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
-  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
 
-  const [glossaryTags, setGlossaryTags] = useState<GlossaryTermDetailsProps[]>(
-    []
-  );
-  const [classificationTags, setClassificationTags] = useState<
-    TagsDetailsProps[]
-  >([]);
   const hasEditPermission = useMemo(
     () => permissions.EditTags || permissions.EditAll,
     [permissions]
@@ -121,31 +97,7 @@ const MlModelFeaturesList = ({
     }
   };
 
-  const fetchGlossaryTags = async () => {
-    setIsGlossaryLoading(true);
-    try {
-      const glossaryTermList = await getGlossaryTermsList();
-      setGlossaryTags(glossaryTermList);
-    } catch {
-      setTagFetchFailed(true);
-    } finally {
-      setIsGlossaryLoading(false);
-    }
-  };
-
-  const fetchClassificationTags = async () => {
-    setIsTagLoading(true);
-    try {
-      const tags = await getAllTagsList();
-      setClassificationTags(tags);
-    } catch {
-      setTagFetchFailed(true);
-    } finally {
-      setIsTagLoading(false);
-    }
-  };
-
-  if (mlFeatures && mlFeatures.length) {
+  if (!isEmpty(mlFeatures)) {
     return (
       <Fragment>
         <Row data-testid="feature-list">
@@ -204,18 +156,17 @@ const MlModelFeaturesList = ({
                         <Col flex="auto">
                           <TableTags<MlFeature>
                             showInlineEditTagButton
-                            dataTestId="glossary-tags"
-                            fetchTags={fetchGlossaryTags}
+                            entityFieldThreads={entityFieldThreads}
+                            entityFqn={entityFqn}
+                            entityType={EntityType.MLMODEL}
                             handleTagSelection={handleTagsChange}
                             hasTagEditAccess={hasEditPermission}
                             index={index}
                             isReadOnly={isDeleted}
-                            isTagLoading={isGlossaryLoading}
                             record={feature}
-                            tagFetchFailed={tagFetchFailed}
-                            tagList={getGlossaryTermHierarchy(glossaryTags)}
                             tags={feature.tags ?? []}
                             type={TagSource.Glossary}
+                            onThreadLinkSelect={onThreadLinkSelect}
                           />
                         </Col>
                       </Row>
@@ -231,18 +182,17 @@ const MlModelFeaturesList = ({
                         <Col flex="auto">
                           <TableTags<MlFeature>
                             showInlineEditTagButton
-                            dataTestId="classification-tags"
-                            fetchTags={fetchClassificationTags}
+                            entityFieldThreads={entityFieldThreads}
+                            entityFqn={entityFqn}
+                            entityType={EntityType.MLMODEL}
                             handleTagSelection={handleTagsChange}
                             hasTagEditAccess={hasEditPermission}
                             index={index}
                             isReadOnly={isDeleted}
-                            isTagLoading={isTagLoading}
                             record={feature}
-                            tagFetchFailed={tagFetchFailed}
-                            tagList={getTagsHierarchy(classificationTags)}
                             tags={feature.tags ?? []}
                             type={TagSource.Classification}
+                            onThreadLinkSelect={onThreadLinkSelect}
                           />
                         </Col>
                       </Row>
@@ -256,42 +206,25 @@ const MlModelFeaturesList = ({
                           </Typography.Text>
                         </Col>
                         <Col flex="auto">
-                          <Space align="start">
-                            {feature.description ? (
-                              <RichTextEditorPreviewer
-                                markdown={feature.description}
-                              />
-                            ) : (
-                              <Typography.Text className="text-grey-muted">
-                                {t('label.no-entity', {
-                                  entity: t('label.description'),
-                                })}
-                              </Typography.Text>
-                            )}
-                            <Tooltip
-                              title={
-                                permissions.EditAll ||
-                                permissions.EditDescription
-                                  ? t('label.edit')
-                                  : t('message.no-permission-for-action')
-                              }>
-                              <Button
-                                className="m-l-xxs no-border p-0 text-primary h-auto"
-                                disabled={
-                                  !(
-                                    permissions.EditAll ||
-                                    permissions.EditDescription
-                                  )
-                                }
-                                icon={<EditIcon width={16} />}
-                                type="text"
-                                onClick={() => {
-                                  setSelectedFeature(feature);
-                                  setEditDescription(true);
-                                }}
-                              />
-                            </Tooltip>
-                          </Space>
+                          <TableDescription
+                            columnData={{
+                              fqn: feature.fullyQualifiedName ?? '',
+                              description: feature.description,
+                            }}
+                            entityFieldThreads={entityFieldThreads}
+                            entityFqn={entityFqn}
+                            entityType={EntityType.MLMODEL}
+                            hasEditPermission={
+                              permissions.EditAll || permissions.EditDescription
+                            }
+                            index={index}
+                            isReadOnly={isDeleted}
+                            onClick={() => {
+                              setSelectedFeature(feature);
+                              setEditDescription(true);
+                            }}
+                            onThreadLinkSelect={onThreadLinkSelect}
+                          />
                         </Col>
                       </Row>
                     </Col>

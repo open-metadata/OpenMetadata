@@ -18,11 +18,13 @@ import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV1 from 'components/Tag/TagsContainerV1/TagsContainerV1';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { getVersionPathWithTab } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { TagSource } from 'generated/type/tagLabel';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -55,6 +57,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   deleted = false,
   backHandler,
   versionHandler,
+  entityPermissions,
 }: DashboardVersionProp) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -164,7 +167,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         ),
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-l-lg" flex="auto">
+            <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
@@ -192,9 +195,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 {Object.keys(TagSource).map((tagType) => (
-                  <TagsContainerV1
-                    isVersionView
-                    showLimited
+                  <TagsContainerV2
                     entityFqn={currentVersionData.fullyQualifiedName}
                     entityType={EntityType.DASHBOARD}
                     key={tagType}
@@ -216,7 +217,9 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
             name={t('label.custom-property-plural')}
           />
         ),
-        children: (
+        children: !entityPermissions.ViewAll ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <CustomPropertyTable
             isVersionView
             entityDetails={
@@ -228,8 +231,12 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         ),
       },
     ],
-    [description, tableColumn, currentVersionData]
+    [description, tableColumn, currentVersionData, entityPermissions]
   );
+
+  if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
 
   return (
     <>

@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-const defaultTheme = require('tailwindcss/defaultTheme');
-
 // Primary colors for text and controls
 const primary = '#0968da';
 const primaryII = '#8D6AF1';

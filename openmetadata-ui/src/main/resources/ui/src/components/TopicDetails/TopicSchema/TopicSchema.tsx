@@ -23,38 +23,32 @@ import {
   Typography,
 } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { Key } from 'antd/lib/table/interface';
+import { ReactComponent as DownUpArrowIcon } from 'assets/svg/ic-down-up-arrow.svg';
+import { ReactComponent as UpDownArrowIcon } from 'assets/svg/ic-up-down-arrow.svg';
 import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
+import TableDescription from 'components/TableDescription/TableDescription.component';
 import TableTags from 'components/TableTags/TableTags.component';
-import {
-  GlossaryTermDetailsProps,
-  TagsDetailsProps,
-} from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { CSMode } from 'enums/codemirror.enum';
+import { EntityType } from 'enums/entity.enum';
 import { TagLabel, TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, isEmpty, isUndefined, map } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
-import {
-  getGlossaryTermHierarchy,
-  getGlossaryTermsList,
-} from 'utils/GlossaryUtils';
-import { getAllTagsList, getTagsHierarchy } from 'utils/TagsUtils';
 import { DataTypeTopic, Field } from '../../../generated/entity/data/topic';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import {
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TopicSchema.utils';
-import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import {
-  CellRendered,
   SchemaViewType,
   TopicSchemaFieldsProps,
 } from './TopicSchema.interface';
@@ -68,46 +62,32 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   hasTagEditAccess,
   defaultExpandAllRows = false,
   showSchemaDisplayTypeSwitch = true,
+  entityFqn,
+  entityFieldThreads,
+  onThreadLinkSelect,
 }) => {
   const { t } = useTranslation();
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-  const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
-  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.FIELDS
   );
 
-  const [glossaryTags, setGlossaryTags] = useState<GlossaryTermDetailsProps[]>(
-    []
-  );
-  const [classificationTags, setClassificationTags] = useState<
-    TagsDetailsProps[]
-  >([]);
+  const getAllRowKeys = (data: Field[]) => {
+    let keys: string[] = [];
+    data.forEach((item) => {
+      if (item.children && item.children.length > 0) {
+        keys.push(item.name);
+        keys = [...keys, ...getAllRowKeys(item.children)];
+      }
+    });
 
-  const fetchGlossaryTags = async () => {
-    setIsGlossaryLoading(true);
-    try {
-      const glossaryTermList = await getGlossaryTermsList();
-      setGlossaryTags(glossaryTermList);
-    } catch {
-      setTagFetchFailed(true);
-    } finally {
-      setIsGlossaryLoading(false);
-    }
+    return keys;
   };
 
-  const fetchClassificationTags = async () => {
-    setIsTagLoading(true);
-    try {
-      const tags = await getAllTagsList();
-      setClassificationTags(tags);
-    } catch {
-      setTagFetchFailed(true);
-    } finally {
-      setIsTagLoading(false);
-    }
-  };
+  const schemaAllRowKeys = useMemo(() => {
+    return getAllRowKeys(messageSchema?.schemaFields ?? []);
+  }, [messageSchema?.schemaFields]);
 
   const handleFieldTagsChange = async (
     selectedTags: EntityTags[],
@@ -144,39 +124,16 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     }
   };
 
-  const renderFieldDescription: CellRendered<Field, 'description'> = (
-    description,
-    record,
-    index
-  ) => {
-    return (
-      <Space
-        className="custom-group w-full"
-        data-testid="description"
-        id={`field-description-${index}`}
-        size={4}>
-        <>
-          {description ? (
-            <RichTextEditorPreviewer markdown={description} />
-          ) : (
-            <Typography.Text className="text-grey-muted">
-              {t('label.no-entity', {
-                entity: t('label.description'),
-              })}
-            </Typography.Text>
-          )}
-        </>
-        {isReadOnly && !hasDescriptionEditAccess ? null : (
-          <Button
-            className="p-0 opacity-0 group-hover-opacity-100"
-            data-testid="edit-button"
-            icon={<EditIcon width={16} />}
-            type="text"
-            onClick={() => setEditFieldDescription(record)}
-          />
-        )}
-      </Space>
-    );
+  const toggleExpandAll = () => {
+    if (expandedRowKeys.length > 0) {
+      setExpandedRowKeys([]);
+    } else {
+      setExpandedRowKeys(schemaAllRowKeys);
+    }
+  };
+
+  const handleExpandedRowsChange = (keys: readonly Key[]) => {
+    setExpandedRowKeys(keys as string[]);
   };
 
   const columns: ColumnsType<Field> = useMemo(
@@ -221,7 +178,22 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         dataIndex: 'description',
         key: 'description',
         width: 350,
-        render: renderFieldDescription,
+        render: (_, record, index) => (
+          <TableDescription
+            columnData={{
+              fqn: record.fullyQualifiedName ?? '',
+              description: record.description,
+            }}
+            entityFieldThreads={entityFieldThreads}
+            entityFqn={entityFqn}
+            entityType={EntityType.TOPIC}
+            hasEditPermission={hasDescriptionEditAccess}
+            index={index}
+            isReadOnly={isReadOnly}
+            onClick={() => setEditFieldDescription(record)}
+            onThreadLinkSelect={onThreadLinkSelect}
+          />
+        ),
       },
       {
         title: t('label.tag-plural'),
@@ -231,18 +203,17 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         width: 300,
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
-            dataTestId="classification-tags"
-            fetchTags={fetchClassificationTags}
+            entityFieldThreads={entityFieldThreads}
+            entityFqn={entityFqn}
+            entityType={EntityType.TOPIC}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasTagEditAccess}
             index={index}
             isReadOnly={isReadOnly}
-            isTagLoading={isTagLoading}
             record={record}
-            tagFetchFailed={tagFetchFailed}
-            tagList={getTagsHierarchy(classificationTags)}
             tags={tags}
             type={TagSource.Classification}
+            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -254,34 +225,28 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         width: 300,
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
-            dataTestId="glossary-tags"
-            fetchTags={fetchGlossaryTags}
+            entityFieldThreads={entityFieldThreads}
+            entityFqn={entityFqn}
+            entityType={EntityType.TOPIC}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasTagEditAccess}
             index={index}
             isReadOnly={isReadOnly}
-            isTagLoading={isGlossaryLoading}
             record={record}
-            tagFetchFailed={tagFetchFailed}
-            tagList={getGlossaryTermHierarchy(glossaryTags)}
             tags={tags}
             type={TagSource.Glossary}
+            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
     ],
     [
-      handleFieldTagsChange,
-      fetchGlossaryTags,
-      isGlossaryLoading,
+      isReadOnly,
       messageSchema,
-      hasDescriptionEditAccess,
       hasTagEditAccess,
       editFieldDescription,
-      isReadOnly,
-      isTagLoading,
-      glossaryTags,
-      tagFetchFailed,
+      hasDescriptionEditAccess,
+      handleFieldTagsChange,
     ]
   );
 
@@ -306,7 +271,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         <>
           {!isEmpty(messageSchema?.schemaFields) &&
             showSchemaDisplayTypeSwitch && (
-              <Col span={24}>
+              <Col className="d-flex items-center justify-between" span={24}>
                 <Radio.Group value={viewType} onChange={handleViewChange}>
                   <Radio.Button value={SchemaViewType.FIELDS}>
                     {t('label.field-plural')}
@@ -315,6 +280,24 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
                     {t('label.text')}
                   </Radio.Button>
                 </Radio.Group>
+
+                <Button
+                  className="text-primary rounded-4"
+                  size="small"
+                  type="text"
+                  onClick={toggleExpandAll}>
+                  <Space align="center" size={4}>
+                    {expandedRowKeys.length === schemaAllRowKeys.length ? (
+                      <DownUpArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
+                    ) : (
+                      <UpDownArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
+                    )}
+
+                    {expandedRowKeys.length === schemaAllRowKeys.length
+                      ? t('label.collapse-all')
+                      : t('label.expand-all')}
+                  </Space>
+                </Button>
               </Col>
             )}
           <Col span={24}>
@@ -322,6 +305,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             isEmpty(messageSchema?.schemaFields) ? (
               messageSchema?.schemaText && (
                 <SchemaEditor
+                  className="custom-code-mirror-theme custom-query-editor"
                   editorClass={classNames('table-query-editor')}
                   mode={{ name: CSMode.JAVASCRIPT }}
                   options={{
@@ -340,7 +324,9 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
                 expandable={{
                   ...getTableExpandableConfig<Field>(),
                   rowExpandable: (record) => !isEmpty(record.children),
+                  onExpandedRowsChange: handleExpandedRowsChange,
                   defaultExpandAllRows,
+                  expandedRowKeys,
                 }}
                 pagination={false}
                 rowKey="name"

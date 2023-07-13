@@ -12,7 +12,7 @@
  */
 
 import { CheckOutlined } from '@ant-design/icons';
-import { Button, Col, Row } from 'antd';
+import { Button, Col, Form } from 'antd';
 import { LOADING_STATE } from 'enums/common.enum';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -36,17 +36,14 @@ const ScheduleInterval = ({
   const { t } = useTranslation();
 
   return (
-    <Row data-testid="schedule-intervel-container">
-      <Col span={24}>
-        <div>
-          <CronEditor
-            disabledCronChange={disabledCronChange}
-            includePeriodOptions={includePeriodOptions}
-            value={repeatFrequency}
-            onChange={handleRepeatFrequencyChange}
-          />
-        </div>
-      </Col>
+    <Form data-testid="schedule-intervel-container" onFinish={onDeploy}>
+      <CronEditor
+        disabledCronChange={disabledCronChange}
+        includePeriodOptions={includePeriodOptions}
+        value={repeatFrequency}
+        onChange={handleRepeatFrequencyChange}
+      />
+
       <Col className="d-flex justify-end mt-4" span={24}>
         <Button
           className="m-r-xs"
@@ -67,14 +64,14 @@ const ScheduleInterval = ({
           <Button
             className="font-medium p-x-md p-y-xxs h-auto rounded-6"
             data-testid="deploy-button"
+            htmlType="submit"
             loading={status === LOADING_STATE.WAITING}
-            type="primary"
-            onClick={onDeploy}>
+            type="primary">
             {submitButtonLabel}
           </Button>
         )}
       </Col>
-    </Row>
+    </Form>
   );
 };
 

@@ -83,6 +83,7 @@ class MetadataRestSink(Sink[Entity]):
         self.metadata.close()
 
     def write_record(self, record: ProfilerResponse) -> None:
+        log = f"{type(record.table).__name__} [{record.table.name.__root__}]"
         try:
             self.metadata.ingest_profile_data(
                 table=record.table,
@@ -109,3 +110,8 @@ class MetadataRestSink(Sink[Entity]):
             logger.debug(traceback.format_exc())
             logger.warning(error)
             self.status.failed(name, error, traceback.format_exc())
+        except Exception as exc:
+            error = f"Failed to ingest {log}: {exc}"
+            logger.debug(traceback.format_exc())
+            logger.warning(error)
+            self.status.failed(log, error, traceback.format_exc())

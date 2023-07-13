@@ -20,14 +20,16 @@ import { useHistory } from 'react-router-dom';
 import { getTagDisplay, getTagTooltip } from 'utils/TagsUtils';
 
 import { ReactComponent as IconTag } from 'assets/svg/classification.svg';
+import { TAG_START_WITH } from 'constants/Tag.constants';
 import { reduceColorOpacity } from 'utils/CommonUtils';
 import { ReactComponent as IconPage } from '../../../assets/svg/ic-flat-doc.svg';
+import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { TagsV1Props } from './TagsV1.interface';
 import './tagsV1.less';
 
 const color = '';
 
-const TagsV1 = ({ tag, showOnlyName = false }: TagsV1Props) => {
+const TagsV1 = ({ tag, startWith, showOnlyName = false }: TagsV1Props) => {
   const history = useHistory();
 
   const isGlossaryTag = useMemo(
@@ -81,7 +83,7 @@ const TagsV1 = ({ tag, showOnlyName = false }: TagsV1Props) => {
       color ? (
         <div className="tag-color-bar" style={{ background: color }} />
       ) : null,
-    []
+    [color]
   );
 
   const tagContent = useMemo(
@@ -98,23 +100,40 @@ const TagsV1 = ({ tag, showOnlyName = false }: TagsV1Props) => {
         </span>
       </div>
     ),
-    [startIcon, tagName, tag.tagFQN]
+    [startIcon, tagName, tag.tagFQN, tagColorBar]
   );
 
   const tagChip = useMemo(
     () => (
       <Tag
-        className={classNames('tag-container-style-v1')}
+        className={classNames('tag-chip tag-chip-content')}
         data-testid="tags"
         style={{ backgroundColor: reduceColorOpacity(color, 0.1) }}
         onClick={() => redirectLink()}>
         {tagContent}
       </Tag>
     ),
-    []
+    [color, tagContent]
   );
 
-  return (
+  const addTagChip = useMemo(
+    () => (
+      <Tag
+        className="tag-chip tag-chip-add-button"
+        icon={<PlusIcon height={16} name="plus" width={16} />}>
+        <Typography.Paragraph
+          className="m-0 text-xs font-medium text-primary"
+          data-testid="add-tag">
+          {getTagDisplay(tagName)}
+        </Typography.Paragraph>
+      </Tag>
+    ),
+    [tagName]
+  );
+
+  return startWith === TAG_START_WITH.PLUS ? (
+    addTagChip
+  ) : (
     <Tooltip
       className="cursor-pointer"
       mouseEnterDelay={1.5}

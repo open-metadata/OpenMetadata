@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
+import Icon, { DownOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
@@ -21,67 +21,89 @@ import {
   Space,
   Typography,
 } from 'antd';
+import { useForm } from 'antd/lib/form/Form';
 import Modal from 'antd/lib/modal/Modal';
 import AppState from 'AppState';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import ActivityFeedCardV1 from 'components/ActivityFeed/ActivityFeedCard/ActivityFeedCardV1';
 import ActivityFeedEditor from 'components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import AssigneeList from 'components/common/AssigneeList/AssigneeList';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import EntityPopOverCard from 'components/common/PopOverCard/EntityPopOverCard';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
+import InlineEdit from 'components/InlineEdit/InlineEdit.component';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { TaskOperation } from 'constants/Feeds.constants';
+import { compare } from 'fast-json-patch';
 import { TaskType } from 'generated/api/feed/createThread';
 import { TaskDetails, ThreadTaskStatus } from 'generated/entity/feed/thread';
 import { TagLabel } from 'generated/type/tagLabel';
 import { useAuth } from 'hooks/authHooks';
 import { isEmpty, isEqual, isUndefined, noop } from 'lodash';
+import Assignees from 'pages/TasksPage/shared/Assignees';
 import DescriptionTask from 'pages/TasksPage/shared/DescriptionTask';
 import TagsTask from 'pages/TasksPage/shared/TagsTask';
 import {
+  Option,
   TaskAction,
   TaskActionMode,
 } from 'pages/TasksPage/TasksPage.interface';
+import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
-import { updateTask } from 'rest/feedsAPI';
-import { getNameFromFQN } from 'utils/CommonUtils';
-import { ENTITY_LINK_SEPARATOR } from 'utils/EntityUtils';
-import { getEntityField, getEntityFQN, prepareFeedLink } from 'utils/FeedUtils';
+import { useHistory } from 'react-router-dom';
+import { updateTask, updateThread } from 'rest/feedsAPI';
+import EntityLink from 'utils/EntityLink';
+import { getEntityName } from 'utils/EntityUtils';
+import { getEntityFQN } from 'utils/FeedUtils';
 import { getEntityLink } from 'utils/TableUtils';
 import {
-  getColumnObject,
+  fetchOptions,
   isDescriptionTask,
   isTagsTask,
   TASK_ACTION_LIST,
 } from 'utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
 import { ReactComponent as TaskCloseIcon } from '/assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '/assets/svg/ic-open-task.svg';
 
 export const TaskTab = ({
-  task,
+  taskThread,
   owner,
   entityType,
-  tags,
-  description,
   ...rest
 }: TaskTabProps) => {
-  const { task: taskDetails } = task;
-  const entityFQN = getEntityFQN(task.about) ?? '';
+  const [assigneesForm] = useForm();
+  const updatedAssignees = Form.useWatch('assignees', assigneesForm);
+
+  const { task: taskDetails } = taskThread;
+  const entityFQN = getEntityFQN(taskThread.about) ?? '';
   const entityCheck = !isUndefined(entityFQN) && !isUndefined(entityType);
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const history = useHistory();
   const { isAdminUser } = useAuth();
-  const { postFeed } = useActivityFeedProvider();
+  const { postFeed, setActiveThread } = useActivityFeedProvider();
   const [taskAction, setTaskAction] = useState<TaskAction>(TASK_ACTION_LIST[0]);
 
   const isTaskClosed = isEqual(taskDetails?.status, ThreadTaskStatus.Closed);
   const [showEditTaskModel, setShowEditTaskModel] = useState(false);
   const [comment, setComment] = useState('');
+  const [isEditAssignee, setIsEditAssignee] = useState<boolean>(false);
+  const [options, setOptions] = useState<Option[]>([]);
+
+  const initialAssignees = useMemo(
+    () =>
+      taskDetails?.assignees.map((assignee) => ({
+        label: getEntityName(assignee),
+        value: assignee.id || '',
+        type: assignee.type,
+      })) ?? [],
+    [taskDetails]
+  );
 
   // get current user details
   const currentUser = useMemo(
@@ -89,27 +111,19 @@ export const TaskTab = ({
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
 
-  const entityField = useMemo(() => {
-    return getEntityField(task.about);
-  }, [task]);
+  const taskField = useMemo(() => {
+    const entityField = EntityLink.getEntityField(taskThread.about) ?? '';
+    const columnName = EntityLink.getTableColumnName(taskThread.about) ?? '';
 
-  const columnObject = useMemo(() => {
-    // prepare column from entityField
-    const column = entityField?.split(ENTITY_LINK_SEPARATOR)?.slice(-2)?.[0];
+    if (columnName) {
+      return `${entityField}/${columnName}`;
+    }
 
-    // prepare column value by replacing double quotes
-    const columnValue = column?.replaceAll(/^"|"$/g, '') || '';
-
-    /**
-     * Get column name by spliting columnValue with FQN Separator
-     */
-    const columnName = columnValue.split(FQN_SEPARATOR_CHAR).pop();
-
-    return getColumnObject(columnName ?? '', rest.columns || []);
-  }, [task, rest.columns]);
+    return entityField;
+  }, [taskThread]);
 
   const isOwner = isEqual(owner?.id, currentUser?.id);
-  const isCreator = isEqual(task.createdBy, currentUser?.name);
+  const isCreator = isEqual(taskThread.createdBy, currentUser?.name);
 
   const checkIfUserPartOfTeam = useCallback(
     (teamId: string): boolean => {
@@ -136,18 +150,8 @@ export const TaskTab = ({
 
       <Typography.Text>{taskDetails?.type}</Typography.Text>
       <span className="m-x-xss">{t('label.for-lowercase')}</span>
-      <>
-        <span className="p-r-xss">{entityType}</span>
-        <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-          <Link
-            className="break-all"
-            data-testid="entitylink"
-            to={prepareFeedLink(entityType, entityFQN)}
-            onClick={(e) => e.stopPropagation()}>
-            {getNameFromFQN(entityFQN)}
-          </Link>
-        </EntityPopOverCard>
-      </>
+
+      {!isEmpty(taskField) ? <span>{taskField}</span> : null}
     </Typography.Text>
   );
 
@@ -165,6 +169,17 @@ export const TaskTab = ({
   };
 
   const onTaskResolve = () => {
+    if (isEmpty(taskDetails?.suggestion)) {
+      showErrorToast(
+        t('message.field-text-is-required', {
+          fieldText: isTaskTags
+            ? t('label.tag-plural')
+            : t('label.description'),
+        })
+      );
+
+      return;
+    }
     if (isTaskTags) {
       const tagsData = {
         newValue: taskDetails?.suggestion || '[]',
@@ -204,34 +219,12 @@ export const TaskTab = ({
 
   const hasTaskUpdateAccess = () => hasEditAccess() || isPartOfAssigneeTeam;
 
-  // prepare current tags for update tags task
-  const getCurrentTags = () => {
-    if (!isEmpty(columnObject) && entityField) {
-      return columnObject.tags ?? [];
-    } else {
-      return tags ?? [];
-    }
-  };
-
-  // prepare current description for update description task
-  const currentDescription = () => {
-    if (entityField && !isEmpty(columnObject)) {
-      return columnObject.description || '';
-    } else {
-      return description || '';
-    }
-  };
-
   const onSave = (message: string) => {
-    postFeed(message, task?.id ?? '').catch(() => {
+    postFeed(message, taskThread?.id ?? '').catch(() => {
       // ignore since error is displayed in toast in the parent promise.
       // Added block for sonar code smell
     });
   };
-
-  useEffect(() => {
-    form.setFieldValue('description', currentDescription());
-  }, [columnObject, entityField, currentDescription]);
 
   const handleMenuItemClick: MenuProps['onClick'] = (info) => {
     if (info.key === TaskActionMode.EDIT) {
@@ -259,6 +252,112 @@ export const TaskTab = ({
     }
   };
 
+  const actionButtons = useMemo(() => {
+    if (isTaskClosed) {
+      return null;
+    }
+
+    const parsedSuggestion = [
+      'RequestDescription',
+      'UpdateDescription',
+    ].includes(taskDetails?.type ?? '')
+      ? taskDetails?.suggestion
+      : JSON.parse(taskDetails?.suggestion || '[]');
+
+    return (
+      <Space
+        className="m-t-sm items-end w-full"
+        data-testid="task-cta-buttons"
+        size="small">
+        {(isCreator || hasTaskUpdateAccess()) && (
+          <Button onClick={onTaskReject}>{t('label.close')}</Button>
+        )}
+        {hasTaskUpdateAccess() ? (
+          <>
+            {['RequestDescription', 'RequestTag'].includes(
+              taskDetails?.type ?? ''
+            ) && isEmpty(parsedSuggestion) ? (
+              <Button
+                type="primary"
+                onClick={() =>
+                  handleMenuItemClick({ key: TaskActionMode.EDIT } as MenuInfo)
+                }>
+                {t('label.add-suggestion')}
+              </Button>
+            ) : (
+              <Dropdown.Button
+                icon={<DownOutlined />}
+                menu={{
+                  items: TASK_ACTION_LIST,
+                  selectable: true,
+                  selectedKeys: [taskAction.key],
+                  onClick: handleMenuItemClick,
+                }}
+                type="primary"
+                onClick={() =>
+                  taskAction.key === TaskActionMode.EDIT
+                    ? handleMenuItemClick({ key: taskAction.key } as MenuInfo)
+                    : onTaskResolve()
+                }>
+                {taskAction.label}
+              </Dropdown.Button>
+            )}
+          </>
+        ) : (
+          <></>
+        )}
+      </Space>
+    );
+  }, [
+    taskDetails,
+    onTaskResolve,
+    handleMenuItemClick,
+    taskAction,
+    isTaskClosed,
+    isCreator,
+  ]);
+
+  const initialFormValue = useMemo(() => {
+    if (isTaskDescription) {
+      const description =
+        taskDetails?.suggestion ?? taskDetails?.oldValue ?? '';
+
+      return { description };
+    } else {
+      const updatedTags = JSON.parse(
+        taskDetails?.suggestion ?? taskDetails?.oldValue ?? '[]'
+      );
+
+      return { updatedTags };
+    }
+  }, [taskDetails, isTaskDescription]);
+
+  const handleAssigneeUpdate = async () => {
+    const updatedTaskThread = {
+      ...taskThread,
+      task: {
+        ...taskThread.task,
+        assignees: updatedAssignees.map((assignee: Option) => ({
+          id: assignee.value,
+          type: assignee.type,
+        })),
+      },
+    };
+    try {
+      const patch = compare(taskThread, updatedTaskThread);
+      const data = await updateThread(taskThread.id, patch);
+      setIsEditAssignee(false);
+      setActiveThread(data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  useEffect(() => {
+    assigneesForm.setFieldValue('assignees', initialAssignees);
+    setOptions(initialAssignees);
+  }, [initialAssignees]);
+
   return (
     <Row className="p-y-sm p-x-md" gutter={[0, 24]}>
       <Col className="d-flex items-center" span={24}>
@@ -275,25 +374,84 @@ export const TaskTab = ({
         {getTaskLinkElement}
       </Col>
       <Col span={24}>
-        <div className="d-flex justify-between">
-          <div className="flex-center gap-2">
-            <Typography.Text className="text-grey-muted">
-              {t('label.assignee-plural')}:{' '}
-            </Typography.Text>
-
-            <OwnerLabel
-              hasPermission={false}
-              owner={taskDetails?.assignees[0]}
-              onUpdate={noop}
-            />
+        <div
+          className={classNames('d-flex justify-between', {
+            'flex-column': isEditAssignee,
+          })}>
+          <div
+            className={classNames('gap-2', { 'flex-center': !isEditAssignee })}>
+            {isEditAssignee ? (
+              <Form
+                form={assigneesForm}
+                layout="vertical"
+                onFinish={handleAssigneeUpdate}>
+                <Form.Item
+                  data-testid="assignees"
+                  label={`${t('label.assignee-plural')}:`}
+                  name="assignees"
+                  rules={[
+                    {
+                      required: true,
+                      message: t('message.field-text-is-required', {
+                        fieldText: t('label.assignee-plural'),
+                      }),
+                    },
+                  ]}>
+                  <InlineEdit
+                    className="assignees-edit-input"
+                    direction="horizontal"
+                    onCancel={() => {
+                      setIsEditAssignee(false);
+                      assigneesForm.setFieldValue(
+                        'assignees',
+                        initialAssignees
+                      );
+                    }}
+                    onSave={() => assigneesForm.submit()}>
+                    <Assignees
+                      options={options}
+                      value={updatedAssignees}
+                      onChange={(values) =>
+                        assigneesForm.setFieldValue('assignees', values)
+                      }
+                      onSearch={(query) => fetchOptions(query, setOptions)}
+                    />
+                  </InlineEdit>
+                </Form.Item>
+              </Form>
+            ) : (
+              <>
+                <Typography.Text className="text-grey-muted">
+                  {t('label.assignee-plural')}:{' '}
+                </Typography.Text>
+                <AssigneeList
+                  assignees={taskDetails?.assignees ?? []}
+                  className="d-flex gap-1"
+                  profilePicType="circle"
+                  profileWidth="24"
+                  showUserName={false}
+                />
+                {isCreator || hasTaskUpdateAccess() ? (
+                  <Button
+                    className="flex-center p-0"
+                    data-testid="edit-assignees"
+                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                    size="small"
+                    type="text"
+                    onClick={() => setIsEditAssignee(true)}
+                  />
+                ) : null}
+              </>
+            )}
           </div>
-          <div className="flex-center gap-2">
+          <div
+            className={classNames('gap-2', { 'flex-center': !isEditAssignee })}>
             <Typography.Text className="text-grey-muted">
               {t('label.created-by')}:{' '}
             </Typography.Text>
             <OwnerLabel
               hasPermission={false}
-              owner={{ name: task.createdBy, type: 'user', id: '' }}
+              owner={{ name: taskThread.createdBy, type: 'user', id: '' }}
               onUpdate={noop}
             />
           </div>
@@ -304,78 +462,58 @@ export const TaskTab = ({
           <DescriptionTask
             hasEditAccess={hasEditAccess()}
             isTaskActionEdit={false}
-            suggestion={task.task?.suggestion ?? ''}
-            taskDetail={task}
-            value={currentDescription()}
+            taskThread={taskThread}
             onChange={(value) => form.setFieldValue('description', value)}
           />
         )}
 
         {isTaskTags && (
           <TagsTask
-            currentTags={getCurrentTags()}
             hasEditAccess={hasEditAccess()}
             isTaskActionEdit={false}
             task={taskDetails}
-            value={JSON.parse(taskDetails?.suggestion ?? '[]')}
+            onChange={(value) => form.setFieldValue('updatedTags', value)}
           />
         )}
 
         <div className="m-l-lg">
-          {task?.posts?.map((reply) => (
+          {taskThread?.posts?.map((reply) => (
             <ActivityFeedCardV1
               isPost
-              feed={task}
+              feed={taskThread}
               hidePopover={false}
               key={reply.id}
               post={reply}
             />
           ))}
         </div>
-        {task.task?.status === ThreadTaskStatus.Open && (
+        {taskDetails?.status === ThreadTaskStatus.Open && (
           <ActivityFeedEditor onSave={onSave} onTextChange={setComment} />
         )}
 
-        <Space
-          className="m-t-sm items-end w-full"
-          data-testid="task-cta-buttons"
-          size="small">
-          {(hasTaskUpdateAccess() || isCreator) && !isTaskClosed && (
-            <Button onClick={onTaskReject}>{t('label.close')}</Button>
-          )}
-
-          {!isTaskClosed && (
-            <>
-              <Dropdown.Button
-                menu={{
-                  items: TASK_ACTION_LIST,
-                  selectable: true,
-                  selectedKeys: [taskAction.key],
-                  onClick: handleMenuItemClick,
-                }}
-                type="primary"
-                onClick={onTaskResolve}>
-                {taskAction.label}
-              </Dropdown.Button>
-            </>
-          )}
-        </Space>
+        {actionButtons}
       </Col>
       <Modal
         maskClosable
         closable={false}
         closeIcon={null}
         open={showEditTaskModel}
-        title={`Edit task #${taskDetails?.id}`}
+        title={`${t('label.edit-entity', {
+          entity: t('label.task-lowercase'),
+        })} #${taskDetails?.id} ${taskThread.message}`}
         width={768}
         onCancel={() => setShowEditTaskModel(false)}
-        onOk={() => form.submit()}>
-        <Form form={form} layout="vertical" onFinish={onEditAndSuggest}>
+        onOk={form.submit}>
+        <Form
+          form={form}
+          initialValues={initialFormValue}
+          layout="vertical"
+          onFinish={onEditAndSuggest}>
           {isTaskTags ? (
             <Form.Item
               data-testid="tags-label"
               label={t('label.tag-plural')}
-              name="updateTags"
+              name="updatedTags"
               rules={[
                 {
                   required: true,
@@ -383,12 +521,13 @@ export const TaskTab = ({
                     fieldText: t('label.tag-plural'),
                   }),
                 },
-              ]}>
+              ]}
+              trigger="onChange">
               <TagsTask
                 isTaskActionEdit
-                currentTags={getCurrentTags()}
                 hasEditAccess={hasEditAccess()}
                 task={taskDetails}
+                onChange={(value) => form.setFieldValue('updatedTags', value)}
               />
             </Form.Item>
           ) : (
@@ -404,13 +543,11 @@ export const TaskTab = ({
                   }),
                 },
               ]}
-              valuePropName="suggestion">
+              trigger="onTextChange">
               <DescriptionTask
                 isTaskActionEdit
                 hasEditAccess={hasEditAccess()}
-                suggestion={task.task?.suggestion ?? ''}
-                taskDetail={task}
-                value={currentDescription()}
+                taskThread={taskThread}
                 onChange={(value) => form.setFieldValue('description', value)}
               />
             </Form.Item>

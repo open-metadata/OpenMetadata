@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from 'antd';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from 'components/Loader/Loader';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
@@ -26,6 +27,8 @@ interface ActivityFeedListV1Props {
   onFeedClick?: (feed: Thread) => void;
   activeFeedId?: string;
   hidePopover: boolean;
+  isForFeedTab?: boolean;
+  emptyPlaceholderText: string;
 }
 
 const ActivityFeedListV1 = ({
@@ -35,6 +38,8 @@ const ActivityFeedListV1 = ({
   onFeedClick,
   activeFeedId,
   hidePopover = false,
+  isForFeedTab = false,
+  emptyPlaceholderText,
 }: ActivityFeedListV1Props) => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
 
@@ -54,14 +59,18 @@ const ActivityFeedListV1 = ({
   }
 
   return (
-    <div className="feed-list-container p-y-md" id="feedData">
+    <div className="feed-list-container p-y-md m-b-sm" id="feedData">
       {entityThread.length === 0 && (
-        <div data-testid="no-data-placeholder-container">
+        <div
+          className="h-full p-x-md"
+          data-testid="no-data-placeholder-container">
           <ErrorPlaceHolder
-            className="mt-0-important p-16"
             size={SIZE.MEDIUM}
-            type={ERROR_PLACEHOLDER_TYPE.FILTER}
-          />
+            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+            <Typography.Paragraph style={{ marginBottom: '0' }}>
+              {emptyPlaceholderText}
+            </Typography.Paragraph>
+          </ErrorPlaceHolder>
         </div>
       )}
       {entityThread.map((feed) => (
@@ -69,6 +78,7 @@ const ActivityFeedListV1 = ({
           feed={feed}
           hidePopover={hidePopover}
           isActive={activeFeedId === feed.id}
+          isForFeedTab={isForFeedTab}
           key={feed.id}
           showThread={showThread}
           onFeedClick={onFeedClick}

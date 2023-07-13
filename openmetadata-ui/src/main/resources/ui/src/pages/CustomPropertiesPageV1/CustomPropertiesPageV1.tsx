@@ -77,11 +77,6 @@ const CustomEntityDetailV1 = () => {
     }
   };
 
-  const viewPermission = useMemo(
-    () => propertyPermission.ViewAll || propertyPermission.ViewBasic,
-    [propertyPermission, tab]
-  );
-
   const editPermission = useMemo(
     () => propertyPermission.EditAll,
     [propertyPermission, tab]
@@ -248,16 +243,6 @@ const CustomEntityDetailV1 = () => {
 
   if (isError) {
     return <ErrorPlaceHolder />;
-  }
-
-  if (!viewPermission) {
-    return (
-      <Row>
-        <Col span={24}>
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-        </Col>
-      </Row>
-    );
   }
 
   return (

@@ -117,7 +117,7 @@ describe('Restore entity functionality should work properly', () => {
 
     interceptURL(
       'GET',
-      '/api/v1/search/query?q=*&index=table_search_index&from=0&size=10&deleted=true&sort_field=name.keyword&sort_order=asc',
+      '/api/v1/tables?databaseSchema=sample_data.ecommerce_db.shopify&include=deleted',
       'queryDeletedTables'
     );
 

@@ -219,7 +219,7 @@ const TagsPage = () => {
 
     try {
       const tagsResponse = await getTags({
-        arrQueryFields: ['usageCount', 'disabled'],
+        arrQueryFields: ['usageCount'],
         parent: currentClassificationName,
         after: paging?.after,
         before: paging?.before,
@@ -244,10 +244,7 @@ const TagsPage = () => {
     setIsLoading(true);
 
     try {
-      const response = await getAllClassifications(
-        ['termCount', 'disabled'],
-        1000
-      );
+      const response = await getAllClassifications(['termCount'], 1000);
       setClassifications(response.data);
       if (setCurrent && response.data.length) {
         setCurrentClassification(response.data[0]);
@@ -691,7 +688,7 @@ const TagsPage = () => {
                   {getEntityName(category)}
                   {category.disabled && (
                     <Badge
-                      className="m-l-xs badge-grey"
+                      className="m-l-xs badge-grey opacity-60"
                       count={t('label.disabled')}
                       data-testid="disabled"
                       size="small"
@@ -1040,9 +1037,7 @@ const TagsPage = () => {
       {isUpdateLoading ? (
         <Loader />
       ) : (
-        <div
-          className="full-height page-container"
-          data-testid="tags-container">
+        <div className="p-x-md" data-testid="tags-container">
           {currentClassification && (
             <Row data-testid="header" wrap={false}>
               <Col flex="auto">
@@ -1138,6 +1133,7 @@ const TagsPage = () => {
               <Switch
                 checked={currentClassification?.mutuallyExclusive}
                 data-testid="mutually-exclusive-classification-button"
+                disabled={isClassificationDisabled}
                 onChange={handleUpdateMutuallyExclusive}
               />
             </Space>

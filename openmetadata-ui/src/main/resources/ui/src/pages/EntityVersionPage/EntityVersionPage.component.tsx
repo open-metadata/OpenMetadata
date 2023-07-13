@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import ContainerVersion from 'components/ContainerVersion/ContainerVersion.component';
 import DashboardVersion from 'components/DashboardVersion/DashboardVersion.component';
@@ -24,7 +23,12 @@ import TopicVersion from 'components/TopicVersion/TopicVersion.component';
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
@@ -95,8 +99,14 @@ import { defaultFields as DataModelFields } from '../../utils/DataModelsUtils';
 import { defaultFields as MlModelFields } from '../../utils/MlModelDetailsUtils';
 
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'components/PermissionProvider/PermissionProvider.interface';
+import { isEmpty } from 'lodash';
+import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getTierTags } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
 import './EntityVersionPage.less';
 
 export type VersionData =
@@ -123,7 +133,10 @@ const EntityVersionPage: FunctionComponent = () => {
   const { entityType, version, entityFQN } =
     useParams<{ entityType: string; version: string; entityFQN: string }>();
 
-  const [isLoading, setIsloading] = useState<boolean>(false);
+  const { getEntityPermissionByFqn } = usePermissionProvider();
+  const [entityPermissions, setEntityPermissions] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory
   );
@@ -193,244 +206,212 @@ const EntityVersionPage: FunctionComponent = () => {
     setSlashedEntityName(titleBreadCrumb);
   };
 
-  const fetchEntityVersions = async () => {
-    setIsloading(true);
-    switch (entityType) {
-      case EntityType.TABLE: {
-        getTableDetailsByFQN(
-          getPartialNameFromTableFQN(
-            entityFQN,
-            [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-            FQN_SEPARATOR_CHAR
-          ),
-          ['owner', 'tags']
-        )
-          .then((res) => {
-            const { id, owner, tags = [] } = res;
-
-            setEntityState(
-              tags,
-              owner,
-              res,
-              getEntityBreadcrumbs(res, EntityType.TABLE)
-            );
-
-            getTableVersions(id)
-              .then((vres) => {
-                setVersionList(vres);
-                setIsloading(false);
-              })
-              .catch((err: AxiosError) => {
-                showErrorToast(
-                  err,
-                  t('server.entity-fetch-version-error', {
-                    entity: entityFQN,
-                    version: '',
-                  })
-                );
-              });
-          })
-          .catch((err: AxiosError) => {
-            showErrorToast(
-              err,
-              t('server.entity-fetch-version-error', {
-                entity: entityFQN,
-                version: '',
-              })
-            );
-          });
-
-        break;
-      }
-      case EntityType.TOPIC: {
-        getTopicByFqn(
-          getPartialNameFromFQN(
-            entityFQN,
-            ['service', 'database'],
-            FQN_SEPARATOR_CHAR
-          ),
-          [TabSpecificField.OWNER, TabSpecificField.TAGS]
-        )
-          .then((res) => {
-            const { id, owner, tags = [] } = res;
-
-            setEntityState(
-              tags,
-              owner,
-              res,
-              getEntityBreadcrumbs(res, EntityType.TOPIC)
-            );
-
-            getTopicVersions(id)
-              .then((vres) => {
-                setVersionList(vres);
-                setIsloading(false);
-              })
-              .catch((err: AxiosError) => {
-                showErrorToast(
-                  err,
-                  t('server.entity-fetch-version-error', {
-                    entity: entityFQN,
-                    version: '',
-                  })
-                );
-              });
-          })
-          .catch((err: AxiosError) => {
-            showErrorToast(
-              err,
-              t('server.entity-fetch-version-error', {
-                entity: entityFQN,
-                version: '',
-              })
-            );
-          });
-
-        break;
-      }
-      case EntityType.DASHBOARD: {
-        getDashboardByFqn(
-          getPartialNameFromFQN(
-            entityFQN,
-            ['service', 'database'],
-            FQN_SEPARATOR_CHAR
-          ),
-          ['owner', 'tags', 'charts']
-        )
-          .then((res) => {
-            const { id, owner, tags = [] } = res;
-
-            setEntityState(
-              tags,
-              owner,
-              res,
-              getEntityBreadcrumbs(res, EntityType.DASHBOARD)
-            );
-
-            getDashboardVersions(id)
-              .then((vres) => {
-                setVersionList(vres);
-                setIsloading(false);
-              })
-              .catch((err: AxiosError) => {
-                showErrorToast(
-                  err,
-                  t('server.entity-fetch-version-error', {
-                    entity: entityFQN,
-                    version: '',
-                  })
-                );
-              });
-          })
-          .catch((err: AxiosError) => {
-            showErrorToast(
-              err,
-              t('server.entity-fetch-version-error', {
-                entity: entityFQN,
-                version: '',
-              })
-            );
-          });
-
-        break;
-      }
-      case EntityType.PIPELINE: {
-        getPipelineByFqn(
-          getPartialNameFromFQN(
-            entityFQN,
-            ['service', 'database'],
-            FQN_SEPARATOR_CHAR
-          ),
-          ['owner', 'tags', 'tasks']
-        )
-          .then((res) => {
-            const { id, owner, tags = [] } = res;
-
-            setEntityState(
-              tags,
-              owner,
-              res,
-              getEntityBreadcrumbs(res, EntityType.PIPELINE)
-            );
-
-            getPipelineVersions(id)
-              .then((vres) => {
-                setVersionList(vres);
-                setIsloading(false);
-              })
-              .catch((err: AxiosError) => {
-                showErrorToast(
-                  err,
-                  t('server.entity-fetch-version-error', {
-                    entity: entityFQN,
-                    version: '',
-                  })
-                );
-              });
-          })
-          .catch((err: AxiosError) => {
-            showErrorToast(
-              err,
-              t('server.entity-fetch-version-error', {
-                entity: entityFQN,
-                version: '',
-              })
-            );
-          });
-
-        break;
-      }
-
-      case EntityType.MLMODEL: {
-        getMlModelByFQN(
-          getPartialNameFromFQN(
-            entityFQN,
-            ['service', 'database'],
-            FQN_SEPARATOR_CHAR
-          ),
-          MlModelFields
-        )
-          .then((res) => {
-            const { id, owner, tags = [] } = res;
-
-            setEntityState(
-              tags,
-              owner,
-              res,
-              getEntityBreadcrumbs(res, EntityType.MLMODEL)
-            );
-
-            getMlModelVersions(id)
-              .then((vres) => {
-                setVersionList(vres);
-                setIsloading(false);
-              })
-              .catch((err: AxiosError) => {
-                showErrorToast(
-                  err,
-                  t('server.entity-fetch-version-error', {
-                    entity: entityFQN,
-                    version: '',
-                  })
-                );
-              });
-          })
-
-          .catch((err: AxiosError) => {
-            showErrorToast(
-              err,
-              t('server.entity-fetch-version-error', {
-                entity: entityFQN,
-                version: '',
-              })
-            );
-          });
-
-        break;
-      }
-
-      case EntityType.CONTAINER: {
+  const fetchResourcePermission = useCallback(
+    async (resourceEntity: ResourceEntity) => {
+      if (!isEmpty(currentVersionData)) {
         try {
+          const permission = await getEntityPermissionByFqn(
+            resourceEntity,
+            currentVersionData.id ?? ''
+          );
+
+          setEntityPermissions(permission);
+        } catch (error) {
+          //
+        }
+      }
+    },
+    [currentVersionData.id, getEntityPermissionByFqn, setEntityPermissions]
+  );
+
+  const fetchEntityPermissions = async () => {
+    setIsLoading(true);
+    try {
+      switch (entityType) {
+        case EntityType.TABLE: {
+          fetchResourcePermission(ResourceEntity.TABLE);
+
+          break;
+        }
+        case EntityType.TOPIC: {
+          fetchResourcePermission(ResourceEntity.TOPIC);
+
+          break;
+        }
+        case EntityType.DASHBOARD: {
+          fetchResourcePermission(ResourceEntity.DASHBOARD);
+
+          break;
+        }
+        case EntityType.PIPELINE: {
+          fetchResourcePermission(ResourceEntity.PIPELINE);
+
+          break;
+        }
+        case EntityType.MLMODEL: {
+          fetchResourcePermission(ResourceEntity.ML_MODEL);
+
+          break;
+        }
+        case EntityType.CONTAINER: {
+          fetchResourcePermission(ResourceEntity.CONTAINER);
+
+          break;
+        }
+        case EntityType.DASHBOARD_DATA_MODEL: {
+          fetchResourcePermission(ResourceEntity.DASHBOARD_DATA_MODEL);
+
+          break;
+        }
+        default: {
+          break;
+        }
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchEntityVersions = async () => {
+    setIsLoading(true);
+    try {
+      switch (entityType) {
+        case EntityType.TABLE: {
+          const response = await getTableDetailsByFQN(
+            getPartialNameFromTableFQN(
+              entityFQN,
+              [
+                FqnPart.Service,
+                FqnPart.Database,
+                FqnPart.Schema,
+                FqnPart.Table,
+              ],
+              FQN_SEPARATOR_CHAR
+            ),
+            ['owner', 'tags']
+          );
+
+          const { id, owner, tags = [] } = response;
+
+          setEntityState(
+            tags,
+            owner,
+            response,
+            getEntityBreadcrumbs(response, EntityType.TABLE)
+          );
+
+          const versions = await getTableVersions(id);
+
+          setVersionList(versions);
+
+          break;
+        }
+
+        case EntityType.TOPIC: {
+          const response = await getTopicByFqn(
+            getPartialNameFromFQN(
+              entityFQN,
+              ['service', 'database'],
+              FQN_SEPARATOR_CHAR
+            ),
+            [TabSpecificField.OWNER, TabSpecificField.TAGS]
+          );
+
+          const { id, owner, tags = [] } = response;
+
+          setEntityState(
+            tags,
+            owner,
+            response,
+            getEntityBreadcrumbs(response, EntityType.TOPIC)
+          );
+
+          const versions = await getTopicVersions(id);
+
+          setVersionList(versions);
+
+          break;
+        }
+
+        case EntityType.DASHBOARD: {
+          const response = await getDashboardByFqn(
+            getPartialNameFromFQN(
+              entityFQN,
+              ['service', 'database'],
+              FQN_SEPARATOR_CHAR
+            ),
+            ['owner', 'tags', 'charts']
+          );
+
+          const { id, owner, tags = [] } = response;
+
+          setEntityState(
+            tags,
+            owner,
+            response,
+            getEntityBreadcrumbs(response, EntityType.DASHBOARD)
+          );
+
+          const versions = await getDashboardVersions(id);
+
+          setVersionList(versions);
+
+          break;
+        }
+
+        case EntityType.PIPELINE: {
+          const response = await getPipelineByFqn(
+            getPartialNameFromFQN(
+              entityFQN,
+              ['service', 'database'],
+              FQN_SEPARATOR_CHAR
+            ),
+            ['owner', 'tags', 'tasks']
+          );
+
+          const { id, owner, tags = [] } = response;
+
+          setEntityState(
+            tags,
+            owner,
+            response,
+            getEntityBreadcrumbs(response, EntityType.PIPELINE)
+          );
+
+          const versions = await getPipelineVersions(id);
+
+          setVersionList(versions);
+
+          break;
+        }
+
+        case EntityType.MLMODEL: {
+          const response = await getMlModelByFQN(
+            getPartialNameFromFQN(
+              entityFQN,
+              ['service', 'database'],
+              FQN_SEPARATOR_CHAR
+            ),
+            MlModelFields
+          );
+
+          const { id, owner, tags = [] } = response;
+
+          setEntityState(
+            tags,
+            owner,
+            response,
+            getEntityBreadcrumbs(response, EntityType.MLMODEL)
+          );
+
+          const versions = await getMlModelVersions(id);
+
+          setVersionList(versions);
+
+          break;
+        }
+
+        case EntityType.CONTAINER: {
           const response = await getContainerByName(
             entityFQN,
 
@@ -446,296 +427,168 @@ const EntityVersionPage: FunctionComponent = () => {
           );
           const versions = await getContainerVersions(id);
           setVersionList(versions);
-        } catch (err) {
-          showErrorToast(
-            err as AxiosError,
-            t('server.entity-fetch-version-error', {
-              entity: entityFQN,
-              version: '',
-            })
-          );
-        } finally {
-          setIsloading(false);
+
+          break;
         }
 
-        break;
+        case EntityType.DASHBOARD_DATA_MODEL: {
+          const response = await getDataModelDetailsByFQN(
+            entityFQN,
+            DataModelFields
+          );
+
+          const { id, owner, tags = [] } = response;
+
+          setEntityState(
+            tags,
+            owner,
+            response,
+            getEntityBreadcrumbs(response, EntityType.DASHBOARD_DATA_MODEL)
+          );
+
+          const versions = await getDataModelVersionsList(id ?? '');
+
+          setVersionList(versions);
+
+          break;
+        }
+
+        default:
+          break;
       }
-      case EntityType.DASHBOARD_DATA_MODEL: {
-        getDataModelDetailsByFQN(entityFQN, DataModelFields)
-          .then((res) => {
-            const { id, owner, tags = [] } = res;
-
-            setEntityState(
-              tags,
-              owner,
-              res,
-              getEntityBreadcrumbs(res, EntityType.DASHBOARD_DATA_MODEL)
-            );
-
-            getDataModelVersionsList(id ?? '')
-              .then((vres) => {
-                setVersionList(vres);
-                setIsloading(false);
-              })
-              .catch((err: AxiosError) => {
-                showErrorToast(
-                  err,
-                  t('server.entity-fetch-version-error', {
-                    entity: entityFQN,
-                    version: '',
-                  })
-                );
-              });
-          })
-
-          .catch((err: AxiosError) => {
-            showErrorToast(
-              err,
-              t('server.entity-fetch-version-error', {
-                entity: entityFQN,
-                version: '',
-              })
-            );
-          });
-
-        break;
-      }
-
-      default:
-        break;
+    } catch (err) {
+      // Error
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const fetchCurrentVersion = async () => {
     setIsVersionLoading(true);
-    switch (entityType) {
-      case EntityType.TABLE: {
-        getTableDetailsByFQN(
-          getPartialNameFromTableFQN(
-            entityFQN,
-            [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-            FQN_SEPARATOR_CHAR
-          ),
-          []
-        )
-          .then((res) => {
-            const { id } = res;
-            getTableVersion(id, version)
-              .then((vRes) => {
-                const { owner, tags } = vRes;
-                setEntityState(
-                  tags,
-                  owner,
-                  vRes,
-                  getEntityBreadcrumbs(vRes, EntityType.TABLE)
-                );
-                setIsVersionLoading(false);
-              })
-              .catch((err: AxiosError) => {
-                showErrorToast(
-                  err,
-                  t('server.entity-fetch-version-error', {
-                    entity: entityFQN,
-                    version: version,
-                  })
-                );
-              });
-          })
-          .catch((err: AxiosError) => {
-            showErrorToast(
-              err,
-              t('server.entity-fetch-version-error', {
-                entity: entityFQN,
-                version: version,
-              })
-            );
-          });
+    try {
+      switch (entityType) {
+        case EntityType.TABLE: {
+          const { id } = await getTableDetailsByFQN(
+            getPartialNameFromTableFQN(
+              entityFQN,
+              [
+                FqnPart.Service,
+                FqnPart.Database,
+                FqnPart.Schema,
+                FqnPart.Table,
+              ],
+              FQN_SEPARATOR_CHAR
+            ),
+            []
+          );
 
-        break;
-      }
+          const currentVersion = await getTableVersion(id, version);
 
-      case EntityType.TOPIC: {
-        getTopicByFqn(
-          getPartialNameFromFQN(
-            entityFQN,
-            ['service', 'database'],
-            FQN_SEPARATOR_CHAR
-          ),
-          []
-        )
-          .then((res) => {
-            const { id } = res;
-            getTopicVersion(id, version)
-              .then((vRes) => {
-                const { owner, tags = [] } = vRes;
+          const { owner, tags = [] } = currentVersion;
 
-                setEntityState(
-                  tags,
-                  owner,
-                  vRes,
-                  getEntityBreadcrumbs(vRes, EntityType.TOPIC)
-                );
-                setIsVersionLoading(false);
-              })
-              .catch((err: AxiosError) => {
-                showErrorToast(
-                  err,
-                  t('server.entity-fetch-version-error', {
-                    entity: entityFQN,
-                    version: version,
-                  })
-                );
-              });
-          })
-          .catch((err: AxiosError) => {
-            showErrorToast(
-              err,
-              t('server.entity-fetch-version-error', {
-                entity: entityFQN,
-                version: version,
-              })
-            );
-          });
+          setEntityState(
+            tags,
+            owner,
+            currentVersion,
+            getEntityBreadcrumbs(currentVersion, EntityType.TABLE)
+          );
 
-        break;
-      }
-      case EntityType.DASHBOARD: {
-        getDashboardByFqn(
-          getPartialNameFromFQN(
-            entityFQN,
-            ['service', 'database'],
-            FQN_SEPARATOR_CHAR
-          ),
-          []
-        )
-          .then((res) => {
-            const { id } = res;
-            getDashboardVersion(id, version)
-              .then((vRes) => {
-                const { owner, tags = [] } = vRes;
+          break;
+        }
 
-                setEntityState(
-                  tags,
-                  owner,
-                  vRes,
-                  getEntityBreadcrumbs(vRes, EntityType.DASHBOARD)
-                );
-                setIsVersionLoading(false);
-              })
-              .catch((err: AxiosError) => {
-                showErrorToast(
-                  err,
-                  t('server.entity-fetch-version-error', {
-                    entity: entityFQN,
-                    version: version,
-                  })
-                );
-              });
-          })
-          .catch((err: AxiosError) => {
-            showErrorToast(
-              err,
-              t('server.entity-fetch-version-error', {
-                entity: entityFQN,
-                version: version,
-              })
-            );
-          });
+        case EntityType.TOPIC: {
+          const { id } = await getTopicByFqn(
+            getPartialNameFromFQN(
+              entityFQN,
+              ['service', 'database'],
+              FQN_SEPARATOR_CHAR
+            ),
+            []
+          );
 
-        break;
-      }
-      case EntityType.PIPELINE: {
-        getPipelineByFqn(
-          getPartialNameFromFQN(
-            entityFQN,
-            ['service', 'database'],
-            FQN_SEPARATOR_CHAR
-          ),
-          []
-        )
-          .then((res) => {
-            const { id } = res;
-            getPipelineVersion(id, version)
-              .then((vRes) => {
-                const { owner, tags = [] } = vRes;
+          const currentVersion = await getTopicVersion(id, version);
 
-                setEntityState(
-                  tags,
-                  owner,
-                  vRes,
-                  getEntityBreadcrumbs(vRes, EntityType.PIPELINE)
-                );
-                setIsVersionLoading(false);
-              })
-              .catch((err: AxiosError) => {
-                showErrorToast(
-                  err,
-                  t('server.entity-fetch-version-error', {
-                    entity: entityFQN,
-                    version: version,
-                  })
-                );
-              });
-          })
-          .catch((err: AxiosError) => {
-            showErrorToast(
-              err,
-              t('server.entity-fetch-version-error', {
-                entity: entityFQN,
-                version: version,
-              })
-            );
-          });
+          const { owner, tags = [] } = currentVersion;
 
-        break;
-      }
+          setEntityState(
+            tags,
+            owner,
+            currentVersion,
+            getEntityBreadcrumbs(currentVersion, EntityType.TOPIC)
+          );
 
-      case EntityType.MLMODEL: {
-        getMlModelByFQN(
-          getPartialNameFromFQN(
-            entityFQN,
-            ['service', 'database'],
-            FQN_SEPARATOR_CHAR
-          ),
-          MlModelFields
-        )
-          .then((res) => {
-            const { id } = res;
-            getMlModelVersion(id, version)
-              .then((vRes) => {
-                const { owner, tags = [] } = vRes;
-                setEntityState(
-                  tags,
-                  owner,
-                  vRes,
-                  getEntityBreadcrumbs(vRes, EntityType.MLMODEL)
-                );
-                setIsVersionLoading(false);
-              })
-              .catch((err: AxiosError) => {
-                showErrorToast(
-                  err,
-                  t('server.entity-fetch-version-error', {
-                    entity: entityFQN,
-                    version: version,
-                  })
-                );
-              });
-          })
-          .catch((err: AxiosError) => {
-            showErrorToast(
-              err,
-              t('server.entity-fetch-version-error', {
-                entity: entityFQN,
-                version: version,
-              })
-            );
-          });
+          break;
+        }
+        case EntityType.DASHBOARD: {
+          const { id } = await getDashboardByFqn(
+            getPartialNameFromFQN(
+              entityFQN,
+              ['service', 'database'],
+              FQN_SEPARATOR_CHAR
+            ),
+            []
+          );
 
-        break;
-      }
-      case EntityType.CONTAINER: {
-        try {
+          const currentVersion = await getDashboardVersion(id, version);
+
+          const { owner, tags = [] } = currentVersion;
+
+          setEntityState(
+            tags,
+            owner,
+            currentVersion,
+            getEntityBreadcrumbs(currentVersion, EntityType.DASHBOARD)
+          );
+
+          break;
+        }
+        case EntityType.PIPELINE: {
+          const { id } = await getPipelineByFqn(
+            getPartialNameFromFQN(
+              entityFQN,
+              ['service', 'database'],
+              FQN_SEPARATOR_CHAR
+            ),
+            []
+          );
+
+          const currentVersion = await getPipelineVersion(id, version);
+
+          const { owner, tags = [] } = currentVersion;
+
+          setEntityState(
+            tags,
+            owner,
+            currentVersion,
+            getEntityBreadcrumbs(currentVersion, EntityType.PIPELINE)
+          );
+
+          break;
+        }
+
+        case EntityType.MLMODEL: {
+          const { id } = await getMlModelByFQN(
+            getPartialNameFromFQN(
+              entityFQN,
+              ['service', 'database'],
+              FQN_SEPARATOR_CHAR
+            ),
+            MlModelFields
+          );
+
+          const currentVersion = await getMlModelVersion(id, version);
+
+          const { owner, tags = [] } = currentVersion;
+          setEntityState(
+            tags,
+            owner,
+            currentVersion,
+            getEntityBreadcrumbs(currentVersion, EntityType.MLMODEL)
+          );
+
+          break;
+        }
+        case EntityType.CONTAINER: {
           const response = await getContainerByName(
             entityFQN,
             'dataModel,owner,tags'
@@ -750,62 +603,35 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersion,
             getEntityBreadcrumbs(currentVersion, EntityType.CONTAINER)
           );
-        } catch (err) {
-          showErrorToast(
-            err as AxiosError,
-            t('server.entity-fetch-version-error', {
-              entity: entityFQN,
-              version: '',
-            })
-          );
-        } finally {
-          setIsVersionLoading(false);
+
+          break;
         }
 
-        break;
+        case EntityType.DASHBOARD_DATA_MODEL: {
+          const { id } = await getDataModelDetailsByFQN(entityFQN, []);
+
+          const currentVersion = await getDataModelVersion(id ?? '', version);
+
+          const { owner, tags = [] } = currentVersion;
+
+          setEntityState(
+            tags,
+            owner,
+            currentVersion,
+            getEntityBreadcrumbs(
+              currentVersion,
+              EntityType.DASHBOARD_DATA_MODEL
+            )
+          );
+
+          break;
+        }
+
+        default:
+          break;
       }
-
-      case EntityType.DASHBOARD_DATA_MODEL: {
-        getDataModelDetailsByFQN(entityFQN, [])
-          .then((res) => {
-            const { id } = res;
-            getDataModelVersion(id ?? '', version)
-              .then((vRes) => {
-                const { owner, tags = [] } = vRes;
-
-                setEntityState(
-                  tags,
-                  owner,
-                  vRes,
-                  getEntityBreadcrumbs(vRes, EntityType.DASHBOARD_DATA_MODEL)
-                );
-                setIsVersionLoading(false);
-              })
-              .catch((err: AxiosError) => {
-                showErrorToast(
-                  err,
-                  t('server.entity-fetch-version-error', {
-                    entity: entityFQN,
-                    version: version,
-                  })
-                );
-              });
-          })
-          .catch((err: AxiosError) => {
-            showErrorToast(
-              err,
-              t('server.entity-fetch-version-error', {
-                entity: entityFQN,
-                version: version,
-              })
-            );
-          });
-
-        break;
-      }
-
-      default:
-        break;
+    } finally {
+      setIsVersionLoading(false);
     }
   };
 
@@ -818,6 +644,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData}
             datasetFQN={entityFQN}
             deleted={currentVersionData.deleted}
+            entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owner={owner}
             slashedTableName={slashedEntityName}
@@ -834,6 +661,7 @@ const EntityVersionPage: FunctionComponent = () => {
             backHandler={backHandler}
             currentVersionData={currentVersionData}
             deleted={currentVersionData.deleted}
+            entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owner={owner}
             slashedTopicName={slashedEntityName}
@@ -852,6 +680,7 @@ const EntityVersionPage: FunctionComponent = () => {
             backHandler={backHandler}
             currentVersionData={currentVersionData}
             deleted={currentVersionData.deleted}
+            entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owner={owner}
             slashedDashboardName={slashedEntityName}
@@ -870,6 +699,7 @@ const EntityVersionPage: FunctionComponent = () => {
             backHandler={backHandler}
             currentVersionData={currentVersionData}
             deleted={currentVersionData.deleted}
+            entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owner={owner}
             slashedPipelineName={slashedEntityName}
@@ -888,6 +718,7 @@ const EntityVersionPage: FunctionComponent = () => {
             backHandler={backHandler}
             currentVersionData={currentVersionData}
             deleted={currentVersionData.deleted}
+            entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owner={owner}
             slashedMlModelName={slashedEntityName}
@@ -907,6 +738,7 @@ const EntityVersionPage: FunctionComponent = () => {
             containerFQN={entityFQN}
             currentVersionData={currentVersionData}
             deleted={currentVersionData.deleted}
+            entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owner={owner}
             tier={tier as TagLabel}
@@ -924,6 +756,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData}
             dataModelFQN={entityFQN}
             deleted={currentVersionData.deleted}
+            entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owner={owner}
             slashedDataModelName={slashedEntityName}
@@ -940,6 +773,12 @@ const EntityVersionPage: FunctionComponent = () => {
         return null;
     }
   };
+
+  useEffect(() => {
+    if (currentVersionData) {
+      fetchEntityPermissions();
+    }
+  }, [currentVersionData]);
 
   useEffect(() => {
     fetchEntityVersions();

@@ -14,13 +14,22 @@ Postgres lineage module
 from typing import Iterable
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+    PostgresScheme,
+)
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.source.database.lineage_source import LineageSource
+from metadata.ingestion.source.database.postgres.pgspider.lineage import (
+    get_lineage_from_multi_tenant_table,
+)
 from metadata.ingestion.source.database.postgres.queries import POSTGRES_SQL_STATEMENT
 from metadata.ingestion.source.database.postgres.query_parser import (
     PostgresQueryParserSource,
 )
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
@@ -58,3 +67,13 @@ class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
 
                 for lineage_request in lineages or []:
                     yield lineage_request
+
+        if self.service_connection.scheme == PostgresScheme.pgspider_psycopg2:
+            lineages = get_lineage_from_multi_tenant_table(
+                self.metadata,
+                connection=self.service_connection,
+                service_name=self.config.serviceName,
+            )
+
+            for lineage_request in lineages or []:
+                yield lineage_request

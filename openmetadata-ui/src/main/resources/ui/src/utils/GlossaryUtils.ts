@@ -13,18 +13,8 @@
 
 import { AxiosError } from 'axios';
 import { ModifiedGlossaryTerm } from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
-import {
-  GlossaryTermDetailsProps,
-  HierarchyTagsProps,
-} from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
-import { API_RES_MAX_SIZE, PAGE_SIZE_LARGE } from 'constants/constants';
-import { TagSource } from 'generated/type/tagLabel';
 import { isUndefined, omit } from 'lodash';
-import {
-  getGlossariesList,
-  getGlossaryTerms,
-  ListGlossaryTermsParams,
-} from 'rest/glossaryAPI';
+import { ListGlossaryTermsParams } from 'rest/glossaryAPI';
 import { searchData } from 'rest/miscAPI';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
@@ -122,16 +112,26 @@ export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
   const nodes: Record<string, GlossaryTerm> = {};
   const tree: GlossaryTerm[] = [];
 
-  data.forEach((obj) => {
+  // Sorting children having parent first to avoid duplicates
+  const sortedData = [...data].sort((a, b) => {
+    if (a.parent && !b.parent) {
+      return 1;
+    } else if (!a.parent && b.parent) {
+      return -1;
+    } else {
+      return 0;
+    }
+  });
+
+  sortedData.forEach((obj) => {
     if (obj.fullyQualifiedName) {
       nodes[obj.fullyQualifiedName] = {
         ...obj,
         children: obj.children?.length ? [] : undefined,
       };
       const parentNode =
-        obj.parent &&
-        obj.parent.fullyQualifiedName &&
-        nodes[obj.parent.fullyQualifiedName];
+        obj.parent?.fullyQualifiedName && nodes[obj.parent.fullyQualifiedName];
+
       parentNode &&
         nodes[obj.fullyQualifiedName] &&
         parentNode.children?.push(
@@ -226,87 +226,4 @@ export const formatRelatedTermOptions = (
         key: value.id,
       }))
     : [];
-};
-
-export const getGlossaryTermHierarchy = (
-  data: GlossaryTermDetailsProps[]
-): HierarchyTagsProps[] => {
-  const nodes: Record<string, HierarchyTagsProps> = {};
-  const tree: HierarchyTagsProps[] = [];
-
-  data.forEach((obj) => {
-    if (obj.fqn) {
-      nodes[obj.fqn] = {
-        title: obj.name,
-        value: obj.fqn,
-        key: obj.fqn,
-        selectable: true,
-        children: [],
-      };
-      const parentNode =
-        obj.parent &&
-        obj.parent.fullyQualifiedName &&
-        nodes[obj.parent.fullyQualifiedName];
-      parentNode && nodes[obj.fqn] && parentNode.children?.push(nodes[obj.fqn]);
-
-      if (!parentNode) {
-        const glossaryName = obj.glossary.name ?? '';
-        const existInTree = tree.find((item) => item.title === glossaryName);
-
-        if (existInTree) {
-          nodes[glossaryName].children?.push(nodes[obj.fqn]);
-        } else {
-          nodes[glossaryName] = {
-            title: glossaryName,
-            value: obj.glossary.fullyQualifiedName ?? '',
-            key: obj.glossary.fullyQualifiedName ?? '',
-            selectable: false,
-            children: [],
-          };
-
-          nodes[glossaryName].children?.push(nodes[obj.fqn]);
-          tree.push(nodes[glossaryName]);
-        }
-      }
-    }
-  });
-
-  return tree;
-};
-
-export const getGlossaryTermsList = async () => {
-  try {
-    const glossaryTermList: GlossaryTermDetailsProps[] = [];
-    const { data } = await getGlossariesList({
-      limit: PAGE_SIZE_LARGE,
-    });
-
-    const promises = data.map((item) =>
-      getGlossaryTerms({
-        glossary: item.id,
-        limit: API_RES_MAX_SIZE,
-        fields: 'children,parent',
-      })
-    );
-    const response = await Promise.allSettled(promises);
-
-    response.forEach((res) => {
-      if (res.status === 'fulfilled') {
-        glossaryTermList.push(
-          ...res.value.data.map((data) => ({
-            name: data.name,
-            fqn: data.fullyQualifiedName ?? '',
-            children: data.children,
-            parent: data.parent,
-            glossary: data.glossary,
-            source: TagSource.Glossary,
-          }))
-        );
-      }
-    });
-
-    return Promise.resolve(glossaryTermList);
-  } catch (error) {
-    return Promise.reject({ data: (error as AxiosError).response });
-  }
 };

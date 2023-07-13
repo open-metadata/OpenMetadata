@@ -14,22 +14,29 @@
 import ReactTutorial, { TourSteps } from '@deuex-solutions/react-tour';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { PRIMERY_COLOR } from 'constants/constants';
+import { CurrentTourPageType } from 'enums/tour.enum';
 import { observer } from 'mobx-react';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import TourEndModal from '../Modals/TourEndModal/TourEndModal';
+import './tour.style.less';
 
 const Tour = ({ steps }: { steps: TourSteps[] }) => {
-  const { isTourOpen, updateIsTourOpen } = useTourProvider();
+  const { isTourOpen, updateIsTourOpen, updateTourPage } = useTourProvider();
   const [showTourEndModal, setShowTourEndModal] = useState(false);
   const history = useHistory();
 
   const handleModalSubmit = () => {
+    updateTourPage(CurrentTourPageType.MY_DATA_PAGE);
     history.push('/');
   };
 
+  const handleRequestClose = () => {
+    updateIsTourOpen(false);
+  };
+
   return (
-    <div>
+    <div className="tour-container">
       {isTourOpen ? (
         <ReactTutorial
           disableDotsNavigation
@@ -58,7 +65,7 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
           playTour={isTourOpen}
           stepWaitTimer={300}
           steps={steps}
-          onRequestClose={() => updateIsTourOpen(false)}
+          onRequestClose={handleRequestClose}
           onRequestSkip={handleModalSubmit}
         />
       ) : null}

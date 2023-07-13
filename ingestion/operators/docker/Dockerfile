@@ -80,12 +80,12 @@ RUN pip install --upgrade pip
 
 ARG INGESTION_DEPENDENCY="all"
 RUN pip install --upgrade pip
-RUN pip install "openmetadata-ingestion[airflow]~=1.0.4"
-RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=1.0.4"
+RUN pip install "openmetadata-ingestion[airflow]~=1.2.0.0.dev0"
+RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=1.2.0.0.dev0"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN echo "Image built for $(uname -m)"
-RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
+RUN if [[ $(uname -m) == "arm64" ]]; \
     then \
     pip install "ibm-db-sa~=0.4"; \
     fi

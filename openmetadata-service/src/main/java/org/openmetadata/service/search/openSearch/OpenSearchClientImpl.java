@@ -187,10 +187,6 @@ public class OpenSearchClientImpl implements SearchClient {
     return true;
   }
 
-  /**
-   * @param elasticSearchIndexType
-   * @param lang
-   */
   @Override
   public void updateIndex(ElasticSearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType, String lang) {
     try {
@@ -221,7 +217,6 @@ public class OpenSearchClientImpl implements SearchClient {
     }
   }
 
-  /** @param elasticSearchIndexType */
   @Override
   public void deleteIndex(ElasticSearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType) {
     try {
@@ -285,7 +280,7 @@ public class OpenSearchClientImpl implements SearchClient {
         searchSourceBuilder = buildAggregateSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
         break;
     }
-    if (!nullOrEmpty(request.getQueryFilter())) {
+    if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
       try {
         XContentParser filterParser =
             XContentType.JSON
@@ -789,7 +784,11 @@ public class OpenSearchClientImpl implements SearchClient {
                 .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
         .aggregation(
             AggregationBuilders.terms("entityType").field("entityType").size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"));
+        .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"))
+        .aggregation(
+            AggregationBuilders.terms("owner.displayName.keyword")
+                .field("owner.displayName.keyword")
+                .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE));
 
     return builder;
   }
@@ -806,7 +805,7 @@ public class OpenSearchClientImpl implements SearchClient {
 
   @Override
   public ElasticSearchConfiguration.SearchType getSearchType() {
-    return ElasticSearchConfiguration.SearchType.OPEN_SEARCH;
+    return ElasticSearchConfiguration.SearchType.OPENSEARCH;
   }
 
   @Override
@@ -1147,13 +1146,21 @@ public class OpenSearchClientImpl implements SearchClient {
 
   @Override
   public void updateClassification(ChangeEvent event) throws IOException {
+    Classification classification = (Classification) event.getEntity();
+    String indexName = ElasticSearchIndexDefinition.ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName;
     if (event.getEventType() == ENTITY_DELETED) {
-      Classification classification = (Classification) event.getEntity();
       DeleteByQueryRequest request =
           new DeleteByQueryRequest(ElasticSearchIndexDefinition.ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName);
       String fqnMatch = classification.getName() + ".*";
       request.setQuery(new WildcardQueryBuilder("fullyQualifiedName", fqnMatch));
       deleteEntityFromElasticSearchByQuery(request);
+    } else if (event.getEventType() == ENTITY_UPDATED) {
+      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+      updateByQueryRequest.setQuery(new MatchQueryBuilder("tag.classification.id", classification.getId().toString()));
+      String scriptTxt = "ctx._source.disabled=true";
+      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
+      updateByQueryRequest.setScript(script);
+      updateElasticSearchByQuery(updateByQueryRequest);
     }
   }
 
@@ -1323,6 +1330,7 @@ public class OpenSearchClientImpl implements SearchClient {
     }
   }
 
+  @Override
   public UpdateRequest applyOSChangeEvent(ChangeEvent event) {
     String entityType = event.getEntityType();
     ElasticSearchIndexDefinition.ElasticSearchIndexType esIndexType =
@@ -1371,21 +1379,11 @@ public class OpenSearchClientImpl implements SearchClient {
     return new UpdateRequest(IndexUtil.ENTITY_TYPE_TO_INDEX_MAP.get(entityType), entityId).script(script);
   }
 
-  /**
-   * @param data
-   * @param options
-   * @return
-   * @throws IOException
-   */
   @Override
   public BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
     return client.bulk(data, RequestOptions.DEFAULT);
   }
 
-  /**
-   * @param response
-   * @return
-   */
   @Override
   public int getSuccessFromBulkResponse(BulkResponse response) {
     int success = 0;

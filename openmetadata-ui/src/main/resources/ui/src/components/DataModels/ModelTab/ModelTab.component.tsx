@@ -10,17 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space, Table, Typography } from 'antd';
+import { Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import { CellRendered } from 'components/ContainerDetail/ContainerDataModel/ContainerDataModel.interface';
 import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import TableDescription from 'components/TableDescription/TableDescription.component';
 import TableTags from 'components/TableTags/TableTags.component';
-import {
-  GlossaryTermDetailsProps,
-  TagsDetailsProps,
-} from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
+import { EntityType } from 'enums/entity.enum';
 import { Column } from 'generated/entity/data/dashboardDataModel';
 import { TagLabel, TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, isUndefined, map } from 'lodash';
@@ -32,11 +27,6 @@ import {
   updateDataModelColumnTags,
 } from 'utils/DataModelsUtils';
 import { getEntityName } from 'utils/EntityUtils';
-import {
-  getGlossaryTermHierarchy,
-  getGlossaryTermsList,
-} from 'utils/GlossaryUtils';
-import { getAllTagsList, getTagsHierarchy } from 'utils/TagsUtils';
 import { ModelTabProps } from './ModelTab.interface';
 
 const ModelTab = ({
@@ -45,43 +35,12 @@ const ModelTab = ({
   hasEditDescriptionPermission,
   hasEditTagsPermission,
   onUpdate,
+  entityFqn,
+  entityFieldThreads,
+  onThreadLinkSelect,
 }: ModelTabProps) => {
   const { t } = useTranslation();
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-  const [isGlossaryLoading, setIsGlossaryLoading] = useState<boolean>(false);
-  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
-
-  const [glossaryTags, setGlossaryTags] = useState<GlossaryTermDetailsProps[]>(
-    []
-  );
-  const [classificationTags, setClassificationTags] = useState<
-    TagsDetailsProps[]
-  >([]);
-
-  const fetchGlossaryTags = async () => {
-    setIsGlossaryLoading(true);
-    try {
-      const glossaryTermList = await getGlossaryTermsList();
-      setGlossaryTags(glossaryTermList);
-    } catch {
-      setTagFetchFailed(true);
-    } finally {
-      setIsGlossaryLoading(false);
-    }
-  };
-
-  const fetchClassificationTags = async () => {
-    setIsTagLoading(true);
-    try {
-      const tags = await getAllTagsList();
-      setClassificationTags(tags);
-    } catch {
-      setTagFetchFailed(true);
-    } finally {
-      setIsTagLoading(false);
-    }
-  };
 
   const handleFieldTagsChange = useCallback(
     async (selectedTags: EntityTags[], editColumnTag: Column) => {
@@ -119,41 +78,6 @@ const ModelTab = ({
     [editColumnDescription, data]
   );
 
-  const renderColumnDescription: CellRendered<Column, 'description'> =
-    useCallback(
-      (description, record, index) => {
-        return (
-          <Space
-            className="custom-group w-full"
-            data-testid="description"
-            id={`field-description-${index}`}
-            size={4}>
-            <>
-              {description ? (
-                <RichTextEditorPreviewer markdown={description} />
-              ) : (
-                <Typography.Text className="text-grey-muted">
-                  {t('label.no-entity', {
-                    entity: t('label.description'),
-                  })}
-                </Typography.Text>
-              )}
-            </>
-            {isReadOnly && !hasEditDescriptionPermission ? null : (
-              <Button
-                className="p-0 opacity-0 group-hover-opacity-100"
-                data-testid="edit-button"
-                icon={<EditIcon width="16px" />}
-                type="text"
-                onClick={() => setEditColumnDescription(record)}
-              />
-            )}
-          </Space>
-        );
-      },
-      [isReadOnly, hasEditDescriptionPermission]
-    );
-
   const tableColumn: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -182,7 +106,22 @@ const ModelTab = ({
         key: 'description',
         accessor: 'description',
         width: 350,
-        render: renderColumnDescription,
+        render: (_, record, index) => (
+          <TableDescription
+            columnData={{
+              fqn: record.fullyQualifiedName ?? '',
+              description: record.description,
+            }}
+            entityFieldThreads={entityFieldThreads}
+            entityFqn={entityFqn}
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
+            hasEditPermission={hasEditDescriptionPermission}
+            index={index}
+            isReadOnly={isReadOnly}
+            onClick={() => setEditColumnDescription(record)}
+            onThreadLinkSelect={onThreadLinkSelect}
+          />
+        ),
       },
       {
         title: t('label.tag-plural'),
@@ -192,18 +131,17 @@ const ModelTab = ({
         width: 300,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            dataTestId="classification-tags"
-            fetchTags={fetchClassificationTags}
+            entityFieldThreads={entityFieldThreads}
+            entityFqn={entityFqn}
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasEditTagsPermission}
             index={index}
             isReadOnly={isReadOnly}
-            isTagLoading={isTagLoading}
             record={record}
-            tagFetchFailed={tagFetchFailed}
-            tagList={getTagsHierarchy(classificationTags)}
             tags={tags}
             type={TagSource.Classification}
+            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -215,35 +153,30 @@ const ModelTab = ({
         width: 300,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            dataTestId="glossary-tags"
-            fetchTags={fetchGlossaryTags}
+            entityFieldThreads={entityFieldThreads}
+            entityFqn={entityFqn}
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasEditTagsPermission}
             index={index}
             isReadOnly={isReadOnly}
-            isTagLoading={isGlossaryLoading}
             record={record}
-            tagFetchFailed={tagFetchFailed}
-            tagList={getGlossaryTermHierarchy(glossaryTags)}
             tags={tags}
             type={TagSource.Glossary}
+            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
     ],
     [
-      fetchClassificationTags,
-      fetchGlossaryTags,
-      handleFieldTagsChange,
-      glossaryTags,
-      classificationTags,
-      tagFetchFailed,
+      entityFqn,
+      isReadOnly,
+      entityFieldThreads,
       hasEditTagsPermission,
       editColumnDescription,
       hasEditDescriptionPermission,
-      isReadOnly,
-      isTagLoading,
-      isGlossaryLoading,
+      onThreadLinkSelect,
+      handleFieldTagsChange,
     ]
   );
 

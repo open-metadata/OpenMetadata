@@ -12,6 +12,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import { EntityType } from 'enums/entity.enum';
 import { Constraint, DataType } from 'generated/entity/data/table';
 import { LabelType, State, TagSource } from 'generated/type/schema';
 import React from 'react';
@@ -25,6 +26,10 @@ jest.mock('utils/FeedElementUtils', () => ({
       <p data-testid="field-thread-element">FieldThreadElement</p>
     ),
 }));
+
+jest.mock('pages/TasksPage/EntityTaskTags/EntityTaskTags.component', () => {
+  return jest.fn().mockImplementation(() => <div>EntityTaskTags</div>);
+});
 
 const glossaryTags = [
   {
@@ -62,8 +67,6 @@ const requestUpdateTags = {
 };
 
 const mockProp = {
-  placeholder: 'Search Tags',
-  dataTestId: 'tag-container',
   tags: [],
   record: {
     constraint: Constraint.Null,
@@ -81,9 +84,7 @@ const mockProp = {
   },
   index: 0,
   isReadOnly: false,
-  isTagLoading: false,
   hasTagEditAccess: true,
-  entityFieldTasks: [],
   onThreadLinkSelect: jest.fn(),
   entityFieldThreads: [
     {
@@ -94,11 +95,9 @@ const mockProp = {
     },
   ],
   entityFqn: 'sample_data.ecommerce_db.shopify.raw_customer',
-  tagList: [],
   handleTagSelection: jest.fn(),
   type: TagSource.Classification,
-  fetchTags: jest.fn(),
-  tagFetchFailed: false,
+  entityType: EntityType.TABLE,
 };
 
 describe('Test EntityTableTags Component', () => {
@@ -107,7 +106,7 @@ describe('Test EntityTableTags Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const tagContainer = await screen.findByTestId('tag-container-0');
+    const tagContainer = await screen.findByTestId('Classification-tags-0');
 
     expect(tagContainer).toBeInTheDocument();
   });
@@ -128,7 +127,7 @@ describe('Test EntityTableTags Component', () => {
       }
     );
 
-    const tagContainer = await screen.findByTestId('tag-container-0');
+    const tagContainer = await screen.findByTestId('Classification-tags-0');
 
     expect(tagContainer).toBeInTheDocument();
   });
@@ -148,17 +147,18 @@ describe('Test EntityTableTags Component', () => {
       }
     );
 
-    const tagContainer = await screen.findByTestId('tag-container-0');
+    const tagContainer = await screen.findByTestId('Classification-tags-0');
     const tagPersonal = await screen.findByTestId('tag-PersonalData.Personal');
 
     expect(tagContainer).toBeInTheDocument();
     expect(tagPersonal).toBeInTheDocument();
   });
 
-  it('Should not render update and request tags buttons', async () => {
+  it('Should not render entity task component if entity is deleted', async () => {
     render(
       <TableTags
         {...mockProp}
+        isReadOnly
         record={{
           ...mockProp.record,
           tags: [...classificationTags, ...glossaryTags],
@@ -170,11 +170,11 @@ describe('Test EntityTableTags Component', () => {
       }
     );
 
-    const tagContainer = await screen.findByTestId('tag-container-0');
-    const requestTags = screen.queryByTestId('field-thread-element');
+    const tagContainer = await screen.findByTestId('Classification-tags-0');
+    const entityTaskTags = screen.queryByText('EntityTaskTags');
 
     expect(tagContainer).toBeInTheDocument();
-    expect(requestTags).not.toBeInTheDocument();
+    expect(entityTaskTags).not.toBeInTheDocument();
   });
 
   it('Should render update and request tags buttons', async () => {
@@ -193,10 +193,10 @@ describe('Test EntityTableTags Component', () => {
       }
     );
 
-    const tagContainer = await screen.findByTestId('tag-container-0');
-    const requestTags = await screen.findAllByTestId('field-thread-element');
+    const tagContainer = await screen.findByTestId('Classification-tags-0');
+    const entityTaskTags = screen.queryByText('EntityTaskTags');
 
     expect(tagContainer).toBeInTheDocument();
-    expect(requestTags).toHaveLength(2);
+    expect(entityTaskTags).toBeInTheDocument();
   });
 });

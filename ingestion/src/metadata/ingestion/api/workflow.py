@@ -315,8 +315,10 @@ class Workflow(WorkflowStatusMixin):
                     )
                 else:
                     raise InvalidWorkflowJSONException(
-                        "The serviceConnection is not informed and we cannot retrieve it from the API"
-                        f" by searching for the service name [{service_name}]. Does this service exist in OpenMetadata?"
+                        f"Error getting the service [{service_name}] from the API. If it exists in OpenMetadata,"
+                        " make sure the ingestion-bot JWT token is valid and that the Workflow is deployed"
+                        " with the latest one. If this error persists, recreate the JWT token and"
+                        " redeploy the Workflow."
                     )
             except InvalidWorkflowJSONException as exc:
                 raise exc

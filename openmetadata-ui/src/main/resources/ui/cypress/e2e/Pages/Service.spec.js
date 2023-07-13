@@ -105,7 +105,6 @@ describe('Services page should work properly', () => {
 
     verifyResponseStatusCode('@updateService', 200);
 
-    cy.get('[data-testid="owner-dropdown"]').should('have.text', service.Owner);
     // Checking if description exists after assigning the owner
     cy.get(':nth-child(1) > .link-title').click();
     // need wait here

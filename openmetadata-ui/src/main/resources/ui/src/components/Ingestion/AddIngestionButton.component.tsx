@@ -101,7 +101,7 @@ function AddIngestionButton({
       <Button
         className={classNames('h-8 rounded-4 m-b-xs')}
         data-testid="add-new-ingestion-button"
-        disabled={!permissions.Create}
+        disabled={!permissions?.Create}
         size="small"
         type="primary"
         onClick={

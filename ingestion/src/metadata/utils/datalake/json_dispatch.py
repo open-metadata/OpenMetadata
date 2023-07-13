@@ -63,7 +63,7 @@ def read_from_json(
     try:
         data = json.loads(json_text)
     except json.decoder.JSONDecodeError:
-        logger.debug("Failed to read as JSON object trying to read as JSON Lines")
+        logger.debug("Failed to read as JSON object. Trying to read as JSON Lines")
         data = [json.loads(json_obj) for json_obj in json_text.strip().split("\n")]
     if is_profiler:
         return dataframe_to_chunks(json_normalize(data))

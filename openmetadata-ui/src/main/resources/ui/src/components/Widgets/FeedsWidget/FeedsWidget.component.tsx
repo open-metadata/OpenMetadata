@@ -52,7 +52,10 @@ const FeedsWidget = () => {
     } else if (activeTab === 'tasks') {
       getFeedData(FeedFilter.OWNER, undefined, ThreadType.Task)
         .then((data) => {
-          setTaskCount(data.length);
+          const openTasks = data.filter(
+            (item) => item.task?.status === ThreadTaskStatus.Open
+          );
+          setTaskCount(openTasks.length);
         })
         .catch(() => {
           // ignore since error is displayed in toast in the parent promise.
@@ -100,6 +103,7 @@ const FeedsWidget = () => {
             key: 'all',
             children: (
               <ActivityFeedListV1
+                emptyPlaceholderText={t('message.no-activity-feed')}
                 feedList={isTourOpen ? mockFeedData : threads}
                 hidePopover={false}
                 isLoading={loading && !isTourOpen}
@@ -112,6 +116,7 @@ const FeedsWidget = () => {
             key: 'mentions',
             children: (
               <ActivityFeedListV1
+                emptyPlaceholderText={t('message.no-mentions')}
                 feedList={threads}
                 hidePopover={false}
                 isLoading={loading}
@@ -129,6 +134,7 @@ const FeedsWidget = () => {
             key: 'tasks',
             children: (
               <ActivityFeedListV1
+                emptyPlaceholderText={t('message.no-tasks-assigned')}
                 feedList={threads}
                 hidePopover={false}
                 isLoading={loading}

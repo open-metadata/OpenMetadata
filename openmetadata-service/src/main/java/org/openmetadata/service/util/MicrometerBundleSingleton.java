@@ -19,19 +19,14 @@ import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 
 public class MicrometerBundleSingleton {
-  private static MicrometerBundle instance;
+  private static final MicrometerBundle instance = new MicrometerBundle();
   public static Timer webAnalyticEvents;
-  public static PrometheusMeterRegistry prometheusMeterRegistry;
+  // We'll use this registry to add monitoring around Ingestion Pipelines
+  public static PrometheusMeterRegistry prometheusMeterRegistry = MicrometerBundle.prometheusRegistry;
 
   private MicrometerBundleSingleton() {}
 
   public static MicrometerBundle getInstance() {
-    if (instance == null) {
-      instance = new MicrometerBundle();
-      // We'll use this registry to add monitoring around Ingestion Pipelines
-      prometheusMeterRegistry = MicrometerBundle.prometheusRegistry;
-    }
-
     return instance;
   }
 

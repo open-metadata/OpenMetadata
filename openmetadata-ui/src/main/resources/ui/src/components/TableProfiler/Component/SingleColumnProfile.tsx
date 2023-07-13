@@ -243,11 +243,15 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
           name="math"
           showYAxisCategory={isMinMaxStringData}
           // only min/max category can be string
-          title={t('label.data-aggregation')}
+          title={t('label.data-range')}
         />
       </Col>
       <Col span={24}>
-        <ProfilerDetailsCard chartCollection={sumMetrics} name="sum" />
+        <ProfilerDetailsCard
+          chartCollection={sumMetrics}
+          name="sum"
+          title={t('label.data-aggregate')}
+        />
       </Col>
       <Col span={24}>
         <ProfilerDetailsCard

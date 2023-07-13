@@ -113,6 +113,16 @@ export const getTestCaseByFqn = async (
 
   return response;
 };
+export const getTestCaseById = async (
+  id: string,
+  params?: Pick<ListParams, 'fields' | 'include'>
+) => {
+  const response = await APIClient.get<TestCase>(`${testCaseUrl}/${id}`, {
+    params,
+  });
+
+  return response;
+};
 
 export const createTestCase = async (data: CreateTestCase) => {
   const response = await APIClient.post<

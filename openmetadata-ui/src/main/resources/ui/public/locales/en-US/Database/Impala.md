@@ -29,7 +29,10 @@ $$
 
 $$section
 ### Host Port $(id="hostPort")
-The hostPort parameter specifies the host and port of the Impala server. This should be specified as a string in the format `hostname:port`. E.g., `myimpalahost:21050`.
+
+This parameter specifies the host and port of the Impala instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `myimpalahost:21050`.
+
+If your database service and Open Metadata are both running via docker locally, use `host.docker.internal:21050` as the value.
 $$
 
 $$section

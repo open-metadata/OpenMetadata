@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space } from 'antd';
+import { Button, Col, Modal, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { AddTestCaseModal } from 'components/AddTestCaseModal/AddTestCaseModal.component';
+import { AddTestCaseList } from 'components/AddTestCaseList/AddTestCaseList.component';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import Description from 'components/common/description/Description';
 import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
-import EntitySummaryDetails from 'components/common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
@@ -29,15 +29,14 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import DataQualityTab from 'components/ProfilerDashboard/component/DataQualityTab';
-import { EntityInfo } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { useAuth } from 'hooks/authHooks';
-import { ExtraInfo } from 'Models';
 import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
+  addTestCaseToLogicalTestSuite,
   getListTestCase,
   getTestSuiteByName,
   ListTestCaseParams,
@@ -46,18 +45,15 @@ import {
 import { getEntityName } from 'utils/EntityUtils';
 import { getDataQualityPagePath } from 'utils/RouterUtils';
 import {
-  getTeamAndUserDetailsPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
 import { ACTION_TYPE, ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { OwnerType } from '../../enums/user.enum';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
-import { getEntityPlaceHolder } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './TestSuiteDetailsPage.styles.less';
@@ -150,8 +146,17 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const afterSubmitAction = () => {
-    fetchTestCases();
+  const handleAddTestCaseSubmit = async (testCaseIds: string[]) => {
+    try {
+      await addTestCaseToLogicalTestSuite({
+        testCaseIds,
+        testSuiteId: testSuite?.id ?? '',
+      });
+      setIsTestCaseModalOpen(false);
+      fetchTestCases();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const fetchTestSuiteByName = async () => {
@@ -256,27 +261,15 @@ const TestSuiteDetailsPage = () => {
     });
   };
 
-  const extraInfo: Array<ExtraInfo> = useMemo(
-    () => [
-      {
-        key: EntityInfo.OWNER,
-        value:
-          testOwner?.type === 'team'
-            ? getTeamAndUserDetailsPath(testOwner?.name || '')
-            : getEntityName(testOwner) || '',
-        placeholderText:
-          getEntityPlaceHolder(
-            (testOwner?.displayName as string) || (testOwner?.name as string),
-            testOwner?.deleted
-          ) || '',
-        isLink: testOwner?.type === 'team',
-        openInNewTab: false,
-        profileName:
-          testOwner?.type === OwnerType.USER ? testOwner?.name : undefined,
-      },
-    ],
-    [testOwner]
-  );
+  const handleTestSuiteUpdate = (testCase?: TestCase) => {
+    if (testCase) {
+      setTestCaseResult((prev) =>
+        prev.map((test) =>
+          test.id === testCase.id ? { ...test, ...testCase } : test
+        )
+      );
+    }
+  };
 
   useEffect(() => {
     if (testSuitePermissions.ViewAll || testSuitePermissions.ViewBasic) {
@@ -309,11 +302,17 @@ const TestSuiteDetailsPage = () => {
               titleLinks={slashedBreadCrumb}
             />
             <Space>
-              <Button
-                type="primary"
-                onClick={() => setIsTestCaseModalOpen(true)}>
-                {t('label.add-entity', { entity: t('label.test-case-plural') })}
-              </Button>
+              {(testSuitePermissions.EditAll ||
+                testSuitePermissions.EditTests) && (
+                <Button
+                  data-testid="add-test-case-btn"
+                  type="primary"
+                  onClick={() => setIsTestCaseModalOpen(true)}>
+                  {t('label.add-entity', {
+                    entity: t('label.test-case-plural'),
+                  })}
+                </Button>
+              )}
               <ManageButton
                 isRecursiveDelete
                 afterDeleteAction={afterDeleteAction}
@@ -328,15 +327,11 @@ const TestSuiteDetailsPage = () => {
           </Space>
 
           <div className="d-flex tw-gap-1 tw-mb-2 tw-mt-1 flex-wrap">
-            {extraInfo.map((info) => (
-              <span className="d-flex" data-testid={info.key} key={info.key}>
-                <EntitySummaryDetails
-                  currentOwner={testSuite?.owner}
-                  data={info}
-                  updateOwner={hasAccess ? onUpdateOwner : undefined}
-                />
-              </span>
-            ))}
+            <OwnerLabel
+              hasPermission={hasAccess}
+              owner={testOwner}
+              onUpdate={onUpdateOwner}
+            />
           </div>
 
           <Space>
@@ -362,17 +357,27 @@ const TestSuiteDetailsPage = () => {
             }}
             removeFromTestSuite={{ testSuite: testSuite as TestSuite }}
             testCases={testCaseResult}
-            onTestUpdate={afterSubmitAction}
+            onTestCaseResultUpdate={handleTestSuiteUpdate}
+            onTestUpdate={handleTestSuiteUpdate}
           />
         </Col>
         <Col span={24}>
-          <AddTestCaseModal
-            existingTest={testSuite?.tests ?? []}
+          <Modal
+            centered
+            destroyOnClose
+            closable={false}
+            footer={null}
             open={isTestCaseModalOpen}
-            testSuiteId={testSuite?.id ?? ''}
-            onCancel={() => setIsTestCaseModalOpen(false)}
-            onSubmit={afterSubmitAction}
-          />
+            title={t('label.add-entity', {
+              entity: t('label.test-case-plural'),
+            })}
+            width={750}>
+            <AddTestCaseList
+              existingTest={testSuite?.tests ?? []}
+              onCancel={() => setIsTestCaseModalOpen(false)}
+              onSubmit={handleAddTestCaseSubmit}
+            />
+          </Modal>
         </Col>
       </Row>
     </PageLayoutV1>

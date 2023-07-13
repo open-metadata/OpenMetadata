@@ -15,18 +15,24 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.*;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.util.EntityUtil.getSchemaField;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import javax.json.JsonPatch;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Topic;
@@ -36,10 +42,14 @@ import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.topics.TopicResource;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -111,15 +121,12 @@ public class TopicRepository extends EntityRepository<Topic> {
   @Override
   public void storeRelationships(Topic topic) {
     setService(topic, topic.getService());
-    storeOwner(topic, topic.getOwner());
-    applyTags(topic);
   }
 
   @Override
   public Topic setFields(Topic topic, Fields fields) throws IOException {
     topic.setService(getContainer(topic.getId()));
     topic.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(topic) : null);
-    topic.setSampleData(fields.contains("sampleData") ? getSampleData(topic) : null);
     if (topic.getMessageSchema() != null) {
       getFieldTags(fields.contains(FIELD_TAGS), topic.getMessageSchema().getSchemaFields());
     }
@@ -138,10 +145,25 @@ public class TopicRepository extends EntityRepository<Topic> {
     }
   }
 
-  private TopicSampleData getSampleData(Topic topic) throws IOException {
-    return JsonUtils.readValue(
-        daoCollection.entityExtensionDAO().getExtension(topic.getId().toString(), "topic.sampleData"),
-        TopicSampleData.class);
+  public Topic getSampleData(UUID topicId, boolean authorizePII) throws IOException {
+    // Validate the request content
+    Topic topic = dao.findEntityById(topicId);
+
+    TopicSampleData sampleData =
+        JsonUtils.readValue(
+            daoCollection.entityExtensionDAO().getExtension(topic.getId().toString(), "topic.sampleData"),
+            TopicSampleData.class);
+    topic.setSampleData(sampleData);
+    setFieldsInternal(topic, Fields.EMPTY_FIELDS);
+
+    // Set the fields tags. Will be used to mask the sample data
+    if (!authorizePII) {
+      getFieldTags(true, topic.getMessageSchema().getSchemaFields());
+      topic.setTags(getTags(topic.getFullyQualifiedName()));
+      return PIIMasker.getSampleData(topic);
+    }
+
+    return topic;
   }
 
   @Transaction
@@ -247,6 +269,81 @@ public class TopicRepository extends EntityRepository<Topic> {
       EntityUtil.mergeTags(allTags, schemaField.getTags());
     }
     return allTags;
+  }
+
+  @Override
+  public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user)
+      throws IOException {
+    if (entityLink.getFieldName().equals("messageSchema")) {
+      String schemaName = entityLink.getArrayFieldName();
+      String childrenSchemaName = "";
+      if (entityLink.getArrayFieldName().contains(".")) {
+        String fieldNameWithoutQuotes =
+            entityLink.getArrayFieldName().substring(1, entityLink.getArrayFieldName().length() - 1);
+        schemaName = fieldNameWithoutQuotes.substring(0, fieldNameWithoutQuotes.indexOf("."));
+        childrenSchemaName = fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
+      }
+      Topic topic = getByName(null, entityLink.getEntityFQN(), getFields("tags"), Include.ALL);
+      Field schemaField = null;
+      for (Field field : topic.getMessageSchema().getSchemaFields()) {
+        if (field.getName().equals(schemaName)) {
+          schemaField = field;
+          break;
+        }
+      }
+      if (childrenSchemaName != "" && schemaField != null) {
+        schemaField = getchildrenSchemaField(schemaField.getChildren(), childrenSchemaName);
+      }
+      if (schemaField == null) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.invalidFieldName("schema", entityLink.getArrayFieldName()));
+      }
+
+      String origJson = JsonUtils.pojoToJson(topic);
+      if (EntityUtil.isDescriptionTask(task.getType())) {
+        schemaField.setDescription(newValue);
+      } else if (EntityUtil.isTagTask(task.getType())) {
+        List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
+        schemaField.setTags(tags);
+      }
+      String updatedEntityJson = JsonUtils.pojoToJson(topic);
+      JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
+      patch(null, topic.getId(), user, patch);
+      return;
+    }
+    super.update(task, entityLink, newValue, user);
+  }
+
+  private static Field getchildrenSchemaField(List<Field> fields, String childrenSchemaName) {
+    Field childrenSchemaField = null;
+    for (Field field : fields) {
+      if (field.getName().equals(childrenSchemaName)) {
+        childrenSchemaField = field;
+        break;
+      }
+    }
+    if (childrenSchemaField == null) {
+      for (int i = 0; i < fields.size(); i++) {
+        if (fields.get(i).getChildren() != null) {
+          childrenSchemaField = getchildrenSchemaField(fields.get(i).getChildren(), childrenSchemaName);
+          if (childrenSchemaField != null) {
+            break;
+          }
+        }
+      }
+    }
+    return childrenSchemaField;
+  }
+
+  public static Set<TagLabel> getAllFieldTags(Field field) {
+    Set<TagLabel> tags = new HashSet<>();
+    if (!listOrEmpty(field.getTags()).isEmpty()) {
+      tags.addAll(field.getTags());
+    }
+    for (Field c : listOrEmpty(field.getChildren())) {
+      tags.addAll(getAllFieldTags(c));
+    }
+    return tags;
   }
 
   public class TopicUpdater extends EntityUpdater {

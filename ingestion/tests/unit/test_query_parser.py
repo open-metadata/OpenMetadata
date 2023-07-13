@@ -230,14 +230,10 @@ class QueryParserTests(TestCase):
         expected_lineage = [
             (
                 Column("testdb.public.users.id"),
-                Column("cte_table.id"),
-                Column("cte_table2.id"),
                 Column("testdb.public.target.id"),
             ),
             (
                 Column("testdb.public.users.name"),
-                Column("cte_table.name"),
-                Column("cte_table2.name"),
                 Column("testdb.public.target.name"),
             ),
         ]

@@ -65,7 +65,7 @@ const LeftSidebar = () => {
                 to={{
                   pathname: ROUTES.GLOSSARY,
                 }}>
-                <span className="left-panel-item d-flex flex-col items-center">
+                <span className="left-panel-item p-y-xss">
                   <GlossaryIcon className="m-0" width={30} />
                   <Typography.Text className="left-panel-label">
                     {t('label.glossary', { lng: 'en-US' })}
@@ -83,7 +83,7 @@ const LeftSidebar = () => {
                 to={{
                   pathname: ROUTES.TAGS,
                 }}>
-                <div className="left-panel-item d-flex flex-col items-center">
+                <div className="left-panel-item p-y-xss">
                   <ClassificationIcon className="m-0" width={30} />
                   <Typography.Text className="left-panel-label">
                     {t('label.classification', { lng: 'en-US' })}
@@ -100,18 +100,17 @@ const LeftSidebar = () => {
   return (
     <div className="d-flex flex-col justify-between h-full">
       <Row className="p-y-sm">
-        <Col
-          className={`left-panel-item p-md ${
-            location.pathname.startsWith('/explore') ? 'active' : ''
-          }`}
-          span={24}>
+        <Col span={24}>
           <NavLink
             className="no-underline"
             data-testid="appbar-item-explore"
             to={{
               pathname: '/explore/tables',
             }}>
-            <div className=" d-flex flex-col items-center">
+            <div
+              className={`left-panel-item  ${
+                location.pathname.startsWith('/explore') ? 'active' : ''
+              }`}>
               <ExploreIcon className="m-0" width={30} />
               <Typography.Text className="left-panel-label">
                 {t('label.explore', { lng: 'en-US' })}
@@ -119,18 +118,17 @@ const LeftSidebar = () => {
             </div>
           </NavLink>
         </Col>
-        <Col
-          className={`left-panel-item p-md ${
-            location.pathname.includes(ROUTES.DATA_QUALITY) ? 'active' : ''
-          }`}
-          span={24}>
+        <Col span={24}>
           <NavLink
             className="no-underline"
             data-testid="appbar-item-data-quality"
             to={{
               pathname: ROUTES.DATA_QUALITY,
             }}>
-            <div className="d-flex flex-col items-center">
+            <div
+              className={`left-panel-item  ${
+                location.pathname.includes(ROUTES.DATA_QUALITY) ? 'active' : ''
+              }`}>
               <QualityIcon className="m-0" width={30} />
               <Typography.Text className="left-panel-label">
                 {t('label.quality', { lng: 'en-US' })}
@@ -138,18 +136,17 @@ const LeftSidebar = () => {
             </div>
           </NavLink>
         </Col>
-        <Col
-          className={`left-panel-item p-md ${
-            location.pathname.includes(ROUTES.DATA_INSIGHT) ? 'active' : ''
-          }`}
-          span={24}>
+        <Col span={24}>
           <NavLink
             className="no-underline"
             data-testid="appbar-item-data-insight"
             to={{
               pathname: ROUTES.DATA_INSIGHT,
             }}>
-            <div className="d-flex flex-col items-center">
+            <div
+              className={`left-panel-item  ${
+                location.pathname.includes(ROUTES.DATA_INSIGHT) ? 'active' : ''
+              }`}>
               <InsightsIcon className="m-0" width={30} />
               <Typography.Text className="left-panel-label">
                 {t('label.insight-plural', { lng: 'en-US' })}
@@ -166,18 +163,17 @@ const LeftSidebar = () => {
         />
       </Row>
       <Row className="p-y-sm">
-        <Col
-          className={`left-panel-item p-md ${
-            location.pathname.startsWith('/settings') ? 'active' : ''
-          }`}
-          span={24}>
+        <Col span={24}>
           <NavLink
             className="no-underline"
             data-testid="appbar-item-settings"
             to={{
               pathname: ROUTES.SETTINGS,
             }}>
-            <div className="d-flex flex-col items-center">
+            <div
+              className={`left-panel-item  ${
+                location.pathname.startsWith('/settings') ? 'active' : ''
+              }`}>
               <SettingsIcon className="m-0" width={30} />
               <Typography.Text className="left-panel-label">
                 {t('label.setting-plural', { lng: 'en-US' })}
@@ -185,9 +181,9 @@ const LeftSidebar = () => {
             </div>
           </NavLink>
         </Col>
-        <Col className="left-panel-item p-md" span={24}>
+        <Col span={24}>
           <div
-            className="d-flex flex-col items-center cursor-pointer"
+            className="left-panel-item cursor-pointer"
             data-testid="appbar-item-logout"
             onClick={() => onLogoutHandler()}>
             <LogoutIcon className="m-0" width={30} />
