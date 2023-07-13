@@ -147,8 +147,7 @@ $$
 $$section
 ### Include Transient Tables $(id="includeTransientTables")
 
-In Snowflake, we also have `TRANSIENT` tables, which will be ignored during the ingestion by default.
-
+In Snowflake, we have `TRANSIENT` tables, which will be ignored during the ingestion by default. Based on a flag only Transient Tables will be extracted, Temporary tables are not supported.
 Enable this setting to ingest them during the metadata workflow.
 $$
 
