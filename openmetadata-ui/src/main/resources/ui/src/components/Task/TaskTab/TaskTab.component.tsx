@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
+import Icon, { DownOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
@@ -286,6 +286,7 @@ export const TaskTab = ({
               </Button>
             ) : (
               <Dropdown.Button
+                icon={<DownOutlined />}
                 menu={{
                   items: TASK_ACTION_LIST,
                   selectable: true,
