@@ -27,6 +27,7 @@ export const QualityTab = ({
   onTestUpdate,
   testSuite,
   showTableColumn,
+  afterDeleteAction,
 }: QualityTabProps) => {
   const { t } = useTranslation();
   const tabs = useMemo(
@@ -37,6 +38,7 @@ export const QualityTab = ({
         children: (
           <div className="p-t-md">
             <DataQualityTab
+              afterDeleteAction={afterDeleteAction}
               isLoading={isLoading}
               showTableColumn={showTableColumn}
               testCases={testCases}

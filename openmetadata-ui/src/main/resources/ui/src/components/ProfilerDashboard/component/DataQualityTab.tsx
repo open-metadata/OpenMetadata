@@ -24,14 +24,14 @@ import { ReactComponent as IconCheckMark } from 'assets/svg/ic-check-mark.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import EditTestCaseModal from 'components/AddDataQualityTest/EditTestCaseModal';
-import AppBadge from 'components/common/Badge/Badge.component';
-import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
-import { StatusBox } from 'components/common/LastRunGraph/LastRunGraph.component';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { TestCaseStatusModal } from 'components/DataQuality/TestCaseStatusModal/TestCaseStatusModal.component';
 import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import AppBadge from 'components/common/Badge/Badge.component';
+import { StatusBox } from 'components/common/LastRunGraph/LastRunGraph.component';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { TestCaseStatus } from 'generated/configuration/testResultNotificationConfiguration';
 import { Operation } from 'generated/entity/policies/policy';
 import { isUndefined, sortBy } from 'lodash';
@@ -39,8 +39,8 @@ import QueryString from 'qs';
 import { putTestCaseResult, removeTestCaseFromTestSuite } from 'rest/testAPI';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { showErrorToast } from 'utils/ToastUtils';
-import { getTableTabPath, PAGE_SIZE } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { PAGE_SIZE, getTableTabPath } from '../../../constants/constants';
 import {
   TestCase,
   TestCaseFailureStatus,
@@ -56,8 +56,8 @@ import {
   getFormattedDateFromMilliSeconds,
   getFormattedDateFromSeconds,
 } from '../../../utils/TimeUtils';
-import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import Loader from '../../Loader/Loader';
+import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import {
   DataQualityTabProps,
   TableProfilerTab,
@@ -74,6 +74,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   onTestCaseResultUpdate,
   removeFromTestSuite,
   showTableColumn = true,
+  afterDeleteAction,
 }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -469,7 +470,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           />
         ) : (
           <DeleteWidgetModal
-            afterDeleteAction={onTestUpdate}
+            afterDeleteAction={afterDeleteAction}
             allowSoftDelete={false}
             entityId={selectedTestCase?.data?.id ?? ''}
             entityName={selectedTestCase?.data?.name ?? ''}
