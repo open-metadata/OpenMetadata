@@ -108,15 +108,12 @@ function EmailConfigSettingsPage() {
     }
 
     return (
-      <Card>
+      <Card className="card-body-border-none card-padding-0">
         {loading ? (
           <Skeleton title paragraph={{ rows: 8 }} />
         ) : (
           <>
-            <Typography.Title level={5}>
-              {t('label.configuration')}
-            </Typography.Title>
-            <Row align="middle" className="m-t-md" gutter={[16, 16]}>
+            <Row align="middle" gutter={[16, 16]}>
               {configValues}
             </Row>
           </>
