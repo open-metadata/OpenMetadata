@@ -16,21 +16,19 @@ import { ThreadType } from '../../generated/api/feed/createThread';
 import { Column, ColumnJoins, Table } from '../../generated/entity/data/table';
 import { EntityFieldThreads } from '../../interface/feed.interface';
 
-export interface EntityTableProps {
+export interface SchemaTableProps {
   tableColumns: Column[];
   joins: Array<ColumnJoins>;
   columnName: string;
-  hasDescriptionEditAccess?: boolean;
+  hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
   tableConstraints: Table['tableConstraints'];
   searchText?: string;
   isReadOnly?: boolean;
-  entityFqn?: string;
-  entityFieldThreads?: EntityFieldThreads[];
-  entityFieldTasks?: EntityFieldThreads[];
+  entityFqn: string;
+  entityFieldThreads: EntityFieldThreads[];
   onUpdate: (columns: Column[]) => Promise<void>;
-  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
-  onEntityFieldSelect?: (value: string) => void;
+  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
 }
 
 export type TableCellRendered<T, K extends keyof T> = (

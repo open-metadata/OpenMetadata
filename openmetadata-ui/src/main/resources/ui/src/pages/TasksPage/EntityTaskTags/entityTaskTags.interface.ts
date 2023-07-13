@@ -11,23 +11,19 @@
  *  limitations under the License.
  */
 
+import { EntityType } from 'enums/entity.enum';
 import { ThreadType } from 'generated/api/feed/createThread';
-import { TagSource } from 'generated/type/tagLabel';
-import { EntityTags } from 'Models';
-import { ReactElement } from 'react';
+import { TagLabel, TagSource } from 'generated/type/tagLabel';
+import { EntityFieldThreads } from 'interface/feed.interface';
 
-export type TagsContainerV2Props = {
-  permission: boolean;
-  showTaskHandler?: boolean;
-  selectedTags: EntityTags[];
-  entityType?: string;
-  entityThreadLink?: string;
-  entityFqn?: string;
-  tagType: TagSource;
-  showHeader?: boolean;
-  showBottomEditButton?: boolean;
-  showInlineEditButton?: boolean;
-  children?: ReactElement;
-  onSelectionChange?: (selectedTags: EntityTags[]) => Promise<void>;
-  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
-};
+export interface EntityTaskTagsProps {
+  data: {
+    fqn: string;
+    tags: TagLabel[];
+  };
+  tagSource: TagSource;
+  entityFqn: string;
+  entityType: EntityType;
+  entityFieldThreads: EntityFieldThreads[];
+  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
+}

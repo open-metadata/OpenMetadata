@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import { Column } from 'generated/entity/data/container';
 import { TagOption } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { Column } from '../../generated/api/data/createTable';
 import { Table } from '../../generated/entity/data/table';
-import EntityTableV1 from './EntityTable.component';
+import EntityTableV1 from './SchemaTable.component';
 
 const onEntityFieldSelect = jest.fn();
 const onThreadLinkSelect = jest.fn();
@@ -67,46 +67,12 @@ const mockEntityTableProp = {
       constraint: 'NULL',
       ordinalPosition: 3,
     },
-    {
-      name: 'store_address',
-      dataType: 'ARRAY',
-      arrayDataType: 'STRUCT',
-      dataLength: 1,
-      dataTypeDisplay:
-        'array<struct<name:character varying(32),street_address:character varying(128),city:character varying(32),postcode:character varying(8)>>',
-      fullyQualifiedName:
-        'bigquery_gcp.ecommerce.shopify.raw_product_catalog.store_address',
-      tags: [],
-      constraint: 'NULL',
-      ordinalPosition: 4,
-    },
-    {
-      name: 'first_order_date',
-      dataType: 'TIMESTAMP',
-      dataTypeDisplay: 'timestamp',
-      description:
-        'The date (ISO 8601) and time (UTC) when the customer placed their first order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).',
-      fullyQualifiedName:
-        'bigquery_gcp.ecommerce.shopify.raw_product_catalog.first_order_date',
-      tags: [],
-      ordinalPosition: 5,
-    },
-    {
-      name: 'last_order_date',
-      dataType: 'TIMESTAMP',
-      dataTypeDisplay: 'timestamp',
-      description:
-        'The date (ISO 8601) and time (UTC) when the customer placed their most recent order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).',
-      fullyQualifiedName:
-        'bigquery_gcp.ecommerce.shopify.raw_product_catalog.last_order_date',
-      tags: [],
-      ordinalPosition: 6,
-    },
   ] as Column[],
   searchText: '',
   hasEditAccess: false,
   joins: [],
   entityFieldThreads: [],
+  hasDescriptionEditAccess: true,
   isReadOnly: false,
   entityFqn: 'bigquery_gcp.ecommerce.shopify.raw_product_catalog',
   owner: {} as Table['owner'],
@@ -134,6 +100,13 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
 jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
   ModalWithMarkdownEditor: jest.fn().mockReturnValue(<p>EditorModal</p>),
 }));
+
+jest.mock(
+  'components/common/error-with-placeholder/FilterTablePlaceHolder',
+  () => {
+    return jest.fn().mockReturnValue(<p>FilterTablePlaceHolder</p>);
+  }
+);
 
 jest.mock('components/Tag/TagsContainer/tags-container', () => {
   return jest.fn().mockImplementation(({ tagList }) => {
@@ -165,16 +138,21 @@ jest.mock('../../utils/GlossaryUtils', () => ({
   getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock(
-  'components/common/error-with-placeholder/FilterTablePlaceHolder',
-  () => {
-    return jest.fn().mockReturnValue(<p>FilterTablePlaceHolder</p>);
-  }
-);
-
 jest.mock('components/TableTags/TableTags.component', () => {
   return jest.fn().mockReturnValue(<p>TableTags</p>);
 });
+
+jest.mock('components/TableDescription/TableDescription.component', () => {
+  return jest.fn().mockReturnValue(<p>TableDescription</p>);
+});
+
+const mockTableScrollValue = jest.fn();
+
+jest.mock('constants/Table.constants', () => ({
+  get TABLE_SCROLL_VALUE() {
+    return mockTableScrollValue();
+  },
+}));
 
 describe('Test EntityTable Component', () => {
   it('Initially, Table should load', async () => {
@@ -184,11 +162,27 @@ describe('Test EntityTable Component', () => {
 
     const entityTable = await screen.findByTestId('entity-table');
 
+    screen.debug(entityTable);
+
     expect(entityTable).toBeInTheDocument();
   });
 
-  it('should render request description button', async () => {
+  it('Should render tags and description components', async () => {
     render(<EntityTableV1 {...mockEntityTableProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const tableTags = screen.getAllByText('TableTags');
+
+    expect(tableTags).toHaveLength(6);
+
+    const tableDescription = screen.getAllByText('TableDescription');
+
+    expect(tableDescription).toHaveLength(3);
+  });
+
+  it('Table should load empty when no data present', async () => {
+    render(<EntityTableV1 {...mockEntityTableProp} tableColumns={[]} />, {
       wrapper: MemoryRouter,
     });
 
@@ -196,33 +190,8 @@ describe('Test EntityTable Component', () => {
 
     expect(entityTable).toBeInTheDocument();
 
-    const requestDescriptionButton = await screen.findAllByTestId(
-      'request-description'
-    );
+    const emptyPlaceholder = screen.getByText('FilterTablePlaceHolder');
 
-    expect(requestDescriptionButton[0]).toBeInTheDocument();
-  });
-
-  it('Should render start thread button', async () => {
-    render(<EntityTableV1 {...mockEntityTableProp} />, {
-      wrapper: MemoryRouter,
-    });
-
-    const entityTable = await screen.findByTestId('entity-table');
-
-    expect(entityTable).toBeInTheDocument();
-
-    const startThreadButton = await screen.findAllByTestId(
-      'start-field-thread'
-    );
-
-    expect(startThreadButton[0]).toBeInTheDocument();
-
-    fireEvent.click(
-      startThreadButton[0],
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
-
-    expect(onThreadLinkSelect).toHaveBeenCalled();
+    expect(emptyPlaceholder).toBeInTheDocument();
   });
 });

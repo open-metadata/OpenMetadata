@@ -51,6 +51,7 @@ const mockUserTeam = [
 
 const topicDetailsProps: TopicDetailsProps = {
   topicDetails: TOPIC_DETAILS,
+  fetchTopic: jest.fn(),
   followTopicHandler: jest.fn(),
   unFollowTopicHandler: jest.fn(),
   onTopicUpdate: jest.fn(),
