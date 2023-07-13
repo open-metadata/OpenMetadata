@@ -22,6 +22,14 @@ CREATE TABLE IF NOT EXISTS data_product_entity (
     UNIQUE (fqnHash)
 );
 
+-- Rename includeTempTables in snowflake to includeTransientTables 
+
+UPDATE dbservice_entity
+SET json = jsonb_set(json::jsonb #- '{connection,config,includeTempTables}', '{connection,config,includeTransientTables}',
+json#>'{connection,config,includeTempTables}')
+where serviceType in ('Snowflake') and json#>'{connection,config,includeTempTables}' is not null ;
+
+
 update dbservice_entity
 set json = jsonb_set(json::jsonb, '{connection,config,scheme}', '"hive"')
 where json#>>'{connection,config,scheme}' in ('impala', 'impala4');
