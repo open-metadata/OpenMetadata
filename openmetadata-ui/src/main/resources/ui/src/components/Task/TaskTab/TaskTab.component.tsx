@@ -379,31 +379,6 @@ export const TaskTab = ({
           })}>
           <div
             className={classNames('gap-2', { 'flex-center': !isEditAssignee })}>
-            {!isEditAssignee ? (
-              <>
-                <Typography.Text className="text-grey-muted">
-                  {t('label.assignee-plural')}:{' '}
-                </Typography.Text>
-                <AssigneeList
-                  assignees={taskDetails?.assignees ?? []}
-                  className="d-flex gap-1"
-                  profilePicType="circle"
-                  profileWidth="24"
-                  showUserName={false}
-                />
-                {isCreator || hasTaskUpdateAccess() ? (
-                  <Button
-                    className="flex-center p-0"
-                    data-testid="edit-assignees"
-                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                    size="small"
-                    type="text"
-                    onClick={() => setIsEditAssignee(true)}
-                  />
-                ) : null}
-              </>
-            ) : null}
-
             {isEditAssignee ? (
               <Form
                 form={assigneesForm}
@@ -443,7 +418,30 @@ export const TaskTab = ({
                   </InlineEdit>
                 </Form.Item>
               </Form>
-            ) : null}
+            ) : (
+              <>
+                <Typography.Text className="text-grey-muted">
+                  {t('label.assignee-plural')}:{' '}
+                </Typography.Text>
+                <AssigneeList
+                  assignees={taskDetails?.assignees ?? []}
+                  className="d-flex gap-1"
+                  profilePicType="circle"
+                  profileWidth="24"
+                  showUserName={false}
+                />
+                {isCreator || hasTaskUpdateAccess() ? (
+                  <Button
+                    className="flex-center p-0"
+                    data-testid="edit-assignees"
+                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                    size="small"
+                    type="text"
+                    onClick={() => setIsEditAssignee(true)}
+                  />
+                ) : null}
+              </>
+            )}
           </div>
           <div
             className={classNames('gap-2', { 'flex-center': !isEditAssignee })}>
