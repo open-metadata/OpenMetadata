@@ -1245,9 +1245,12 @@ public interface CollectionDAO {
         @Bind("toType") String toType,
         @Bind("relation") int relation);
 
-    @SqlQuery("SELECT * FROM field_relationship")
+    @SqlQuery("SELECT count(*) FROM field_relationship")
+    int listCount();
+
+    @SqlQuery("SELECT * FROM field_relationship LIMIT :limit OFFSET :offset")
     @RegisterRowMapper(FieldRelationShipMapper.class)
-    List<FieldRelationship> listAll();
+    List<FieldRelationship> listWithOffset(@Bind("limit") int limit, @Bind("offset") int offset);
 
     @SqlQuery(
         "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
@@ -3102,6 +3105,9 @@ public interface CollectionDAO {
     @SqlQuery("SELECT count(*) FROM entity_extension_time_series WHERE EntityFQNHash = :entityFQNHash")
     int listCount(@Bind("entityFQNHash") String entityFQNHash);
 
+    @SqlQuery("SELECT count(*) FROM entity_extension_time_series")
+    int listAllCount();
+
     @ConnectionAwareSqlQuery(
         value =
             "WITH data AS (SELECT ROW_NUMBER() OVER(ORDER BY timestamp ASC) AS row_num, json "
@@ -3350,9 +3356,9 @@ public interface CollectionDAO {
       }
     }
 
-    @SqlQuery("select * from entity_extension_time_series")
+    @SqlQuery("select * from entity_extension_time_series LIMIT :limit OFFSET :offset")
     @RegisterRowMapper(EntityExtensionTimeSeries.class)
-    List<EntityExtensionTimeSeriesTable> listAll();
+    List<EntityExtensionTimeSeriesTable> listWithOffset(@Bind("limit") int limit, @Bind("offset") int offset);
 
     @Getter
     @Setter

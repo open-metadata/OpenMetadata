@@ -125,37 +125,32 @@ public class MigrationUtil {
       Handle handle, String updateSql, Class<T> clazz, EntityDAO<T> dao, boolean withName) throws IOException {
     LOG.debug("Starting Migration for table : {}", dao.getTableName());
     int limitParam = 1000;
-    List<T> entities;
-    String after = null;
-    do {
+    int offset = 0;
+    int totalCount = dao.listTotalCount();
+    while (offset < totalCount) {
       PreparedBatch upsertBatch = handle.prepareBatch(updateSql);
-      // Create empty Array
-      entities = new ArrayList<>();
-
       // Read from Database
-      List<String> jsons = dao.listAfterWitFullyQualifiedName(limitParam + 1, after == null ? "" : after);
-      for (String json : jsons) {
-        T entity = JsonUtils.readValue(json, clazz);
-        entities.add(entity);
-      }
-      String afterCursor = null;
-      if (entities.size() > limitParam) {
-        entities.remove(limitParam);
-        afterCursor = entities.get(limitParam - 1).getFullyQualifiedName();
-      }
-      after = afterCursor;
-
+      List<String> jsons = dao.listAfterWithOffset(limitParam, offset);
+      offset = offset + limitParam;
       // Process Update
-      for (T entity : entities) {
+      for (String json : jsons) {
         // Update the Statements to Database
-        String hash =
-            withName
-                ? FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getFullyQualifiedName()))
-                : FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
+        T entity = JsonUtils.readValue(json, clazz);
+        String hash = "";
+        try {
+          hash =
+              withName
+                  ? FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getFullyQualifiedName()))
+                  : FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
+        } catch (Exception ex) {
+          LOG.error("Failed in creating FQN Hash for Entity Name : {}", entity.getFullyQualifiedName(), ex);
+          // Continue to update further jsons
+          continue;
+        }
         upsertBatch.bind("nameHashColumnValue", hash).bind("id", entity.getId().toString()).add();
       }
       upsertBatch.execute();
-    } while (!CommonUtil.nullOrEmpty(after));
+    }
     LOG.debug("End Migration for table : {}", dao.getTableName());
   }
 
@@ -253,69 +248,108 @@ public class MigrationUtil {
   }
 
   private static void updateFQNHashForFieldRelationship(CollectionDAO collectionDAO) {
-    List<CollectionDAO.FieldRelationshipDAO.FieldRelationship> fieldRelationships =
-        collectionDAO.fieldRelationshipDAO().listAll();
-    for (CollectionDAO.FieldRelationshipDAO.FieldRelationship fieldRelationship : fieldRelationships) {
-      if (CommonUtil.nullOrEmpty(fieldRelationship.getFromFQNHash())
-          && CommonUtil.nullOrEmpty(fieldRelationship.getToFQNHash())) {
-        collectionDAO
-            .fieldRelationshipDAO()
-            .upsertFQNHash(
-                FullyQualifiedName.buildHash(fieldRelationship.getFromFQN()),
-                FullyQualifiedName.buildHash(fieldRelationship.getToFQN()),
-                fieldRelationship.getFromFQN(),
-                fieldRelationship.getToFQN(),
-                fieldRelationship.getFromType(),
-                fieldRelationship.getToType(),
-                fieldRelationship.getRelation(),
-                fieldRelationship.getJsonSchema(),
-                fieldRelationship.getJson());
+    LOG.debug("Starting Migration for Field Relationship");
+    int limitParam = 200;
+    int offset = 0;
+    int totalCount = collectionDAO.fieldRelationshipDAO().listCount();
+    while (offset < totalCount) {
+      List<CollectionDAO.FieldRelationshipDAO.FieldRelationship> fieldRelationships =
+          collectionDAO.fieldRelationshipDAO().listWithOffset(limitParam, offset);
+      for (CollectionDAO.FieldRelationshipDAO.FieldRelationship fieldRelationship : fieldRelationships) {
+        if (CommonUtil.nullOrEmpty(fieldRelationship.getFromFQNHash())
+            && CommonUtil.nullOrEmpty(fieldRelationship.getToFQNHash())) {
+          String fromFQNHash = "";
+          String toFQNHash = "";
+          try {
+            fromFQNHash = FullyQualifiedName.buildHash(fieldRelationship.getFromFQN());
+            toFQNHash = FullyQualifiedName.buildHash(fieldRelationship.getToFQN());
+          } catch (Exception ex) {
+            LOG.error("Failed in creating FromFQNHash : {} , toFQNHash : {}", fromFQNHash, toFQNHash, ex);
+            // Update further rows
+            continue;
+          }
+          collectionDAO
+              .fieldRelationshipDAO()
+              .upsertFQNHash(
+                  fromFQNHash,
+                  toFQNHash,
+                  fieldRelationship.getFromFQN(),
+                  fieldRelationship.getToFQN(),
+                  fieldRelationship.getFromType(),
+                  fieldRelationship.getToType(),
+                  fieldRelationship.getRelation(),
+                  fieldRelationship.getJsonSchema(),
+                  fieldRelationship.getJson());
+        }
       }
+      offset = offset + limitParam;
     }
+    LOG.debug("End Migration for Field Relationship");
   }
 
   private static void updateFQNHashEntityExtensionTimeSeries(
       Handle handle, String updateSql, CollectionDAO collectionDAO) {
-    List<CollectionDAO.EntityExtensionTimeSeriesDAO.EntityExtensionTimeSeriesTable> timeSeriesTables =
-        collectionDAO.entityExtensionTimeSeriesDao().listAll();
+    LOG.debug("Starting Migration for Entity Extension Time Series");
+    int limitParam = 1000;
+    int offset = 0;
+    int totalCount = collectionDAO.entityExtensionTimeSeriesDao().listAllCount();
     PreparedBatch upsertBatch = handle.prepareBatch(updateSql);
-    int total = 0;
-    for (CollectionDAO.EntityExtensionTimeSeriesDAO.EntityExtensionTimeSeriesTable timeSeries : timeSeriesTables) {
-      if (CommonUtil.nullOrEmpty(timeSeries.getEntityFQNHash())) {
-        upsertBatch
-            .bind("entityFQNHash", FullyQualifiedName.buildHash(timeSeries.getEntityFQN()))
-            .bind("entityFQN", timeSeries.getEntityFQN())
-            .bind("extension", timeSeries.getExtension())
-            .bind("timestamp", timeSeries.getTimestamp())
-            .add();
-        total++;
-        if (total > 10000) {
-          upsertBatch.execute();
-          total = 0;
-          // Creating a new batch result in faster writes
-          upsertBatch = handle.prepareBatch(updateSql);
+    while (offset < totalCount) {
+      List<CollectionDAO.EntityExtensionTimeSeriesDAO.EntityExtensionTimeSeriesTable> timeSeriesTables =
+          collectionDAO.entityExtensionTimeSeriesDao().listWithOffset(limitParam, offset);
+
+      for (CollectionDAO.EntityExtensionTimeSeriesDAO.EntityExtensionTimeSeriesTable timeSeries : timeSeriesTables) {
+        if (CommonUtil.nullOrEmpty(timeSeries.getEntityFQNHash())) {
+          String entityFQN = "";
+          try {
+            entityFQN = FullyQualifiedName.buildHash(timeSeries.getEntityFQN());
+          } catch (Exception ex) {
+            LOG.error("Failed in creating EntityFQN : {}", entityFQN, ex);
+            // Update further rows
+            continue;
+          }
+          upsertBatch
+              .bind("entityFQNHash", entityFQN)
+              .bind("entityFQN", timeSeries.getEntityFQN())
+              .bind("extension", timeSeries.getExtension())
+              .bind("timestamp", timeSeries.getTimestamp())
+              .add();
         }
       }
+      upsertBatch.execute();
+      offset = offset + limitParam;
     }
-    upsertBatch.execute();
+    LOG.debug("Ended Migration for Entity Extension Time Series");
   }
 
   public static void updateFQNHashTagUsage(CollectionDAO collectionDAO) {
+    LOG.debug("Starting Migration for Tag Usage");
     List<CollectionDAO.TagUsageDAO.TagLabelMigration> tagLabelMigrationList = collectionDAO.tagUsageDAO().listAll();
     for (CollectionDAO.TagUsageDAO.TagLabelMigration tagLabel : tagLabelMigrationList) {
       if (CommonUtil.nullOrEmpty(tagLabel.getTagFQNHash()) && CommonUtil.nullOrEmpty(tagLabel.getTargetFQNHash())) {
+        String tagFQNHash = "";
+        String targetFQNHash = "";
+        try {
+          tagFQNHash = FullyQualifiedName.buildHash(tagLabel.getTagFQN());
+          targetFQNHash = FullyQualifiedName.buildHash(tagLabel.getTargetFQN());
+        } catch (Exception ex) {
+          LOG.error("Failed in creating tagFQNHash : {}, targetFQNHash: {}", tagFQNHash, targetFQNHash, ex);
+          // Update further rows
+          continue;
+        }
         collectionDAO
             .tagUsageDAO()
             .upsertFQNHash(
                 tagLabel.getSource(),
                 tagLabel.getTagFQN(),
-                FullyQualifiedName.buildHash(tagLabel.getTagFQN()),
-                FullyQualifiedName.buildHash(tagLabel.getTargetFQN()),
+                tagFQNHash,
+                targetFQNHash,
                 tagLabel.getLabelType(),
                 tagLabel.getState(),
                 tagLabel.getTargetFQN());
       }
     }
+    LOG.debug("Ended Migration for Tag Usage");
   }
 
   public static void performSqlExecutionAndUpdation(
