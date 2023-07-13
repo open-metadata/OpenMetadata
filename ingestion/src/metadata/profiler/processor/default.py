@@ -17,7 +17,7 @@ from typing import List, Optional
 from sqlalchemy.orm import DeclarativeMeta
 
 from metadata.generated.schema.entity.data.table import ColumnProfilerConfig
-from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
+from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import Metric, add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler
@@ -63,7 +63,7 @@ class DefaultProfiler(Profiler):
 
     def __init__(
         self,
-        profiler_interface: ProfilerProtocol,
+        profiler_interface: ProfilerInterface,
         include_columns: Optional[List[ColumnProfilerConfig]] = None,
         exclude_columns: Optional[List[str]] = None,
     ):

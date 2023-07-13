@@ -103,9 +103,6 @@ const TableDetailsPageV1 = () => {
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
     EntityFieldThreadCount[]
   >([]);
-  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
   const [isEdit, setIsEdit] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
   const [threadType, setThreadType] = useState<ThreadType>(
@@ -281,7 +278,6 @@ const TableDetailsPageV1 = () => {
       EntityType.TABLE,
       datasetFQN,
       setEntityFieldThreadCount,
-      setEntityFieldTaskCount,
       setFeedCount
     );
   };
@@ -460,10 +456,6 @@ const TableDetailsPageV1 = () => {
                 FQN_SEPARATOR_CHAR
               )}
               columns={tableDetails?.columns ?? []}
-              entityFieldTasks={getEntityFieldThreadCounts(
-                EntityField.COLUMNS,
-                entityFieldTaskCount
-              )}
               entityFieldThreads={getEntityFieldThreadCounts(
                 EntityField.COLUMNS,
                 entityFieldThreadCount

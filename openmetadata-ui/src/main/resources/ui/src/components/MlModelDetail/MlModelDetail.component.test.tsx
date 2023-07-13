@@ -142,6 +142,7 @@ const settingsUpdateHandler = jest.fn();
 const mockProp = {
   mlModelDetail: mockData as Mlmodel,
   activeTab: 1,
+  fetchMlModel: jest.fn(),
   followMlModelHandler,
   unFollowMlModelHandler,
   descriptionUpdateHandler,

@@ -14,7 +14,7 @@ Base source for the profiler used to instantiate a profiler runner with
 its interface
 """
 from copy import deepcopy
-from typing import List, Optional, Union, cast
+from typing import List, Optional, cast
 
 from sqlalchemy import MetaData
 
@@ -34,21 +34,19 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
-from metadata.profiler.interface.pandas.profiler_interface import (
-    PandasProfilerInterface,
-)
-from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
-from metadata.profiler.interface.sqlalchemy.profiler_interface import (
-    SQAProfilerInterface,
+from metadata.profiler.interface.profiler_interface import ProfilerInterface
+from metadata.profiler.interface.profiler_interface_factory import (
+    profiler_interface_factory,
 )
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler
 from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
+from metadata.profiler.source.profiler_source_interface import ProfilerSourceInterface
 
 NON_SQA_DATABASE_CONNECTIONS = (DatalakeConnection,)
 
 
-class BaseProfilerSource:
+class ProfilerSource(ProfilerSourceInterface):
     """
     Base class for the profiler source
     """
@@ -75,7 +73,7 @@ class BaseProfilerSource:
     @property
     def interface(
         self,
-    ) -> Optional[Union[SQAProfilerInterface, PandasProfilerInterface]]:
+    ) -> Optional[ProfilerInterface]:
         """Get the interface"""
         return self._interface
 
@@ -100,7 +98,7 @@ class BaseProfilerSource:
         """
         if isinstance(self.service_conn_config, NON_SQA_DATABASE_CONNECTIONS):
             return self.service_conn_config.__class__.__name__
-        return config.source.serviceConnection.__root__.__class__.__name__
+        return config.source.serviceConnection.__root__.config.__class__.__name__
 
     def _get_config_for_table(
         self, entity: Table, profiler_config
@@ -177,15 +175,13 @@ class BaseProfilerSource:
     def create_profiler_interface(
         self,
         entity: Table,
-        table_config: Optional[TableConfig],
-    ) -> Union[SQAProfilerInterface, PandasProfilerInterface]:
+        config: Optional[TableConfig],
+    ) -> ProfilerInterface:
         """Create sqlalchemy profiler interface"""
-        profiler_interface: Union[
-            SQAProfilerInterface, PandasProfilerInterface
-        ] = ProfilerProtocol.create(
+        profiler_interface: ProfilerInterface = profiler_interface_factory.create(
             self.profiler_interface_type,
             entity,
-            table_config,
+            config,
             self.source_config,
             self.service_conn_config,
             self.ometa_client,
