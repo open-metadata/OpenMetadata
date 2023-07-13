@@ -13,13 +13,11 @@ Superset mixin module
 """
 import json
 import traceback
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.dashboard import (
-    Dashboard as Lineage_Dashboard,
-)
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
+from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
 )
@@ -36,6 +34,15 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.ingestion.source.dashboard.superset.models import (
+    DashboradResult,
+    DataSourceResult,
+    FetchChart,
+    FetchColumn,
+    FetchDashboard,
+    SupersetDatasource,
+)
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
@@ -67,19 +74,25 @@ class SupersetSourceMixin(DashboardServiceSource):
             )
         return cls(config, metadata_config)
 
-    def get_dashboard_name(self, dashboard: dict) -> str:
+    def get_dashboard_name(
+        self, dashboard: Union[FetchDashboard, DashboradResult]
+    ) -> Optional[str]:
         """
         Get Dashboard Name
         """
-        return dashboard["dashboard_title"]
+        return dashboard.dashboard_title
 
-    def get_dashboard_details(self, dashboard: dict) -> dict:
+    def get_dashboard_details(
+        self, dashboard: Union[FetchDashboard, DashboradResult]
+    ) -> Optional[Union[FetchDashboard, DashboradResult]]:
         """
         Get Dashboard Details
         """
         return dashboard
 
-    def _get_user_by_email(self, email: str) -> EntityReference:
+    def _get_user_by_email(
+        self, email: Union[FetchDashboard, DashboradResult]
+    ) -> EntityReference:
         if email:
             user = self.metadata.get_user_by_email(email)
             if user:
@@ -87,22 +100,27 @@ class SupersetSourceMixin(DashboardServiceSource):
 
         return None
 
-    def get_owner_details(self, dashboard_details: dict) -> EntityReference:
-        for owner in dashboard_details.get("owners", []):
-            user = self._get_user_by_email(owner.get("email"))
-            if user:
-                return user
-        if dashboard_details.get("email"):
-            user = self._get_user_by_email(dashboard_details["email"])
+    def get_owner_details(
+        self, dashboard_details: Union[DashboradResult, FetchDashboard]
+    ) -> EntityReference:
+        for owner in dashboard_details.owners:
+            if owner.email:
+                user = self._get_user_by_email(owner.email)
+                if user:
+                    return user
+        if dashboard_details.email:
+            user = self._get_user_by_email(dashboard_details.email)
             if user:
                 return user
         return None
 
-    def _get_charts_of_dashboard(self, dashboard_details: dict) -> List[str]:
+    def _get_charts_of_dashboard(
+        self, dashboard_details: Union[FetchDashboard, DashboradResult]
+    ) -> Optional[List[str]]:
         """
         Method to fetch chart ids linked to dashboard
         """
-        raw_position_data = dashboard_details.get("position_json", {})
+        raw_position_data = dashboard_details.position_json
         if raw_position_data:
             position_data = json.loads(raw_position_data)
             return [
@@ -113,10 +131,12 @@ class SupersetSourceMixin(DashboardServiceSource):
         return []
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: dict, db_service_name: str
+        self,
+        dashboard_details: Union[FetchDashboard, DashboradResult],
+        db_service_name: DatabaseService,
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
-        Get lineage between dashboard and data sources
+        Get lineage between datamodel and table
         """
         db_service_entity = self.metadata.get_by_name(
             entity=DatabaseService, fqn=db_service_name
@@ -135,16 +155,17 @@ class SupersetSourceMixin(DashboardServiceSource):
                         fqn=datasource_fqn,
                     )
                     try:
-                        dashboard_fqn = fqn.build(
+                        datamodel_fqn = fqn.build(
                             self.metadata,
-                            entity_type=Lineage_Dashboard,
+                            entity_type=DashboardDataModel,
                             service_name=self.config.serviceName,
-                            dashboard_name=str(dashboard_details["id"]),
+                            data_model_name=str(chart_json.datasource_id),
                         )
                         to_entity = self.metadata.get_by_name(
-                            entity=Lineage_Dashboard,
-                            fqn=dashboard_fqn,
+                            entity=DashboardDataModel,
+                            fqn=datamodel_fqn,
                         )
+
                         if from_entity and to_entity:
                             yield self._get_add_lineage_request(
                                 to_entity=to_entity, from_entity=from_entity
@@ -154,3 +175,80 @@ class SupersetSourceMixin(DashboardServiceSource):
                         logger.error(
                             f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}"
                         )
+
+    def _get_datamodel(
+        self, datamodel: Union[SupersetDatasource, FetchChart]
+    ) -> Optional[DashboardDataModel]:
+        """
+        Get the datamodel entity for lineage
+        """
+        datamodel_fqn = fqn.build(
+            self.metadata,
+            entity_type=DashboardDataModel,
+            service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
+            data_model_name=datamodel.id,
+        )
+        if datamodel_fqn:
+            return self.metadata.get_by_name(
+                entity=DashboardDataModel,
+                fqn=datamodel_fqn,
+            )
+        return None
+
+    def get_column_info(
+        self, data_source: Union[DataSourceResult, FetchColumn]
+    ) -> Optional[List[Column]]:
+        """
+        Args:
+            data_source: DataSource
+        Returns:
+            Columns details for Data Model
+        """
+        datasource_columns = []
+        for field in data_source or []:
+            try:
+                if field.type:
+                    col_parse = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
+                        field.type
+                    )
+                    parsed_fields = Column(
+                        dataTypeDisplay=field.type,
+                        dataType=col_parse["dataType"],
+                        name=field.id,
+                        displayName=field.column_name,
+                        description=field.description,
+                        dataLength=col_parse.get("dataLength", 0),
+                    )
+                    datasource_columns.append(parsed_fields)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error to yield datamodel column: {exc}")
+        return datasource_columns
+
+    def yield_dashboard_lineage(
+        self, dashboard_details: Union[FetchDashboard, DashboradResult]
+    ) -> Optional[Iterable[AddLineageRequest]]:
+        yield from self.yield_datamodel_dashboard_lineage() or []
+
+        for db_service_name in self.source_config.dbServiceNames or []:
+            yield from self.yield_dashboard_lineage_details(
+                dashboard_details, db_service_name
+            ) or []
+
+    def yield_datamodel_dashboard_lineage(
+        self,
+    ) -> Optional[Iterable[AddLineageRequest]]:
+        """
+        Returns:
+            Lineage request between Data Models and Dashboards
+        """
+        for datamodel in self.context.dataModels or []:
+            try:
+                yield self._get_add_lineage_request(
+                    to_entity=self.context.dashboard, from_entity=datamodel
+                )
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Error to yield dashboard lineage details for data model name [{datamodel.name}]: {err}"
+                )
