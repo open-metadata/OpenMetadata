@@ -48,7 +48,7 @@ DictConfigurator.configure = configure
 logger = ingestion_logger()
 
 # max lineage parsing wait in second when using specific dialect
-LINEAGE_PARSING_TIMEOUT = 10
+LINEAGE_PARSING_TIMEOUT = 120
 
 
 class LineageParser:
