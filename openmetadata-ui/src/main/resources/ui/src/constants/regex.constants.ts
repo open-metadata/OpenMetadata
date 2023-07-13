@@ -21,6 +21,7 @@ export const FQN_REGEX = new RegExp(
 );
 
 export const ENTITY_NAME_REGEX = /^[\p{L}\w\- .'&()]+$/;
+export const GLOSSARY_REGEX = /^[\p{L}\w\- .'&()%]+$/;
 
 export const delimiterRegex = /[\\[\]\\()\\;\\,\\|\\{}\\``\\/\\<>\\^]/g;
 export const nameWithSpace = /\s/g;
