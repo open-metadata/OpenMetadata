@@ -21,9 +21,8 @@ and we can easily access the desired values.
 from enum import Enum
 from typing import Optional
 
-from sqlalchemy.sql.sqltypes import TypeDecorator
-
 from metadata.profiler.metrics.core import Metric
+from sqlalchemy.sql.sqltypes import TypeDecorator
 
 
 class MetricRegistry(Enum):

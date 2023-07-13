@@ -20,8 +20,6 @@ from copy import deepcopy
 from logging import Logger
 from typing import List, Optional, cast
 
-from pydantic import BaseModel, ValidationError
-
 from metadata.config.common import WorkflowExecutionError
 from metadata.data_quality.api.models import (
     TestCaseDefinition,
@@ -30,6 +28,16 @@ from metadata.data_quality.api.models import (
 from metadata.data_quality.source.test_suite_source_factory import (
     test_suite_source_factory,
 )
+from metadata.ingestion.api.parser import parse_workflow_config_gracefully
+from metadata.ingestion.api.processor import ProcessorStatus
+from metadata.utils import entity_link
+from metadata.utils.fqn import split
+from metadata.utils.importer import get_sink
+from metadata.utils.logger import test_suite_logger
+from metadata.utils.workflow_output_handler import print_test_suite_status
+from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
+from pydantic import BaseModel, ValidationError
+
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.table import Table
@@ -53,15 +61,7 @@ from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition, TestPlatform
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import EntityLink, FullyQualifiedEntityName
-from metadata.ingestion.api.parser import parse_workflow_config_gracefully
-from metadata.ingestion.api.processor import ProcessorStatus
-from metadata.ingestion.ometa.client_utils import create_ometa_client
-from metadata.utils import entity_link
-from metadata.utils.fqn import split
-from metadata.utils.importer import get_sink
-from metadata.utils.logger import test_suite_logger
-from metadata.utils.workflow_output_handler import print_test_suite_status
-from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
+from metadata.ometa.client_utils import create_ometa_client
 
 logger: Logger = test_suite_logger()
 

@@ -18,9 +18,10 @@ from typing import TYPE_CHECKING, Dict
 
 from airflow_provider_openmetadata.lineage.config.loader import get_lineage_config
 from airflow_provider_openmetadata.lineage.status import add_status
+
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ometa.ometa_api import OpenMetadata
 
 if TYPE_CHECKING:
     from airflow.models.baseoperator import BaseOperator

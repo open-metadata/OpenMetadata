@@ -14,13 +14,6 @@ Source connection handler
 """
 from typing import Optional
 
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
-)
-from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
-    RedpandaConnection,
-)
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.messaging.kafka.connection import KafkaClient
 from metadata.ingestion.source.messaging.kafka.connection import (
     get_connection as get_kafka_connection,
@@ -29,6 +22,14 @@ from metadata.ingestion.source.messaging.kafka.connection import (
     test_connection as test_kafka_connection,
 )
 from metadata.utils.logger import ingestion_logger
+
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
+from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
+    RedpandaConnection,
+)
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
 

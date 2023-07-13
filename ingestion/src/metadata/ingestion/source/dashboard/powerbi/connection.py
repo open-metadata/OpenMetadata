@@ -14,15 +14,16 @@ Source connection handler
 """
 from typing import Optional
 
+from metadata.ingestion.connections.test_connections import test_connection_steps
+from metadata.ingestion.source.dashboard.powerbi.client import PowerBiApiClient
+
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection,
 )
-from metadata.ingestion.connections.test_connections import test_connection_steps
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.dashboard.powerbi.client import PowerBiApiClient
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: PowerBIConnection) -> PowerBiApiClient:

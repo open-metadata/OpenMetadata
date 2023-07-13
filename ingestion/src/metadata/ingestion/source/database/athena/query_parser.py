@@ -16,6 +16,15 @@ from abc import ABC
 from math import ceil
 
 from metadata.clients.aws_client import AWSClient
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.database.athena.models import (
+    AthenaQueryExecutionList,
+    QueryExecutionIdsResponse,
+)
+from metadata.ingestion.source.database.query_parser_source import QueryParserSource
+from metadata.utils.constants import QUERY_WITH_DBT, QUERY_WITH_OM_VERSION
+from metadata.utils.logger import ingestion_logger
+
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
 )
@@ -25,14 +34,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.athena.models import (
-    AthenaQueryExecutionList,
-    QueryExecutionIdsResponse,
-)
-from metadata.ingestion.source.database.query_parser_source import QueryParserSource
-from metadata.utils.constants import QUERY_WITH_DBT, QUERY_WITH_OM_VERSION
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

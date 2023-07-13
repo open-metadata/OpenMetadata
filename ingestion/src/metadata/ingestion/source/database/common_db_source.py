@@ -16,6 +16,19 @@ from abc import ABC
 from copy import deepcopy
 from typing import Iterable, List, Optional, Tuple
 
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.table_metadata import OMetaTableConstraints
+from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
+from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
+from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
+from metadata.ingestion.source.models import TableView
+from metadata.utils import fqn
+from metadata.utils.db_utils import get_view_lineage
+from metadata.utils.filters import filter_by_table
+from metadata.utils.helpers import calculate_execution_time_generator
+from metadata.utils.logger import ingestion_logger
 from pydantic import BaseModel
 from sqlalchemy.engine import Connection
 from sqlalchemy.engine.base import Engine
@@ -44,20 +57,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn
-from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.table_metadata import OMetaTableConstraints
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.database_service import DatabaseServiceSource
-from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
-from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
-from metadata.ingestion.source.models import TableView
-from metadata.utils import fqn
-from metadata.utils.db_utils import get_view_lineage
-from metadata.utils.filters import filter_by_table
-from metadata.utils.helpers import calculate_execution_time_generator
-from metadata.utils.logger import ingestion_logger
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
 

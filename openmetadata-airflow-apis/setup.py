@@ -49,6 +49,7 @@ def get_long_description():
 
 
 base_requirements = {
+    "openmetadata-ingestion",
     "pendulum~=2.1.2",
     "apache-airflow>=2.2.2",
     "Flask>=1.1.4",

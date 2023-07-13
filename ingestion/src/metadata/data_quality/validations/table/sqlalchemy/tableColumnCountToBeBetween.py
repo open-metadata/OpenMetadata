@@ -15,14 +15,13 @@ Validator for table column count to be between test case
 
 from typing import Optional
 
-from sqlalchemy import inspect
-
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
 from metadata.data_quality.validations.table.base.tableColumnCountToBeBetween import (
     BaseTableColumnCountToBeBetweenValidator,
 )
+from sqlalchemy import inspect
 
 
 class TableColumnCountToBeBetweenValidator(

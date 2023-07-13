@@ -44,6 +44,14 @@ except ImportError:
     )
 
 from great_expectations.validator.validator import Validator
+from metadata.great_expectations.utils.ometa_config_handler import (
+    create_jinja_environment,
+    create_ometa_connection_obj,
+    render_template,
+)
+from metadata.utils import fqn
+from metadata.utils.entity_link import get_entity_link
+from metadata.utils.logger import great_expectations_logger
 from sqlalchemy.engine.base import Connection, Engine
 from sqlalchemy.engine.url import URL
 
@@ -61,15 +69,7 @@ from metadata.generated.schema.tests.testDefinition import (
     TestPlatform,
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
-from metadata.great_expectations.utils.ometa_config_handler import (
-    create_jinja_environment,
-    create_ometa_connection_obj,
-    render_template,
-)
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils import fqn
-from metadata.utils.entity_link import get_entity_link
-from metadata.utils.logger import great_expectations_logger
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = great_expectations_logger()
 

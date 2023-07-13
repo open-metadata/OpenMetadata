@@ -17,6 +17,18 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
+from metadata.ingestion.source.pipeline.spline.metadata import SplineSource
+from metadata.ingestion.source.pipeline.spline.models import (
+    ExecutionDetail,
+    ExecutionEvent,
+    ExecutionEvents,
+    ExecutionPlan,
+    Inputs,
+    Output,
+)
+from metadata.ingestion.source.pipeline.spline.utils import parse_jdbc_url
+from metadata.utils.constants import DEFAULT_DATABASE, UTF_8
+
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.services.pipelineService import (
@@ -29,18 +41,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.source.pipeline.spline.metadata import SplineSource
-from metadata.ingestion.source.pipeline.spline.models import (
-    ExecutionDetail,
-    ExecutionEvent,
-    ExecutionEvents,
-    ExecutionPlan,
-    Inputs,
-    Output,
-)
-from metadata.ingestion.source.pipeline.spline.utils import parse_jdbc_url
-from metadata.utils.constants import DEFAULT_DATABASE, UTF_8
+from metadata.ometa.client import REST
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/spline_dataset.json"

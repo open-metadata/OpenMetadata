@@ -23,6 +23,12 @@ from unittest import TestCase
 
 import boto3
 import botocore
+from metadata.ingestion.api.workflow import Workflow
+from metadata.profiler.api.workflow import ProfilerWorkflow
+from metadata.utils.time_utils import (
+    get_beginning_of_day_timestamp_mill,
+    get_end_of_day_timestamp_mill,
+)
 from moto import mock_s3
 
 from metadata.generated.schema.entity.data.table import ColumnProfile, Table
@@ -33,13 +39,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.ingestion.api.workflow import Workflow
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.api.workflow import ProfilerWorkflow
-from metadata.utils.time_utils import (
-    get_beginning_of_day_timestamp_mill,
-    get_end_of_day_timestamp_mill,
-)
+from metadata.ometa.ometa_api import OpenMetadata
 
 BUCKET_NAME = "MyBucket"
 INGESTION_CONFIG = {

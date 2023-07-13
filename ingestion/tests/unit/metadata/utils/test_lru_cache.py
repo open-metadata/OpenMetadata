@@ -1,7 +1,6 @@
 """Tests for the LRU cache class"""
 
 import pytest
-
 from metadata.utils.lru_cache import LRUCache
 
 

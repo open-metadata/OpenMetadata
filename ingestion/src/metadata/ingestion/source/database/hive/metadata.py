@@ -15,6 +15,9 @@ Hive source methods.
 import re
 from typing import Tuple
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.hive.queries import HIVE_GET_COMMENTS
 from pyhive.sqlalchemy_hive import HiveDialect, _type_map
 from sqlalchemy import types, util
 from sqlalchemy.engine import reflection
@@ -28,9 +31,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.ingestion.source.database.hive.queries import HIVE_GET_COMMENTS
 
 complex_data_types = ["struct", "map", "array", "union"]
 

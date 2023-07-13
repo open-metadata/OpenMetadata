@@ -19,16 +19,16 @@ from functools import partial
 from typing import Optional
 
 from botocore.client import BaseClient
-
 from metadata.clients.aws_client import AWSClient
+from metadata.ingestion.connections.test_connections import test_connection_steps
+
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.storage.s3Connection import (
     S3Connection,
 )
-from metadata.ingestion.connections.test_connections import test_connection_steps
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 @dataclass

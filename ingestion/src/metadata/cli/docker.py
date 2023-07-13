@@ -24,6 +24,9 @@ from datetime import timedelta
 from typing import Optional
 
 import requests
+from metadata.utils.client_version import get_client_version
+from metadata.utils.helpers import DockerActions
+from metadata.utils.logger import ANSI, cli_logger, log_ansi_encoded_string
 from requests._internal_utils import to_native_string
 
 from metadata.generated.schema.entity.data.table import Table
@@ -33,16 +36,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.ingestion.ometa.client import REST, ClientConfig
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.client_version import get_client_version
-from metadata.utils.helpers import DockerActions
-from metadata.utils.logger import (
-    ANSI,
-    cli_logger,
-    log_ansi_encoded_string,
-    ometa_logger,
-)
+from metadata.ometa.client import REST, ClientConfig
+from metadata.ometa.logger import logger as ometa_logger
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = cli_logger()
 CALC_GB = 1024 * 1024 * 1024
@@ -103,7 +99,7 @@ def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
             authProvider="openmetadata",
             securityConfig=OpenMetadataJWTClientConfig(jwtToken=DEFAULT_JWT_TOKEN),
         )
-        ometa_logger().disabled = True
+        ometa_logger.disabled = True
         ometa_client = OpenMetadata(metadata_config)
         while True:
             try:
@@ -117,7 +113,7 @@ def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
                 sys.stdout.write(".")
                 sys.stdout.flush()
                 time.sleep(5)
-        ometa_logger().disabled = False
+        ometa_logger.disabled = False
 
     # Wait until docker is not only running, but the server is up
     log_ansi_encoded_string(

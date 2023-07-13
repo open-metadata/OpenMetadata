@@ -17,6 +17,7 @@ from unittest.mock import Mock, patch
 
 from google.cloud.bigquery import PartitionRange, RangePartitioning, TimePartitioning
 from google.cloud.bigquery.table import Table
+from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.database import Database
@@ -25,7 +26,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
 
 """
 Check Partitioned Table in Profiler Workflow

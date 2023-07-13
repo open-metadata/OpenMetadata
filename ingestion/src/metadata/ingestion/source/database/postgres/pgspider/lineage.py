@@ -14,6 +14,13 @@ PGSpider lineage module
 """
 from typing import Iterable, Iterator, Optional
 
+from metadata.ingestion.lineage.sql_lineage import search_table_entities
+from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.postgres.pgspider.queries import (
+    PGSPIDER_GET_CHILD_TABLES,
+    PGSPIDER_GET_MULTI_TENANT_TABLES,
+)
+
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
@@ -21,13 +28,7 @@ from metadata.generated.schema.type.entityLineage import (
     LineageDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.lineage.sql_lineage import search_table_entities
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.postgres.pgspider.queries import (
-    PGSPIDER_GET_CHILD_TABLES,
-    PGSPIDER_GET_MULTI_TENANT_TABLES,
-)
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def _get_multi_tenant_tables(connection) -> Iterable[any]:

@@ -15,9 +15,8 @@ JSON workflows to the profiler
 """
 from typing import List, Optional
 
-from pydantic import BaseModel, validator
-
 from metadata.profiler.metrics.registry import Metrics
+from pydantic import BaseModel, validator
 
 
 class ProfilerDef(BaseModel):

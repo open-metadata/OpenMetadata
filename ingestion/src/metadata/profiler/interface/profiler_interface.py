@@ -17,6 +17,11 @@ supporting sqlalchemy abstraction layer
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, Union
 
+from metadata.ingestion.api.processor import ProfilerProcessorStatus
+from metadata.ingestion.source.connections import get_connection
+from metadata.profiler.api.models import ProfileSampleConfig, TableConfig
+from metadata.profiler.metrics.registry import Metrics
+from metadata.utils.partition import get_partition_details
 from sqlalchemy import Column
 from typing_extensions import Self
 
@@ -32,12 +37,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseCo
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
-from metadata.ingestion.api.processor import ProfilerProcessorStatus
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
-from metadata.profiler.api.models import ProfileSampleConfig, TableConfig
-from metadata.profiler.metrics.registry import Metrics
-from metadata.utils.partition import get_partition_details
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 class ProfilerInterface(ABC):

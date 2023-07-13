@@ -11,6 +11,11 @@
 
 from unittest import TestCase
 
+from metadata.ingestion.connections.builders import (
+    get_connection_args_common,
+    get_connection_url_common,
+)
+
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
     AthenaScheme,
@@ -93,10 +98,6 @@ from metadata.generated.schema.entity.services.connections.database.verticaConne
     VerticaScheme,
 )
 from metadata.generated.schema.security.credentials import awsCredentials
-from metadata.ingestion.connections.builders import (
-    get_connection_args_common,
-    get_connection_url_common,
-)
 
 
 # pylint: disable=import-outside-toplevel

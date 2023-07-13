@@ -13,10 +13,11 @@
 Test logging utilities
 """
 
+from metadata.utils.logger import get_add_lineage_log_str
+
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.utils.logger import get_add_lineage_log_str
 
 
 def test_add_lineage_log_info() -> None:

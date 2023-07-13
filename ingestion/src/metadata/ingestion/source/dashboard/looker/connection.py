@@ -17,6 +17,7 @@ from typing import Optional
 
 import looker_sdk
 from looker_sdk.sdk.api40.methods import Looker40SDK
+from metadata.ingestion.connections.test_connections import test_connection_steps
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -24,8 +25,7 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     LookerConnection,
 )
-from metadata.ingestion.connections.test_connections import test_connection_steps
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: LookerConnection) -> Looker40SDK:

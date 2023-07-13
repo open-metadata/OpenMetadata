@@ -17,6 +17,9 @@ from __future__ import annotations
 import ast
 import traceback
 
+from metadata.utils.dispatch import enum_register
+from metadata.utils.logger import profiler_interface_registry_logger
+
 from metadata.generated.schema.dataInsight.kpi.basic import KpiResult, KpiTarget
 from metadata.generated.schema.dataInsight.type.percentageOfEntitiesWithDescriptionByType import (
     PercentageOfEntitiesWithDescriptionByType,
@@ -25,8 +28,6 @@ from metadata.generated.schema.dataInsight.type.percentageOfEntitiesWithOwnerByT
     PercentageOfEntitiesWithOwnerByType,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.utils.dispatch import enum_register
-from metadata.utils.logger import profiler_interface_registry_logger
 
 logger = profiler_interface_registry_logger()
 

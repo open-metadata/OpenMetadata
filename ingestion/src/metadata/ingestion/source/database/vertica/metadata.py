@@ -16,21 +16,6 @@ import traceback
 from textwrap import dedent
 from typing import Iterable, Optional
 
-from sqlalchemy import sql, util
-from sqlalchemy.engine import reflection
-from sqlalchemy.sql import sqltypes
-from sqlalchemy_vertica.base import VerticaDialect, ischema_names
-
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
-    VerticaConnection,
-)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
@@ -49,6 +34,21 @@ from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
     get_schema_descriptions,
     get_table_comment_wrapper,
+)
+from sqlalchemy import sql, util
+from sqlalchemy.engine import reflection
+from sqlalchemy.sql import sqltypes
+from sqlalchemy_vertica.base import VerticaDialect, ischema_names
+
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
+    VerticaConnection,
+)
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
 )
 
 logger = ingestion_logger()

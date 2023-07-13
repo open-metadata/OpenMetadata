@@ -13,6 +13,15 @@
 
 from typing import Iterable
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source import sqa_types
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.ingestion.source.database.common_db_source import (
+    CommonDbSourceService,
+    TableNameAndType,
+)
+from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqlalchemy_utils import is_complex_type
 from pyathena.sqlalchemy_athena import AthenaDialect
 from sqlalchemy import types
 from sqlalchemy.engine import reflection
@@ -27,15 +36,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source import sqa_types
-from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.database.common_db_source import (
-    CommonDbSourceService,
-    TableNameAndType,
-)
-from metadata.utils.logger import ingestion_logger
-from metadata.utils.sqlalchemy_utils import is_complex_type
 
 logger = ingestion_logger()
 

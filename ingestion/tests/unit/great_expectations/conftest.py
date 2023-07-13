@@ -15,12 +15,11 @@ Fixtures for test suite
 import os
 from unittest import mock
 
-from pytest import fixture
-
 from metadata.great_expectations.action import OpenMetadataValidationAction
 from metadata.great_expectations.utils.ometa_config_handler import (
     create_jinja_environment,
 )
+from pytest import fixture
 
 
 def mocked_ometa_object():

@@ -14,6 +14,12 @@ Vertica usage module
 from abc import ABC
 from typing import Iterable
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.query_parser_source import QueryParserSource
+from metadata.ingestion.source.database.vertica.queries import VERTICA_LIST_DATABASES
+from metadata.utils.logger import ingestion_logger
+
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
     VerticaConnection,
 )
@@ -24,11 +30,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.tableQuery import TableQuery
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.query_parser_source import QueryParserSource
-from metadata.ingestion.source.database.vertica.queries import VERTICA_LIST_DATABASES
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

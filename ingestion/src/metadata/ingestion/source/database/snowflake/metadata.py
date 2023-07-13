@@ -16,26 +16,6 @@ import traceback
 from typing import Iterable, List, Optional, Tuple
 
 import sqlparse
-from snowflake.sqlalchemy.custom_types import VARIANT
-from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
-from sqlalchemy.engine.reflection import Inspector
-from sqlparse.sql import Function, Identifier
-
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import (
-    IntervalType,
-    TablePartition,
-    TableType,
-)
-from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
-    SnowflakeConnection,
-)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
@@ -71,6 +51,26 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
+from snowflake.sqlalchemy.custom_types import VARIANT
+from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
+from sqlalchemy.engine.reflection import Inspector
+from sqlparse.sql import Function, Identifier
+
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.table import (
+    IntervalType,
+    TablePartition,
+    TableType,
+)
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 
 ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = create_sqlalchemy_type("GEOGRAPHY")

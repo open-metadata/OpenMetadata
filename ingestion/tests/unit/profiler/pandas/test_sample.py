@@ -16,11 +16,6 @@ import os
 from unittest import TestCase, mock
 from uuid import uuid4
 
-from sqlalchemy import TEXT, Column, Integer, String, func
-from sqlalchemy.orm import declarative_base
-
-from metadata.generated.schema.entity.data.table import Column as EntityColumn
-from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
 from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
@@ -28,6 +23,11 @@ from metadata.profiler.interface.pandas.profiler_interface import (
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler
 from metadata.profiler.processor.sampler.pandas.sampler import DatalakeSampler
+from sqlalchemy import TEXT, Column, Integer, String, func
+from sqlalchemy.orm import declarative_base
+
+from metadata.generated.schema.entity.data.table import Column as EntityColumn
+from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
 
 Base = declarative_base()
 

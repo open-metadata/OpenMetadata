@@ -16,14 +16,6 @@ from abc import ABC, abstractmethod
 from typing import Iterable
 
 from dbt_artifacts_parser.parser import parse_catalog, parse_manifest, parse_run_results
-
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
-from metadata.generated.schema.api.tests.createTestDefinition import (
-    CreateTestDefinitionRequest,
-)
-from metadata.generated.schema.metadataIngestion.dbtPipeline import DbtPipeline
-from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -43,6 +35,14 @@ from metadata.ingestion.source.database.dbt.models import (
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
+
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
+from metadata.generated.schema.api.tests.createTestDefinition import (
+    CreateTestDefinitionRequest,
+)
+from metadata.generated.schema.metadataIngestion.dbtPipeline import DbtPipeline
+from metadata.generated.schema.tests.basic import TestCaseResult
 
 logger = ingestion_logger()
 

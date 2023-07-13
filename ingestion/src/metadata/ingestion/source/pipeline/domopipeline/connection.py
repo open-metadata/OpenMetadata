@@ -15,20 +15,20 @@ Source connection handler
 
 from typing import Optional
 
+from metadata.clients.domo_client import DomoClient
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
+    test_connection_steps,
+)
 from pydomo import Domo
 
-from metadata.clients.domo_client import DomoClient
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.domoPipelineConnection import (
     DomoPipelineConnection,
 )
-from metadata.ingestion.connections.test_connections import (
-    SourceConnectionException,
-    test_connection_steps,
-)
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: DomoPipelineConnection) -> Domo:

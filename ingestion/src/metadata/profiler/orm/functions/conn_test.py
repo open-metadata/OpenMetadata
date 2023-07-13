@@ -17,12 +17,11 @@ source.
 """
 # pylint: disable=duplicate-code
 
-from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.expression import ClauseElement, Executable
-
 from metadata.profiler.metrics.core import CACHE
 from metadata.profiler.orm.registry import Dialects
 from metadata.utils.logger import profiler_logger
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.expression import ClauseElement, Executable
 
 logger = profiler_logger()
 

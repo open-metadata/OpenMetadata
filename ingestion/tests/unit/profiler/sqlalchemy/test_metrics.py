@@ -18,6 +18,13 @@ from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
+from metadata.profiler.interface.sqlalchemy.profiler_interface import (
+    SQAProfilerInterface,
+)
+from metadata.profiler.metrics.core import add_props
+from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.orm.functions.sum import SumFn
+from metadata.profiler.processor.core import Profiler
 from sqlalchemy import TEXT, Column, Date, DateTime, Integer, String, Time
 from sqlalchemy.orm import declarative_base
 
@@ -27,13 +34,6 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
-from metadata.profiler.interface.sqlalchemy.profiler_interface import (
-    SQAProfilerInterface,
-)
-from metadata.profiler.metrics.core import add_props
-from metadata.profiler.metrics.registry import Metrics
-from metadata.profiler.orm.functions.sum import SumFn
-from metadata.profiler.processor.core import Profiler
 
 Base = declarative_base()
 

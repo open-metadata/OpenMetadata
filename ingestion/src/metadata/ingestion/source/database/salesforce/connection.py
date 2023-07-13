@@ -14,6 +14,7 @@ Source connection handler
 """
 from typing import Optional
 
+from metadata.ingestion.connections.test_connections import test_connection_steps
 from simple_salesforce import Salesforce
 from sqlalchemy.engine import Engine
 
@@ -23,8 +24,7 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
     SalesforceConnection,
 )
-from metadata.ingestion.connections.test_connections import test_connection_steps
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: SalesforceConnection) -> Engine:

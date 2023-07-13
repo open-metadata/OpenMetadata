@@ -15,12 +15,12 @@ import logging
 import os
 
 import yaml
-
 from metadata.automations.runner import execute
+from metadata.utils.logger import set_loggers_level
+
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
-from metadata.utils.logger import set_loggers_level
 
 
 def main():

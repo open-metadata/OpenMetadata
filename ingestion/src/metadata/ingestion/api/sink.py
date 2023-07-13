@@ -15,14 +15,14 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Generic, List
 
+from metadata.ingestion.api.closeable import Closeable
+from metadata.ingestion.api.common import Entity
+from metadata.ingestion.api.status import Status
 from pydantic import Field
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.ingestion.api.closeable import Closeable
-from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.status import Status
 
 
 class SinkStatus(Status):

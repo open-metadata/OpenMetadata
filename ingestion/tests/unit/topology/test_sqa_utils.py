@@ -15,9 +15,8 @@ sqlalchemy utility tests
 
 import pytest
 import sqlalchemy
-from sqlalchemy import Column, text
-
 from metadata.utils.sqa_utils import build_query_filter, dispatch_to_date_or_datetime
+from sqlalchemy import Column, text
 
 FILTER_TEST_DATA = [
     (

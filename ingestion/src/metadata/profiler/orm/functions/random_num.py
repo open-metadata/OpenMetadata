@@ -16,12 +16,11 @@ Returns a column with random values
 between 0 and 100 to help us draw sample
 data.
 """
-from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.functions import FunctionElement
-
 from metadata.profiler.metrics.core import CACHE
 from metadata.profiler.orm.registry import Dialects
 from metadata.utils.logger import profiler_logger
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.functions import FunctionElement
 
 logger = profiler_logger()
 

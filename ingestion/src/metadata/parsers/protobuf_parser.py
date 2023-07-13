@@ -23,11 +23,11 @@ from pathlib import Path
 from typing import List, Optional
 
 import grpc_tools.protoc
+from metadata.utils.helpers import snake_to_camel
+from metadata.utils.logger import ingestion_logger
 from pydantic import BaseModel
 
 from metadata.generated.schema.type.schema import FieldModel
-from metadata.utils.helpers import snake_to_camel
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

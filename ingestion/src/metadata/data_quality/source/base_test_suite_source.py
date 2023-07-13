@@ -20,13 +20,14 @@ from metadata.data_quality.interface.test_suite_interface_factory import (
     test_suite_interface_factory,
 )
 from metadata.data_quality.runner.core import DataTestsRunner
+
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 class BaseTestSuiteSource:

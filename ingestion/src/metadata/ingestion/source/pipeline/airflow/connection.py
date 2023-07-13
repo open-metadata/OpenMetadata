@@ -16,6 +16,11 @@ from functools import partial, singledispatch
 from typing import Optional
 
 from airflow import settings
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
+    test_connection_engine_step,
+    test_connection_steps,
+)
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -39,12 +44,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.airflowConne
 from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
     BackendConnection,
 )
-from metadata.ingestion.connections.test_connections import (
-    SourceConnectionException,
-    test_connection_engine_step,
-    test_connection_steps,
-)
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 # Only import when needed

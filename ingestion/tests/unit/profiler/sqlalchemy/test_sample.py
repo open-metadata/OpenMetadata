@@ -17,6 +17,14 @@ from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
+from metadata.profiler.api.models import ProfileSampleConfig
+from metadata.profiler.interface.sqlalchemy.profiler_interface import (
+    SQAProfilerInterface,
+)
+from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.orm.registry import CustomTypes
+from metadata.profiler.processor.core import Profiler
+from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
 from sqlalchemy import TEXT, Column, Integer, String, func
 from sqlalchemy.orm import declarative_base
 
@@ -26,14 +34,6 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
-from metadata.profiler.api.models import ProfileSampleConfig
-from metadata.profiler.interface.sqlalchemy.profiler_interface import (
-    SQAProfilerInterface,
-)
-from metadata.profiler.metrics.registry import Metrics
-from metadata.profiler.orm.registry import CustomTypes
-from metadata.profiler.processor.core import Profiler
-from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
 
 Base = declarative_base()
 

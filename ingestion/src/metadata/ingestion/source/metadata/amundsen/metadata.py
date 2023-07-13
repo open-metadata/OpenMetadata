@@ -16,10 +16,25 @@ Amundsen source to extract metadata
 import traceback
 from typing import Iterable, List, Optional
 
+from metadata.config.common import ConfigModel
+from metadata.ingestion.api.common import Entity
+from metadata.ingestion.api.source import InvalidSourceException, Source
+from metadata.ingestion.models.user import OMetaUserProfile
+from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.ingestion.source.metadata.amundsen.queries import (
+    NEO4J_AMUNDSEN_DASHBOARD_QUERY,
+    NEO4J_AMUNDSEN_TABLE_QUERY,
+    NEO4J_AMUNDSEN_USER_QUERY,
+)
+from metadata.utils import fqn
+from metadata.utils.helpers import get_standard_chart_type
+from metadata.utils.logger import ingestion_logger
+from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 from pydantic import SecretStr
 from sqlalchemy.engine.url import make_url
 
-from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -51,23 +66,8 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import InvalidSourceException, Source
-from metadata.ingestion.models.user import OMetaUserProfile
-from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.metadata.amundsen.queries import (
-    NEO4J_AMUNDSEN_DASHBOARD_QUERY,
-    NEO4J_AMUNDSEN_TABLE_QUERY,
-    NEO4J_AMUNDSEN_USER_QUERY,
-)
-from metadata.utils import fqn
-from metadata.utils.helpers import get_standard_chart_type
-from metadata.utils.logger import ingestion_logger
-from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
+from metadata.ometa.client_utils import get_chart_entities_from_id
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
 

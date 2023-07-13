@@ -16,7 +16,6 @@ from unittest import TestCase
 
 from airflow import DAG
 from airflow.operators.bash import BashOperator
-
 from metadata.ingestion.source.pipeline.airflow.lineage_parser import (
     XLets,
     XLetsMode,

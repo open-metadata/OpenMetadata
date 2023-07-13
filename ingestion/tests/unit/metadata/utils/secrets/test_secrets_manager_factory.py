@@ -15,6 +15,13 @@ Test Secrets Manager Factory
 from unittest import TestCase
 from unittest.mock import patch
 
+from metadata.utils.secrets.noop_secrets_manager import NoopSecretsManager
+from metadata.utils.secrets.secrets_manager_factory import (
+    SecretsManagerConfigException,
+    SecretsManagerFactory,
+)
+from metadata.utils.singleton import Singleton
+
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -24,12 +31,6 @@ from metadata.generated.schema.security.secrets.secretsManagerClientLoader impor
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
-from metadata.utils.secrets.noop_secrets_manager import NoopSecretsManager
-from metadata.utils.secrets.secrets_manager_factory import (
-    SecretsManagerConfigException,
-    SecretsManagerFactory,
-)
-from metadata.utils.singleton import Singleton
 
 
 class TestSecretsManagerFactory(TestCase):

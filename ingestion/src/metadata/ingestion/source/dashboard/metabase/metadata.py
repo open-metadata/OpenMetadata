@@ -13,22 +13,6 @@
 import traceback
 from typing import Iterable, List, Optional
 
-from metadata.generated.schema.api.data.createChart import CreateChartRequest
-from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.chart import Chart
-from metadata.generated.schema.entity.data.dashboard import (
-    Dashboard as LineageDashboard,
-)
-from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
-    MetabaseConnection,
-)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import search_table_entities
@@ -47,6 +31,23 @@ from metadata.utils.helpers import (
     replace_special_with,
 )
 from metadata.utils.logger import ingestion_logger
+
+from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.dashboard import (
+    Dashboard as LineageDashboard,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
+    MetabaseConnection,
+)
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 
 logger = ingestion_logger()
 

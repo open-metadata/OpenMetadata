@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import List
 
 import pytest
-
 from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.api.workflow import Workflow

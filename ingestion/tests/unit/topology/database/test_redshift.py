@@ -16,10 +16,11 @@ Test Redshift using the topology
 from unittest import TestCase
 from unittest.mock import patch
 
+from metadata.ingestion.source.database.redshift.metadata import RedshiftSource
+
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.ingestion.source.database.redshift.metadata import RedshiftSource
 
 mock_redshift_config = {
     "source": {

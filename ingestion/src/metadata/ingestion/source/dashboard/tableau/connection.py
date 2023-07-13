@@ -16,6 +16,17 @@ import traceback
 from functools import partial
 from typing import Any, Dict, Optional
 
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
+    test_connection_steps,
+)
+from metadata.ingestion.source.dashboard.tableau import (
+    TABLEAU_GET_VIEWS_PARAM_DICT,
+    TABLEAU_GET_WORKBOOKS_PARAM_DICT,
+)
+from metadata.ingestion.source.dashboard.tableau.client import TableauClient
+from metadata.utils.logger import ingestion_logger
+from metadata.utils.ssl_registry import get_verify_ssl_fn
 from tableau_api_lib.utils import extract_pages
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -28,18 +39,7 @@ from metadata.generated.schema.security.credentials.accessTokenAuth import (
     AccessTokenAuth,
 )
 from metadata.generated.schema.security.credentials.basicAuth import BasicAuth
-from metadata.ingestion.connections.test_connections import (
-    SourceConnectionException,
-    test_connection_steps,
-)
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.dashboard.tableau import (
-    TABLEAU_GET_VIEWS_PARAM_DICT,
-    TABLEAU_GET_WORKBOOKS_PARAM_DICT,
-)
-from metadata.ingestion.source.dashboard.tableau.client import TableauClient
-from metadata.utils.logger import ingestion_logger
-from metadata.utils.ssl_registry import get_verify_ssl_fn
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
 

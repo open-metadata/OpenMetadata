@@ -16,28 +16,6 @@ import re
 import traceback
 from typing import Iterable, List, Optional, Tuple
 
-from sqlalchemy import inspect, sql
-from sqlalchemy.dialects.postgresql.base import PGDialect
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy_redshift.dialect import RedshiftDialect, RedshiftDialectMixin
-
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import (
-    ConstraintType,
-    IntervalType,
-    TableConstraint,
-    TablePartition,
-    TableType,
-)
-from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
-    RedshiftConnection,
-)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
@@ -60,6 +38,28 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
+from sqlalchemy import inspect, sql
+from sqlalchemy.dialects.postgresql.base import PGDialect
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy_redshift.dialect import RedshiftDialect, RedshiftDialectMixin
+
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.table import (
+    ConstraintType,
+    IntervalType,
+    TableConstraint,
+    TablePartition,
+    TableType,
+)
+from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
+    RedshiftConnection,
+)
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 
 logger = ingestion_logger()
 

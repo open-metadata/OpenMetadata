@@ -14,6 +14,8 @@ Data Insights DAG function builder
 import json
 
 from airflow import DAG
+from metadata.data_insight.api.workflow import DataInsightWorkflow
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from openmetadata_managed_apis.utils.logger import set_operator_logger
 from openmetadata_managed_apis.workflows.ingestion.common import (
     ClientInitializationError,
@@ -24,7 +26,6 @@ from openmetadata_managed_apis.workflows.ingestion.elasticsearch_sink import (
     build_elasticsearch_sink,
 )
 
-from metadata.data_insight.api.workflow import DataInsightWorkflow
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
@@ -41,8 +42,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     SourceConfig,
     WorkflowConfig,
 )
-from metadata.ingestion.models.encoders import show_secrets_encoder
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.models.encoders import show_secrets_encoder
 
 
 def data_insight_workflow(workflow_config: OpenMetadataWorkflowConfig):

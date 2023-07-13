@@ -17,7 +17,6 @@ from typing import List
 from unittest import TestCase
 
 import pytest
-
 from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 

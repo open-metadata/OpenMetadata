@@ -12,14 +12,14 @@
 """
 Define Length function
 """
+from metadata.profiler.metrics.core import CACHE
+from metadata.profiler.orm.registry import Dialects
+from metadata.utils.logger import profiler_logger
+
 # Keep SQA docs style defining custom constructs
 # pylint: disable=consider-using-f-string,duplicate-code
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
-
-from metadata.profiler.metrics.core import CACHE
-from metadata.profiler.orm.registry import Dialects
-from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 

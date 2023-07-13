@@ -14,6 +14,8 @@ OpenMetadata source URL building tests
 """
 from unittest import TestCase
 
+from metadata.ingestion.connections.builders import get_connection_url_common
+
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
 )
@@ -27,7 +29,6 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
-from metadata.ingestion.connections.builders import get_connection_url_common
 
 
 class TestConfig(TestCase):

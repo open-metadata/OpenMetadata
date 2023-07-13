@@ -16,15 +16,6 @@ from functools import partial
 from typing import Optional
 from urllib.parse import quote_plus
 
-from sqlalchemy.engine import Engine
-from sqlalchemy.inspection import inspect
-
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
-)
-from metadata.generated.schema.entity.services.connections.database.prestoConnection import (
-    PrestoConnection,
-)
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
@@ -35,8 +26,17 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_steps,
     test_query,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.presto.queries import PRESTO_SHOW_CATALOGS
+from sqlalchemy.engine import Engine
+from sqlalchemy.inspection import inspect
+
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
+from metadata.generated.schema.entity.services.connections.database.prestoConnection import (
+    PrestoConnection,
+)
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection_url(connection: PrestoConnection) -> str:

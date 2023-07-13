@@ -16,7 +16,6 @@ Validator for table row inserted count to be between test case
 from datetime import datetime
 
 from dateutil.relativedelta import relativedelta
-
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )

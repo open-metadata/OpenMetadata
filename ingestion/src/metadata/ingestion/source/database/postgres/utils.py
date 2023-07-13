@@ -16,11 +16,6 @@ Postgres SQLAlchemy util methods
 import re
 from typing import Dict, Tuple
 
-from sqlalchemy import sql, util
-from sqlalchemy.dialects.postgresql.base import ENUM
-from sqlalchemy.engine import reflection
-from sqlalchemy.sql import sqltypes
-
 from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_COL_IDENTITY,
     POSTGRES_SQL_COLUMNS,
@@ -31,6 +26,10 @@ from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
     get_view_definition_wrapper,
 )
+from sqlalchemy import sql, util
+from sqlalchemy.dialects.postgresql.base import ENUM
+from sqlalchemy.engine import reflection
+from sqlalchemy.sql import sqltypes
 
 
 @reflection.cache

@@ -15,8 +15,6 @@ Validator for column values to be not null test case
 
 from typing import Optional
 
-from sqlalchemy import Column, inspect
-
 from metadata.data_quality.validations.column.base.columnValuesToBeNotNull import (
     BaseColumnValuesToBeNotNullValidator,
 )
@@ -25,6 +23,7 @@ from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
 )
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.logger import test_suite_logger
+from sqlalchemy import Column, inspect
 
 logger = test_suite_logger()
 

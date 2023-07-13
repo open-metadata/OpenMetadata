@@ -9,6 +9,17 @@ from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 from dbt_artifacts_parser.parser import parse_catalog, parse_manifest, parse_run_results
+from metadata.ingestion.source.database.database_service import DataModelLink
+from metadata.ingestion.source.database.dbt.dbt_utils import (
+    generate_entity_link,
+    get_corrected_name,
+    get_data_model_path,
+    get_dbt_compiled_query,
+    get_dbt_raw_query,
+)
+from metadata.ingestion.source.database.dbt.metadata import DbtSource
+from metadata.ingestion.source.database.dbt.models import DbtFiles, DbtObjects
+from metadata.utils.tag_utils import get_tag_labels
 from pydantic import AnyUrl
 
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
@@ -23,17 +34,6 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
-from metadata.ingestion.source.database.database_service import DataModelLink
-from metadata.ingestion.source.database.dbt.dbt_utils import (
-    generate_entity_link,
-    get_corrected_name,
-    get_data_model_path,
-    get_dbt_compiled_query,
-    get_dbt_raw_query,
-)
-from metadata.ingestion.source.database.dbt.metadata import DbtSource
-from metadata.ingestion.source.database.dbt.models import DbtFiles, DbtObjects
-from metadata.utils.tag_utils import get_tag_labels
 
 mock_dbt_config = {
     "source": {

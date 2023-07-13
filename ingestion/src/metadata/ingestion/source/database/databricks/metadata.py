@@ -10,6 +10,15 @@
 #  limitations under the License.
 """Databricks source module"""
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.database.databricks.legacy.metadata import (
+    DatabricksLegacySource,
+)
+from metadata.ingestion.source.database.databricks.unity_catalog.metadata import (
+    DatabricksUnityCatalogSource,
+)
+from metadata.utils.logger import ingestion_logger
+
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
@@ -19,14 +28,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.databricks.legacy.metadata import (
-    DatabricksLegacySource,
-)
-from metadata.ingestion.source.database.databricks.unity_catalog.metadata import (
-    DatabricksUnityCatalogSource,
-)
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

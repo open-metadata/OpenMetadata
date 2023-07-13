@@ -17,19 +17,18 @@ import traceback
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import sqlalchemy
-from sqlalchemy import Column, and_, func, or_
-from sqlalchemy.orm import DeclarativeMeta, Query
-from sqlalchemy.orm.util import AliasedClass
-from sqlalchemy.sql.elements import BinaryExpression
-from sqlalchemy.sql.expression import TextClause
-from sqlalchemy.sql.sqltypes import ARRAY, String
-
 from metadata.profiler.orm.functions.datetime import (
     DateAddFn,
     DatetimeAddFn,
     TimestampAddFn,
 )
 from metadata.utils.logger import query_runner_logger
+from sqlalchemy import Column, and_, func, or_
+from sqlalchemy.orm import DeclarativeMeta, Query
+from sqlalchemy.orm.util import AliasedClass
+from sqlalchemy.sql.elements import BinaryExpression
+from sqlalchemy.sql.expression import TextClause
+from sqlalchemy.sql.sqltypes import ARRAY, String
 
 logger = query_runner_logger()
 

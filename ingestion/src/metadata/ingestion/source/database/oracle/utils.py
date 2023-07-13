@@ -14,11 +14,6 @@ Utils module to define overrided sqlalchamy methods
 # pylint: disable=protected-access,unused-argument
 import re
 
-from sqlalchemy import sql, util
-from sqlalchemy.dialects.oracle.base import FLOAT, INTEGER, INTERVAL, NUMBER, TIMESTAMP
-from sqlalchemy.engine import reflection
-from sqlalchemy.sql import sqltypes
-
 from metadata.ingestion.source.database.oracle.queries import (
     GET_MATERIALIZED_VIEW_NAMES,
     ORACLE_ALL_TABLE_COMMENTS,
@@ -31,6 +26,10 @@ from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
     get_view_definition_wrapper,
 )
+from sqlalchemy import sql, util
+from sqlalchemy.dialects.oracle.base import FLOAT, INTEGER, INTERVAL, NUMBER, TIMESTAMP
+from sqlalchemy.engine import reflection
+from sqlalchemy.sql import sqltypes
 
 
 @reflection.cache

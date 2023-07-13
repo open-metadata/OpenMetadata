@@ -19,6 +19,11 @@ import unittest
 import uuid
 from datetime import datetime, timedelta
 
+from metadata.utils.time_utils import (
+    get_beginning_of_day_timestamp_mill,
+    get_end_of_day_timestamp_mill,
+)
+
 from metadata.generated.schema.analytics.basic import WebAnalyticEventType
 from metadata.generated.schema.analytics.webAnalyticEventData import (
     WebAnalyticEventData,
@@ -29,11 +34,7 @@ from metadata.generated.schema.analytics.webAnalyticEventType.pageViewEvent impo
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.time_utils import (
-    get_beginning_of_day_timestamp_mill,
-    get_end_of_day_timestamp_mill,
-)
+from metadata.ometa.ometa_api import OpenMetadata
 
 data_insight_config = {
     "source": {

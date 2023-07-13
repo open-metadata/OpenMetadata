@@ -16,9 +16,8 @@ Expand sqlalchemy types to map them to OpenMetadata DataType
 import traceback
 from uuid import UUID
 
-from sqlalchemy.sql.sqltypes import String, TypeDecorator
-
 from metadata.utils.logger import profiler_logger
+from sqlalchemy.sql.sqltypes import String, TypeDecorator
 
 logger = profiler_logger()
 

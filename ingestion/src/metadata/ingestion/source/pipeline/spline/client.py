@@ -14,10 +14,6 @@ Client to interact with Spline consumer apis
 import traceback
 from typing import List
 
-from metadata.generated.schema.entity.services.connections.pipeline.splineConnection import (
-    SplineConnection,
-)
-from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.pipeline.spline.models import (
     ExecutionDetail,
     ExecutionEvents,
@@ -25,6 +21,11 @@ from metadata.ingestion.source.pipeline.spline.models import (
 from metadata.utils.constants import AUTHORIZATION_HEADER, NO_ACCESS_TOKEN
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
+
+from metadata.generated.schema.entity.services.connections.pipeline.splineConnection import (
+    SplineConnection,
+)
+from metadata.ometa.client import REST, ClientConfig
 
 logger = ingestion_logger()
 

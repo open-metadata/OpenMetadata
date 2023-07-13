@@ -17,11 +17,12 @@ bigquery unit tests
 from unittest import TestCase
 from unittest.mock import patch
 
+from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
+
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
 
 mock_bq_config = {
     "source": {

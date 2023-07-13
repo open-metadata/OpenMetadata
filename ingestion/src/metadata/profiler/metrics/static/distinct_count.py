@@ -15,10 +15,9 @@ Distinct Count Metric definition
 # pylint: disable=duplicate-code
 
 
-from sqlalchemy import column, distinct, func
-
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.utils.logger import profiler_logger
+from sqlalchemy import column, distinct, func
 
 logger = profiler_logger()
 

@@ -17,11 +17,6 @@ from datetime import timedelta
 from typing import List
 
 import requests
-
-from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
-    DatabricksConnection,
-)
-from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.source.database.databricks.models import (
     LineageColumnStreams,
     LineageTableStreams,
@@ -29,6 +24,11 @@ from metadata.ingestion.source.database.databricks.models import (
 from metadata.utils.constants import QUERY_WITH_DBT, QUERY_WITH_OM_VERSION
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
+
+from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
+    DatabricksConnection,
+)
+from metadata.ometa.client import APIError
 
 logger = ingestion_logger()
 API_TIMEOUT = 10

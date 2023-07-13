@@ -17,12 +17,12 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
 
-from sqlalchemy.engine import Engine
-
-from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.api.workflow import Workflow
+from sqlalchemy.engine import Engine
+
+from metadata.generated.schema.entity.data.table import SystemProfile
 
 from ..base.test_cli import PATH_TO_RESOURCES
 from ..base.test_cli_db import CliDBBase

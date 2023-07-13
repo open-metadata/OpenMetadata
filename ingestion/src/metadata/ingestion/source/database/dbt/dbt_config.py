@@ -17,6 +17,14 @@ from functools import singledispatch
 from typing import Optional, Tuple
 
 import requests
+from metadata.ingestion.source.database.dbt.constants import (
+    DBT_CATALOG_FILE_NAME,
+    DBT_MANIFEST_FILE_NAME,
+    DBT_RUN_RESULTS_FILE_NAME,
+)
+from metadata.ingestion.source.database.dbt.models import DbtFiles
+from metadata.utils.credentials import set_google_credentials
+from metadata.utils.logger import ingestion_logger
 
 from metadata.generated.schema.metadataIngestion.dbtconfig.dbtAzureConfig import (
     DbtAzureConfig,
@@ -36,16 +44,8 @@ from metadata.generated.schema.metadataIngestion.dbtconfig.dbtLocalConfig import
 from metadata.generated.schema.metadataIngestion.dbtconfig.dbtS3Config import (
     DbtS3Config,
 )
-from metadata.ingestion.source.database.dbt.constants import (
-    DBT_CATALOG_FILE_NAME,
-    DBT_MANIFEST_FILE_NAME,
-    DBT_RUN_RESULTS_FILE_NAME,
-)
-from metadata.ingestion.source.database.dbt.models import DbtFiles
-from metadata.utils.credentials import set_google_credentials
-from metadata.utils.logger import ometa_logger
 
-logger = ometa_logger()
+logger = ingestion_logger()
 
 
 class DBTConfigException(Exception):
@@ -147,7 +147,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
     dbt_manifest = None
     dbt_run_results = None
     try:
-        from metadata.ingestion.ometa.client import (  # pylint: disable=import-outside-toplevel
+        from metadata.ometa.client import (  # pylint: disable=import-outside-toplevel
             REST,
             ClientConfig,
         )

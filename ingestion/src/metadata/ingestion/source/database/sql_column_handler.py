@@ -15,6 +15,9 @@ import re
 import traceback
 from typing import Dict, List, Optional, Tuple
 
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.utils.helpers import clean_up_starting_ending_double_quotes_in_string
+from metadata.utils.logger import ingestion_logger
 from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.data.table import (
@@ -24,9 +27,6 @@ from metadata.generated.schema.entity.data.table import (
     DataType,
     TableConstraint,
 )
-from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.utils.helpers import clean_up_starting_ending_double_quotes_in_string
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

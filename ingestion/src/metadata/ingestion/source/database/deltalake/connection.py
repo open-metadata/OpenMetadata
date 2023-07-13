@@ -16,6 +16,8 @@ from typing import Optional
 
 import pyspark
 from delta import configure_spark_with_delta_pip
+from metadata.ingestion.connections.builders import get_connection_args_common
+from metadata.ingestion.connections.test_connections import test_connection_steps
 from pyspark.sql import SparkSession
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -25,9 +27,7 @@ from metadata.generated.schema.entity.services.connections.database.deltaLakeCon
     DeltaLakeConnection,
     MetastoreDbConnection,
 )
-from metadata.ingestion.connections.builders import get_connection_args_common
-from metadata.ingestion.connections.test_connections import test_connection_steps
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: DeltaLakeConnection) -> SparkSession:

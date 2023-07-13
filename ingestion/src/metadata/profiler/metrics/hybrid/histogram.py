@@ -15,9 +15,6 @@ Histogram Metric definition
 import math
 from typing import Any, Dict, List, Optional, Union, cast
 
-from sqlalchemy import and_, case, column, func
-from sqlalchemy.orm import DeclarativeMeta, Session
-
 from metadata.profiler.metrics.composed.iqr import InterQuartileRange
 from metadata.profiler.metrics.core import HybridMetric
 from metadata.profiler.metrics.static.count import Count
@@ -28,6 +25,8 @@ from metadata.profiler.orm.registry import is_concatenable, is_quantifiable
 from metadata.utils.helpers import format_large_string_numbers
 from metadata.utils.logger import profiler_logger
 from metadata.utils.sqa_utils import handle_array
+from sqlalchemy import and_, case, column, func
+from sqlalchemy.orm import DeclarativeMeta, Session
 
 logger = profiler_logger()
 

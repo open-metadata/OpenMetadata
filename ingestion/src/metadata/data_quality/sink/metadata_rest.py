@@ -18,14 +18,15 @@ from typing import Optional
 
 from metadata.config.common import ConfigModel
 from metadata.data_quality.runner.models import TestCaseResultResponse
+from metadata.ingestion.api.common import Entity
+from metadata.ingestion.api.sink import Sink
+from metadata.utils.logger import test_suite_logger
+
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.sink import Sink
-from metadata.ingestion.ometa.client import APIError
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.logger import test_suite_logger
+from metadata.ometa.client import APIError
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = test_suite_logger()
 

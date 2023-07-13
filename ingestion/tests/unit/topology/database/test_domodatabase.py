@@ -16,6 +16,8 @@ Test Domo Dashboard using the topology
 from unittest import TestCase
 from unittest.mock import patch
 
+from metadata.ingestion.source.database.domodatabase.metadata import DomodatabaseSource
+
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
@@ -32,7 +34,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.database.domodatabase.metadata import DomodatabaseSource
 
 MOCK_DATABASE_SERVICE = DatabaseService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",

@@ -14,6 +14,9 @@ Sqlite source implementation.
 Useful for testing!
 """
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
 )
@@ -23,8 +26,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 
 
 class SqliteSource(CommonDbSourceService):

@@ -14,6 +14,29 @@ Tableau source module
 import traceback
 from typing import Iterable, List, Optional, Set
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.ingestion.source.dashboard.tableau.client import TableauClient
+from metadata.ingestion.source.dashboard.tableau.models import (
+    ChartUrl,
+    DataSource,
+    DatasourceField,
+    TableauDashboard,
+    TableauTag,
+    UpstreamTable,
+)
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.utils import fqn
+from metadata.utils.filters import filter_by_chart, filter_by_datamodel
+from metadata.utils.helpers import (
+    clean_uri,
+    get_database_name_for_lineage,
+    get_standard_chart_type,
+)
+from metadata.utils.logger import ingestion_logger
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
+
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -40,28 +63,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.dashboard.tableau.client import TableauClient
-from metadata.ingestion.source.dashboard.tableau.models import (
-    ChartUrl,
-    DataSource,
-    DatasourceField,
-    TableauDashboard,
-    TableauTag,
-    UpstreamTable,
-)
-from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart, filter_by_datamodel
-from metadata.utils.helpers import (
-    clean_uri,
-    get_database_name_for_lineage,
-    get_standard_chart_type,
-)
-from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 

@@ -17,11 +17,11 @@ from typing import Optional, Tuple
 from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
 from antlr4.InputStream import InputStream
+from metadata.utils.constants import DEFAULT_DATABASE
+from metadata.utils.logger import ingestion_logger
 
 from metadata.generated.antlr.JdbcUriLexer import JdbcUriLexer
 from metadata.generated.antlr.JdbcUriParser import JdbcUriParser
-from metadata.utils.constants import DEFAULT_DATABASE
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

@@ -14,12 +14,11 @@ SUM Metric definition
 """
 # pylint: disable=duplicate-code
 
-from sqlalchemy import column
-
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.functions.sum import SumFn
 from metadata.profiler.orm.registry import is_concatenable, is_quantifiable
+from sqlalchemy import column
 
 
 class Sum(StaticMetric):

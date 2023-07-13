@@ -15,8 +15,6 @@ Validator for column values sum to be between test case
 
 from typing import Optional
 
-from sqlalchemy import Column, inspect
-
 from metadata.data_quality.validations.column.base.columnValuesSumToBeBetween import (
     BaseColumnValuesSumToBeBetweenValidator,
 )
@@ -24,6 +22,7 @@ from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
 from metadata.profiler.metrics.registry import Metrics
+from sqlalchemy import Column, inspect
 
 
 class ColumnValuesSumToBeBetweenValidator(

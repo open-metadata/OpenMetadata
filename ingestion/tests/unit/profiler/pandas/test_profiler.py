@@ -20,6 +20,17 @@ from uuid import uuid4
 
 import pytest
 import sqlalchemy.types
+from metadata.ingestion.source import sqa_types
+from metadata.profiler.interface.pandas.profiler_interface import (
+    PandasProfilerInterface,
+)
+from metadata.profiler.interface.sqlalchemy.profiler_interface import (
+    SQAProfilerInterface,
+)
+from metadata.profiler.metrics.core import MetricTypes, add_props
+from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.processor.core import MissingMetricException, Profiler
+from metadata.profiler.processor.default import DefaultProfiler
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
 
@@ -41,17 +52,6 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
-from metadata.ingestion.source import sqa_types
-from metadata.profiler.interface.pandas.profiler_interface import (
-    PandasProfilerInterface,
-)
-from metadata.profiler.interface.sqlalchemy.profiler_interface import (
-    SQAProfilerInterface,
-)
-from metadata.profiler.metrics.core import MetricTypes, add_props
-from metadata.profiler.metrics.registry import Metrics
-from metadata.profiler.processor.core import MissingMetricException, Profiler
-from metadata.profiler.processor.default import DefaultProfiler
 
 Base = declarative_base()
 

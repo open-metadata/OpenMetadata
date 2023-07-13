@@ -11,6 +11,8 @@
 """
 Build the elasticsearch sink
 """
+from metadata.utils.constants import ES_SOURCE_IGNORE_KEYS, ES_SOURCE_TO_ES_OBJ_ARGS
+
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -19,7 +21,6 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 )
 from metadata.generated.schema.metadataIngestion.workflow import Sink
 from metadata.generated.schema.type.basic import ComponentConfig
-from metadata.utils.constants import ES_SOURCE_IGNORE_KEYS, ES_SOURCE_TO_ES_OBJ_ARGS
 
 
 def build_elasticsearch_sink(

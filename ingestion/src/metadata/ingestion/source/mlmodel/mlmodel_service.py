@@ -14,6 +14,22 @@ Base class for ingesting mlmodel services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
+from metadata.ingestion.api.source import Source
+from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.models.delete_entity import (
+    DeleteEntity,
+    delete_entity_from_source,
+)
+from metadata.ingestion.models.topology import (
+    NodeStage,
+    ServiceTopology,
+    TopologyNode,
+    create_source_context,
+)
+from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.utils import fqn
+from metadata.utils.logger import ingestion_logger
+
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.entity.data.mlmodel import (
     MlFeature,
@@ -34,22 +50,7 @@ from metadata.generated.schema.metadataIngestion.mlmodelServiceMetadataPipeline 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import Source
-from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.models.delete_entity import (
-    DeleteEntity,
-    delete_entity_from_source,
-)
-from metadata.ingestion.models.topology import (
-    NodeStage,
-    ServiceTopology,
-    TopologyNode,
-    create_source_context,
-)
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.utils import fqn
-from metadata.utils.logger import ingestion_logger
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
 

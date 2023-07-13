@@ -14,6 +14,18 @@ Dagster source to extract metadata from OM UI
 import traceback
 from typing import Iterable, List, Optional
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.source.pipeline.dagster.models import (
+    DagsterPipeline,
+    RunStepStats,
+    SolidHandle,
+)
+from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.utils.logger import ingestion_logger
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
+
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -31,17 +43,6 @@ from metadata.generated.schema.entity.services.connections.pipeline.dagsterConne
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.source.pipeline.dagster.models import (
-    DagsterPipeline,
-    RunStepStats,
-    SolidHandle,
-)
-from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
-from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 

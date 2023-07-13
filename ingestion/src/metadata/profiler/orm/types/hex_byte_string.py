@@ -17,9 +17,8 @@ import traceback
 from typing import Optional
 
 import chardet
-from sqlalchemy.sql.sqltypes import String, TypeDecorator
-
 from metadata.utils.logger import ingestion_logger
+from sqlalchemy.sql.sqltypes import String, TypeDecorator
 
 logger = ingestion_logger()
 

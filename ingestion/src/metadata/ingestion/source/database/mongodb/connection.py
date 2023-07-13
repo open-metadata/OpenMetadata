@@ -17,6 +17,8 @@ from functools import partial
 # from functools import partial
 from typing import Optional
 
+from metadata.ingestion.connections.builders import get_connection_url_common
+from metadata.ingestion.connections.test_connections import test_connection_steps
 from pydantic import BaseModel
 from pymongo import MongoClient
 
@@ -27,9 +29,7 @@ from metadata.generated.schema.entity.services.connections.database.mongoDBConne
     MongoConnectionString,
     MongoDBConnection,
 )
-from metadata.ingestion.connections.builders import get_connection_url_common
-from metadata.ingestion.connections.test_connections import test_connection_steps
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: MongoDBConnection):

@@ -11,6 +11,15 @@
 """
 Databricks lineage module
 """
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.database.databricks.legacy.lineage import (
+    DatabricksLineageLegacySource,
+)
+from metadata.ingestion.source.database.databricks.unity_catalog.lineage import (
+    DatabricksUnityCatalogLineageSource,
+)
+from metadata.utils.logger import ingestion_logger
+
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
@@ -20,14 +29,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.databricks.legacy.lineage import (
-    DatabricksLineageLegacySource,
-)
-from metadata.ingestion.source.database.databricks.unity_catalog.lineage import (
-    DatabricksUnityCatalogLineageSource,
-)
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

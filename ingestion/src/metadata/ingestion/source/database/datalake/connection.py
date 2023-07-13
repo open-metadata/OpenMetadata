@@ -16,6 +16,9 @@ from dataclasses import dataclass
 from functools import partial, singledispatch
 from typing import Optional
 
+from metadata.ingestion.connections.test_connections import test_connection_steps
+from metadata.utils.credentials import set_google_credentials
+
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -31,9 +34,7 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
-from metadata.ingestion.connections.test_connections import test_connection_steps
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.credentials import set_google_credentials
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 # Only import specific datalake dependencies if necessary

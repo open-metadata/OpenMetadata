@@ -13,10 +13,9 @@
 
 from unittest import TestCase
 
+from metadata.profiler.orm.types.bytea_to_string import ByteaToHex
 from sqlalchemy import TEXT, Column, Integer, String, create_engine
 from sqlalchemy.orm import Session, declarative_base
-
-from metadata.profiler.orm.types.bytea_to_string import ByteaToHex
 
 Base = declarative_base()
 

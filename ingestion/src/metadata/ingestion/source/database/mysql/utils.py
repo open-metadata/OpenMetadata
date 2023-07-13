@@ -12,15 +12,15 @@
 """
 MySQL SQLAlchemy Helper Methods
 """
+from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
+from metadata.utils.sqlalchemy_utils import get_display_datatype
+
 # pylint: disable=protected-access,too-many-branches,too-many-statements,too-many-locals
 from sqlalchemy import util
 from sqlalchemy.dialects.mysql.enumerated import ENUM, SET
 from sqlalchemy.dialects.mysql.reflection import _strip_values
 from sqlalchemy.dialects.mysql.types import DATETIME, TIME, TIMESTAMP
 from sqlalchemy.sql import sqltypes
-
-from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
-from metadata.utils.sqlalchemy_utils import get_display_datatype
 
 col_type_map = {
     "bool": create_sqlalchemy_type("BOOL"),

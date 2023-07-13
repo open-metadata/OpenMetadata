@@ -16,6 +16,9 @@ import json
 from datetime import datetime
 from typing import Dict, Iterable, Optional
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.database.usage_source import UsageSource
+
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
     CustomDatabaseConnection,
 )
@@ -30,8 +33,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.usage_source import UsageSource
 
 
 class SampleUsageSource(UsageSource):

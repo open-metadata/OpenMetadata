@@ -15,12 +15,13 @@ import traceback
 from datetime import datetime
 from typing import Iterator, Optional
 
-from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.source.database.databricks.query_parser import (
     DatabricksQueryParserSource,
 )
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.utils.logger import ingestion_logger
+
+from metadata.generated.schema.type.tableQuery import TableQuery
 
 logger = ingestion_logger()
 

@@ -14,19 +14,20 @@ Test helpers module
 import uuid
 from unittest import TestCase
 
-from metadata.generated.schema.entity.data.table import Column, DataType, Table
-from metadata.generated.schema.type.tagLabel import (
-    LabelType,
-    State,
-    TagLabel,
-    TagSource,
-)
 from metadata.utils.helpers import (
     clean_up_starting_ending_double_quotes_in_string,
     deep_size_of_dict,
     get_entity_tier_from_tags,
     is_safe_sql_query,
     list_to_dict,
+)
+
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
 )
 
 

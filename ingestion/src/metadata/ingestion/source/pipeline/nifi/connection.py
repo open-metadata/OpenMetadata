@@ -14,6 +14,9 @@ Source connection handler
 """
 from typing import Optional
 
+from metadata.ingestion.connections.test_connections import test_connection_steps
+from metadata.ingestion.source.pipeline.nifi.client import NifiClient
+
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -21,9 +24,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.nifiConnecti
     BasicAuthentication,
     NifiConnection,
 )
-from metadata.ingestion.connections.test_connections import test_connection_steps
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.pipeline.nifi.client import NifiClient
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: NifiConnection) -> NifiClient:

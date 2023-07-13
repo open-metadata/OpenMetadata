@@ -13,10 +13,6 @@ Postgres lineage module
 """
 from typing import Iterable
 
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
-    PostgresScheme,
-)
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.source.database.lineage_source import LineageSource
@@ -28,6 +24,11 @@ from metadata.ingestion.source.database.postgres.query_parser import (
     PostgresQueryParserSource,
 )
 from metadata.utils.logger import ingestion_logger
+
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+    PostgresScheme,
+)
 
 logger = ingestion_logger()
 

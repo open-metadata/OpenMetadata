@@ -16,6 +16,14 @@ import traceback
 from copy import deepcopy
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.trino.queries import TRINO_TABLE_COMMENTS
+from metadata.utils import fqn
+from metadata.utils.filters import filter_by_database
+from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqlalchemy_utils import get_all_table_comments
 from sqlalchemy import exc, inspect, sql, util
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.sql import sqltypes
@@ -32,14 +40,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.ingestion.source.database.trino.queries import TRINO_TABLE_COMMENTS
-from metadata.utils import fqn
-from metadata.utils.filters import filter_by_database
-from metadata.utils.logger import ingestion_logger
-from metadata.utils.sqlalchemy_utils import get_all_table_comments
 
 logger = ingestion_logger()
 ROW_DATA_TYPE = "row"

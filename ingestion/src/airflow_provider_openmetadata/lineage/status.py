@@ -15,14 +15,15 @@ OpenMetadata Airflow Provider utilities
 
 from typing import TYPE_CHECKING, Dict, List
 
+from metadata.utils.helpers import datetime_to_ts
+
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
     PipelineStatus,
     StatusType,
     TaskStatus,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.helpers import datetime_to_ts
+from metadata.ometa.ometa_api import OpenMetadata
 
 if TYPE_CHECKING:
     from airflow import DAG

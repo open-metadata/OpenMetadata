@@ -15,14 +15,13 @@ Validator for table column count to be equal test case
 
 from typing import Optional
 
-from sqlalchemy import inspect
-
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
 from metadata.data_quality.validations.table.base.tableColumnCountToEqual import (
     BaseTableColumnCountToEqualValidator,
 )
+from sqlalchemy import inspect
 
 
 class TableColumnCountToEqualValidator(

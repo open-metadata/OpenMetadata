@@ -20,13 +20,13 @@ from ast import literal_eval
 from pathlib import Path
 
 import yaml
-
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.api.workflow import Workflow
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
+
+from metadata.ometa.ometa_api import OpenMetadata
 
 from .config_builders.builders import builder_factory
 from .e2e_types import E2EType

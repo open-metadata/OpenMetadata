@@ -22,32 +22,8 @@ from functools import singledispatch
 from typing import Any, List, Optional, Tuple
 
 import boto3
-from requests_aws4auth import AWS4Auth
-
 from metadata.config.common import ConfigModel
 from metadata.data_insight.helper.data_insight_es_index import DataInsightEsIndex
-from metadata.generated.schema.analytics.reportData import ReportData
-from metadata.generated.schema.entity.classification.classification import (
-    Classification,
-)
-from metadata.generated.schema.entity.classification.tag import Tag
-from metadata.generated.schema.entity.data.container import Container
-from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
-from metadata.generated.schema.entity.data.mlmodel import MlModel
-from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.query import Query
-from metadata.generated.schema.entity.data.table import Column, Table
-from metadata.generated.schema.entity.data.topic import Topic
-from metadata.generated.schema.entity.policies.policy import Policy
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.entity.teams.team import Team
-from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.models.es_documents import (
@@ -64,8 +40,6 @@ from metadata.ingestion.models.es_documents import (
     TopicESDocument,
     UserESDocument,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.sink.elasticsearch_mapping.container_search_index_mapping import (
     CONTAINER_ELASTICSEARCH_INDEX_MAPPING,
 )
@@ -110,6 +84,32 @@ from metadata.ingestion.sink.elasticsearch_mapping.web_analytic_user_activity_re
 )
 from metadata.utils.elasticsearch import ES_INDEX_MAP
 from metadata.utils.logger import ingestion_logger
+from requests_aws4auth import AWS4Auth
+
+from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.entity.classification.classification import (
+    Classification,
+)
+from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.entity.data.container import Container
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
+from metadata.generated.schema.entity.data.mlmodel import MlModel
+from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.query import Query
+from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.policies.policy import Policy
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.teams.team import Team
+from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.ometa.ometa_api import OpenMetadata
+from metadata.ometa.utils import model_str
 
 logger = ingestion_logger()
 

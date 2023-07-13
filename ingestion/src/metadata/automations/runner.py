@@ -14,14 +14,15 @@ Run the Automation Workflow
 from functools import singledispatch
 from typing import Any
 
+from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+
 from metadata.generated.schema.entity.automations.testServiceConnection import (
     TestServiceConnectionRequest,
 )
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def execute(encrypted_automation_workflow: AutomationWorkflow) -> Any:

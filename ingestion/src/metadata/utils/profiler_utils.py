@@ -18,9 +18,8 @@ from functools import reduce
 from typing import Optional, Tuple
 
 import sqlparse
-from pydantic import BaseModel
-
 from metadata.utils.logger import profiler_logger
+from pydantic import BaseModel
 
 logger = profiler_logger()
 

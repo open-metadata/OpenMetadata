@@ -18,21 +18,6 @@ import traceback
 from datetime import datetime, timezone
 from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type
 
-from pydantic import ValidationError
-from sqlalchemy import Column
-from sqlalchemy.orm import DeclarativeMeta
-
-from metadata.generated.schema.api.data.createTableProfile import (
-    CreateTableProfileRequest,
-)
-from metadata.generated.schema.entity.data.table import (
-    ColumnName,
-    ColumnProfile,
-    ColumnProfilerConfig,
-    SystemProfile,
-    TableData,
-    TableProfile,
-)
 from metadata.pii.processor import PIIProcessor
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
@@ -50,6 +35,21 @@ from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.static.row_count import RowCount
 from metadata.profiler.orm.registry import NOT_COMPUTE
 from metadata.utils.logger import profiler_logger
+from pydantic import ValidationError
+from sqlalchemy import Column
+from sqlalchemy.orm import DeclarativeMeta
+
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
+from metadata.generated.schema.entity.data.table import (
+    ColumnName,
+    ColumnProfile,
+    ColumnProfilerConfig,
+    SystemProfile,
+    TableData,
+    TableProfile,
+)
 
 logger = profiler_logger()
 

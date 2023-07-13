@@ -29,7 +29,7 @@ from metadata.generated.schema.security.ssl.validateSSLClientConfig import (
     ValidateSSLClientConfig,
 )
 from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 class OpenMetadataHook(BaseHook):

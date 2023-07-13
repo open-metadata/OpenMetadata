@@ -12,13 +12,14 @@
 Common Query Log Connector
 """
 
+from metadata.ingestion.source.database.lineage_source import LineageSource
+
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.source.database.lineage_source import LineageSource
 
 
 class QueryLogLineageSource(LineageSource):

@@ -18,6 +18,18 @@ from typing import Optional
 
 from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
+from metadata.ingestion.connections.builders import (
+    create_generic_db_connection,
+    get_connection_args_common,
+)
+from metadata.ingestion.connections.test_connections import (
+    execute_inspector_func,
+    test_connection_engine_step,
+    test_connection_steps,
+    test_query,
+)
+from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_TEST_STATEMENT
+from metadata.utils.credentials import set_google_credentials
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -31,19 +43,7 @@ from metadata.generated.schema.security.credentials.gcpValues import (
     MultipleProjectId,
     SingleProjectId,
 )
-from metadata.ingestion.connections.builders import (
-    create_generic_db_connection,
-    get_connection_args_common,
-)
-from metadata.ingestion.connections.test_connections import (
-    execute_inspector_func,
-    test_connection_engine_step,
-    test_connection_steps,
-    test_query,
-)
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_TEST_STATEMENT
-from metadata.utils.credentials import set_google_credentials
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection_url(connection: BigQueryConnection) -> str:

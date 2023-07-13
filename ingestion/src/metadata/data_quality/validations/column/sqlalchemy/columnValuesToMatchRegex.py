@@ -15,9 +15,6 @@ Validator for column values to match regex test case
 
 from typing import Optional
 
-from sqlalchemy import Column, inspect
-from sqlalchemy.exc import CompileError, SQLAlchemyError
-
 from metadata.data_quality.validations.column.base.columnValuesToMatchRegex import (
     BaseColumnValuesToMatchRegexValidator,
 )
@@ -26,6 +23,8 @@ from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
 )
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.logger import test_suite_logger
+from sqlalchemy import Column, inspect
+from sqlalchemy.exc import CompileError, SQLAlchemyError
 
 logger = test_suite_logger()
 

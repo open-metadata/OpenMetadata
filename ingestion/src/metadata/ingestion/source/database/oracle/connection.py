@@ -18,6 +18,13 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 import oracledb
+from metadata.ingestion.connections.builders import (
+    create_generic_db_connection,
+    get_connection_args_common,
+    get_connection_options_dict,
+)
+from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.utils.logger import ingestion_logger
 from oracledb.exceptions import DatabaseError
 from pydantic import SecretStr
 from sqlalchemy.engine import Engine
@@ -30,14 +37,7 @@ from metadata.generated.schema.entity.services.connections.database.oracleConnec
     OracleDatabaseSchema,
     OracleServiceName,
 )
-from metadata.ingestion.connections.builders import (
-    create_generic_db_connection,
-    get_connection_args_common,
-    get_connection_options_dict,
-)
-from metadata.ingestion.connections.test_connections import test_connection_db_common
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.logger import ingestion_logger
+from metadata.ometa.ometa_api import OpenMetadata
 
 CX_ORACLE_LIB_VERSION = "8.3.0"
 LD_LIB_ENV = "LD_LIBRARY_PATH"

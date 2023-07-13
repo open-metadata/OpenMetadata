@@ -16,10 +16,9 @@ import traceback
 from typing import Any, Iterable, Iterator, Optional, Union
 
 import neo4j
-from neo4j import GraphDatabase
-
 from metadata.config.common import ConfigModel
 from metadata.utils.logger import ingestion_logger
+from neo4j import GraphDatabase
 
 logger = ingestion_logger()
 

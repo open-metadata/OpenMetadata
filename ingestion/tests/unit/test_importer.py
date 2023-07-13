@@ -14,10 +14,6 @@ Test import utilities
 """
 from unittest import TestCase
 
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
-)
-from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.utils.importer import (
     DynamicImportException,
     get_class_name_root,
@@ -31,6 +27,11 @@ from metadata.utils.importer import (
     import_source_class,
     import_stage_class,
 )
+
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
+from metadata.generated.schema.entity.services.serviceType import ServiceType
 
 
 # pylint: disable=import-outside-toplevel

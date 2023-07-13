@@ -14,10 +14,11 @@ Abstract class for third party secrets' manager implementations
 """
 from abc import ABC
 
+from metadata.utils.secrets.secrets_manager import SecretsManager
+
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
-from metadata.utils.secrets.secrets_manager import SecretsManager
 
 
 class ExternalSecretsManager(SecretsManager, ABC):

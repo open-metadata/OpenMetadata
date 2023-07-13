@@ -21,6 +21,7 @@ from metadata.data_insight.processor.data_processor import DataProcessor
 from metadata.data_insight.processor.entity_report_data_processor import (
     EntityReportDataProcessor,
 )
+
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
 from metadata.generated.schema.analytics.reportDataType.entityReportData import (
     EntityReportData,

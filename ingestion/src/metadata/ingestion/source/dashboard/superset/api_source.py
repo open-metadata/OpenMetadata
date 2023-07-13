@@ -15,11 +15,6 @@ Superset source module
 import traceback
 from typing import Iterable, List, Optional
 
-from metadata.generated.schema.api.data.createChart import CreateChartRequest
-from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
-from metadata.generated.schema.entity.data.chart import Chart, ChartType
-from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
 from metadata.utils import fqn
 from metadata.utils.helpers import (
@@ -28,6 +23,12 @@ from metadata.utils.helpers import (
     get_standard_chart_type,
 )
 from metadata.utils.logger import ingestion_logger
+
+from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.entity.data.chart import Chart, ChartType
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 
 logger = ingestion_logger()
 

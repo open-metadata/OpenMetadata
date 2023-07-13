@@ -18,9 +18,7 @@ from time import sleep
 from typing import List, Optional, Tuple
 
 import msal
-
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.dashboard.powerbi.models import (
     DashboardsResponse,
     Dataset,
@@ -39,6 +37,8 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     WorkSpaceScanResponse,
 )
 from metadata.utils.logger import utils_logger
+
+from metadata.ometa.client import REST, ClientConfig
 
 logger = utils_logger()
 

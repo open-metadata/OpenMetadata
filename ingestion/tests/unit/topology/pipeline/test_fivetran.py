@@ -16,6 +16,11 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
+from metadata.ingestion.source.pipeline.fivetran.metadata import (
+    FivetranPipelineDetails,
+    FivetranSource,
+)
+
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.services.pipelineService import (
@@ -28,10 +33,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.pipeline.fivetran.metadata import (
-    FivetranPipelineDetails,
-    FivetranSource,
-)
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/fivetran_dataset.json"

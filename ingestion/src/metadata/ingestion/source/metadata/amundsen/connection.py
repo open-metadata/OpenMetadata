@@ -15,21 +15,22 @@ Source connection handler
 from functools import partial
 from typing import Optional
 
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
+    test_connection_steps,
+)
+from metadata.ingestion.source.metadata.amundsen.client import Neo4JConfig, Neo4jHelper
+from metadata.ingestion.source.metadata.amundsen.queries import (
+    NEO4J_AMUNDSEN_USER_QUERY,
+)
+
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.metadata.amundsenConnection import (
     AmundsenConnection,
 )
-from metadata.ingestion.connections.test_connections import (
-    SourceConnectionException,
-    test_connection_steps,
-)
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.metadata.amundsen.client import Neo4JConfig, Neo4jHelper
-from metadata.ingestion.source.metadata.amundsen.queries import (
-    NEO4J_AMUNDSEN_USER_QUERY,
-)
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: AmundsenConnection) -> Neo4jHelper:

@@ -15,6 +15,13 @@ import re
 from collections import defaultdict
 
 import sqlalchemy as sa
+from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
+from metadata.ingestion.source.database.redshift.queries import (
+    REDSHIFT_GET_ALL_RELATIONS,
+    REDSHIFT_GET_SCHEMA_COLUMN_INFO,
+    REDSHIFT_TABLE_COMMENTS,
+)
+from metadata.utils.sqlalchemy_utils import get_table_comment_wrapper
 from packaging.version import Version
 from sqlalchemy import util
 from sqlalchemy.dialects.postgresql.base import ENUM
@@ -26,14 +33,6 @@ from sqlalchemy_redshift.dialect import (
     RedshiftDialectMixin,
     RelationKey,
 )
-
-from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
-from metadata.ingestion.source.database.redshift.queries import (
-    REDSHIFT_GET_ALL_RELATIONS,
-    REDSHIFT_GET_SCHEMA_COLUMN_INFO,
-    REDSHIFT_TABLE_COMMENTS,
-)
-from metadata.utils.sqlalchemy_utils import get_table_comment_wrapper
 
 sa_version = Version(sa.__version__)
 

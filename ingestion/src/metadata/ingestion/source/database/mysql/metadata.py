@@ -9,6 +9,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Mysql source module"""
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.mysql.utils import col_type_map, parse_column
 from sqlalchemy.dialects.mysql.base import ischema_names
 from sqlalchemy.dialects.mysql.reflection import MySQLTableDefinitionParser
 
@@ -21,9 +24,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.ingestion.source.database.mysql.utils import col_type_map, parse_column
 
 ischema_names.update(col_type_map)
 

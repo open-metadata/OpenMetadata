@@ -15,6 +15,8 @@ Test Processor Class
 import datetime
 from unittest import TestCase
 
+from metadata.pii.processor import PIIProcessor
+
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -48,8 +50,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
     OpenMetadataJWTClientConfig,
 )
 from metadata.generated.schema.type.tagLabel import TagFQN, TagLabel
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.pii.processor import PIIProcessor
+from metadata.ometa.ometa_api import OpenMetadata
 
 table_data = TableData(
     columns=[

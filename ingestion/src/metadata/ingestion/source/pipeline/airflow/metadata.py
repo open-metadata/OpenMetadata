@@ -18,6 +18,18 @@ from typing import Iterable, List, Optional, cast
 from airflow.models import BaseOperator, DagRun, TaskInstance
 from airflow.models.serialized_dag import SerializedDagModel
 from airflow.serialization.serialized_objects import SerializedDAG
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.connections.session import create_and_bind_session
+from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.source.pipeline.airflow.lineage_parser import get_xlets_from_dag
+from metadata.ingestion.source.pipeline.airflow.models import (
+    AirflowDag,
+    AirflowDagDetails,
+)
+from metadata.ingestion.source.pipeline.airflow.utils import get_schedule_interval
+from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.utils.helpers import clean_uri, datetime_to_ts
+from metadata.utils.logger import ingestion_logger
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session
 
@@ -41,18 +53,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.connections.session import create_and_bind_session
-from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.source.pipeline.airflow.lineage_parser import get_xlets_from_dag
-from metadata.ingestion.source.pipeline.airflow.models import (
-    AirflowDag,
-    AirflowDagDetails,
-)
-from metadata.ingestion.source.pipeline.airflow.utils import get_schedule_interval
-from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
-from metadata.utils.helpers import clean_uri, datetime_to_ts
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

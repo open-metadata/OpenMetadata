@@ -13,6 +13,15 @@ Databricks Unity Catalog Lineage Source Module
 """
 from typing import Iterable, Optional
 
+from metadata.ingestion.api.source import InvalidSourceException, Source
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.source.connections import get_test_connection_fn
+from metadata.ingestion.source.database.databricks.client import DatabricksClient
+from metadata.ingestion.source.database.databricks.connection import get_connection
+from metadata.ingestion.source.database.databricks.models import LineageTableStreams
+from metadata.utils import fqn
+from metadata.utils.logger import ingestion_logger
+
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
@@ -31,15 +40,7 @@ from metadata.generated.schema.type.entityLineage import (
     LineageDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException, Source
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_test_connection_fn
-from metadata.ingestion.source.database.databricks.client import DatabricksClient
-from metadata.ingestion.source.database.databricks.connection import get_connection
-from metadata.ingestion.source.database.databricks.models import LineageTableStreams
-from metadata.utils import fqn
-from metadata.utils.logger import ingestion_logger
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
 

@@ -11,6 +11,10 @@
 """
 Superset source module
 """
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.dashboard.superset.api_source import SupersetAPISource
+from metadata.ingestion.source.dashboard.superset.db_source import SupersetDBSource
+
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
 )
@@ -23,9 +27,6 @@ from metadata.generated.schema.entity.utils.supersetApiConnection import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.dashboard.superset.api_source import SupersetAPISource
-from metadata.ingestion.source.dashboard.superset.db_source import SupersetDBSource
 
 
 class SupersetSource:

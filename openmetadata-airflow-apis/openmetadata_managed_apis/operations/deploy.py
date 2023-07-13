@@ -18,6 +18,7 @@ from airflow import DAG, settings
 from airflow.models import DagModel
 from flask import escape
 from jinja2 import Template
+from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from openmetadata_managed_apis.api.config import (
     AIRFLOW_DAGS_FOLDER,
     DAG_GENERATED_CONFIGS,
@@ -35,8 +36,7 @@ from openmetadata_managed_apis.utils.logger import operations_logger
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
-from metadata.ingestion.models.encoders import show_secrets_encoder
-from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
+from metadata.models.encoders import show_secrets_encoder
 
 logger = operations_logger()
 

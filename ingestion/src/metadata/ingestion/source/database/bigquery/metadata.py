@@ -18,6 +18,23 @@ from typing import Iterable, List, Optional, Tuple
 from google import auth
 from google.cloud.bigquery.client import Client
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.bigquery.queries import (
+    BIGQUERY_SCHEMA_DESCRIPTION,
+)
+from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.utils import fqn
+from metadata.utils.filters import filter_by_database
+from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqlalchemy_utils import is_complex_type
+from metadata.utils.tag_utils import (
+    get_ometa_tag_and_classification,
+    get_tag_label,
+    get_tag_labels,
+)
 from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql.sqltypes import Interval
@@ -52,23 +69,6 @@ from metadata.generated.schema.security.credentials.gcpValues import (
     SingleProjectId,
 )
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.bigquery.queries import (
-    BIGQUERY_SCHEMA_DESCRIPTION,
-)
-from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.utils import fqn
-from metadata.utils.filters import filter_by_database
-from metadata.utils.logger import ingestion_logger
-from metadata.utils.sqlalchemy_utils import is_complex_type
-from metadata.utils.tag_utils import (
-    get_ometa_tag_and_classification,
-    get_tag_label,
-    get_tag_labels,
-)
 
 
 class BQJSON(String):

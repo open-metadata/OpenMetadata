@@ -15,6 +15,14 @@ from abc import ABC
 from datetime import datetime
 from typing import Iterable
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.query_parser_source import QueryParserSource
+from metadata.ingestion.source.database.snowflake.queries import (
+    SNOWFLAKE_SESSION_TAG_QUERY,
+)
+from metadata.utils.logger import ingestion_logger
+
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
@@ -25,13 +33,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.tableQuery import TableQuery
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.query_parser_source import QueryParserSource
-from metadata.ingestion.source.database.snowflake.queries import (
-    SNOWFLAKE_SESSION_TAG_QUERY,
-)
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 SNOWFLAKE_ABORTED_CODE = "1969"

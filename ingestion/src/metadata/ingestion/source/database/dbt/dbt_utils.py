@@ -14,9 +14,6 @@ DBT utils methods.
 import traceback
 from typing import Optional, Union
 
-from metadata.generated.schema.tests.testSuite import TestSuite
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.dbt.constants import (
     NONE_KEYWORDS_LIST,
     CompiledQueriesEnum,
@@ -25,6 +22,10 @@ from metadata.ingestion.source.database.dbt.constants import (
 )
 from metadata.utils import entity_link
 from metadata.utils.logger import ingestion_logger
+
+from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
 

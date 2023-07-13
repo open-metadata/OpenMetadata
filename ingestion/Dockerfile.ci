@@ -65,6 +65,9 @@ RUN apt-get update \
 
 # Required for Starting Ingestion Container in Docker Compose
 COPY --chown=airflow:0 ingestion/ingestion_dependency.sh /opt/airflow
+
+COPY --chown=airflow:0 ingestion-core /home/airflow/ingestion-core
+
 # Required for Ingesting Sample Data
 COPY --chown=airflow:0 ingestion /home/airflow/ingestion
 
@@ -78,12 +81,11 @@ ARG AIRFLOW_CONSTRAINTS_LOCATION="https://raw.githubusercontent.com/apache/airfl
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 RUN pip install --upgrade pip
 
-WORKDIR /home/airflow/openmetadata-airflow-apis
-RUN pip install "."
-
-WORKDIR /home/airflow/ingestion
+WORKDIR /home/airflow
 ARG INGESTION_DEPENDENCY="all"
-RUN pip install ".[${INGESTION_DEPENDENCY}]"
+RUN pip install "./ingestion-core"
+RUN pip install "./ingestion[${INGESTION_DEPENDENCY}]"
+RUN pip install "./openmetadata-airflow-apis"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN echo "Image built for $(uname -m)"

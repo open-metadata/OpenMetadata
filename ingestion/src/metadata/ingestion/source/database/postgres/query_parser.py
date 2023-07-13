@@ -17,6 +17,15 @@ from abc import ABC
 from datetime import datetime
 from typing import Iterable, Optional
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.postgres.queries import (
+    POSTGRES_GET_DATABASE,
+    POSTGRES_GET_SERVER_VERSION,
+)
+from metadata.ingestion.source.database.query_parser_source import QueryParserSource
+from metadata.utils.helpers import get_start_and_end
+from metadata.utils.logger import ingestion_logger
 from packaging import version
 from sqlalchemy.engine.base import Engine
 
@@ -30,15 +39,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.postgres.queries import (
-    POSTGRES_GET_DATABASE,
-    POSTGRES_GET_SERVER_VERSION,
-)
-from metadata.ingestion.source.database.query_parser_source import QueryParserSource
-from metadata.utils.helpers import get_start_and_end
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

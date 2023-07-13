@@ -15,10 +15,9 @@ Redshift System Metric Queries and queries operations
 
 from typing import List
 
+from metadata.utils.profiler_utils import QueryResult
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-
-from metadata.utils.profiler_utils import QueryResult
 
 STL_QUERY = """
     with data as (

@@ -17,6 +17,21 @@ import traceback
 from typing import Iterable, List, Optional, Tuple
 
 from metadata.clients.domo_client import DomoClient
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
+from metadata.ingestion.source.database.domodatabase.models import (
+    OutputDataset,
+    Owner,
+    SchemaColumn,
+    User,
+)
+from metadata.utils import fqn
+from metadata.utils.constants import DEFAULT_DATABASE
+from metadata.utils.filters import filter_by_table
+from metadata.utils.logger import ingestion_logger
+
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -37,21 +52,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.database_service import DatabaseServiceSource
-from metadata.ingestion.source.database.domodatabase.models import (
-    OutputDataset,
-    Owner,
-    SchemaColumn,
-    User,
-)
-from metadata.utils import fqn
-from metadata.utils.constants import DEFAULT_DATABASE
-from metadata.utils.filters import filter_by_table
-from metadata.utils.logger import ingestion_logger
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
 

@@ -12,6 +12,9 @@
 Druid source methods.
 """
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+
 from metadata.generated.schema.entity.services.connections.database.druidConnection import (
     DruidConnection,
 )
@@ -21,8 +24,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 
 
 class DruidSource(CommonDbSourceService):

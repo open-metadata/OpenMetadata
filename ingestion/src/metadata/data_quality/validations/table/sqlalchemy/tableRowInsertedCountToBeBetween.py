@@ -13,8 +13,6 @@
 Validator for table row inserted count to be between test case
 """
 
-from sqlalchemy import Column, text
-
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
@@ -26,6 +24,7 @@ from metadata.utils.sqa_utils import (
     dispatch_to_date_or_datetime,
     get_partition_col_type,
 )
+from sqlalchemy import Column, text
 
 
 class TableRowInsertedCountToBeBetweenValidator(

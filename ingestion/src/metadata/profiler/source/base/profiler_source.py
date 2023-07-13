@@ -16,6 +16,15 @@ its interface
 from copy import deepcopy
 from typing import List, Optional, cast
 
+from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
+from metadata.profiler.interface.profiler_interface import ProfilerInterface
+from metadata.profiler.interface.profiler_interface_factory import (
+    profiler_interface_factory,
+)
+from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.processor.core import Profiler
+from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
+from metadata.profiler.source.profiler_source_interface import ProfilerSourceInterface
 from sqlalchemy import MetaData
 
 from metadata.generated.schema.entity.data.table import ColumnProfilerConfig, Table
@@ -32,16 +41,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
-from metadata.profiler.interface.profiler_interface import ProfilerInterface
-from metadata.profiler.interface.profiler_interface_factory import (
-    profiler_interface_factory,
-)
-from metadata.profiler.metrics.registry import Metrics
-from metadata.profiler.processor.core import Profiler
-from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
-from metadata.profiler.source.profiler_source_interface import ProfilerSourceInterface
+from metadata.ometa.ometa_api import OpenMetadata
 
 NON_SQA_DATABASE_CONNECTIONS = (DatalakeConnection,)
 

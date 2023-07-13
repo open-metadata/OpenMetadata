@@ -16,7 +16,6 @@ from datetime import datetime, timedelta
 from unittest import TestCase
 from unittest.mock import patch
 
-from looker_sdk.error import SDKError
 from looker_sdk.sdk.api40.methods import Looker40SDK
 from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
 from looker_sdk.sdk.api40.models import (
@@ -26,6 +25,10 @@ from looker_sdk.sdk.api40.models import (
     Query,
     User,
 )
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
+from metadata.ingestion.source.dashboard.looker.metadata import LookerSource
+from metadata.utils import fqn
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -46,11 +49,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageDetails import UsageDetails, UsageStats
 from metadata.generated.schema.type.usageRequest import UsageRequest
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
-from metadata.ingestion.source.dashboard.looker.metadata import LookerSource
-from metadata.utils import fqn
+from metadata.ometa.ometa_api import OpenMetadata
 
 MOCK_LOOKER_CONFIG = {
     "source": {

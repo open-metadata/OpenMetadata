@@ -16,6 +16,10 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
+from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.source.pipeline.dagster.metadata import DagsterSource
+from metadata.ingestion.source.pipeline.dagster.models import GraphOrError
+
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
@@ -40,9 +44,6 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
-from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.source.pipeline.dagster.metadata import DagsterSource
-from metadata.ingestion.source.pipeline.dagster.models import GraphOrError
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/dagster_dataset.json"

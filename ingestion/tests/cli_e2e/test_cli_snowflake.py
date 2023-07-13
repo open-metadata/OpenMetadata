@@ -15,7 +15,6 @@ Test Snowflake connector with CLI
 from typing import List
 
 import pytest
-
 from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 

@@ -20,16 +20,17 @@ from typing import cast
 from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import (
     TableRowInsertedCountToBeBetweenValidator,
 )
-from metadata.generated.schema.entity.data.table import (
-    PartitionIntervalType,
-    PartitionProfilerConfig,
-    ProfileSampleType,
-)
 from metadata.ingestion.source.database.datalake.models import (
     DatalakeTableSchemaWrapper,
 )
 from metadata.utils.datalake.datalake_utils import fetch_dataframe
 from metadata.utils.logger import test_suite_logger
+
+from metadata.generated.schema.entity.data.table import (
+    PartitionIntervalType,
+    PartitionProfilerConfig,
+    ProfileSampleType,
+)
 
 logger = test_suite_logger()
 

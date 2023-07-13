@@ -14,6 +14,18 @@ Spline source to extract metadata
 import traceback
 from typing import Iterable, Optional
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.ingestion.source.pipeline.spline.models import ExecutionEvent
+from metadata.ingestion.source.pipeline.spline.utils import (
+    parse_dbfs_path,
+    parse_jdbc_url,
+)
+from metadata.utils import fqn
+from metadata.utils.helpers import clean_uri
+from metadata.utils.logger import ingestion_logger
+
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Task
@@ -29,17 +41,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
-from metadata.ingestion.source.pipeline.spline.models import ExecutionEvent
-from metadata.ingestion.source.pipeline.spline.utils import (
-    parse_dbfs_path,
-    parse_jdbc_url,
-)
-from metadata.utils import fqn
-from metadata.utils.helpers import clean_uri
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

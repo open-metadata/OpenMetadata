@@ -18,11 +18,10 @@ from collections import defaultdict
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
-from pydantic import BaseModel
-
 from metadata.pii import SPACY_EN_MODEL
 from metadata.pii.models import TagAndConfidence, TagType
 from metadata.utils.logger import pii_logger
+from pydantic import BaseModel
 
 logger = pii_logger()
 

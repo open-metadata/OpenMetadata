@@ -19,6 +19,25 @@ from collections import namedtuple
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Union
 
+from metadata.ingestion.api.common import Entity
+from metadata.ingestion.api.source import InvalidSourceException, Source
+from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
+from metadata.ingestion.models.tests_data import (
+    OMetaLogicalTestSuiteSample,
+    OMetaTestCaseResultsSample,
+    OMetaTestCaseSample,
+    OMetaTestSuiteSample,
+)
+from metadata.ingestion.models.user import OMetaUserProfile
+from metadata.parsers.schema_parsers import (
+    InvalidSchemaTypeException,
+    schema_parser_config_registry,
+)
+from metadata.utils import fqn
+from metadata.utils.constants import UTF_8
+from metadata.utils.helpers import get_standard_chart_type
+from metadata.utils.logger import ingestion_logger
 from pydantic import ValidationError
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
@@ -88,26 +107,7 @@ from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.schema import Topic as TopicSchema
-from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import InvalidSourceException, Source
-from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
-from metadata.ingestion.models.tests_data import (
-    OMetaLogicalTestSuiteSample,
-    OMetaTestCaseResultsSample,
-    OMetaTestCaseSample,
-    OMetaTestSuiteSample,
-)
-from metadata.ingestion.models.user import OMetaUserProfile
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.parsers.schema_parsers import (
-    InvalidSchemaTypeException,
-    schema_parser_config_registry,
-)
-from metadata.utils import fqn
-from metadata.utils.constants import UTF_8
-from metadata.utils.helpers import get_standard_chart_type
-from metadata.utils.logger import ingestion_logger
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
 

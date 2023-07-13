@@ -11,6 +11,9 @@
 """
 RedPanda source ingestion
 """
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.messaging.common_broker_source import CommonBrokerSource
+
 from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
     RedpandaConnection,
 )
@@ -20,8 +23,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.messaging.common_broker_source import CommonBrokerSource
 
 
 class RedpandaSource(CommonBrokerSource):

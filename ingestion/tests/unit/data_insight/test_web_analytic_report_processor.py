@@ -22,6 +22,7 @@ from metadata.data_insight.processor.web_analytic_report_data_processor import (
     WebAnalyticEntityViewReportDataProcessor,
     WebAnalyticUserActivityReportDataProcessor,
 )
+
 from metadata.generated.schema.analytics.basic import WebAnalyticEventType
 from metadata.generated.schema.analytics.reportDataType.webAnalyticEntityViewReportData import (
     WebAnalyticEntityViewReportData,

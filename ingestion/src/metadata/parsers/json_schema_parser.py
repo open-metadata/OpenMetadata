@@ -18,8 +18,9 @@ import traceback
 from enum import Enum
 from typing import List, Optional
 
-from metadata.generated.schema.type.schema import FieldModel
 from metadata.utils.logger import ingestion_logger
+
+from metadata.generated.schema.type.schema import FieldModel
 
 logger = ingestion_logger()
 

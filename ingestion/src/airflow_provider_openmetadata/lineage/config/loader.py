@@ -16,13 +16,13 @@ import json
 import os
 
 from airflow.configuration import AirflowConfigParser
-from pydantic import BaseModel
-
 from airflow_provider_openmetadata.lineage.config.commons import LINEAGE
 from airflow_provider_openmetadata.lineage.config.providers import (
     InvalidAirflowProviderException,
     provider_config_registry,
 )
+from pydantic import BaseModel
+
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
     OpenMetadataConnection,

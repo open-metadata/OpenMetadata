@@ -13,9 +13,8 @@ Common definitions for configuration management
 """
 from typing import Any, Optional, TypeVar
 
-from pydantic import BaseModel
-
 from metadata.utils.logger import ingestion_logger
+from pydantic import BaseModel
 
 T = TypeVar("T")
 

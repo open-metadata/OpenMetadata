@@ -13,8 +13,6 @@
 
 from unittest.mock import patch
 
-from pytest import mark
-
 from metadata.data_quality.interface.pandas.pandas_test_suite_interface import (
     PandasTestSuiteInterface,
 )
@@ -24,6 +22,8 @@ from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import 
 from metadata.data_quality.interface.test_suite_interface_factory import (
     test_suite_interface_factory,
 )
+from pytest import mark
+
 from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
     S3Config,
 )

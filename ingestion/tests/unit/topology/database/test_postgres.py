@@ -17,6 +17,16 @@ import types
 from unittest import TestCase
 from unittest.mock import patch
 
+from metadata.ingestion.source.database.postgres.metadata import (
+    GEOMETRY,
+    POINT,
+    POLYGON,
+    PostgresSource,
+)
+from metadata.ingestion.source.database.postgres.query_parser import (
+    PostgresQueryParserSource,
+)
+from metadata.ingestion.source.database.postgres.usage import PostgresUsageSource
 from sqlalchemy.types import VARCHAR
 
 from metadata.generated.schema.entity.data.database import Database
@@ -31,16 +41,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.database.postgres.metadata import (
-    GEOMETRY,
-    POINT,
-    POLYGON,
-    PostgresSource,
-)
-from metadata.ingestion.source.database.postgres.query_parser import (
-    PostgresQueryParserSource,
-)
-from metadata.ingestion.source.database.postgres.usage import PostgresUsageSource
 
 mock_postgres_config = {
     "source": {

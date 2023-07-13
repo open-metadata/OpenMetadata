@@ -16,10 +16,9 @@ import os
 from unittest import mock
 
 from jinja2 import Environment
-from pytest import mark
-
 from metadata.great_expectations.action import OpenMetadataValidationAction
 from metadata.great_expectations.utils.ometa_config_handler import render_template
+from pytest import mark
 
 
 @mark.parametrize(

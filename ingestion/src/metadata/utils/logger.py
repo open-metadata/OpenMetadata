@@ -11,19 +11,13 @@
 """
 Module centralising logger configs
 """
-
 import logging
 from enum import Enum
 from types import DynamicClassAttribute
 from typing import Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-
-METADATA_LOGGER = "metadata"
-BASE_LOGGING_FORMAT = (
-    "[%(asctime)s] %(levelname)-8s {%(name)s:%(module)s:%(lineno)d} - %(message)s"
-)
-logging.basicConfig(format=BASE_LOGGING_FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
+from metadata.ometa.logger import METADATA_LOGGER
 
 
 class Loggers(Enum):
@@ -59,14 +53,6 @@ class ANSI(Enum):
     ENDC = "\033[0m"
     BLUE = "\u001b[34;1m"
     MAGENTA = "\u001b[35;1m"
-
-
-def ometa_logger():
-    """
-    Method to get the OMETA logger
-    """
-
-    return logging.getLogger(Loggers.OMETA.value)
 
 
 def cli_logger():

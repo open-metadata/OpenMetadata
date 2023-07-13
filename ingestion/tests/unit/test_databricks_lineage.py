@@ -18,13 +18,14 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
+from metadata.ingestion.source.database.databricks.lineage import (
+    DatabricksLineageSource,
+)
+
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.tableQuery import TableQuery
-from metadata.ingestion.source.database.databricks.lineage import (
-    DatabricksLineageSource,
-)
 
 mock_file_path = Path(__file__).parent / "resources/datasets/databricks_dataset.json"
 with open(mock_file_path, encoding="utf-8") as file:

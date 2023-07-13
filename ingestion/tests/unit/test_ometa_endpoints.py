@@ -40,7 +40,7 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 class OMetaEndpointTest(TestCase):

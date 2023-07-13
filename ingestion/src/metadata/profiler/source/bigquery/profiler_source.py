@@ -15,6 +15,8 @@ Bigquery Profiler source
 
 from copy import deepcopy
 
+from metadata.profiler.source.base.profiler_source import ProfilerSource
+
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
@@ -27,7 +29,6 @@ from metadata.generated.schema.security.credentials.gcpValues import (
     MultipleProjectId,
     SingleProjectId,
 )
-from metadata.profiler.source.base.profiler_source import ProfilerSource
 
 
 class BigQueryProfilerSource(ProfilerSource):

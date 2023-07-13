@@ -15,15 +15,6 @@ Source connection handler
 from typing import Optional
 from urllib.parse import quote_plus
 
-from requests import Session
-from sqlalchemy.engine import Engine
-
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
-)
-from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
-    TrinoConnection,
-)
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
@@ -33,8 +24,17 @@ from metadata.ingestion.connections.secrets import connection_with_options_secre
 from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.trino.queries import TRINO_GET_DATABASE
+from requests import Session
+from sqlalchemy.engine import Engine
+
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
+from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
+    TrinoConnection,
+)
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection_url(connection: TrinoConnection) -> str:

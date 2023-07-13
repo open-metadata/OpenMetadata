@@ -14,10 +14,11 @@ OpenMetadata utils tests
 """
 from unittest import TestCase
 
+from metadata.ingestion.connections.headers import render_query_header
+
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.type import basic
-from metadata.ingestion.connections.headers import render_query_header
-from metadata.ingestion.ometa.utils import format_name, get_entity_type, model_str
+from metadata.ometa.utils import format_name, get_entity_type, model_str
 
 
 class OMetaUtilsTest(TestCase):

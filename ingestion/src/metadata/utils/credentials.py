@@ -18,6 +18,7 @@ import tempfile
 from typing import Dict
 
 from cryptography.hazmat.primitives import serialization
+from metadata.utils.logger import utils_logger
 
 from metadata.generated.schema.security.credentials.gcpCredentials import (
     GCPCredentials,
@@ -26,7 +27,6 @@ from metadata.generated.schema.security.credentials.gcpCredentials import (
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
 )
-from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 

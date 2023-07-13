@@ -19,13 +19,14 @@ from typing import cast
 from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import (
     TableRowInsertedCountToBeBetweenValidator,
 )
+from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
+
 from metadata.generated.schema.entity.data.table import (
     PartitionIntervalType,
     PartitionProfilerConfig,
     ProfileSampleType,
     TableData,
 )
-from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
 
 
 class DatalakeSampler(SamplerInterface):

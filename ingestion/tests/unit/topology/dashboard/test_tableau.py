@@ -5,6 +5,16 @@ Test Domo Dashboard using the topology
 from unittest import TestCase
 from unittest.mock import patch
 
+from metadata.ingestion.source.dashboard.tableau.metadata import (
+    TableauDashboard,
+    TableauSource,
+)
+from metadata.ingestion.source.dashboard.tableau.models import (
+    TableauBaseModel,
+    TableauChart,
+    TableauOwner,
+)
+
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.entity.services.dashboardService import (
@@ -16,15 +26,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.ingestion.source.dashboard.tableau.metadata import (
-    TableauDashboard,
-    TableauSource,
-)
-from metadata.ingestion.source.dashboard.tableau.models import (
-    TableauBaseModel,
-    TableauChart,
-    TableauOwner,
-)
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",

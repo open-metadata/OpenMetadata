@@ -14,10 +14,6 @@ Min Metric definition
 """
 # pylint: disable=duplicate-code
 
-from sqlalchemy import column
-from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.functions import GenericFunction
-
 from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import (
@@ -25,6 +21,9 @@ from metadata.profiler.orm.registry import (
     is_date_time,
     is_quantifiable,
 )
+from sqlalchemy import column
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.functions import GenericFunction
 
 
 class MinFn(GenericFunction):

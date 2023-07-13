@@ -16,9 +16,6 @@ import traceback
 from typing import Any, Callable, Dict, List, Optional
 
 from cached_property import cached_property
-from tableau_api_lib import TableauServerConnection
-from tableau_api_lib.utils import extract_pages
-
 from metadata.ingestion.source.dashboard.tableau import (
     TABLEAU_GET_VIEWS_PARAM_DICT,
     TABLEAU_GET_WORKBOOKS_PARAM_DICT,
@@ -34,9 +31,11 @@ from metadata.ingestion.source.dashboard.tableau.models import (
 from metadata.ingestion.source.dashboard.tableau.queries import (
     TABLEAU_DATASOURCES_QUERY,
 )
-from metadata.utils.logger import ometa_logger
+from metadata.utils.logger import ingestion_logger
+from tableau_api_lib import TableauServerConnection
+from tableau_api_lib.utils import extract_pages
 
-logger = ometa_logger()
+logger = ingestion_logger()
 
 
 class TableauOwnersNotFound(Exception):

@@ -13,6 +13,9 @@ MSSQL usage module
 """
 from abc import ABC
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.database.query_parser_source import QueryParserSource
+
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
 )
@@ -22,8 +25,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 
 
 class MssqlQueryParserSource(QueryParserSource, ABC):

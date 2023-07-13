@@ -15,6 +15,41 @@ import traceback
 from datetime import datetime
 from typing import Iterable, List, Optional, Union
 
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
+from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.ingestion.source.database.database_service import DataModelLink
+from metadata.ingestion.source.database.dbt.constants import (
+    REQUIRED_CATALOG_KEYS,
+    REQUIRED_MANIFEST_KEYS,
+    DbtCommonEnum,
+    DbtTestFailureEnum,
+    DbtTestSuccessEnum,
+    SkipResourceTypeEnum,
+)
+from metadata.ingestion.source.database.dbt.dbt_service import (
+    DbtFiles,
+    DbtObjects,
+    DbtServiceSource,
+)
+from metadata.ingestion.source.database.dbt.dbt_utils import (
+    check_ephemeral_node,
+    check_or_create_test_suite,
+    create_test_case_parameter_definitions,
+    create_test_case_parameter_values,
+    generate_entity_link,
+    get_corrected_name,
+    get_data_model_path,
+    get_dbt_compiled_query,
+    get_dbt_model_name,
+    get_dbt_raw_query,
+)
+from metadata.utils import fqn
+from metadata.utils.elasticsearch import get_entity_from_es_result
+from metadata.utils.logger import ingestion_logger
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
+
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
@@ -52,41 +87,7 @@ from metadata.generated.schema.tests.testDefinition import (
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Timestamp
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
-from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
-from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.database.database_service import DataModelLink
-from metadata.ingestion.source.database.dbt.constants import (
-    REQUIRED_CATALOG_KEYS,
-    REQUIRED_MANIFEST_KEYS,
-    DbtCommonEnum,
-    DbtTestFailureEnum,
-    DbtTestSuccessEnum,
-    SkipResourceTypeEnum,
-)
-from metadata.ingestion.source.database.dbt.dbt_service import (
-    DbtFiles,
-    DbtObjects,
-    DbtServiceSource,
-)
-from metadata.ingestion.source.database.dbt.dbt_utils import (
-    check_ephemeral_node,
-    check_or_create_test_suite,
-    create_test_case_parameter_definitions,
-    create_test_case_parameter_values,
-    generate_entity_link,
-    get_corrected_name,
-    get_data_model_path,
-    get_dbt_compiled_query,
-    get_dbt_model_name,
-    get_dbt_raw_query,
-)
-from metadata.utils import fqn
-from metadata.utils.elasticsearch import get_entity_from_es_result
-from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
 

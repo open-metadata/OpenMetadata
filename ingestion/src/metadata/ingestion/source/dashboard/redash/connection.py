@@ -15,18 +15,19 @@ Source connection handler
 
 from typing import Optional
 
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
+    test_connection_steps,
+)
+from metadata.ingestion.source.dashboard.redash.client import RedashApiClient
+
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import (
     RedashConnection,
 )
-from metadata.ingestion.connections.test_connections import (
-    SourceConnectionException,
-    test_connection_steps,
-)
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.dashboard.redash.client import RedashApiClient
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: RedashConnection) -> RedashApiClient:

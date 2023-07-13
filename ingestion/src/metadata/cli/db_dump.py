@@ -18,10 +18,9 @@ from functools import singledispatch
 from pathlib import Path
 from typing import List, Optional, Union
 
+from metadata.utils.constants import UTF_8
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
-
-from metadata.utils.constants import UTF_8
 
 TABLES_DUMP_ALL = {
     "task_sequence",

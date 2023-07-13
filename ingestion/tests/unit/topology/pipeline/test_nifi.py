@@ -17,6 +17,14 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import PropertyMock, patch
 
+from metadata.ingestion.source.pipeline.nifi.metadata import (
+    NifiPipelineDetails,
+    NifiProcessor,
+    NifiProcessorConnections,
+    NifiSource,
+)
+from metadata.utils.constants import UTF_8
+
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.services.pipelineService import (
@@ -29,13 +37,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.pipeline.nifi.metadata import (
-    NifiPipelineDetails,
-    NifiProcessor,
-    NifiProcessorConnections,
-    NifiSource,
-)
-from metadata.utils.constants import UTF_8
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/nifi_process_group.json"

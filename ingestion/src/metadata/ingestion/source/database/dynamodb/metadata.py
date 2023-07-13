@@ -15,6 +15,17 @@ Dynamo source methods.
 import traceback
 from typing import Iterable, Optional, Tuple
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.column_helpers import truncate_column_name
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
+from metadata.utils import fqn
+from metadata.utils.constants import DEFAULT_DATABASE
+from metadata.utils.filters import filter_by_table
+from metadata.utils.logger import ingestion_logger
+
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -34,17 +45,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.column_helpers import truncate_column_name
-from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.database.database_service import DatabaseServiceSource
-from metadata.utils import fqn
-from metadata.utils.constants import DEFAULT_DATABASE
-from metadata.utils.filters import filter_by_table
-from metadata.utils.logger import ingestion_logger
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
 

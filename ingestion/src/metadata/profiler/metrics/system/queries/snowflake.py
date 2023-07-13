@@ -16,10 +16,9 @@ Snowflake System Metric Queries and query operations
 import re
 from typing import Optional
 
-from sqlalchemy.engine.row import Row
-
 from metadata.utils.logger import profiler_logger
 from metadata.utils.profiler_utils import QueryResult, get_identifiers_from_string
+from sqlalchemy.engine.row import Row
 
 logger = profiler_logger()
 

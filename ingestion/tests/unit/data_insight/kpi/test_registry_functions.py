@@ -17,6 +17,7 @@ from metadata.data_insight.runner.run_result_registry import (
     percentage_of_entities_with_description_kpi_result,
     percentage_of_entities_with_owner_kpi_result,
 )
+
 from metadata.generated.schema.dataInsight.kpi.basic import KpiTarget
 from metadata.generated.schema.dataInsight.type.percentageOfEntitiesWithDescriptionByType import (
     PercentageOfEntitiesWithDescriptionByType,

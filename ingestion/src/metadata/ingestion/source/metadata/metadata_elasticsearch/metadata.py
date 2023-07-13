@@ -14,6 +14,10 @@ import traceback
 from time import sleep
 from typing import Optional
 
+from metadata.ingestion.api.common import Entity
+from metadata.ingestion.api.source import InvalidSourceException, Source
+from metadata.utils.logger import ingestion_logger
+
 from metadata.generated.schema.api.createEventPublisherJob import (
     CreateEventPublisherJob,
 )
@@ -32,11 +36,8 @@ from metadata.generated.schema.system.eventPublisherJob import (
     RunMode,
     Status,
 )
-from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import InvalidSourceException, Source
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.utils import model_str
-from metadata.utils.logger import ingestion_logger
+from metadata.ometa.client import model_str
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
 

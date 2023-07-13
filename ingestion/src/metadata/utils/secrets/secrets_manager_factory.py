@@ -14,18 +14,19 @@ Secrets manager factory module
 """
 from typing import Any, Optional
 
-from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
-    SecretsManagerClientLoader,
-)
-from metadata.generated.schema.security.secrets.secretsManagerProvider import (
-    SecretsManagerProvider,
-)
 from metadata.utils.secrets.aws_secrets_manager import AWSSecretsManager
 from metadata.utils.secrets.aws_ssm_secrets_manager import AWSSSMSecretsManager
 from metadata.utils.secrets.client.loader import secrets_manager_client_loader
 from metadata.utils.secrets.noop_secrets_manager import NoopSecretsManager
 from metadata.utils.secrets.secrets_manager import SecretsManager
 from metadata.utils.singleton import Singleton
+
+from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
+    SecretsManagerClientLoader,
+)
+from metadata.generated.schema.security.secrets.secretsManagerProvider import (
+    SecretsManagerProvider,
+)
 
 
 class SecretsManagerConfigException(Exception):

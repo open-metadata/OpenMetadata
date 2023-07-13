@@ -17,7 +17,7 @@ from typing import List
 from metadata.generated.schema.entity.services.connections.metadata.atlasConnection import (
     AtlasConnection,
 )
-from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ometa.client import REST, APIError, ClientConfig
 
 
 class AtlasClient:

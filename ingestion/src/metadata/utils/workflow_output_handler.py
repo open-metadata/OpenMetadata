@@ -18,11 +18,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional, Type, Union
 
-from pydantic import BaseModel
-from tabulate import tabulate
-
 from metadata.config.common import ConfigurationError
-from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.ingestion.api.parser import (
     InvalidWorkflowException,
     ParsingConfigurationError,
@@ -31,6 +27,10 @@ from metadata.ingestion.api.status import StackTraceError, Status
 from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import pretty_print_time_duration
 from metadata.utils.logger import ANSI, log_ansi_encoded_string
+from pydantic import BaseModel
+from tabulate import tabulate
+
+from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 
 WORKFLOW_FAILURE_MESSAGE = "Workflow finished with failures"
 WORKFLOW_WARNING_MESSAGE = "Workflow finished with warnings"

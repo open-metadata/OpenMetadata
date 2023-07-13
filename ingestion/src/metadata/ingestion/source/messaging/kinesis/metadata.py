@@ -16,17 +16,6 @@ import traceback
 from base64 import b64decode
 from typing import Iterable, List, Optional
 
-from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
-from metadata.generated.schema.entity.data.topic import TopicSampleData
-from metadata.generated.schema.entity.services.connections.messaging.kinesisConnection import (
-    KinesisConnection,
-)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.source.messaging.kinesis.models import (
@@ -47,6 +36,18 @@ from metadata.ingestion.source.messaging.messaging_service import (
 )
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
+
+from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
+from metadata.generated.schema.entity.data.topic import TopicSampleData
+from metadata.generated.schema.entity.services.connections.messaging.kinesisConnection import (
+    KinesisConnection,
+)
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 
 logger = ingestion_logger()
 

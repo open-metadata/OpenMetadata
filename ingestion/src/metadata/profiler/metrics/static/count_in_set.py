@@ -16,11 +16,10 @@ CountInSet Metric definition
 import traceback
 from typing import List
 
-from sqlalchemy import case, column
-
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.sum import SumFn
 from metadata.utils.logger import profiler_logger
+from sqlalchemy import case, column
 
 logger = profiler_logger()
 

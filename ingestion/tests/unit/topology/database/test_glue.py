@@ -19,6 +19,9 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
+from metadata.ingestion.source.database.glue.metadata import GlueSource
+from metadata.ingestion.source.database.glue.models import DatabasePage, TablePage
+
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import TableType
@@ -31,8 +34,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.database.glue.metadata import GlueSource
-from metadata.ingestion.source.database.glue.models import DatabasePage, TablePage
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"

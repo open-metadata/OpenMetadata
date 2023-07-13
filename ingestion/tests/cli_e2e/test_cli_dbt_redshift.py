@@ -15,11 +15,10 @@ Test Redshift connector with CLI
 from pathlib import Path
 from typing import List
 
-from sqlalchemy.engine import Engine
-
 from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.api.workflow import Workflow
+from sqlalchemy.engine import Engine
 
 from .base.test_cli import PATH_TO_RESOURCES
 from .base.test_cli_dbt import CliDBTBase

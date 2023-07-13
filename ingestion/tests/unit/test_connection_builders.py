@@ -13,16 +13,17 @@ Validate connection builder utilities
 """
 from unittest import TestCase
 
+from metadata.ingestion.connections.builders import (
+    get_connection_args_common,
+    get_connection_options_dict,
+    init_empty_connection_arguments,
+)
+
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
-)
-from metadata.ingestion.connections.builders import (
-    get_connection_args_common,
-    get_connection_options_dict,
-    init_empty_connection_arguments,
 )
 
 

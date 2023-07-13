@@ -20,11 +20,11 @@ from uuid import uuid4
 
 import pytest
 import sqlalchemy as sqa
-from sqlalchemy.orm import declarative_base
-
 from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (
     SQATestSuiteInterface,
 )
+from sqlalchemy.orm import declarative_base
+
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,

@@ -17,15 +17,16 @@ import traceback
 from typing import Optional
 
 from metadata.config.common import ConfigModel
+from metadata.ingestion.api.processor import Processor
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
+from metadata.ingestion.lineage.parser import LineageParser
+from metadata.utils.logger import ingestion_logger
+
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
 from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
-from metadata.ingestion.api.processor import Processor
-from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
-from metadata.ingestion.lineage.parser import LineageParser
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

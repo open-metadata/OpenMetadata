@@ -14,6 +14,11 @@ Airbyte source to extract metadata
 
 from typing import Iterable, Optional
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.utils import fqn
+from metadata.utils.logger import ingestion_logger
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -32,11 +37,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
-from metadata.utils import fqn
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

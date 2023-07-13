@@ -14,10 +14,9 @@ ILIKE Count Metric definition
 """
 # pylint: disable=duplicate-code
 
-from sqlalchemy import case, column
-
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.sum import SumFn
+from sqlalchemy import case, column
 
 
 class ILikeCount(StaticMetric):

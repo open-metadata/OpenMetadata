@@ -14,11 +14,11 @@ Pydantic definition for deleting entites
 import traceback
 from typing import Dict, Iterable, Optional
 
+from metadata.ingestion.api.common import Entity
+from metadata.utils.logger import ingestion_logger
 from pydantic import BaseModel
 
-from metadata.ingestion.api.common import Entity
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.logger import ingestion_logger
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
 

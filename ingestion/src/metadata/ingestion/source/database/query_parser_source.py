@@ -9,11 +9,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Usage Souce Module
+Usage Source Module
 """
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Iterator, Optional, Union
+
+from metadata.ingestion.api.source import Source
+from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.utils.helpers import get_start_and_end
+from metadata.utils.logger import ingestion_logger
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -23,11 +28,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.tableQuery import TableQuery
-from metadata.ingestion.api.source import Source
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.utils.helpers import get_start_and_end
-from metadata.utils.logger import ingestion_logger
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
 

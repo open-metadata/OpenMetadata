@@ -14,6 +14,14 @@ Test Workflow pydantic parsing
 """
 from unittest import TestCase
 
+from metadata.ingestion.api.parser import (
+    ParsingConfigurationError,
+    get_connection_class,
+    get_service_type,
+    get_source_config_class,
+    parse_test_connection_request_gracefully,
+    parse_workflow_config_gracefully,
+)
 from pydantic import ValidationError
 
 from metadata.generated.schema.entity.automations.testServiceConnection import (
@@ -50,14 +58,6 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 )
 from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline import (
     PipelineServiceMetadataPipeline,
-)
-from metadata.ingestion.api.parser import (
-    ParsingConfigurationError,
-    get_connection_class,
-    get_service_type,
-    get_source_config_class,
-    parse_test_connection_request_gracefully,
-    parse_workflow_config_gracefully,
 )
 
 

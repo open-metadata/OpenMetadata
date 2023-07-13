@@ -15,15 +15,15 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Generic, List, Optional
 
+from metadata.ingestion.api.closeable import Closeable
+from metadata.ingestion.api.common import Entity
+from metadata.ingestion.api.status import Status
+from metadata.utils.logger import ingestion_logger
 from pydantic import Field
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.ingestion.api.closeable import Closeable
-from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.status import Status
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

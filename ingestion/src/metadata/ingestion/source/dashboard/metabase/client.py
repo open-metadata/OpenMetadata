@@ -16,12 +16,7 @@ import traceback
 from typing import List, Optional
 
 import requests
-
-from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
-    MetabaseConnection,
-)
 from metadata.ingestion.connections.test_connections import SourceConnectionException
-from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.dashboard.metabase.models import (
     MetabaseCollection,
     MetabaseCollectionList,
@@ -33,6 +28,11 @@ from metadata.ingestion.source.dashboard.metabase.models import (
 )
 from metadata.utils.constants import AUTHORIZATION_HEADER, NO_ACCESS_TOKEN
 from metadata.utils.logger import ingestion_logger
+
+from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
+    MetabaseConnection,
+)
+from metadata.ometa.client import REST, ClientConfig
 
 logger = ingestion_logger()
 

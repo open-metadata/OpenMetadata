@@ -15,14 +15,15 @@ GitHub client to read files with token auth
 from abc import ABC
 from typing import Dict, Union
 
+from metadata.readers.base import Reader
+from metadata.utils.logger import ingestion_logger
+
 from metadata.generated.schema.security.credentials.bitbucketCredentials import (
     BitBucketCredentials,
 )
 from metadata.generated.schema.security.credentials.githubCredentials import (
     GitHubCredentials,
 )
-from metadata.readers.base import Reader
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

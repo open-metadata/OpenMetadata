@@ -20,36 +20,41 @@ def get_long_description():
     return description
 
 
+base_requirements = {
+    "pydantic~=1.10",
+    "wheel~=0.38.4",
+    "setuptools~=65.6.3",
+    "typing_extensions<=4.5.0",  # We need to have this fixed due to a yanked release 4.6.0
+}
+
+
 dev = {
-    "datamodel-code-generator==0.13.0",
-    "black==21.12b0",
-    "incremental",
+    "black==22.3.0",
+    "datamodel-code-generator==0.15.0",
+    "isort",
+    "pre-commit",
+    "pycln",
+    "pylint",
     "twine",
-    "twisted",
-    "wheel",
-    "click",
-    "pydantic[email]==1.9.0",
 }
 
 setup(
     name="openmetadata-ingestion-core",
+    version="1.2.0.0.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",
-    description="These are the generated Python classes from JSON Schema",
+    description="These are the generated Python classes from JSON Schema and base client.",
     long_description=get_long_description(),
     long_description_content_type="text/markdown",
     python_requires=">=3.7",
-    package_dir={"": "src"},
     zip_safe=False,
-    use_incremental=True,
-    setup_requires=["incremental"],
-    install_requires=["incremental"],
+    install_requires=list(base_requirements),
     project_urls={
         "Documentation": "https://docs.open-metadata.org/",
         "Source": "https://github.com/open-metadata/OpenMetadata",
     },
-    packages=find_namespace_packages(where="./src", exclude=["tests*"]),
+    packages=find_namespace_packages(include=["metadata.*"], exclude=["tests*"]),
     extras_require={
         "dev": list(dev),
     },

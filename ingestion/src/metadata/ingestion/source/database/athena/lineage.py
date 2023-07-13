@@ -13,12 +13,13 @@ Athena lineage module
 """
 from typing import Iterable, Optional
 
-from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.source.database.athena.query_parser import (
     AthenaQueryParserSource,
 )
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.utils.logger import ingestion_logger
+
+from metadata.generated.schema.type.tableQuery import TableQuery
 
 logger = ingestion_logger()
 

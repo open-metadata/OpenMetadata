@@ -18,12 +18,6 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict, List
 
-from sqlalchemy import Column
-
-from metadata.generated.schema.entity.data.table import TableData
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    DatalakeConnection,
-)
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.ingestion.source.database.datalake.models import (
     DatalakeTableSchemaWrapper,
@@ -37,6 +31,12 @@ from metadata.utils.datalake.datalake_utils import fetch_dataframe
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_like_column import SQALikeColumn, Type
+from sqlalchemy import Column
+
+from metadata.generated.schema.entity.data.table import TableData
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
 
 logger = profiler_interface_registry_logger()
 

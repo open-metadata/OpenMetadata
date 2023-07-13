@@ -16,13 +16,12 @@ Table Column Count Metric definition
 
 from typing import cast
 
+from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
+from metadata.profiler.orm.registry import Dialects
 from sqlalchemy import inspect, literal
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.sql.functions import FunctionElement
-
-from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
-from metadata.profiler.orm.registry import Dialects
 
 
 class ColumnCountFn(FunctionElement):

@@ -14,16 +14,16 @@ Main ingestion entrypoint to run OM workflows
 import os
 
 import yaml
-
 from metadata.data_insight.api.workflow import DataInsightWorkflow
 from metadata.data_quality.api.workflow import TestSuiteWorkflow
+from metadata.ingestion.api.workflow import Workflow
+from metadata.profiler.api.workflow import ProfilerWorkflow
+from metadata.utils.logger import set_loggers_level
+
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
-from metadata.ingestion.api.workflow import Workflow
-from metadata.profiler.api.workflow import ProfilerWorkflow
-from metadata.utils.logger import set_loggers_level
 
 WORKFLOW_MAP = {
     PipelineType.metadata.value: Workflow,

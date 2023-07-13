@@ -10,6 +10,9 @@
 #  limitations under the License.
 """PinotDb source module"""
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+
 from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
     PinotDBConnection,
 )
@@ -19,8 +22,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 
 
 class PinotdbSource(CommonDbSourceService):

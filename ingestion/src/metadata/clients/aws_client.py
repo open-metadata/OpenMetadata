@@ -16,11 +16,11 @@ from typing import Any, Optional
 
 import boto3
 from boto3 import Session
+from metadata.utils.logger import utils_logger
 from pydantic import BaseModel
 
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
-from metadata.ingestion.models.custom_pydantic import CustomSecretStr
-from metadata.utils.logger import utils_logger
+from metadata.models.custom_pydantic import CustomSecretStr
 
 logger = utils_logger()
 

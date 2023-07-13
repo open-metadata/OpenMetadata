@@ -13,12 +13,13 @@ Athena usage module
 """
 from typing import Iterable, Optional
 
-from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.source.database.athena.query_parser import (
     AthenaQueryParserSource,
 )
 from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.logger import ingestion_logger
+
+from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 
 logger = ingestion_logger()
 

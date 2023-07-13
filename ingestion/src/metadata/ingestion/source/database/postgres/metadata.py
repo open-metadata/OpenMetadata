@@ -15,25 +15,6 @@ import traceback
 from collections import namedtuple
 from typing import Iterable, Tuple
 
-from sqlalchemy import sql
-from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
-from sqlalchemy.engine.reflection import Inspector
-
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import (
-    IntervalType,
-    TablePartition,
-    TableType,
-)
-from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
-    PostgresConnection,
-)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
@@ -61,6 +42,25 @@ from metadata.utils.sqlalchemy_utils import (
     get_all_view_definitions,
 )
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
+from sqlalchemy import sql
+from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
+from sqlalchemy.engine.reflection import Inspector
+
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.table import (
+    IntervalType,
+    TablePartition,
+    TableType,
+)
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+    PostgresConnection,
+)
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 

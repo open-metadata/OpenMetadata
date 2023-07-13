@@ -15,21 +15,21 @@ Source connection handler
 from typing import Optional
 from urllib.parse import quote_plus
 
+from metadata.clients.aws_client import AWSClient
+from metadata.ingestion.connections.builders import (
+    create_generic_db_connection,
+    get_connection_args_common,
+)
+from metadata.ingestion.connections.test_connections import test_connection_db_common
 from sqlalchemy.engine import Engine
 
-from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
 )
-from metadata.ingestion.connections.builders import (
-    create_generic_db_connection,
-    get_connection_args_common,
-)
-from metadata.ingestion.connections.test_connections import test_connection_db_common
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection_url(connection: AthenaConnection) -> str:

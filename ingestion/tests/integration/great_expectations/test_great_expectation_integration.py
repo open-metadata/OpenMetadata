@@ -19,6 +19,8 @@ from datetime import datetime, timedelta
 from unittest import TestCase
 
 from great_expectations import DataContext
+from metadata.ingestion.api.workflow import Workflow
+from metadata.ingestion.connections.session import create_and_bind_session
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
@@ -30,9 +32,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.ingestion.api.workflow import Workflow
-from metadata.ingestion.connections.session import create_and_bind_session
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ometa.ometa_api import OpenMetadata
 
 Base = declarative_base()
 

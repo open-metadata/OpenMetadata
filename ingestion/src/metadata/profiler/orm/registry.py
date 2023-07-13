@@ -14,10 +14,6 @@ Custom types' registry for easy access
 without having an import mess
 """
 import sqlalchemy
-from sqlalchemy import Date, DateTime, Integer, Numeric, Time
-from sqlalchemy.sql.sqltypes import Concatenable, Enum
-
-from metadata.generated.schema.entity.data.table import DataType
 from metadata.ingestion.source import sqa_types
 from metadata.profiler.orm.types.bytea_to_string import ByteaToHex
 from metadata.profiler.orm.types.custom_array import CustomArray
@@ -26,6 +22,10 @@ from metadata.profiler.orm.types.hex_byte_string import HexByteString
 from metadata.profiler.orm.types.uuid import UUIDString
 from metadata.profiler.registry import TypeRegistry
 from metadata.utils.sqa_like_column import Type
+from sqlalchemy import Date, DateTime, Integer, Numeric, Time
+from sqlalchemy.sql.sqltypes import Concatenable, Enum
+
+from metadata.generated.schema.entity.data.table import DataType
 
 
 class CustomTypes(TypeRegistry):

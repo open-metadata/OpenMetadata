@@ -19,6 +19,10 @@ from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
+from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
+from metadata.utils.datalake.avro_dispatch import read_from_avro
+from metadata.utils.datalake.json_dispatch import read_from_json
+
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.databaseService import (
@@ -30,9 +34,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
-from metadata.utils.datalake.avro_dispatch import read_from_avro
-from metadata.utils.datalake.json_dispatch import read_from_json
 
 mock_datalake_config = {
     "source": {

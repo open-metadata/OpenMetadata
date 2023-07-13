@@ -13,14 +13,15 @@ REST Auth & Client for Apache Superset
 """
 import json
 
+from metadata.utils.logger import ingestion_logger
+
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
 )
-from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
-from metadata.ingestion.ometa.client import REST, ClientConfig
-from metadata.utils.logger import ometa_logger
+from metadata.ometa.auth_provider import AuthenticationProvider
+from metadata.ometa.client import REST, ClientConfig
 
-logger = ometa_logger()
+logger = ingestion_logger()
 
 
 class SupersetAuthenticationProvider(AuthenticationProvider):

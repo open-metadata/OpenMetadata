@@ -14,12 +14,11 @@ Restore utility for the metadata CLI
 """
 import traceback
 
-from sqlalchemy.engine import Engine
-from tqdm import tqdm
-
 from metadata.cli.utils import get_engine
 from metadata.utils.helpers import BackupRestoreArgs
 from metadata.utils.logger import ANSI, cli_logger, log_ansi_encoded_string
+from sqlalchemy.engine import Engine
+from tqdm import tqdm
 
 logger = cli_logger()
 

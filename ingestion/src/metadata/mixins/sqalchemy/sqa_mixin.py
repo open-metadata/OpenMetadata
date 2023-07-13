@@ -17,6 +17,11 @@ supporting sqlalchemy abstraction layer
 
 from typing import List, Optional
 
+from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.snowflake.queries import (
+    SNOWFLAKE_SESSION_TAG_QUERY,
+)
+from metadata.profiler.orm.converter import ometa_to_sqa_orm
 from sqlalchemy import Column, MetaData, inspect
 from sqlalchemy.orm import DeclarativeMeta
 
@@ -26,11 +31,6 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeType,
 )
-from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.snowflake.queries import (
-    SNOWFLAKE_SESSION_TAG_QUERY,
-)
-from metadata.profiler.orm.converter import ometa_to_sqa_orm
 
 
 class SQAInterfaceMixin:

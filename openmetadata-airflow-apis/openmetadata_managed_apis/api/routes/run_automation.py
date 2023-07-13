@@ -15,15 +15,15 @@ import traceback
 from typing import Callable
 
 from flask import Blueprint, Response, escape, request
+from metadata.automations.runner import execute
+from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.utils.logger import routes_logger
 from pydantic import ValidationError
 
-from metadata.automations.runner import execute
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
-from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 
 logger = routes_logger()
 

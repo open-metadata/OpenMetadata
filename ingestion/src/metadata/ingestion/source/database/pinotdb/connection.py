@@ -14,6 +14,12 @@ Source connection handler
 """
 from typing import Optional
 
+from metadata.ingestion.connections.builders import (
+    create_generic_db_connection,
+    get_connection_args_common,
+    get_connection_url_common,
+)
+from metadata.ingestion.connections.test_connections import test_connection_db_common
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -22,13 +28,7 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
     PinotDBConnection,
 )
-from metadata.ingestion.connections.builders import (
-    create_generic_db_connection,
-    get_connection_args_common,
-    get_connection_url_common,
-)
-from metadata.ingestion.connections.test_connections import test_connection_db_common
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection_url(connection: PinotDBConnection) -> str:

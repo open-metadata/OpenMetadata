@@ -14,6 +14,13 @@ Helper functions to handle SQL lineage operations
 import traceback
 from typing import Any, Iterable, Iterator, List, Optional
 
+from metadata.ingestion.lineage.models import Dialect
+from metadata.ingestion.lineage.parser import LineageParser
+from metadata.utils import fqn
+from metadata.utils.fqn import build_es_fqn_search_string
+from metadata.utils.logger import utils_logger
+from metadata.utils.lru_cache import LRUCache
+
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.entityLineage import (
@@ -22,13 +29,7 @@ from metadata.generated.schema.type.entityLineage import (
     LineageDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.lineage.models import Dialect
-from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils import fqn
-from metadata.utils.fqn import build_es_fqn_search_string
-from metadata.utils.logger import utils_logger
-from metadata.utils.lru_cache import LRUCache
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = utils_logger()
 LRU_CACHE_SIZE = 4096

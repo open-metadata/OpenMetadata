@@ -14,6 +14,16 @@ Source connection handler
 """
 from typing import Optional
 
+from metadata.ingestion.connections.builders import (
+    create_generic_db_connection,
+    get_connection_args_common,
+    get_connection_url_common,
+)
+from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.source.database.vertica.queries import (
+    VERTICA_LIST_DATABASES,
+    VERTICA_TEST_GET_QUERIES,
+)
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -22,17 +32,7 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
     VerticaConnection,
 )
-from metadata.ingestion.connections.builders import (
-    create_generic_db_connection,
-    get_connection_args_common,
-    get_connection_url_common,
-)
-from metadata.ingestion.connections.test_connections import test_connection_db_common
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.vertica.queries import (
-    VERTICA_LIST_DATABASES,
-    VERTICA_TEST_GET_QUERIES,
-)
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: VerticaConnection) -> Engine:

@@ -21,13 +21,14 @@ from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import 
     SQATestSuiteInterface,
 )
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
+from metadata.utils.logger import test_suite_logger
+
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.logger import test_suite_logger
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger: Logger = test_suite_logger()
 

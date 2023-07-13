@@ -14,12 +14,13 @@ Test GitHub Reader
 """
 from unittest import TestCase
 
-from metadata.generated.schema.security.credentials.githubCredentials import (
-    GitHubCredentials,
-)
 from metadata.ingestion.source.dashboard.looker.models import Includes, ViewName
 from metadata.ingestion.source.dashboard.looker.parser import LkmlParser
 from metadata.readers.github import GitHubReader
+
+from metadata.generated.schema.security.credentials.githubCredentials import (
+    GitHubCredentials,
+)
 
 
 class TestLookMLGitHubReader(TestCase):

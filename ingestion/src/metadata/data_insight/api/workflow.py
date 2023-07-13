@@ -24,8 +24,6 @@ import traceback
 from datetime import datetime
 from typing import Optional, Union, cast
 
-from pydantic import ValidationError
-
 from metadata.config.common import WorkflowExecutionError
 from metadata.data_insight.helper.data_insight_es_index import DataInsightEsIndex
 from metadata.data_insight.processor.data_processor import DataProcessor
@@ -37,6 +35,22 @@ from metadata.data_insight.processor.web_analytic_report_data_processor import (
     WebAnalyticUserActivityReportDataProcessor,
 )
 from metadata.data_insight.runner.kpi_runner import KpiRunner
+from metadata.ingestion.api.parser import parse_workflow_config_gracefully
+from metadata.ingestion.api.processor import ProcessorStatus
+from metadata.ingestion.api.workflow import REPORTS_INTERVAL_SECONDS
+from metadata.ingestion.sink.elasticsearch import ElasticsearchSink
+from metadata.timer.repeated_timer import RepeatedTimer
+from metadata.timer.workflow_reporter import get_ingestion_status_timer
+from metadata.utils.importer import get_sink
+from metadata.utils.logger import data_insight_logger, set_loggers_level
+from metadata.utils.time_utils import (
+    get_beginning_of_day_timestamp_mill,
+    get_end_of_day_timestamp_mill,
+)
+from metadata.utils.workflow_output_handler import print_data_insight_status
+from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
+from pydantic import ValidationError
+
 from metadata.generated.schema.analytics.basic import WebAnalyticEventType
 from metadata.generated.schema.analytics.reportData import ReportDataType
 from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
@@ -50,21 +64,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     Sink,
 )
-from metadata.ingestion.api.parser import parse_workflow_config_gracefully
-from metadata.ingestion.api.processor import ProcessorStatus
-from metadata.ingestion.api.workflow import REPORTS_INTERVAL_SECONDS
-from metadata.ingestion.ometa.ometa_api import EntityList, OpenMetadata
-from metadata.ingestion.sink.elasticsearch import ElasticsearchSink
-from metadata.timer.repeated_timer import RepeatedTimer
-from metadata.timer.workflow_reporter import get_ingestion_status_timer
-from metadata.utils.importer import get_sink
-from metadata.utils.logger import data_insight_logger, set_loggers_level
-from metadata.utils.time_utils import (
-    get_beginning_of_day_timestamp_mill,
-    get_end_of_day_timestamp_mill,
-)
-from metadata.utils.workflow_output_handler import print_data_insight_status
-from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
+from metadata.ometa.ometa_api import EntityList, OpenMetadata
 
 logger = data_insight_logger()
 

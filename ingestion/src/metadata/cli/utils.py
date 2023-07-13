@@ -13,6 +13,8 @@
 Utils module for the metadata backup and restore process
 """
 
+from metadata.ingestion.source.connections import get_connection
+from metadata.utils.helpers import BackupRestoreArgs, list_to_dict
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
@@ -24,8 +26,6 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
-from metadata.ingestion.source.connections import get_connection
-from metadata.utils.helpers import BackupRestoreArgs, list_to_dict
 
 
 def get_engine(common_args: BackupRestoreArgs):

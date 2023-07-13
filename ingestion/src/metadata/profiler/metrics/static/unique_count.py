@@ -14,12 +14,11 @@ Unique Count Metric definition
 """
 from typing import Optional
 
-from sqlalchemy import column, func
-from sqlalchemy.orm import DeclarativeMeta, Session
-
 from metadata.profiler.metrics.core import QueryMetric
 from metadata.profiler.orm.registry import NOT_COMPUTE
 from metadata.utils.logger import profiler_logger
+from sqlalchemy import column, func
+from sqlalchemy.orm import DeclarativeMeta, Session
 
 logger = profiler_logger()
 

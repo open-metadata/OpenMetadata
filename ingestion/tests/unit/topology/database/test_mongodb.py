@@ -18,6 +18,8 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
+from metadata.ingestion.source.database.mongodb.metadata import MongodbSource
+
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -31,7 +33,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.database.mongodb.metadata import MongodbSource
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"

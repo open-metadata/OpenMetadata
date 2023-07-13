@@ -17,6 +17,16 @@ import traceback
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List
 
+from metadata.ingestion.api.source import InvalidSourceException, Source
+from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.ingestion.source.metadata.atlas.client import AtlasClient
+from metadata.utils import fqn
+from metadata.utils.helpers import get_database_name_for_lineage
+from metadata.utils.logger import ingestion_logger
+from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
+
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
@@ -42,16 +52,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException, Source
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.metadata.atlas.client import AtlasClient
-from metadata.utils import fqn
-from metadata.utils.helpers import get_database_name_for_lineage
-from metadata.utils.logger import ingestion_logger
-from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
 

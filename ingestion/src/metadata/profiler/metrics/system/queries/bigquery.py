@@ -14,9 +14,8 @@ Bigquery System Metric Queries
 """
 from datetime import datetime
 
-from pydantic import BaseModel
-
 from metadata.profiler.metrics.system.dml_operation import DatabaseDMLOperations
+from pydantic import BaseModel
 
 
 class BigQueryQueryResult(BaseModel):

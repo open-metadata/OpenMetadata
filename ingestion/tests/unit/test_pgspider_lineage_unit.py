@@ -18,6 +18,12 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
+from metadata.ingestion.source.database.postgres.lineage import PostgresLineageSource
+from metadata.ingestion.source.database.postgres.pgspider.lineage import (
+    get_lineage_from_multi_tenant_table,
+)
+from metadata.utils.logger import ingestion_logger
+
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -29,11 +35,6 @@ from metadata.generated.schema.type.entityLineage import (
     LineageDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.database.postgres.lineage import PostgresLineageSource
-from metadata.ingestion.source.database.postgres.pgspider.lineage import (
-    get_lineage_from_multi_tenant_table,
-)
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

@@ -15,6 +15,22 @@ Source connection handler
 from functools import partial
 from typing import Optional, Union
 
+from metadata.ingestion.connections.test_connections import (
+    test_connection_engine_step,
+    test_connection_steps,
+    test_query,
+)
+from metadata.ingestion.source.dashboard.superset.client import SupersetAPIClient
+from metadata.ingestion.source.dashboard.superset.queries import (
+    FETCH_ALL_CHARTS_TEST,
+    FETCH_DASHBOARDS_TEST,
+)
+from metadata.ingestion.source.database.mysql.connection import (
+    get_connection as mysql_get_connection,
+)
+from metadata.ingestion.source.database.postgres.connection import (
+    get_connection as pg_get_connection,
+)
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -32,23 +48,7 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
 from metadata.generated.schema.entity.utils.supersetApiConnection import (
     SupersetApiConnection,
 )
-from metadata.ingestion.connections.test_connections import (
-    test_connection_engine_step,
-    test_connection_steps,
-    test_query,
-)
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.dashboard.superset.client import SupersetAPIClient
-from metadata.ingestion.source.dashboard.superset.queries import (
-    FETCH_ALL_CHARTS_TEST,
-    FETCH_DASHBOARDS_TEST,
-)
-from metadata.ingestion.source.database.mysql.connection import (
-    get_connection as mysql_get_connection,
-)
-from metadata.ingestion.source.database.postgres.connection import (
-    get_connection as pg_get_connection,
-)
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: SupersetConnection) -> SupersetAPIClient:

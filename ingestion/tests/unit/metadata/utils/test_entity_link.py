@@ -14,7 +14,6 @@ test entity link utils
 """
 
 import pytest
-
 from metadata.utils.entity_link import get_decoded_column, get_table_or_column_fqn
 
 

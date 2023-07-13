@@ -18,9 +18,8 @@ from unittest import TestCase
 from unittest.mock import patch
 
 import boto3
-from moto import mock_kinesis
-
 from metadata.ingestion.api.workflow import Workflow
+from moto import mock_kinesis
 
 CONFIG = """
 {

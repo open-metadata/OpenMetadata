@@ -18,12 +18,6 @@ from collections import defaultdict
 from textwrap import dedent
 from typing import Dict, List, Optional
 
-from sqlalchemy import text
-from sqlalchemy.orm import DeclarativeMeta, Session
-
-from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
-    BigQueryConnection,
-)
 from metadata.profiler.metrics.core import SystemMetric
 from metadata.profiler.metrics.system.dml_operation import (
     DML_OPERATION_MAP,
@@ -49,6 +43,12 @@ from metadata.utils.dispatch import valuedispatch
 from metadata.utils.helpers import deep_size_of_dict
 from metadata.utils.logger import profiler_logger
 from metadata.utils.profiler_utils import get_value_from_cache, set_cache
+from sqlalchemy import text
+from sqlalchemy.orm import DeclarativeMeta, Session
+
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
 
 logger = profiler_logger()
 

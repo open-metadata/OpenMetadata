@@ -17,6 +17,14 @@ from copy import deepcopy
 from unittest.mock import patch
 
 import sqlalchemy as sqa
+from metadata.profiler.api.models import ProfilerProcessorConfig
+from metadata.profiler.api.workflow import ProfilerWorkflow
+from metadata.profiler.interface.profiler_interface import ProfilerInterface
+from metadata.profiler.interface.sqlalchemy.profiler_interface import (
+    SQAProfilerInterface,
+)
+from metadata.profiler.processor.default import DefaultProfiler
+from metadata.profiler.source.base.profiler_source import ProfilerSource
 from pytest import raises
 from sqlalchemy import MetaData
 from sqlalchemy.orm import declarative_base
@@ -39,14 +47,6 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
     DatabaseServiceProfilerPipeline,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.profiler.api.models import ProfilerProcessorConfig
-from metadata.profiler.api.workflow import ProfilerWorkflow
-from metadata.profiler.interface.profiler_interface import ProfilerInterface
-from metadata.profiler.interface.sqlalchemy.profiler_interface import (
-    SQAProfilerInterface,
-)
-from metadata.profiler.processor.default import DefaultProfiler
-from metadata.profiler.source.base.profiler_source import ProfilerSource
 
 TABLE = Table(
     id=uuid.uuid4(),

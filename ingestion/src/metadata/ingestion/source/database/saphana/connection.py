@@ -15,6 +15,16 @@ from functools import partial
 from typing import Callable, Dict, Optional
 from urllib.parse import quote_plus
 
+from metadata.ingestion.connections.builders import (
+    create_generic_db_connection,
+    get_connection_args_common,
+    get_connection_options_dict,
+)
+from metadata.ingestion.connections.test_connections import (
+    execute_inspector_func,
+    test_connection_engine_step,
+    test_connection_steps,
+)
 from sqlalchemy import inspect
 from sqlalchemy.engine import Engine
 
@@ -26,17 +36,7 @@ from metadata.generated.schema.entity.services.connections.database.sapHanaConne
     SapHanaConnection,
     SqlConnection,
 )
-from metadata.ingestion.connections.builders import (
-    create_generic_db_connection,
-    get_connection_args_common,
-    get_connection_options_dict,
-)
-from metadata.ingestion.connections.test_connections import (
-    execute_inspector_func,
-    test_connection_engine_step,
-    test_connection_steps,
-)
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_database_connection_url(connection: SapHanaConnection) -> str:

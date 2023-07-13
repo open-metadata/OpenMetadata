@@ -17,8 +17,6 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import lkml
-from pydantic import ValidationError
-
 from metadata.ingestion.source.dashboard.looker.models import (
     Includes,
     LkmlFile,
@@ -27,6 +25,7 @@ from metadata.ingestion.source.dashboard.looker.models import (
 )
 from metadata.readers.base import Reader, ReadException
 from metadata.utils.logger import ingestion_logger
+from pydantic import ValidationError
 
 logger = ingestion_logger()
 

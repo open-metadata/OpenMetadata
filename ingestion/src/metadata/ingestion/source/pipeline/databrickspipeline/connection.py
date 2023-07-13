@@ -15,15 +15,16 @@ Source connection handler
 
 from typing import Optional
 
+from metadata.ingestion.connections.test_connections import test_connection_steps
+from metadata.ingestion.source.database.databricks.client import DatabricksClient
+
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
     DatabricksPipelineConnection,
 )
-from metadata.ingestion.connections.test_connections import test_connection_steps
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.databricks.client import DatabricksClient
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: DatabricksPipelineConnection) -> DatabricksClient:

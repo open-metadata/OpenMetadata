@@ -16,12 +16,6 @@ from __future__ import annotations
 
 from typing import List
 
-from sqlalchemy import Column, text
-
-from metadata.generated.schema.entity.data.table import (
-    PartitionIntervalType,
-    PartitionProfilerConfig,
-)
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.utils.logger import profiler_logger
@@ -31,6 +25,12 @@ from metadata.utils.sqa_utils import (
     get_integer_range_filter,
     get_partition_col_type,
     get_value_filter,
+)
+from sqlalchemy import Column, text
+
+from metadata.generated.schema.entity.data.table import (
+    PartitionIntervalType,
+    PartitionProfilerConfig,
 )
 
 RANDOM_LABEL = "random"

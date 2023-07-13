@@ -13,6 +13,7 @@
 
 from typing import Optional
 
+from metadata.utils.partition import get_partition_details
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.table import (
@@ -26,7 +27,6 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
-from metadata.utils.partition import get_partition_details
 
 
 class MockTable(BaseModel):

@@ -17,6 +17,9 @@ from datetime import datetime
 from functools import partial
 from typing import Callable, List, Optional
 
+from metadata.profiler.orm.functions.conn_test import ConnTestFn
+from metadata.utils.logger import cli_logger
+from metadata.utils.timeout import timeout
 from pydantic import BaseModel
 from sqlalchemy.engine import Engine
 from sqlalchemy.inspection import inspect
@@ -36,10 +39,7 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
     TestConnectionResult,
     TestConnectionStepResult,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.orm.functions.conn_test import ConnTestFn
-from metadata.utils.logger import cli_logger
-from metadata.utils.timeout import timeout
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = cli_logger()
 

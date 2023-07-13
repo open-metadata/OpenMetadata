@@ -13,6 +13,12 @@
 import traceback
 from typing import Any, Iterable, List, Optional
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.ingestion.source.dashboard.quicksight.models import DataSourceResp
+from metadata.utils import fqn
+from metadata.utils.filters import filter_by_chart
+from metadata.utils.logger import ingestion_logger
 from pydantic import ValidationError
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
@@ -30,13 +36,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.dashboard.quicksight.models import DataSourceResp
-from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart
-from metadata.utils.logger import ingestion_logger
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
 

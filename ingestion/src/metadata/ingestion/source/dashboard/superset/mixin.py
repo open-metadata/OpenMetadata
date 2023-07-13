@@ -15,6 +15,11 @@ import json
 import traceback
 from typing import Iterable, List, Optional
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.utils import fqn
+from metadata.utils.logger import ingestion_logger
+
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as Lineage_Dashboard,
@@ -34,10 +39,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.utils import fqn
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

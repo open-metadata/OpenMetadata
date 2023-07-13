@@ -15,13 +15,14 @@ Useful for local testing without having OM up.
 import pathlib
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
+
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 
 logger = ingestion_logger()
 

@@ -18,10 +18,6 @@ from typing import List, Optional
 
 from dagster_graphql import DagsterGraphQLClient
 from gql.transport.requests import RequestsHTTPTransport
-
-from metadata.generated.schema.entity.services.connections.pipeline.dagsterConnection import (
-    DagsterConnection,
-)
 from metadata.ingestion.source.pipeline.dagster.models import (
     DagsterPipeline,
     GraphOrError,
@@ -36,9 +32,13 @@ from metadata.ingestion.source.pipeline.dagster.queries import (
     GRAPHQL_RUNS_QUERY,
 )
 from metadata.utils.helpers import clean_uri
-from metadata.utils.logger import ometa_logger
+from metadata.utils.logger import ingestion_logger
 
-logger = ometa_logger()
+from metadata.generated.schema.entity.services.connections.pipeline.dagsterConnection import (
+    DagsterConnection,
+)
+
+logger = ingestion_logger()
 
 
 class DagsterClient:

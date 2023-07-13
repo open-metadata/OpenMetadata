@@ -22,6 +22,14 @@ from typing import Any
 from avro.datafile import DataFileReader
 from avro.errors import InvalidAvroBinaryEncoding
 from avro.io import DatumReader
+from metadata.ingestion.source.database.datalake.models import DatalakeColumnWrapper
+from metadata.parsers.avro_parser import parse_avro_schema
+from metadata.utils.constants import UTF_8
+from metadata.utils.datalake.common import (
+    DatalakeFileFormatException,
+    dataframe_to_chunks,
+)
+from metadata.utils.logger import utils_logger
 
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
@@ -34,14 +42,6 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
     S3Config,
 )
 from metadata.generated.schema.type.schema import DataTypeTopic
-from metadata.ingestion.source.database.datalake.models import DatalakeColumnWrapper
-from metadata.parsers.avro_parser import parse_avro_schema
-from metadata.utils.constants import UTF_8
-from metadata.utils.datalake.common import (
-    DatalakeFileFormatException,
-    dataframe_to_chunks,
-)
-from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 

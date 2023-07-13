@@ -16,13 +16,16 @@ from functools import partial
 from typing import Any, Callable, Dict, Optional
 from urllib.parse import quote_plus
 
+from metadata.clients.aws_client import AWSClient
+from metadata.ingestion.connections.headers import inject_query_header_by_conn
+from metadata.ingestion.connections.secrets import connection_with_options_secrets
+from metadata.utils.constants import BUILDER_PASSWORD_ATTR
 from pydantic import SecretStr
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.event import listen
 from sqlalchemy.pool import QueuePool
 
-from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
     ConnectionOptions,
@@ -30,9 +33,6 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
 from metadata.generated.schema.entity.services.connections.database.common.iamAuthConfig import (
     IamAuthConfigurationSource,
 )
-from metadata.ingestion.connections.headers import inject_query_header_by_conn
-from metadata.ingestion.connections.secrets import connection_with_options_secrets
-from metadata.utils.constants import BUILDER_PASSWORD_ATTR
 
 
 @connection_with_options_secrets

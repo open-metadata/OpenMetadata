@@ -15,19 +15,6 @@ import traceback
 from typing import Optional, TypeVar, cast
 
 from metadata.config.common import WorkflowExecutionError
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.entity.services.connections.serviceConnection import (
-    ServiceConnection,
-)
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
-    PipelineState,
-)
-from metadata.generated.schema.entity.services.serviceType import ServiceType
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataWorkflowConfig,
-)
 from metadata.ingestion.api.bulk_sink import BulkSink
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import Processor
@@ -35,7 +22,6 @@ from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.stage import Stage
 from metadata.ingestion.models.custom_types import ServiceWithConnectionType
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.timer.repeated_timer import RepeatedTimer
 from metadata.timer.workflow_reporter import get_ingestion_status_timer
 from metadata.utils.class_helper import (
@@ -53,6 +39,21 @@ from metadata.utils.importer import (
 from metadata.utils.logger import ingestion_logger, set_loggers_level
 from metadata.utils.workflow_output_handler import print_status
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
+
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.connections.serviceConnection import (
+    ServiceConnection,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineState,
+)
+from metadata.generated.schema.entity.services.serviceType import ServiceType
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
 

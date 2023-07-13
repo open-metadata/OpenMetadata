@@ -16,15 +16,6 @@ from functools import partial
 from typing import Optional, Union
 
 from databricks.sdk import WorkspaceClient
-from sqlalchemy.engine import Engine
-from sqlalchemy.inspection import inspect
-
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
-)
-from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
-    DatabricksConnection,
-)
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
@@ -35,13 +26,22 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_steps,
     test_query,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.databricks.client import DatabricksClient
 from metadata.ingestion.source.database.databricks.models import DatabricksTable
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_CATALOGS,
 )
 from metadata.utils.db_utils import get_host_from_host_port
+from sqlalchemy.engine import Engine
+from sqlalchemy.inspection import inspect
+
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
+from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
+    DatabricksConnection,
+)
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection_url(connection: DatabricksConnection) -> str:

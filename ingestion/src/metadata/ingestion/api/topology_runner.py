@@ -15,8 +15,6 @@ generate the next_record based on their topology.
 import traceback
 from typing import Any, Generic, Iterable, List, TypeVar
 
-from pydantic import BaseModel
-
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -27,9 +25,11 @@ from metadata.ingestion.models.topology import (
     get_topology_node,
     get_topology_root,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
+from pydantic import BaseModel
+
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
 

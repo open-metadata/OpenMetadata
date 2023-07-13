@@ -19,6 +19,17 @@ from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
+from metadata.profiler.interface.sqlalchemy.profiler_interface import (
+    SQAProfilerInterface,
+)
+from metadata.profiler.metrics.core import (
+    ComposedMetric,
+    MetricTypes,
+    QueryMetric,
+    StaticMetric,
+)
+from metadata.profiler.metrics.static.row_count import RowCount
+from metadata.profiler.processor.default import get_default_metrics
 from sqlalchemy import TEXT, Column, Integer, String, inspect
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm.session import Session
@@ -38,17 +49,6 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
-from metadata.profiler.interface.sqlalchemy.profiler_interface import (
-    SQAProfilerInterface,
-)
-from metadata.profiler.metrics.core import (
-    ComposedMetric,
-    MetricTypes,
-    QueryMetric,
-    StaticMetric,
-)
-from metadata.profiler.metrics.static.row_count import RowCount
-from metadata.profiler.processor.default import get_default_metrics
 
 
 class User(declarative_base()):

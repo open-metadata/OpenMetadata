@@ -2,7 +2,6 @@ from os import walk
 from unittest import TestCase
 
 import yaml
-
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 
 try:

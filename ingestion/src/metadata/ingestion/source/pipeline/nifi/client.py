@@ -15,9 +15,8 @@ import traceback
 from typing import Any, Iterable, List, Optional
 
 import requests
-from requests import HTTPError
-
 from metadata.utils.logger import ingestion_logger
+from requests import HTTPError
 
 logger = ingestion_logger()
 

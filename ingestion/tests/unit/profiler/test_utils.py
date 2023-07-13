@@ -17,10 +17,6 @@ from datetime import datetime
 from unittest import TestCase
 
 import pytest
-from sqlalchemy import Column, create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy.sql.sqltypes import Integer, String
-
 from metadata.profiler.metrics.hybrid.histogram import Histogram
 from metadata.profiler.metrics.system.queries.snowflake import (
     get_snowflake_system_queries,
@@ -32,6 +28,9 @@ from metadata.utils.profiler_utils import (
     set_cache,
 )
 from metadata.utils.sqa_utils import handle_array, is_array
+from sqlalchemy import Column, create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.sql.sqltypes import Integer, String
 
 from .conftest import Row
 

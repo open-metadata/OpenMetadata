@@ -17,16 +17,17 @@ import traceback
 from typing import Optional, Union
 
 from metadata.config.common import ConfigModel
+from metadata.ingestion.api.common import Entity
+from metadata.ingestion.api.sink import Sink
+from metadata.utils.logger import data_insight_logger
+
 from metadata.generated.schema.analytics.reportData import ReportData
 from metadata.generated.schema.dataInsight.kpi.basic import KpiResult
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.sink import Sink
-from metadata.ingestion.ometa.client import APIError
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.logger import data_insight_logger
+from metadata.ometa.client import APIError
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = data_insight_logger()
 

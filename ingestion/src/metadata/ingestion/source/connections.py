@@ -15,9 +15,8 @@ for any source.
 """
 from typing import Any, Callable
 
-from pydantic import BaseModel
-
 from metadata.utils.importer import import_connection_fn
+from pydantic import BaseModel
 
 GET_CONNECTION_FN_NAME = "get_connection"
 TEST_CONNECTION_FN_NAME = "test_connection"

@@ -19,6 +19,8 @@ import uuid
 from pathlib import Path
 from unittest import TestCase
 
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
 # We need to patch the environment before importing Airflow
 # At module load it already inits the configurations.
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -49,7 +51,6 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.generated.schema.type.basic import Markdown
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 os.environ["AIRFLOW_HOME"] = "/tmp/airflow"
 os.environ[

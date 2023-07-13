@@ -15,12 +15,13 @@ Factory class for creating sampler objects
 
 from typing import Union
 
+from metadata.profiler.processor.sampler.pandas.sampler import DatalakeSampler
+from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
+
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
-from metadata.profiler.processor.sampler.pandas.sampler import DatalakeSampler
-from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
 
 
 class SamplerFactory:

@@ -15,9 +15,6 @@ Validator for column values to be unique test case
 
 from typing import Optional
 
-from sqlalchemy import Column, inspect
-from sqlalchemy.orm.util import AliasedClass
-
 from metadata.data_quality.validations.column.base.columnValuesToBeUnique import (
     BaseColumnValuesToBeUniqueValidator,
 )
@@ -25,6 +22,8 @@ from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
 from metadata.profiler.metrics.registry import Metrics
+from sqlalchemy import Column, inspect
+from sqlalchemy.orm.util import AliasedClass
 
 
 class ColumnValuesToBeUniqueValidator(

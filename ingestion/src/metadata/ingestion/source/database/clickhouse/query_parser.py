@@ -18,6 +18,10 @@ from abc import ABC
 from datetime import datetime
 from typing import List
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.database.query_parser_source import QueryParserSource
+from metadata.utils.logger import ingestion_logger
+
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
@@ -28,9 +32,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.query_parser_source import QueryParserSource
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

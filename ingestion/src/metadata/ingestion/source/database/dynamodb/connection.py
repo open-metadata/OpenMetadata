@@ -16,14 +16,15 @@ from functools import partial
 from typing import Optional
 
 from metadata.clients.aws_client import AWSClient
+from metadata.ingestion.connections.test_connections import test_connection_steps
+
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBConnection,
 )
-from metadata.ingestion.connections.test_connections import test_connection_steps
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: DynamoDBConnection):

@@ -15,9 +15,9 @@ from functools import singledispatch
 from typing import List, Sequence, Union, cast
 
 from looker_sdk.sdk.api40.models import LookmlModelExplore, LookmlModelExploreField
+from metadata.ingestion.source.dashboard.looker.models import LookMlField, LookMlView
 
 from metadata.generated.schema.entity.data.table import Column, DataType
-from metadata.ingestion.source.dashboard.looker.models import LookMlField, LookMlView
 
 # Some docs on types https://cloud.google.com/looker/docs/reference/param-dimension-filter-parameter-types
 LOOKER_TYPE_MAP = {

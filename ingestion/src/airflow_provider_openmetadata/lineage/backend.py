@@ -17,17 +17,17 @@ import traceback
 from typing import Dict, List, Optional
 
 from airflow.lineage.backend import LineageBackend
-
 from airflow_provider_openmetadata.lineage.config.loader import (
     AirflowLineageConfig,
     get_lineage_config,
 )
 from airflow_provider_openmetadata.lineage.runner import AirflowLineageRunner
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.airflow.lineage_parser import (
     XLets,
     get_xlets_from_dag,
 )
+
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 # pylint: disable=too-few-public-methods

@@ -15,6 +15,12 @@ Source connection handler
 from typing import Optional, Union
 from urllib.parse import quote_plus
 
+from metadata.ingestion.connections.builders import (
+    create_generic_db_connection,
+    get_connection_args_common,
+    get_connection_options_dict,
+)
+from metadata.ingestion.connections.test_connections import test_connection_db_common
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -26,13 +32,7 @@ from metadata.generated.schema.entity.services.connections.database.azureSQLConn
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
 )
-from metadata.ingestion.connections.builders import (
-    create_generic_db_connection,
-    get_connection_args_common,
-    get_connection_options_dict,
-)
-from metadata.ingestion.connections.test_connections import test_connection_db_common
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection_url(connection: Union[AzureSQLConnection, MssqlConnection]) -> str:

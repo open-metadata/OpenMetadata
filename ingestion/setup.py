@@ -80,6 +80,8 @@ pii_requirements = {
 }
 
 base_requirements = {
+    # Ingestion Core
+    "openmetadata-ingestion-core",
     "antlr4-python3-runtime==4.9.2",
     VERSIONS["avro"],  # Used in sample data
     VERSIONS["boto3"],  # Required in base for the secrets manager
@@ -99,7 +101,6 @@ base_requirements = {
     "jsonschema",
     "memory-profiler",
     "mypy_extensions>=0.4.3",
-    "pydantic~=1.10",
     VERSIONS["pymysql"],
     "python-dateutil>=2.8.1",
     "python-jose~=3.3",
@@ -113,7 +114,6 @@ base_requirements = {
     "typing-compat~=0.1.0",  # compatibility requirements for 3.7
     "typing_extensions<=4.5.0",  # We need to have this fixed due to a yanked release 4.6.0
     "typing-inspect",
-    "wheel~=0.38.4",
 }
 
 

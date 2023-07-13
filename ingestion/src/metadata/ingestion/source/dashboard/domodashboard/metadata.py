@@ -15,14 +15,20 @@ DomoDashboard source to extract metadata
 import traceback
 from typing import Any, Iterable, List, Optional
 
-from pydantic import ValidationError
-
 from metadata.clients.domo_client import (
     DomoChartDetails,
     DomoClient,
     DomoDashboardDetails,
     DomoOwner,
 )
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.utils import fqn
+from metadata.utils.filters import filter_by_chart
+from metadata.utils.helpers import get_standard_chart_type
+from metadata.utils.logger import ingestion_logger
+from pydantic import ValidationError
+
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -37,12 +43,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart
-from metadata.utils.helpers import get_standard_chart_type
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

@@ -19,8 +19,6 @@ from looker_sdk.sdk.api40.models import (
     LookmlModelExploreField,
     LookmlModelExploreFieldset,
 )
-
-from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType
 from metadata.ingestion.source.dashboard.looker.columns import get_columns_from_model
 from metadata.ingestion.source.dashboard.looker.links import get_path_from_link
 from metadata.ingestion.source.dashboard.looker.parser import (
@@ -29,6 +27,8 @@ from metadata.ingestion.source.dashboard.looker.parser import (
     ViewName,
 )
 from metadata.readers.local import LocalReader
+
+from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType
 
 BASE_PATH = Path(__file__).parent.parent.parent / "resources/lkml"
 

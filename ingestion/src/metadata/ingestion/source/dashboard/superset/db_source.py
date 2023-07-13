@@ -15,6 +15,18 @@ Superset source module
 import traceback
 from typing import Iterable, List, Optional
 
+from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
+from metadata.ingestion.source.dashboard.superset.queries import (
+    FETCH_ALL_CHARTS,
+    FETCH_DASHBOARDS,
+)
+from metadata.utils import fqn
+from metadata.utils.helpers import (
+    clean_uri,
+    get_database_name_for_lineage,
+    get_standard_chart_type,
+)
+from metadata.utils.logger import ingestion_logger
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.url import make_url
 
@@ -29,18 +41,6 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
-from metadata.ingestion.source.dashboard.superset.queries import (
-    FETCH_ALL_CHARTS,
-    FETCH_DASHBOARDS,
-)
-from metadata.utils import fqn
-from metadata.utils.helpers import (
-    clean_uri,
-    get_database_name_for_lineage,
-    get_standard_chart_type,
-)
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

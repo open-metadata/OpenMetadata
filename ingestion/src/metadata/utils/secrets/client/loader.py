@@ -15,6 +15,8 @@ to use in the client
 import os
 from typing import Optional
 
+from metadata.utils.dispatch import enum_register
+
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
     SecretsManagerClientLoader,
@@ -22,8 +24,7 @@ from metadata.generated.schema.security.secrets.secretsManagerClientLoader impor
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
-from metadata.ingestion.models.custom_pydantic import CustomSecretStr
-from metadata.utils.dispatch import enum_register
+from metadata.models.custom_pydantic import CustomSecretStr
 
 SECRET_MANAGER_AIRFLOW_CONF = "openmetadata_secrets_manager"
 

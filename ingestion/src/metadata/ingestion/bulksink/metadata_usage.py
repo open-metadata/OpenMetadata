@@ -25,9 +25,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
+from metadata.config.common import ConfigModel
+from metadata.ingestion.api.bulk_sink import BulkSink
+from metadata.ingestion.lineage.sql_lineage import (
+    get_column_fqn,
+    get_table_entities_from_query,
+)
+from metadata.utils import fqn
+from metadata.utils.constants import UTF_8
+from metadata.utils.logger import ingestion_logger
 from pydantic import ValidationError
 
-from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     ColumnJoins,
@@ -40,16 +48,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableUsageCount
 from metadata.generated.schema.type.usageRequest import UsageRequest
-from metadata.ingestion.api.bulk_sink import BulkSink
-from metadata.ingestion.lineage.sql_lineage import (
-    get_column_fqn,
-    get_table_entities_from_query,
-)
-from metadata.ingestion.ometa.client import APIError
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils import fqn
-from metadata.utils.constants import UTF_8
-from metadata.utils.logger import ingestion_logger
+from metadata.ometa.client import APIError
+from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
 

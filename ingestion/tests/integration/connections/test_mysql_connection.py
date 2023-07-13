@@ -14,6 +14,7 @@ MySQL connection test
 """
 from unittest import TestCase
 
+from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
@@ -22,7 +23,6 @@ from metadata.generated.schema.entity.services.connections.database.common.basic
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 
 
 class MySQLConnectionTest(TestCase):

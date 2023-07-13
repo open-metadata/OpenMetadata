@@ -17,6 +17,10 @@ Run profiler metrics on the table
 import traceback
 from typing import Callable, List, Optional, Tuple, cast
 
+from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.orm.registry import Dialects
+from metadata.profiler.processor.runner import QueryRunner
+from metadata.utils.logger import profiler_interface_registry_logger
 from sqlalchemy import Column, MetaData, Table, func, inspect, literal, select
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.sql.expression import ColumnOperators, and_, cte
@@ -25,10 +29,6 @@ from sqlalchemy.types import String
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
-from metadata.profiler.metrics.registry import Metrics
-from metadata.profiler.orm.registry import Dialects
-from metadata.profiler.processor.runner import QueryRunner
-from metadata.utils.logger import profiler_interface_registry_logger
 
 logger = profiler_interface_registry_logger()
 

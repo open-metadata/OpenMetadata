@@ -18,6 +18,17 @@ from datetime import datetime, timezone
 from unittest import TestCase, mock
 from uuid import uuid4
 
+from metadata.profiler.interface.pandas.profiler_interface import (
+    PandasProfilerInterface,
+)
+from metadata.profiler.metrics.core import (
+    ComposedMetric,
+    MetricTypes,
+    QueryMetric,
+    StaticMetric,
+)
+from metadata.profiler.metrics.static.row_count import RowCount
+from metadata.profiler.processor.default import get_default_metrics
 from sqlalchemy import TEXT, Column, Integer, String, inspect
 from sqlalchemy.orm import declarative_base
 
@@ -32,17 +43,6 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableProfile,
 )
-from metadata.profiler.interface.pandas.profiler_interface import (
-    PandasProfilerInterface,
-)
-from metadata.profiler.metrics.core import (
-    ComposedMetric,
-    MetricTypes,
-    QueryMetric,
-    StaticMetric,
-)
-from metadata.profiler.metrics.static.row_count import RowCount
-from metadata.profiler.processor.default import get_default_metrics
 
 
 class User(declarative_base()):

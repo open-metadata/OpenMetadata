@@ -14,6 +14,7 @@ Source connection handler
 """
 from typing import Optional
 
+from metadata.ingestion.connections.test_connections import test_connection_steps
 from mlflow.tracking import MlflowClient
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -22,8 +23,7 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
     MlflowConnection,
 )
-from metadata.ingestion.connections.test_connections import test_connection_steps
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: MlflowConnection) -> MlflowClient:

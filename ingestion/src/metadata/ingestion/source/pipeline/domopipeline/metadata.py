@@ -15,6 +15,10 @@ Domo Pipeline source to extract metadata
 import traceback
 from typing import Dict, Iterable, Optional
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.utils.logger import ingestion_logger
 from pydantic import ValidationError
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -34,10 +38,6 @@ from metadata.generated.schema.entity.services.connections.pipeline.domoPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

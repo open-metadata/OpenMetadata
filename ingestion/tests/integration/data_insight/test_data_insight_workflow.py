@@ -23,9 +23,10 @@ from time import sleep
 
 import pytest
 import requests
-
 from metadata.data_insight.api.workflow import DataInsightWorkflow
 from metadata.data_insight.helper.data_insight_es_index import DataInsightEsIndex
+from metadata.ingestion.api.parser import ParsingConfigurationError
+
 from metadata.generated.schema.analytics.basic import WebAnalyticEventType
 from metadata.generated.schema.analytics.reportData import ReportDataType
 from metadata.generated.schema.analytics.webAnalyticEventData import (
@@ -60,8 +61,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.parser import ParsingConfigurationError
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ometa.ometa_api import OpenMetadata
 
 data_insight_config = {
     "source": {

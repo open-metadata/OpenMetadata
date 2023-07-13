@@ -14,11 +14,10 @@ Regex Count Metric definition
 """
 # pylint: disable=duplicate-code
 
-from sqlalchemy import case, column, not_
-
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.sum import SumFn
 from metadata.profiler.orm.registry import is_concatenable
+from sqlalchemy import case, column, not_
 
 
 class NotRegexCount(StaticMetric):

@@ -15,9 +15,8 @@ Table Count Metric definition
 # pylint: disable=duplicate-code
 
 
-from sqlalchemy import func
-
 from metadata.profiler.metrics.core import StaticMetric, _label
+from sqlalchemy import func
 
 
 class RowCount(StaticMetric):

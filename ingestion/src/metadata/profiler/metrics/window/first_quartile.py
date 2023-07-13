@@ -16,13 +16,12 @@ First Quartile definition
 
 from typing import List, cast
 
-from sqlalchemy import column
-
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.functions.median import MedianFn
 from metadata.profiler.orm.registry import is_concatenable, is_quantifiable
 from metadata.utils.logger import profiler_logger
+from sqlalchemy import column
 
 logger = profiler_logger()
 

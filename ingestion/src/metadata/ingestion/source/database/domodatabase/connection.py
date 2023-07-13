@@ -15,6 +15,10 @@ Source connection handler
 
 from typing import Optional
 
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
+    test_connection_steps,
+)
 from pydomo import Domo
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -23,11 +27,7 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.domoDatabaseConnection import (
     DomoDatabaseConnection,
 )
-from metadata.ingestion.connections.test_connections import (
-    SourceConnectionException,
-    test_connection_steps,
-)
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: DomoDatabaseConnection) -> Domo:

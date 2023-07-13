@@ -16,12 +16,13 @@ import traceback
 from abc import ABC
 from typing import Iterable, Iterator, Optional
 
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils.logger import ingestion_logger
+
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.type.tableQuery import TableQuery
 
 logger = ingestion_logger()
 

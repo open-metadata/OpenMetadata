@@ -14,16 +14,17 @@ Source connection handler
 """
 from typing import Optional
 
+from metadata.ingestion.connections.test_connections import test_connection_steps
+from metadata.ingestion.source.pipeline.dagster.client import DagsterClient
+from metadata.ingestion.source.pipeline.dagster.queries import TEST_QUERY_GRAPHQL
+
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.dagsterConnection import (
     DagsterConnection,
 )
-from metadata.ingestion.connections.test_connections import test_connection_steps
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.pipeline.dagster.client import DagsterClient
-from metadata.ingestion.source.pipeline.dagster.queries import TEST_QUERY_GRAPHQL
+from metadata.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: DagsterConnection) -> DagsterClient:

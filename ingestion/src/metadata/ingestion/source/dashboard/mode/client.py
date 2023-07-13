@@ -15,10 +15,10 @@ import traceback
 from base64 import b64encode
 from typing import Optional
 
+from metadata.utils.logger import utils_logger
 from requests._internal_utils import to_native_string
 
-from metadata.ingestion.ometa.client import REST, ClientConfig
-from metadata.utils.logger import utils_logger
+from metadata.ometa.client import REST, ClientConfig
 
 logger = utils_logger()
 

@@ -20,7 +20,6 @@ except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
 from airflow.utils.dates import days_ago
-
 from metadata.ingestion.api.workflow import Workflow
 
 default_args = {

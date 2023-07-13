@@ -19,6 +19,8 @@ from typing import Callable
 
 import airflow
 from airflow import DAG
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.fqn import split
 from openmetadata_managed_apis.api.utils import clean_dag_id
 from pydantic import ValidationError
 from requests.utils import quote
@@ -33,15 +35,19 @@ from metadata.generated.schema.entity.services.storageService import StorageServ
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuitePipeline,
 )
-from metadata.ingestion.models.encoders import show_secrets_encoder
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.fqn import split
+from metadata.models.encoders import show_secrets_encoder
 
 try:
     from airflow.operators.python import PythonOperator
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
+from metadata.ingestion.api.parser import (
+    InvalidWorkflowException,
+    ParsingConfigurationError,
+)
+from metadata.ingestion.api.workflow import Workflow
+from metadata.ingestion.ometa.utils import model_str
 from openmetadata_managed_apis.utils.logger import set_operator_logger, workflow_logger
 from openmetadata_managed_apis.utils.parser import (
     parse_service_connection,
@@ -60,12 +66,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
-from metadata.ingestion.api.parser import (
-    InvalidWorkflowException,
-    ParsingConfigurationError,
-)
-from metadata.ingestion.api.workflow import Workflow
-from metadata.ingestion.ometa.utils import model_str
 
 logger = workflow_logger()
 

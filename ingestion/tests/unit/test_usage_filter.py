@@ -18,6 +18,7 @@ from typing import Dict, List, Optional, Type, TypeVar
 from unittest import TestCase
 from unittest.mock import patch
 
+from metadata.ingestion.source.database.clickhouse.usage import ClickhouseUsageSource
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.database import Database
@@ -26,8 +27,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.clickhouse.usage import ClickhouseUsageSource
+from metadata.ometa.ometa_api import OpenMetadata
 
 T = TypeVar("T", bound=BaseModel)
 

@@ -7,6 +7,7 @@ help:
 
 .PHONY: install
 install:  ## Install the ingestion module to the current environment
+	python -m pip install ingestion-core/
 	python -m pip install ingestion/
 
 .PHONY: install_apis
@@ -33,28 +34,29 @@ precommit_install:  ## Install the project's precommit hooks from .pre-commit-co
 
 .PHONY: lint
 lint: ## Run pylint on the Python sources to analyze the codebase
-	PYTHONPATH="${PYTHONPATH}:./ingestion/plugins" find $(PY_SOURCE) -path $(PY_SOURCE)/metadata/generated -prune -false -o -type f -name "*.py" | xargs pylint
+	PYTHONPATH="${PYTHONPATH}:./ingestion/plugins" find $(PY_SOURCE) -prune -false -o -type f -name "*.py" | xargs pylint
+	PYTHONPATH="${PYTHONPATH}:./ingestion/plugins" find ingestion-core/ -path ingestion-core/metadata/generated -prune -false -o -type f -name "*.py" | xargs pylint
 
 .PHONY: py_format
 py_format:  ## Run black and isort to format the Python codebase
-	pycln ingestion/ openmetadata-airflow-apis/ --extend-exclude $(PY_SOURCE)/metadata/generated
-	isort ingestion/ openmetadata-airflow-apis/ --skip $(PY_SOURCE)/metadata/generated --skip ingestion/env --skip ingestion/build --skip openmetadata-airflow-apis/build --profile black --multi-line 3
-	black ingestion/ openmetadata-airflow-apis/ --extend-exclude $(PY_SOURCE)/metadata/generated
+	pycln ingestion-core/ ingestion/ openmetadata-airflow-apis/ --extend-exclude ingestion-core/metadata/generated
+	isort ingestion-core/ ingestion/ openmetadata-airflow-apis/ --skip ingestion-core/metadata/generated --skip ingestion/env --skip ingestion/build --skip openmetadata-airflow-apis/build --profile black --multi-line 3
+	black ingestion-core/ ingestion/ openmetadata-airflow-apis/ --extend-exclude ingestion-core/metadata/generated
 
 .PHONY: py_format_check
 py_format_check:  ## Check if Python sources are correctly formatted
-	pycln ingestion/ openmetadata-airflow-apis/ --diff --extend-exclude $(PY_SOURCE)/metadata/generated
-	isort --check-only ingestion/ openmetadata-airflow-apis/ --skip $(PY_SOURCE)/metadata/generated --skip ingestion/build --profile black --multi-line 3
-	black --check --diff ingestion/ openmetadata-airflow-apis/  --extend-exclude $(PY_SOURCE)/metadata/generated
-	PYTHONPATH="${PYTHONPATH}:./ingestion/plugins" pylint --fail-under=10 $(PY_SOURCE)/metadata --ignore-paths $(PY_SOURCE)/metadata/generated || (echo "PyLint error code $$?"; exit 1)
+	pycln ingestion-core/ ingestion/ openmetadata-airflow-apis/ --diff --extend-exclude ingestion-core/metadata/generated
+	isort --check-only ingestion-core/ ingestion/ openmetadata-airflow-apis/ --skip ingestion-core/metadata/generated --skip ingestion/build --profile black --multi-line 3
+	black --check --diff ingestion-core/ ingestion/ openmetadata-airflow-apis/  --extend-exclude ingestion-core/metadata/generated
+	PYTHONPATH="${PYTHONPATH}:./ingestion/plugins" pylint --fail-under=10 $(PY_SOURCE)/metadata --ignore-paths ingestion-core/metadata/generated || (echo "PyLint error code $$?"; exit 1)
 
 ## Ingestion models generation
 .PHONY: generate
 generate:  ## Generate the pydantic models from the JSON Schemas to the ingestion module
 	@echo "Running Datamodel Code Generator"
 	@echo "Make sure to first run the install_dev recipe"
-	rm -rf ingestion/src/metadata/generated
-	mkdir -p ingestion/src/metadata/generated
+	rm -rf ingestion-core/metadata/generated
+	mkdir -p ingestion-core/metadata/generated
 	python scripts/datamodel_generation.py
 	$(MAKE) py_antlr js_antlr
 	$(MAKE) install
@@ -62,7 +64,7 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
-	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/orm_profiler ingestion/tests/integration/test_suite ingestion/tests/integration/data_insight ingestion/tests/integration/lineage
+	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion-core/tests/integration/ometa ingestion/tests/integration/orm_profiler ingestion/tests/integration/test_suite ingestion/tests/integration/data_insight ingestion/tests/integration/lineage
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
@@ -122,36 +124,6 @@ yarn_install_cache:  ## Use Yarn to install UI dependencies
 yarn_start_dev_ui:  ## Run the UI locally with Yarn
 	cd openmetadata-ui/src/main/resources/ui && yarn start
 
-## Ingestion Core
-.PHONY: core_install_dev
-core_install_dev:  ## Prepare a venv for the ingestion-core module
-	cd ingestion-core; \
-		rm -rf venv; \
-		python3 -m venv venv; \
-		. venv/bin/activate; \
-		python3 -m pip install ".[dev]"
-
-.PHONY: core_clean
-core_clean:  ## Clean the ingestion-core generated files
-	rm -rf ingestion-core/src/metadata/generated
-	rm -rf ingestion-core/build
-	rm -rf ingestion-core/dist
-
-.PHONY: core_generate
-core_generate:  ## Generate the pydantic models from the JSON Schemas to the ingestion-core module
-	$(MAKE) core_install_dev
-	mkdir -p ingestion-core/src/metadata/generated; \
-	. ingestion-core/venv/bin/activate; \
-	datamodel-codegen --input openmetadata-spec/src/main/resources/json/schema  --input-file-type jsonschema --output ingestion-core/src/metadata/generated/schema
-	$(MAKE) core_py_antlr
-
-.PHONY: core_bump_version_dev
-core_bump_version_dev:  ## Bump a `dev` version to the ingestion-core module. To be used when schemas are updated
-	$(MAKE) core_install_dev
-	cd ingestion-core; \
-		. venv/bin/activate; \
-		python -m incremental.update metadata --dev
-
 .PHONY: core_publish
 core_publish:  ## Install, generate and publish the ingestion-core module to Test PyPI
 	$(MAKE) core_clean core_generate
@@ -161,13 +133,9 @@ core_publish:  ## Install, generate and publish the ingestion-core module to Tes
 		twine check dist/*; \
 		twine upload -r testpypi dist/*
 
-.PHONY: core_py_antlr
-core_py_antlr:  ## Generate the Python core code for parsing FQNs under ingestion-core
-	antlr4 -Dlanguage=Python3 -o ingestion-core/src/metadata/generated/antlr ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
-
 .PHONY: py_antlr
 py_antlr:  ## Generate the Python code for parsing FQNs
-	antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
+	antlr4 -Dlanguage=Python3 -o ingestion-core/metadata/generated/antlr ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
 
 .PHONY: js_antlr
 js_antlr:  ## Generate the Python code for parsing FQNs

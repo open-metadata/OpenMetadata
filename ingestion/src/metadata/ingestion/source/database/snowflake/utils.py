@@ -14,12 +14,6 @@ Module to define overriden dialect methods
 """
 
 import sqlalchemy.types as sqltypes
-from sqlalchemy import exc as sa_exc
-from sqlalchemy import util as sa_util
-from sqlalchemy.engine import reflection
-from sqlalchemy.sql import text
-from sqlalchemy.types import FLOAT
-
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_COMMENTS,
     SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES,
@@ -32,6 +26,11 @@ from metadata.utils.sqlalchemy_utils import (
     get_display_datatype,
     get_table_comment_wrapper,
 )
+from sqlalchemy import exc as sa_exc
+from sqlalchemy import util as sa_util
+from sqlalchemy.engine import reflection
+from sqlalchemy.sql import text
+from sqlalchemy.types import FLOAT
 
 
 def get_table_names_reflection(self, schema=None, **kw):
