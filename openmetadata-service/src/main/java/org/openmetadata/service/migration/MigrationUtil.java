@@ -136,10 +136,17 @@ public class MigrationUtil {
       for (String json : jsons) {
         // Update the Statements to Database
         T entity = JsonUtils.readValue(json, clazz);
-        String hash =
-            withName
-                ? FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getFullyQualifiedName()))
-                : FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
+        String hash = "";
+        try {
+          hash =
+              withName
+                  ? FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getFullyQualifiedName()))
+                  : FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
+        } catch (Exception ex) {
+          LOG.error("Failed in creating FQN Hash for Entity Name : {}", entity.getFullyQualifiedName(), ex);
+          // Continue to update further jsons
+          continue;
+        }
         upsertBatch.bind("nameHashColumnValue", hash).bind("id", entity.getId().toString()).add();
       }
       upsertBatch.execute();
@@ -251,11 +258,21 @@ public class MigrationUtil {
       for (CollectionDAO.FieldRelationshipDAO.FieldRelationship fieldRelationship : fieldRelationships) {
         if (CommonUtil.nullOrEmpty(fieldRelationship.getFromFQNHash())
             && CommonUtil.nullOrEmpty(fieldRelationship.getToFQNHash())) {
+          String fromFQNHash = "";
+          String toFQNHash = "";
+          try {
+            fromFQNHash = FullyQualifiedName.buildHash(fieldRelationship.getFromFQN());
+            toFQNHash = FullyQualifiedName.buildHash(fieldRelationship.getToFQN());
+          } catch (Exception ex) {
+            LOG.error("Failed in creating FromFQNHash : {} , toFQNHash : {}", fromFQNHash, toFQNHash, ex);
+            // Update further rows
+            continue;
+          }
           collectionDAO
               .fieldRelationshipDAO()
               .upsertFQNHash(
-                  FullyQualifiedName.buildHash(fieldRelationship.getFromFQN()),
-                  FullyQualifiedName.buildHash(fieldRelationship.getToFQN()),
+                  fromFQNHash,
+                  toFQNHash,
                   fieldRelationship.getFromFQN(),
                   fieldRelationship.getToFQN(),
                   fieldRelationship.getFromType(),
@@ -283,8 +300,16 @@ public class MigrationUtil {
 
       for (CollectionDAO.EntityExtensionTimeSeriesDAO.EntityExtensionTimeSeriesTable timeSeries : timeSeriesTables) {
         if (CommonUtil.nullOrEmpty(timeSeries.getEntityFQNHash())) {
+          String entityFQN = "";
+          try {
+            entityFQN = FullyQualifiedName.buildHash(timeSeries.getEntityFQN());
+          } catch (Exception ex) {
+            LOG.error("Failed in creating EntityFQN : {}", entityFQN, ex);
+            // Update further rows
+            continue;
+          }
           upsertBatch
-              .bind("entityFQNHash", FullyQualifiedName.buildHash(timeSeries.getEntityFQN()))
+              .bind("entityFQNHash", entityFQN)
               .bind("entityFQN", timeSeries.getEntityFQN())
               .bind("extension", timeSeries.getExtension())
               .bind("timestamp", timeSeries.getTimestamp())
@@ -302,13 +327,23 @@ public class MigrationUtil {
     List<CollectionDAO.TagUsageDAO.TagLabelMigration> tagLabelMigrationList = collectionDAO.tagUsageDAO().listAll();
     for (CollectionDAO.TagUsageDAO.TagLabelMigration tagLabel : tagLabelMigrationList) {
       if (CommonUtil.nullOrEmpty(tagLabel.getTagFQNHash()) && CommonUtil.nullOrEmpty(tagLabel.getTargetFQNHash())) {
+        String tagFQNHash = "";
+        String targetFQNHash = "";
+        try {
+          tagFQNHash = FullyQualifiedName.buildHash(tagLabel.getTagFQN());
+          targetFQNHash = FullyQualifiedName.buildHash(tagLabel.getTargetFQN());
+        } catch (Exception ex) {
+          LOG.error("Failed in creating tagFQNHash : {}, targetFQNHash: {}", tagFQNHash, targetFQNHash, ex);
+          // Update further rows
+          continue;
+        }
         collectionDAO
             .tagUsageDAO()
             .upsertFQNHash(
                 tagLabel.getSource(),
                 tagLabel.getTagFQN(),
-                FullyQualifiedName.buildHash(tagLabel.getTagFQN()),
-                FullyQualifiedName.buildHash(tagLabel.getTargetFQN()),
+                tagFQNHash,
+                targetFQNHash,
                 tagLabel.getLabelType(),
                 tagLabel.getState(),
                 tagLabel.getTargetFQN());
