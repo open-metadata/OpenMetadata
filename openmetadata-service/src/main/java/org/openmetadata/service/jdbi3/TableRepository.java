@@ -695,16 +695,29 @@ public class TableRepository extends EntityRepository<Table> {
   public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) throws IOException {
     validateEntityLinkFieldExists(entityLink, task.getType());
     if (entityLink.getFieldName().equals("columns")) {
+      String columnName = entityLink.getArrayFieldName();
+      String childrenName = "";
+      if (entityLink.getArrayFieldName().contains(".")) {
+        String fieldNameWithoutQuotes =
+            entityLink.getArrayFieldName().substring(1, entityLink.getArrayFieldName().length() - 1);
+        columnName = fieldNameWithoutQuotes.substring(0, fieldNameWithoutQuotes.indexOf("."));
+        childrenName = fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
+      }
       Table table = getByName(null, entityLink.getEntityFQN(), getFields("columns,tags"), Include.ALL);
-      Column column =
-          table.getColumns().stream()
-              .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
-              .findFirst()
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          CatalogExceptionMessage.invalidFieldName("column", entityLink.getArrayFieldName())));
-
+      Column column = null;
+      for (Column c : table.getColumns()) {
+        if (c.getName().equals(columnName)) {
+          column = c;
+          break;
+        }
+      }
+      if (childrenName != "" && column != null) {
+        column = getChildrenColumn(column.getChildren(), childrenName);
+      }
+      if (column == null) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.invalidFieldName("column", entityLink.getArrayFieldName()));
+      }
       String origJson = JsonUtils.pojoToJson(table);
       if (EntityUtil.isDescriptionTask(task.getType())) {
         column.setDescription(newValue);
@@ -718,6 +731,27 @@ public class TableRepository extends EntityRepository<Table> {
       return;
     }
     super.update(task, entityLink, newValue, user);
+  }
+
+  private static Column getChildrenColumn(List<Column> column, String childrenName) {
+    Column childrenColumn = null;
+    for (Column col : column) {
+      if (col.getName().equals(childrenName)) {
+        childrenColumn = col;
+        break;
+      }
+    }
+    if (childrenColumn == null) {
+      for (int i = 0; i < column.size(); i++) {
+        if (column.get(i).getChildren() != null) {
+          childrenColumn = getChildrenColumn(column.get(i).getChildren(), childrenName);
+          if (childrenColumn != null) {
+            break;
+          }
+        }
+      }
+    }
+    return childrenColumn;
   }
 
   private void getColumnTags(boolean setTags, List<Column> columns) {
