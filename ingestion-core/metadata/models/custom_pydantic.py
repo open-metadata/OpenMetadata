@@ -15,11 +15,10 @@ Pydantic classes overwritten defaults ones of code generation
 import warnings
 from typing import Any, Dict
 
+from metadata.utils.logger import ingestion_logger
 from pydantic.types import OptionalInt, SecretStr
 from pydantic.utils import update_not_none
 from pydantic.validators import constr_length_validator, str_validator
-
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

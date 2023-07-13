@@ -21,10 +21,9 @@ from typing import Generic, List, Optional, Type, TypeVar, Union
 from pydantic import BaseModel
 
 from metadata.generated.schema.type import basic
-from metadata.utils.logger import ometa_logger
+from metadata.ometa.logger import logger
 
 T = TypeVar("T", bound=BaseModel)
-logger = ometa_logger()
 
 
 class PatchField(str, Enum):

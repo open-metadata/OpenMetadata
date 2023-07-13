@@ -18,9 +18,6 @@ from pydantic import BaseModel
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.utils.logger import ometa_logger
-
-logger = ometa_logger()
 
 # The naming convention is T for Entity Types and C for Create Types
 C = TypeVar("C", bound=BaseModel)

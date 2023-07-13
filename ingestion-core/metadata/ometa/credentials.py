@@ -18,11 +18,7 @@ from typing import Tuple
 
 import dateutil.parser
 
-from metadata.utils.logger import ometa_logger
-
 Credentials = Tuple[str, str, str]
-
-logger = ometa_logger()
 
 
 class URL(str):
