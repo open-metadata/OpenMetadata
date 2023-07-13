@@ -32,27 +32,60 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseCo
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
+from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import get_connection
 from metadata.profiler.api.models import ProfileSampleConfig, TableConfig
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.partition import get_partition_details
 
 
-class ProfilerProtocol(ABC):
+class ProfilerInterface(ABC):
     """Protocol interface for the profiler processor"""
 
-    _profiler_type: Optional[str] = None
-    subclasses = {}
+    # pylint: disable=too-many-arguments,unused-argument
+    def __init__(
+        self,
+        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
+        ometa_client: OpenMetadata,
+        entity: Table,
+        profile_sample_config: Optional[ProfileSampleConfig],
+        source_config: DatabaseServiceProfilerPipeline,
+        sample_query: Optional[str],
+        table_partition_config: Optional[PartitionProfilerConfig],
+        thread_count: int = 5,
+        timeout_seconds: int = 43200,
+        **kwargs,
+    ):
+        """Required attribute for the interface"""
+        self._thread_count = thread_count
+        self.table_entity = entity
+        self.ometa_client = ometa_client
+        self.source_config = source_config
+        self.service_connection_config = service_connection_config
+        self.connection = get_connection(self.service_connection_config)
+        self.processor_status = ProfilerProcessorStatus()
+        try:
+            fqn = self.table_entity.fullyQualifiedName
+        except AttributeError:
+            self.processor_status.entity = None
+        else:
+            self.processor_status.entity = fqn.__root__ if fqn else None
+        self.profile_sample_config = profile_sample_config
+        self.profile_query = sample_query
+        self.partition_details = (
+            table_partition_config if not self.profile_query else None
+        )
+        self.timeout_seconds = timeout_seconds
 
-    def __init_subclass__(cls, *args, **kwargs) -> None:
-        """Hook to map subclass objects to profiler type"""
-        super().__init_subclass__(*args, **kwargs)
-        cls.subclasses[cls._profiler_type] = cls
+    @abstractmethod
+    def _get_sampler(self):
+        """Get the sampler"""
+        raise NotImplementedError
 
     @classmethod
     def create(
         cls,
-        _profiler_type: str,
         entity: Table,
         entity_config: Optional[TableConfig],
         source_config: DatabaseServiceProfilerPipeline,
@@ -77,11 +110,6 @@ class ProfilerProtocol(ABC):
         Returns:
 
         """
-        if _profiler_type not in cls.subclasses:
-            raise NotImplementedError(
-                f"We could not find the profiler that satisfies the type {_profiler_type}"
-            )
-
         thread_count = source_config.threadCount
         timeout_seconds = source_config.timeoutSeconds
 
@@ -96,15 +124,15 @@ class ProfilerProtocol(ABC):
             profile_sample_config = None
             table_partition_config = None
 
-        return cls.subclasses[_profiler_type](
+        return cls(
             service_connection_config=service_connection_config,
             ometa_client=ometa_client,
-            thread_count=thread_count,
             entity=entity,
-            source_config=source_config,
             profile_sample_config=profile_sample_config,
+            source_config=source_config,
             sample_query=sample_query,
             table_partition_config=table_partition_config,
+            thread_count=thread_count,
             timeout_seconds=timeout_seconds,
             **kwargs,
         )
@@ -186,15 +214,6 @@ class ProfilerProtocol(ABC):
             return entity_config.partitionConfig
 
         return get_partition_details(entity)
-
-    @abstractmethod
-    def __init__(
-        self,
-        ometa_client: OpenMetadata,
-        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
-    ):
-        """Required attribute for the interface"""
-        raise NotImplementedError
 
     @property
     @abstractmethod

@@ -1014,9 +1014,12 @@ export const updateOwner = () => {
       cy.get('[data-testid="hiden-layer"]').should('exist').click();
       interceptURL('GET', '/api/v1/users?limit=15', 'getUsers');
       // Clicking on edit owner button
-      cy.get('[data-testid="add-user"]').should('be.visible').click();
+      cy.get('[data-testid="edit-owner"]').should('be.visible').click();
+
+      cy.get('.user-team-select-popover').contains('Users').click();
 
       cy.get('[data-testid="selectable-list"]')
+        .eq(1)
         .find(`[title="${text.trim()}"]`)
         .click();
 

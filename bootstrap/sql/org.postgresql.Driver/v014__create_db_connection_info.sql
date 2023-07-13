@@ -21,3 +21,7 @@ CREATE TABLE IF NOT EXISTS data_product_entity (
     PRIMARY KEY (id),
     UNIQUE (fqnHash)
 );
+
+update dbservice_entity
+set json = jsonb_set(json::jsonb, '{connection,config,scheme}', '"hive"')
+where json#>>'{connection,config,scheme}' in ('impala', 'impala4');

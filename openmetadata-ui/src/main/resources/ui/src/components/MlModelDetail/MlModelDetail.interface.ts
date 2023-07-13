@@ -18,6 +18,7 @@ import { Mlmodel } from '../../generated/entity/data/mlmodel';
 export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   mlModelDetail: Mlmodel;
   version?: string;
+  fetchMlModel: () => void;
   followMlModelHandler: () => Promise<void>;
   unFollowMlModelHandler: () => Promise<void>;
   descriptionUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;

@@ -14,7 +14,7 @@ Converter logic to transform an OpenMetadata Table Entity
 to an SQLAlchemy ORM class.
 """
 
-from typing import List, Optional, cast
+from typing import Optional, cast
 
 import sqlalchemy
 from sqlalchemy import MetaData
@@ -123,14 +123,7 @@ def check_if_should_quote_column_name(table_service_type) -> Optional[bool]:
     return None
 
 
-def build_orm_col(
-    idx: int,
-    col: Column,
-    table_service_type,
-    parent: Optional[str] = None,
-    is_array: bool = False,
-    array_col: Optional[str] = None,
-) -> sqlalchemy.Column:
+def build_orm_col(idx: int, col: Column, table_service_type) -> sqlalchemy.Column:
     """
     Cook the ORM column from our metadata instance
     information.
@@ -142,101 +135,17 @@ def build_orm_col(
     As this is only used for INSERT/UPDATE/DELETE,
     there is no impact for our read-only purposes.
     """
-    if parent:
-        name = f"{parent}.{col.name.__root__}"
-    else:
-        name = col.name.__root__
 
-    kwargs = {
-        "name": str(name),
-        "type_": map_types(col, table_service_type),
-        "primary_key": not bool(idx),  # The first col seen is used as PK
-        "quote": check_if_should_quote_column_name(table_service_type)
+    return sqlalchemy.Column(
+        name=str(col.name.__root__),
+        type_=map_types(col, table_service_type),
+        primary_key=not bool(idx),  # The first col seen is used as PK
+        quote=check_if_should_quote_column_name(table_service_type)
         or check_snowflake_case_sensitive(table_service_type, col.name.__root__),
-        "key": str(
-            name
+        key=str(
+            col.name.__root__
         ).lower(),  # Add lowercase column name as key for snowflake case sensitive columns
-    }
-
-    # pylint: disable=protected-access
-    if table_service_type == databaseService.DatabaseServiceType.BigQuery and is_array:
-        if array_col:
-            # If array_col is set, then we are in a nested structure processing
-            # children. We'll need to force the name to be formatted this way
-            # `<unnest_alias>`.`<column_name>`
-            kwargs.update(
-                {
-                    "name": f"`{array_col if array_col else name}`.{col.name.__root__}",
-                    "quote": False,
-                }
-            )
-        sqa_column = sqlalchemy.Column(
-            **kwargs,
-        )
-        sqa_column._is_array = is_array
-        sqa_column._array_col = array_col if array_col else name
-
-    else:
-        sqa_column = sqlalchemy.Column(
-            **kwargs,
-        )
-        sqa_column._is_array = False
-        sqa_column._array_col = None
-    # pylint: enable=protected-access
-
-    return sqa_column
-
-
-def get_columns(
-    column_list: List[Column],
-    service_type: databaseService.DatabaseServiceType,
-    start: int = 0,
-    parent: Optional[str] = None,
-    is_array: bool = False,
-    array_col: Optional[str] = None,
-) -> dict:
-    """Build dictionnary of ORM columns
-
-    Args:
-        column_list (List[Column]): list of columns
-        service_type (DatabaseServiceType): database service type
-        start (int): index of the column used to define the primary key
-        parent_name (str): parent column name
-        parent_col (Column): parent column object
-    """
-    cols = {}
-
-    for idx, col in enumerate(column_list, start=start):
-        if parent:
-            name = f"{parent}.{col.name.__root__}"
-        else:
-            name = col.name.__root__
-        if name in SQA_RESERVED_ATTRIBUTES:
-            name = f"{name}_"
-
-        if col.dataType == DataType.ARRAY or is_array:
-            cols[name] = build_orm_col(idx, col, service_type, parent, True, array_col)
-        else:
-            cols[name] = build_orm_col(idx, col, service_type, parent, False)
-
-        if col.children:
-            # if parent is an array we'll need to process the children as array
-            # by unnesting them
-            cols = {
-                **cols,
-                **get_columns(
-                    col.children,
-                    service_type,
-                    start=idx,
-                    parent=name,
-                    is_array=bool(is_array or col.dataType == DataType.ARRAY),
-                    array_col=name
-                    if is_array or col.dataType == DataType.ARRAY
-                    else None,
-                ),
-            }
-
-    return cols
+    )
 
 
 def ometa_to_sqa_orm(
@@ -255,7 +164,14 @@ def ometa_to_sqa_orm(
     table.serviceType = cast(
         databaseService.DatabaseServiceType, table.serviceType
     )  # satisfy mypy
-    cols = get_columns(table.columns, table.serviceType)
+    cols = {
+        (
+            col.name.__root__ + "_"
+            if col.name.__root__ in SQA_RESERVED_ATTRIBUTES
+            else col.name.__root__
+        ): build_orm_col(idx, col, table.serviceType)
+        for idx, col in enumerate(table.columns)
+    }
 
     orm_database_name = get_orm_database(table, metadata)
     orm_schema_name = get_orm_schema(table, metadata)

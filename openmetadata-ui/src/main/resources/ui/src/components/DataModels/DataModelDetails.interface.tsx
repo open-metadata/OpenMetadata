@@ -21,6 +21,7 @@ import { EntityTags } from 'Models';
 export interface DataModelDetailsProps {
   dataModelData: DashboardDataModel;
   dataModelPermissions: OperationPermission;
+  fetchDataModel: () => void;
   createThread: (data: CreateThread) => void;
   handleFollowDataModel: () => Promise<void>;
   handleUpdateTags: (selectedTags?: EntityTags[]) => void;

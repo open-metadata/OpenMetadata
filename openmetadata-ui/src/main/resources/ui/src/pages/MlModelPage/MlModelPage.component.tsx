@@ -291,6 +291,7 @@ const MlModelPage = () => {
     <MlModelDetailComponent
       createThread={createThread}
       descriptionUpdateHandler={descriptionUpdateHandler}
+      fetchMlModel={() => fetchMlModelDetails(mlModelFqn)}
       followMlModelHandler={followMlModel}
       mlModelDetail={mlModelDetail}
       settingsUpdateHandler={settingsUpdateHandler}

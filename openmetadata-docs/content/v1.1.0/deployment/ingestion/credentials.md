@@ -150,6 +150,61 @@ IAM & Admin > Service Accounts > Keys
 
 You can validate the whole Google service account setup [here](/deployment/security/google).
 
+### Using GitHub Actions Secrets
+
+If running the ingestion in a GitHub Action, you can create [encrypted secrets](https://docs.github.com/en/actions/security-guides/encrypted-secrets)
+to store sensitive information such as users and passwords.
+
+In the end, we'll map these secrets to environment variables in the process, that we can pick up with `os.getenv`, for example:
+
+```python
+import os
+import yaml
+
+from metadata.ingestion.api.workflow import Workflow
+
+CONFIG = f"""
+source:
+  type: snowflake
+  serviceName: snowflake_from_github_actions
+  serviceConnection:
+    config:
+      type: Snowflake
+      username: {os.getenv('SNOWFLAKE_USERNAME')}
+...
+"""
+
+
+def run():
+    workflow_config = yaml.safe_load(CONFIG)
+    workflow = Workflow.create(workflow_config)
+    workflow.execute()
+    workflow.raise_from_status()
+    workflow.print_status()
+    workflow.stop()
+
+
+if __name__ == "__main__":
+    run()
+```
+
+Make sure to update your step environment to pass the secrets as environment variables:
+
+```yaml
+- name: Run Ingestion
+  run: |
+    source env/bin/activate
+    python ingestion-github-actions/snowflake_ingestion.py
+  # Add the env vars we need to load the snowflake credentials
+  env:
+     SNOWFLAKE_USERNAME: ${{ secrets.SNOWFLAKE_USERNAME }}
+     SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+     SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+     SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+```
+
+You can see a full demo setup [here](https://github.com/open-metadata/openmetadata-demo/tree/main/ingestion-github-actions).
+
 ### Using Airflow Connections
 
 In any connector page, you might have seen an example on how to build a DAG to run the ingestion with Airflow

@@ -35,7 +35,7 @@ from metadata.generated.schema.entity.data.table import (
 )
 from metadata.pii.processor import PIIProcessor
 from metadata.profiler.api.models import ProfilerResponse
-from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
+from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import (
     ComposedMetric,
     CustomMetric,
@@ -76,7 +76,7 @@ class Profiler(Generic[TMetric]):
     def __init__(
         self,
         *metrics: Type[TMetric],
-        profiler_interface: ProfilerProtocol,
+        profiler_interface: ProfilerInterface,
         profile_date: datetime = datetime.now(tz=timezone.utc).timestamp(),
         include_columns: Optional[List[ColumnProfilerConfig]] = None,
         exclude_columns: Optional[List[str]] = None,
