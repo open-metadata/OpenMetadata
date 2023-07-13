@@ -46,10 +46,10 @@ database:
   password: openmetadata_password
   # the JDBC URL; the database is called openmetadata_db
   url: jdbc:mysql://localhost/openmetadata_db?useSSL=false&serverTimezone=UTC
-
-aws:
-  region: ${AWS_REGION:-""} 
-  enableIamDatabaseAuthentication: ${AWS_ENABLE_IAM_DATABASE_AUTHENTICATION:-false}
+  # the aws rds iam based configuration
+  aws:
+    region: ${AWS_REGION:-""} 
+    enableIamDatabaseAuthentication: ${AWS_ENABLE_IAM_DATABASE_AUTHENTICATION:-false}
 
 elasticsearch:
   host: localhost
