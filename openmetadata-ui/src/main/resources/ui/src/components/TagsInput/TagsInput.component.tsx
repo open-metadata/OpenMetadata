@@ -74,6 +74,7 @@ const TagsInput: React.FC<Props> = ({
         <TagsContainerV2
           permission={editable}
           selectedTags={getSelectedTags()}
+          showTaskHandler={false}
           tagType={TagSource.Classification}
           onSelectionChange={handleTagSelection}
         />

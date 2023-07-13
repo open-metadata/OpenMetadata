@@ -31,7 +31,7 @@ import { CSMode } from 'enums/codemirror.enum';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { EntityFieldThreadCount } from 'interface/feed.interface';
-import { isUndefined, noop, toString } from 'lodash';
+import { isUndefined, toString } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -46,6 +46,7 @@ import ModelTab from './ModelTab/ModelTab.component';
 const DataModelDetails = ({
   dataModelData,
   dataModelPermissions,
+  fetchDataModel,
   createThread,
   handleFollowDataModel,
   handleUpdateTags,
@@ -100,7 +101,6 @@ const DataModelDetails = ({
       EntityType.DASHBOARD_DATA_MODEL,
       dashboardDataModelFQN,
       setEntityFieldThreadCount,
-      noop,
       setFeedCount
     );
   };
@@ -183,9 +183,15 @@ const DataModelDetails = ({
             />
             <ModelTab
               data={dataModelData?.columns || []}
+              entityFieldThreads={getEntityFieldThreadCounts(
+                EntityField.COLUMNS,
+                entityFieldThreadCount
+              )}
+              entityFqn={dashboardDataModelFQN}
               hasEditDescriptionPermission={hasEditDescriptionPermission}
               hasEditTagsPermission={hasEditTagsPermission}
               isReadOnly={Boolean(deleted)}
+              onThreadLinkSelect={onThreadLinkSelect}
               onUpdate={handleColumnUpdateDataModel}
             />
           </div>
@@ -231,7 +237,6 @@ const DataModelDetails = ({
     entityName,
     handleTagSelection,
     onThreadLinkSelect,
-    onThreadLinkSelect,
     handleColumnUpdateDataModel,
     handleUpdateDescription,
     getEntityFieldThreadCounts,
@@ -266,6 +271,7 @@ const DataModelDetails = ({
               entityType={EntityType.DASHBOARD_DATA_MODEL}
               fqn={dataModelData?.fullyQualifiedName ?? ''}
               onFeedUpdate={getEntityFeedCount}
+              onUpdateEntityDetails={fetchDataModel}
             />
           </ActivityFeedProvider>
         ),

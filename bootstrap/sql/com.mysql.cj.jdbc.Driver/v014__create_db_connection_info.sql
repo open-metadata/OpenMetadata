@@ -25,3 +25,7 @@ CREATE TABLE IF NOT EXISTS data_product_entity (
 UPDATE dbservice_entity
 SET json = JSON_REPLACE(json, '$.connection.config.scheme', 'hive')
 WHERE JSON_EXTRACT(json, '$.connection.config.scheme') IN ('impala', 'impala4');
+
+-- remove the dataModel references from Data Models
+UPDATE dashboard_data_model_entity
+SET json = JSON_REMOVE(json, '$.dataModels');

@@ -25,3 +25,6 @@ CREATE TABLE IF NOT EXISTS data_product_entity (
 update dbservice_entity
 set json = jsonb_set(json::jsonb, '{connection,config,scheme}', '"hive"')
 where json#>>'{connection,config,scheme}' in ('impala', 'impala4');
+
+-- remove the dataModel references from Data Models
+UPDATE dashboard_data_model_entity SET json = json #- '{dataModels}';

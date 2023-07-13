@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TabSpecificField } from 'enums/entity.enum';
 import { Column, ContainerDataModel } from 'generated/entity/data/container';
 import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
 import { isEmpty } from 'lodash';
@@ -94,3 +95,6 @@ export const updateContainerColumnDescription = (
     }
   });
 };
+
+export const ContainerFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
+${TabSpecificField.FOLLOWERS},${TabSpecificField.DATAMODEL}`;
