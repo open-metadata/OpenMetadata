@@ -160,8 +160,8 @@ const SearchedData: React.FC<SearchedDataProps> = ({
                         hideOnSinglePage
                         className="text-center"
                         current={
-                          isNumber(Number(page ?? currentPage))
-                            ? Number(page ?? currentPage)
+                          isNumber(Number(currentPage ?? page))
+                            ? Number(currentPage ?? page)
                             : 1
                         }
                         pageSize={

@@ -11,7 +11,17 @@
  *  limitations under the License.
  */
 
-import { Card, Image, Input, Select, Space, Tabs, Typography } from 'antd';
+import {
+  Card,
+  Col,
+  Image,
+  Input,
+  Row,
+  Select,
+  Space,
+  Tabs,
+  Typography,
+} from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import { AxiosError } from 'axios';
@@ -692,48 +702,49 @@ const Users = ({
         }
 
         return (
-          <PageLayoutV1
-            className="user-page-layout"
-            pageTitle={t('label.user')}
-            rightPanel={
-              showSummaryPanel &&
-              entityDetails && (
+          <Row className="user-page-layout" wrap={false}>
+            <Col className="user-layout-scroll" flex="auto">
+              {entityData.data.length ? (
+                <SearchedData
+                  currentPage={entityData.currPage}
+                  data={entityData.data ?? []}
+                  handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+                  isFilterSelected={false}
+                  isSummaryPanelVisible={showSummaryPanel}
+                  selectedEntityId={entityDetails?.id || ''}
+                  totalValue={entityData.total ?? 0}
+                  onPaginationChange={
+                    tab === UserPageTabs.MY_DATA
+                      ? onOwnedEntityPaginate
+                      : onFollowingEntityPaginate
+                  }
+                />
+              ) : (
+                <ErrorPlaceHolder className="m-0">
+                  <Typography.Paragraph>
+                    {tab === UserPageTabs.MY_DATA
+                      ? t('server.you-have-not-action-anything-yet', {
+                          action: t('label.owned-lowercase'),
+                        })
+                      : t('server.you-have-not-action-anything-yet', {
+                          action: t('label.followed-lowercase'),
+                        })}
+                  </Typography.Paragraph>
+                </ErrorPlaceHolder>
+              )}
+            </Col>
+
+            {showSummaryPanel && entityDetails && (
+              <Col
+                className="user-page-layout-right-panel user-layout-scroll"
+                flex="400px">
                 <EntitySummaryPanel
                   entityDetails={{ details: entityDetails }}
                   handleClosePanel={handleClosePanel}
                 />
-              )
-            }
-            rightPanelWidth={400}>
-            {entityData.data.length ? (
-              <SearchedData
-                currentPage={entityData.currPage}
-                data={entityData.data ?? []}
-                handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-                isFilterSelected={false}
-                isSummaryPanelVisible={showSummaryPanel}
-                selectedEntityId={entityDetails?.id || ''}
-                totalValue={entityData.total ?? 0}
-                onPaginationChange={
-                  tab === UserPageTabs.MY_DATA
-                    ? onOwnedEntityPaginate
-                    : onFollowingEntityPaginate
-                }
-              />
-            ) : (
-              <ErrorPlaceHolder className="m-0">
-                <Typography.Paragraph>
-                  {tab === UserPageTabs.MY_DATA
-                    ? t('server.you-have-not-action-anything-yet', {
-                        action: t('label.owned-lowercase'),
-                      })
-                    : t('server.you-have-not-action-anything-yet', {
-                        action: t('label.followed-lowercase'),
-                      })}
-                </Typography.Paragraph>
-              </ErrorPlaceHolder>
+              </Col>
             )}
-          </PageLayoutV1>
+          </Row>
         );
       }
       case UserPageTabs.ACTIVITY:
