@@ -189,10 +189,15 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
           }}
           title={
             <Row>
-              <Col span={21}>
-                <Typography.Title className="m-b-0" level={5}>
-                  {t('label.edit-entity', { entity: t('label.tier') })}
-                </Typography.Title>
+              <Col className="w-full">
+                <Space className="w-full justify-between">
+                  <Typography.Title className="m-b-0" level={5}>
+                    {t('label.edit-entity', { entity: t('label.tier') })}
+                  </Typography.Title>
+                  <Button className="text-primary" type="text">
+                    {t('label.clear-entity', { entity: t('label.all') })}
+                  </Button>
+                </Space>
               </Col>
             </Row>
           }>
