@@ -69,7 +69,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   settingsUpdateHandler,
   updateMlModelFeatures,
   onExtensionUpdate,
-
   createThread,
   versionHandler,
   tagUpdateHandler,
