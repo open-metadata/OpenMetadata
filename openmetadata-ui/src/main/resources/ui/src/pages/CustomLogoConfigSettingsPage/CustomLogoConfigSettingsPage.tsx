@@ -102,7 +102,7 @@ const CustomLogoConfigSettingsPage = () => {
         <Card>
           <>
             <Typography.Title level={5}>
-              {t('label.custom-logo-configuration')}
+              {t('label.configuration')}
             </Typography.Title>
             <Row align="middle" className="m-t-md" gutter={[16, 16]}>
               <Col span={12}>

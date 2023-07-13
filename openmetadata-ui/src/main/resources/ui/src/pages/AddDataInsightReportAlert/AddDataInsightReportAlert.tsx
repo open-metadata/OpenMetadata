@@ -163,7 +163,9 @@ const AddDataInsightReportAlert = () => {
           className="data-insight-report-alert-form"
           form={form}
           onFinish={handleSave}>
-          <Card className="w-full" loading={loading}>
+          <Card
+            className="w-full card-padding-0 card-body-border-none"
+            loading={loading}>
             <Form.Item
               label={t('label.name')}
               labelCol={{ span: 24 }}

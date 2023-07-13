@@ -145,7 +145,7 @@ function EditEmailConfigPage() {
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-      <Card className="p-lg m-t-md">
+      <Card className="card-padding-0 card-body-border-none m-t-md">
         {loading ? (
           <Skeleton title paragraph={{ rows: 8 }} />
         ) : (

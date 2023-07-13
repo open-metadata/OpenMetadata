@@ -497,7 +497,9 @@ const AddAlertPage = () => {
             form={form}
             onFinish={handleSave}
             onValuesChange={handleChange}>
-            <Card loading={loadingCount > 0}>
+            <Card
+              className="card-padding-0 card-body-border-none"
+              loading={loadingCount > 0}>
               <Form.Item
                 label={t('label.name')}
                 labelCol={{ span: 24 }}

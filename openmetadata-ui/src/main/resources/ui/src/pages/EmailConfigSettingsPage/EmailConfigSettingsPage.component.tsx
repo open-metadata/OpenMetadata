@@ -114,7 +114,7 @@ function EmailConfigSettingsPage() {
         ) : (
           <>
             <Typography.Title level={5}>
-              {t('label.email-configuration')}
+              {t('label.configuration')}
             </Typography.Title>
             <Row align="middle" className="m-t-md" gutter={[16, 16]}>
               {configValues}
