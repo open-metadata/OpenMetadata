@@ -103,7 +103,7 @@ class DatasourceField(BaseModel):
 class Workbook(BaseModel):
     id: str
     luid: str
-    name: str
+    name: Optional[str]
 
 
 class UpstreamTableColumn(BaseModel):
