@@ -90,8 +90,7 @@ const Users = ({
   isLoggedinUser,
   isAuthDisabled,
   username,
-  onFollowingEntityPaginate,
-  onOwnedEntityPaginate,
+  handlePaginate,
 }: Props) => {
   const { tab = UserPageTabs.ACTIVITY } = useParams<{ tab: UserPageTabs }>();
   const [displayName, setDisplayName] = useState(userData.displayName);
@@ -706,18 +705,13 @@ const Users = ({
             <Col className="user-layout-scroll" flex="auto">
               {entityData.data.length ? (
                 <SearchedData
-                  currentPage={entityData.currPage}
                   data={entityData.data ?? []}
                   handleSummaryPanelDisplay={handleSummaryPanelDisplay}
                   isFilterSelected={false}
                   isSummaryPanelVisible={showSummaryPanel}
                   selectedEntityId={entityDetails?.id || ''}
                   totalValue={entityData.total ?? 0}
-                  onPaginationChange={
-                    tab === UserPageTabs.MY_DATA
-                      ? onOwnedEntityPaginate
-                      : onFollowingEntityPaginate
-                  }
+                  onPaginationChange={handlePaginate}
                 />
               ) : (
                 <ErrorPlaceHolder className="m-0">
@@ -735,9 +729,7 @@ const Users = ({
             </Col>
 
             {showSummaryPanel && entityDetails && (
-              <Col
-                className="user-page-layout-right-panel user-layout-scroll"
-                flex="400px">
+              <Col className="user-page-layout-right-panel " flex="400px">
                 <EntitySummaryPanel
                   entityDetails={{ details: entityDetails }}
                   handleClosePanel={handleClosePanel}
