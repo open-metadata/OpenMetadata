@@ -29,10 +29,7 @@ import { useTranslation } from 'react-i18next';
 import { checkEmailInUse, generateRandomPwd } from 'rest/auth-API';
 import { getEntityName } from 'utils/EntityUtils';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
-import {
-  passwordRegex,
-  validEmailRegEx,
-} from '../../constants/regex.constants';
+import { EMAIL_REG_EX, passwordRegex } from '../../constants/regex.constants';
 import { AuthTypes } from '../../enums/signin.enum';
 import { CreatePasswordGenerator } from '../../enums/user.enum';
 import {
@@ -659,7 +656,7 @@ const CreateUser = ({
           name="email"
           rules={[
             {
-              pattern: validEmailRegEx,
+              pattern: EMAIL_REG_EX,
               required: true,
               type: 'email',
               message: t('message.field-text-is-invalid', {
@@ -670,7 +667,7 @@ const CreateUser = ({
               type: 'email',
               required: true,
               validator: async (_, value) => {
-                if (validEmailRegEx.test(value) && !forceBot) {
+                if (EMAIL_REG_EX.test(value) && !forceBot) {
                   const isEmailAlreadyExists = await checkEmailInUse(value);
                   if (isEmailAlreadyExists) {
                     return Promise.reject(
