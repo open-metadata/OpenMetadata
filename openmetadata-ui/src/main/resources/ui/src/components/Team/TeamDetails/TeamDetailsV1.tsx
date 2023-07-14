@@ -43,7 +43,7 @@ import {
   GlobalSettingsMenuCategory,
 } from 'constants/GlobalSettings.constants';
 import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
-import { validEmailRegEx } from 'constants/regex.constants';
+import { EMAIL_REG_EX } from 'constants/regex.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
@@ -898,7 +898,7 @@ const TeamDetailsV1 = ({
               name="email"
               rules={[
                 {
-                  pattern: validEmailRegEx,
+                  pattern: EMAIL_REG_EX,
                   type: 'email',
                   message: t('message.field-text-is-invalid', {
                     fieldText: t('label.email'),
