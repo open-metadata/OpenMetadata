@@ -194,12 +194,12 @@ class Profiler(Generic[TMetric]):
         """
         for attrs, val in profile.tableProfile:
             if attrs not in {"timestamp", "profileSample", "profileSampleType"} and val:
-                return profile
+                return
 
         for col_element in profile.columnProfile:
             for attrs, val in col_element:
                 if attrs not in {"timestamp", "name"} and val is not None:
-                    return profile
+                    return
 
         raise RuntimeError(
             f"No profile data computed for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}"
@@ -468,7 +468,8 @@ class Profiler(Generic[TMetric]):
         if process_pii_sensitive:
             self.process_pii_sensitive(sample_data)
 
-        profile = self._check_profile_and_handle(self.get_profile())
+        profile = self.get_profile()
+        self._check_profile_and_handle(profile)
 
         table_profile = ProfilerResponse(
             table=self.profiler_interface.table_entity,
