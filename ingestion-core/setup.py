@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import os
+from typing import Dict, Set
 
 from setuptools import find_namespace_packages, setup
 
@@ -21,6 +22,7 @@ def get_long_description():
 
 
 base_requirements = {
+    "jsonpatch==1.32",
     "requests>=2.23",
     "pydantic~=1.10",
     "email-validator>=1.0.3",
@@ -43,6 +45,8 @@ dev = {
     "twine",
 }
 
+plugins: Dict[str, Set[str]] = {"aws": {"boto3>=1.20,<2.0"}}
+
 setup(
     name="openmetadata-ingestion-core",
     version="1.2.0.0.dev0",
@@ -62,5 +66,6 @@ setup(
     packages=find_namespace_packages(include=["metadata.*"], exclude=["tests*"]),
     extras_require={
         "dev": list(dev),
+        **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
     },
 )

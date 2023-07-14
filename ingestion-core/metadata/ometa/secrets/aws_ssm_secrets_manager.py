@@ -15,16 +15,14 @@ Secrets manager implementation using AWS SSM Parameter Store
 import traceback
 from typing import Optional
 
-from botocore.exceptions import ClientError
-
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
+from metadata.ometa.logger import logger
 from metadata.ometa.secrets.aws_based_secrets_manager import (
     NULL_VALUE,
     AWSBasedSecretsManager,
 )
-from metadata.ometa.secrets.secrets_manager import logger
 
 
 class AWSSSMSecretsManager(AWSBasedSecretsManager):
@@ -40,6 +38,11 @@ class AWSSSMSecretsManager(AWSBasedSecretsManager):
         :param secret_id: The parameter name to retrieve.
         :return: The value of the parameter. When the parameter is not present, it throws a `ValueError` exception.
         """
+
+        from botocore.exceptions import (
+            ClientError,  # pylint: disable=import-outside-toplevel
+        )
+
         if secret_id is None:
             raise ValueError("[name] argument is None")
 

@@ -20,7 +20,7 @@ from metadata.generated.schema.security.secrets.secretsManagerClientLoader impor
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
-from metadata.ometa.models.singleton import Singleton
+from metadata.models.singleton import Singleton
 from metadata.ometa.secrets.aws_secrets_manager import AWSSecretsManager
 from metadata.ometa.secrets.aws_ssm_secrets_manager import AWSSSMSecretsManager
 from metadata.ometa.secrets.client.loader import secrets_manager_client_loader

@@ -22,7 +22,7 @@ from typing import Tuple
 
 import requests
 from dateutil.relativedelta import relativedelta
-from metadata.config.common import ConfigModel
+from pydantic import BaseModel
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -69,7 +69,7 @@ class AuthenticationProvider(metaclass=ABCMeta):
 
     @classmethod
     @abstractmethod
-    def create(cls, config: ConfigModel) -> "AuthenticationProvider":
+    def create(cls, config: BaseModel) -> "AuthenticationProvider":
         """
         Create authentication
 

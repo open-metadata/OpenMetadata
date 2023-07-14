@@ -15,16 +15,14 @@ Secrets manager implementation using AWS Secrets Manager
 import traceback
 from typing import Optional
 
-from botocore.exceptions import ClientError
-
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
+from metadata.ometa.logger import logger
 from metadata.ometa.secrets.aws_based_secrets_manager import (
     NULL_VALUE,
     AWSBasedSecretsManager,
 )
-from metadata.ometa.secrets.secrets_manager import logger
 
 
 class AWSSecretsManager(AWSBasedSecretsManager):
@@ -42,6 +40,10 @@ class AWSSecretsManager(AWSBasedSecretsManager):
                  contained in the `SecretString` field. When the secret is bytes or not present,
                  it throws a `ValueError` exception.
         """
+        from botocore.exceptions import (
+            ClientError,  # pylint: disable=import-outside-toplevel
+        )
+
         if secret_id is None:
             raise ValueError("[name] argument is None")
 
