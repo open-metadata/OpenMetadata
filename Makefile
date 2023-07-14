@@ -47,7 +47,7 @@ py_format:  ## Run black and isort to format the Python codebase
 .PHONY: py_format_check
 py_format_check:  ## Check if Python sources are correctly formatted
 	pycln ingestion-core/ ingestion/ openmetadata-airflow-apis/ --diff --extend-exclude ingestion-core/metadata/generated
-	isort --check-only ingestion-core/ ingestion/ openmetadata-airflow-apis/ --skip ingestion-core/metadata/generated --skip ingestion/build --profile black --multi-line 3
+	isort --check-only ingestion-core/ ingestion/ openmetadata-airflow-apis/ --skip ingestion-core/metadata/generated --skip ingestion-core/build --skip ingestion/build --profile black --multi-line 3
 	black --check --diff ingestion-core/ ingestion/ openmetadata-airflow-apis/  --extend-exclude ingestion-core/metadata/generated
 	PYTHONPATH="${PYTHONPATH}:./ingestion/plugins" pylint --fail-under=10 $(PY_SOURCE)/metadata --ignore-paths ingestion-core/metadata/generated || (echo "PyLint error code $$?"; exit 1)
 

@@ -14,12 +14,12 @@ for the profiler
 """
 from typing import Dict, Optional
 
-from sqlalchemy.orm import Query
-
-from metadata.generated.schema.entity.data.table import ProfileSampleType, TableType
 from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.profiler.processor.handle_partition import partition_filter_handler
 from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
+from sqlalchemy.orm import Query
+
+from metadata.generated.schema.entity.data.table import ProfileSampleType, TableType
 
 
 class BigQuerySampler(SQASampler):

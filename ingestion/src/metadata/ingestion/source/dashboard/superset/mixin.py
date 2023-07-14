@@ -15,6 +15,20 @@ import json
 import traceback
 from typing import Iterable, List, Optional, Union
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.ingestion.source.dashboard.superset.models import (
+    DashboradResult,
+    DataSourceResult,
+    FetchChart,
+    FetchColumn,
+    FetchDashboard,
+    SupersetDatasource,
+)
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.utils import fqn
+from metadata.utils.logger import ingestion_logger
+
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.table import Column, Table
@@ -32,19 +46,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.dashboard.superset.models import (
-    DashboradResult,
-    DataSourceResult,
-    FetchChart,
-    FetchColumn,
-    FetchDashboard,
-    SupersetDatasource,
-)
-from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.utils import fqn
-from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

@@ -14,20 +14,21 @@ REST Auth & Client for Apache Superset
 import json
 import traceback
 
-from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
-    SupersetConnection,
-)
-from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
-from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.dashboard.superset.models import (
     ListDatabaseResult,
     SupersetChart,
     SupersetDashboardCount,
     SupersetDatasource,
 )
-from metadata.utils.logger import ometa_logger
+from metadata.utils.logger import ingestion_logger
 
-logger = ometa_logger()
+from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
+    SupersetConnection,
+)
+from metadata.ometa.auth_provider import AuthenticationProvider
+from metadata.ometa.client import REST, ClientConfig
+
+logger = ingestion_logger()
 
 
 class SupersetAuthenticationProvider(AuthenticationProvider):

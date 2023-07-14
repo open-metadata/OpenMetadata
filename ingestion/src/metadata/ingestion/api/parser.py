@@ -83,7 +83,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     WorkflowConfig,
 )
-from metadata.ometa.client import PROVIDER_CLASS_MAP
+from metadata.ometa.provider_registry import PROVIDER_CLASS_MAP
 
 logger = ingestion_logger()
 

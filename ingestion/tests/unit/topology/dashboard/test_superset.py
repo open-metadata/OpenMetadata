@@ -18,6 +18,20 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.ingestion.source.dashboard.superset.api_source import SupersetAPISource
+from metadata.ingestion.source.dashboard.superset.client import SupersetAPIClient
+from metadata.ingestion.source.dashboard.superset.db_source import SupersetDBSource
+from metadata.ingestion.source.dashboard.superset.metadata import SupersetSource
+from metadata.ingestion.source.dashboard.superset.models import (
+    FetchChart,
+    FetchDashboard,
+    ListDatabaseResult,
+    SupersetChart,
+    SupersetDashboardCount,
+    SupersetDatasource,
+)
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
@@ -47,22 +61,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.dashboard.superset.api_source import SupersetAPISource
-from metadata.ingestion.source.dashboard.superset.client import SupersetAPIClient
-from metadata.ingestion.source.dashboard.superset.db_source import SupersetDBSource
-from metadata.ingestion.source.dashboard.superset.metadata import SupersetSource
-from metadata.ingestion.source.dashboard.superset.models import (
-    FetchChart,
-    FetchDashboard,
-    ListDatabaseResult,
-    SupersetChart,
-    SupersetDashboardCount,
-    SupersetDatasource,
-)
+from metadata.ometa.mixins.server_mixin import OMetaServerMixin
+from metadata.ometa.ometa_api import OpenMetadata
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/superset_dataset.json"

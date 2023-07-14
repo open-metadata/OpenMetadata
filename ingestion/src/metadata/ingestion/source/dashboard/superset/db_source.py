@@ -15,25 +15,6 @@ Superset source module
 import traceback
 from typing import Iterable, Optional
 
-from sqlalchemy import sql
-from sqlalchemy.engine import Engine
-from sqlalchemy.engine.url import make_url
-
-from metadata.generated.schema.api.data.createChart import CreateChartRequest
-from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
-from metadata.generated.schema.api.data.createDashboardDataModel import (
-    CreateDashboardDataModelRequest,
-)
-from metadata.generated.schema.entity.data.chart import Chart
-from metadata.generated.schema.entity.data.dashboardDataModel import DataModelType
-from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
 from metadata.ingestion.source.dashboard.superset.models import (
     FetchChart,
@@ -53,6 +34,25 @@ from metadata.utils.helpers import (
     get_standard_chart_type,
 )
 from metadata.utils.logger import ingestion_logger
+from sqlalchemy import sql
+from sqlalchemy.engine import Engine
+from sqlalchemy.engine.url import make_url
+
+from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDashboardDataModel import (
+    CreateDashboardDataModelRequest,
+)
+from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.dashboardDataModel import DataModelType
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 
 logger = ingestion_logger()
 

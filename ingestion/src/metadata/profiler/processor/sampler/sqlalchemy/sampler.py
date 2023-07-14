@@ -14,17 +14,6 @@ for the profiler
 """
 from typing import Union, cast
 
-from sqlalchemy import Column, inspect, text
-from sqlalchemy.orm import DeclarativeMeta, Query, aliased
-from sqlalchemy.orm.util import AliasedClass
-from sqlalchemy.sql.sqltypes import Enum
-
-from metadata.generated.schema.entity.data.table import (
-    PartitionIntervalType,
-    PartitionProfilerConfig,
-    ProfileSampleType,
-    TableData,
-)
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.orm.registry import Dialects
@@ -36,6 +25,17 @@ from metadata.utils.sqa_utils import (
     get_integer_range_filter,
     get_partition_col_type,
     get_value_filter,
+)
+from sqlalchemy import Column, inspect, text
+from sqlalchemy.orm import DeclarativeMeta, Query, aliased
+from sqlalchemy.orm.util import AliasedClass
+from sqlalchemy.sql.sqltypes import Enum
+
+from metadata.generated.schema.entity.data.table import (
+    PartitionIntervalType,
+    PartitionProfilerConfig,
+    ProfileSampleType,
+    TableData,
 )
 
 RANDOM_LABEL = "random"
