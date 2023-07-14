@@ -12,19 +12,16 @@
  */
 
 import { AxiosError } from 'axios';
-import {
-  AirflowResponse,
-  AirflowStatus,
-} from 'interface/AirflowStatus.interface';
 import { useEffect, useState } from 'react';
 import { getAirflowStatus } from 'rest/ingestionPipelineAPI';
+import { PipelineServiceClientResponse } from '../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
 
 interface UseAirflowStatusProps {
   isFetchingStatus: boolean;
   isAirflowAvailable: boolean;
   error: AxiosError | undefined;
-  reason: AirflowResponse['reason'];
-  platform: AirflowResponse['platform'];
+  reason: PipelineServiceClientResponse['reason'];
+  platform: PipelineServiceClientResponse['platform'];
   fetchAirflowStatus: () => Promise<void>;
 }
 
@@ -32,14 +29,16 @@ export const useAirflowStatus = (): UseAirflowStatusProps => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isAirflowAvailable, setIsAirflowAvailable] = useState<boolean>(false);
   const [error, setError] = useState<AxiosError>();
-  const [reason, setReason] = useState<AirflowResponse['reason']>();
-  const [platform, setPlatform] = useState<AirflowResponse['platform']>();
+  const [reason, setReason] =
+    useState<PipelineServiceClientResponse['reason']>();
+  const [platform, setPlatform] =
+    useState<PipelineServiceClientResponse['platform']>('unknown');
 
   const fetchAirflowStatus = async () => {
     setIsLoading(true);
     try {
       const response = await getAirflowStatus();
-      setIsAirflowAvailable(response.status === AirflowStatus.HEALTHY);
+      setIsAirflowAvailable(response.code === 200);
       setReason(response.reason);
       setPlatform(response.platform);
     } catch (error) {
