@@ -11,18 +11,35 @@
  *  limitations under the License.
  */
 
-// import { EntityField } from 'constants/Feeds.constants';
-// import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-// import { DE_ACTIVE_COLOR } from 'constants/constants';
-// import { ENTITY_TASKS_TOOLTIP } from 'constants/entity.constants';
-
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { EntityField } from 'constants/Feeds.constants';
 import { EntityType, FqnPart } from 'enums/entity.enum';
 import { TagSource } from 'generated/type/tagLabel';
 import React from 'react';
 import EntityTasks from './EntityTasks.component';
 import { EntityTasksProps } from './EntityTasks.interface';
+
+const mockRequestTags = {
+  pathname: '/request-tags/table/sample_data.ecommerce_db.shopify.fact_sale',
+  search: 'field=columns&value=sale_id',
+};
+
+const mockUpdateTags = {
+  pathname: '/update-tags/table/sample_data.ecommerce_db.shopify.fact_sale',
+  search: 'field=columns&value=sale_id',
+};
+
+const mockRequestDescription = {
+  pathname:
+    '/request-description/table/sample_data.ecommerce_db.shopify.fact_sale',
+  search: 'field=columns&value=sale_id',
+};
+
+const mockUpdateDescription = {
+  pathname:
+    '/update-description/table/sample_data.ecommerce_db.shopify.fact_sale',
+  search: 'field=columns&value=sale_id',
+};
 
 const mockProps: EntityTasksProps = {
   data: {
@@ -42,10 +59,14 @@ jest.mock('../../../utils/TasksUtils', () => ({
     fqnPart: FqnPart.NestedColumn,
     entityField: EntityField.COLUMNS,
   }),
-  getRequestDescriptionPath: jest.fn(),
-  getRequestTagsPath: jest.fn(),
-  getUpdateDescriptionPath: jest.fn(),
-  getUpdateTagsPath: jest.fn(),
+  getRequestDescriptionPath: jest
+    .fn()
+    .mockImplementation(() => mockRequestDescription),
+  getRequestTagsPath: jest.fn().mockImplementation(() => mockRequestTags),
+  getUpdateDescriptionPath: jest
+    .fn()
+    .mockImplementation(() => mockUpdateDescription),
+  getUpdateTagsPath: jest.fn().mockImplementation(() => mockUpdateTags),
 }));
 
 jest.mock('../../../utils/FeedElementUtils', () => ({
@@ -60,8 +81,12 @@ jest.mock('../../../utils/CommonUtils', () => ({
   getPartialNameFromTableFQN: jest.fn().mockReturnValue('test'),
 }));
 
+const mockHistory = {
+  push: jest.fn(),
+};
+
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
+  useHistory: jest.fn().mockImplementation(() => mockHistory),
 }));
 
 describe('Entity Task component', () => {
@@ -81,8 +106,6 @@ describe('Entity Task component', () => {
     expect(container).toBeInTheDocument();
 
     const taskElement = screen.queryByTestId('task-element');
-
-    screen.debug(container);
 
     expect(taskElement).toBeInTheDocument();
   });
@@ -106,10 +129,97 @@ describe('Entity Task component', () => {
 
     expect(container).toBeInTheDocument();
 
-    screen.debug(container);
-
     const conversation = await screen.findByTestId('list-conversation');
 
     expect(conversation).toBeInTheDocument();
+  });
+
+  it('Handle update tags click', async () => {
+    render(<EntityTasks {...mockProps} />);
+
+    const container = await screen.findByTestId('entity-task');
+
+    expect(container).toBeInTheDocument();
+
+    const taskElement = await screen.findByTestId('task-element');
+
+    expect(taskElement).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(taskElement);
+    });
+
+    expect(mockHistory.push).toHaveBeenCalledWith(mockUpdateTags);
+  });
+
+  it('Handle request tags click', async () => {
+    render(
+      <EntityTasks
+        {...mockProps}
+        data={{
+          fqn: 'sample_data.ecommerce_db.shopify.fact_session',
+        }}
+      />
+    );
+
+    const container = await screen.findByTestId('entity-task');
+
+    expect(container).toBeInTheDocument();
+
+    const taskElement = await screen.findByTestId('task-element');
+
+    expect(taskElement).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(taskElement);
+    });
+
+    expect(mockHistory.push).toHaveBeenCalledWith(mockRequestTags);
+  });
+
+  it('Handle update description click', async () => {
+    render(
+      <EntityTasks {...mockProps} entityTaskType={EntityField.DESCRIPTION} />
+    );
+
+    const container = await screen.findByTestId('entity-task');
+
+    expect(container).toBeInTheDocument();
+
+    const taskElement = await screen.findByTestId('task-element');
+
+    expect(taskElement).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(taskElement);
+    });
+
+    expect(mockHistory.push).toHaveBeenCalledWith(mockUpdateDescription);
+  });
+
+  it('Handle request description click', async () => {
+    render(
+      <EntityTasks
+        {...mockProps}
+        data={{
+          fqn: 'sample_data.ecommerce_db.shopify.fact_session',
+        }}
+        entityTaskType={EntityField.DESCRIPTION}
+      />
+    );
+
+    const container = await screen.findByTestId('entity-task');
+
+    expect(container).toBeInTheDocument();
+
+    const taskElement = await screen.findByTestId('task-element');
+
+    expect(taskElement).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(taskElement);
+    });
+
+    expect(mockHistory.push).toHaveBeenCalledWith(mockRequestDescription);
   });
 });
