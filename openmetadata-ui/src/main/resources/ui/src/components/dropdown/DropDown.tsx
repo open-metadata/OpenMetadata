@@ -12,8 +12,8 @@
  */
 
 import classNames from 'classnames';
+import { TEXT_BODY_COLOR, WHITE } from 'constants/constants';
 import React, { useEffect, useState } from 'react';
-import { activeLink, normalLink } from '../../utils/styleconstant';
 import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
 import AnchorDropDownList from './AnchorDropDownList';
 import CheckBoxDropDownList from './CheckBoxDropDownList';
@@ -130,14 +130,16 @@ const DropDown: React.FC<DropDownProp> = ({
                 {label && isLableVisible && (
                   <span
                     className="hover:tw-underline"
-                    style={{ color: `${isOpen ? activeLink : normalLink}` }}>
+                    style={{
+                      color: `${isOpen ? WHITE : TEXT_BODY_COLOR}`,
+                    }}>
                     {label}
                   </span>
                 )}
 
                 {isDropDownIconVisible ? (
                   <DropdownIcon
-                    style={{ marginTop: '5px', color: normalLink }}
+                    style={{ marginTop: '5px', color: TEXT_BODY_COLOR }}
                   />
                 ) : null}
               </>
