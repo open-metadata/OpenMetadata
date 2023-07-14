@@ -11,9 +11,9 @@
 import os
 from unittest import TestCase, mock
 
-from metadata.utils.secrets.aws_secrets_manager import AWSSecretsManager
-from metadata.utils.secrets.noop_secrets_manager import NoopSecretsManager
-from metadata.utils.singleton import Singleton
+from metadata.ometa.secrets.aws_secrets_manager import AWSSecretsManager
+from metadata.ometa.secrets.noop_secrets_manager import NoopSecretsManager
+from metadata.models.singleton import Singleton
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,

@@ -16,7 +16,7 @@ import json
 
 from airflow.configuration import AirflowConfigParser
 from airflow_provider_openmetadata.lineage.config.commons import LINEAGE
-from metadata.utils.dispatch import enum_register
+from metadata.registry.dispatch import enum_register
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,

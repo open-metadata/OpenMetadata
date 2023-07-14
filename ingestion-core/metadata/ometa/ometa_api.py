@@ -22,8 +22,8 @@ try:
 except ImportError:
     from typing_compat import get_args
 
-from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
-from metadata.utils.ssl_registry import get_verify_ssl_fn
+from metadata.ometa.secrets.secrets_manager_factory import SecretsManagerFactory
+from metadata.registry.ssl_registry import get_verify_ssl_fn
 from pydantic import BaseModel
 from requests.utils import quote
 

@@ -15,7 +15,7 @@ to use in the client
 import os
 from typing import Optional
 
-from metadata.utils.dispatch import enum_register
+from metadata.registry.dispatch import enum_register
 
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (

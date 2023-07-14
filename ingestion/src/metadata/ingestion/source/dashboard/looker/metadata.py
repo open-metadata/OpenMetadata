@@ -51,7 +51,7 @@ from metadata.readers.base import Reader
 from metadata.readers.bitbucket import BitBucketReader
 from metadata.readers.credentials import get_credentials_from_url
 from metadata.readers.github import GitHubReader
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger

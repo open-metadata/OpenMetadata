@@ -22,6 +22,7 @@ def get_long_description():
 
 base_requirements = {
     "pydantic~=1.10",
+    "email-validator>=1.0.3",
     "wheel~=0.38.4",
     "setuptools~=65.6.3",
     "typing_extensions<=4.5.0",  # We need to have this fixed due to a yanked release 4.6.0

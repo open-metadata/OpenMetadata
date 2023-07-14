@@ -31,7 +31,7 @@ from metadata.profiler.source.base.profiler_source import ProfilerSource
 from metadata.profiler.source.profiler_source_factory import profiler_source_factory
 from metadata.timer.repeated_timer import RepeatedTimer
 from metadata.timer.workflow_reporter import get_ingestion_status_timer
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.class_helper import (
     get_service_class_from_service_type,
     get_service_type_from_source_type,

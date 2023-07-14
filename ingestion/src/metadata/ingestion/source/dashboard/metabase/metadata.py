@@ -23,7 +23,7 @@ from metadata.ingestion.source.dashboard.metabase.models import (
     MetabaseDashboard,
     MetabaseDashboardDetails,
 )
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import (
     clean_uri,

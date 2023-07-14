@@ -23,7 +23,7 @@ from metadata.clients.domo_client import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger

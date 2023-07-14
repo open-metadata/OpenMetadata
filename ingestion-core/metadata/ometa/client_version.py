@@ -47,5 +47,5 @@ def get_client_version() -> str:
     Get openmetadata-ingestion module version
     :return: client version
     """
-    raw_version = version("openmetadata-ingestion")
+    raw_version = version("openmetadata-ingestion-core")
     return get_version_from_string(raw_version)

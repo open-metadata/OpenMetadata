@@ -10,21 +10,24 @@
 #  limitations under the License.
 
 """
-Abstract class for third party secrets' manager implementations
+Secrets manager interface
 """
-from abc import ABC
+from abc import abstractmethod
 
-from metadata.utils.secrets.secrets_manager import SecretsManager
-
-from metadata.generated.schema.security.secrets.secretsManagerProvider import (
-    SecretsManagerProvider,
-)
+from metadata.models.singleton import Singleton
 
 
-class ExternalSecretsManager(SecretsManager, ABC):
+class SecretsManager(metaclass=Singleton):
     """
-    Abstract class for third party secrets' manager implementations
+    Abstract class implemented by different secrets' manager providers.
+
+    It contains a set of auxiliary methods for adding missing fields which have been encrypted in the secrets' manager
+    providers.
     """
 
-    def __init__(self, provider: SecretsManagerProvider):
-        self.provider = provider.name
+    @abstractmethod
+    def get_string_value(self, secret_id: str) -> str:
+        """
+        :param secret_id: The secret id to retrieve
+        :return: The value of the secret
+        """

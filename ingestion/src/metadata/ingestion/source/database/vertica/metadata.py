@@ -27,7 +27,7 @@ from metadata.ingestion.source.database.vertica.queries import (
     VERTICA_TABLE_COMMENTS,
     VERTICA_VIEW_DEFINITION,
 )
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (

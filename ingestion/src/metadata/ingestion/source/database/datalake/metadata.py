@@ -23,7 +23,7 @@ from metadata.ingestion.source.database.database_service import DatabaseServiceS
 from metadata.ingestion.source.database.datalake.models import (
     DatalakeTableSchemaWrapper,
 )
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, DEFAULT_DATABASE
 from metadata.utils.datalake.datalake_utils import (
     SupportedTypes,

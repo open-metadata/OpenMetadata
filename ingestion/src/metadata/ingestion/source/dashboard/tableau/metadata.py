@@ -27,7 +27,7 @@ from metadata.ingestion.source.dashboard.tableau.models import (
     UpstreamTable,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.helpers import (
     clean_uri,

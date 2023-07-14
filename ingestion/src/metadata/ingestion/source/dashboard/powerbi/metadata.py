@@ -23,7 +23,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     PowerBiTable,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.filters import (
     filter_by_chart,
     filter_by_dashboard,

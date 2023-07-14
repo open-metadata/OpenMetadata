@@ -15,7 +15,7 @@ import logging
 import time
 from unittest import TestCase
 
-from metadata.utils import fqn
+from metadata.ometa import fqn
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (

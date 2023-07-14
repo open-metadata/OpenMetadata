@@ -22,7 +22,7 @@ from metadata.ingestion.source.pipeline.spline.utils import (
     parse_dbfs_path,
     parse_jdbc_url,
 )
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 

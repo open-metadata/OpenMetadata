@@ -22,7 +22,7 @@ from metadata.ingestion.lineage.sql_lineage import (
     get_lineage_via_table_entity,
 )
 from metadata.ingestion.source.models import TableView
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.logger import utils_logger
 
 from metadata.generated.schema.entity.data.table import Table

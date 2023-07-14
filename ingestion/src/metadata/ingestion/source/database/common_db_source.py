@@ -24,7 +24,7 @@ from metadata.ingestion.source.database.database_service import DatabaseServiceS
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
 from metadata.ingestion.source.models import TableView
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.db_utils import get_view_lineage
 from metadata.utils.filters import filter_by_table
 from metadata.utils.helpers import calculate_execution_time_generator

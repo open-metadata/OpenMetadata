@@ -34,7 +34,7 @@ from metadata.parsers.schema_parsers import (
     InvalidSchemaTypeException,
     schema_parser_config_registry,
 )
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger

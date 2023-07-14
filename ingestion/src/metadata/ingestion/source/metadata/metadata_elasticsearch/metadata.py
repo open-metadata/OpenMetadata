@@ -36,7 +36,7 @@ from metadata.generated.schema.system.eventPublisherJob import (
     RunMode,
     Status,
 )
-from metadata.ometa.client import model_str
+from metadata.ometa.utils import model_str
 from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()

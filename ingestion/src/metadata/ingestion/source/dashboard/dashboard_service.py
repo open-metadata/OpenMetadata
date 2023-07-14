@@ -29,7 +29,7 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.filters import filter_by_dashboard
 from metadata.utils.logger import ingestion_logger
 from pydantic import BaseModel

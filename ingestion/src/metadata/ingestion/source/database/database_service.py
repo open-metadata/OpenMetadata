@@ -26,7 +26,7 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.source.connections import get_test_connection_fn
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.filters import filter_by_schema
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_tag_label

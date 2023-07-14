@@ -17,7 +17,7 @@ import functools
 import traceback
 from typing import Generic, List, Optional, Type, TypeVar
 
-from metadata.utils.elasticsearch import ES_INDEX_MAP
+from metadata.ometa.elasticsearch import ES_INDEX_MAP
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.createEventPublisherJob import (

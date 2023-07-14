@@ -49,7 +49,7 @@ from metadata.great_expectations.utils.ometa_config_handler import (
     create_ometa_connection_obj,
     render_template,
 )
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.entity_link import get_entity_link
 from metadata.utils.logger import great_expectations_logger
 from sqlalchemy.engine.base import Connection, Engine

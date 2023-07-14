@@ -1,4 +1,4 @@
-#  Copyright 2021 Collate
+#  Copyright 2022 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -10,20 +10,21 @@
 #  limitations under the License.
 
 """
-UUID Encoder Module
+Abstract class for third party secrets' manager implementations
 """
+from abc import ABC
 
-import json
-from uuid import UUID
+from metadata.ometa.secrets.secrets_manager import SecretsManager
+
+from metadata.generated.schema.security.secrets.secretsManagerProvider import (
+    SecretsManagerProvider,
+)
 
 
-class UUIDEncoder(json.JSONEncoder):
+class ExternalSecretsManager(SecretsManager, ABC):
     """
-    UUID Encoder class
+    Abstract class for third party secrets' manager implementations
     """
 
-    def default(self, o):
-        if isinstance(o, UUID):
-            # if the obj is uuid, we simply return the value of uuid
-            return str(o)
-        return json.JSONEncoder.default(self, o)
+    def __init__(self, provider: SecretsManagerProvider):
+        self.provider = provider.name

@@ -21,7 +21,7 @@ from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.metadata.atlas.client import AtlasClient
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.helpers import get_database_name_for_lineage
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER

@@ -10,27 +10,21 @@
 #  limitations under the License.
 
 """
-Secrets manager interface
+Secrets manager implementation for local secrets manager
 """
-from abc import abstractmethod
+from metadata.ometa.secrets.secrets_manager import SecretsManager
 
-from metadata.utils.logger import ingestion_logger
-from metadata.utils.singleton import Singleton
+from metadata.generated.schema.security.secrets.secretsManagerProvider import (
+    SecretsManagerProvider,
+)
 
-logger = ingestion_logger()
 
-
-class SecretsManager(metaclass=Singleton):
+class NoopSecretsManager(SecretsManager):
     """
-    Abstract class implemented by different secrets' manager providers.
-
-    It contains a set of auxiliary methods for adding missing fields which have been encrypted in the secrets' manager
-    providers.
+    LocalSecretsManager is used when there is not a secrets' manager configured.
     """
 
-    @abstractmethod
+    provider: str = SecretsManagerProvider.noop.name
+
     def get_string_value(self, secret_id: str) -> str:
-        """
-        :param secret_id: The secret id to retrieve
-        :return: The value of the secret
-        """
+        return secret_id

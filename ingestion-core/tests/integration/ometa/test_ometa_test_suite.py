@@ -12,13 +12,8 @@
 """
 OpenMetadata API test suite mixin test
 """
-from datetime import datetime
+from datetime import datetime, time, timezone
 from unittest import TestCase
-
-from metadata.utils.time_utils import (
-    get_beginning_of_day_timestamp_mill,
-    get_end_of_day_timestamp_mill,
-)
 
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
@@ -159,10 +154,15 @@ class OMetaTestSuiteTest(TestCase):
 
     def test_get_test_case_results(self):
         """test get test case result method"""
+
+        now_utc = datetime.utcnow()
+        day_start_millis = int(datetime.combine(now_utc, time.min, tzinfo=timezone.utc).timestamp() * 1000)
+        day_end_millis = int(datetime.combine(now_utc, time.max, tzinfo=timezone.utc).timestamp() * 1000)
+
         res = self.metadata.get_test_case_results(
             "sample_data.ecommerce_db.shopify.dim_address.testCaseForIntegration",
-            get_beginning_of_day_timestamp_mill(),
-            get_end_of_day_timestamp_mill(),
+            day_start_millis,
+            day_end_millis,
         )
 
         assert res

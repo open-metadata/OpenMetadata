@@ -14,7 +14,7 @@ Helper methods for ES
 
 from typing import List, Optional, TypeVar
 
-from metadata.utils.logger import utils_logger
+from metadata.ometa.logger import logger
 from pydantic import BaseModel
 
 from metadata.generated.schema.analytics.reportData import ReportData
@@ -31,7 +31,6 @@ from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 
-logger = utils_logger()
 T = TypeVar("T", bound=BaseModel)
 
 ES_INDEX_MAP = {

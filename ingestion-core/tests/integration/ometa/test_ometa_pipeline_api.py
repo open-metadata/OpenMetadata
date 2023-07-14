@@ -16,8 +16,6 @@ import uuid
 from datetime import datetime
 from unittest import TestCase
 
-from metadata.utils.helpers import datetime_to_ts
-
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceRequest,
@@ -145,7 +143,7 @@ class OMetaPipelineTest(TestCase):
 
         updated = self.create.dict(exclude_unset=True)
         updated["owner"] = self.owner
-        updated_entity = CreatePipelineRequest(**updated)
+        updated_entity = CreatePipelineRequest.parse_obj(updated)
 
         res = self.metadata.create_or_update(data=updated_entity)
 
@@ -244,7 +242,7 @@ class OMetaPipelineTest(TestCase):
         )
 
         pipeline: Pipeline = self.metadata.create_or_update(data=create_pipeline)
-        execution_ts = datetime_to_ts(datetime.strptime("2021-03-07", "%Y-%m-%d"))
+        execution_ts = int(datetime.strptime("2021-03-07", "%Y-%m-%d").timestamp() * 1_000)
 
         updated = self.metadata.add_pipeline_status(
             fqn=pipeline.fullyQualifiedName.__root__,

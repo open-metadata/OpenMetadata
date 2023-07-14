@@ -28,7 +28,7 @@ from looker_sdk.sdk.api40.models import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.dashboard.looker.metadata import LookerSource
-from metadata.utils import fqn
+from metadata.ometa import fqn
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest

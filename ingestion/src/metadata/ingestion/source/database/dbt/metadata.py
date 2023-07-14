@@ -45,8 +45,8 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_dbt_model_name,
     get_dbt_raw_query,
 )
-from metadata.utils import fqn
-from metadata.utils.elasticsearch import get_entity_from_es_result
+from metadata.ometa import fqn
+from metadata.ometa.elasticsearch import get_entity_from_es_result
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 

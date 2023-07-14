@@ -31,7 +31,7 @@ from metadata.data_quality.source.test_suite_source_factory import (
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.utils import entity_link
-from metadata.utils.fqn import split
+from metadata.ometa.fqn import split
 from metadata.utils.importer import get_sink
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.workflow_output_handler import print_test_suite_status

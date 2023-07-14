@@ -21,8 +21,8 @@ from antlr4.error.ErrorStrategy import BailErrorStrategy
 from antlr4.InputStream import InputStream
 from antlr4.tree.Tree import ParseTreeWalker
 from metadata.antlr.split_listener import FqnSplitListener
-from metadata.utils.dispatch import class_register
-from metadata.utils.elasticsearch import get_entity_from_es_result
+from metadata.registry.dispatch import class_register
+from metadata.ometa.elasticsearch import get_entity_from_es_result
 from pydantic import BaseModel, Field
 
 from metadata.generated.antlr.FqnLexer import FqnLexer

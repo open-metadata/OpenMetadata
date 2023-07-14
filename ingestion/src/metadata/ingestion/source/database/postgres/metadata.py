@@ -34,7 +34,7 @@ from metadata.ingestion.source.database.postgres.utils import (
     get_table_comment,
     get_view_definition,
 )
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (

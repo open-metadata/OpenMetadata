@@ -28,7 +28,7 @@ from metadata.ingestion.source.dashboard.metabase.models import (
     Native,
     OrderedCard,
 )
-from metadata.utils import fqn
+from metadata.ometa import fqn
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest

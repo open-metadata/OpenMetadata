@@ -11,7 +11,7 @@
 """
 Register auth provider init functions here
 """
-from metadata.utils.dispatch import enum_register
+from metadata.registry.dispatch import enum_register
 
 # Complains about same imports
 # pylint: disable=duplicate-code

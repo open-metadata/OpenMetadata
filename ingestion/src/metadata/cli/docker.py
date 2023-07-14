@@ -24,7 +24,7 @@ from datetime import timedelta
 from typing import Optional
 
 import requests
-from metadata.utils.client_version import get_client_version
+from metadata.ometa.client_version import get_client_version
 from metadata.utils.helpers import DockerActions
 from metadata.utils.logger import ANSI, cli_logger, log_ansi_encoded_string
 from requests._internal_utils import to_native_string

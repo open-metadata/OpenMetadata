@@ -15,9 +15,8 @@ OpenMetadata high-level API Table test
 import logging
 import time
 from datetime import datetime
+from typing import Optional
 from unittest import TestCase
-
-from metadata.utils.helpers import find_column_in_table
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -74,6 +73,15 @@ TIER_TAG_LABEL = TagLabel(
     state=State.Suggested.value,
     source=TagSource.Classification,
 )
+
+
+def find_column_in_table(column_name: str, table: Table) -> Optional[Column]:
+    """
+    If the column exists in the table, return it
+    """
+    return next(
+        (col for col in table.columns if col.name.__root__ == column_name), None
+    )
 
 
 class OMetaTableTest(TestCase):

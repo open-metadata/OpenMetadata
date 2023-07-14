@@ -17,7 +17,7 @@ from typing import Optional
 from metadata.pii import PII
 from metadata.pii.column_name_scanner import ColumnNameScanner
 from metadata.pii.ner_scanner import NERScanner
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.logger import profiler_logger
 
 from metadata.generated.schema.entity.classification.tag import Tag

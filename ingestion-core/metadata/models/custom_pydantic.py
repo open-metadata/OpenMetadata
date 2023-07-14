@@ -15,12 +15,10 @@ Pydantic classes overwritten defaults ones of code generation
 import warnings
 from typing import Any, Dict
 
-from metadata.utils.logger import ingestion_logger
+from metadata.ometa.logger import logger
 from pydantic.types import OptionalInt, SecretStr
 from pydantic.utils import update_not_none
 from pydantic.validators import constr_length_validator, str_validator
-
-logger = ingestion_logger()
 
 
 class CustomSecretStr(SecretStr):
@@ -82,7 +80,7 @@ class CustomSecretStr(SecretStr):
         will pick up the object with all the necessary info already in it.
         """
         # Importing inside function to avoid circular import error
-        from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import
+        from metadata.ometa.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import
             SecretsManagerFactory,
         )
 

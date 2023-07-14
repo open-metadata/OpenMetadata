@@ -17,7 +17,7 @@ from typing import Iterable, Optional
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 from pydantic import BaseModel

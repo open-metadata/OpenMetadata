@@ -14,7 +14,7 @@ Hosts the singledispatch to get the schema parsers
 
 from typing import List, Optional
 
-from metadata.utils.dispatch import enum_register
+from metadata.registry.dispatch import enum_register
 
 from metadata.generated.schema.type.schema import FieldModel, SchemaType
 

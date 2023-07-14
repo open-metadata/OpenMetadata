@@ -32,7 +32,7 @@ from metadata.ingestion.source.database.dbt.models import (
     DbtFilteredModel,
     DbtObjects,
 )
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 

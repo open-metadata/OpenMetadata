@@ -10,21 +10,38 @@
 #  limitations under the License.
 
 """
-Secrets manager implementation for local secrets manager
+Abstract class for AWS based secrets manager implementations
 """
-from metadata.utils.secrets.secrets_manager import SecretsManager
+from abc import ABC, abstractmethod
+from typing import Optional
+
+from metadata.clients.aws_client import AWSClient
+from metadata.ometa.secrets.external_secrets_manager import ExternalSecretsManager
 
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
 
+NULL_VALUE = "null"
 
-class NoopSecretsManager(SecretsManager):
+
+class AWSBasedSecretsManager(ExternalSecretsManager, ABC):
     """
-    LocalSecretsManager is used when there is not a secrets' manager configured.
+    AWS Secrets Manager class
     """
 
-    provider: str = SecretsManagerProvider.noop.name
+    def __init__(
+        self,
+        credentials: Optional["AWSCredentials"],
+        client: str,
+        provider: SecretsManagerProvider,
+    ):
+        super().__init__(provider)
+        self.client = AWSClient(credentials).get_client(client)
 
+    @abstractmethod
     def get_string_value(self, secret_id: str) -> str:
-        return secret_id
+        """
+        :param secret_id: The secret id to retrieve
+        :return: The value of the secret
+        """

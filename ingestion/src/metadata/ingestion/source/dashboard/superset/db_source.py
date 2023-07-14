@@ -26,7 +26,7 @@ from metadata.ingestion.source.dashboard.superset.queries import (
     FETCH_COLUMN,
     FETCH_DASHBOARDS,
 )
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.filters import filter_by_datamodel
 from metadata.utils.helpers import (
     clean_uri,

@@ -23,7 +23,7 @@ from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_TABLE_COMMENTS,
     DATABRICKS_VIEW_DEFINITIONS,
 )
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (

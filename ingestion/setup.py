@@ -90,7 +90,6 @@ base_requirements = {
     "croniter~=1.3.0",
     "cryptography",
     "commonregex",
-    "email-validator>=1.0.3",
     "google>=3.0.0",
     "google-auth>=1.33.0",
     VERSIONS["grpc-tools"],  # Used in sample data

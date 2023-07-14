@@ -14,8 +14,8 @@ Test FQN utilities
 
 from unittest import TestCase
 
-from metadata.utils import fqn
-from metadata.utils.fqn import FQNBuildingException
+from metadata.ometa import fqn
+from metadata.ometa.fqn import FQNBuildingException
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (

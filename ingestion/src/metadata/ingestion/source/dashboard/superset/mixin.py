@@ -26,7 +26,7 @@ from metadata.ingestion.source.dashboard.superset.models import (
     SupersetDatasource,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.logger import ingestion_logger
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest

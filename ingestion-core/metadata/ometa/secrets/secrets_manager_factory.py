@@ -14,12 +14,12 @@ Secrets manager factory module
 """
 from typing import Any, Optional
 
-from metadata.utils.secrets.aws_secrets_manager import AWSSecretsManager
-from metadata.utils.secrets.aws_ssm_secrets_manager import AWSSSMSecretsManager
-from metadata.utils.secrets.client.loader import secrets_manager_client_loader
-from metadata.utils.secrets.noop_secrets_manager import NoopSecretsManager
-from metadata.utils.secrets.secrets_manager import SecretsManager
-from metadata.utils.singleton import Singleton
+from metadata.ometa.secrets.aws_secrets_manager import AWSSecretsManager
+from metadata.ometa.secrets.aws_ssm_secrets_manager import AWSSSMSecretsManager
+from metadata.ometa.secrets.client.loader import secrets_manager_client_loader
+from metadata.ometa.secrets.noop_secrets_manager import NoopSecretsManager
+from metadata.ometa.secrets.secrets_manager import SecretsManager
+from metadata.ometa.models.singleton import Singleton
 
 from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
     SecretsManagerClientLoader,

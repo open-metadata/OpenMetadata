@@ -27,7 +27,7 @@ from metadata.ingestion.source.database.domodatabase.models import (
     SchemaColumn,
     User,
 )
-from metadata.utils import fqn
+from metadata.ometa import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger

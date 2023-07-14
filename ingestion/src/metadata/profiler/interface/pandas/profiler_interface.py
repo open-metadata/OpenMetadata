@@ -28,7 +28,7 @@ from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
 from metadata.utils.datalake.datalake_utils import fetch_dataframe
-from metadata.utils.dispatch import valuedispatch
+from metadata.registry.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_like_column import SQALikeColumn, Type
 from sqlalchemy import Column

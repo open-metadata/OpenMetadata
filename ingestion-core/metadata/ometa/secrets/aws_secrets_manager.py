@@ -10,53 +10,55 @@
 #  limitations under the License.
 
 """
-Secrets manager implementation using AWS SSM Parameter Store
+Secrets manager implementation using AWS Secrets Manager
 """
 import traceback
 from typing import Optional
 
 from botocore.exceptions import ClientError
-from metadata.utils.secrets.aws_based_secrets_manager import (
+from metadata.ometa.secrets.aws_based_secrets_manager import (
     NULL_VALUE,
     AWSBasedSecretsManager,
 )
-from metadata.utils.secrets.secrets_manager import logger
+from metadata.ometa.secrets.secrets_manager import logger
 
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
 
 
-class AWSSSMSecretsManager(AWSBasedSecretsManager):
+class AWSSecretsManager(AWSBasedSecretsManager):
     """
-    AWS SSM Parameter Store Secret Manager Class
+    Secrets Manager Implementation Class
     """
 
     def __init__(self, credentials: Optional["AWSCredentials"]):
-        super().__init__(credentials, "ssm", SecretsManagerProvider.aws)
+        super().__init__(credentials, "secretsmanager", SecretsManagerProvider.aws)
 
     def get_string_value(self, secret_id: str) -> Optional[str]:
         """
-        :param secret_id: The parameter name to retrieve.
-        :return: The value of the parameter. When the parameter is not present, it throws a `ValueError` exception.
+        :param secret_id: The secret id to retrieve. Current stage is always retrieved.
+        :return: The value of the secret. When the secret is a string, the value is
+                 contained in the `SecretString` field. When the secret is bytes or not present,
+                 it throws a `ValueError` exception.
         """
         if secret_id is None:
             raise ValueError("[name] argument is None")
 
         try:
-            kwargs = {"Name": secret_id, "WithDecryption": True}
-            response = self.client.get_parameter(**kwargs)
-            logger.debug("Got value for parameter %s.", secret_id)
+            kwargs = {"SecretId": secret_id}
+            response = self.client.get_secret_value(**kwargs)
+            logger.debug("Got value for secret %s.", secret_id)
         except ClientError as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Couldn't get value for parameter [{secret_id}]: {err}")
+            logger.error(f"Couldn't get value for secret [{secret_id}]: {err}")
             raise err
-        if "Parameter" in response and "Value" in response["Parameter"]:
+        if "SecretString" in response:
             return (
-                response["Parameter"]["Value"]
-                if response["Parameter"]["Value"] != NULL_VALUE
+                response["SecretString"]
+                if response["SecretString"] != NULL_VALUE
                 else None
             )
         raise ValueError(
-            f"Parameter for parameter name [{secret_id}] not present in the response."
+            f"SecretString for secret [{secret_id}] not present in the response."
         )
