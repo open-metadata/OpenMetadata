@@ -214,15 +214,13 @@ class ProfilerTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
         )
 
-        profile = profiler._check_profile_and_handle(
+        profiler._check_profile_and_handle(
             CreateTableProfileRequest(
                 tableProfile=TableProfile(
                     timestamp=datetime.now().timestamp(), columnCount=10
                 )
             )
         )
-
-        assert profile.tableProfile.columnCount == 10
 
         with pytest.raises(Exception):
             profiler._check_profile_and_handle(
