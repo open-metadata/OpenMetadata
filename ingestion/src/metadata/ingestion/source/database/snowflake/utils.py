@@ -24,7 +24,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_COMMENTS,
     SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES,
     SNOWFLAKE_GET_SCHEMA_COLUMNS,
-    SNOWFLAKE_GET_TABLE_NAMES,
+    SNOWFLAKE_GET_TRANSIENT_NAMES,
     SNOWFLAKE_GET_VIEW_NAMES,
     SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
 )
@@ -65,8 +65,8 @@ def get_table_names_reflection(self, schema=None, **kw):
 
 def get_table_names(self, connection, schema, **kw):
     query = SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES
-    if kw.get("include_temp_tables"):
-        query = SNOWFLAKE_GET_TABLE_NAMES
+    if kw.get("include_transient_tables"):
+        query = SNOWFLAKE_GET_TRANSIENT_NAMES
 
     if kw.get("external_tables"):
         query = SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES

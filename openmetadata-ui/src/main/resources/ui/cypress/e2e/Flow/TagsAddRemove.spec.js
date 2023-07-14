@@ -19,13 +19,12 @@ import {
 import { TAGS_ADD_REMOVE_ENTITIES } from '../../constants/tagsAddRemove.constants';
 
 const addTags = (tag) => {
-  cy.get('[data-testid="tag-selector"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .click()
-    .type(tag.split('.')[1]);
+  const tagName = Cypress._.split(tag, '.')[1];
 
-  cy.get(`[data-testid='tag-${tag}']`).should('be.visible').click();
+  cy.get('[data-testid="tag-selector"]').scrollIntoView().should('be.visible');
+  cy.get('[data-testid="tag-selector"]').click().type(tagName);
+
+  cy.get(`[data-testid='tag-${tag}']`).click();
   cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
 };
 

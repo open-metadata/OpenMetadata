@@ -1,4 +1,4 @@
-FROM apache/airflow:2.3.3-python3.9
+FROM apache/airflow:2.6.3-python3.9
 USER root
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
@@ -74,7 +74,7 @@ COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
 # Provide Execute Permissions to shell script
 RUN chmod +x /opt/airflow/ingestion_dependency.sh
 USER airflow
-ARG AIRFLOW_CONSTRAINTS_LOCATION="https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
+ARG AIRFLOW_CONSTRAINTS_LOCATION="https://raw.githubusercontent.com/apache/airflow/constraints-2.6.3/constraints-3.9.txt"
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 RUN pip install --upgrade pip
 

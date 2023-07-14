@@ -13,15 +13,24 @@ Superset source module
 """
 
 import traceback
-from typing import Iterable, List, Optional
+from typing import Iterable, Optional
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
-from metadata.generated.schema.entity.data.chart import Chart, ChartType
+from metadata.generated.schema.api.data.createDashboardDataModel import (
+    CreateDashboardDataModelRequest,
+)
+from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.dashboardDataModel import DataModelType
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
+from metadata.ingestion.source.dashboard.superset.models import (
+    ChartResult,
+    DashboradResult,
+)
 from metadata.utils import fqn
+from metadata.utils.filters import filter_by_datamodel
 from metadata.utils.helpers import (
     clean_uri,
     get_database_name_for_lineage,
@@ -49,10 +58,11 @@ class SupersetAPISource(SupersetSourceMixin):
         while current_page * page_size <= total_charts:
             charts = self.client.fetch_charts(current_page, page_size)
             current_page += 1
-            for index in range(len(charts["result"])):
-                self.all_charts[charts["ids"][index]] = charts["result"][index]
 
-    def get_dashboards_list(self) -> Optional[List[object]]:
+            for index, chart_result in enumerate(charts.result):
+                self.all_charts[charts.ids[index]] = chart_result
+
+    def get_dashboards_list(self) -> Optional[Iterable[DashboradResult]]:
         """
         Get List of all dashboards
         """
@@ -62,19 +72,19 @@ class SupersetAPISource(SupersetSourceMixin):
         while current_page * page_size <= total_dashboards:
             dashboards = self.client.fetch_dashboards(current_page, page_size)
             current_page += 1
-            for dashboard in dashboards["result"]:
+            for dashboard in dashboards.result:
                 yield dashboard
 
     def yield_dashboard(
-        self, dashboard_details: dict
-    ) -> Iterable[CreateDashboardRequest]:
+        self, dashboard_details: DashboradResult
+    ) -> Optional[Iterable[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
         """
         dashboard_request = CreateDashboardRequest(
-            name=dashboard_details["id"],
-            displayName=dashboard_details["dashboard_title"],
-            sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{dashboard_details['url']}",
+            name=dashboard_details.id,
+            displayName=dashboard_details.dashboard_title,
+            sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{dashboard_details.url}",
             charts=[
                 fqn.build(
                     self.metadata,
@@ -89,15 +99,17 @@ class SupersetAPISource(SupersetSourceMixin):
         yield dashboard_request
         self.register_record(dashboard_request=dashboard_request)
 
-    def _get_datasource_fqn_for_lineage(self, chart_json, db_service_entity):
+    def _get_datasource_fqn_for_lineage(
+        self, chart_json: ChartResult, db_service_entity: DatabaseService
+    ):
         return (
-            self._get_datasource_fqn(chart_json.get("datasource_id"), db_service_entity)
-            if chart_json.get("datasource_id")
+            self._get_datasource_fqn(chart_json.datasource_id, db_service_entity)
+            if chart_json.datasource_id
             else None
         )
 
     def yield_dashboard_chart(
-        self, dashboard_details: dict
+        self, dashboard_details: DashboradResult
     ) -> Optional[Iterable[CreateChartRequest]]:
         """
         Metod to fetch charts linked to dashboard
@@ -108,13 +120,11 @@ class SupersetAPISource(SupersetSourceMixin):
                 logger.warning(f"chart details for id: {chart_id} not found, skipped")
                 continue
             chart = CreateChartRequest(
-                name=chart_json["id"],
-                displayName=chart_json.get("slice_name"),
-                description=chart_json.get("description"),
-                chartType=get_standard_chart_type(
-                    chart_json.get("viz_type", ChartType.Other.value)
-                ),
-                sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{chart_json.get('url')}",
+                name=chart_json.id,
+                displayName=chart_json.slice_name,
+                description=chart_json.description,
+                chartType=get_standard_chart_type(chart_json.viz_type),
+                sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{chart_json.url}",
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
             )
             yield chart
@@ -126,11 +136,11 @@ class SupersetAPISource(SupersetSourceMixin):
             datasource_json = self.client.fetch_datasource(datasource_id)
             if datasource_json:
                 database_json = self.client.fetch_database(
-                    datasource_json["result"]["database"]["id"]
+                    datasource_json.result.database.id
                 )
                 default_database_name = (
-                    database_json["result"]["parameters"].get("database")
-                    if database_json["result"].get("parameters")
+                    database_json.result.parameters.database
+                    if database_json.result.parameters
                     else None
                 )
 
@@ -142,8 +152,8 @@ class SupersetAPISource(SupersetSourceMixin):
                     dataset_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
-                        table_name=datasource_json["result"]["table_name"],
-                        schema_name=datasource_json["result"].get("schema"),
+                        table_name=datasource_json.result.table_name,
+                        schema_name=datasource_json.result.table_schema,
                         database_name=database_name,
                         service_name=db_service_entity.name.__root__,
                     )
@@ -155,3 +165,46 @@ class SupersetAPISource(SupersetSourceMixin):
             )
 
         return None
+
+    def yield_datamodel(
+        self, dashboard_details: DashboradResult
+    ) -> Optional[Iterable[CreateDashboardDataModelRequest]]:
+
+        if self.source_config.includeDataModels:
+            for chart_id in self._get_charts_of_dashboard(dashboard_details):
+                chart_json = self.all_charts.get(chart_id)
+                if not chart_json:
+                    logger.warning(
+                        f"chart details for id: {chart_id} not found, skipped"
+                    )
+                    continue
+                datasource_json = self.client.fetch_datasource(chart_json.datasource_id)
+                if filter_by_datamodel(
+                    self.source_config.dataModelFilterPattern,
+                    datasource_json.result.table_name,
+                ):
+                    self.status.filter(
+                        datasource_json.result.table_name, "Data model filtered out."
+                    )
+
+                try:
+                    data_model_request = CreateDashboardDataModelRequest(
+                        name=datasource_json.id,
+                        displayName=datasource_json.result.table_name,
+                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                        columns=self.get_column_info(datasource_json.result.columns),
+                        dataModelType=DataModelType.SupersetDataModel.value,
+                    )
+                    yield data_model_request
+                    self.status.scanned(
+                        f"Data Model Scanned: {data_model_request.displayName}"
+                    )
+                except Exception as exc:
+                    error_msg = f"Error yielding Data Model [{datasource_json.result.table_name}]: {exc}"
+                    self.status.failed(
+                        name=datasource_json.id,
+                        error=error_msg,
+                        stack_trace=traceback.format_exc(),
+                    )
+                    logger.error(error_msg)
+                    logger.debug(traceback.format_exc())

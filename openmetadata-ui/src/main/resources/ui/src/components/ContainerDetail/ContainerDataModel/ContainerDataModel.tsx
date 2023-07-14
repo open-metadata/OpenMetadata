@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Space, Typography } from 'antd';
+import { Popover, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import TableDescription from 'components/TableDescription/TableDescription.component';
 import TableTags from 'components/TableTags/TableTags.component';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
+import { EntityType } from 'enums/entity.enum';
 import { Column, TagLabel } from 'generated/entity/data/container';
 import { TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, isEmpty, isUndefined, map, toLower } from 'lodash';
@@ -30,10 +30,7 @@ import {
 } from 'utils/ContainerDetailUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { getTableExpandableConfig } from 'utils/TableUtils';
-import {
-  CellRendered,
-  ContainerDataModelProps,
-} from './ContainerDataModel.interface';
+import { ContainerDataModelProps } from './ContainerDataModel.interface';
 
 const ContainerDataModel: FC<ContainerDataModelProps> = ({
   dataModel,
@@ -41,6 +38,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   hasTagEditAccess,
   isReadOnly,
   onUpdate,
+  entityFqn,
+  entityFieldThreads,
+  onThreadLinkSelect,
 }) => {
   const { t } = useTranslation();
 
@@ -83,38 +83,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     }
     setEditContainerColumnDescription(undefined);
   };
-
-  const renderContainerColumnDescription: CellRendered<Column, 'description'> =
-    (description, record, index) => {
-      return (
-        <Space
-          className="custom-group w-full"
-          data-testid="description"
-          id={`field-description-${index}`}
-          size={4}>
-          <>
-            {description ? (
-              <RichTextEditorPreviewer markdown={description} />
-            ) : (
-              <Typography.Text className="text-grey-muted">
-                {t('label.no-entity', {
-                  entity: t('label.description'),
-                })}
-              </Typography.Text>
-            )}
-          </>
-          {isReadOnly || !hasDescriptionEditAccess ? null : (
-            <Button
-              className="p-0 opacity-0 group-hover-opacity-100 flex-center"
-              data-testid="edit-button"
-              icon={<EditIcon width="16px" />}
-              type="text"
-              onClick={() => setEditContainerColumnDescription(record)}
-            />
-          )}
-        </Space>
-      );
-    };
 
   const columns: ColumnsType<Column> = useMemo(
     () => [
@@ -168,7 +136,22 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         key: 'description',
         accessor: 'description',
         width: 350,
-        render: renderContainerColumnDescription,
+        render: (_, record, index) => (
+          <TableDescription
+            columnData={{
+              fqn: record.fullyQualifiedName ?? '',
+              description: record.description,
+            }}
+            entityFieldThreads={entityFieldThreads}
+            entityFqn={entityFqn}
+            entityType={EntityType.CONTAINER}
+            hasEditPermission={hasDescriptionEditAccess}
+            index={index}
+            isReadOnly={isReadOnly}
+            onClick={() => setEditContainerColumnDescription(record)}
+            onThreadLinkSelect={onThreadLinkSelect}
+          />
+        ),
       },
       {
         title: t('label.tag-plural'),
@@ -178,6 +161,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         width: 300,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
+            entityFieldThreads={entityFieldThreads}
+            entityFqn={entityFqn}
+            entityType={EntityType.CONTAINER}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasTagEditAccess}
             index={index}
@@ -185,6 +171,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             record={record}
             tags={tags}
             type={TagSource.Classification}
+            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -196,6 +183,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         width: 300,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
+            entityFieldThreads={entityFieldThreads}
+            entityFqn={entityFqn}
+            entityType={EntityType.CONTAINER}
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={hasTagEditAccess}
             index={index}
@@ -203,15 +193,20 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             record={record}
             tags={tags}
             type={TagSource.Glossary}
+            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
     ],
     [
       isReadOnly,
+      entityFqn,
       hasTagEditAccess,
+      entityFieldThreads,
       hasDescriptionEditAccess,
       editContainerColumnDescription,
+      getEntityName,
+      onThreadLinkSelect,
       handleFieldTagsChange,
     ]
   );

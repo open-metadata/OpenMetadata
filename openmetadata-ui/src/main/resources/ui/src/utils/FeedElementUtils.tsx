@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { t } from 'i18next';
-import { isEmpty, isEqual, isUndefined } from 'lodash';
-import React, { Fragment } from 'react';
+import { isEmpty, isUndefined } from 'lodash';
+import React from 'react';
 import { ReactComponent as IconComments } from '../assets/svg/comment.svg';
-import { ReactComponent as IconTaskColor } from '../assets/svg/Task-ic.svg';
 import { entityUrlMap } from '../constants/Feeds.constants';
 import { ThreadType } from '../generated/entity/feed/thread';
 import { EntityReference } from '../generated/entity/teams/user';
@@ -36,12 +35,10 @@ export const getFieldThreadElement = (
   columnName: string,
   columnField: string,
   entityFieldThreads: EntityFieldThreads[],
-  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void,
+  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void,
   entityType?: string,
   entityFqn?: string,
-  entityField?: string,
-  flag = true,
-  threadType?: ThreadType
+  entityField?: string
 ) => {
   let threadValue: EntityFieldThreads = {} as EntityFieldThreads;
 
@@ -52,61 +49,31 @@ export const getFieldThreadElement = (
     }
   });
 
-  const isTaskType = isEqual(threadType, ThreadType.Task);
-
-  return !isEmpty(threadValue) ? (
-    <Button
-      className="link-text tw-self-start w-8 h-7 m-r-xss d-flex tw-items-center hover-cell-icon p-0"
-      data-testid="field-thread"
-      type="text"
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        onThreadLinkSelect?.(
-          threadValue.entityLink,
-          isTaskType ? ThreadType.Task : ThreadType.Conversation
-        );
-      }}>
-      <Tooltip
-        destroyTooltipOnHide
-        overlayClassName="ant-popover-request-description"
-        title={t('label.list-entity', {
-          entity: isTaskType ? t('label.task') : t('label.conversation'),
-        })}>
-        <Space align="center" className="w-full h-full" size={4}>
-          {isTaskType ? (
-            <IconTaskColor {...iconsProps} />
-          ) : (
-            <IconComments {...iconsProps} />
-          )}
-        </Space>
-      </Tooltip>
-    </Button>
-  ) : (
-    <Fragment>
-      {entityType && entityFqn && entityField && flag && !isTaskType ? (
-        <Button
-          className="link-text tw-self-start w-7 h-7 m-r-xss flex-none hover-cell-icon p-0"
-          data-testid="start-field-thread"
-          type="text"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onThreadLinkSelect?.(
-              getEntityFeedLink(entityType, entityFqn, entityField)
-            );
-          }}>
-          <Tooltip
-            destroyTooltipOnHide
-            overlayClassName="ant-popover-request-description"
-            title={t('label.start-entity', {
-              entity: t('label.conversation'),
-            })}>
-            <IconComments {...iconsProps} />
-          </Tooltip>
-        </Button>
-      ) : null}
-    </Fragment>
+  return (
+    <Tooltip
+      destroyTooltipOnHide
+      overlayClassName="ant-popover-request-description"
+      title={t('label.list-entity', {
+        entity: t('label.conversation'),
+      })}>
+      <IconComments
+        {...iconsProps}
+        className="hover-cell-icon cursor-pointer"
+        data-testid="field-thread"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          isEmpty(threadValue)
+            ? onThreadLinkSelect(
+                getEntityFeedLink(entityType, entityFqn, entityField)
+              )
+            : onThreadLinkSelect(
+                threadValue.entityLink,
+                ThreadType.Conversation
+              );
+        }}
+      />
+    </Tooltip>
   );
 };
 

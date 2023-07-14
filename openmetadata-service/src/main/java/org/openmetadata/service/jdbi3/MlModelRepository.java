@@ -26,6 +26,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import javax.json.JsonPatch;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.MlModel;
@@ -37,11 +38,15 @@ import org.openmetadata.schema.type.MlFeatureSource;
 import org.openmetadata.schema.type.MlHyperParameter;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.mlmodels.MlModelResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MlModelRepository extends EntityRepository<MlModel> {
@@ -219,6 +224,35 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       }
     }
     return allTags;
+  }
+
+  @Override
+  public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user)
+      throws IOException {
+    if (entityLink.getFieldName().equals("mlFeatures")) {
+      MlModel mlModel = getByName(null, entityLink.getEntityFQN(), getFields("tags"), Include.ALL);
+      MlFeature mlFeature =
+          mlModel.getMlFeatures().stream()
+              .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          CatalogExceptionMessage.invalidFieldName("chart", entityLink.getArrayFieldName())));
+
+      String origJson = JsonUtils.pojoToJson(mlModel);
+      if (EntityUtil.isDescriptionTask(task.getType())) {
+        mlFeature.setDescription(newValue);
+      } else if (EntityUtil.isTagTask(task.getType())) {
+        List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
+        mlFeature.setTags(tags);
+      }
+      String updatedEntityJson = JsonUtils.pojoToJson(mlModel);
+      JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
+      patch(null, mlModel.getId(), user, patch);
+      return;
+    }
+    super.update(task, entityLink, newValue, user);
   }
 
   private void populateService(MlModel mlModel) throws IOException {

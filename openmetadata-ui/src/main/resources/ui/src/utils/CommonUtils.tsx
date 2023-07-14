@@ -72,7 +72,7 @@ import {
 import { SIZE } from '../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { FilterPatternEnum } from '../enums/filterPattern.enum';
-import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
+import { ThreadType } from '../generated/entity/feed/thread';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
@@ -144,6 +144,12 @@ export const getPartialNameFromTableFQN = (
 
     return splitFqn.slice(4).join(FQN_SEPARATOR_CHAR);
   }
+
+  if (fqnParts.includes(FqnPart.Topic)) {
+    // Remove the first 2 parts ( service, database)
+    return splitFqn.slice(2).join(FQN_SEPARATOR_CHAR);
+  }
+
   const arrPartialName = [];
   if (splitFqn.length > 0) {
     if (fqnParts.includes(FqnPart.Service)) {
@@ -551,7 +557,6 @@ export const getFeedCounts = (
   conversationCallback: (
     value: React.SetStateAction<EntityFieldThreadCount[]>
   ) => void,
-  taskCallback: (value: React.SetStateAction<EntityFieldThreadCount[]>) => void,
   entityCallback: (value: React.SetStateAction<number>) => void
 ) => {
   // To get conversation count
@@ -562,23 +567,6 @@ export const getFeedCounts = (
     .then((res) => {
       if (res) {
         conversationCallback(res.counts);
-      } else {
-        throw t('server.entity-feed-fetch-error');
-      }
-    })
-    .catch((err: AxiosError) => {
-      showErrorToast(err, t('server.entity-feed-fetch-error'));
-    });
-
-  // To get open tasks count
-  getFeedCount(
-    getEntityFeedLink(entityType, entityFQN),
-    ThreadType.Task,
-    ThreadTaskStatus.Open
-  )
-    .then((res) => {
-      if (res) {
-        taskCallback(res.counts);
       } else {
         throw t('server.entity-feed-fetch-error');
       }
@@ -976,8 +964,4 @@ export const getEntityDetailLink = (
   }
 
   return path;
-};
-
-export const getPartialNameFromTopicFQN = (fqn: string): string => {
-  return Fqn.split(fqn).slice(2).join(FQN_SEPARATOR_CHAR);
 };
