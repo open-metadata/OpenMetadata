@@ -416,22 +416,17 @@ const EditKPIPage = () => {
                   onClick={handleCancel}>
                   {t('label.go-back')}
                 </Button>
-                <Tooltip
-                  title={
-                    isAdminUser
-                      ? t('label.save')
-                      : t('message.no-permission-for-action')
-                  }>
-                  <Button
-                    data-testid="submit-btn"
-                    disabled={!isAdminUser}
-                    form="kpi-form"
-                    htmlType="submit"
-                    loading={isUpdatingKPI}
-                    type="primary">
-                    {t('label.save')}
-                  </Button>
-                </Tooltip>
+                {isAdminUser ? (
+                  <Tooltip title={t('label.save')}>
+                    <Button
+                      data-testid="submit-btn"
+                      htmlType="submit"
+                      loading={isUpdatingKPI}
+                      type="primary">
+                      {t('label.save')}
+                    </Button>
+                  </Tooltip>
+                ) : null}
               </Space>
             </Form>
           </div>

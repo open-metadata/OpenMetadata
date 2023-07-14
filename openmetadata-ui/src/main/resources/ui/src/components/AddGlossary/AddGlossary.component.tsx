@@ -259,27 +259,26 @@ const AddGlossary = ({
                     </Space>
                   )}
                 </div>
-                <Form.Item>
-                  <Space
-                    className="w-full justify-end"
-                    data-testid="cta-buttons"
-                    size={16}>
-                    <Button
-                      data-testid="cancel-glossary"
-                      type="link"
-                      onClick={onCancel}>
-                      {t('label.cancel')}
-                    </Button>
-                    <Button
-                      data-testid="save-glossary"
-                      disabled={!allowAccess}
-                      htmlType="submit"
-                      loading={isLoading}
-                      type="primary">
-                      {t('label.save')}
-                    </Button>
-                  </Space>
-                </Form.Item>
+
+                <Space
+                  className="w-full justify-end"
+                  data-testid="cta-buttons"
+                  size={16}>
+                  <Button
+                    data-testid="cancel-glossary"
+                    type="link"
+                    onClick={onCancel}>
+                    {t('label.cancel')}
+                  </Button>
+                  <Button
+                    data-testid="save-glossary"
+                    disabled={!allowAccess}
+                    htmlType="submit"
+                    loading={isLoading}
+                    type="primary">
+                    {t('label.save')}
+                  </Button>
+                </Space>
               </Form>
             </div>
           </div>

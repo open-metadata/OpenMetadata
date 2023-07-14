@@ -104,7 +104,6 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                   </Tooltip>
                 </Space>
                 <Progress
-                  className=""
                   percent={Number(currentProgress)}
                   showInfo={false}
                   size="small"

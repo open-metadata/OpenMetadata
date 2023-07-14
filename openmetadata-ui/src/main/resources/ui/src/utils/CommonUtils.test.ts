@@ -26,9 +26,11 @@ import {
 
 import { AxiosError } from 'axios';
 import { ERROR_MESSAGE } from 'constants/constants';
+import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { cloneDeep } from 'lodash';
 import {
   digitFormatter,
+  getEntityDetailLink,
   getIsErrorMatch,
   getNameFromFQN,
   sortTagsCaseInsensitive,
@@ -183,6 +185,44 @@ describe('Tests for CommonUtils', () => {
         );
 
         expect(result).toBe(false);
+      });
+
+      it('should return the correct path for EntityType.TABLE', () => {
+        let result = getEntityDetailLink(
+          EntityType.TABLE,
+          'table_fqn',
+          EntityTabs.ACTIVITY_FEED
+        );
+
+        expect(result).toEqual('/table/table_fqn/activity_feed/all');
+
+        result = getEntityDetailLink(
+          EntityType.TABLE,
+          'table_fqn',
+          EntityTabs.ACTIVITY_FEED,
+          'mentions'
+        );
+
+        expect(result).toEqual('/table/table_fqn/activity_feed/mentions');
+
+        result = getEntityDetailLink(
+          EntityType.TABLE,
+          'table_fqn',
+          EntityTabs.ACTIVITY_FEED,
+          'tasks'
+        );
+
+        expect(result).toEqual('/table/table_fqn/activity_feed/tasks');
+      });
+
+      it('should return the correct path for EntityType.TOPIC', () => {
+        const result = getEntityDetailLink(
+          EntityType.TOPIC,
+          'topic_fqn',
+          EntityTabs.CONFIG
+        );
+
+        expect(result).toEqual('/topic/topic_fqn/config');
       });
     });
   });
