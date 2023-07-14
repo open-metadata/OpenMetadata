@@ -171,7 +171,7 @@ class DatalakeSampleTest(TestCase):
         res = profiler.compute_metrics()._table_results
         assert res.get(Metrics.ROW_COUNT.name) == 3
 
-    @pytest.mark.skip(reason="Flaky test du to small sample size")
+    @pytest.mark.skip(reason="Flaky test due to small sample size")
     def test_random_sample_histogram(self):
         """
         Histogram should run correctly
