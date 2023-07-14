@@ -65,10 +65,7 @@ import {
   LOCALSTORAGE_RECENTLY_SEARCHED,
   LOCALSTORAGE_RECENTLY_VIEWED,
 } from '../constants/constants';
-import {
-  UrlEntityCharRegEx,
-  validEmailRegEx,
-} from '../constants/regex.constants';
+import { EMAIL_REG_EX, UrlEntityCharRegEx } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { FilterPatternEnum } from '../enums/filterPattern.enum';
@@ -419,7 +416,7 @@ export const isValidUrl = (href?: string) => {
  */
 export const isValidEmail = (email?: string) => {
   let isValid = false;
-  if (email && email.match(validEmailRegEx)) {
+  if (email && email.match(EMAIL_REG_EX)) {
     isValid = true;
   }
 
