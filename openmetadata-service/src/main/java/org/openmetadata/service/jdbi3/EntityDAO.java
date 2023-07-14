@@ -224,16 +224,8 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("limit") int limit,
       @Bind("after") String after);
 
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT json FROM <table> WHERE JSON_EXTRACT(json, '$.fullyQualifiedName') > :after ORDER BY JSON_EXTRACT(json, '$.fullyQualifiedName') LIMIT :limit;",
-      connectionType = MYSQL)
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT json FROM <table> WHERE json#>>'{fullyQualifiedName}' > :after ORDER BY json#>>'{fullyQualifiedName}' LIMIT :limit;",
-      connectionType = POSTGRES)
-  List<String> listAfterWitFullyQualifiedName(
-      @Define("table") String table, @Bind("limit") int limit, @Bind("after") String after);
+  @SqlQuery("SELECT json FROM <table> LIMIT :limit OFFSET :offset")
+  List<String> listAfterWithOffset(@Define("table") String table, @Bind("limit") int limit, @Bind("offset") int offset);
 
   @SqlQuery("SELECT json FROM <table> <cond> AND " + "ORDER BY <nameColumn> " + "LIMIT :limit " + "OFFSET :offset")
   List<String> listAfter(
@@ -354,10 +346,9 @@ public interface EntityDAO<T extends EntityInterface> {
     return listAfter(getTableName(), getNameColumn(), filter.getCondition(), limit, after);
   }
 
-  default List<String> listAfterWitFullyQualifiedName(int limit, String after) {
-    // This is based on field not fqn or name
-    // Ordering and Paginating on name or fqn should be done using above function as requires unquoting/quoting
-    return listAfterWitFullyQualifiedName(getTableName(), limit, after);
+  default List<String> listAfterWithOffset(int limit, int offset) {
+    // No ordering
+    return listAfterWithOffset(getTableName(), limit, offset);
   }
 
   default List<String> listAfter(ListFilter filter, int limit, int offset) {

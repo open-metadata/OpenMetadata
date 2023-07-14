@@ -18,12 +18,6 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
-from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.dashboard.superset.api_source import SupersetAPISource
-from metadata.ingestion.source.dashboard.superset.client import SupersetAPIClient
-from metadata.ingestion.source.dashboard.superset.db_source import SupersetDBSource
-from metadata.ingestion.source.dashboard.superset.metadata import SupersetSource
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
@@ -53,8 +47,22 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ometa.mixins.server_mixin import OMetaServerMixin
-from metadata.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.ingestion.source.dashboard.superset.api_source import SupersetAPISource
+from metadata.ingestion.source.dashboard.superset.client import SupersetAPIClient
+from metadata.ingestion.source.dashboard.superset.db_source import SupersetDBSource
+from metadata.ingestion.source.dashboard.superset.metadata import SupersetSource
+from metadata.ingestion.source.dashboard.superset.models import (
+    FetchChart,
+    FetchDashboard,
+    ListDatabaseResult,
+    SupersetChart,
+    SupersetDashboardCount,
+    SupersetDatasource,
+)
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/superset_dataset.json"
@@ -62,13 +70,13 @@ mock_file_path = (
 with open(mock_file_path, encoding="UTF-8") as file:
     mock_data: dict = json.load(file)
 
-MOCK_DASHBOARD_RESP = mock_data["dashboard"]
-MOCK_DASHBOARD = MOCK_DASHBOARD_RESP["result"][0]
-MOCK_CHART_RESP = mock_data["chart"]
-MOCK_CHART = MOCK_CHART_RESP["result"][0]
+MOCK_DASHBOARD_RESP = SupersetDashboardCount(**mock_data["dashboard"])
+MOCK_DASHBOARD = MOCK_DASHBOARD_RESP.result[0]
+MOCK_CHART_RESP = SupersetChart(**mock_data["chart"])
+MOCK_CHART = MOCK_CHART_RESP.result[0]
 
-MOCK_CHART_DB = mock_data["chart-db"][0]
-MOCK_DASHBOARD_DB = mock_data["dashboard-db"]
+MOCK_CHART_DB = FetchChart(**mock_data["chart-db"][0])
+MOCK_DASHBOARD_DB = FetchDashboard(**mock_data["dashboard-db"])
 
 MOCK_SUPERSET_API_CONFIG = {
     "source": {
@@ -336,7 +344,7 @@ class SupersetUnitTest(TestCase):
 
     def test_dashboard_name(self):
         dashboard_name = self.superset_api.get_dashboard_name(MOCK_DASHBOARD)
-        self.assertEqual(dashboard_name, MOCK_DASHBOARD["dashboard_title"])
+        self.assertEqual(dashboard_name, MOCK_DASHBOARD.dashboard_title)
 
     def test_yield_dashboard(self):
         # TEST API SOURCE
@@ -373,9 +381,11 @@ class SupersetUnitTest(TestCase):
         ), patch.object(
             SupersetAPIClient,
             "fetch_datasource",
-            return_value=mock_data.get("datasource"),
+            return_value=SupersetDatasource(**mock_data["datasource"]),
         ), patch.object(
-            SupersetAPIClient, "fetch_database", return_value=mock_data.get("database")
+            SupersetAPIClient,
+            "fetch_database",
+            return_value=ListDatabaseResult(**mock_data["database"]),
         ):
             fqn = self.superset_api._get_datasource_fqn(  # pylint: disable=protected-access
                 1, MOCK_DB_POSTGRES_SERVICE
@@ -387,12 +397,12 @@ class SupersetUnitTest(TestCase):
         ), patch.object(
             SupersetAPIClient,
             "fetch_datasource",
-            return_value=mock_data.get("datasource"),
+            return_value=SupersetDatasource(**mock_data["datasource"]),
         ), patch.object(
-            SupersetAPIClient, "fetch_database", return_value=NOT_FOUND_RESP
+            SupersetAPIClient, "fetch_database", return_value=ListDatabaseResult()
         ):
             fqn = self.superset_api._get_datasource_fqn(  # pylint: disable=protected-access
-                1, "demo"
+                1, MOCK_DB_POSTGRES_SERVICE
             )
             self.assertEqual(fqn, None)
 
