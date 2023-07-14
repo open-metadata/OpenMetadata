@@ -325,6 +325,18 @@ a[href].link-text-grey,
   }
 }
 
+.hover-icon-group {
+  .hover-cell-icon {
+    opacity: 0;
+    transition: 0.3s ease-in;
+  }
+  &:hover {
+    .hover-cell-icon {
+      opacity: 100;
+    }
+  }
+}
+
 /* Group CSS End*/
 
 .quick-filter-dropdown-trigger-btn {

@@ -1,4 +1,4 @@
-FROM apache/airflow:2.3.3-python3.9
+FROM apache/airflow:2.6.3-python3.9
 USER root
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
@@ -75,7 +75,7 @@ USER airflow
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"
 RUN pip install --upgrade pip
-RUN pip install "openmetadata-managed-apis==1.2.0.0.dev0" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
+RUN pip install "openmetadata-managed-apis==1.2.0.0.dev0" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.6.3/constraints-3.9.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]==1.2.0.0.dev0"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593

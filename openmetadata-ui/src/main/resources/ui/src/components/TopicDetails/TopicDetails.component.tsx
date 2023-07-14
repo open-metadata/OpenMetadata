@@ -58,6 +58,7 @@ import TopicSchemaFields from './TopicSchema/TopicSchema';
 
 const TopicDetails: React.FC<TopicDetailsProps> = ({
   topicDetails,
+  fetchTopic,
   followTopicHandler,
   unFollowTopicHandler,
   versionHandler,
@@ -74,9 +75,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const [threadLink, setThreadLink] = useState<string>('');
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
-  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
     EntityFieldThreadCount[]
   >([]);
 
@@ -253,7 +251,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       EntityType.TOPIC,
       topicFQN,
       setEntityFieldThreadCount,
-      setEntityFieldTaskCount,
       setFeedCount
     );
   };
@@ -294,12 +291,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   onThreadLinkSelect={onThreadLinkSelect}
                 />
                 <TopicSchemaFields
-                  entityFieldTasks={getEntityFieldThreadCounts(
-                    EntityField.COLUMNS,
-                    entityFieldTaskCount
-                  )}
                   entityFieldThreads={getEntityFieldThreadCounts(
-                    EntityField.COLUMNS,
+                    EntityField.MESSAGE_SCHEMA,
                     entityFieldThreadCount
                   )}
                   entityFqn={topicDetails.fullyQualifiedName ?? ''}
@@ -369,6 +362,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               entityType={EntityType.TOPIC}
               fqn={topicDetails?.fullyQualifiedName ?? ''}
               onFeedUpdate={getEntityFeedCount}
+              onUpdateEntityDetails={fetchTopic}
             />
           </ActivityFeedProvider>
         ),
@@ -443,7 +437,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       activeTab,
       feedCount,
       topicDetails,
-      entityFieldTaskCount,
       entityFieldThreadCount,
       topicPermissions,
       isEdit,
