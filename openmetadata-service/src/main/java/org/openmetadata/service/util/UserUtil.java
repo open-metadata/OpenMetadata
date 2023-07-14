@@ -150,7 +150,8 @@ public final class UserUtil {
         .withEmail(name + "@" + domain)
         .withUpdatedBy(updatedBy)
         .withUpdatedAt(System.currentTimeMillis())
-        .withIsBot(false);
+        .withIsBot(false)
+        .withDisplayName(name);
   }
 
   /**
