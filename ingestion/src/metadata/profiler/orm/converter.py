@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source import sqa_types
 from metadata.profiler.orm.registry import CustomTypes
+from metadata.profiler.source.bigquery.type_mapper import bigquery_type_mapper
 
 Base = declarative_base()
 
@@ -86,6 +87,12 @@ def map_types(col: Column, table_service_type):
         from snowflake.sqlalchemy import VARIANT
 
         return VARIANT
+
+    if (
+        table_service_type == databaseService.DatabaseServiceType.BigQuery
+        and col.dataType == DataType.STRUCT
+    ):
+        return bigquery_type_mapper(_TYPE_MAP, col)
 
     return _TYPE_MAP.get(col.dataType)
 

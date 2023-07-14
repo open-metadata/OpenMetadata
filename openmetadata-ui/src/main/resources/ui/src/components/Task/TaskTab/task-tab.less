@@ -10,18 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
- * need to create this manually because we don't have json schema for airflow status as it's just the ok/ko response
- */
-
-export enum AirflowStatus {
-  HEALTHY = 'healthy',
-  UNHEALTHY = 'unhealthy',
-}
-
-export interface AirflowResponse {
-  status: AirflowStatus;
-  version?: string;
-  reason?: string;
-  platform?: string;
+.assignees-edit-input {
+  .ant-space-item:first-child {
+    width: 100%;
+  }
 }
