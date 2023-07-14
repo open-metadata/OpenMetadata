@@ -106,7 +106,7 @@
       "description": "A unique name that identifies an entity. Example for table 'DatabaseService.Database.Schema.Table'.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 1024
+      "maxLength": 3072
     },
     "sqlQuery": {
       "$comment" : "@om-field-type",
