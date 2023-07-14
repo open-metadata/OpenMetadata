@@ -63,7 +63,11 @@ const OperationDateBarChart = ({
   }
 
   return (
-    <ResponsiveContainer debounce={200} id={`${name}_graph`} minHeight={300}>
+    <ResponsiveContainer
+      className="custom-legend"
+      debounce={200}
+      id={`${name}_graph`}
+      minHeight={300}>
       <ComposedChart className="w-full" data={data} margin={{ left: 16 }}>
         <XAxis
           dataKey="name"

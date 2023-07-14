@@ -312,6 +312,7 @@ const DashboardDetailsPage = () => {
       charts={charts}
       createThread={createThread}
       dashboardDetails={dashboardDetails}
+      fetchDashboard={() => fetchDashboardDetail(dashboardFQN)}
       followDashboardHandler={followDashboard}
       unFollowDashboardHandler={unFollowDashboard}
       versionHandler={versionHandler}

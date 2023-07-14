@@ -67,12 +67,8 @@
   position: relative;
 }
 
-.custom-edge-pipeline-button {
-  background: @primary-color;
-  color: @white;
-  height: 32px;
-  width: 32px;
-  border-radius: 9999px;
+.custom-edge-pipeline-button.ant-btn {
+  background-color: @body-bg-color;
 }
 
 .custom-node {
@@ -136,6 +132,8 @@
 
 .custom-control-edit-button {
   display: block !important;
+  border: 1px solid @border-color;
+  background-color: @body-bg-color;
 }
 
 .custom-lineage-heading {

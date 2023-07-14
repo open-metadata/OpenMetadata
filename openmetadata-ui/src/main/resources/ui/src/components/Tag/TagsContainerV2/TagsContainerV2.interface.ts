@@ -18,7 +18,7 @@ import { ReactElement } from 'react';
 
 export type TagsContainerV2Props = {
   permission: boolean;
-  isVersionView?: boolean;
+  showTaskHandler?: boolean;
   selectedTags: EntityTags[];
   entityType?: string;
   entityThreadLink?: string;

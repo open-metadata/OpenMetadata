@@ -36,7 +36,6 @@ as a starting point.
 
 If you are using our `openmetadata/ingestion` Docker image, there is just one thing to do: Configure the OpenMetadata server.
 
-
 The OpenMetadata server takes all its configurations from a YAML file. You can find them in our [repo](https://github.com/open-metadata/OpenMetadata/tree/main/conf). In
 `openmetadata.yaml`, update the `pipelineServiceClientConfiguration` section accordingly.
 
@@ -90,7 +89,8 @@ openmetadata:
 ## Custom Airflow Installation
 
 {% note %}
-Note that the `openmetadata-ingestion` only supports Python versions 3.7, 3.8 and 3.9.
+- Note that the `openmetadata-ingestion` only supports Python versions 3.7, 3.8 and 3.9.
+- The supported Airflow versions are 2.3, 2.4 and 2.5. From release 1.1.1 onwards, OpenMetadata will also support Airflow 2.6.
 {% /note %}
 
 You will need to follow three steps:

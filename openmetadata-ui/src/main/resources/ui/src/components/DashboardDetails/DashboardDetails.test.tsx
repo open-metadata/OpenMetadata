@@ -66,6 +66,7 @@ const dashboardDetailsProps: DashboardDetailsProps = {
   onDashboardUpdate: jest.fn(),
   versionHandler: jest.fn(),
   createThread: jest.fn(),
+  fetchDashboard: jest.fn(),
 };
 
 const mockEntityPermissions = {

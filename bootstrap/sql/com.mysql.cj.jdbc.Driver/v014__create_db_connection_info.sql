@@ -21,3 +21,23 @@ CREATE TABLE IF NOT EXISTS data_product_entity (
     PRIMARY KEY (id),
     UNIQUE (fqnHash)
 );
+
+-- Rename includeTempTables with includeTransTables
+UPDATE dbservice_entity
+SET json = JSON_REMOVE(
+    JSON_SET(
+        json,
+        '$.connection.config.includeTransientTables',
+        JSON_EXTRACT(json, '$.connection.config.includeTempTables')
+    ),
+    '$.connection.config.includeTempTables'
+)
+WHERE serviceType in ('Snowflake') AND JSON_EXTRACT(json, '$.connection.config.includeTempTables') IS NOT NULL;
+
+UPDATE dbservice_entity
+SET json = JSON_REPLACE(json, '$.connection.config.scheme', 'hive')
+WHERE JSON_EXTRACT(json, '$.connection.config.scheme') IN ('impala', 'impala4');
+
+-- remove the dataModel references from Data Models
+UPDATE dashboard_data_model_entity
+SET json = JSON_REMOVE(json, '$.dataModels');

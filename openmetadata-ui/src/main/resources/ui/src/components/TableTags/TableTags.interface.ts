@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { EntityType } from 'enums/entity.enum';
 import { MlFeature } from 'generated/entity/data/mlmodel';
 import { Task } from 'generated/entity/data/pipeline';
 import { Field } from 'generated/entity/data/topic';
@@ -23,23 +24,20 @@ import { EntityFieldThreads } from '../../interface/feed.interface';
 
 export interface TableTagsComponentProps<T> {
   tags: TagLabel[];
-  onUpdateTagsHandler?: (cell: T) => void;
   isReadOnly?: boolean;
-  entityFqn?: string;
+  entityFqn: string;
   record: T;
   index: number;
   hasTagEditAccess: boolean;
+  entityFieldThreads: EntityFieldThreads[];
+  type: TagSource;
+  showInlineEditTagButton?: boolean;
+  entityType: EntityType;
   handleTagSelection: (
     selectedTags: EntityTags[],
     editColumnTag: T
   ) => Promise<void>;
-  onRequestTagsHandler?: (cell: T) => void;
-  getColumnName?: (cell: T) => string;
-  getColumnFieldFQN?: string;
-  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
-  entityFieldThreads?: EntityFieldThreads[];
-  type: TagSource;
-  showInlineEditTagButton?: boolean;
+  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
 }
 
 export interface TagsCollection {
