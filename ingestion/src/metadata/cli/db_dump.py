@@ -34,7 +34,7 @@ TABLES_DUMP_ALL = {
 }
 
 CUSTOM_TABLES = {"entity_extension_time_series": {"exclude_columns": ["timestamp"]}}
-NOT_MIGRATE = {"DATABASE_CHANGE_LOG"}
+NOT_MIGRATE = {"DATABASE_CHANGE_LOG", "SERVER_MIGRATION_SQL_LOGS", "SERVER_CHANGE_LOG"}
 
 STATEMENT_JSON = "SELECT json FROM {table}"
 STATEMENT_ALL = "SELECT * FROM {table}"

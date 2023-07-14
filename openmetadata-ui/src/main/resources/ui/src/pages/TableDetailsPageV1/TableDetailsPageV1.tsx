@@ -72,6 +72,7 @@ import {
   restoreTable,
 } from 'rest/tableAPI';
 import {
+  addToRecentViewed,
   getCurrentUserId,
   getFeedCounts,
   getPartialNameFromTableFQN,
@@ -100,9 +101,6 @@ const TableDetailsPageV1 = () => {
   const USERId = getCurrentUserId();
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
-  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
     EntityFieldThreadCount[]
   >([]);
   const [isEdit, setIsEdit] = useState(false);
@@ -139,6 +137,14 @@ const TableDetailsPageV1 = () => {
       const details = await getTableDetailsByFQN(datasetFQN, fields);
 
       setTableDetails(details);
+      addToRecentViewed({
+        displayName: getEntityName(details),
+        entityType: EntityType.TABLE,
+        fqn: details.fullyQualifiedName ?? '',
+        serviceType: details.serviceType,
+        timestamp: 0,
+        id: details.id,
+      });
     } catch (error) {
       // Error here
     } finally {
@@ -272,7 +278,6 @@ const TableDetailsPageV1 = () => {
       EntityType.TABLE,
       datasetFQN,
       setEntityFieldThreadCount,
-      setEntityFieldTaskCount,
       setFeedCount
     );
   };
@@ -422,7 +427,7 @@ const TableDetailsPageV1 = () => {
         gutter={[0, 16]}
         id="schemaDetails"
         wrap={false}>
-        <Col className="p-t-sm m-l-lg tab-content-height" flex="auto">
+        <Col className="p-t-sm m-l-lg tab-content-height p-r-lg" flex="auto">
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
               description={tableDetails?.description}
@@ -451,10 +456,6 @@ const TableDetailsPageV1 = () => {
                 FQN_SEPARATOR_CHAR
               )}
               columns={tableDetails?.columns ?? []}
-              entityFieldTasks={getEntityFieldThreadCounts(
-                EntityField.COLUMNS,
-                entityFieldTaskCount
-              )}
               entityFieldThreads={getEntityFieldThreadCounts(
                 EntityField.COLUMNS,
                 entityFieldThreadCount
@@ -547,11 +548,9 @@ const TableDetailsPageV1 = () => {
           <ActivityFeedProvider>
             <ActivityFeedTab
               columns={tableDetails?.columns}
-              description={tableDetails?.description}
               entityType={EntityType.TABLE}
               fqn={tableDetails?.fullyQualifiedName ?? ''}
               owner={tableDetails?.owner}
-              tags={tableDetails?.tags}
               onFeedUpdate={getEntityFeedCount}
               onUpdateEntityDetails={fetchTableDetails}
             />

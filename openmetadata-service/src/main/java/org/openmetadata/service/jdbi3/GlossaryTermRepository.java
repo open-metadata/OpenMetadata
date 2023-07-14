@@ -17,7 +17,10 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidGlossaryTermMove;
@@ -71,9 +74,39 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     entity.withGlossary(getGlossary(entity)).withParent(getParent(entity));
     entity.setChildren(fields.contains("children") ? getChildren(entity) : null);
     entity.setRelatedTerms(fields.contains("relatedTerms") ? getRelatedTerms(entity) : null);
-    entity.setReviewers(fields.contains("reviewers") ? getReviewers(entity) : null);
+    entity.setReviewers(fields.contains(FIELD_REVIEWERS) ? getReviewers(entity) : null);
     entity.setOwner(fields.contains("owner") ? getOwner(entity) : null);
     return entity.withUsageCount(fields.contains("usageCount") ? getUsageCount(entity) : null);
+  }
+
+  @Override
+  public GlossaryTerm setInheritedFields(GlossaryTerm glossaryTerm, Fields fields) throws IOException {
+    Glossary glossary = null;
+    GlossaryTerm parentTerm = null;
+    if (fields.contains(FIELD_OWNER) && glossaryTerm.getOwner() == null) {
+      if (glossaryTerm.getParent() != null) {
+        parentTerm = get(null, glossaryTerm.getParent().getId(), getFields("owner,reviewers"));
+        glossaryTerm.setOwner(parentTerm.getOwner());
+      } else {
+        glossary = Entity.getEntity(glossaryTerm.getGlossary(), "owner,reviewers", ALL);
+        glossaryTerm.setOwner(glossary.getOwner());
+      }
+    }
+
+    if (fields.contains(FIELD_REVIEWERS) && nullOrEmpty(glossaryTerm.getReviewers())) {
+      if (glossaryTerm.getParent() != null) {
+        if (parentTerm == null) {
+          parentTerm = get(null, glossaryTerm.getParent().getId(), getFields(FIELD_REVIEWERS));
+        }
+        glossaryTerm.setReviewers(parentTerm.getReviewers());
+      } else {
+        if (glossary == null) {
+          glossary = Entity.getEntity(glossaryTerm.getGlossary(), FIELD_REVIEWERS, ALL);
+        }
+        glossaryTerm.setReviewers(glossary.getReviewers());
+      }
+    }
+    return glossaryTerm;
   }
 
   private Integer getUsageCount(GlossaryTerm term) {
@@ -109,27 +142,15 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         entity.getParent() != null
             ? getByName(null, entity.getParent().getFullyQualifiedName(), getFields("owner"))
             : null;
-    List<EntityReference> inheritedReviewers = null;
-    EntityReference inheritedOwner = null;
     if (parentTerm != null) {
       entity.setParent(parentTerm.getEntityReference());
-      inheritedReviewers = parentTerm.getReviewers(); // Inherit reviewers from the parent term
-      inheritedOwner = parentTerm.getOwner(); // Inherit ownership from the parent term
     }
 
     // Validate glossary
-    Glossary glossary = Entity.getEntity(entity.getGlossary(), "owner,reviewers", Include.NON_DELETED);
+    Glossary glossary = Entity.getEntity(entity.getGlossary(), "", Include.NON_DELETED);
     entity.setGlossary(glossary.getEntityReference());
 
-    // If parent term does not have reviewers or owner then inherit from the glossary
-    inheritedReviewers = inheritedReviewers != null ? inheritedReviewers : glossary.getReviewers();
-    inheritedOwner = inheritedOwner != null ? inheritedOwner : glossary.getOwner();
-
     validateHierarchy(entity);
-
-    // If reviewers and owner are not set for the glossary term, then carry it from the glossary
-    entity.setReviewers(entity.getReviewers() != null ? entity.getReviewers() : inheritedReviewers);
-    entity.setOwner(entity.getOwner() != null ? entity.getOwner() : inheritedOwner);
 
     // Validate related terms
     EntityUtil.populateEntityReferences(entity.getRelatedTerms());
@@ -213,30 +234,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     addRelationship(term.getGlossary().getId(), term.getId(), GLOSSARY, GLOSSARY_TERM, Relationship.CONTAINS);
   }
 
-  private void deleteGlossaryRelationship(GlossaryTerm term) {
-    deleteRelationship(term.getGlossary().getId(), GLOSSARY, term.getId(), GLOSSARY_TERM, Relationship.CONTAINS);
-  }
-
-  private void updateGlossaryRelationship(GlossaryTerm orig, GlossaryTerm updated) {
-    deleteGlossaryRelationship(orig);
-    addGlossaryRelationship(updated);
-  }
-
   private void addParentRelationship(GlossaryTerm term) {
     if (term.getParent() != null) {
       addRelationship(term.getParent().getId(), term.getId(), GLOSSARY_TERM, GLOSSARY_TERM, Relationship.CONTAINS);
     }
-  }
-
-  private void deleteParentRelationship(GlossaryTerm term) {
-    if (term.getParent() != null) {
-      deleteRelationship(term.getParent().getId(), GLOSSARY_TERM, term.getId(), GLOSSARY_TERM, Relationship.CONTAINS);
-    }
-  }
-
-  private void updateParentRelationship(GlossaryTerm orig, GlossaryTerm updated) {
-    deleteParentRelationship(orig);
-    addParentRelationship(updated);
   }
 
   private void validateHierarchy(GlossaryTerm term) {
@@ -322,7 +323,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       List<EntityReference> origReviewers = listOrEmpty(origTerm.getReviewers());
       List<EntityReference> updatedReviewers = listOrEmpty(updatedTerm.getReviewers());
       updateFromRelationships(
-          "reviewers",
+          FIELD_REVIEWERS,
           Entity.USER,
           origReviewers,
           updatedReviewers,
@@ -377,6 +378,26 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       // A glossary term can't be moved under its child
       if (newParentFqn != null && FullyQualifiedName.isParent(newParentFqn, fqn)) {
         throw new IllegalArgumentException(invalidGlossaryTermMove(fqn, newParentFqn));
+      }
+    }
+
+    private void updateGlossaryRelationship(GlossaryTerm orig, GlossaryTerm updated) {
+      deleteGlossaryRelationship(orig);
+      addGlossaryRelationship(updated);
+    }
+
+    private void deleteGlossaryRelationship(GlossaryTerm term) {
+      deleteRelationship(term.getGlossary().getId(), GLOSSARY, term.getId(), GLOSSARY_TERM, Relationship.CONTAINS);
+    }
+
+    private void updateParentRelationship(GlossaryTerm orig, GlossaryTerm updated) {
+      deleteParentRelationship(orig);
+      addParentRelationship(updated);
+    }
+
+    private void deleteParentRelationship(GlossaryTerm term) {
+      if (term.getParent() != null) {
+        deleteRelationship(term.getParent().getId(), GLOSSARY_TERM, term.getId(), GLOSSARY_TERM, Relationship.CONTAINS);
       }
     }
   }

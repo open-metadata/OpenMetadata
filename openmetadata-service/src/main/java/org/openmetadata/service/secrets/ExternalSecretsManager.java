@@ -19,13 +19,12 @@ import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 public abstract class ExternalSecretsManager extends SecretsManager {
   public static final String NULL_SECRET_STRING = "null";
   public static final String SECRET_FIELD_PREFIX = "secret:";
-
-  private final long WAIT_TIME_BETWEEN_STORE_CALLS;
+  private final long waitTimeBetweenStoreCalls;
 
   protected ExternalSecretsManager(
       SecretsManagerProvider secretsManagerProvider, String clusterPrefix, long waitTimeBetweenCalls) {
     super(secretsManagerProvider, clusterPrefix);
-    WAIT_TIME_BETWEEN_STORE_CALLS = waitTimeBetweenCalls;
+    waitTimeBetweenStoreCalls = waitTimeBetweenCalls;
   }
 
   @Override
@@ -70,9 +69,9 @@ public abstract class ExternalSecretsManager extends SecretsManager {
 
   private void sleep() {
     // delay reaching secrets manager quotas
-    if (WAIT_TIME_BETWEEN_STORE_CALLS > 0) {
+    if (waitTimeBetweenStoreCalls > 0) {
       try {
-        Thread.sleep(WAIT_TIME_BETWEEN_STORE_CALLS);
+        Thread.sleep(waitTimeBetweenStoreCalls);
       } catch (InterruptedException e) {
         throw new RuntimeException(e);
       }

@@ -14,6 +14,14 @@ Test the lkml parser
 from pathlib import Path
 from unittest import TestCase
 
+from looker_sdk.sdk.api40.models import (
+    LookmlModelExplore,
+    LookmlModelExploreField,
+    LookmlModelExploreFieldset,
+)
+
+from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType
+from metadata.ingestion.source.dashboard.looker.columns import get_columns_from_model
 from metadata.ingestion.source.dashboard.looker.links import get_path_from_link
 from metadata.ingestion.source.dashboard.looker.parser import (
     Includes,
@@ -138,6 +146,24 @@ class TestLkmlParser(TestCase):
             },
         )
 
+    def test_recursive_explore(self):
+        """
+        We should stop the execution
+        """
+        reader = LocalReader(BASE_PATH)
+        parser = LkmlParser(reader)
+
+        view = parser.find_view(
+            view_name=ViewName("recursive_call"),
+            path=Includes("recursive.explore.lkml"),
+        )
+        self.assertIsNotNone(view)
+
+        view = parser.find_view(
+            view_name=ViewName("recursive"), path=Includes("recursive.explore.lkml")
+        )
+        self.assertIsNotNone(view)
+
     def test_get_path_from_link(self):
         """
         Validate utility
@@ -166,3 +192,90 @@ class TestLkmlParser(TestCase):
         parser = LkmlParser(reader)
 
         self.assertIn("cats.view.lkml", parser._expand(path)[0])
+
+    def test_explore_col_parser(self):
+        """
+        We can parse a looker explore
+        """
+
+        explore = LookmlModelExplore(
+            name="test-explore",
+            fields=LookmlModelExploreFieldset(
+                dimensions=[
+                    LookmlModelExploreField(
+                        name="dim1",
+                        label="Dim 1 Label",
+                        type="yesno",
+                        description=None,
+                    ),
+                    LookmlModelExploreField(
+                        name="dim2",
+                        label_short="Dim 2 Label Short",
+                        type="list",
+                        description="something",
+                    ),
+                ],
+                measures=[
+                    LookmlModelExploreField(
+                        name="measure1",
+                        type="duration_day",
+                    )
+                ],
+            ),
+        )
+
+        cols = get_columns_from_model(explore)
+        expected_cols = [
+            Column(
+                name=ColumnName(__root__="dim1"),
+                displayName="Dim 1 Label",
+                dataType=DataType.BOOLEAN,
+                dataTypeDisplay="yesno",
+                description=None,
+            ),
+            Column(
+                name=ColumnName(__root__="dim2"),
+                displayName="Dim 2 Label Short",
+                dataType=DataType.ARRAY,
+                arrayDataType=DataType.UNKNOWN,
+                dataTypeDisplay="list",
+                description="something",
+            ),
+            Column(
+                name=ColumnName(__root__="measure1"),
+                displayName=None,
+                dataType=DataType.STRING,
+                dataTypeDisplay="duration_day",
+                description=None,
+            ),
+        ]
+
+        self.assertEquals(cols, expected_cols)
+
+    def test_view_col_parser(self):
+        """
+        Test we can parse a view
+        """
+
+        reader = LocalReader(BASE_PATH)
+        parser = LkmlParser(reader)
+
+        view = parser.find_view(
+            view_name=ViewName("cats"), path=Includes("kittens.explore.lkml")
+        )
+
+        cols = get_columns_from_model(view)
+        expected_cols = [
+            Column(
+                name=ColumnName(__root__="name"),
+                dataType=DataType.STRING,
+                dataTypeDisplay="string",
+            ),
+            Column(
+                name=ColumnName(__root__="age"),
+                dataType=DataType.NUMBER,
+                dataTypeDisplay="int",
+            ),
+        ]
+
+        self.assertEquals(cols, expected_cols)

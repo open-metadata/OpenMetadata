@@ -168,6 +168,10 @@ a[href].link-text-grey,
   white-space: normal;
 }
 
+.whitespace-pre-wrap {
+  white-space: pre-wrap;
+}
+
 .mx-auto {
   margin-right: auto;
   margin-left: auto;
@@ -321,6 +325,18 @@ a[href].link-text-grey,
   }
 }
 
+.hover-icon-group {
+  .hover-cell-icon {
+    opacity: 0;
+    transition: 0.3s ease-in;
+  }
+  &:hover {
+    .hover-cell-icon {
+      opacity: 100;
+    }
+  }
+}
+
 /* Group CSS End*/
 
 .quick-filter-dropdown-trigger-btn {
@@ -365,10 +381,13 @@ a[href].link-text-grey,
     font-size: inherit !important;
     color: @text-grey-muted !important;
   }
-}
-
-.link-title:hover {
-  text-decoration: none !important;
+  .link-title:hover {
+    color: @primary-color !important;
+    text-decoration: none !important;
+  }
+  .link-title.inactive-link:hover {
+    color: @text-grey-muted !important;
+  }
 }
 
 // lineage
@@ -431,9 +450,8 @@ a[href].link-text-grey,
 }
 .entity-tag-right-panel-container {
   height: @entity-details-tab-height;
-  overflow-y: scroll;
+  overflow-y: auto;
   border-left: @global-border;
-  margin-left: 20px;
   padding: 12px 8px 0 8px;
 }
 

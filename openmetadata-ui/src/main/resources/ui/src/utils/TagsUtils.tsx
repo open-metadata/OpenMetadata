@@ -18,13 +18,10 @@ import { ReactComponent as DeleteIcon } from 'assets/svg/ic-delete.svg';
 import { AxiosError } from 'axios';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
-import {
-  HierarchyTagsProps,
-  TagsDetailsProps,
-} from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getExplorePath, PAGE_SIZE } from 'constants/constants';
 import { delimiterRegex } from 'constants/regex.constants';
+import { ExplorePageTabs } from 'enums/Explore.enum';
 import { SearchIndex } from 'enums/search.enum';
 import i18next from 'i18next';
 import { isEmpty, isUndefined, toLower } from 'lodash';
@@ -307,83 +304,25 @@ export const getUsageCountLink = (tagFQN: string) => {
   const type = tagFQN.startsWith('Tier') ? 'tier' : 'tags';
 
   return getExplorePath({
+    tab: ExplorePageTabs.TABLES,
     extraParameters: {
-      facetFilter: {
-        [`${type}.tagFQN`]: [tagFQN],
-      },
-    },
-  });
-};
-
-export const getTagsHierarchy = (
-  tags: TagsDetailsProps[]
-): HierarchyTagsProps[] => {
-  const filteredTags = tags.filter(
-    (tag) => !tag.fqn?.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
-  );
-
-  let hierarchyTags: HierarchyTagsProps[] = [];
-
-  filteredTags.forEach((tags) => {
-    const haveParent = hierarchyTags.find(
-      (h) => h.title === tags?.classification?.name
-    );
-
-    if (haveParent) {
-      hierarchyTags = hierarchyTags.map((h) => {
-        if (h.title === tags?.classification?.name) {
-          return {
-            ...h,
-            children: [
-              ...h.children,
+      page: '1',
+      quickFilter: JSON.stringify({
+        query: {
+          bool: {
+            must: [
               {
-                title: tags.name,
-                value: tags.fqn,
-                key: tags.fqn,
-                selectable: true,
+                bool: {
+                  should: [{ term: { [`${type}.tagFQN`]: tagFQN } }],
+                },
               },
             ],
-          };
-        } else {
-          return h;
-        }
-      });
-    } else {
-      hierarchyTags.push({
-        title: tags.classification?.name ?? '',
-        value: tags.classification?.name ?? '',
-        children: [
-          {
-            title: tags.name,
-            value: tags.fqn,
-            key: tags.fqn,
-            selectable: true,
           },
-        ],
-        key: tags.classification?.name ?? '',
-        selectable: false,
-      });
-    }
+        },
+      }),
+    },
+    isPersistFilters: false,
   });
-
-  return hierarchyTags;
-};
-
-export const getAllTagsList = async () => {
-  try {
-    const tags = await getAllTagsForOptions();
-
-    return Promise.resolve(
-      tags.map((tag) => ({
-        name: tag.name,
-        fqn: tag.fullyQualifiedName ?? '',
-        classification: tag.classification,
-        source: TagSource.Classification,
-      }))
-    );
-  } catch (error) {
-    return Promise.reject({ data: (error as AxiosError).response });
-  }
 };
 
 export const getTagPlaceholder = (isGlossaryType: boolean): string =>

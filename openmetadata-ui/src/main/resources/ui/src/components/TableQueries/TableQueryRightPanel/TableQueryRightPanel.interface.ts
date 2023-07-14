@@ -12,7 +12,6 @@
  */
 
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { TagsDetailsProps } from 'components/Tag/TagsContainerV1/TagsContainerV1.interface';
 import { Query } from 'generated/entity/data/query';
 
 export interface TableQueryRightPanelProps {
@@ -21,9 +20,3 @@ export interface TableQueryRightPanelProps {
   permission: OperationPermission;
   onQueryUpdate: (updatedQuery: Query, key: keyof Query) => Promise<void>;
 }
-
-export type TagDetails = {
-  isLoading: boolean;
-  options: TagsDetailsProps[];
-  isError: boolean;
-};

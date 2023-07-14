@@ -56,8 +56,6 @@ import { ReactComponent as TaskIcon } from '/assets/svg/ic-task.svg';
 export const ActivityFeedTab = ({
   fqn,
   owner,
-  tags,
-  description,
   columns,
   entityType,
   onUpdateEntityDetails,
@@ -277,7 +275,13 @@ export const ActivityFeedTab = ({
             label: (
               <div className="d-flex justify-between">
                 <span>{t('label.all')}</span>
-                <span>{getCountBadge(allCount)}</span>
+                <span>
+                  {getCountBadge(
+                    allCount,
+                    '',
+                    activeTab === ActivityFeedTabs.ALL
+                  )}
+                </span>
               </div>
             ),
             key: 'all',
@@ -294,7 +298,13 @@ export const ActivityFeedTab = ({
             label: (
               <div className="d-flex justify-between">
                 <span>{t('label.task-plural')}</span>
-                <span>{getCountBadge(tasksCount)}</span>
+                <span>
+                  {getCountBadge(
+                    tasksCount,
+                    '',
+                    activeTab === ActivityFeedTabs.TASKS
+                  )}
+                </span>
               </div>
             ),
             key: 'tasks',
@@ -340,6 +350,7 @@ export const ActivityFeedTab = ({
         )}
         <ActivityFeedListV1
           hidePopover
+          isForFeedTab
           activeFeedId={selectedThread?.id}
           emptyPlaceholderText={placeholderText}
           feedList={threads}
@@ -373,6 +384,7 @@ export const ActivityFeedTab = ({
                 />
               </div>
               <FeedPanelBodyV1
+                isForFeedTab
                 isOpenInDrawer
                 showThread
                 feed={selectedThread}
@@ -385,20 +397,16 @@ export const ActivityFeedTab = ({
               {entityType === EntityType.TABLE ? (
                 <TaskTab
                   columns={columns}
-                  description={description}
                   entityType={EntityType.TABLE}
                   owner={owner}
-                  tags={tags}
-                  task={selectedThread}
+                  taskThread={selectedThread}
                   onUpdateEntityDetails={onUpdateEntityDetails}
                 />
               ) : (
                 <TaskTab
-                  description={description}
                   entityType={isUserEntity ? entityTypeTask : entityType}
                   owner={owner}
-                  tags={tags}
-                  task={selectedThread}
+                  taskThread={selectedThread}
                   onUpdateEntityDetails={onUpdateEntityDetails}
                 />
               )}

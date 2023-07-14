@@ -11,24 +11,26 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Col, Row, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import AssigneeList from 'components/common/AssigneeList/AssigneeList';
 import EntityPopOverCard from 'components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { Post, Thread, ThreadTaskStatus } from 'generated/entity/feed/thread';
-import { isUndefined, noop } from 'lodash';
-import React, { useState } from 'react';
+import { isEmpty, isUndefined, noop } from 'lodash';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { getNameFromFQN } from 'utils/CommonUtils';
+import EntityLink from 'utils/EntityLink';
 import {
   getEntityFieldDisplay,
   getEntityFQN,
   getEntityType,
   prepareFeedLink,
 } from 'utils/FeedUtils';
+import { getTaskDetailPath } from 'utils/TasksUtils';
 import {
   getDateTimeFromMilliSeconds,
   getDayTimeByTimeStamp,
@@ -48,6 +50,7 @@ interface TaskFeedCardProps {
   isEntityFeed?: boolean;
   isOpenInDrawer?: boolean;
   isActive?: boolean;
+  isForFeedTab?: boolean;
   hidePopover: boolean;
 }
 
@@ -59,19 +62,33 @@ const TaskFeedCard = ({
   showThread = true,
   isActive,
   hidePopover = false,
+  isForFeedTab = false,
 }: TaskFeedCardProps) => {
+  const history = useHistory();
   const { t } = useTranslation();
   const timeStamp = feed.threadTs;
   const taskDetails = feed.task;
   const postLength = feed?.postsCount ?? 0;
   const entityType = getEntityType(feed.about) ?? '';
   const entityFQN = getEntityFQN(feed.about) ?? '';
+
   const entityCheck = !isUndefined(entityFQN) && !isUndefined(entityType);
   const [isEditPost, setIsEditPost] = useState(false);
   const repliedUsers = [...new Set((feed?.posts ?? []).map((f) => f.from))];
   const repliedUniqueUsersList = repliedUsers.slice(0, postLength >= 3 ? 2 : 1);
 
-  const { showDrawer } = useActivityFeedProvider();
+  const { showDrawer, setActiveThread } = useActivityFeedProvider();
+
+  const taskField = useMemo(() => {
+    const entityField = EntityLink.getEntityField(feed.about) ?? '';
+    const columnName = EntityLink.getTableColumnName(feed.about) ?? '';
+
+    if (columnName) {
+      return `${entityField}/${columnName}`;
+    }
+
+    return entityField;
+  }, [feed]);
 
   const showReplies = () => {
     showDrawer?.(feed);
@@ -81,11 +98,21 @@ const TaskFeedCard = ({
     setIsEditPost(!isEditPost);
   };
 
+  const handleTaskLinkClick = () => {
+    history.push({
+      pathname: getTaskDetailPath(feed),
+    });
+    setActiveThread(feed);
+  };
+
   const getTaskLinkElement = entityCheck && (
     <Typography.Text>
-      <span>{`#${taskDetails?.id} `}</span>
+      <Button
+        className="p-0"
+        type="link"
+        onClick={handleTaskLinkClick}>{`#${taskDetails?.id} `}</Button>
 
-      <Typography.Text>{taskDetails?.type}</Typography.Text>
+      <Typography.Text className="p-l-xss">{taskDetails?.type}</Typography.Text>
       <span className="m-x-xss">{t('label.for-lowercase')}</span>
       {isEntityFeed ? (
         <span className="tw-heading" data-testid="headerText-entityField">
@@ -93,16 +120,26 @@ const TaskFeedCard = ({
         </span>
       ) : (
         <>
-          <span className="p-r-xss">{entityType}</span>
-          <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-            <Link
-              className="break-all"
-              data-testid="entitylink"
-              to={prepareFeedLink(entityType, entityFQN)}
-              onClick={(e) => e.stopPropagation()}>
-              {getNameFromFQN(entityFQN)}
-            </Link>
-          </EntityPopOverCard>
+          {isForFeedTab ? null : (
+            <>
+              <span className="p-r-xss">{entityType}</span>
+              <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+                <Link
+                  className="break-all"
+                  data-testid="entitylink"
+                  to={prepareFeedLink(entityType, entityFQN)}
+                  onClick={(e) => e.stopPropagation()}>
+                  {getNameFromFQN(entityFQN)}
+                </Link>
+              </EntityPopOverCard>
+            </>
+          )}
+
+          {!isEmpty(taskField) ? (
+            <span className={classNames({ 'p-l-xss': !isForFeedTab })}>
+              {taskField}
+            </span>
+          ) : null}
         </>
       )}
     </Typography.Text>

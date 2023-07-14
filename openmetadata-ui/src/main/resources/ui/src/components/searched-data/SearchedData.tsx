@@ -129,7 +129,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
     }
   };
 
-  const { page, size } = useMemo(
+  const { page = 1, size = PAGE_SIZE } = useMemo(
     () =>
       Qs.parse(
         location.search.startsWith('?')

@@ -46,6 +46,9 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 @Slf4j
 public final class UserUtil {
+  private UserUtil() {
+    // Private constructor for util class
+  }
 
   public static void addUsers(AuthProvider authProvider, Set<String> adminUsers, String domain, Boolean isAdmin) {
     try {
