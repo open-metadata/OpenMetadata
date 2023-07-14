@@ -109,6 +109,7 @@ export enum FqnPart {
   Table,
   Column,
   NestedColumn,
+  Topic,
 }
 
 export enum EntityInfo {

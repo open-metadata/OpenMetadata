@@ -69,8 +69,8 @@ jest.mock('../SampleDataTable/SampleDataTable.component', () => {
   return jest.fn().mockReturnValue(<p>SampleDataTable</p>);
 });
 
-jest.mock('../EntityTable/EntityTable.component', () => {
-  return jest.fn().mockReturnValue(<p>EntityTableV1</p>);
+jest.mock('../SchemaTable/SchemaTable.component', () => {
+  return jest.fn().mockReturnValue(<p>SchemaTable</p>);
 });
 
 const mockTableConstraints = [
@@ -88,9 +88,20 @@ describe('Test SchemaTab Component', () => {
         hasTagEditAccess
         columnName="columnName"
         columns={mockColumns}
+        entityFieldThreads={[
+          {
+            entityLink:
+              '<#E::table::sample_data.ecommerce_db.shopify.raw_customer::columns::comments::tags>',
+            count: 4,
+            entityField: 'columns::comments::tags',
+          },
+        ]}
+        entityFqn="mlflow_svc.eta_predictions"
+        isReadOnly={false}
         joins={mockjoins}
         sampleData={mockSampleData}
         tableConstraints={mockTableConstraints}
+        onThreadLinkSelect={jest.fn()}
         onUpdate={mockUpdate}
       />,
       {
@@ -101,7 +112,7 @@ describe('Test SchemaTab Component', () => {
 
     expect(searchBar).toBeInTheDocument();
 
-    const schemaTable = getByText(container, /EntityTable/i);
+    const schemaTable = getByText(container, /SchemaTable/i);
 
     expect(schemaTable).toBeInTheDocument();
     expect(queryByTestId('sample-data-table')).toBeNull();

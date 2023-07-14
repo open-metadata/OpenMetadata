@@ -87,6 +87,7 @@ NOT_COMPUTE = {
     sqa_types.SQASGeography.__name__,
     DataType.ARRAY.value,
     DataType.JSON.value,
+    CustomTypes.ARRAY.value.__name__,
 }
 
 QUANTIFIABLE_SET = {
