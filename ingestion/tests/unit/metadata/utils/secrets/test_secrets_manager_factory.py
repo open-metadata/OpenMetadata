@@ -15,13 +15,6 @@ Test Secrets Manager Factory
 from unittest import TestCase
 from unittest.mock import patch
 
-from metadata.ometa.secrets import NoopSecretsManager
-from metadata.ometa.secrets.secrets_manager_factory import (
-    SecretsManagerConfigException,
-    SecretsManagerFactory,
-)
-from metadata.models.singleton import Singleton
-
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -30,6 +23,12 @@ from metadata.generated.schema.security.secrets.secretsManagerClientLoader impor
 )
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
+)
+from metadata.models.singleton import Singleton
+from metadata.ometa.secrets import NoopSecretsManager
+from metadata.ometa.secrets.secrets_manager_factory import (
+    SecretsManagerConfigException,
+    SecretsManagerFactory,
 )
 
 
@@ -53,7 +52,6 @@ class TestSecretsManagerFactory(TestCase):
             )
 
     def test_invalid_config_secret_manager(self):
-
         om_connection: OpenMetadataConnection = self.build_open_metadata_connection(
             SecretsManagerProvider.noop,
             SecretsManagerClientLoader.noop,

@@ -21,8 +21,6 @@ from antlr4.error.ErrorStrategy import BailErrorStrategy
 from antlr4.InputStream import InputStream
 from antlr4.tree.Tree import ParseTreeWalker
 from metadata.antlr.split_listener import FqnSplitListener
-from metadata.registry.dispatch import class_register
-from metadata.ometa.elasticsearch import get_entity_from_es_result
 from pydantic import BaseModel, Field
 
 from metadata.generated.antlr.FqnLexer import FqnLexer
@@ -40,7 +38,9 @@ from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.ometa.elasticsearch import get_entity_from_es_result
 from metadata.ometa.ometa_api import OpenMetadata
+from metadata.registry.dispatch import class_register
 
 T = TypeVar("T", bound=BaseModel)
 

@@ -27,7 +27,6 @@ from metadata.ingestion.source.dashboard.tableau.models import (
     UpstreamTable,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ometa import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.helpers import (
     clean_uri,
@@ -63,6 +62,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ometa import fqn
 
 logger = ingestion_logger()
 

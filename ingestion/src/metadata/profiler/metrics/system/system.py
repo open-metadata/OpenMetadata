@@ -39,7 +39,6 @@ from metadata.profiler.metrics.system.queries.snowflake import (
     get_snowflake_system_queries,
 )
 from metadata.profiler.orm.registry import Dialects
-from metadata.registry.dispatch import valuedispatch
 from metadata.utils.helpers import deep_size_of_dict
 from metadata.utils.logger import profiler_logger
 from metadata.utils.profiler_utils import get_value_from_cache, set_cache
@@ -49,6 +48,7 @@ from sqlalchemy.orm import DeclarativeMeta, Session
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
+from metadata.registry.dispatch import valuedispatch
 
 logger = profiler_logger()
 

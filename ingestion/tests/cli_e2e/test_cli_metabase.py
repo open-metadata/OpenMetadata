@@ -20,7 +20,6 @@ from .common.test_cli_dashboard import CliCommonDashboard
 
 
 class MetabaseCliTest(CliCommonDashboard.TestSuite):
-
     # in case we want to do something before running the tests
     def prepare(self) -> None:
         redshift_file_path = str(

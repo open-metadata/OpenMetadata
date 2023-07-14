@@ -61,7 +61,6 @@ def get_view_definition(
     dblink="",
     **kw,
 ):
-
     return get_view_definition_wrapper(
         self,
         connection,

@@ -22,8 +22,6 @@ try:
 except ImportError:
     from typing_compat import get_args
 
-from metadata.ometa.secrets.secrets_manager_factory import SecretsManagerFactory
-from metadata.registry.ssl_registry import get_verify_ssl_fn
 from pydantic import BaseModel
 from requests.utils import quote
 
@@ -106,7 +104,9 @@ from metadata.ometa.provider_registry import (
     InvalidAuthProviderException,
     auth_provider_registry,
 )
+from metadata.ometa.secrets.secrets_manager_factory import SecretsManagerFactory
 from metadata.ometa.utils import get_entity_type, model_str
+from metadata.registry.ssl_registry import get_verify_ssl_fn
 
 # The naming convention is T for Entity Types and C for Create Types
 T = TypeVar("T", bound=BaseModel)

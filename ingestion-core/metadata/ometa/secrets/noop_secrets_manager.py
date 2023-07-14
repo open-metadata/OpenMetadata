@@ -12,11 +12,10 @@
 """
 Secrets manager implementation for local secrets manager
 """
-from metadata.ometa.secrets.secrets_manager import SecretsManager
-
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
+from metadata.ometa.secrets.secrets_manager import SecretsManager
 
 
 class NoopSecretsManager(SecretsManager):

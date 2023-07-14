@@ -19,7 +19,6 @@ import traceback
 from typing import Iterable, List, Optional
 
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ometa import fqn
 from metadata.utils.logger import ingestion_logger
 
 from metadata.generated.schema.api.classification.createClassification import (
@@ -34,6 +33,7 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
+from metadata.ometa import fqn
 from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()

@@ -156,8 +156,12 @@ class OMetaTestSuiteTest(TestCase):
         """test get test case result method"""
 
         now_utc = datetime.utcnow()
-        day_start_millis = int(datetime.combine(now_utc, time.min, tzinfo=timezone.utc).timestamp() * 1000)
-        day_end_millis = int(datetime.combine(now_utc, time.max, tzinfo=timezone.utc).timestamp() * 1000)
+        day_start_millis = int(
+            datetime.combine(now_utc, time.min, tzinfo=timezone.utc).timestamp() * 1000
+        )
+        day_end_millis = int(
+            datetime.combine(now_utc, time.max, tzinfo=timezone.utc).timestamp() * 1000
+        )
 
         res = self.metadata.get_test_case_results(
             "sample_data.ecommerce_db.shopify.dim_address.testCaseForIntegration",

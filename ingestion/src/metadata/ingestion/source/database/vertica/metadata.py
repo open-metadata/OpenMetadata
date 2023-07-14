@@ -27,7 +27,6 @@ from metadata.ingestion.source.database.vertica.queries import (
     VERTICA_TABLE_COMMENTS,
     VERTICA_VIEW_DEFINITION,
 )
-from metadata.ometa import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
@@ -50,6 +49,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.ometa import fqn
 
 logger = ingestion_logger()
 

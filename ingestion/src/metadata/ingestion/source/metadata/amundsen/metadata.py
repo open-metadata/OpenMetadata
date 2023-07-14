@@ -27,7 +27,6 @@ from metadata.ingestion.source.metadata.amundsen.queries import (
     NEO4J_AMUNDSEN_TABLE_QUERY,
     NEO4J_AMUNDSEN_USER_QUERY,
 )
-from metadata.ometa import fqn
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
@@ -66,6 +65,7 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.ometa import fqn
 from metadata.ometa.client_utils import get_chart_entities_from_id
 from metadata.ometa.ometa_api import OpenMetadata
 

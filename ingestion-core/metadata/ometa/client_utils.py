@@ -14,13 +14,12 @@ OMeta client create helpers
 import traceback
 from typing import List
 
-from metadata.ometa import fqn
-
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ometa import fqn
 from metadata.ometa.logger import logger
 from metadata.ometa.ometa_api import OpenMetadata
 

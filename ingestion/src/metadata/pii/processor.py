@@ -17,7 +17,6 @@ from typing import Optional
 from metadata.pii import PII
 from metadata.pii.column_name_scanner import ColumnNameScanner
 from metadata.pii.ner_scanner import NERScanner
-from metadata.ometa import fqn
 from metadata.utils.logger import profiler_logger
 
 from metadata.generated.schema.entity.classification.tag import Tag
@@ -28,6 +27,7 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
+from metadata.ometa import fqn
 from metadata.ometa.ometa_api import OpenMetadata
 
 logger = profiler_logger()
@@ -39,7 +39,6 @@ class PIIProcessor:
     """
 
     def __init__(self, metadata: OpenMetadata):
-
         self.metadata = metadata
         self.ner_scanner = NERScanner()
 
@@ -80,7 +79,6 @@ class PIIProcessor:
         and TableData
         """
         for idx, column in enumerate(table_entity.columns):
-
             try:
                 # First, check if the column we are about to process
                 # already has PII tags or not

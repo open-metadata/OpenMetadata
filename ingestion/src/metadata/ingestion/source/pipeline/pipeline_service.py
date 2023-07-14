@@ -29,7 +29,6 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.ometa import fqn
 from metadata.utils.filters import filter_by_pipeline
 from metadata.utils.logger import ingestion_logger
 
@@ -49,6 +48,7 @@ from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.ometa import fqn
 from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()

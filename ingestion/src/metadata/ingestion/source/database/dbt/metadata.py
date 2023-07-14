@@ -45,8 +45,6 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_dbt_model_name,
     get_dbt_raw_query,
 )
-from metadata.ometa import fqn
-from metadata.ometa.elasticsearch import get_entity_from_es_result
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
@@ -87,6 +85,8 @@ from metadata.generated.schema.tests.testDefinition import (
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Timestamp
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ometa import fqn
+from metadata.ometa.elasticsearch import get_entity_from_es_result
 from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
@@ -661,7 +661,6 @@ class DbtSource(DbtServiceSource):
         )
         if table_entity:
             try:
-
                 service_name, database_name, schema_name, table_name = fqn.split(
                     table_entity.fullyQualifiedName.__root__
                 )

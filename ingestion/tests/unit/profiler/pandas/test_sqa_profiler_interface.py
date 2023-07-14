@@ -61,7 +61,6 @@ class FakeConnection:
 
 
 class PandasInterfaceTest(TestCase):
-
     import pandas as pd
 
     root_dir = os.path.dirname(os.path.abspath(__file__))

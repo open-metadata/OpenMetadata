@@ -36,7 +36,6 @@ class ApiReader(Reader, ABC):
     """
 
     def __init__(self, credentials: ReadersCredentials):
-
         self._auth_headers = None
         self.credentials = credentials
 

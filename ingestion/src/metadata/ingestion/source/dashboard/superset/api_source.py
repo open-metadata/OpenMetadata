@@ -20,7 +20,6 @@ from metadata.ingestion.source.dashboard.superset.models import (
     ChartResult,
     DashboradResult,
 )
-from metadata.ometa import fqn
 from metadata.utils.filters import filter_by_datamodel
 from metadata.utils.helpers import (
     clean_uri,
@@ -38,6 +37,7 @@ from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboardDataModel import DataModelType
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.ometa import fqn
 
 logger = ingestion_logger()
 
@@ -170,7 +170,6 @@ class SupersetAPISource(SupersetSourceMixin):
     def yield_datamodel(
         self, dashboard_details: DashboradResult
     ) -> Optional[Iterable[CreateDashboardDataModelRequest]]:
-
         if self.source_config.includeDataModels:
             for chart_id in self._get_charts_of_dashboard(dashboard_details):
                 chart_json = self.all_charts.get(chart_id)

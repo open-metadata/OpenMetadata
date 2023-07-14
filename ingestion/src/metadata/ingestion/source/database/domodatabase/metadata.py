@@ -27,7 +27,6 @@ from metadata.ingestion.source.database.domodatabase.models import (
     SchemaColumn,
     User,
 )
-from metadata.ometa import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
@@ -52,6 +51,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ometa import fqn
 from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()

@@ -24,7 +24,6 @@ from datetime import timedelta
 from typing import Optional
 
 import requests
-from metadata.ometa.client_version import get_client_version
 from metadata.utils.helpers import DockerActions
 from metadata.utils.logger import ANSI, cli_logger, log_ansi_encoded_string
 from requests._internal_utils import to_native_string
@@ -37,6 +36,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
     OpenMetadataJWTClientConfig,
 )
 from metadata.ometa.client import REST, ClientConfig
+from metadata.ometa.client_version import get_client_version
 from metadata.ometa.logger import logger as ometa_logger
 from metadata.ometa.ometa_api import OpenMetadata
 

@@ -242,7 +242,9 @@ class OMetaPipelineTest(TestCase):
         )
 
         pipeline: Pipeline = self.metadata.create_or_update(data=create_pipeline)
-        execution_ts = int(datetime.strptime("2021-03-07", "%Y-%m-%d").timestamp() * 1_000)
+        execution_ts = int(
+            datetime.strptime("2021-03-07", "%Y-%m-%d").timestamp() * 1_000
+        )
 
         updated = self.metadata.add_pipeline_status(
             fqn=pipeline.fullyQualifiedName.__root__,

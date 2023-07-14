@@ -11,10 +11,6 @@
 import os
 from unittest import TestCase, mock
 
-from metadata.ometa.secrets.aws_secrets_manager import AWSSecretsManager
-from metadata.ometa.secrets.noop_secrets_manager import NoopSecretsManager
-from metadata.models.singleton import Singleton
-
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
     OpenMetadataConnection,
@@ -28,11 +24,14 @@ from metadata.generated.schema.security.secrets.secretsManagerClientLoader impor
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
+from metadata.models.singleton import Singleton
 from metadata.ometa.auth_provider import (
     GoogleAuthenticationProvider,
     NoOpAuthenticationProvider,
 )
 from metadata.ometa.ometa_api import OpenMetadata
+from metadata.ometa.secrets.aws_secrets_manager import AWSSecretsManager
+from metadata.ometa.secrets.noop_secrets_manager import NoopSecretsManager
 
 
 class OMetaSecretManagerTest(TestCase):

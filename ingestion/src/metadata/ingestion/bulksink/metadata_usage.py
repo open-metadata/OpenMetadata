@@ -31,7 +31,6 @@ from metadata.ingestion.lineage.sql_lineage import (
     get_column_fqn,
     get_table_entities_from_query,
 )
-from metadata.ometa import fqn
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
 from pydantic import ValidationError
@@ -48,6 +47,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableUsageCount
 from metadata.generated.schema.type.usageRequest import UsageRequest
+from metadata.ometa import fqn
 from metadata.ometa.client import APIError
 from metadata.ometa.ometa_api import OpenMetadata
 

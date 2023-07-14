@@ -11,8 +11,6 @@
 """
 Register auth provider init functions here
 """
-from metadata.registry.dispatch import enum_register
-
 # Complains about same imports
 # pylint: disable=duplicate-code
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -46,6 +44,7 @@ from metadata.ometa.auth_provider import (
     OpenMetadataJWTClientConfig,
 )
 from metadata.ometa.logger import logger
+from metadata.registry.dispatch import enum_register
 
 
 def warn_auth_deprecation(auth_provider: AuthProvider) -> None:

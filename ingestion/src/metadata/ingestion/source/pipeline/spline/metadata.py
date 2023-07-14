@@ -22,7 +22,6 @@ from metadata.ingestion.source.pipeline.spline.utils import (
     parse_dbfs_path,
     parse_jdbc_url,
 )
-from metadata.ometa import fqn
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
@@ -41,6 +40,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ometa import fqn
 
 logger = ingestion_logger()
 
@@ -129,7 +129,6 @@ class SplineSource(PipelineServiceSource):
         return None
 
     def _get_table_from_datasource_name(self, datasource: str) -> Optional[Table]:
-
         if (
             not datasource
             and not datasource.startswith("dbfs")

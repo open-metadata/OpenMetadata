@@ -17,7 +17,6 @@ import functools
 import traceback
 from typing import Generic, List, Optional, Type, TypeVar
 
-from metadata.ometa.elasticsearch import ES_INDEX_MAP
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.createEventPublisherJob import (
@@ -25,6 +24,7 @@ from metadata.generated.schema.api.createEventPublisherJob import (
 )
 from metadata.generated.schema.system.eventPublisherJob import EventPublisherResult
 from metadata.ometa.client import REST, APIError
+from metadata.ometa.elasticsearch import ES_INDEX_MAP
 from metadata.ometa.logger import logger
 
 T = TypeVar("T", bound=BaseModel)

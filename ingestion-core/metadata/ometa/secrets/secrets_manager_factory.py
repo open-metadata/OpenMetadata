@@ -14,19 +14,18 @@ Secrets manager factory module
 """
 from typing import Any, Optional
 
-from metadata.ometa.secrets.aws_secrets_manager import AWSSecretsManager
-from metadata.ometa.secrets.aws_ssm_secrets_manager import AWSSSMSecretsManager
-from metadata.ometa.secrets.client.loader import secrets_manager_client_loader
-from metadata.ometa.secrets.noop_secrets_manager import NoopSecretsManager
-from metadata.ometa.secrets.secrets_manager import SecretsManager
-from metadata.ometa.models.singleton import Singleton
-
 from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
     SecretsManagerClientLoader,
 )
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
+from metadata.ometa.models.singleton import Singleton
+from metadata.ometa.secrets.aws_secrets_manager import AWSSecretsManager
+from metadata.ometa.secrets.aws_ssm_secrets_manager import AWSSSMSecretsManager
+from metadata.ometa.secrets.client.loader import secrets_manager_client_loader
+from metadata.ometa.secrets.noop_secrets_manager import NoopSecretsManager
+from metadata.ometa.secrets.secrets_manager import SecretsManager
 
 
 class SecretsManagerConfigException(Exception):
@@ -105,7 +104,6 @@ class SecretsManagerFactory(metaclass=Singleton):
         return self.secrets_manager
 
     def _load_secrets_manager_credentials(self) -> Optional["AWSCredentials"]:
-
         if not self.secrets_manager_loader:
             return None
 

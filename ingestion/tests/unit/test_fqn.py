@@ -15,9 +15,9 @@ from unittest import TestCase
 from unittest.mock import MagicMock
 
 import pytest
-from metadata.ometa import fqn
 
 from metadata.generated.schema.entity.data.table import Table
+from metadata.ometa import fqn
 
 
 class TestFqn(TestCase):

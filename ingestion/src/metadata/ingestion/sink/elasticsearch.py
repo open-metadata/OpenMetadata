@@ -82,7 +82,6 @@ from metadata.ingestion.sink.elasticsearch_mapping.web_analytic_entity_view_repo
 from metadata.ingestion.sink.elasticsearch_mapping.web_analytic_user_activity_report_data_index_mapping import (
     WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX_MAPPING,
 )
-from metadata.ometa.elasticsearch import ES_INDEX_MAP
 from metadata.utils.logger import ingestion_logger
 from requests_aws4auth import AWS4Auth
 
@@ -108,6 +107,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.ometa.elasticsearch import ES_INDEX_MAP
 from metadata.ometa.ometa_api import OpenMetadata
 from metadata.ometa.utils import model_str
 

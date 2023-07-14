@@ -34,7 +34,6 @@ from metadata.parsers.schema_parsers import (
     InvalidSchemaTypeException,
     schema_parser_config_registry,
 )
-from metadata.ometa import fqn
 from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
@@ -107,6 +106,7 @@ from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.schema import Topic as TopicSchema
+from metadata.ometa import fqn
 from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
@@ -632,7 +632,6 @@ class SampleDataSource(
             yield table_and_db
 
             if table.get("sampleData"):
-
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
@@ -690,7 +689,6 @@ class SampleDataSource(
             yield create_topic
 
             if topic.get("sampleData"):
-
                 topic_fqn = fqn.build(
                     self.metadata,
                     entity_type=Topic,

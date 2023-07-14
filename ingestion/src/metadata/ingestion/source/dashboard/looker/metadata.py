@@ -51,7 +51,6 @@ from metadata.readers.base import Reader
 from metadata.readers.bitbucket import BitBucketReader
 from metadata.readers.credentials import get_credentials_from_url
 from metadata.readers.github import GitHubReader
-from metadata.ometa import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
@@ -93,6 +92,7 @@ from metadata.generated.schema.security.credentials.githubCredentials import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
+from metadata.ometa import fqn
 
 logger = ingestion_logger()
 
@@ -222,7 +222,6 @@ class LookerSource(DashboardServiceSource):
         Depending on the type of the credentials we'll need a different reader
         """
         if not self._reader_class:
-
             if self.service_connection.gitCredentials and isinstance(
                 self.service_connection.gitCredentials, GitHubCredentials
             ):
@@ -243,7 +242,6 @@ class LookerSource(DashboardServiceSource):
         We either get GitHubCredentials or `NoGitHubCredentials`
         """
         if not self._repo_credentials:
-
             if self.service_connection.gitCredentials and isinstance(
                 self.service_connection.gitCredentials, GitHubCredentials
             ):
@@ -405,7 +403,6 @@ class LookerSource(DashboardServiceSource):
 
         project_parser = self.parser.get(explore.project_name)
         if project_parser:
-
             view: Optional[LookMlView] = project_parser.find_view(
                 view_name=view_name,
                 path=Includes(get_path_from_link(explore.lookml_link)),

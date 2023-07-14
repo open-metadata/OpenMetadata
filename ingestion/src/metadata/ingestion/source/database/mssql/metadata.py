@@ -20,7 +20,6 @@ from metadata.ingestion.source.database.mssql.utils import (
     get_table_comment,
     get_view_definition,
 )
-from metadata.ometa import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
@@ -39,6 +38,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.ometa import fqn
 
 logger = ingestion_logger()
 

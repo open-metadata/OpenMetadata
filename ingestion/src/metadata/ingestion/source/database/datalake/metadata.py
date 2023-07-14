@@ -23,7 +23,6 @@ from metadata.ingestion.source.database.database_service import DatabaseServiceS
 from metadata.ingestion.source.database.datalake.models import (
     DatalakeTableSchemaWrapper,
 )
-from metadata.ometa import fqn
 from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, DEFAULT_DATABASE
 from metadata.utils.datalake.datalake_utils import (
     SupportedTypes,
@@ -67,6 +66,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.ometa import fqn
 from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
@@ -461,7 +461,6 @@ class DatalakeSource(DatabaseServiceSource):
             # also a record  but the "size" will not be handled in this loop
             # as it will be of primitive type for ex. int
             for index, col_name in enumerate(col_hierarchy[:-1]):
-
                 if complex_col_dict.get(col_hierarchy[: index + 1]):
                     # if we have already seen this column fetch that column
                     parent_col = complex_col_dict.get(col_hierarchy[: index + 1])

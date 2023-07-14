@@ -75,7 +75,6 @@ def get_lineage_from_multi_tenant_table(
     connection: any,
     service_name: str,
 ) -> Optional[Iterator[AddLineageRequest]]:
-
     """
     For PGSpider, firstly, get list of multi-tenant tables.
     Next, get child foreign tables of each multi-tenant tables.

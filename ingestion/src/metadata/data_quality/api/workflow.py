@@ -31,7 +31,6 @@ from metadata.data_quality.source.test_suite_source_factory import (
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.utils import entity_link
-from metadata.ometa.fqn import split
 from metadata.utils.importer import get_sink
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.workflow_output_handler import print_test_suite_status
@@ -62,6 +61,7 @@ from metadata.generated.schema.tests.testDefinition import TestDefinition, TestP
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import EntityLink, FullyQualifiedEntityName
 from metadata.ometa.client_utils import create_ometa_client
+from metadata.ometa.fqn import split
 
 logger: Logger = test_suite_logger()
 

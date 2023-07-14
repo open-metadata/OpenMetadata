@@ -26,7 +26,6 @@ from metadata.ingestion.source.database.bigquery.queries import (
 )
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.ometa import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import is_complex_type
@@ -69,6 +68,7 @@ from metadata.generated.schema.security.credentials.gcpValues import (
     SingleProjectId,
 )
 from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.ometa import fqn
 
 
 class BQJSON(String):

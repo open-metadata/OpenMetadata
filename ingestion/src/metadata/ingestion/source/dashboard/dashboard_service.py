@@ -29,7 +29,6 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.ometa import fqn
 from metadata.utils.filters import filter_by_dashboard
 from metadata.utils.logger import ingestion_logger
 from pydantic import BaseModel
@@ -61,6 +60,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
+from metadata.ometa import fqn
 from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()
@@ -471,7 +471,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         )
 
     def check_database_schema_name(self, database_schema_name: str):
-
         """
         Check if the input database schema name is equal to "<default>" and return the input name if it is not.
 

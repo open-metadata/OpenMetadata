@@ -32,7 +32,6 @@ from metadata.ingestion.source.database.dbt.models import (
     DbtFilteredModel,
     DbtObjects,
 )
-from metadata.ometa import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -43,6 +42,7 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
 )
 from metadata.generated.schema.metadataIngestion.dbtPipeline import DbtPipeline
 from metadata.generated.schema.tests.basic import TestCaseResult
+from metadata.ometa import fqn
 
 logger = ingestion_logger()
 

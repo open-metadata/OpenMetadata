@@ -623,7 +623,6 @@ class PGSpiderLineageUnitTests(TestCase):
                 connection=self.postgres.service_connection,
                 service_name=self.postgres.config.serviceName,
             ):
-
                 if isinstance(record, AddLineageRequest):
                     requests.append(record)
 
@@ -662,7 +661,6 @@ class PGSpiderLineageUnitTests(TestCase):
                 connection=self.postgres.service_connection,
                 service_name=self.postgres.config.serviceName,
             ):
-
                 if isinstance(record, AddLineageRequest):
                     requests.append(record)
 
@@ -701,7 +699,6 @@ class PGSpiderLineageUnitTests(TestCase):
                 connection=self.postgres.service_connection,
                 service_name=self.postgres.config.serviceName,
             ):
-
                 if isinstance(record, AddLineageRequest):
                     requests.append(record)
 
@@ -739,7 +736,6 @@ class PGSpiderLineageUnitTests(TestCase):
                 connection=self.postgres.service_connection,
                 service_name=self.postgres.config.serviceName,
             ):
-
                 if isinstance(record, AddLineageRequest):
                     requests.append(record)
 
@@ -774,7 +770,6 @@ class PGSpiderLineageUnitTests(TestCase):
                 connection=self.postgres.service_connection,
                 service_name=self.postgres.config.serviceName,
             ):
-
                 if isinstance(record, AddLineageRequest):
                     requests.append(record)
 
@@ -810,7 +805,6 @@ class PGSpiderLineageUnitTests(TestCase):
                 connection=self.postgres.service_connection,
                 service_name=self.postgres.config.serviceName,
             ):
-
                 if isinstance(record, AddLineageRequest):
                     requests.append(record)
 

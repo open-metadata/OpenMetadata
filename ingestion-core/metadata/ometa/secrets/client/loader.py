@@ -15,8 +15,6 @@ to use in the client
 import os
 from typing import Optional
 
-from metadata.registry.dispatch import enum_register
-
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
     SecretsManagerClientLoader,
@@ -25,6 +23,7 @@ from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
 from metadata.models.custom_pydantic import CustomSecretStr
+from metadata.registry.dispatch import enum_register
 
 SECRET_MANAGER_AIRFLOW_CONF = "openmetadata_secrets_manager"
 
@@ -64,7 +63,6 @@ def _(provider: SecretsManagerProvider) -> Optional[AWSCredentials]:
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.env.value)
 def _(provider: SecretsManagerProvider) -> Optional[AWSCredentials]:
-
     if provider in {
         SecretsManagerProvider.aws,
         SecretsManagerProvider.managed_aws,

@@ -23,7 +23,6 @@ from metadata.ingestion.source.dashboard.metabase.models import (
     MetabaseDashboard,
     MetabaseDashboardDetails,
 )
-from metadata.ometa import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import (
     clean_uri,
@@ -48,6 +47,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.ometa import fqn
 
 logger = ingestion_logger()
 

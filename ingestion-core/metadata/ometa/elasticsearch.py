@@ -14,7 +14,6 @@ Helper methods for ES
 
 from typing import List, Optional, TypeVar
 
-from metadata.ometa.logger import logger
 from pydantic import BaseModel
 
 from metadata.generated.schema.analytics.reportData import ReportData
@@ -30,6 +29,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
+from metadata.ometa.logger import logger
 
 T = TypeVar("T", bound=BaseModel)
 

@@ -96,7 +96,6 @@ class S3Source(StorageServiceSource):
 
         for bucket_response in bucket_results:
             try:
-
                 # We always try to generate the parent container (the bucket)
                 yield self._generate_unstructured_container(
                     bucket_response=bucket_response
@@ -163,7 +162,6 @@ class S3Source(StorageServiceSource):
         )
         # if we have a sample file to fetch a schema from
         if sample_key:
-
             columns = self._get_columns(
                 bucket_name=bucket_name,
                 sample_key=sample_key,

@@ -25,10 +25,10 @@ from metadata.ingestion.models.topology import (
     get_topology_node,
     get_topology_root,
 )
-from metadata.ometa import fqn
 from metadata.utils.logger import ingestion_logger
 from pydantic import BaseModel
 
+from metadata.ometa import fqn
 from metadata.ometa.ometa_api import OpenMetadata
 
 logger = ingestion_logger()

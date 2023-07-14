@@ -295,7 +295,6 @@ class Auth0AuthenticationProvider(AuthenticationProvider):
         return cls(config)
 
     def auth_token(self) -> None:
-
         payload = (
             f"grant_type=client_credentials&client_id={self.security_config.clientId}"
             f"&client_secret={self.security_config.secretKey.get_secret_value()}"

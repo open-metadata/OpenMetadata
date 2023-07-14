@@ -23,7 +23,6 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     PowerBiTable,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ometa import fqn
 from metadata.utils.filters import (
     filter_by_chart,
     filter_by_dashboard,
@@ -57,6 +56,7 @@ from metadata.generated.schema.entity.services.dashboardService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.ometa import fqn
 
 logger = ingestion_logger()
 

@@ -35,13 +35,13 @@ from metadata.profiler.orm.functions.table_metric_construct import (
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
-from metadata.registry.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
 from sqlalchemy import Column
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import scoped_session
 
 from metadata.generated.schema.entity.data.table import TableData
+from metadata.registry.dispatch import valuedispatch
 
 logger = profiler_interface_registry_logger()
 thread_local = threading.local()

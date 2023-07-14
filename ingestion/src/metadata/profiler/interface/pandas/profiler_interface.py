@@ -28,7 +28,6 @@ from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
 from metadata.utils.datalake.datalake_utils import fetch_dataframe
-from metadata.registry.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_like_column import SQALikeColumn, Type
 from sqlalchemy import Column
@@ -37,6 +36,7 @@ from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
+from metadata.registry.dispatch import valuedispatch
 
 logger = profiler_interface_registry_logger()
 

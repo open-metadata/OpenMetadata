@@ -22,7 +22,6 @@ from .common_e2e_sqa_mixins import SQACommonMethods
 
 
 class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
-
     prepare_e2e: List[str] = [
         "DROP DATABASE IF EXISTS e2e_cli_tests CASCADE",
         "CREATE DATABASE e2e_cli_tests",

@@ -26,7 +26,6 @@ from metadata.ingestion.source.dashboard.tableau import (
 )
 from metadata.ingestion.source.dashboard.tableau.client import TableauClient
 from metadata.utils.logger import ingestion_logger
-from metadata.registry.ssl_registry import get_verify_ssl_fn
 from tableau_api_lib.utils import extract_pages
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -40,6 +39,7 @@ from metadata.generated.schema.security.credentials.accessTokenAuth import (
 )
 from metadata.generated.schema.security.credentials.basicAuth import BasicAuth
 from metadata.ometa.ometa_api import OpenMetadata
+from metadata.registry.ssl_registry import get_verify_ssl_fn
 
 logger = ingestion_logger()
 

@@ -109,7 +109,6 @@ def _(_: S3Config, key: str, bucket_name: str, client, **kwargs):
 
 @read_tsv_dispatch.register
 def _(config_source: AzureConfig, key: str, bucket_name: str, **kwargs):
-
     storage_options = return_azure_storage_options(config_source)
 
     path = AZURE_PATH.format(

@@ -16,8 +16,6 @@ from typing import Any, Iterable, Iterator, List, Optional
 
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ometa import fqn
-from metadata.ometa.fqn import build_es_fqn_search_string
 from metadata.utils.logger import utils_logger
 from metadata.utils.lru_cache import LRUCache
 
@@ -29,6 +27,8 @@ from metadata.generated.schema.type.entityLineage import (
     LineageDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ometa import fqn
+from metadata.ometa.fqn import build_es_fqn_search_string
 from metadata.ometa.ometa_api import OpenMetadata
 
 logger = utils_logger()

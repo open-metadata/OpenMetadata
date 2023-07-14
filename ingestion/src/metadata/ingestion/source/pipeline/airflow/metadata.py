@@ -347,7 +347,6 @@ class AirflowSource(PipelineServiceSource):
         """
 
         try:
-
             pipeline_request = CreatePipelineRequest(
                 name=pipeline_details.dag_id,
                 description=pipeline_details.description,

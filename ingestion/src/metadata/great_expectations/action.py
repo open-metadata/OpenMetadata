@@ -49,7 +49,6 @@ from metadata.great_expectations.utils.ometa_config_handler import (
     create_ometa_connection_obj,
     render_template,
 )
-from metadata.ometa import fqn
 from metadata.utils.entity_link import get_entity_link
 from metadata.utils.logger import great_expectations_logger
 from sqlalchemy.engine.base import Connection, Engine
@@ -69,6 +68,7 @@ from metadata.generated.schema.tests.testDefinition import (
     TestPlatform,
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.ometa import fqn
 from metadata.ometa.ometa_api import OpenMetadata
 
 logger = great_expectations_logger()

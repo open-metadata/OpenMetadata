@@ -13,9 +13,11 @@ Mixin class containing Server and client specific methods
 
 To be used by OpenMetadata class
 """
-from metadata.__version__ import get_client_version, get_server_version_from_string
-
 from metadata.ometa.client import REST
+from metadata.ometa.client_version import (
+    get_client_version,
+    get_server_version_from_string,
+)
 from metadata.ometa.logger import logger
 
 

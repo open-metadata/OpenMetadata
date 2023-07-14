@@ -16,11 +16,11 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from metadata.clients.aws_client import AWSClient
-from metadata.ometa.secrets.external_secrets_manager import ExternalSecretsManager
 
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
+from metadata.ometa.secrets.external_secrets_manager import ExternalSecretsManager
 
 NULL_VALUE = "null"
 

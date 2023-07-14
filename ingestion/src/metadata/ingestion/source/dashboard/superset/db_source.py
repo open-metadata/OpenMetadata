@@ -26,7 +26,6 @@ from metadata.ingestion.source.dashboard.superset.queries import (
     FETCH_COLUMN,
     FETCH_DASHBOARDS,
 )
-from metadata.ometa import fqn
 from metadata.utils.filters import filter_by_datamodel
 from metadata.utils.helpers import (
     clean_uri,
@@ -53,6 +52,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.ometa import fqn
 
 logger = ingestion_logger()
 
@@ -178,7 +178,6 @@ class SupersetDBSource(SupersetSourceMixin):
     def yield_datamodel(
         self, dashboard_details: FetchDashboard
     ) -> Optional[Iterable[CreateDashboardDataModelRequest]]:
-
         if self.source_config.includeDataModels:
             for chart_id in self._get_charts_of_dashboard(dashboard_details):
                 chart_json = self.all_charts.get(chart_id)

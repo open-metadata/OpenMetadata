@@ -17,10 +17,9 @@ import traceback
 from functools import lru_cache
 from typing import Optional
 
-from metadata.ometa.elasticsearch import ES_INDEX_MAP
-
 from metadata.generated.schema.entity.teams.user import User
 from metadata.ometa.client import REST
+from metadata.ometa.elasticsearch import ES_INDEX_MAP
 from metadata.ometa.logger import logger
 
 
