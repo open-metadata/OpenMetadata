@@ -30,8 +30,10 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -58,6 +60,7 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.MetadataToElasticSearchPipeline;
@@ -472,25 +475,50 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             responseCode = "200",
             description = "The ingestion",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineServiceClientResponse.class))),
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
-  public IngestionPipeline deployIngestion(
+  public PipelineServiceClientResponse deployIngestion(
       @Context UriInfo uriInfo,
       @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext)
       throws IOException {
-    Fields fields = getFields(FIELD_OWNER);
-    IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
-    ingestionPipeline.setOpenMetadataServerConnection(
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
-    decryptOrNullify(securityContext, ingestionPipeline, true);
-    ServiceEntityInterface service = Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
-    pipelineServiceClient.deployPipeline(ingestionPipeline, service);
-    createOrUpdate(uriInfo, securityContext, ingestionPipeline);
-    decryptOrNullify(securityContext, ingestionPipeline, false);
-    return addHref(uriInfo, ingestionPipeline);
+    return deployPipelineInternal(id, uriInfo, securityContext);
+  }
+
+  @POST
+  @Path("/bulk/deploy")
+  @Operation(
+      summary = "Bulk deploy a list of Ingestion Pipeline",
+      description = "Bulk deploy a list of Ingestion Pipelines given a list of IDs",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Statuses of the deployed pipelines",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineServiceClientResponse.class)))
+      })
+  public List<PipelineServiceClientResponse> bulkDeployIngestion(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid List<UUID> pipelineIdList) {
+
+    return pipelineIdList.stream()
+        .map(
+            id -> {
+              try {
+                return deployPipelineInternal(id, uriInfo, securityContext);
+              } catch (Exception e) {
+                return new PipelineServiceClientResponse()
+                    .withCode(500)
+                    .withReason(String.format("Error deploying [%s] due to [%s]", id, e.getMessage()))
+                    .withPlatform(pipelineServiceClient.getPlatform());
+              }
+            })
+        .collect(Collectors.toList());
   }
 
   @POST
@@ -504,10 +532,12 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             responseCode = "200",
             description = "The ingestion",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineServiceClientResponse.class))),
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
-  public IngestionPipeline triggerIngestion(
+  public PipelineServiceClientResponse triggerIngestion(
       @Context UriInfo uriInfo,
       @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
@@ -519,9 +549,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
     decryptOrNullify(securityContext, ingestionPipeline, true);
     ServiceEntityInterface service = Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
-    pipelineServiceClient.runPipeline(ingestionPipeline, service);
-    decryptOrNullify(securityContext, ingestionPipeline, false);
-    return addHref(uriInfo, ingestionPipeline);
+    return pipelineServiceClient.runPipeline(ingestionPipeline, service);
   }
 
   @POST
@@ -565,10 +593,12 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             responseCode = "200",
             description = "The ingestion",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineServiceClientResponse.class))),
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
-  public Response killIngestion(
+  public PipelineServiceClientResponse killIngestion(
       @Context UriInfo uriInfo,
       @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
@@ -607,7 +637,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             description = "Status message",
             content = @Content(mediaType = "application/json"))
       })
-  public Response getRESTStatus(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+  public PipelineServiceClientResponse getRESTStatus(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     return pipelineServiceClient.getServiceStatus();
   }
 
@@ -836,6 +867,21 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     IngestionPipeline originalIngestionPipeline =
         repository.findByNameOrNull(ingestionPipeline.getFullyQualifiedName(), null, Include.NON_DELETED);
     EntityMaskerFactory.getEntityMasker().unmaskIngestionPipeline(ingestionPipeline, originalIngestionPipeline);
+  }
+
+  private PipelineServiceClientResponse deployPipelineInternal(
+      UUID id, UriInfo uriInfo, SecurityContext securityContext) throws IOException {
+    Fields fields = getFields(FIELD_OWNER);
+    IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
+    ingestionPipeline.setOpenMetadataServerConnection(
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
+    decryptOrNullify(securityContext, ingestionPipeline, true);
+    ServiceEntityInterface service = Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+    PipelineServiceClientResponse status = pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+    if (status.getCode() == 200) {
+      createOrUpdate(uriInfo, securityContext, ingestionPipeline);
+    }
+    return status;
   }
 
   private void decryptOrNullify(
