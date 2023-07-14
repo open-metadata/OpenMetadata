@@ -20,6 +20,7 @@ install_test:  ## Install the ingestion module with test dependencies
 
 .PHONY: install_dev
 install_dev:  ## Install the ingestion module with dev dependencies
+	python -m pip install "ingestion-core[dev]/"
 	python -m pip install "ingestion[dev]/"
 
 .PHONY: install_all
@@ -40,7 +41,7 @@ lint: ## Run pylint on the Python sources to analyze the codebase
 .PHONY: py_format
 py_format:  ## Run black and isort to format the Python codebase
 	pycln ingestion-core/ ingestion/ openmetadata-airflow-apis/ --extend-exclude ingestion-core/metadata/generated
-	isort ingestion-core/ ingestion/ openmetadata-airflow-apis/ --skip ingestion-core/metadata/generated --skip ingestion/env --skip ingestion/build --skip openmetadata-airflow-apis/build --profile black --multi-line 3
+	isort ingestion-core/ ingestion/ openmetadata-airflow-apis/ --skip ingestion-core/metadata/generated --skip ingestion/env --skip ingestion-core/build --skip ingestion/build --skip openmetadata-airflow-apis/build --profile black --multi-line 3
 	black ingestion-core/ ingestion/ openmetadata-airflow-apis/ --extend-exclude ingestion-core/metadata/generated
 
 .PHONY: py_format_check

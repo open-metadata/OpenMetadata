@@ -35,6 +35,9 @@ dev = {
     "pre-commit",
     "pycln",
     "pylint",
+    "pytest==7.0.0",
+    "pytest-cov",
+    "pytest-order",
     "twine",
 }
 
