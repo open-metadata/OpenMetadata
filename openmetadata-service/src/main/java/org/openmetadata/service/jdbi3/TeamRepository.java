@@ -668,7 +668,7 @@ public class TeamRepository extends EntityRepository<Team> {
       recordChange("profile", original.getProfile(), updated.getProfile());
       recordChange("isJoinable", original.getIsJoinable(), updated.getIsJoinable());
       recordChange("teamType", original.getTeamType(), updated.getTeamType());
-      // If the team is empty then json should be null
+      // If the team is empty then email should be null, not be empty
       if (CommonUtil.nullOrEmpty(updated.getEmail())) {
         updated.setEmail(null);
       }
