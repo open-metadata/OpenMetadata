@@ -104,7 +104,6 @@ base_requirements = {
     "python-dateutil>=2.8.1",
     "python-jose~=3.3",
     "PyYAML",
-    "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "setuptools~=65.6.3",
     "sqlalchemy>=1.4.0,<2",

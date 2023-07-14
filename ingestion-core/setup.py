@@ -21,6 +21,7 @@ def get_long_description():
 
 
 base_requirements = {
+    "requests>=2.23",
     "pydantic~=1.10",
     "email-validator>=1.0.3",
     "wheel~=0.38.4",
