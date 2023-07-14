@@ -86,7 +86,7 @@ import org.openmetadata.service.security.SecurityUtil;
 @Slf4j
 public final class TestUtils {
 
-  // Setting length at +1024 since this is the length of the longest EntityName for Test Suites
+  // Setting length at +512 since this is the length of the longest EntityName for Test Suites
   public static String LONG_ENTITY_NAME = "a".repeat(512 + 1);
   public static final Map<String, String> ADMIN_AUTH_HEADERS = authHeaders(ADMIN_USER_NAME + "@open-metadata.org");
   public static final String INGESTION_BOT = "ingestion-bot";
