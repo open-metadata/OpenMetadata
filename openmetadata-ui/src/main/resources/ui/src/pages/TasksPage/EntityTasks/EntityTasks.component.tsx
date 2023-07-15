@@ -14,6 +14,7 @@
 import { Space, Tooltip } from 'antd';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
+import { ENTITY_TASKS_TOOLTIP } from 'constants/entity.constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { TagSource } from 'generated/type/tagLabel';
 import { isEmpty } from 'lodash';
@@ -25,20 +26,23 @@ import { ENTITY_LINK_SEPARATOR } from 'utils/EntityUtils';
 import { getFieldThreadElement } from 'utils/FeedElementUtils';
 import {
   getEntityTaskDetails,
+  getRequestDescriptionPath,
   getRequestTagsPath,
+  getUpdateDescriptionPath,
   getUpdateTagsPath,
 } from 'utils/TasksUtils';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
-import { EntityTaskTagsProps } from './EntityTaskTags.interface';
+import { EntityTasksProps } from './EntityTasks.interface';
 
-const EntityTaskTags = ({
+const EntityTasks = ({
   data,
   tagSource,
   entityFqn,
   entityType,
+  entityTaskType,
   entityFieldThreads,
   onThreadLinkSelect,
-}: EntityTaskTagsProps) => {
+}: EntityTasksProps) => {
   const { t } = useTranslation();
   const history = useHistory();
 
@@ -55,59 +59,70 @@ const EntityTaskTags = ({
       : columnName;
   }, [data.fqn]);
 
-  const handleTagTask = (hasTags: boolean) => {
-    history.push(
-      (hasTags ? getUpdateTagsPath : getRequestTagsPath)(
-        entityType,
-        entityFqn,
-        entityField,
-        columnName
-      )
-    );
+  const handleTask = (hasData: boolean) => {
+    if (entityTaskType === EntityField.DESCRIPTION) {
+      history.push(
+        (hasData ? getUpdateDescriptionPath : getRequestDescriptionPath)(
+          entityType,
+          entityFqn,
+          entityField,
+          columnName
+        )
+      );
+    } else {
+      history.push(
+        (hasData ? getUpdateTagsPath : getRequestTagsPath)(
+          entityType,
+          entityFqn,
+          entityField,
+          columnName
+        )
+      );
+    }
   };
 
-  const getRequestTagsElement = useMemo(() => {
-    const hasTags = !isEmpty(data.tags);
+  const taskElement = useMemo(() => {
+    const hasData = !isEmpty(data.field);
 
     return (
       <Tooltip
         destroyTooltipOnHide
         overlayClassName="ant-popover-request-description"
         title={
-          hasTags
-            ? t('label.update-request-tag-plural')
-            : t('label.request-tag-plural')
+          hasData
+            ? ENTITY_TASKS_TOOLTIP[entityTaskType].update
+            : ENTITY_TASKS_TOOLTIP[entityTaskType].request
         }>
         <IconRequest
           className="hover-cell-icon cursor-pointer"
-          data-testid="request-tags"
+          data-testid="task-element"
           height={14}
           name={t('label.request-tag-plural')}
           style={{ color: DE_ACTIVE_COLOR }}
           width={14}
-          onClick={() => handleTagTask(hasTags)}
+          onClick={() => handleTask(hasData)}
         />
       </Tooltip>
     );
-  }, [data]);
+  }, [data.field]);
 
   return (
-    <Space size="middle">
-      {/*  Request and Update tags */}
-      {tagSource === TagSource.Classification && getRequestTagsElement}
+    <Space data-testid="entity-task" size="middle">
+      {/*  Request and Update Tasks */}
+      {tagSource !== TagSource.Glossary && taskElement}
 
       {/*  List Conversation */}
       {getFieldThreadElement(
         columnName,
-        EntityField.TAGS,
+        entityTaskType,
         entityFieldThreads,
         onThreadLinkSelect,
         entityType,
         entityFqn,
-        `${entityField}${ENTITY_LINK_SEPARATOR}${columnName}${ENTITY_LINK_SEPARATOR}${EntityField.TAGS}`
+        `${entityField}${ENTITY_LINK_SEPARATOR}${columnName}${ENTITY_LINK_SEPARATOR}${entityTaskType}`
       )}
     </Space>
   );
 };
 
-export default EntityTaskTags;
+export default EntityTasks;

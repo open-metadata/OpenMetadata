@@ -470,7 +470,7 @@ const DashboardDetails = ({
             <TableDescription
               columnData={{
                 fqn: record.fullyQualifiedName ?? '',
-                description: record.description,
+                field: record.description,
               }}
               entityFieldThreads={getEntityFieldThreadCounts(
                 EntityField.DESCRIPTION,
