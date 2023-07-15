@@ -19,7 +19,7 @@ export interface TableDescriptionProps {
   index: number;
   columnData: {
     fqn: string;
-    description?: string;
+    field?: string;
   };
   entityFqn: string;
   entityType: EntityType;
