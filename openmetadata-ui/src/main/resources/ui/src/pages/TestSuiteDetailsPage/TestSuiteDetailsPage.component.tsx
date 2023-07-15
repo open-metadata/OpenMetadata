@@ -14,6 +14,14 @@
 import { Button, Col, Modal, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { AddTestCaseList } from 'components/AddTestCaseList/AddTestCaseList.component';
+import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
+import Description from 'components/common/description/Description';
+import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -21,14 +29,6 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import DataQualityTab from 'components/ProfilerDashboard/component/DataQualityTab';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import Description from 'components/common/description/Description';
-import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { compare } from 'fast-json-patch';
 import { useAuth } from 'hooks/authHooks';
 import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
@@ -36,10 +36,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
-  ListTestCaseParams,
   addTestCaseToLogicalTestSuite,
   getListTestCase,
   getTestSuiteByName,
+  ListTestCaseParams,
   updateTestSuiteById,
 } from 'rest/testAPI';
 import { getEntityName } from 'utils/EntityUtils';
@@ -342,6 +342,7 @@ const TestSuiteDetailsPage = () => {
         </Col>
         <Col span={24}>
           <DataQualityTab
+            afterDeleteAction={fetchTestCases}
             isLoading={isTestCaseLoading}
             pagingData={{
               currentPage,

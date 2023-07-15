@@ -45,8 +45,7 @@ export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
   term: 'dim_address',
   entity: MYDATA_SUMMARY_OPTIONS.tables,
   serviceName: 'sample_data',
-  testCaseName: 'column_value_max_to_be_between',
-  testSuiteName: 'critical_metrics_suite',
+  testCaseName: 'my_sql_test_case_cypress',
   sqlTestCase: 'Custom SQL Query',
   sqlQuery: 'Select * from dim_address',
 };
@@ -178,6 +177,7 @@ export const NEW_TABLE_TEST_CASE = {
 };
 
 export const NEW_COLUMN_TEST_CASE = {
+  name: 'id_column_value_lengths_to_be_between',
   column: 'id',
   type: 'columnValueLengthsToBeBetween',
   label: 'Column Value Lengths To Be Between',
@@ -187,6 +187,7 @@ export const NEW_COLUMN_TEST_CASE = {
 };
 
 export const NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE = {
+  name: 'id_column_values_to_be_not_null',
   column: 'id',
   type: 'columnValuesToBeNotNull',
   label: 'Column Values To Be Not Null',
