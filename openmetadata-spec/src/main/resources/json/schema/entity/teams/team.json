@@ -129,6 +129,6 @@
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["id", "name", "href"],
+  "required": ["id", "name"],
   "additionalProperties": false
 }

@@ -139,5 +139,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["id", "name", "email", "href"]
+  "required": ["id", "name", "email"]
 }
