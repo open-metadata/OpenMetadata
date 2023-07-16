@@ -9,9 +9,9 @@ slug: /main-concepts/metadata-standard/schemas/api/tests/createlogicaltestcases
 
 ## Properties
 
-- **`testSuiteId`**: TestSuite ID where we will be adding the test cases. Refer to *../../type/basic.json#/definitions/uuid*.
+- **`testSuiteId`**: TestSuite ID where we will be adding the test cases. Refer to *[../../type/basic.json#/definitions/uuid](#/../type/basic.json#/definitions/uuid)*.
 - **`testCaseIds`** *(array)*: Ids of the test cases to create.
-  - **Items**: Refer to *../../type/basic.json#/definitions/uuid*.
+  - **Items**: Refer to *[../../type/basic.json#/definitions/uuid](#/../type/basic.json#/definitions/uuid)*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-07-16 19:59:36.193714.

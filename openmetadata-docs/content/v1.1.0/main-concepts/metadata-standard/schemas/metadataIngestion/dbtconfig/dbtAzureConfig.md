@@ -9,8 +9,8 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtaz
 
 ## Properties
 
-- **`dbtSecurityConfig`**: Refer to *../../security/credentials/azureCredentials.json*.
-- **`dbtPrefixConfig`**: Refer to *./dbtBucketDetails.json*.
+- **`dbtSecurityConfig`**: Refer to *[../../security/credentials/azureCredentials.json](#/../security/credentials/azureCredentials.json)*.
+- **`dbtPrefixConfig`**: Refer to *[./dbtBucketDetails.json](#dbtBucketDetails.json)*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-07-16 19:59:36.193714.

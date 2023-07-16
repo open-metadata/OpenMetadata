@@ -12,13 +12,13 @@ slug: /main-concepts/metadata-standard/schemas/configuration/extensionconfigurat
 - **`resourcePackage`** *(array)*: Resources Package name for Extension.
   - **Items** *(string)*
 - **`extensions`** *(array)*: Extension Class to Register in OM.
-  - **Items**: Refer to *#/definitions/extension*.
+  - **Items**: Refer to *[#/definitions/extension](#definitions/extension)*.
 ## Definitions
 
-- **`extension`** *(object)*: Extension Class to Register in OM. Cannot contain additional properties.
-  - **`className`** *(string)*: Class Name for the Extension Service.
+- <a id="definitions/extension"></a>**`extension`** *(object)*: Extension Class to Register in OM. Cannot contain additional properties.
+  - **`className`** *(string, required)*: Class Name for the Extension Service.
   - **`parameters`** *(object)*: Additional parameters for extension initialization. Can contain additional properties.
     - **Additional Properties**
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-07-16 19:59:36.193714.

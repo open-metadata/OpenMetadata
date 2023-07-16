@@ -9,36 +9,40 @@ slug: /main-concepts/metadata-standard/schemas/entity/teams/user
 
 ## Properties
 
-- **`id`**: Unique identifier that identifies a user entity instance. Refer to *../../type/basic.json#/definitions/uuid*.
-- **`name`**: A unique name of the user, typically the user ID from an identity provider. Example - uid from LDAP. Refer to *#/definitions/entityName*.
-- **`fullyQualifiedName`**: FullyQualifiedName same as `name`. Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*.
-- **`description`**: Used for user biography. Refer to *../../type/basic.json#/definitions/markdown*.
+- **`id`**: Unique identifier that identifies a user entity instance. Refer to *[../../type/basic.json#/definitions/uuid](#/../type/basic.json#/definitions/uuid)*.
+- **`name`**: A unique name of the user, typically the user ID from an identity provider. Example - uid from LDAP. Refer to *[#/definitions/entityName](#definitions/entityName)*.
+- **`fullyQualifiedName`**: FullyQualifiedName same as `name`. Refer to *[../../type/basic.json#/definitions/fullyQualifiedEntityName](#/../type/basic.json#/definitions/fullyQualifiedEntityName)*.
+- **`description`**: Used for user biography. Refer to *[../../type/basic.json#/definitions/markdown](#/../type/basic.json#/definitions/markdown)*.
 - **`displayName`** *(string)*: Name used for display purposes. Example 'FirstName LastName'.
-- **`version`**: Metadata version of the entity. Refer to *../../type/entityHistory.json#/definitions/entityVersion*.
-- **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
+- **`version`**: Metadata version of the entity. Refer to *[../../type/entityHistory.json#/definitions/entityVersion](#/../type/entityHistory.json#/definitions/entityVersion)*.
+- **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *[../../type/basic.json#/definitions/timestamp](#/../type/basic.json#/definitions/timestamp)*.
 - **`updatedBy`** *(string)*: User who made the update.
-- **`email`**: Email address of the user. Refer to *../../type/basic.json#/definitions/email*.
-- **`href`**: Link to the resource corresponding to this entity. Refer to *../../type/basic.json#/definitions/href*.
+- **`email`**: Email address of the user. Refer to *[../../type/basic.json#/definitions/email](#/../type/basic.json#/definitions/email)*.
+- **`href`**: Link to the resource corresponding to this entity. Refer to *[../../type/basic.json#/definitions/href](#/../type/basic.json#/definitions/href)*.
 - **`timezone`** *(string)*: Timezone of the user.
 - **`isBot`** *(boolean)*: When true indicates a special type of user called Bot.
 - **`isAdmin`** *(boolean)*: When true indicates user is an administrator for the system with superuser privileges.
-- **`authenticationMechanism`**: Refer to *#/definitions/authenticationMechanism*.
-- **`profile`**: Profile of the user. Refer to *../../type/profile.json*.
-- **`teams`**: Teams that the user belongs to. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
-- **`owns`**: List of entities owned by the user. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
-- **`follows`**: List of entities followed by the user. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
-- **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
-- **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
-- **`roles`**: Roles that the user has been assigned. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
-- **`inheritedRoles`**: Roles that a user is inheriting through membership in teams that have set team default roles. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`authenticationMechanism`**: Refer to *[#/definitions/authenticationMechanism](#definitions/authenticationMechanism)*.
+- **`profile`**: Profile of the user. Refer to *[../../type/profile.json](#/../type/profile.json)*.
+- **`teams`**: Teams that the user belongs to. Refer to *[../../type/entityReferenceList.json#/definitions/entityReferenceList](#/../type/entityReferenceList.json#/definitions/entityReferenceList)*.
+- **`owns`**: List of entities owned by the user. Refer to *[../../type/entityReferenceList.json#/definitions/entityReferenceList](#/../type/entityReferenceList.json#/definitions/entityReferenceList)*.
+- **`follows`**: List of entities followed by the user. Refer to *[../../type/entityReferenceList.json#/definitions/entityReferenceList](#/../type/entityReferenceList.json#/definitions/entityReferenceList)*.
+- **`changeDescription`**: Change that lead to this version of the entity. Refer to *[../../type/entityHistory.json#/definitions/changeDescription](#/../type/entityHistory.json#/definitions/changeDescription)*.
+- **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `false`.
+- **`roles`**: Roles that the user has been assigned. Refer to *[../../type/entityReferenceList.json#/definitions/entityReferenceList](#/../type/entityReferenceList.json#/definitions/entityReferenceList)*.
+- **`inheritedRoles`**: Roles that a user is inheriting through membership in teams that have set team default roles. Refer to *[../../type/entityReferenceList.json#/definitions/entityReferenceList](#/../type/entityReferenceList.json#/definitions/entityReferenceList)*.
 - **`isEmailVerified`** *(boolean)*: If the User has verified the mail.
-- **`domain`**: Domain the User belongs to. This is inherited by the team the user belongs to. Refer to *../../type/entityReference.json*.
+- **`domain`**: Domain the User belongs to. This is inherited by the team the user belongs to. Refer to *[../../type/entityReference.json](#/../type/entityReference.json)*.
 ## Definitions
 
-- **`entityName`** *(string)*: Login name of the user, typically the user ID from an identity provider. Example - uid from LDAP.
-- **`authenticationMechanism`** *(object)*: User/Bot Authentication Mechanism. Cannot contain additional properties.
+- <a id="definitions/entityName"></a>**`entityName`** *(string)*: Login name of the user, typically the user ID from an identity provider. Example - uid from LDAP.
+- <a id="definitions/authenticationMechanism"></a>**`authenticationMechanism`** *(object)*: User/Bot Authentication Mechanism. Cannot contain additional properties.
   - **`config`**
-  - **`authType`**: Must be one of: `['JWT', 'SSO', 'BASIC']`.
+    - **One of**
+      - : Refer to *[../../auth/ssoAuth.json](#/../auth/ssoAuth.json)*.
+      - : Refer to *[../../auth/jwtAuth.json](#/../auth/jwtAuth.json)*.
+      - : Refer to *[../../auth/basicAuth.json](#/../auth/basicAuth.json)*.
+  - **`authType`**: Must be one of: `["JWT", "SSO", "BASIC"]`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-07-16 19:59:36.193714.

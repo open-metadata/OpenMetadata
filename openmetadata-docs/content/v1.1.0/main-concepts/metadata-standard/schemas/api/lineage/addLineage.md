@@ -9,7 +9,7 @@ slug: /main-concepts/metadata-standard/schemas/api/lineage/addlineage
 
 ## Properties
 
-- **`edge`**: Lineage edge details. Refer to *../../type/entityLineage.json#/definitions/entitiesEdge*.
+- **`edge`**: Lineage edge details. Refer to *[../../type/entityLineage.json#/definitions/entitiesEdge](#/../type/entityLineage.json#/definitions/entitiesEdge)*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-07-16 19:59:36.193714.
