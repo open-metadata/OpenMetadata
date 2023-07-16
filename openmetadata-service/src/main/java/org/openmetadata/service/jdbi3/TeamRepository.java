@@ -54,6 +54,7 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
@@ -667,6 +668,10 @@ public class TeamRepository extends EntityRepository<Team> {
       recordChange("profile", original.getProfile(), updated.getProfile());
       recordChange("isJoinable", original.getIsJoinable(), updated.getIsJoinable());
       recordChange("teamType", original.getTeamType(), updated.getTeamType());
+      // If the team is empty then email should be null, not be empty
+      if (CommonUtil.nullOrEmpty(updated.getEmail())) {
+        updated.setEmail(null);
+      }
       recordChange("email", original.getEmail(), updated.getEmail());
       updateUsers(original, updated);
       updateDefaultRoles(original, updated);

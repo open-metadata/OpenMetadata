@@ -13,7 +13,8 @@
 
 import classNames from 'classnames';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import EntityTaskTags from 'pages/TasksPage/EntityTaskTags/EntityTaskTags.component';
+import { EntityField } from 'constants/Feeds.constants';
+import EntityTasks from 'pages/TasksPage/EntityTasks/EntityTasks.component';
 import React from 'react';
 import { TableTagsComponentProps, TableUnion } from './TableTags.interface';
 
@@ -48,13 +49,14 @@ const TableTags = <T extends TableUnion>({
           }}>
           <>
             {!isReadOnly && (
-              <EntityTaskTags
+              <EntityTasks
                 data={{
                   fqn: record.fullyQualifiedName ?? '',
-                  tags: record.tags ?? [],
+                  field: record.tags ?? [],
                 }}
                 entityFieldThreads={entityFieldThreads}
                 entityFqn={entityFqn}
+                entityTaskType={EntityField.TAGS}
                 entityType={entityType}
                 tagSource={type}
                 onThreadLinkSelect={onThreadLinkSelect}

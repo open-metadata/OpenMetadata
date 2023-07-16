@@ -23,7 +23,7 @@ import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
 import { oidcTokenKey, ROUTES } from '../constants/constants';
-import { validEmailRegEx } from '../constants/regex.constants';
+import { EMAIL_REG_EX } from '../constants/regex.constants';
 import { AuthTypes } from '../enums/signin.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { isDev } from './EnvironmentUtils';
@@ -199,7 +199,7 @@ export const msalLoginRequest: PopupRequest = {
 };
 
 export const getNameFromEmail = (email: string) => {
-  if (email?.match(validEmailRegEx)) {
+  if (email?.match(EMAIL_REG_EX)) {
     return email.split('@')[0];
   } else {
     // if the string does not conform to email format return the string
