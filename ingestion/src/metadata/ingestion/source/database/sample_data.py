@@ -1084,6 +1084,8 @@ class SampleDataSource(
                         tableProfile=TableProfile(
                             columnCount=profile["columnCount"],
                             rowCount=profile["rowCount"],
+                            createDateTime=profile.get("createDateTime"),
+                            sizeInByte=profile.get("sizeInByte"),
                             timestamp=(
                                 datetime.now(tz=timezone.utc) - timedelta(days=days)
                             ).timestamp(),

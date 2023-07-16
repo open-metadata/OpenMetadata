@@ -91,5 +91,4 @@ export interface SearchedDataProps {
     entityType: string
   ) => void;
   filter?: Qs.ParsedQs;
-  currentPage?: number;
 }
