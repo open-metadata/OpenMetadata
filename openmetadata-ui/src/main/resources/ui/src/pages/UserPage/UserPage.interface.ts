@@ -11,19 +11,9 @@
  *  limitations under the License.
  */
 
-import { EntityType } from 'enums/entity.enum';
-import { ThreadType } from 'generated/api/feed/createThread';
-import { TagLabel, TagSource } from 'generated/type/tagLabel';
-import { EntityFieldThreads } from 'interface/feed.interface';
+import { SearchEntityHits } from 'utils/APIUtils';
 
-export interface EntityTaskTagsProps {
-  data: {
-    fqn: string;
-    tags: TagLabel[];
-  };
-  tagSource: TagSource;
-  entityFqn: string;
-  entityType: EntityType;
-  entityFieldThreads: EntityFieldThreads[];
-  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
+export interface UserAssetsDataType {
+  data: SearchEntityHits;
+  total: number;
 }

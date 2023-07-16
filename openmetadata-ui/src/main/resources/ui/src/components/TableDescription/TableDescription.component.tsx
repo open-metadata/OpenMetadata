@@ -14,7 +14,8 @@
 import { Space } from 'antd';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
-import EntityTaskDescription from 'pages/TasksPage/EntityTaskDescription/EntityTaskDescription.component';
+import { EntityField } from 'constants/Feeds.constants';
+import EntityTasks from 'pages/TasksPage/EntityTasks/EntityTasks.component';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
@@ -39,8 +40,8 @@ const TableDescription = ({
       data-testid="description"
       direction="vertical"
       id={`field-description-${index}`}>
-      {columnData.description ? (
-        <RichTextEditorPreviewer markdown={columnData.description} />
+      {columnData.field ? (
+        <RichTextEditorPreviewer markdown={columnData.field} />
       ) : (
         <span className="text-grey-muted">
           {t('label.no-entity', {
@@ -62,10 +63,11 @@ const TableDescription = ({
             />
           )}
 
-          <EntityTaskDescription
+          <EntityTasks
             data={columnData}
             entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
+            entityTaskType={EntityField.DESCRIPTION}
             entityType={entityType}
             onThreadLinkSelect={onThreadLinkSelect}
           />

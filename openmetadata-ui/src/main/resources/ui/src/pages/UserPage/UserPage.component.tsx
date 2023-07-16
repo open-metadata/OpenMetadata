@@ -18,10 +18,16 @@ import Users from 'components/Users/Users.component';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
-import { AssetsDataType } from 'Models';
-import React, { Dispatch, SetStateAction, useEffect, useState } from 'react';
+import Qs from 'qs';
+import React, {
+  Dispatch,
+  SetStateAction,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
 import { getUserByName, updateUserDetail } from 'rest/userAPI';
 import AppState from '../../AppState';
@@ -32,8 +38,10 @@ import { User } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import { SearchEntityHits } from '../../utils/APIUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { UserAssetsDataType } from './UserPage.interface';
 
 const UserPage = () => {
+  const history = useHistory();
   const { t } = useTranslation();
   const { username, tab = UserProfileTab.ACTIVITY } =
     useParams<{ [key: string]: string }>();
@@ -46,16 +54,25 @@ const UserPage = () => {
   const [isUserEntitiesLoading, setIsUserEntitiesLoading] =
     useState<boolean>(false);
 
-  const [followingEntities, setFollowingEntities] = useState<AssetsDataType>({
+  const [followingEntities, setFollowingEntities] =
+    useState<UserAssetsDataType>({
+      data: [],
+      total: 0,
+    });
+  const [ownedEntities, setOwnedEntities] = useState<UserAssetsDataType>({
     data: [],
     total: 0,
-    currPage: 1,
   });
-  const [ownedEntities, setOwnedEntities] = useState<AssetsDataType>({
-    data: [],
-    total: 0,
-    currPage: 1,
-  });
+
+  const { page = 1 } = useMemo(
+    () =>
+      Qs.parse(
+        location.search.startsWith('?')
+          ? location.search.substr(1)
+          : location.search
+      ),
+    [location.search]
+  );
 
   const fetchUserData = () => {
     setUserData({} as User);
@@ -95,16 +112,14 @@ const UserPage = () => {
 
   const fetchEntities = async (
     fetchOwnedEntities = false,
-    handleEntity: Dispatch<SetStateAction<AssetsDataType>>
+    handleEntity: Dispatch<SetStateAction<UserAssetsDataType>>
   ) => {
-    const entity = fetchOwnedEntities ? ownedEntities : followingEntities;
-
     if (userData.id) {
       setIsUserEntitiesLoading(true);
       try {
         const response = await searchData(
           '',
-          entity.currPage,
+          Number(page),
           PAGE_SIZE,
           getQueryFilters(fetchOwnedEntities),
           '',
@@ -118,14 +133,12 @@ const UserPage = () => {
           handleEntity({
             data: hits,
             total,
-            currPage: entity.currPage,
           });
         } else {
           const total = 0;
           handleEntity({
             data: [],
             total,
-            currPage: entity.currPage,
           });
         }
       } catch (error) {
@@ -141,12 +154,10 @@ const UserPage = () => {
     }
   };
 
-  const handleFollowingEntityPaginate = (page: string | number) => {
-    setFollowingEntities((pre) => ({ ...pre, currPage: page as number }));
-  };
-
-  const handleOwnedEntityPaginate = (page: string | number) => {
-    setOwnedEntities((pre) => ({ ...pre, currPage: page as number }));
+  const handleEntityPaginate = (page: string | number) => {
+    history.push({
+      search: Qs.stringify({ page }),
+    });
   };
 
   const ErrorPlaceholder = () => {
@@ -189,6 +200,7 @@ const UserPage = () => {
       return (
         <Users
           followingEntities={followingEntities}
+          handlePaginate={handleEntityPaginate}
           isAdminUser={Boolean(isAdminUser)}
           isAuthDisabled={Boolean(isAuthDisabled)}
           isLoggedinUser={isLoggedinUser(username)}
@@ -197,8 +209,6 @@ const UserPage = () => {
           updateUserDetails={updateUserDetails}
           userData={userData}
           username={username}
-          onFollowingEntityPaginate={handleFollowingEntityPaginate}
-          onOwnedEntityPaginate={handleOwnedEntityPaginate}
         />
       );
     } else {
@@ -214,13 +224,13 @@ const UserPage = () => {
     if (tab === UserProfileTab.FOLLOWING) {
       fetchEntities(false, setFollowingEntities);
     }
-  }, [followingEntities.currPage, tab, userData]);
+  }, [page, tab, userData]);
 
   useEffect(() => {
     if (tab === UserProfileTab.MY_DATA) {
       fetchEntities(true, setOwnedEntities);
     }
-  }, [ownedEntities.currPage, tab, userData]);
+  }, [page, tab, userData]);
 
   useEffect(() => {
     setCurrentLoggedInUser(AppState.getCurrentUserDetails());
