@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Menu, Typography } from 'antd';
-import AppState from 'AppState';
 import classNames from 'classnames';
 import Loader from 'components/Loader/Loader';
 import { TaskTab } from 'components/Task/TaskTab/TaskTab.component';
@@ -57,8 +56,6 @@ import { ReactComponent as TaskIcon } from '/assets/svg/ic-task.svg';
 export const ActivityFeedTab = ({
   fqn,
   owner,
-  tags,
-  description,
   columns,
   entityType,
   onUpdateEntityDetails,
@@ -72,11 +69,6 @@ export const ActivityFeedTab = ({
   const [allCount, setAllCount] = useState(0);
   const [tasksCount, setTasksCount] = useState(0);
 
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
-
   const {
     postFeed,
     selectedThread,
@@ -84,6 +76,7 @@ export const ActivityFeedTab = ({
     entityThread,
     getFeedData,
     loading,
+    userId,
     entityPaging,
   } = useActivityFeedProvider();
 
@@ -143,56 +136,43 @@ export const ActivityFeedTab = ({
         }
       );
     } else {
-      if (activeTab !== ActivityFeedTabs.TASKS) {
-        // count for task on userProfile page
-        getAllFeeds(
-          undefined,
-          undefined,
-          ThreadType.Task,
-          FeedFilter.OWNER,
-          undefined,
-          currentUser?.id
-        ).then((res) => {
-          if (res) {
-            setTasksCount(res.paging.total);
-          } else {
-            throw t('server.entity-feed-fetch-error');
-          }
-        });
-      }
+      // count for task on userProfile page
+      getAllFeeds(
+        undefined,
+        undefined,
+        ThreadType.Task,
+        FeedFilter.OWNER,
+        undefined,
+        userId
+      ).then((res) => {
+        if (res) {
+          setTasksCount(res.paging.total);
+        } else {
+          throw t('server.entity-feed-fetch-error');
+        }
+      });
 
-      if (activeTab !== ActivityFeedTabs.ALL) {
-        // count for all on userProfile page
-        getAllFeeds(
-          undefined,
-          undefined,
-          ThreadType.Conversation,
-          FeedFilter.OWNER,
-          undefined,
-          currentUser?.id
-        ).then((res) => {
-          if (res) {
-            setAllCount(res.paging.total);
-          } else {
-            throw t('server.entity-feed-fetch-error');
-          }
-        });
-      }
+      // count for all on userProfile page
+      getAllFeeds(
+        undefined,
+        undefined,
+        ThreadType.Conversation,
+        FeedFilter.OWNER,
+        undefined,
+        userId
+      ).then((res) => {
+        if (res) {
+          setAllCount(res.paging.total);
+        } else {
+          throw t('server.entity-feed-fetch-error');
+        }
+      });
     }
   };
 
   useEffect(() => {
     fetchFeedsCount();
   }, []);
-
-  useEffect(() => {
-    if (isUserEntity && activeTab === ActivityFeedTabs.ALL && !allCount) {
-      setAllCount(entityPaging.total);
-    }
-    if (isUserEntity && activeTab === ActivityFeedTabs.TASKS && !tasksCount) {
-      setTasksCount(entityPaging.total);
-    }
-  });
 
   const { feedFilter, threadType } = useMemo(() => {
     return {
@@ -295,7 +275,13 @@ export const ActivityFeedTab = ({
             label: (
               <div className="d-flex justify-between">
                 <span>{t('label.all')}</span>
-                <span>{getCountBadge(allCount)}</span>
+                <span>
+                  {getCountBadge(
+                    allCount,
+                    '',
+                    activeTab === ActivityFeedTabs.ALL
+                  )}
+                </span>
               </div>
             ),
             key: 'all',
@@ -312,7 +298,13 @@ export const ActivityFeedTab = ({
             label: (
               <div className="d-flex justify-between">
                 <span>{t('label.task-plural')}</span>
-                <span>{getCountBadge(tasksCount)}</span>
+                <span>
+                  {getCountBadge(
+                    tasksCount,
+                    '',
+                    activeTab === ActivityFeedTabs.TASKS
+                  )}
+                </span>
               </div>
             ),
             key: 'tasks',
@@ -358,6 +350,7 @@ export const ActivityFeedTab = ({
         )}
         <ActivityFeedListV1
           hidePopover
+          isForFeedTab
           activeFeedId={selectedThread?.id}
           emptyPlaceholderText={placeholderText}
           feedList={threads}
@@ -371,6 +364,7 @@ export const ActivityFeedTab = ({
           data-testid="observer-element"
           id="observer-element"
           ref={elementRef as RefObject<HTMLDivElement>}
+          style={{ height: '2px' }}
         />
       </div>
       <div className=" right-container">
@@ -390,6 +384,7 @@ export const ActivityFeedTab = ({
                 />
               </div>
               <FeedPanelBodyV1
+                isForFeedTab
                 isOpenInDrawer
                 showThread
                 feed={selectedThread}
@@ -402,20 +397,16 @@ export const ActivityFeedTab = ({
               {entityType === EntityType.TABLE ? (
                 <TaskTab
                   columns={columns}
-                  description={description}
                   entityType={EntityType.TABLE}
                   owner={owner}
-                  tags={tags}
-                  task={selectedThread}
+                  taskThread={selectedThread}
                   onUpdateEntityDetails={onUpdateEntityDetails}
                 />
               ) : (
                 <TaskTab
-                  description={description}
                   entityType={isUserEntity ? entityTypeTask : entityType}
                   owner={owner}
-                  tags={tags}
-                  task={selectedThread}
+                  taskThread={selectedThread}
                   onUpdateEntityDetails={onUpdateEntityDetails}
                 />
               )}

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Modal, Typography } from 'antd';
+import { Col, Modal, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { t } from 'i18next';
@@ -83,10 +83,8 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
         </Typography.Text>
       }
       width={1200}>
-      <div className="flex w-auto h-full h-min-75">
-        <div
-          className="border-r-2 p-x-md p-y-md border-separate"
-          style={{ width: '14%' }}>
+      <Row className="w-auto h-full h-min-75">
+        <Col className="border-r-2 p-x-md p-y-md border-separate" span={3}>
           <div className="d-flex flex-col-reverse">
             {WHATS_NEW.map((d) => (
               <div className="flex items-center justify-end mb-2.5" key={d.id}>
@@ -106,8 +104,8 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
               </div>
             ))}
           </div>
-        </div>
-        <div className="overflow-y-auto" style={{ width: '86%' }}>
+        </Col>
+        <Col className="overflow-y-auto" span={21}>
           <div className="p-t-md px-10 ">
             <div className="flex justify-between items-center p-b-sm">
               <div>
@@ -159,8 +157,8 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
               )}
             </div>
           </div>
-        </div>
-      </div>
+        </Col>
+      </Row>
     </Modal>
   );
 };

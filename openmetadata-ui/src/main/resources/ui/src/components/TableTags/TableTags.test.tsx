@@ -12,6 +12,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import { EntityType } from 'enums/entity.enum';
 import { Constraint, DataType } from 'generated/entity/data/table';
 import { LabelType, State, TagSource } from 'generated/type/schema';
 import React from 'react';
@@ -25,6 +26,10 @@ jest.mock('utils/FeedElementUtils', () => ({
       <p data-testid="field-thread-element">FieldThreadElement</p>
     ),
 }));
+
+jest.mock('pages/TasksPage/EntityTasks/EntityTasks.component', () => {
+  return jest.fn().mockImplementation(() => <div>EntityTasks</div>);
+});
 
 const glossaryTags = [
   {
@@ -80,7 +85,6 @@ const mockProp = {
   index: 0,
   isReadOnly: false,
   hasTagEditAccess: true,
-  entityFieldTasks: [],
   onThreadLinkSelect: jest.fn(),
   entityFieldThreads: [
     {
@@ -93,6 +97,7 @@ const mockProp = {
   entityFqn: 'sample_data.ecommerce_db.shopify.raw_customer',
   handleTagSelection: jest.fn(),
   type: TagSource.Classification,
+  entityType: EntityType.TABLE,
 };
 
 describe('Test EntityTableTags Component', () => {
@@ -149,10 +154,11 @@ describe('Test EntityTableTags Component', () => {
     expect(tagPersonal).toBeInTheDocument();
   });
 
-  it('Should not render update and request tags buttons', async () => {
+  it('Should not render entity task component if entity is deleted', async () => {
     render(
       <TableTags
         {...mockProp}
+        isReadOnly
         record={{
           ...mockProp.record,
           tags: [...classificationTags, ...glossaryTags],
@@ -165,10 +171,10 @@ describe('Test EntityTableTags Component', () => {
     );
 
     const tagContainer = await screen.findByTestId('Classification-tags-0');
-    const requestTags = screen.queryByTestId('field-thread-element');
+    const entityTasks = screen.queryByText('EntityTasks');
 
     expect(tagContainer).toBeInTheDocument();
-    expect(requestTags).not.toBeInTheDocument();
+    expect(entityTasks).not.toBeInTheDocument();
   });
 
   it('Should render update and request tags buttons', async () => {
@@ -188,9 +194,9 @@ describe('Test EntityTableTags Component', () => {
     );
 
     const tagContainer = await screen.findByTestId('Classification-tags-0');
-    const requestTags = await screen.findAllByTestId('field-thread-element');
+    const entityTasks = screen.queryByText('EntityTasks');
 
     expect(tagContainer).toBeInTheDocument();
-    expect(requestTags).toHaveLength(2);
+    expect(entityTasks).toBeInTheDocument();
   });
 });

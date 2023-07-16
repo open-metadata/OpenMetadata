@@ -72,6 +72,7 @@ import {
   restoreContainer,
 } from 'rest/storageAPI';
 import {
+  addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
   getFeedCounts,
@@ -104,7 +105,6 @@ const ContainerPage = () => {
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
 
-  const [, setParentContainers] = useState<Container[]>([]);
   const [containerData, setContainerData] = useState<Container>();
   const [containerChildrenData, setContainerChildrenData] = useState<
     Container['children']
@@ -124,32 +124,11 @@ const ContainerPage = () => {
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
     EntityFieldThreadCount[]
   >([]);
-  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
 
   const [threadLink, setThreadLink] = useState<string>('');
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
-
-  // data fetching methods
-  const fetchContainerParent = async (
-    parentName: string,
-    newContainer = false
-  ) => {
-    try {
-      const response = await getContainerByName(parentName, 'parent');
-      setParentContainers((prev) =>
-        newContainer ? [response] : [response, ...prev]
-      );
-      if (response.parent && response.parent.fullyQualifiedName) {
-        await fetchContainerParent(response.parent.fullyQualifiedName);
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError, t('server.unexpected-response'));
-    }
-  };
 
   const fetchContainerDetail = async (containerFQN: string) => {
     setIsLoading(true);
@@ -159,13 +138,18 @@ const ContainerPage = () => {
         'parent,dataModel,owner,tags,followers,extension',
         Include.All
       );
+      addToRecentViewed({
+        displayName: getEntityName(response),
+        entityType: EntityType.CONTAINER,
+        fqn: response.fullyQualifiedName ?? '',
+        serviceType: response.serviceType,
+        timestamp: 0,
+        id: response.id,
+      });
       setContainerData({
         ...response,
         tags: sortTagsCaseInsensitive(response.tags || []),
       });
-      if (response.parent && response.parent.fullyQualifiedName) {
-        await fetchContainerParent(response.parent.fullyQualifiedName, true);
-      }
     } catch (error) {
       showErrorToast(error as AxiosError);
       setHasError(true);
@@ -251,6 +235,7 @@ const ContainerPage = () => {
     isUserFollowing,
     tags,
     tier,
+    entityFqn,
   } = useMemo(() => {
     return {
       deleted: containerData?.deleted,
@@ -268,6 +253,7 @@ const ContainerPage = () => {
       size: containerData?.size || 0,
       numberOfObjects: containerData?.numberOfObjects || 0,
       partitioned: containerData?.dataModel?.isPartitioned,
+      entityFqn: containerData?.fullyQualifiedName ?? '',
     };
   }, [containerData]);
 
@@ -282,7 +268,6 @@ const ContainerPage = () => {
       EntityType.CONTAINER,
       containerName,
       setEntityFieldThreadCount,
-      setEntityFieldTaskCount,
       setFeedCount
     );
   };
@@ -593,7 +578,7 @@ const ContainerPage = () => {
         key: EntityTabs.SCHEMA,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-l-lg" flex="auto">
+            <Col className="p-t-sm m-x-lg" flex="auto">
               <div className="d-flex flex-col gap-4">
                 <DescriptionV1
                   description={description}
@@ -616,9 +601,15 @@ const ContainerPage = () => {
 
                 <ContainerDataModel
                   dataModel={containerData?.dataModel}
+                  entityFieldThreads={getEntityFieldThreadCounts(
+                    EntityField.DATA_MODEL,
+                    entityFieldThreadCount
+                  )}
+                  entityFqn={entityFqn}
                   hasDescriptionEditAccess={hasEditDescriptionPermission}
                   hasTagEditAccess={hasEditTagsPermission}
                   isReadOnly={Boolean(deleted)}
+                  onThreadLinkSelect={onThreadLinkSelect}
                   onUpdate={handleUpdateDataModel}
                 />
               </div>
@@ -728,7 +719,9 @@ const ContainerPage = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
+        children: !containerPermissions.ViewAll ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        ) : (
           <CustomPropertyTable
             entityDetails={
               containerData as CustomPropertyProps['entityDetails']
@@ -759,7 +752,6 @@ const ContainerPage = () => {
       entityFieldThreadCount,
       tags,
       entityLineage,
-      entityFieldTaskCount,
       feedCount,
       containerChildrenData,
       handleAddLineage,
@@ -784,8 +776,6 @@ const ContainerPage = () => {
 
   useEffect(() => {
     fetchResourcePermission(containerName);
-    // reset parent containers list on containername change
-    setParentContainers([]);
   }, [containerName]);
 
   useEffect(() => {

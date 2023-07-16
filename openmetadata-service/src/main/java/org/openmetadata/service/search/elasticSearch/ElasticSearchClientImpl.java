@@ -82,6 +82,9 @@ import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.Aggregations;
 import org.elasticsearch.search.aggregations.BucketOrder;
+import org.elasticsearch.search.aggregations.bucket.composite.CompositeAggregationBuilder;
+import org.elasticsearch.search.aggregations.bucket.composite.CompositeValuesSourceBuilder;
+import org.elasticsearch.search.aggregations.bucket.composite.TermsValuesSourceBuilder;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
@@ -211,6 +214,7 @@ public class ElasticSearchClientImpl implements SearchClient {
         LOG.info("{} Updated {}", elasticSearchIndexType.indexName, putMappingResponse.isAcknowledged());
       } else {
         CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
+        request.source(elasticSearchIndexMapping, XContentType.JSON);
         CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
         LOG.info("{} Created {}", elasticSearchIndexType.indexName, createIndexResponse.isAcknowledged());
       }
@@ -346,15 +350,15 @@ public class ElasticSearchClientImpl implements SearchClient {
   }
 
   @Override
-  public Response aggregate(String index, String fieldName) throws IOException {
+  public Response aggregate(String index, String fieldName, String after) throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder
-        .aggregation(
-            AggregationBuilders.terms(fieldName)
-                .field(fieldName)
-                .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE)
-                .order(BucketOrder.key(true)))
-        .size(0);
+    List<CompositeValuesSourceBuilder<?>> sources = new ArrayList<>();
+    sources.add(new TermsValuesSourceBuilder(fieldName).field(fieldName));
+    Map<String, Object> afterKey = new HashMap<>();
+    afterKey.put(fieldName, after);
+    CompositeAggregationBuilder compositeAggregationBuilder =
+        new CompositeAggregationBuilder(fieldName, sources).size(EntityBuilderConstant.MAX_AGGREGATE_SIZE);
+    searchSourceBuilder.aggregation(compositeAggregationBuilder.aggregateAfter(afterKey)).size(0);
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     String response =
         client.search(new SearchRequest(index).source(searchSourceBuilder), RequestOptions.DEFAULT).toString();
@@ -787,7 +791,7 @@ public class ElasticSearchClientImpl implements SearchClient {
                 .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"))
         .aggregation(
-            AggregationBuilders.terms("owner.fullyQualifiedName.keyword")
+            AggregationBuilders.terms("owner.displayName.keyword")
                 .field("owner.displayName.keyword")
                 .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE));
 
@@ -806,7 +810,7 @@ public class ElasticSearchClientImpl implements SearchClient {
 
   @Override
   public ElasticSearchConfiguration.SearchType getSearchType() {
-    return ElasticSearchConfiguration.SearchType.ELASTIC_SEARCH;
+    return ElasticSearchConfiguration.SearchType.ELASTICSEARCH;
   }
 
   @Override
@@ -815,7 +819,6 @@ public class ElasticSearchClientImpl implements SearchClient {
     ElasticSearchIndexDefinition.ElasticSearchIndexType indexType =
         ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityType);
     UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, event.getEntityId().toString());
-    ElasticSearchIndex index;
 
     switch (event.getEventType()) {
       case ENTITY_CREATED:
@@ -847,6 +850,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     updateElasticSearch(updateRequest);
   }
 
+  @Override
   public void updateSearchForEntityUpdated(
       ElasticSearchIndexDefinition.ElasticSearchIndexType indexType, String entityType, ChangeEvent event)
       throws IOException {
@@ -1183,7 +1187,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     UUID testSuiteId = testSuite.getId();
 
     if (event.getEventType() == ENTITY_DELETED) {
-      if (testSuite.getExecutable()) {
+      if (Boolean.TRUE.equals(testSuite.getExecutable())) {
         DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexType.indexName);
         deleteByQueryRequest.setQuery(new MatchQueryBuilder("testSuites.id", testSuiteId.toString()));
         deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
@@ -1262,7 +1266,7 @@ public class ElasticSearchClientImpl implements SearchClient {
       case ENTITY_DELETED:
         EntityReference testSuiteReference = ((TestCase) event.getEntity()).getTestSuite();
         TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, testSuiteReference.getId(), "", Include.ALL);
-        if (testSuite.getExecutable()) {
+        if (Boolean.TRUE.equals(testSuite.getExecutable())) {
           // Delete the test case from the index if deleted from an executable test suite
           DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, event.getEntityId().toString());
           deleteEntityFromElasticSearch(deleteRequest);
@@ -1348,6 +1352,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     }
   }
 
+  @Override
   public UpdateRequest applyESChangeEvent(ChangeEvent event) {
     String entityType = event.getEntityType();
     ElasticSearchIndexDefinition.ElasticSearchIndexType esIndexType =
@@ -1396,16 +1401,9 @@ public class ElasticSearchClientImpl implements SearchClient {
     return new UpdateRequest(IndexUtil.ENTITY_TYPE_TO_INDEX_MAP.get(entityType), entityId).script(script);
   }
 
-  /**
-   * @param data
-   * @param options
-   * @return
-   * @throws IOException
-   */
   @Override
   public BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
-    BulkResponse response = client.bulk(data, RequestOptions.DEFAULT);
-    return response;
+    return client.bulk(data, RequestOptions.DEFAULT);
   }
 
   @Override
@@ -1446,17 +1444,6 @@ public class ElasticSearchClientImpl implements SearchClient {
     return dateWithDataMap;
   }
 
-  /**
-   * @param startTs
-   * @param endTs
-   * @param tier
-   * @param team
-   * @param dataInsightChartName
-   * @param dataReportIndex
-   * @return
-   * @throws IOException
-   * @throws ParseException
-   */
   @Override
   public Response listDataInsightChartResult(
       Long startTs,

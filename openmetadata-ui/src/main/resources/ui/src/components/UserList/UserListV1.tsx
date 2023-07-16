@@ -228,17 +228,15 @@ const UserListV1: FC<UserListV1Props> = ({
             />
             <span className="m-l-xs">{t('label.deleted')}</span>
           </span>
-          <Tooltip
-            placement="topLeft"
-            title={!isAdminUser && t('message.admin-only-action')}>
+
+          {isAdminUser && (
             <Button
               data-testid="add-user"
-              disabled={!isAdminUser}
               type="primary"
               onClick={handleAddNewUser}>
               {t('label.add-entity', { entity: t('label.user') })}
             </Button>
-          </Tooltip>
+          )}
         </Space>
       </Col>
       <Col span={8}>

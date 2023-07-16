@@ -31,7 +31,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.profiler.api.workflow import ProfilerWorkflow
-from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
+from metadata.profiler.interface.profiler_interface import ProfilerInterface
 
 """
 Check Partitioned Table in Profiler Workflow
@@ -146,7 +146,7 @@ class ProfilerPartitionUnitTest(TestCase):
         )
 
         table_entity = cast(Table, table_entity)
-        resp = ProfilerProtocol.get_partition_details(table_entity)
+        resp = ProfilerInterface.get_partition_details(table_entity)
 
         if resp:
             assert resp.partitionColumnName == "e"
@@ -163,7 +163,7 @@ class ProfilerPartitionUnitTest(TestCase):
             )  # type: ignore
         )
 
-        resp = ProfilerProtocol.get_partition_details(table_entity)
+        resp = ProfilerInterface.get_partition_details(table_entity)
 
         if resp:
             assert resp.partitionColumnName == "e"
@@ -181,7 +181,7 @@ class ProfilerPartitionUnitTest(TestCase):
         )
 
         table_entity = cast(Table, table_entity)
-        resp = ProfilerProtocol.get_partition_details(table_entity)
+        resp = ProfilerInterface.get_partition_details(table_entity)
 
         if resp:
             assert resp.partitionColumnName == "_PARTITIONDATE"
@@ -198,7 +198,7 @@ class ProfilerPartitionUnitTest(TestCase):
             )  # type: ignore
         )
 
-        resp = ProfilerProtocol.get_partition_details(table_entity)
+        resp = ProfilerInterface.get_partition_details(table_entity)
         if resp:
             assert resp.partitionInterval == 10
             assert resp.partitionColumnName == "_PARTITIONDATE"
@@ -215,7 +215,7 @@ class ProfilerPartitionUnitTest(TestCase):
         )
 
         table_entity = cast(Table, table_entity)
-        resp = ProfilerProtocol.get_partition_details(table_entity)
+        resp = ProfilerInterface.get_partition_details(table_entity)
 
         if resp:
             assert resp.partitionColumnName == "_PARTITIONTIME"
@@ -232,7 +232,7 @@ class ProfilerPartitionUnitTest(TestCase):
             )  # type: ignore
         )
 
-        resp = ProfilerProtocol.get_partition_details(table_entity)
+        resp = ProfilerInterface.get_partition_details(table_entity)
 
         if resp:
             assert resp.partitionInterval == 1
@@ -260,7 +260,7 @@ class ProfilerPartitionUnitTest(TestCase):
         )
 
         table_entity = cast(Table, table_entity)
-        resp = ProfilerProtocol.get_partition_details(table_entity)
+        resp = ProfilerInterface.get_partition_details(table_entity)
         if resp:
             assert resp.enablePartitioning
             assert resp.partitionColumnName == "foo"
@@ -281,6 +281,6 @@ class ProfilerPartitionUnitTest(TestCase):
         )
 
         table_entity = cast(Table, table_entity)
-        resp = ProfilerProtocol.get_partition_details(table_entity)
+        resp = ProfilerInterface.get_partition_details(table_entity)
 
         assert resp is None

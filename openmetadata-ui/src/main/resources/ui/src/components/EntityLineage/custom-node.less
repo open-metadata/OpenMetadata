@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 @import url('../../styles/variables.less');
+
+@lineage-border: #b1b1b7;
+
 .lineage-node-card {
   .ant-card-body {
     padding: 0 !important;
@@ -25,6 +28,7 @@
 
 .ant-btn.ant-btn-background-ghost.expand-btn {
   background-color: white;
+  box-shadow: none;
   &:hover {
     background-color: white;
   }
@@ -39,7 +43,7 @@
 }
 
 .lineage-node {
-  border: @global-border;
+  border: 1px solid @lineage-border;
   border-radius: 4px;
 }
 
@@ -68,9 +72,11 @@
 .react-flow__node-input.selectable:hover,
 .react-flow__node-output.selectable:hover,
 .react-flow__node-group.selectable:hover {
-  border-color: @primary-color !important;
   .lineage-node-handle {
     border-color: @primary-color;
+  }
+  .lineage-node {
+    border-color: @primary-color !important;
   }
 }
 
@@ -121,7 +127,7 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  border-color: @border-color;
+  border-color: @lineage-border;
   background: @white;
   top: 38px; // Need to show handles on top half
 }
@@ -129,7 +135,7 @@
 .react-flow .lineage-column-node-handle {
   width: 20px;
   border-radius: 0;
-  border-color: @border-color;
+  border-color: @lineage-border;
   background: @white;
   top: 1px;
   height: 25px;

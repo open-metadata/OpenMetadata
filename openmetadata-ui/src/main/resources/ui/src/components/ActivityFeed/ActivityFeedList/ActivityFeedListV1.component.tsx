@@ -27,6 +27,7 @@ interface ActivityFeedListV1Props {
   onFeedClick?: (feed: Thread) => void;
   activeFeedId?: string;
   hidePopover: boolean;
+  isForFeedTab?: boolean;
   emptyPlaceholderText: string;
 }
 
@@ -37,6 +38,7 @@ const ActivityFeedListV1 = ({
   onFeedClick,
   activeFeedId,
   hidePopover = false,
+  isForFeedTab = false,
   emptyPlaceholderText,
 }: ActivityFeedListV1Props) => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
@@ -57,7 +59,7 @@ const ActivityFeedListV1 = ({
   }
 
   return (
-    <div className="feed-list-container h-full p-y-md" id="feedData">
+    <div className="feed-list-container p-y-md m-b-sm" id="feedData">
       {entityThread.length === 0 && (
         <div
           className="h-full p-x-md"
@@ -76,6 +78,7 @@ const ActivityFeedListV1 = ({
           feed={feed}
           hidePopover={hidePopover}
           isActive={activeFeedId === feed.id}
+          isForFeedTab={isForFeedTab}
           key={feed.id}
           showThread={showThread}
           onFeedClick={onFeedClick}

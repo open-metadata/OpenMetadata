@@ -27,10 +27,10 @@ from metadata.generated.schema.security.credentials.gcpValues import (
     MultipleProjectId,
     SingleProjectId,
 )
-from metadata.profiler.source.base_profiler_source import BaseProfilerSource
+from metadata.profiler.source.base.profiler_source import ProfilerSource
 
 
-class BigQueryProfilerSource(BaseProfilerSource):
+class BigQueryProfilerSource(ProfilerSource):
     """override the base profiler source to handle BigQuery specific connection configs"""
 
     def _copy_service_config(

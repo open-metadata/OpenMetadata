@@ -36,6 +36,10 @@
     "owner": {
       "description": "Owner of this dashboard service.",
       "$ref": "../../type/entityReference.json"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Dashboard Service belongs to.",
+      "type": "string"
     }
   },
   "required": ["name", "serviceType", "connection"],

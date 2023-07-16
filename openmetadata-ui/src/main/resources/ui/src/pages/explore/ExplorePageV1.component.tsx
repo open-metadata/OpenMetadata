@@ -223,8 +223,10 @@ const ExplorePageV1: FunctionComponent = () => {
   }, [parsedSearch.size]);
 
   useEffect(() => {
-    handlePageChange(page, size);
-  }, [page, size]);
+    if (!isEmpty(parsedSearch)) {
+      handlePageChange(page, size);
+    }
+  }, [page, size, parsedSearch]);
 
   const showDeleted = useMemo(() => {
     const showDeletedParam = parsedSearch.showDeleted;
@@ -326,6 +328,7 @@ const ExplorePageV1: FunctionComponent = () => {
             includeDeleted: showDeleted,
             trackTotalHits: true,
             fetchSource: false,
+            filters: index === SearchIndex.TAG ? 'disabled:false' : '',
           })
         )
       ).then(

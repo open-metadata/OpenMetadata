@@ -11,20 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
-import { EntityType } from 'enums/entity.enum';
-import { ThreadType } from 'generated/entity/feed/thread';
-import { TagSource } from 'generated/type/tagLabel';
-import { EntityFieldThreads } from 'interface/feed.interface';
-import { isEmpty } from 'lodash';
-import React, { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { getFieldThreadElement } from 'utils/FeedElementUtils';
-import { ReactComponent as IconRequest } from '../../assets/svg/request-icon.svg';
+import EntityTasks from 'pages/TasksPage/EntityTasks/EntityTasks.component';
+import React from 'react';
 import { TableTagsComponentProps, TableUnion } from './TableTags.interface';
 
 const TableTags = <T extends TableUnion>({
@@ -36,65 +27,11 @@ const TableTags = <T extends TableUnion>({
   isReadOnly,
   hasTagEditAccess,
   entityFieldThreads,
-  getColumnFieldFQN,
-  entityFieldTasks,
   showInlineEditTagButton,
-  getColumnName,
-  onUpdateTagsHandler,
-  onRequestTagsHandler,
   onThreadLinkSelect,
   handleTagSelection,
+  entityType,
 }: TableTagsComponentProps<T>) => {
-  const { t } = useTranslation();
-
-  const hasTagOperationAccess = useMemo(
-    () =>
-      getColumnFieldFQN &&
-      getColumnName &&
-      onUpdateTagsHandler &&
-      onRequestTagsHandler,
-    [
-      getColumnFieldFQN,
-      getColumnName,
-      onUpdateTagsHandler,
-      onRequestTagsHandler,
-    ]
-  );
-
-  const getRequestTagsElement = useMemo(() => {
-    const hasTags = !isEmpty(record.tags || []);
-
-    return (
-      <Tooltip
-        destroyTooltipOnHide
-        overlayClassName="ant-popover-request-description"
-        title={
-          hasTags
-            ? t('label.update-request-tag-plural')
-            : t('label.request-tag-plural')
-        }>
-        <Button
-          className="p-0 w-7 h-7 flex-center m-r-xss link-text hover-cell-icon"
-          data-testid="request-tags"
-          icon={
-            <IconRequest
-              height={14}
-              name={t('label.request-tag-plural')}
-              style={{ color: DE_ACTIVE_COLOR }}
-              width={14}
-            />
-          }
-          type="text"
-          onClick={() =>
-            hasTags
-              ? onUpdateTagsHandler?.(record)
-              : onRequestTagsHandler?.(record)
-          }
-        />
-      </Tooltip>
-    );
-  }, [record, onUpdateTagsHandler, onRequestTagsHandler]);
-
   return (
     <div className="hover-icon-group" data-testid={`${type}-tags-${index}`}>
       <div
@@ -112,39 +49,18 @@ const TableTags = <T extends TableUnion>({
           }}>
           <>
             {!isReadOnly && (
-              <div className="d-flex items-center">
-                {hasTagOperationAccess && (
-                  <>
-                    {/*  Request and Update tags */}
-                    {type === TagSource.Classification && getRequestTagsElement}
-
-                    {/*  List Conversation */}
-                    {getFieldThreadElement(
-                      getColumnName?.(record) ?? '',
-                      EntityField.TAGS,
-                      entityFieldThreads as EntityFieldThreads[],
-                      onThreadLinkSelect,
-                      EntityType.TABLE,
-                      entityFqn,
-                      getColumnFieldFQN,
-                      Boolean(record?.name?.length)
-                    )}
-
-                    {/*  List Task */}
-                    {getFieldThreadElement(
-                      getColumnName?.(record) ?? '',
-                      EntityField.TAGS,
-                      entityFieldTasks as EntityFieldThreads[],
-                      onThreadLinkSelect,
-                      EntityType.TABLE,
-                      entityFqn,
-                      getColumnFieldFQN,
-                      Boolean(record?.name),
-                      ThreadType.Task
-                    )}
-                  </>
-                )}
-              </div>
+              <EntityTasks
+                data={{
+                  fqn: record.fullyQualifiedName ?? '',
+                  field: record.tags ?? [],
+                }}
+                entityFieldThreads={entityFieldThreads}
+                entityFqn={entityFqn}
+                entityTaskType={EntityField.TAGS}
+                entityType={entityType}
+                tagSource={type}
+                onThreadLinkSelect={onThreadLinkSelect}
+              />
             )}
           </>
         </TagsContainerV2>

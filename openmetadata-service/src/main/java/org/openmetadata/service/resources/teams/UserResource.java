@@ -159,7 +159,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private boolean isEmailServiceEnabled;
   private AuthenticationConfiguration authenticationConfiguration;
   private final AuthenticatorHandler authHandler;
-  static final String FIELDS = "profile,roles,teams,follows,owns";
+  static final String FIELDS = "profile,roles,teams,follows,owns,domain";
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -1017,7 +1017,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     try {
       decodedBytes = Base64.getDecoder().decode(loginRequest.getPassword());
     } catch (Exception ex) {
-      throw new IllegalArgumentException("Password need to be encoded in Base-64.");
+      throw new IllegalArgumentException("Password needs to be encoded in Base-64.");
     }
     loginRequest.withPassword(new String(decodedBytes));
     return Response.status(Response.Status.OK).entity(authHandler.loginUser(loginRequest)).build();

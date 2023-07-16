@@ -39,12 +39,12 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.fernet.Fernet;
@@ -180,7 +180,6 @@ public final class TablesInitializer {
             confFilePath);
     Fernet.getInstance().setFernetKey(config);
     DataSourceFactory dataSourceFactory = config.getDataSourceFactory();
-    ElasticSearchConfiguration esConfig = config.getElasticSearchConfiguration();
     if (dataSourceFactory == null) {
       throw new RuntimeException("No database in config file");
     }
@@ -204,7 +203,7 @@ public final class TablesInitializer {
       execute(config, flyway, schemaMigrationOptionSpecified);
       printToConsoleInDebug(schemaMigrationOptionSpecified + "option successful");
     } catch (Exception e) {
-      printError(schemaMigrationOptionSpecified + "option failed with : " + e);
+      printError(schemaMigrationOptionSpecified + "option failed with : " + ExceptionUtils.getStackTrace(e));
       System.exit(1);
     }
     System.exit(0);
@@ -340,7 +339,7 @@ public final class TablesInitializer {
     workflow.runMigrationWorkflows();
   }
 
-  private static List<MigrationStep> getServerMigrationFiles(ConnectionType connType) {
+  public static List<MigrationStep> getServerMigrationFiles(ConnectionType connType) {
     List<MigrationStep> migrations = new ArrayList<>();
     try {
       String prefix =

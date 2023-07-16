@@ -126,6 +126,9 @@ import org.opensearch.search.aggregations.AggregationBuilder;
 import org.opensearch.search.aggregations.AggregationBuilders;
 import org.opensearch.search.aggregations.Aggregations;
 import org.opensearch.search.aggregations.BucketOrder;
+import org.opensearch.search.aggregations.bucket.composite.CompositeAggregationBuilder;
+import org.opensearch.search.aggregations.bucket.composite.CompositeValuesSourceBuilder;
+import org.opensearch.search.aggregations.bucket.composite.TermsValuesSourceBuilder;
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval;
 import org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
@@ -187,10 +190,6 @@ public class OpenSearchClientImpl implements SearchClient {
     return true;
   }
 
-  /**
-   * @param elasticSearchIndexType
-   * @param lang
-   */
   @Override
   public void updateIndex(ElasticSearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType, String lang) {
     try {
@@ -221,7 +220,6 @@ public class OpenSearchClientImpl implements SearchClient {
     }
   }
 
-  /** @param elasticSearchIndexType */
   @Override
   public void deleteIndex(ElasticSearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType) {
     try {
@@ -345,15 +343,15 @@ public class OpenSearchClientImpl implements SearchClient {
     return Response.status(OK).entity(response).build();
   }
 
-  public Response aggregate(String index, String fieldName) throws IOException {
+  public Response aggregate(String index, String fieldName, String after) throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder
-        .aggregation(
-            AggregationBuilders.terms(fieldName)
-                .field(fieldName)
-                .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE)
-                .order(BucketOrder.key(true)))
-        .size(0);
+    List<CompositeValuesSourceBuilder<?>> sources = new ArrayList<>();
+    sources.add(new TermsValuesSourceBuilder(fieldName).field(fieldName));
+    Map<String, Object> afterKey = new HashMap<>();
+    afterKey.put(fieldName, after);
+    CompositeAggregationBuilder compositeAggregationBuilder =
+        new CompositeAggregationBuilder(fieldName, sources).size(EntityBuilderConstant.MAX_AGGREGATE_SIZE);
+    searchSourceBuilder.aggregation(compositeAggregationBuilder.aggregateAfter(afterKey)).size(0);
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     String response =
         client.search(new SearchRequest(index).source(searchSourceBuilder), RequestOptions.DEFAULT).toString();
@@ -791,7 +789,7 @@ public class OpenSearchClientImpl implements SearchClient {
             AggregationBuilders.terms("entityType").field("entityType").size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"))
         .aggregation(
-            AggregationBuilders.terms("owner.fullyQualifiedName.keyword")
+            AggregationBuilders.terms("owner.displayName.keyword")
                 .field("owner.displayName.keyword")
                 .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE));
 
@@ -810,7 +808,7 @@ public class OpenSearchClientImpl implements SearchClient {
 
   @Override
   public ElasticSearchConfiguration.SearchType getSearchType() {
-    return ElasticSearchConfiguration.SearchType.OPEN_SEARCH;
+    return ElasticSearchConfiguration.SearchType.OPENSEARCH;
   }
 
   @Override
@@ -1335,6 +1333,7 @@ public class OpenSearchClientImpl implements SearchClient {
     }
   }
 
+  @Override
   public UpdateRequest applyOSChangeEvent(ChangeEvent event) {
     String entityType = event.getEntityType();
     ElasticSearchIndexDefinition.ElasticSearchIndexType esIndexType =
@@ -1383,21 +1382,11 @@ public class OpenSearchClientImpl implements SearchClient {
     return new UpdateRequest(IndexUtil.ENTITY_TYPE_TO_INDEX_MAP.get(entityType), entityId).script(script);
   }
 
-  /**
-   * @param data
-   * @param options
-   * @return
-   * @throws IOException
-   */
   @Override
   public BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
     return client.bulk(data, RequestOptions.DEFAULT);
   }
 
-  /**
-   * @param response
-   * @return
-   */
   @Override
   public int getSuccessFromBulkResponse(BulkResponse response) {
     int success = 0;

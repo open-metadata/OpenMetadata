@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,11 +19,12 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 
 public class ResourceRegistry {
   private static final List<ResourceDescriptor> RESOURCE_DESCRIPTORS = new ArrayList<>();
-  public static final Map<String, MetadataOperation> FIELD_TO_EDIT_OPERATION_MAP = new HashMap<>();
-  public static final Map<MetadataOperation, String> EDIT_OPERATION_TO_OPERATION_MAP = new HashMap<>();
+  protected static final Map<String, MetadataOperation> FIELD_TO_EDIT_OPERATION_MAP = new HashMap<>();
+  protected static final Map<MetadataOperation, String> EDIT_OPERATION_TO_OPERATION_MAP =
+      new EnumMap<>(MetadataOperation.class);
 
   // Operations common to all the entities
-  public static final List<MetadataOperation> COMMON_OPERATIONS =
+  protected static final List<MetadataOperation> COMMON_OPERATIONS =
       new ArrayList<>(
           listOf(
               MetadataOperation.CREATE,

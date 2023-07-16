@@ -28,10 +28,12 @@ import {
   SourceType,
 } from 'components/searched-data/SearchedData.interface';
 import { EntityField } from 'constants/Feeds.constants';
+import { GlobalSettingsMenuCategory } from 'constants/GlobalSettings.constants';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
+import { Database } from 'generated/entity/data/database';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Topic } from 'generated/entity/data/topic';
@@ -79,7 +81,8 @@ import {
 } from './CommonUtils';
 import { getEntityFieldThreadCounts } from './FeedUtils';
 import Fqn from './Fqn';
-import { getGlossaryPath } from './RouterUtils';
+import { getGlossaryPath, getSettingPath } from './RouterUtils';
+import { getServiceRouteFromServiceType } from './ServiceUtils';
 import {
   getDataTypeString,
   getTierFromTableTags,
@@ -912,6 +915,35 @@ export const getEntityReferenceListFromEntities = <
   return entities.map((entity) => getEntityReferenceFromEntity(entity, type));
 };
 
+export const getEntityLinkFromType = (
+  fullyQualifiedName: string,
+  entityType: EntityType
+) => {
+  switch (entityType) {
+    case EntityType.TABLE:
+      return getTableDetailsPath(fullyQualifiedName);
+    case EntityType.GLOSSARY:
+    case EntityType.GLOSSARY_TERM:
+      return getGlossaryTermDetailsPath(fullyQualifiedName);
+    case EntityType.TAG:
+      return getTagsDetailsPath(fullyQualifiedName);
+    case EntityType.TOPIC:
+      return getTopicDetailsPath(fullyQualifiedName);
+    case EntityType.DASHBOARD:
+      return getDashboardDetailsPath(fullyQualifiedName);
+    case EntityType.PIPELINE:
+      return getPipelineDetailsPath(fullyQualifiedName);
+    case EntityType.MLMODEL:
+      return getMlModelDetailsPath(fullyQualifiedName);
+    case EntityType.CONTAINER:
+      return getContainerDetailPath(fullyQualifiedName);
+    case EntityType.DATABASE:
+      return getDatabaseDetailsPath(fullyQualifiedName);
+    default:
+      return '';
+  }
+};
+
 export const getBreadcrumbForTable = (
   entity: Table,
   includeCurrent = false
@@ -984,8 +1016,54 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
   ];
 };
 
+export const getBreadcrumbForContainer = (data: {
+  entity: Container;
+  includeCurrent?: boolean;
+  parents?: Container[];
+}) => {
+  const { entity, includeCurrent = false, parents = [] } = data;
+  const { service } = entity;
+
+  return [
+    {
+      name: getEntityName(service),
+      url: service?.name
+        ? getServiceDetailsPath(
+            service?.name,
+            ServiceCategoryPlural[
+              service?.type as keyof typeof ServiceCategoryPlural
+            ]
+          )
+        : '',
+    },
+    ...(parents.length > 0
+      ? parents.map((parent) => ({
+          name: getEntityName(parent),
+          url: getEntityLinkFromType(
+            parent?.fullyQualifiedName ?? '',
+            EntityType.CONTAINER
+          ),
+        }))
+      : []),
+    ...(includeCurrent
+      ? [
+          {
+            name: entity.name,
+            url: getEntityLinkFromType(
+              entity.fullyQualifiedName ?? '',
+              (entity as SourceType).entityType as EntityType
+            ),
+          },
+        ]
+      : []),
+  ];
+};
+
 export const getEntityBreadcrumbs = (
-  entity: SearchedDataProps['data'][number]['_source'] | DashboardDataModel,
+  entity:
+    | SearchedDataProps['data'][number]['_source']
+    | DashboardDataModel
+    | Database,
   entityType?: EntityType,
   includeCurrent = false
 ) => {
@@ -1029,6 +1107,18 @@ export const getEntityBreadcrumbs = (
         })),
       ];
 
+    case EntityType.DATABASE:
+      return [
+        {
+          name: startCase(ServiceCategory.DATABASE_SERVICES),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(ServiceCategory.DATABASE_SERVICES)
+          ),
+        },
+        ...getBreadcrumbForEntitiesWithServiceOnly(entity as Database),
+      ];
+
     case EntityType.TOPIC:
     case EntityType.DASHBOARD:
     case EntityType.PIPELINE:
@@ -1040,35 +1130,6 @@ export const getEntityBreadcrumbs = (
         entity as Topic,
         includeCurrent
       );
-  }
-};
-
-export const getEntityLinkFromType = (
-  fullyQualifiedName: string,
-  entityType: EntityType
-) => {
-  switch (entityType) {
-    case EntityType.TABLE:
-      return getTableDetailsPath(fullyQualifiedName);
-    case EntityType.GLOSSARY:
-    case EntityType.GLOSSARY_TERM:
-      return getGlossaryTermDetailsPath(fullyQualifiedName);
-    case EntityType.TAG:
-      return getTagsDetailsPath(fullyQualifiedName);
-    case EntityType.TOPIC:
-      return getTopicDetailsPath(fullyQualifiedName);
-    case EntityType.DASHBOARD:
-      return getDashboardDetailsPath(fullyQualifiedName);
-    case EntityType.PIPELINE:
-      return getPipelineDetailsPath(fullyQualifiedName);
-    case EntityType.MLMODEL:
-      return getMlModelDetailsPath(fullyQualifiedName);
-    case EntityType.CONTAINER:
-      return getContainerDetailPath(fullyQualifiedName);
-    case EntityType.DATABASE:
-      return getDatabaseDetailsPath(fullyQualifiedName);
-    default:
-      return '';
   }
 };
 

@@ -79,21 +79,8 @@ public class SubscriptionPublisher extends AbstractAlertPublisher {
     return eventSubscription;
   }
 
-  public synchronized void updateEventSubscription(EventSubscription updatedEventSub) {
-    currentBackoffTime = BACKOFF_NORMAL;
-    eventSubscription.setDescription(updatedEventSub.getDescription());
-    eventSubscription.setTimeout(updatedEventSub.getTimeout());
-    eventSubscription.setBatchSize(updatedEventSub.getBatchSize());
-    eventSubscription.setFilteringRules(updatedEventSub.getFilteringRules());
-    eventSubscription.setSubscriptionType(updatedEventSub.getSubscriptionType());
-    eventSubscription.setSubscriptionConfig(updatedEventSub.getSubscriptionConfig());
-  }
-
-  public synchronized void setErrorStatus(Long attemptTime, Integer statusCode, String reason)
-      throws InterruptedException {
-    SubscriptionStatus status = setStatus(FAILED, attemptTime, statusCode, reason, null);
-    eventSubscriptionRepository.removeProcessorForEventSubscription(eventSubscription.getId(), status);
-    throw new RuntimeException(reason);
+  public synchronized void setErrorStatus(Long attemptTime, Integer statusCode, String reason) {
+    setStatus(FAILED, attemptTime, statusCode, reason, null);
   }
 
   public synchronized void setAwaitingRetry(Long attemptTime, int statusCode, String reason) {

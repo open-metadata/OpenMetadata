@@ -73,7 +73,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "mlmodels")
 public class MlModelResource extends EntityResource<MlModel, MlModelRepository> {
   public static final String COLLECTION_PATH = "v1/mlmodels/";
-  static final String FIELDS = "owner,dashboard,followers,tags,usageSummary,extension";
+  static final String FIELDS = "owner,dashboard,followers,tags,usageSummary,extension,domain";
 
   @Override
   public MlModel addHref(UriInfo uriInfo, MlModel mlmodel) {

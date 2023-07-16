@@ -11,7 +11,17 @@
  *  limitations under the License.
  */
 
-import { Card, Image, Input, Select, Space, Tabs, Typography } from 'antd';
+import {
+  Card,
+  Col,
+  Image,
+  Input,
+  Row,
+  Select,
+  Space,
+  Tabs,
+  Typography,
+} from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import { AxiosError } from 'axios';
@@ -80,8 +90,7 @@ const Users = ({
   isLoggedinUser,
   isAuthDisabled,
   username,
-  onFollowingEntityPaginate,
-  onOwnedEntityPaginate,
+  handlePaginate,
 }: Props) => {
   const { tab = UserPageTabs.ACTIVITY } = useParams<{ tab: UserPageTabs }>();
   const [displayName, setDisplayName] = useState(userData.displayName);
@@ -273,17 +282,15 @@ const Users = ({
       );
     } else {
       return (
-        <div className="p-x-sm">
-          <p className="m-t-xs">
-            {userData.description || (
-              <span className="text-grey-muted">
-                {t('label.no-entity', {
-                  entity: t('label.description'),
-                })}
-              </span>
-            )}
-          </p>
-        </div>
+        <Typography.Paragraph className="m-b-0">
+          {userData.description || (
+            <span className="text-grey-muted">
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
+            </span>
+          )}
+        </Typography.Paragraph>
       );
     }
   };
@@ -584,7 +591,11 @@ const Users = ({
           )}
           <Space className="p-sm w-full" direction="vertical" size={8}>
             {getDisplayNameComponent()}
-            <p>{userData.email}</p>
+            <Typography.Paragraph
+              className="m-b-0"
+              ellipsis={{ tooltip: true }}>
+              {userData.email}
+            </Typography.Paragraph>
             {getDescriptionComponent()}
             {isAuthProviderBasic &&
               (isAdminUser || isLoggedinUser) &&
@@ -690,53 +701,47 @@ const Users = ({
         }
 
         return (
-          <PageLayoutV1
-            className="user-page-layout"
-            pageTitle={t('label.user')}
-            rightPanel={
-              showSummaryPanel &&
-              entityDetails && (
+          <Row className="user-page-layout" wrap={false}>
+            <Col className="user-layout-scroll" flex="auto">
+              {entityData.data.length ? (
+                <SearchedData
+                  data={entityData.data ?? []}
+                  handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+                  isFilterSelected={false}
+                  isSummaryPanelVisible={showSummaryPanel}
+                  selectedEntityId={entityDetails?.id || ''}
+                  totalValue={entityData.total ?? 0}
+                  onPaginationChange={handlePaginate}
+                />
+              ) : (
+                <ErrorPlaceHolder className="m-0">
+                  <Typography.Paragraph>
+                    {tab === UserPageTabs.MY_DATA
+                      ? t('server.you-have-not-action-anything-yet', {
+                          action: t('label.owned-lowercase'),
+                        })
+                      : t('server.you-have-not-action-anything-yet', {
+                          action: t('label.followed-lowercase'),
+                        })}
+                  </Typography.Paragraph>
+                </ErrorPlaceHolder>
+              )}
+            </Col>
+
+            {showSummaryPanel && entityDetails && (
+              <Col className="user-page-layout-right-panel " flex="400px">
                 <EntitySummaryPanel
                   entityDetails={{ details: entityDetails }}
                   handleClosePanel={handleClosePanel}
                 />
-              )
-            }
-            rightPanelWidth={400}>
-            {entityData.data.length ? (
-              <SearchedData
-                currentPage={entityData.currPage}
-                data={entityData.data ?? []}
-                handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-                isFilterSelected={false}
-                isSummaryPanelVisible={showSummaryPanel}
-                selectedEntityId={entityDetails?.id || ''}
-                totalValue={entityData.total ?? 0}
-                onPaginationChange={
-                  tab === UserPageTabs.MY_DATA
-                    ? onOwnedEntityPaginate
-                    : onFollowingEntityPaginate
-                }
-              />
-            ) : (
-              <ErrorPlaceHolder>
-                <Typography.Paragraph>
-                  {tab === UserPageTabs.MY_DATA
-                    ? t('server.you-have-not-action-anything-yet', {
-                        action: t('label.owned-lowercase'),
-                      })
-                    : t('server.you-have-not-action-anything-yet', {
-                        action: t('label.followed-lowercase'),
-                      })}
-                </Typography.Paragraph>
-              </ErrorPlaceHolder>
+              </Col>
             )}
-          </PageLayoutV1>
+          </Row>
         );
       }
       case UserPageTabs.ACTIVITY:
         return (
-          <ActivityFeedProvider>
+          <ActivityFeedProvider user={userData.id}>
             <ActivityFeedTab
               entityType={EntityType.USER_NAME}
               fqn={username}

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tooltip } from 'antd';
+import { Button, Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
@@ -30,7 +30,6 @@ import {
   PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../../constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
@@ -118,17 +117,15 @@ const RolesListPage = () => {
       <Col span={24}>
         <Space className="w-full justify-between">
           <PageHeader data={PAGE_HEADERS.ROLES} />
-          <Tooltip
-            placement="topLeft"
-            title={!addRolePermission && NO_PERMISSION_FOR_ACTION}>
+
+          {addRolePermission && (
             <Button
               data-testid="add-role"
-              disabled={!addRolePermission}
               type="primary"
               onClick={handleAddRole}>
               {t('label.add-entity', { entity: t('label.role') })}
             </Button>
-          </Tooltip>
+          )}
         </Space>
       </Col>
       <Col span={24}>

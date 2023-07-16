@@ -157,12 +157,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
             dashboard.getId(), dataModel.getId(), Entity.DASHBOARD, Entity.DASHBOARD_DATA_MODEL, Relationship.HAS);
       }
     }
-
-    // Add owner relationship
-    storeOwner(dashboard, dashboard.getOwner());
-
-    // Add tag to dashboard relationship
-    applyTags(dashboard);
   }
 
   @Override
