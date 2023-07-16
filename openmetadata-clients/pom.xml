@@ -13,6 +13,7 @@
     <packaging>pom</packaging>
     <modules>
         <module>openmetadata-java-client</module>
+        <module>openmetadata-go-client</module>
     </modules>
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
