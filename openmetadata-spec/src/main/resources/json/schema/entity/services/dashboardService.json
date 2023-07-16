@@ -24,7 +24,8 @@
         "Mode",
         "CustomDashboard",
         "DomoDashboard",
-        "QuickSight"
+        "QuickSight",
+        "QlikSense"
       ],
       "javaEnums": [
         {
@@ -56,6 +57,9 @@
         },
         {
           "name": "QuickSight"
+        },
+        {
+          "name": "QlikSense"
         }
       ]
     },
@@ -99,6 +103,9 @@
             },
             {
               "$ref": "./connections/dashboard/quickSightConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/qlikSenseConnection.json"
             }
           ]
         }
