@@ -95,7 +95,7 @@
         },
         "hostPort": {
             "expose": true,
-            "title": "Qlik Sense Engine JSON API Websocket URL",
+            "title": "Qlik Engine JSON API Websocket URL",
             "description": "URL for the superset instance.",
             "type": "string",
             "format": "uri"
@@ -128,7 +128,6 @@
     "additionalProperties": false,
     "required": [
         "hostPort",
-        "clientCertificate",
-        "clientKeyCertificate"
+        "certificates"
     ]
 }
