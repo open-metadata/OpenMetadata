@@ -18,16 +18,16 @@ import Loader from 'components/Loader/Loader';
 import { AIRFLOW_DOCS } from 'constants/docs.constants';
 import { PIPELINE_SERVICE_PLATFORM } from 'constants/Services.constant';
 import { isUndefined } from 'lodash';
-import React from 'react';
+import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
 
-type SuccessScreenProps = {
+export type SuccessScreenProps = {
   name: string;
   suffix?: string;
-  successMessage?: JSX.Element;
+  successMessage?: ReactNode;
   showIngestionButton: boolean;
   showDeployButton?: boolean;
   state: FormSubmitType;
@@ -42,7 +42,6 @@ const SuccessScreen = ({
   suffix,
   showIngestionButton,
   showDeployButton = false,
-
   handleIngestionClick,
   handleViewServiceClick,
   handleDeployClick,
@@ -52,36 +51,43 @@ const SuccessScreen = ({
   const { t } = useTranslation();
   const { isAirflowAvailable, platform, isFetchingStatus } = useAirflowStatus();
 
-  const isAirflowPlatform = platform === PIPELINE_SERVICE_PLATFORM;
+  const isAirflowPlatform = useMemo(
+    () => platform === PIPELINE_SERVICE_PLATFORM,
+    [platform]
+  );
 
-  const messageElement = isAirflowPlatform ? (
-    <div data-testid="airflow-platform-message">
-      <div>
-        <h6 className="text-base text-grey-body font-medium">
-          {t('message.manage-airflow-api-failed')}
-        </h6>
+  const messageElement = useMemo(
+    () =>
+      isAirflowPlatform ? (
+        <div data-testid="airflow-platform-message">
+          <div>
+            <h6 className="text-base text-grey-body font-medium">
+              {t('message.manage-airflow-api-failed')}
+            </h6>
 
-        <p className="text-grey-body text-sm m-b-md">
-          {t('message.airflow-guide-message')}
-        </p>
-      </div>
+            <p className="text-grey-body text-sm m-b-md">
+              {t('message.airflow-guide-message')}
+            </p>
+          </div>
 
-      <p>
-        <a href={AIRFLOW_DOCS} rel="noopener noreferrer" target="_blank">
-          {`${t('label.install-airflow-api')} >>`}
-        </a>
-      </p>
-    </div>
-  ) : (
-    <Space
-      align="center"
-      className="justify-center w-full m-t-sm"
-      data-testid="argo-platform-message"
-      direction="vertical"
-      size={16}>
-      <IconCollateSupport height={100} width={100} />
-      <Typography>{t('message.pipeline-scheduler-message')}</Typography>
-    </Space>
+          <p>
+            <a href={AIRFLOW_DOCS} rel="noopener noreferrer" target="_blank">
+              {`${t('label.install-airflow-api')} >>`}
+            </a>
+          </p>
+        </div>
+      ) : (
+        <Space
+          align="center"
+          className="justify-center w-full m-t-sm"
+          data-testid="argo-platform-message"
+          direction="vertical"
+          size={16}>
+          <IconCollateSupport height={100} width={100} />
+          <Typography>{t('message.pipeline-scheduler-message')}</Typography>
+        </Space>
+      ),
+    [isAirflowPlatform]
   );
 
   return (
@@ -144,7 +150,7 @@ const SuccessScreen = ({
         {showDeployButton && (
           <Button
             className="m-l-3.5"
-            data-testid="add-ingestion-button"
+            data-testid="deploy-ingestion-button"
             disabled={!isAirflowAvailable}
             type="primary"
             onClick={handleDeployClick}>
