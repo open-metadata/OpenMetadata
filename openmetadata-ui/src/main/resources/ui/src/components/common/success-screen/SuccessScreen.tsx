@@ -83,7 +83,11 @@ const SuccessScreen = ({
           data-testid="argo-platform-message"
           direction="vertical"
           size={16}>
-          <IconCollateSupport height={100} width={100} />
+          <IconCollateSupport
+            data-testid="collate-support"
+            height={100}
+            width={100}
+          />
           <Typography>{t('message.pipeline-scheduler-message')}</Typography>
         </Space>
       ),
@@ -115,11 +119,13 @@ const SuccessScreen = ({
           </Typography.Paragraph>
         </Space>
       </Card>
-      <AirflowMessageBanner className="m-t-sm" />
       {!isAirflowAvailable && (
-        <Card className="m-t-sm">
-          {isFetchingStatus ? <Loader /> : <>{messageElement}</>}
-        </Card>
+        <>
+          <AirflowMessageBanner className="m-t-sm" />
+          <Card className="m-t-sm">
+            {isFetchingStatus ? <Loader /> : <>{messageElement}</>}
+          </Card>
+        </>
       )}
 
       <div className="mt-7 text-center">

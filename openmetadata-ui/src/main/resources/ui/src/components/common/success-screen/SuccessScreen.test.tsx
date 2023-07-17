@@ -13,6 +13,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { PIPELINE_SERVICE_PLATFORM } from 'constants/Services.constant';
+import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import React from 'react';
 import { FormSubmitType } from '../../../enums/form.enum';
 import SuccessScreen, { SuccessScreenProps } from './SuccessScreen';
@@ -68,5 +69,83 @@ describe('Test SuccessScreen component', () => {
     expect(deployButton).toBeInTheDocument();
 
     expect(statusMsg).not.toBeInTheDocument();
+  });
+
+  it('Should Render airflow message if pipeline service client is not available and platform is airflow', () => {
+    (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
+      isAirflowAvailable: false,
+      fetchAirflowStatus: jest.fn(),
+      isFetchingStatus: false,
+      platform: PIPELINE_SERVICE_PLATFORM,
+    }));
+    render(<SuccessScreen {...mockProps} />);
+
+    const airflowPlatformMessage = screen.getByTestId(
+      'airflow-platform-message'
+    );
+
+    expect(airflowPlatformMessage).toBeInTheDocument();
+
+    expect(
+      screen.getByText('message.manage-airflow-api-failed')
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText('message.airflow-guide-message')
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText('label.install-airflow-api >>')
+    ).toBeInTheDocument();
+  });
+
+  it('Should Render pipeline scheduler message if pipeline service client is not available and platform is argo', () => {
+    (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
+      isAirflowAvailable: false,
+      fetchAirflowStatus: jest.fn(),
+      isFetchingStatus: false,
+      platform: 'Argo',
+    }));
+    render(<SuccessScreen {...mockProps} />);
+
+    const argoPlatformMessage = screen.getByTestId('argo-platform-message');
+
+    expect(argoPlatformMessage).toBeInTheDocument();
+
+    expect(
+      screen.getByText('message.pipeline-scheduler-message')
+    ).toBeInTheDocument();
+
+    expect(screen.getByTestId('collate-support')).toBeInTheDocument();
+  });
+
+  it('Should not render any message if pipeline service client is available with any platform', () => {
+    (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
+      isAirflowAvailable: true,
+      fetchAirflowStatus: jest.fn(),
+      isFetchingStatus: false,
+      platform: PIPELINE_SERVICE_PLATFORM,
+    }));
+    render(<SuccessScreen {...mockProps} />);
+    const airflowPlatformMessage = screen.queryByTestId(
+      'airflow-platform-message'
+    );
+
+    const argoPlatformMessage = screen.queryByTestId('argo-platform-message');
+
+    expect(airflowPlatformMessage).not.toBeInTheDocument();
+    expect(argoPlatformMessage).not.toBeInTheDocument();
+  });
+
+  it('Should render the loader if status is fetching', () => {
+    (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
+      isAirflowAvailable: false,
+      fetchAirflowStatus: jest.fn(),
+      isFetchingStatus: true,
+      platform: PIPELINE_SERVICE_PLATFORM,
+    }));
+    render(<SuccessScreen {...mockProps} />);
+
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
 });
