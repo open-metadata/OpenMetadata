@@ -139,8 +139,7 @@ const mockProp = {
   updateThreadHandler: jest.fn(),
   setFeedFilter: jest.fn(),
   threadType: 'Task' as ThreadType.Task,
-  onFollowingEntityPaginate: jest.fn(),
-  onOwnedEntityPaginate: jest.fn(),
+  handlePaginate: jest.fn(),
   onSwitchChange: jest.fn(),
 };
 

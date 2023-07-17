@@ -209,7 +209,7 @@ const MlModelFeaturesList = ({
                           <TableDescription
                             columnData={{
                               fqn: feature.fullyQualifiedName ?? '',
-                              description: feature.description,
+                              field: feature.description,
                             }}
                             entityFieldThreads={entityFieldThreads}
                             entityFqn={entityFqn}
