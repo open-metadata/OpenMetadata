@@ -14,7 +14,6 @@
 import { Button, Card, Space, Typography } from 'antd';
 import { ReactComponent as IconCollateSupport } from 'assets/svg/ic-collate-support.svg';
 import { ReactComponent as IconSuccessBadge } from 'assets/svg/success-badge.svg';
-import classNames from 'classnames';
 import Loader from 'components/Loader/Loader';
 import { AIRFLOW_DOCS } from 'constants/docs.constants';
 import { PIPELINE_SERVICE_PLATFORM } from 'constants/Services.constant';
@@ -87,7 +86,7 @@ const SuccessScreen = ({
 
   return (
     <div
-      className="d-flex flex-col tw-mt-14 tw-mb-24 tw-mx-8 tw-px-1"
+      className="d-flex flex-col mt-14 mb-24 mx-8 p-x-xss"
       data-testid="success-screen-container">
       <Card>
         <Space>
@@ -98,10 +97,10 @@ const SuccessScreen = ({
             ellipsis={{ rows: 3 }}>
             {isUndefined(successMessage) ? (
               <span>
-                <span className="tw-mr-1 tw-font-semibold">
+                <span className="m-r-xss font-semibold">
                   {`"${name || 'demo_mysql'}"`}
                 </span>
-                {suffix && <span className="tw-mr-1">{suffix}</span>}
+                {suffix && <span className="m-r-xss">{suffix}</span>}
                 <span>{t('message.has-been-created-successfully')}</span>
               </span>
             ) : (
@@ -117,7 +116,7 @@ const SuccessScreen = ({
         </Card>
       )}
 
-      <div className="tw-mt-7 tw-text-center">
+      <div className="mt-7 text-center">
         <Button
           ghost
           data-testid="view-service-button"
@@ -131,9 +130,7 @@ const SuccessScreen = ({
 
         {showIngestionButton && (
           <Button
-            className={classNames('tw-ml-3.5', {
-              'tw-opacity-40 tw-pointer-events-none': !isAirflowAvailable,
-            })}
+            className="m-l-3.5"
             data-testid="add-ingestion-button"
             disabled={!isAirflowAvailable}
             type="primary"
@@ -146,9 +143,7 @@ const SuccessScreen = ({
 
         {showDeployButton && (
           <Button
-            className={classNames('tw-ml-3.5', {
-              'tw-opacity-40 tw-pointer-events-none': !isAirflowAvailable,
-            })}
+            className="m-l-3.5"
             data-testid="add-ingestion-button"
             disabled={!isAirflowAvailable}
             type="primary"
