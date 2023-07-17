@@ -64,7 +64,7 @@ import {
   LOCALSTORAGE_RECENTLY_SEARCHED,
   LOCALSTORAGE_RECENTLY_VIEWED,
 } from '../constants/constants';
-import { EMAIL_REG_EX, UrlEntityCharRegEx } from '../constants/regex.constants';
+import { UrlEntityCharRegEx } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { FilterPatternEnum } from '../enums/filterPattern.enum';
@@ -400,20 +400,6 @@ export const isValidUrl = (href?: string) => {
   } catch {
     return false;
   }
-};
-
-/**
- *
- * @param email - email address string
- * @returns - True|False
- */
-export const isValidEmail = (email?: string) => {
-  let isValid = false;
-  if (email && email.match(EMAIL_REG_EX)) {
-    isValid = true;
-  }
-
-  return isValid;
 };
 
 export const getEntityMissingError = (entityType: string, fqn: string) => {
