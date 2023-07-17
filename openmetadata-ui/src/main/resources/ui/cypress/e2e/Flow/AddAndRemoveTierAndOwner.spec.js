@@ -41,7 +41,7 @@ const ENTITIES = {
 const glossary = 'GlossaryOwnerTest';
 const glossaryTerm = 'GlossaryTermOwnerTest';
 
-const OWNER = 'Aaron Johnson';
+const OWNER = 'Aaron Singh';
 const TIER = 'Tier1';
 
 const addRemoveOwner = () => {
@@ -49,7 +49,7 @@ const addRemoveOwner = () => {
 
   cy.get('.ant-tabs [id*=tab-users]').click();
   verifyResponseStatusCode('@getUsers', 200);
-  cy.get(`.ant-tabs [title="${OWNER}"]`).click();
+  cy.get(`.ant-popover [title="${OWNER}"]`).click();
   verifyResponseStatusCode('@patchOwner', 200);
   cy.get('[data-testid="owner-link"]').should('contain', OWNER);
   cy.get('[data-testid="edit-owner"]').click();
@@ -168,14 +168,12 @@ describe('Add and Remove Owner and Tier', () => {
     addRemoveOwner();
   });
 
-  // skipping as backend flow is changed https://github.com/open-metadata/OpenMetadata/pull/11836,
-  // Todo: unskip once its implemented in UI https://github.com/open-metadata/OpenMetadata/issues/11592
-  it.skip('Test suite details page', () => {
+  it('Test suite details page', () => {
     interceptURL('PATCH', '/api/v1/dataQuality/testSuites/*', 'patchOwner');
     interceptURL('GET', '/api/v1/dataQuality/testSuites?*', 'testSuites');
     interceptURL(
       'GET',
-      '/api/v1/dataQuality/testSuites/name/critical_metrics_suite?fields=*',
+      '/api/v1/dataQuality/testSuites/name/myLogicalTestSuite?fields=*',
       'testSuiteDetails'
     );
     interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'testCases');
@@ -183,8 +181,12 @@ describe('Add and Remove Owner and Tier', () => {
       .should('be.visible')
       .click();
     verifyResponseStatusCode('@testSuites', 200);
-    cy.get('[data-testid="test-suite-critical_metrics_suite"]')
-      .should('be.visible')
+
+    cy.get('[data-testid="by-test-suites"]').click();
+    verifyResponseStatusCode('@testSuites', 200);
+
+    cy.get('[data-testid="test-suite-container"]')
+      .contains('myLogicalTestSuite')
       .click();
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@testSuiteDetails', 200);
