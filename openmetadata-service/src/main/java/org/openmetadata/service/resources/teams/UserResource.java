@@ -533,7 +533,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private boolean isBasicAuth() {
-    return authenticationConfiguration.getProvider().equals(SSOAuthMechanism.SsoServiceType.BASIC.toString());
+    boolean isBasicAuth =
+        authenticationConfiguration.getProvider().value().equals(SSOAuthMechanism.SsoServiceType.BASIC.toString());
+    return isBasicAuth;
   }
 
   @PUT
