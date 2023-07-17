@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.feed.Thread;
@@ -423,4 +424,18 @@ public class EmailUtil {
     }
     return emailConfig;
   }
+
+  /**
+   * Check if given email address is valid
+   *
+   * @param email email address
+   * @return true if valid, false otherwise
+   */
+  public static Boolean isValidEmail(String email) {
+    if (StringUtils.isBlank(email)) {
+      return false;
+    }
+    return email.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$");
+  }
+
 }
