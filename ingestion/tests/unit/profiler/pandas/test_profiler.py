@@ -13,7 +13,6 @@
 Test Profiler behavior
 """
 import os
-from concurrent.futures import TimeoutError
 from datetime import datetime
 from unittest import TestCase, mock
 from uuid import uuid4
