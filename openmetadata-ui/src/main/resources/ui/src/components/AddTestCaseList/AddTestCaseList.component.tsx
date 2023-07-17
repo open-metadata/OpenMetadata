@@ -230,10 +230,14 @@ export const AddTestCaseList = ({
         </List>
       </Col>
       <Col className="d-flex justify-end items-center p-y-xss" span={24}>
-        <Button type="link" onClick={onCancel}>
+        <Button data-testid="cancel" type="link" onClick={onCancel}>
           {cancelText ?? t('label.cancel')}
         </Button>
-        <Button loading={isLoading} type="primary" onClick={handleSubmit}>
+        <Button
+          data-testid="submit"
+          loading={isLoading}
+          type="primary"
+          onClick={handleSubmit}>
           {submitText ?? t('label.submit')}
         </Button>
       </Col>
