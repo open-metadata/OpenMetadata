@@ -71,11 +71,7 @@ def get_table_names(self, connection, schema, **kw):
 
     if kw.get("external_tables"):
         query = SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES
-    cursor = connection.execute(
-        query.format(schema[1:-1])
-        if schema is not None and '"' in schema
-        else query.format(schema)
-    )
+    cursor = connection.execute(query.format(fqn.unquote_name(schema)))
     result = [self.normalize_name(row[0]) for row in cursor]
     return result
 
@@ -146,11 +142,7 @@ def get_schema_columns(self, connection, schema, **kw):
         )
         result = connection.execute(
             text(SNOWFLAKE_GET_SCHEMA_COLUMNS),
-            {
-                "table_schema": self.denormalize_name(schema[1:-1])
-                if '"' in schema
-                else self.denormalize_name(schema)
-            }
+            {"table_schema": self.denormalize_name(fqn.unquote_name(schema))}
             # removing " " from schema name because schema name is in the WHERE clause of a query
         )
 
