@@ -13,7 +13,6 @@
 
 import {
   Button,
-  Card,
   Col,
   DatePicker,
   Form,
@@ -229,227 +228,224 @@ const AddKPIPage = () => {
             className="max-width-md w-9/10 service-form-container"
             data-testid="add-kpi-container">
             <TitleBreadcrumb className="my-4" titleLinks={breadcrumb} />
-            <Card>
-              <Typography.Paragraph
-                className="text-base"
-                data-testid="form-title">
-                {t('label.add-new-entity', {
-                  entity: t('label.kpi-uppercase'),
-                })}
-              </Typography.Paragraph>
-              <Form
-                data-testid="kpi-form"
-                form={form}
-                id="kpi-form"
-                layout="vertical"
-                validateMessages={VALIDATION_MESSAGES}
-                onFinish={handleSubmit}
-                onValuesChange={handleFormValuesChange}>
+            <Typography.Paragraph
+              className="text-base"
+              data-testid="form-title">
+              {t('label.add-new-entity', {
+                entity: t('label.kpi-uppercase'),
+              })}
+            </Typography.Paragraph>
+            <Form
+              data-testid="kpi-form"
+              form={form}
+              id="kpi-form"
+              layout="vertical"
+              validateMessages={VALIDATION_MESSAGES}
+              onFinish={handleSubmit}
+              onValuesChange={handleFormValuesChange}>
+              <Form.Item
+                label={t('label.select-a-chart')}
+                name="dataInsightChart"
+                rules={[
+                  {
+                    required: true,
+                    message: t('message.field-text-is-required', {
+                      fieldText: t('label.data-insight-chart'),
+                    }),
+                  },
+                ]}>
+                <Select
+                  data-testid="dataInsightChart"
+                  notFoundContent={t('message.all-charts-are-mapped')}
+                  placeholder={t('label.select-a-chart')}
+                  value={selectedChart?.fullyQualifiedName}
+                  onChange={handleChartSelect}>
+                  {chartOptions.map((chart) => (
+                    <Option key={chart.fullyQualifiedName}>
+                      {chart.displayName || chart.name}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+
+              <Form.Item label={t('label.display-name')} name="displayName">
+                <Input
+                  data-testid="displayName"
+                  placeholder={t('label.kpi-display-name')}
+                  type="text"
+                />
+              </Form.Item>
+
+              <Form.Item
+                label={t('label.select-a-metric-type')}
+                name="metricType"
+                rules={[
+                  {
+                    required: true,
+                    message: t('message.field-text-is-required', {
+                      fieldText: t('label.metric-type'),
+                    }),
+                  },
+                ]}>
+                <Select
+                  data-testid="metricType"
+                  disabled={isUndefined(selectedChart)}
+                  placeholder={t('label.select-a-metric-type')}
+                  value={selectedMetric?.name}
+                  onChange={handleMetricSelect}>
+                  {metricTypes.map((metric) => (
+                    <Option key={metric.name}>
+                      {`${metric.name} (${metric.chartDataType})`}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+
+              {!isUndefined(selectedMetric) && (
                 <Form.Item
-                  label={t('label.select-a-chart')}
-                  name="dataInsightChart"
+                  label={t('label.metric-value')}
+                  name="metricValue"
                   rules={[
                     {
                       required: true,
-                      message: t('message.field-text-is-required', {
-                        fieldText: t('label.data-insight-chart'),
-                      }),
+                      validator: () => {
+                        if (metricValue >= 0) {
+                          return Promise.resolve();
+                        }
+
+                        return Promise.reject(
+                          t('message.field-text-is-required', {
+                            fieldText: t('label.metric-value'),
+                          })
+                        );
+                      },
                     },
                   ]}>
-                  <Select
-                    data-testid="dataInsightChart"
-                    notFoundContent={t('message.all-charts-are-mapped')}
-                    placeholder={t('label.select-a-chart')}
-                    value={selectedChart?.fullyQualifiedName}
-                    onChange={handleChartSelect}>
-                    {chartOptions.map((chart) => (
-                      <Option key={chart.fullyQualifiedName}>
-                        {chart.displayName || chart.name}
-                      </Option>
-                    ))}
-                  </Select>
+                  <>
+                    {selectedMetric.chartDataType ===
+                      ChartDataType.Percentage && (
+                      <Row data-testid="metric-percentage-input" gutter={20}>
+                        <Col span={20}>
+                          <Slider
+                            className="kpi-slider"
+                            marks={{
+                              0: '0%',
+                              100: '100%',
+                            }}
+                            max={100}
+                            min={0}
+                            tooltip={{
+                              open: false,
+                            }}
+                            value={metricValue}
+                            onChange={(value) => {
+                              setMetricValue(value);
+                            }}
+                          />
+                        </Col>
+                        <Col span={4}>
+                          <InputNumber
+                            formatter={(value) => `${value}%`}
+                            max={100}
+                            min={0}
+                            step={1}
+                            value={metricValue}
+                            onChange={(value) => {
+                              setMetricValue(Number(value));
+                            }}
+                          />
+                        </Col>
+                      </Row>
+                    )}
+                    {selectedMetric.chartDataType === ChartDataType.Number && (
+                      <InputNumber
+                        className="w-full"
+                        data-testid="metric-number-input"
+                        min={0}
+                        value={metricValue}
+                        onChange={(value) => setMetricValue(Number(value))}
+                      />
+                    )}
+                  </>
                 </Form.Item>
+              )}
 
-                <Form.Item label={t('label.display-name')} name="displayName">
-                  <Input
-                    data-testid="displayName"
-                    placeholder={t('label.kpi-display-name')}
-                    type="text"
-                  />
-                </Form.Item>
-
-                <Form.Item
-                  label={t('label.select-a-metric-type')}
-                  name="metricType"
-                  rules={[
-                    {
-                      required: true,
-                      message: t('message.field-text-is-required', {
-                        fieldText: t('label.metric-type'),
-                      }),
-                    },
-                  ]}>
-                  <Select
-                    data-testid="metricType"
-                    disabled={isUndefined(selectedChart)}
-                    placeholder={t('label.select-a-metric-type')}
-                    value={selectedMetric?.name}
-                    onChange={handleMetricSelect}>
-                    {metricTypes.map((metric) => (
-                      <Option key={metric.name}>
-                        {`${metric.name} (${metric.chartDataType})`}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-
-                {!isUndefined(selectedMetric) && (
+              <Row gutter={[8, 8]}>
+                <Col span={12}>
                   <Form.Item
-                    label={t('label.metric-value')}
-                    name="metricValue"
+                    label={t('label.start-entity', {
+                      entity: t('label.date'),
+                    })}
+                    messageVariables={{ fieldName: 'startDate' }}
+                    name="startDate"
                     rules={[
                       {
                         required: true,
-                        validator: () => {
-                          if (metricValue >= 0) {
-                            return Promise.resolve();
-                          }
-
-                          return Promise.reject(
-                            t('message.field-text-is-required', {
-                              fieldText: t('label.metric-value'),
-                            })
-                          );
-                        },
+                        message: t('label.field-required', {
+                          field: t('label.start-entity', {
+                            entity: t('label.date'),
+                          }),
+                        }),
                       },
                     ]}>
-                    <>
-                      {selectedMetric.chartDataType ===
-                        ChartDataType.Percentage && (
-                        <Row data-testid="metric-percentage-input" gutter={20}>
-                          <Col span={20}>
-                            <Slider
-                              className="kpi-slider"
-                              marks={{
-                                0: '0%',
-                                100: '100%',
-                              }}
-                              max={100}
-                              min={0}
-                              tooltip={{
-                                open: false,
-                              }}
-                              value={metricValue}
-                              onChange={(value) => {
-                                setMetricValue(value);
-                              }}
-                            />
-                          </Col>
-                          <Col span={4}>
-                            <InputNumber
-                              formatter={(value) => `${value}%`}
-                              max={100}
-                              min={0}
-                              step={1}
-                              value={metricValue}
-                              onChange={(value) => {
-                                setMetricValue(Number(value));
-                              }}
-                            />
-                          </Col>
-                        </Row>
-                      )}
-                      {selectedMetric.chartDataType ===
-                        ChartDataType.Number && (
-                        <InputNumber
-                          className="w-full"
-                          data-testid="metric-number-input"
-                          min={0}
-                          value={metricValue}
-                          onChange={(value) => setMetricValue(Number(value))}
-                        />
-                      )}
-                    </>
+                    <DatePicker
+                      className="w-full"
+                      data-testid="start-date"
+                      disabledDate={getDisabledDates}
+                      format={KPI_DATE_PICKER_FORMAT}
+                    />
                   </Form.Item>
-                )}
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    label={t('label.end-date')}
+                    messageVariables={{ fieldName: 'endDate' }}
+                    name="endDate"
+                    rules={[
+                      {
+                        required: true,
+                        message: t('label.field-required', {
+                          field: t('label.end-date'),
+                        }),
+                      },
+                    ]}>
+                    <DatePicker
+                      className="w-full"
+                      data-testid="end-date"
+                      disabledDate={getDisabledDates}
+                      format={KPI_DATE_PICKER_FORMAT}
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
 
-                <Row gutter={[8, 8]}>
-                  <Col span={12}>
-                    <Form.Item
-                      label={t('label.start-entity', {
-                        entity: t('label.date'),
-                      })}
-                      messageVariables={{ fieldName: 'startDate' }}
-                      name="startDate"
-                      rules={[
-                        {
-                          required: true,
-                          message: t('label.field-required', {
-                            field: t('label.start-entity', {
-                              entity: t('label.date'),
-                            }),
-                          }),
-                        },
-                      ]}>
-                      <DatePicker
-                        className="w-full"
-                        data-testid="start-date"
-                        disabledDate={getDisabledDates}
-                        format={KPI_DATE_PICKER_FORMAT}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      label={t('label.end-date')}
-                      messageVariables={{ fieldName: 'endDate' }}
-                      name="endDate"
-                      rules={[
-                        {
-                          required: true,
-                          message: t('label.field-required', {
-                            field: t('label.end-date'),
-                          }),
-                        },
-                      ]}>
-                      <DatePicker
-                        className="w-full"
-                        data-testid="end-date"
-                        disabledDate={getDisabledDates}
-                        format={KPI_DATE_PICKER_FORMAT}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
+              <Form.Item label={t('label.description')} name="description">
+                <RichTextEditor
+                  height="200px"
+                  initialValue={description}
+                  placeHolder={t('message.write-your-description')}
+                  style={{ margin: 0 }}
+                  onTextChange={(value) => setDescription(value)}
+                />
+              </Form.Item>
 
-                <Form.Item label={t('label.description')} name="description">
-                  <RichTextEditor
-                    height="200px"
-                    initialValue={description}
-                    placeHolder={t('message.write-your-description')}
-                    style={{ margin: 0 }}
-                    onTextChange={(value) => setDescription(value)}
-                  />
-                </Form.Item>
-
-                <Space align="center" className="w-full justify-end">
-                  <Button
-                    data-testid="cancel-btn"
-                    type="link"
-                    onClick={handleCancel}>
-                    {t('label.cancel')}
-                  </Button>
-                  <Button
-                    data-testid="submit-btn"
-                    form="kpi-form"
-                    htmlType="submit"
-                    loading={isCreatingKPI}
-                    type="primary">
-                    {t('label.submit')}
-                  </Button>
-                </Space>
-              </Form>
-            </Card>
+              <Space align="center" className="w-full justify-end">
+                <Button
+                  data-testid="cancel-btn"
+                  type="link"
+                  onClick={handleCancel}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  data-testid="submit-btn"
+                  form="kpi-form"
+                  htmlType="submit"
+                  loading={isCreatingKPI}
+                  type="primary">
+                  {t('label.submit')}
+                </Button>
+              </Space>
+            </Form>
           </div>
         ),
         minWidth: 700,

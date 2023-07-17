@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Form, FormProps, Input, Space } from 'antd';
+import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -201,12 +201,14 @@ const UpdateDescription = () => {
               ]}
             />
 
-            <Card
-              className="m-t-0 request-description"
-              key="update-description"
-              title={t('label.create-entity', {
-                entity: t('label.task'),
-              })}>
+            <div className="m-t-0 request-description" key="update-description">
+              <Typography.Paragraph
+                className="text-base"
+                data-testid="form-title">
+                {t('label.create-entity', {
+                  entity: t('label.task'),
+                })}
+              </Typography.Paragraph>
               <Form form={form} layout="vertical" onFinish={onCreateTask}>
                 <Form.Item
                   data-testid="title"
@@ -273,7 +275,7 @@ const UpdateDescription = () => {
                   </Space>
                 </Form.Item>
               </Form>
-            </Card>
+            </div>
           </div>
         ),
       }}

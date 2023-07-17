@@ -69,10 +69,6 @@ jest.mock('components/common/ResizablePanels/ResizablePanels', () =>
 
 jest.mock('../../utils/DataInsightUtils', () => ({
   getKpiTargetValueByMetricType: jest.fn().mockReturnValue(10),
-  getKPIFormattedDates: jest.fn().mockReturnValue({
-    startDate: `2022-12-08 00:00`,
-    endDate: `2022-12-28 23:59`,
-  }),
   getDisabledDates: jest.fn().mockReturnValue(true),
 }));
 

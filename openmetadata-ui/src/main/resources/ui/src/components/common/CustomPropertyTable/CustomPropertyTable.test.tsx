@@ -39,10 +39,6 @@ const mockCustomProperties = [
   },
 ];
 
-jest.mock('../../../utils/CommonUtils', () => ({
-  isEven: jest.fn(),
-}));
-
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));

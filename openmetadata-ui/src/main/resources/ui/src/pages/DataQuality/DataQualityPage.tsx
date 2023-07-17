@@ -12,9 +12,10 @@
  */
 
 import { Col, Row, Tabs, TabsProps, Typography } from 'antd';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { TestCases } from 'components/DataQuality/TestCases/TestCases.component';
 import { TestSuites } from 'components/DataQuality/TestSuites/TestSuites.component';
+import TabsLabel from 'components/TabsLabel/TabsLabel.component';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -29,17 +30,34 @@ const DataQualityPage = () => {
   const tabDetails = useMemo(() => {
     const tab: TabsProps['items'] = [
       {
-        label: t('label.by-entity', { entity: t('label.table-plural') }),
+        label: (
+          <TabsLabel
+            id="by-tables"
+            name={t('label.by-entity', { entity: t('label.table-plural') })}
+          />
+        ),
         children: <TestSuites />,
         key: DataQualityPageTabs.TABLES,
       },
       {
-        label: t('label.by-entity', { entity: t('label.test-case-plural') }),
+        label: (
+          <TabsLabel
+            id="by-test-cases"
+            name={t('label.by-entity', { entity: t('label.test-case-plural') })}
+          />
+        ),
         key: DataQualityPageTabs.TEST_CASES,
         children: <TestCases />,
       },
       {
-        label: t('label.by-entity', { entity: t('label.test-suite-plural') }),
+        label: (
+          <TabsLabel
+            id="by-test-suites"
+            name={t('label.by-entity', {
+              entity: t('label.test-suite-plural'),
+            })}
+          />
+        ),
         key: DataQualityPageTabs.TEST_SUITES,
         children: <TestSuites />,
       },

@@ -12,7 +12,7 @@
  */
 import { InfoCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Card, Col, Row, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Tooltip, Typography } from 'antd';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -99,67 +99,60 @@ const CustomLogoConfigSettingsPage = () => {
         </Row>
       </Col>
       <Col span={24}>
-        <Card>
-          <>
-            <Typography.Title level={5}>
-              {t('label.custom-logo-configuration')}
-            </Typography.Title>
-            <Row align="middle" className="m-t-md" gutter={[16, 16]}>
-              <Col span={12}>
-                <Row align="middle">
-                  <Col span={24}>
-                    <Typography.Text className="m-0 text-grey-muted">
-                      {t('label.logo-url')}
-                      <Tooltip
-                        placement="top"
-                        title={t('message.custom-logo-url-path-message')}
-                        trigger="hover">
-                        <InfoCircleOutlined
-                          className="m-x-xss"
-                          data-testid="logo-url-info"
-                          style={{ color: GRAYED_OUT_COLOR }}
-                        />
-                      </Tooltip>
-                    </Typography.Text>
-                  </Col>
-                  <Col span={24}>
-                    <Typography.Text data-testid="logo-url">
-                      {isEmpty(config?.customLogoUrlPath)
-                        ? '--'
-                        : config?.customLogoUrlPath}
-                    </Typography.Text>
-                  </Col>
-                </Row>
+        <Row align="middle" gutter={[16, 16]}>
+          <Col span={12}>
+            <Row align="middle">
+              <Col span={24}>
+                <Typography.Text className="m-0 text-grey-muted">
+                  {t('label.logo-url')}
+                  <Tooltip
+                    placement="top"
+                    title={t('message.custom-logo-url-path-message')}
+                    trigger="hover">
+                    <InfoCircleOutlined
+                      className="m-x-xss"
+                      data-testid="logo-url-info"
+                      style={{ color: GRAYED_OUT_COLOR }}
+                    />
+                  </Tooltip>
+                </Typography.Text>
               </Col>
-              <Col span={12}>
-                <Row align="middle">
-                  <Col span={24}>
-                    <Typography.Text className="m-0 text-grey-muted">
-                      {t('label.monogram-url')}
-                      <Tooltip
-                        placement="top"
-                        title={t('message.custom-monogram-url-path-message')}
-                        trigger="hover">
-                        <InfoCircleOutlined
-                          className="m-x-xss"
-                          data-testid="monogram-url-info"
-                          style={{ color: GRAYED_OUT_COLOR }}
-                        />
-                      </Tooltip>
-                    </Typography.Text>
-                  </Col>
-                  <Col span={24}>
-                    <Typography.Text data-testid="monogram-url">
-                      {isEmpty(config?.customMonogramUrlPath)
-                        ? '--'
-                        : config?.customMonogramUrlPath}
-                    </Typography.Text>
-                  </Col>
-                </Row>
+              <Col span={24}>
+                <Typography.Text data-testid="logo-url">
+                  {isEmpty(config?.customLogoUrlPath)
+                    ? '--'
+                    : config?.customLogoUrlPath}
+                </Typography.Text>
               </Col>
             </Row>
-          </>
-        </Card>
+          </Col>
+          <Col span={12}>
+            <Row align="middle">
+              <Col span={24}>
+                <Typography.Text className="m-0 text-grey-muted">
+                  {t('label.monogram-url')}
+                  <Tooltip
+                    placement="top"
+                    title={t('message.custom-monogram-url-path-message')}
+                    trigger="hover">
+                    <InfoCircleOutlined
+                      className="m-x-xss"
+                      data-testid="monogram-url-info"
+                      style={{ color: GRAYED_OUT_COLOR }}
+                    />
+                  </Tooltip>
+                </Typography.Text>
+              </Col>
+              <Col span={24}>
+                <Typography.Text data-testid="monogram-url">
+                  {isEmpty(config?.customMonogramUrlPath)
+                    ? '--'
+                    : config?.customMonogramUrlPath}
+                </Typography.Text>
+              </Col>
+            </Row>
+          </Col>
+        </Row>
       </Col>
     </Row>
   );
