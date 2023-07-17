@@ -46,6 +46,7 @@ import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.automations.WorkflowStatus;
 import org.openmetadata.schema.entity.automations.WorkflowType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -323,7 +324,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
             content = @Content(mediaType = "application/json")),
         @ApiResponse(responseCode = "404", description = "Workflow for instance {id} is not found")
       })
-  public Response runAutomationsWorkflow(
+  public PipelineServiceClientResponse runAutomationsWorkflow(
       @Context UriInfo uriInfo,
       @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Context SecurityContext securityContext)

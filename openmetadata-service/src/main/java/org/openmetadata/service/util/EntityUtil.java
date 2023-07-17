@@ -66,8 +66,6 @@ public final class EntityUtil {
   //
   // Comparators used for sorting list based on the given type
   //
-
-  // Note ordering is same as server side ordering by ID as string to ensure PATCH operations work
   public static final Comparator<EntityReference> compareEntityReference =
       Comparator.comparing(EntityReference::getName);
   public static final Comparator<EntityVersionPair> compareVersion =

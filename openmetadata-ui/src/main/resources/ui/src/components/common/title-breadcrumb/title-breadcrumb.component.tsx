@@ -28,6 +28,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   titleLinks,
   className = '',
   noLink = false,
+  loading = false,
   widthDeductions,
 }: TitleBreadcrumbProps) => {
   const { t } = useTranslation();
@@ -59,7 +60,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   }, []);
 
   return (
-    <TitleBreadcrumbSkeleton titleLinks={titleLinks}>
+    <TitleBreadcrumbSkeleton loading={loading}>
       <nav className={className} data-testid="breadcrumb">
         <ol className="rounded-4 d-flex flex-wrap">
           {titleLinks.map((link, index) => {

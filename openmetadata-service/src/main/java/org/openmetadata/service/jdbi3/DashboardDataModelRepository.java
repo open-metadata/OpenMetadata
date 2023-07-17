@@ -19,7 +19,6 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 import javax.json.JsonPatch;
 import lombok.SneakyThrows;
@@ -44,8 +43,6 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class DashboardDataModelRepository extends EntityRepository<DashboardDataModel> {
-
-  private static final String DATA_MODELS_FIELD = "dataModels";
 
   private static final String DATA_MODEL_UPDATE_FIELDS = "owner,tags,followers";
   private static final String DATA_MODEL_PATCH_FIELDS = "owner,tags,followers";
@@ -116,16 +113,15 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = dashboardDataModel.getOwner();
     List<TagLabel> tags = dashboardDataModel.getTags();
-    List<EntityReference> dataModels = dashboardDataModel.getDataModels();
     EntityReference service = dashboardDataModel.getService();
 
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    dashboardDataModel.withOwner(null).withService(null).withHref(null).withTags(null).withDataModels(null);
+    dashboardDataModel.withOwner(null).withService(null).withHref(null).withTags(null);
 
     store(dashboardDataModel, update);
 
     // Restore the relationships
-    dashboardDataModel.withOwner(owner).withService(service).withTags(tags).withDataModels(dataModels);
+    dashboardDataModel.withOwner(owner).withService(service).withTags(tags);
   }
 
   @Override
@@ -146,8 +142,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     return dashboardDataModel
         .withService(getContainer(dashboardDataModel.getId()))
         .withFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(dashboardDataModel) : null)
-        .withTags(fields.contains(FIELD_TAGS) ? getTags(dashboardDataModel.getFullyQualifiedName()) : null)
-        .withDataModels(fields.contains(DATA_MODELS_FIELD) ? getDataModels(dashboardDataModel) : null);
+        .withTags(fields.contains(FIELD_TAGS) ? getTags(dashboardDataModel.getFullyQualifiedName()) : null);
   }
 
   @Override
@@ -158,15 +153,6 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         .withName(original.getName())
         .withService(original.getService())
         .withId(original.getId());
-  }
-
-  protected List<EntityReference> getDataModels(DashboardDataModel dashboardDataModel) throws IOException {
-    if (dashboardDataModel == null) {
-      return Collections.emptyList();
-    }
-    List<CollectionDAO.EntityRelationshipRecord> tableIds =
-        findTo(dashboardDataModel.getId(), entityType, Relationship.USES, Entity.DASHBOARD_DATA_MODEL);
-    return EntityUtil.populateEntityReferences(tableIds, Entity.TABLE);
   }
 
   private void getColumnTags(boolean setTags, List<Column> columns) {

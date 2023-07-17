@@ -259,6 +259,7 @@ const PipelineDetailsPage = () => {
   return (
     <PipelineDetails
       descriptionUpdateHandler={descriptionUpdateHandler}
+      fetchPipeline={() => fetchPipelineDetail(pipelineFQN)}
       followPipelineHandler={followPipeline}
       followers={followers}
       paging={paging}
