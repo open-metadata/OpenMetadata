@@ -110,34 +110,26 @@ export const getRootLevelGlossaryTerm = (
 
 export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
   const nodes: Record<string, GlossaryTerm> = {};
-  const tree: GlossaryTerm[] = [];
 
-  // Sorting children having parent first to avoid duplicates
-  const sortedData = [...data].sort((a, b) => {
-    if (a.parent && !b.parent) {
-      return 1;
-    } else if (!a.parent && b.parent) {
-      return -1;
-    } else {
-      return 0;
-    }
+  // Create nodes first
+  data.forEach((obj) => {
+    nodes[obj.fullyQualifiedName ?? ''] = {
+      ...obj,
+      children: obj.children?.length ? [] : undefined,
+    };
   });
 
-  sortedData.forEach((obj) => {
-    if (obj.fullyQualifiedName) {
-      nodes[obj.fullyQualifiedName] = {
-        ...obj,
-        children: obj.children?.length ? [] : undefined,
-      };
-      const parentNode =
-        obj.parent?.fullyQualifiedName && nodes[obj.parent.fullyQualifiedName];
+  // Build the tree structure
+  const tree: GlossaryTerm[] = [];
+  data.forEach((obj) => {
+    const current = nodes[obj.fullyQualifiedName ?? ''];
+    const parent = nodes[obj.parent?.fullyQualifiedName || ''];
 
-      parentNode &&
-        nodes[obj.fullyQualifiedName] &&
-        parentNode.children?.push(
-          nodes[obj.fullyQualifiedName] as unknown as EntityReference
-        );
-      parentNode ? null : tree.push(nodes[obj.fullyQualifiedName]);
+    if (parent && parent.children) {
+      // converting glossaryTerm to EntityReference
+      parent.children.push({ ...current, type: 'glossaryTerm' });
+    } else {
+      tree.push(current);
     }
   });
 

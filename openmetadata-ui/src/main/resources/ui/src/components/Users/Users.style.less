@@ -29,8 +29,12 @@
 }
 
 .user-page-layout {
-  height: @users-page-tabs-height;
-  .page-layout-rightpanel {
+  .user-layout-scroll {
+    height: @users-page-tabs-height;
+    overflow-y: scroll;
+  }
+
+  .user-page-layout-right-panel {
     padding-right: 0 !important;
     background-color: @white;
     border: 1px solid @border-color;

@@ -19,21 +19,18 @@ export interface Props {
   followingEntities: {
     data: SearchedDataProps['data'];
     total: number;
-    currPage: number;
   };
   ownedEntities: {
     data: SearchedDataProps['data'];
     total: number;
-    currPage: number;
   };
   username: string;
   isUserEntitiesLoading: boolean;
   isAdminUser: boolean;
   isLoggedinUser: boolean;
   isAuthDisabled: boolean;
+  handlePaginate: (page: string | number) => void;
   updateUserDetails: (data: Partial<User>) => Promise<void>;
-  onFollowingEntityPaginate: (page: string | number) => void;
-  onOwnedEntityPaginate: (page: string | number) => void;
 }
 
 export enum UserPageTabs {
