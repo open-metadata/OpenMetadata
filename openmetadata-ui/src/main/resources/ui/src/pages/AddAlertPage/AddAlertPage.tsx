@@ -14,7 +14,6 @@
 import { PlusOutlined } from '@ant-design/icons';
 import {
   Button,
-  Card,
   Checkbox,
   Col,
   Collapse,
@@ -23,6 +22,7 @@ import {
   Input,
   Row,
   Select,
+  Skeleton,
   Space,
   TreeSelect,
   Typography,
@@ -497,33 +497,35 @@ const AddAlertPage = () => {
             form={form}
             onFinish={handleSave}
             onValuesChange={handleChange}>
-            <Card loading={loadingCount > 0}>
-              <Form.Item
-                label={t('label.name')}
-                labelCol={{ span: 24 }}
-                name="name"
-                rules={[
-                  { required: true },
-                  {
-                    pattern: ENTITY_NAME_REGEX,
-                    message: t('message.entity-name-validation'),
-                  },
-                ]}>
-                <Input disabled={isEditMode} placeholder={t('label.name')} />
-              </Form.Item>
-              <Form.Item
-                label={t('label.description')}
-                labelCol={{ span: 24 }}
-                name="description"
-                trigger="onTextChange"
-                valuePropName="initialValue">
-                <RichTextEditor
-                  data-testid="description"
-                  height="200px"
-                  initialValue=""
-                />
-              </Form.Item>
-              <Form.Item>
+            {loadingCount > 0 ? (
+              <Skeleton title paragraph={{ rows: 8 }} />
+            ) : (
+              <>
+                <Form.Item
+                  label={t('label.name')}
+                  labelCol={{ span: 24 }}
+                  name="name"
+                  rules={[
+                    { required: true },
+                    {
+                      pattern: ENTITY_NAME_REGEX,
+                      message: t('message.entity-name-validation'),
+                    },
+                  ]}>
+                  <Input disabled={isEditMode} placeholder={t('label.name')} />
+                </Form.Item>
+                <Form.Item
+                  label={t('label.description')}
+                  labelCol={{ span: 24 }}
+                  name="description"
+                  trigger="onTextChange"
+                  valuePropName="initialValue">
+                  <RichTextEditor
+                    data-testid="description"
+                    height="200px"
+                    initialValue=""
+                  />
+                </Form.Item>
                 <Row gutter={[16, 16]}>
                   <Col span={8}>
                     <Space className="w-full" direction="vertical" size={16}>
@@ -571,23 +573,24 @@ const AddAlertPage = () => {
                         ]}>
                         {(fields, { add, remove }, { errors }) => (
                           <>
-                            <Form.Item>
-                              <Button
-                                block
-                                data-testid="add-filters"
-                                icon={<PlusOutlined />}
-                                type="default"
-                                onClick={() => add({}, 0)}>
-                                {t('label.add-entity', {
-                                  entity: t('label.filter-plural'),
-                                })}
-                              </Button>
-                            </Form.Item>
+                            <Button
+                              block
+                              data-testid="add-filters"
+                              icon={<PlusOutlined />}
+                              type="default"
+                              onClick={() => add({}, 0)}>
+                              {t('label.add-entity', {
+                                entity: t('label.filter-plural'),
+                              })}
+                            </Button>
                             {fields.map(({ key, name }) => (
                               <div key={`filteringRules-${key}`}>
                                 {name > 0 && (
                                   <Divider
-                                    style={{ margin: 0, marginBottom: '16px' }}
+                                    style={{
+                                      margin: 0,
+                                      marginBottom: '16px',
+                                    }}
                                   />
                                 )}
                                 <Row>
@@ -658,44 +661,42 @@ const AddAlertPage = () => {
                         heading={t('label.destination')}
                         subHeading={t('message.alerts-destination-description')}
                       />
-                      <Form.Item>
-                        <Form.Item
-                          required
-                          name="subscriptionType"
-                          rules={[
-                            {
-                              required: true,
-                              message: t('label.field-required', {
-                                field: t('label.destination'),
-                              }),
-                            },
-                          ]}>
-                          <Select
-                            data-testid="alert-action-type"
-                            disabled={provider === ProviderType.System}
-                            placeholder={t('label.select-field', {
-                              field: t('label.source'),
-                            })}
-                            showSearch={false}>
-                            {map(SubscriptionType, (value) => {
-                              return [
-                                SubscriptionType.ActivityFeed,
-                                SubscriptionType.DataInsight,
-                              ].includes(value) ? null : (
-                                <Select.Option key={value} value={value}>
-                                  <Space size={16}>
-                                    {getAlertsActionTypeIcon(
-                                      value as SubscriptionType
-                                    )}
-                                    {getAlertActionTypeDisplayName(value)}
-                                  </Space>
-                                </Select.Option>
-                              );
-                            })}
-                          </Select>
-                        </Form.Item>
-                        {getDestinationConfigFields()}
+                      <Form.Item
+                        required
+                        name="subscriptionType"
+                        rules={[
+                          {
+                            required: true,
+                            message: t('label.field-required', {
+                              field: t('label.destination'),
+                            }),
+                          },
+                        ]}>
+                        <Select
+                          data-testid="alert-action-type"
+                          disabled={provider === ProviderType.System}
+                          placeholder={t('label.select-field', {
+                            field: t('label.source'),
+                          })}
+                          showSearch={false}>
+                          {map(SubscriptionType, (value) => {
+                            return [
+                              SubscriptionType.ActivityFeed,
+                              SubscriptionType.DataInsight,
+                            ].includes(value) ? null : (
+                              <Select.Option key={value} value={value}>
+                                <Space size={16}>
+                                  {getAlertsActionTypeIcon(
+                                    value as SubscriptionType
+                                  )}
+                                  {getAlertActionTypeDisplayName(value)}
+                                </Space>
+                              </Select.Option>
+                            );
+                          })}
+                        </Select>
                       </Form.Item>
+                      {getDestinationConfigFields()}
                     </Space>
                   </Col>
                   <Col className="footer" span={24}>
@@ -711,8 +712,8 @@ const AddAlertPage = () => {
                     </Button>
                   </Col>
                 </Row>
-              </Form.Item>
-            </Card>
+              </>
+            )}
           </Form>
         </Col>
         <Col span={24} />
