@@ -16,16 +16,19 @@ import { ReactNode } from 'react';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
+  ContainerSearchSource,
   DashboardSearchSource,
   ExploreSearchSource,
   GlossarySearchSource,
   MlmodelSearchSource,
+  PipelineSearchSource,
   QuerySearchSource,
   SearchHitBody,
   TableSearchSource,
   TagClassSearchSource,
   TeamSearchSource,
   TestCaseSearchSource,
+  TopicSearchSource,
   UserSearchSource,
 } from '../../interface/search.interface';
 import { ExploreSearchIndex } from '../Explore/explore.interface';
@@ -44,6 +47,9 @@ export type SourceType = (
       TableSearchSource,
       Fields | 'usageSummary' | 'database' | 'databaseSchema' | 'tableType'
     >
+  | Pick<TopicSearchSource, Fields>
+  | Pick<ContainerSearchSource, Fields>
+  | Pick<PipelineSearchSource, Fields>
   | Pick<DashboardSearchSource | MlmodelSearchSource, Fields | 'usageSummary'>
   | Pick<
       Exclude<
