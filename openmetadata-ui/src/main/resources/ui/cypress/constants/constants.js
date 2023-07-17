@@ -45,7 +45,8 @@ export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
   term: 'dim_address',
   entity: MYDATA_SUMMARY_OPTIONS.tables,
   serviceName: 'sample_data',
-  testCaseName: 'my_sql_test_case_cypress',
+  testCaseName: 'column_value_max_to_be_between',
+  sqlTestCaseName: 'my_sql_test_case_cypress',
   sqlTestCase: 'Custom SQL Query',
   sqlQuery: 'Select * from dim_address',
 };

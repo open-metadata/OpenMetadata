@@ -260,7 +260,7 @@ describe('RedShift Ingestion', () => {
 
     cy.get('[data-testid="lineage"]').should('be.visible').click();
 
-    cy.get('[data-testid="lineage-entity"]').should(
+    cy.get('[data-testid="entity-header-display-name"]').should(
       'contain',
       DBT.dbtLineageNodeLabel
     );

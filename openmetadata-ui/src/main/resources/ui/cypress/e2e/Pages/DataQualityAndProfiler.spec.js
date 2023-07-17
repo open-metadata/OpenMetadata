@@ -608,8 +608,14 @@ describe('Data Quality and Profiler should work properly', () => {
   });
 
   it('SQL query should be visible while editing the test case', () => {
-    const { term, entity, serviceName, sqlTestCase, sqlQuery, testCaseName } =
-      DATA_QUALITY_SAMPLE_DATA_TABLE;
+    const {
+      term,
+      entity,
+      serviceName,
+      sqlTestCase,
+      sqlQuery,
+      sqlTestCaseName,
+    } = DATA_QUALITY_SAMPLE_DATA_TABLE;
     interceptURL(
       'GET',
       `api/v1/tables/name/${serviceName}.*.${term}?fields=*&include=all`,
@@ -627,7 +633,7 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('[data-testid="table"]').click();
 
     // creating new test case
-    cy.get('#tableTestForm_testName').type(testCaseName);
+    cy.get('#tableTestForm_testName').type(sqlTestCaseName);
     cy.get('#tableTestForm_testTypeId').scrollIntoView().click();
     cy.contains(sqlTestCase).should('be.visible').click();
     cy.get('.CodeMirror-scroll')
