@@ -17,7 +17,7 @@ import { FormProps, useForm } from 'antd/lib/form/Form';
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import { UserTag } from 'components/common/UserTag/UserTag.component';
 import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
-import { GLOSSARY_REGEX } from 'constants/regex.constants';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { EntityReference } from 'generated/type/entityLineage';
 import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { toString } from 'lodash';
@@ -103,7 +103,7 @@ const AddGlossary = ({
       },
       rules: [
         {
-          pattern: GLOSSARY_REGEX,
+          pattern: ENTITY_NAME_REGEX,
           message: t('message.entity-name-validation'),
         },
         {

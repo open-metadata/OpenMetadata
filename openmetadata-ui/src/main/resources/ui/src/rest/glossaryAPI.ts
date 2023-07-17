@@ -135,7 +135,7 @@ export const getGlossaryTermByFQN = async (
   arrQueryFields: string | string[] = ''
 ) => {
   const url = getURLWithQueryFields(
-    `/glossaryTerms/name/${glossaryTermFQN}`,
+    `/glossaryTerms/name/${encodeURIComponent(glossaryTermFQN)}`,
     arrQueryFields
   );
 

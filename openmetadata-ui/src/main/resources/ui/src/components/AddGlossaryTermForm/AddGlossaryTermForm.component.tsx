@@ -15,7 +15,7 @@ import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
 import { UserTag } from 'components/common/UserTag/UserTag.component';
 import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
 import { PAGE_SIZE } from 'constants/constants';
-import { GLOSSARY_REGEX } from 'constants/regex.constants';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { SearchIndex } from 'enums/search.enum';
 import { Paging } from 'generated/type/paging';
 import { t } from 'i18next';
@@ -186,7 +186,7 @@ const AddGlossaryTermForm = ({
       },
       rules: [
         {
-          pattern: GLOSSARY_REGEX,
+          pattern: ENTITY_NAME_REGEX,
           message: t('message.entity-name-validation'),
         },
         {

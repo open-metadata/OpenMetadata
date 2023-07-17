@@ -659,10 +659,7 @@ export const getGlossaryTermDetailsPath = (
   tab?: string
 ) => {
   let path = tab ? ROUTES.GLOSSARY_DETAILS_WITH_TAB : ROUTES.GLOSSARY_DETAILS;
-  path = path.replace(
-    PLACEHOLDER_GLOSSARY_NAME,
-    encodeURIComponent(glossaryFQN)
-  );
+  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryFQN);
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
