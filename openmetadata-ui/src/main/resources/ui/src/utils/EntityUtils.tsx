@@ -34,6 +34,7 @@ import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Database } from 'generated/entity/data/database';
+import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Topic } from 'generated/entity/data/topic';
@@ -1117,6 +1118,111 @@ export const getEntityBreadcrumbs = (
           ),
         },
         ...getBreadcrumbForEntitiesWithServiceOnly(entity as Database),
+      ];
+
+    case EntityType.DATABASE_SCHEMA:
+      return [
+        {
+          name: startCase(ServiceCategory.DATABASE_SERVICES),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(ServiceCategory.DATABASE_SERVICES)
+          ),
+        },
+        {
+          name: getEntityName(entity.service),
+          url: entity.service?.name
+            ? getServiceDetailsPath(
+                entity.service?.name,
+                ServiceCategoryPlural[
+                  entity.service?.type as keyof typeof ServiceCategoryPlural
+                ]
+              )
+            : '',
+        },
+        {
+          name: getEntityName((entity as DatabaseSchema).database),
+          url: getDatabaseDetailsPath(
+            (entity as DatabaseSchema).database.fullyQualifiedName ?? ''
+          ),
+        },
+      ];
+
+    case EntityType.DATABASE_SERVICE:
+      return [
+        {
+          name: startCase(ServiceCategory.DATABASE_SERVICES),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(ServiceCategory.DATABASE_SERVICES)
+          ),
+        },
+      ];
+
+    case EntityType.DASHBOARD_SERVICE:
+      return [
+        {
+          name: startCase(ServiceCategory.DASHBOARD_SERVICES),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(ServiceCategory.DASHBOARD_SERVICES)
+          ),
+        },
+      ];
+
+    case EntityType.MESSAGING_SERVICE:
+      return [
+        {
+          name: startCase(ServiceCategory.MESSAGING_SERVICES),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(ServiceCategory.MESSAGING_SERVICES)
+          ),
+        },
+      ];
+
+    case EntityType.PIPELINE_SERVICE:
+      return [
+        {
+          name: startCase(ServiceCategory.PIPELINE_SERVICES),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(ServiceCategory.PIPELINE_SERVICES)
+          ),
+        },
+      ];
+
+    case EntityType.MLMODEL_SERVICE:
+      return [
+        {
+          name: startCase(ServiceCategory.ML_MODEL_SERVICES),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(ServiceCategory.ML_MODEL_SERVICES)
+          ),
+        },
+      ];
+
+    case EntityType.METADATA_SERVICE:
+      return [
+        {
+          name: startCase(ServiceCategory.METADATA_SERVICES),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(ServiceCategory.METADATA_SERVICES)
+          ),
+        },
+      ];
+
+    case EntityType.STORAGE_SERVICE:
+      return [
+        {
+          name: startCase(ServiceCategory.STORAGE_SERVICES),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(ServiceCategory.STORAGE_SERVICES)
+          ),
+        },
       ];
 
     case EntityType.TOPIC:

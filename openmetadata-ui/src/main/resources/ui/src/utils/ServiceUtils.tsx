@@ -12,12 +12,8 @@
  */
 
 import { AxiosError } from 'axios';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { EntityTabs } from 'enums/entity.enum';
 import { StorageServiceType } from 'generated/entity/data/container';
 import { t } from 'i18next';
 import { ServiceTypes } from 'Models';
@@ -643,49 +639,6 @@ export const getCountLabel = (serviceName: ServiceTypes) => {
     default:
       return t('label.database-plural');
   }
-};
-
-export const getServicePageTabs = (
-  serviceName: ServiceTypes,
-  instanceCount: number,
-  ingestionCount: number,
-  servicePermission: OperationPermission,
-  dataModelCount: number,
-  showIngestionTab: boolean
-) => {
-  const tabs = [];
-
-  if (serviceName !== ServiceCategory.METADATA_SERVICES) {
-    tabs.push({
-      name: getCountLabel(serviceName),
-      key: getCountLabel(serviceName).toLowerCase(),
-      count: instanceCount,
-    });
-  }
-
-  if (serviceName === ServiceCategory.DASHBOARD_SERVICES) {
-    tabs.push({
-      name: t('label.data-model'),
-      key: EntityTabs.DATA_Model,
-      count: dataModelCount,
-    });
-  }
-
-  tabs.push(
-    {
-      name: t('label.ingestion-plural'),
-      key: EntityTabs.INGESTIONS,
-      isHidden: !showIngestionTab,
-      count: ingestionCount,
-    },
-    {
-      name: t('label.connection'),
-      isHidden: !servicePermission.EditAll,
-      key: EntityTabs.CONNECTION,
-    }
-  );
-
-  return tabs.filter((tab) => !tab.isHidden);
 };
 
 export const getTestConnectionName = (connectionType: string) => {

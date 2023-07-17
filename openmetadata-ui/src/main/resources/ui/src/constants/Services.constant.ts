@@ -383,3 +383,13 @@ export const ADVANCED_PROPERTIES = [
 ];
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';
+
+export const SERVICE_CATEGORIES = [
+  ServiceCategory.DATABASE_SERVICES,
+  ServiceCategory.MESSAGING_SERVICES,
+  ServiceCategory.DASHBOARD_SERVICES,
+  ServiceCategory.PIPELINE_SERVICES,
+  ServiceCategory.ML_MODEL_SERVICES,
+  ServiceCategory.METADATA_SERVICES,
+  ServiceCategory.STORAGE_SERVICES,
+];

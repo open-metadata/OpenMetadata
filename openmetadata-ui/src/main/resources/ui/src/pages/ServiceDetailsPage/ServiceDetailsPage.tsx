@@ -18,6 +18,7 @@ import {
   Space,
   Switch,
   Tabs,
+  TabsProps,
   Tooltip,
   Typography,
 } from 'antd';
@@ -26,18 +27,15 @@ import AppState from 'AppState';
 import { AxiosError } from 'axios';
 import AirflowMessageBanner from 'components/common/AirflowMessageBanner/AirflowMessageBanner';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
-import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import ErrorPlaceHolderIngestion from 'components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import TestConnection from 'components/common/TestConnection/TestConnection';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import DataModelTable from 'components/DataModels/DataModelsTable';
-import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import Ingestion from 'components/Ingestion/Ingestion.component';
 import Loader from 'components/Loader/Loader';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
@@ -45,21 +43,30 @@ import { usePermissionProvider } from 'components/PermissionProvider/PermissionP
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import ServiceConnectionDetails from 'components/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { compare } from 'fast-json-patch';
+import { compare, Operation } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Include } from 'generated/type/include';
+import { LabelType, State, TagSource } from 'generated/type/tagLabel';
 import { useAuth } from 'hooks/authHooks';
-import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
+import { isEmpty, isNil, isUndefined, toLower } from 'lodash';
 import {
+  EntityTags,
   PagingWithoutTotal,
   ServicesUpdateRequest,
   ServiceTypes,
 } from 'Models';
-import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import {
@@ -88,11 +95,7 @@ import {
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
-import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import {
-  OPEN_METADATA,
-  SERVICE_CATEGORY_TYPE,
-} from '../../constants/Services.constant';
+import { OPEN_METADATA } from '../../constants/Services.constant';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -108,19 +111,18 @@ import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getEntityMissingError } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getEditConnectionPath, getSettingPath } from '../../utils/RouterUtils';
+import { getEditConnectionPath } from '../../utils/RouterUtils';
 import {
   getCountLabel,
-  getDeleteEntityMessage,
   getResourceEntityFromServiceCategory,
-  getServicePageTabs,
-  getServiceRouteFromServiceType,
-  serviceTypeLogo,
-  setServiceSchemaCount,
-  setServiceTableCount,
   shouldTestConnection,
 } from '../../utils/ServiceUtils';
-import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
+import {
+  getEntityLink,
+  getTagsWithoutTier,
+  getTierTags,
+  getUsagePercentile,
+} from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 export type ServicePageData =
@@ -159,10 +161,6 @@ const ServicePage: FunctionComponent = () => {
 
     return getCountLabel(serviceCategory).toLowerCase();
   }, [tab, serviceCategory]);
-  const entitySpecificTabName = useMemo(
-    () => getCountLabel(serviceCategory).toLowerCase(),
-    [serviceCategory]
-  );
 
   const isOpenMetadataService = useMemo(
     () => serviceFQN === OPEN_METADATA,
@@ -171,14 +169,13 @@ const ServicePage: FunctionComponent = () => {
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const history = useHistory();
-  const [slashedTableName, setSlashedTableName] = useState<
-    TitleBreadcrumbProps['titleLinks']
-  >([]);
   const { isAdminUser } = useAuth();
 
   const [isEdit, setIsEdit] = useState(false);
   const [description, setDescription] = useState('');
-  const [serviceDetails, setServiceDetails] = useState<ServicesType>();
+  const [serviceDetails, setServiceDetails] = useState<ServicesType>(
+    {} as ServicesType
+  );
   const [data, setData] = useState<Array<ServicePageData>>([]);
   const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
   const [isServiceLoading, setIsServiceLoading] = useState(true);
@@ -196,11 +193,11 @@ const ServicePage: FunctionComponent = () => {
   const [airflowEndpoint, setAirflowEndpoint] = useState<string>();
   const [connectionDetails, setConnectionDetails] = useState<ConfigData>();
 
-  const [schemaCount, setSchemaCount] = useState<number>(0);
-  const [tableCount, setTableCount] = useState<number>(0);
-
   const [servicePermission, setServicePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const tier = getTierTags(serviceDetails?.tags ?? []);
+  const tags = getTagsWithoutTier(serviceDetails?.tags ?? []);
 
   const allowTestConn = useMemo(() => {
     return shouldTestConnection(serviceCategory);
@@ -220,41 +217,6 @@ const ServicePage: FunctionComponent = () => {
       setIsLoading(false);
     }
   };
-
-  const tabs = useMemo(() => {
-    const isOwner = AppState.userDetails.id === serviceDetails?.owner?.id;
-    const showIngestionTab = Boolean(isOwner || isAdminUser);
-    const allTabs = getServicePageTabs(
-      serviceCategory,
-      paging.total,
-      ingestionPaging.total,
-      servicePermission,
-      dataModelPaging.total,
-      showIngestionTab
-    ).map((tab) => ({
-      label: (
-        <TabsLabel
-          count={tab.count}
-          id={tab.key}
-          isActive={activeTab === tab.key}
-          name={tab.name}
-        />
-      ),
-      key: tab.key,
-    }));
-
-    return allTabs;
-  }, [
-    AppState,
-    serviceDetails,
-    isAdminUser,
-    serviceCategory,
-    paging,
-    ingestionPaging,
-    servicePermission,
-    dataModelPaging,
-    activeTab,
-  ]);
 
   const isTestingDisabled = useMemo(
     () =>
@@ -458,8 +420,6 @@ const ServicePage: FunctionComponent = () => {
       );
 
       setData(data);
-      setServiceSchemaCount(data, setSchemaCount);
-      setServiceTableCount(data, setTableCount);
       setPaging(resPaging);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -725,15 +685,6 @@ const ServicePage: FunctionComponent = () => {
               resService.connection?.config as DashboardConnection
             );
             setDescription(description ?? '');
-            setSlashedTableName([
-              {
-                name: startCase(serviceCategory || ''),
-                url: getSettingPath(
-                  GlobalSettingsMenuCategory.SERVICES,
-                  getServiceRouteFromServiceType(serviceCategory)
-                ),
-              },
-            ]);
             getOtherDetails();
           } else {
             showErrorToast(
@@ -759,18 +710,8 @@ const ServicePage: FunctionComponent = () => {
     }
   }, [serviceFQN, serviceCategory, servicePermission]);
 
-  const handleAfterDeleteAction = () => {
-    history.push(
-      getSettingPath(
-        GlobalSettingsMenuCategory.SERVICES,
-        SERVICE_CATEGORY_TYPE[
-          serviceCategory as keyof typeof SERVICE_CATEGORY_TYPE
-        ]
-      )
-    );
-  };
   const handleUpdateDisplayName = async (data: EntityName) => {
-    if (isUndefined(serviceDetails)) {
+    if (isEmpty(serviceDetails)) {
       return;
     }
 
@@ -785,8 +726,8 @@ const ServicePage: FunctionComponent = () => {
     try {
       const response = await patchService(serviceCategory, id, jsonPatch);
       setServiceDetails((pre) => {
-        if (isUndefined(pre)) {
-          return;
+        if (isEmpty(pre)) {
+          return {} as ServicesType;
         }
 
         return {
@@ -799,12 +740,16 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
+  const onDescriptionEdit = (): void => {
+    setIsEdit(true);
+  };
+
   const onCancel = () => {
     setIsEdit(false);
   };
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
-    if (description !== updatedHTML && !isUndefined(serviceDetails)) {
+    if (description !== updatedHTML && !isEmpty(serviceDetails)) {
       const { id } = serviceDetails;
 
       const updatedData: ServicesType = {
@@ -834,7 +779,7 @@ const ServicePage: FunctionComponent = () => {
       owner,
     } as ServicesUpdateRequest;
 
-    const jsonPatch = compare(serviceDetails || {}, updatedData);
+    const jsonPatch = compare(serviceDetails, updatedData);
     try {
       const res = await patchService(
         serviceCategory,
@@ -852,9 +797,46 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
-  const onDescriptionEdit = (): void => {
-    setIsEdit(true);
+  const saveUpdatedServiceData = async (updatedData: ServicesType) => {
+    try {
+      let jsonPatch: Operation[] = [];
+      if (serviceDetails) {
+        jsonPatch = compare(serviceDetails, updatedData);
+      }
+
+      const response = await patchService(
+        serviceCategory,
+        serviceDetails.id ?? '',
+        jsonPatch
+      );
+
+      setServiceDetails(response);
+    } catch (err) {
+      // Error
+    }
   };
+
+  const handleUpdateTier = useCallback(
+    async (newTier?: string) => {
+      const tierTag = newTier
+        ? [
+            ...getTagsWithoutTier(serviceDetails?.tags ?? []),
+            {
+              tagFQN: newTier,
+              labelType: LabelType.Manual,
+              state: State.Confirmed,
+            },
+          ]
+        : getTagsWithoutTier(serviceDetails?.tags ?? []);
+      const updatedServiceDetails = {
+        ...serviceDetails,
+        tags: tierTag,
+      };
+
+      return saveUpdatedServiceData(updatedServiceDetails);
+    },
+    [saveUpdatedServiceData, serviceDetails]
+  );
 
   const pagingHandler = (cursorType: string | number, activePage?: number) => {
     getOtherDetails({
@@ -881,7 +863,7 @@ const ServicePage: FunctionComponent = () => {
   const ingestionTab = useMemo(() => {
     if (!isAirflowAvailable) {
       return <ErrorPlaceHolderIngestion />;
-    } else if (isUndefined(airflowEndpoint) || isUndefined(serviceDetails)) {
+    } else if (isUndefined(airflowEndpoint) || isEmpty(serviceDetails)) {
       return <Loader />;
     } else {
       return (
@@ -1116,7 +1098,6 @@ const ServicePage: FunctionComponent = () => {
         <Col data-testid="table-container" span={24}>
           <Table
             bordered
-            className="mt-4"
             columns={tableColumn}
             components={tableComponent}
             data-testid="service-children-table"
@@ -1155,8 +1136,218 @@ const ServicePage: FunctionComponent = () => {
     }
   }, [isAirflowAvailable]);
 
+  const entityType = useMemo(() => {
+    switch (serviceCategory) {
+      case ServiceCategory.DASHBOARD_SERVICES:
+        return EntityType.DASHBOARD_SERVICE;
+      case ServiceCategory.MESSAGING_SERVICES:
+        return EntityType.MESSAGING_SERVICE;
+      case ServiceCategory.PIPELINE_SERVICES:
+        return EntityType.PIPELINE_SERVICE;
+      case ServiceCategory.ML_MODEL_SERVICES:
+        return EntityType.MLMODEL_SERVICE;
+      case ServiceCategory.METADATA_SERVICES:
+        return EntityType.METADATA_SERVICE;
+      case ServiceCategory.STORAGE_SERVICES:
+        return EntityType.STORAGE_SERVICE;
+      case ServiceCategory.DATABASE_SERVICES:
+      default:
+        return EntityType.DATABASE_SERVICE;
+    }
+  }, [serviceCategory]);
+
+  /**
+   * Formulates updated tags and updates table entity data for API call
+   * @param selectedTags
+   */
+  const onTagUpdate = async (selectedTags?: Array<EntityTags>) => {
+    if (selectedTags) {
+      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
+      const updatedTable = { ...serviceDetails, tags: updatedTags };
+      await saveUpdatedServiceData(updatedTable);
+    }
+  };
+
+  const handleTagSelection = async (selectedTags: EntityTags[]) => {
+    if (selectedTags) {
+      const prevTags =
+        tags?.filter((tag) =>
+          selectedTags
+            .map((selTag) => selTag.tagFQN)
+            .includes(tag?.tagFQN as string)
+        ) || [];
+      const newTags = selectedTags
+        .filter((tag) => {
+          return !prevTags
+            ?.map((prevTag) => prevTag.tagFQN)
+            .includes(tag.tagFQN);
+        })
+        .map((tag) => ({
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          source: tag.source,
+          tagFQN: tag.tagFQN,
+        }));
+      await onTagUpdate([...prevTags, ...newTags]);
+    }
+  };
+
+  const editTagsPermission = useMemo(
+    () => servicePermission.EditTags || servicePermission.EditAll,
+    [servicePermission, serviceDetails]
+  );
+
+  const getServicePageTabs = (
+    serviceName: ServiceTypes,
+    instanceCount: number,
+    ingestionCount: number,
+    servicePermission: OperationPermission,
+    dataModelCount: number,
+    showIngestionTab: boolean
+  ) => {
+    const tabs = [];
+
+    if (serviceName !== ServiceCategory.METADATA_SERVICES) {
+      tabs.push({
+        name: getCountLabel(serviceName),
+        key: getCountLabel(serviceName).toLowerCase(),
+        count: instanceCount,
+        children: (
+          <Row gutter={[0, 16]} wrap={false}>
+            <Col className="p-t-sm m-x-lg" flex="auto">
+              <Row gutter={[16, 16]}>
+                <Col data-testid="description-container" span={24}>
+                  <DescriptionV1
+                    description={description}
+                    entityFqn={serviceFQN}
+                    entityName={serviceName}
+                    entityType={entityType}
+                    hasEditAccess={
+                      servicePermission.EditDescription ||
+                      servicePermission.EditAll
+                    }
+                    isEdit={isEdit}
+                    onCancel={onCancel}
+                    onDescriptionEdit={onDescriptionEdit}
+                    onDescriptionUpdate={onDescriptionUpdate}
+                  />
+                </Col>
+                <Col span={24}>
+                  <Row justify="end">
+                    <Col>
+                      <Switch
+                        checked={showDeleted}
+                        data-testid="show-deleted"
+                        onClick={setShowDeleted}
+                      />
+                      <Typography.Text className="m-l-xs">
+                        {t('label.deleted')}
+                      </Typography.Text>{' '}
+                    </Col>
+                  </Row>
+                </Col>
+                {entityServiceTab}
+              </Row>
+            </Col>
+            <Col
+              className="entity-tag-right-panel-container"
+              data-testid="entity-right-panel"
+              flex="320px">
+              <Space className="w-full" direction="vertical" size="large">
+                <TagsContainerV2
+                  entityFqn={serviceFQN}
+                  entityType={entityType}
+                  permission={editTagsPermission}
+                  selectedTags={tags}
+                  tagType={TagSource.Classification}
+                  onSelectionChange={handleTagSelection}
+                />
+                <TagsContainerV2
+                  entityFqn={serviceFQN}
+                  entityType={entityType}
+                  permission={editTagsPermission}
+                  selectedTags={tags}
+                  tagType={TagSource.Glossary}
+                  onSelectionChange={handleTagSelection}
+                />
+              </Space>
+            </Col>
+          </Row>
+        ),
+      });
+    }
+
+    if (serviceName === ServiceCategory.DASHBOARD_SERVICES) {
+      tabs.push({
+        name: t('label.data-model'),
+        key: EntityTabs.DATA_Model,
+        count: dataModelCount,
+        children: dataModalTab,
+      });
+    }
+
+    tabs.push(
+      {
+        name: t('label.ingestion-plural'),
+        key: EntityTabs.INGESTIONS,
+        isHidden: !showIngestionTab,
+        count: ingestionCount,
+        children: ingestionTab,
+      },
+      {
+        name: t('label.connection'),
+        isHidden: !servicePermission.EditAll,
+        key: EntityTabs.CONNECTION,
+        children: testConnectionTab,
+      }
+    );
+
+    return tabs.filter((tab) => !tab.isHidden);
+  };
+
+  const tabs: TabsProps['items'] = useMemo(() => {
+    const isOwner = AppState.userDetails.id === serviceDetails?.owner?.id;
+    const showIngestionTab = Boolean(isOwner || isAdminUser);
+    const allTabs = getServicePageTabs(
+      serviceCategory,
+      paging.total,
+      ingestionPaging.total,
+      servicePermission,
+      dataModelPaging.total,
+      showIngestionTab
+    ).map((tab) => ({
+      label: (
+        <TabsLabel
+          count={tab.count}
+          id={tab.key}
+          isActive={activeTab === tab.key}
+          name={tab.name}
+        />
+      ),
+      key: tab.key,
+      children: tab.children,
+    }));
+
+    return allTabs;
+  }, [
+    AppState,
+    serviceDetails,
+    isAdminUser,
+    serviceCategory,
+    paging,
+    ingestionPaging,
+    servicePermission,
+    dataModelPaging,
+    activeTab,
+    getServicePageTabs,
+  ]);
+
   if (isLoading) {
     return <Loader />;
+  }
+
+  if (!(servicePermission.ViewAll || servicePermission.ViewBasic)) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
   return (
@@ -1167,119 +1358,35 @@ const ServicePage: FunctionComponent = () => {
         </ErrorPlaceHolder>
       ) : (
         <PageLayoutV1
+          className="bg-white"
           pageTitle={t('label.entity-detail-plural', {
             entity: getEntityName(serviceDetails),
           })}>
-          {servicePermission.ViewAll || servicePermission.ViewBasic ? (
-            <Row
-              className="page-container"
-              data-testid="service-page"
-              gutter={[0, 8]}>
-              {serviceDetails && (
-                <Row className="w-full" wrap={false}>
-                  <Col flex="auto">
-                    <EntityHeader
-                      breadcrumb={slashedTableName}
-                      entityData={serviceDetails}
-                      icon={
-                        <img
-                          className="h-8"
-                          src={serviceTypeLogo(serviceDetails.serviceType)}
-                        />
-                      }
-                      serviceName={serviceDetails.name}
-                    />
-                  </Col>
-                  <Col flex="30px">
-                    <ManageButton
-                      isRecursiveDelete
-                      afterDeleteAction={handleAfterDeleteAction}
-                      allowSoftDelete={false}
-                      canDelete={servicePermission.Delete}
-                      deleteMessage={getDeleteEntityMessage(
-                        serviceCategory || '',
-                        paging.total,
-                        schemaCount,
-                        tableCount
-                      )}
-                      displayName={serviceDetails.displayName}
-                      editDisplayNamePermission={
-                        servicePermission.EditAll ||
-                        servicePermission.EditDisplayName
-                      }
-                      entityFQN={serviceFQN}
-                      entityId={serviceDetails.id}
-                      entityName={serviceDetails.name}
-                      entityType={serviceCategory?.slice(0, -1)}
-                      onEditDisplayName={handleUpdateDisplayName}
-                    />
-                  </Col>
-                </Row>
-              )}
+          <Row gutter={[0, 12]}>
+            <Col className="p-x-lg" span={24}>
+              <DataAssetsHeader
+                isRecursiveDelete
+                allowSoftDelete={false}
+                dataAsset={serviceDetails}
+                entityType={entityType}
+                permissions={servicePermission}
+                onDisplayNameUpdate={handleUpdateDisplayName}
+                onOwnerUpdate={handleUpdateOwner}
+                onRestoreDataAsset={() => Promise.resolve()}
+                onTierUpdate={handleUpdateTier}
+              />
+            </Col>
 
-              <Col span={24}>
-                <Space>
-                  <OwnerLabel
-                    hasPermission={
-                      servicePermission.EditAll || servicePermission.EditOwner
-                    }
-                    owner={serviceDetails?.owner}
-                    onUpdate={handleUpdateOwner}
-                  />
-                </Space>
-              </Col>
-              <Col data-testid="description-container" span={24}>
-                <DescriptionV1
-                  description={description || ''}
-                  entityFqn={serviceFQN}
-                  entityName={serviceFQN}
-                  entityType={serviceCategory.slice(0, -1) as EntityType}
-                  hasEditAccess={
-                    servicePermission.EditAll ||
-                    servicePermission.EditDescription
-                  }
-                  isEdit={isEdit}
-                  onCancel={onCancel}
-                  onDescriptionEdit={onDescriptionEdit}
-                  onDescriptionUpdate={onDescriptionUpdate}
-                />
-              </Col>
-              <Col span={24}>
-                <Tabs
-                  activeKey={activeTab}
-                  data-testid="tabs"
-                  items={tabs}
-                  onChange={activeTabHandler}
-                />
-                <Col span={24}>
-                  {activeTab === entitySpecificTabName && (
-                    <Row>
-                      <Col span={24}>
-                        <Row justify="end">
-                          <Col>
-                            <Switch
-                              checked={showDeleted}
-                              data-testid="show-deleted"
-                              onClick={setShowDeleted}
-                            />
-                            <Typography.Text className="m-l-xs">
-                              {t('label.deleted')}
-                            </Typography.Text>{' '}
-                          </Col>
-                        </Row>
-                      </Col>
-                      {entityServiceTab}
-                    </Row>
-                  )}
-                  {activeTab === EntityTabs.DATA_Model && dataModalTab}
-                  {activeTab === EntityTabs.INGESTIONS && ingestionTab}
-                  {activeTab === EntityTabs.CONNECTION && testConnectionTab}
-                </Col>
-              </Col>
-            </Row>
-          ) : (
-            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-          )}
+            <Col span={24}>
+              <Tabs
+                activeKey={activeTab}
+                className="entity-details-page-tabs"
+                data-testid="tabs"
+                items={tabs}
+                onChange={activeTabHandler}
+              />
+            </Col>
+          </Row>
         </PageLayoutV1>
       )}
     </>

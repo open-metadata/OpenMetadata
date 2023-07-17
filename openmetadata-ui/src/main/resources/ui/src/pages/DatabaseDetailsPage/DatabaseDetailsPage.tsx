@@ -556,6 +556,13 @@ const DatabaseDetails: FunctionComponent = () => {
     databaseSchemaPagingHandler,
   ]);
 
+  const editTagsPermission = useMemo(
+    () =>
+      (databasePermission.EditTags || databasePermission.EditAll) &&
+      !database?.deleted,
+    [databasePermission, database]
+  );
+
   const tabs = useMemo(
     () => [
       {
@@ -571,41 +578,44 @@ const DatabaseDetails: FunctionComponent = () => {
         children: (
           <Row gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
-              <div className="d-flex flex-col gap-4">
-                <DescriptionV1
-                  description={description}
-                  entityFieldThreads={getEntityFieldThreadCounts(
-                    EntityField.DESCRIPTION,
-                    entityFieldThreadCount
-                  )}
-                  entityFqn={databaseFQN}
-                  entityName={databaseName}
-                  entityType={EntityType.DATABASE}
-                  hasEditAccess={
-                    databasePermission.EditDescription ||
-                    databasePermission.EditAll
-                  }
-                  isEdit={isEdit}
-                  onCancel={onCancel}
-                  onDescriptionEdit={onDescriptionEdit}
-                  onDescriptionUpdate={onDescriptionUpdate}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
-                <Row justify="end">
-                  <Col className="p-x-xss">
-                    <Switch
-                      checked={showDeletedSchemas}
-                      data-testid="show-deleted"
-                      onClick={setShowDeletedSchemas}
-                    />
-                    <Typography.Text className="m-l-xs">
-                      {t('label.deleted')}
-                    </Typography.Text>{' '}
-                  </Col>
-                </Row>
-
+              <Row gutter={[16, 16]}>
+                <Col data-testid="description-container" span={24}>
+                  <DescriptionV1
+                    description={description}
+                    entityFieldThreads={getEntityFieldThreadCounts(
+                      EntityField.DESCRIPTION,
+                      entityFieldThreadCount
+                    )}
+                    entityFqn={databaseFQN}
+                    entityName={databaseName}
+                    entityType={EntityType.DATABASE}
+                    hasEditAccess={
+                      databasePermission.EditDescription ||
+                      databasePermission.EditAll
+                    }
+                    isEdit={isEdit}
+                    onCancel={onCancel}
+                    onDescriptionEdit={onDescriptionEdit}
+                    onDescriptionUpdate={onDescriptionUpdate}
+                    onThreadLinkSelect={onThreadLinkSelect}
+                  />
+                </Col>
+                <Col span={24}>
+                  <Row justify="end">
+                    <Col className="p-x-xss">
+                      <Switch
+                        checked={showDeletedSchemas}
+                        data-testid="show-deleted"
+                        onClick={setShowDeletedSchemas}
+                      />
+                      <Typography.Text className="m-l-xs">
+                        {t('label.deleted')}
+                      </Typography.Text>{' '}
+                    </Col>
+                  </Row>
+                </Col>
                 {databaseTable}
-              </div>
+              </Row>
             </Col>
             <Col
               className="entity-tag-right-panel-container"
@@ -616,10 +626,7 @@ const DatabaseDetails: FunctionComponent = () => {
                   entityFqn={databaseFQN}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.DATABASE}
-                  permission={
-                    databasePermission.EditDescription ||
-                    (databasePermission.EditAll && !database?.deleted)
-                  }
+                  permission={editTagsPermission}
                   selectedTags={tags}
                   tagType={TagSource.Classification}
                   onSelectionChange={handleTagSelection}
@@ -629,10 +636,7 @@ const DatabaseDetails: FunctionComponent = () => {
                   entityFqn={databaseFQN}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.DATABASE}
-                  permission={
-                    databasePermission.EditDescription ||
-                    (databasePermission.EditAll && !database?.deleted)
-                  }
+                  permission={editTagsPermission}
                   selectedTags={tags}
                   tagType={TagSource.Glossary}
                   onSelectionChange={handleTagSelection}
@@ -678,6 +682,7 @@ const DatabaseDetails: FunctionComponent = () => {
       databaseSchemaInstanceCount,
       feedCount,
       showDeletedSchemas,
+      editTagsPermission,
     ]
   );
 

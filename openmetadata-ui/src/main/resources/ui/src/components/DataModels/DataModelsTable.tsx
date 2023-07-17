@@ -20,7 +20,7 @@ import Loader from 'components/Loader/Loader';
 import { getDataModelDetailsPath, PAGE_SIZE } from 'constants/constants';
 import { isEmpty, isUndefined } from 'lodash';
 import { DataModelTableProps } from 'pages/DataModelPage/DataModelsInterface';
-import { ServicePageData } from 'pages/service';
+import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';

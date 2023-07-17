@@ -33,11 +33,13 @@ import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderT
 import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR, getDashboardDetailsPath } from 'constants/constants';
+import { SERVICE_CATEGORIES } from 'constants/Services.constant';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Database } from 'generated/entity/data/database';
+import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
 import { Table } from 'generated/entity/data/table';
@@ -49,7 +51,7 @@ import {
 } from 'generated/entity/feed/thread';
 import { useClipboard } from 'hooks/useClipBoard';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { getActiveAnnouncement, getFeedCount } from 'rest/feedsAPI';
@@ -70,7 +72,9 @@ import { showErrorToast } from 'utils/ToastUtils';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
-  DataAssetType,
+  DataAssetsType,
+  DataAssetsWithoutFollowersField,
+  DataAssetsWithServiceField,
 } from './DataAssetsHeader.interface';
 
 export const ExtraInfoLabel = ({
@@ -142,18 +146,29 @@ export const DataAssetsHeader = ({
   );
   const [copyTooltip, setCopyTooltip] = useState<string>();
 
-  const excludeEntityService = [EntityType.DATABASE].includes(entityType);
+  const excludeEntityService = [
+    EntityType.DATABASE,
+    EntityType.DATABASE_SCHEMA,
+    EntityType.DATABASE_SERVICE,
+    EntityType.DASHBOARD_SERVICE,
+    EntityType.MESSAGING_SERVICE,
+    EntityType.PIPELINE_SERVICE,
+    EntityType.MLMODEL_SERVICE,
+    EntityType.METADATA_SERVICE,
+    EntityType.STORAGE_SERVICE,
+    ...SERVICE_CATEGORIES,
+  ].includes(entityType);
   const hasFollowers = 'followers' in dataAsset;
 
   const { entityName, tier, isFollowing, version, followers } = useMemo(
     () => ({
       isFollowing: hasFollowers
-        ? (dataAsset as DataAssetType).followers?.some(
+        ? (dataAsset as DataAssetsWithoutFollowersField).followers?.some(
             ({ id }) => id === USERId
           )
         : false,
       followers: hasFollowers
-        ? (dataAsset as DataAssetType).followers?.length
+        ? (dataAsset as DataAssetsWithoutFollowersField).followers?.length
         : 0,
 
       tier: getTierTags(dataAsset.tags ?? []),
@@ -424,6 +439,87 @@ export const DataAssetsHeader = ({
 
         break;
 
+      case EntityType.DATABASE_SCHEMA:
+        const databaseSchemaDetails = dataAsset as DatabaseSchema;
+
+        returnData.breadcrumbs = getEntityBreadcrumbs(
+          databaseSchemaDetails,
+          EntityType.DATABASE_SCHEMA,
+          true
+        );
+
+        break;
+
+      case EntityType.DATABASE_SERVICE:
+        const databaseServiceDetails = dataAsset as DatabaseSchema;
+
+        returnData.breadcrumbs = getEntityBreadcrumbs(
+          databaseServiceDetails,
+          EntityType.DATABASE_SERVICE
+        );
+
+        break;
+
+      case EntityType.DASHBOARD_SERVICE:
+        const dashboardServiceDetails = dataAsset as DatabaseSchema;
+
+        returnData.breadcrumbs = getEntityBreadcrumbs(
+          dashboardServiceDetails,
+          EntityType.DASHBOARD_SERVICE
+        );
+
+        break;
+
+      case EntityType.MESSAGING_SERVICE:
+        const messagingServiceDetails = dataAsset as DatabaseSchema;
+
+        returnData.breadcrumbs = getEntityBreadcrumbs(
+          messagingServiceDetails,
+          EntityType.MESSAGING_SERVICE
+        );
+
+        break;
+
+      case EntityType.PIPELINE_SERVICE:
+        const pipelineServiceDetails = dataAsset as DatabaseSchema;
+
+        returnData.breadcrumbs = getEntityBreadcrumbs(
+          pipelineServiceDetails,
+          EntityType.PIPELINE_SERVICE
+        );
+
+        break;
+
+      case EntityType.MLMODEL_SERVICE:
+        const mlModelServiceDetails = dataAsset as DatabaseSchema;
+
+        returnData.breadcrumbs = getEntityBreadcrumbs(
+          mlModelServiceDetails,
+          EntityType.MLMODEL_SERVICE
+        );
+
+        break;
+
+      case EntityType.METADATA_SERVICE:
+        const metadataServiceDetails = dataAsset as DatabaseSchema;
+
+        returnData.breadcrumbs = getEntityBreadcrumbs(
+          metadataServiceDetails,
+          EntityType.METADATA_SERVICE
+        );
+
+        break;
+
+      case EntityType.STORAGE_SERVICE:
+        const storageServiceDetails = dataAsset as DatabaseSchema;
+
+        returnData.breadcrumbs = getEntityBreadcrumbs(
+          storageServiceDetails,
+          EntityType.STORAGE_SERVICE
+        );
+
+        break;
+
       case EntityType.TABLE:
       default:
         const tableDetails = dataAsset as Table;
@@ -489,6 +585,21 @@ export const DataAssetsHeader = ({
     setTimeout(() => setCopyTooltip(''), 2000);
   };
 
+  const isDataAssetsWithServiceField = useCallback(
+    (asset: DataAssetsType): asset is DataAssetsWithServiceField => {
+      return (asset as DataAssetsWithServiceField).service !== undefined;
+    },
+    []
+  );
+
+  const dataAssetServiceName = useMemo(() => {
+    if (isDataAssetsWithServiceField(dataAsset)) {
+      return dataAsset.service?.name ?? '';
+    } else {
+      return 'service';
+    }
+  }, [isDataAssetsWithServiceField, dataAsset]);
+
   return (
     <>
       <Row gutter={[8, 12]}>
@@ -507,7 +618,7 @@ export const DataAssetsHeader = ({
                 displayName={dataAsset.displayName}
                 icon={icon}
                 name={dataAsset?.name}
-                serviceName={dataAsset.service?.name ?? ''}
+                serviceName={dataAssetServiceName}
               />
             </Col>
             <Col span={24}>

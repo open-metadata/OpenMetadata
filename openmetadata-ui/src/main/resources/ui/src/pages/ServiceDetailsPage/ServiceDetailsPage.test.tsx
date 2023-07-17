@@ -21,14 +21,14 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import ServicePage from './index';
 import {
   CONTAINERS_DATA,
   DASHBOARD_DATA,
   mockData,
   mockDatabase,
   mockTabs,
-} from './mocks/servicePage.mock';
+} from './mocks/ServiceDetailsPage.mock';
+import ServiceDetailsPage from './ServiceDetailsPage';
 
 let mockParams = {
   serviceFQN: 'bigquery_gcp',
@@ -258,7 +258,7 @@ jest.mock('components/containers/PageLayoutV1', () => {
 
 describe('Test ServicePage Component', () => {
   it('Component should render', async () => {
-    const { container } = render(<ServicePage />, {
+    const { container } = render(<ServiceDetailsPage />, {
       wrapper: MemoryRouter,
     });
 
@@ -283,7 +283,7 @@ describe('Test ServicePage Component', () => {
   });
 
   it('Tab should render with counts', async () => {
-    const { container } = render(<ServicePage />, {
+    const { container } = render(<ServiceDetailsPage />, {
       wrapper: MemoryRouter,
     });
 
@@ -304,7 +304,7 @@ describe('Test ServicePage Component', () => {
   });
 
   it('Should render the service children table rows', async () => {
-    render(<ServicePage />, {
+    render(<ServiceDetailsPage />, {
       wrapper: MemoryRouter,
     });
     const tableContainer = await screen.findByTestId('service-children-table');
@@ -317,7 +317,7 @@ describe('Test ServicePage Component', () => {
   });
 
   it('Should render the owner name and profile pic if child has owner', async () => {
-    render(<ServicePage />, {
+    render(<ServiceDetailsPage />, {
       wrapper: MemoryRouter,
     });
     const tableContainer = await screen.findByTestId('service-children-table');
@@ -347,7 +347,7 @@ describe('Test ServicePage Component', () => {
     mockParams = { ...mockParams, tab: 'ingestions' };
 
     await act(async () => {
-      render(<ServicePage />, {
+      render(<ServiceDetailsPage />, {
         wrapper: MemoryRouter,
       });
     });
@@ -363,7 +363,7 @@ describe('Test ServicePage Component', () => {
     mockParams = { ...mockParams, tab: 'connection' };
 
     await act(async () => {
-      render(<ServicePage />, {
+      render(<ServiceDetailsPage />, {
         wrapper: MemoryRouter,
       });
     });
@@ -392,7 +392,7 @@ describe('Test ServicePage Component', () => {
     serviceTabType = 'dashboards';
 
     await act(async () => {
-      render(<ServicePage />, {
+      render(<ServiceDetailsPage />, {
         wrapper: MemoryRouter,
       });
     });
@@ -450,7 +450,7 @@ describe('Test ServicePage Component', () => {
     };
     serviceTabType = 'containers';
     await act(async () => {
-      render(<ServicePage />, {
+      render(<ServiceDetailsPage />, {
         wrapper: MemoryRouter,
       });
     });
