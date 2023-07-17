@@ -55,31 +55,30 @@ def run_lineage(config_path: str) -> None:
         print_init_error(exc, config_dict, WorkflowType.INGEST)
         sys.exit(1)
 
-    sql = open(workflow.filePath, encoding=UTF_8).read()
-
-    workflow.workflowConfig.openMetadataServerConfig
-    metadata = OpenMetadata(config=workflow.workflowConfig.openMetadataServerConfig)
-    service: DatabaseService = metadata.get_by_name(
-        entity=DatabaseService, fqn=workflow.serviceName
-    )
-
-    if service:
-        connection_type = service.serviceType.value
-        add_lineage_request = get_lineage_by_query(
-            metadata=metadata,
-            service_name=workflow.serviceName,
-            dialect=ConnectionTypeDialectMapper.dialect_of(connection_type),
-            query=sql,
-            database_name=None,
-            schema_name=None,
+    with open(workflow.filePath, encoding=UTF_8) as sql_file:
+        sql = sql_file.read()
+        metadata = OpenMetadata(config=workflow.workflowConfig.openMetadataServerConfig)
+        service: DatabaseService = metadata.get_by_name(
+            entity=DatabaseService, fqn=workflow.serviceName
         )
-        for lineage_request in add_lineage_request or []:
-            resp = metadata.add_lineage(lineage_request)
-            entity_name = resp.get("entity", {}).get("name")
-            for node in resp.get("nodes", []):
-                logger.info(
-                    f"added lineage between table {node.get('name')} and {entity_name} "
-                )
 
-    else:
-        logger.error(f"Service not found with name {workflow.filePath}")
+        if service:
+            connection_type = service.serviceType.value
+            add_lineage_request = get_lineage_by_query(
+                metadata=metadata,
+                service_name=workflow.serviceName,
+                dialect=ConnectionTypeDialectMapper.dialect_of(connection_type),
+                query=sql,
+                database_name=None,
+                schema_name=None,
+            )
+            for lineage_request in add_lineage_request or []:
+                resp = metadata.add_lineage(lineage_request)
+                entity_name = resp.get("entity", {}).get("name")
+                for node in resp.get("nodes", []):
+                    logger.info(
+                        f"added lineage between table {node.get('name')} and {entity_name} "
+                    )
+
+        else:
+            logger.error(f"Service not found with name {workflow.filePath}")
