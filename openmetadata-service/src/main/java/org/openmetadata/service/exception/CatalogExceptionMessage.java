@@ -244,7 +244,7 @@ public final class CatalogExceptionMessage {
 
   public static String invalidEnumValue(Class<? extends Enum<?>> enumClass, String key) {
     String enumValues =
-            Arrays.stream(enumClass.getEnumConstants()).map(Object::toString).collect(Collectors.joining(", "));
+        Arrays.stream(enumClass.getEnumConstants()).map(Object::toString).collect(Collectors.joining(", "));
     return "query param " + key + " must be one of [" + enumValues + "]";
   }
 }

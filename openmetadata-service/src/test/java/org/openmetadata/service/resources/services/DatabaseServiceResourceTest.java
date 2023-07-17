@@ -20,6 +20,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.invalid
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.*;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -264,15 +265,9 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     queryParams.put("include", "invalid-enum-value");
 
     assertResponse(
-            () -> listEntities
-                    (queryParams, ADMIN_AUTH_HEADERS),
-            BAD_REQUEST,
-            invalidEnumValue(Include.class, "include"));
+        () -> listEntities(queryParams, ADMIN_AUTH_HEADERS), BAD_REQUEST, invalidEnumValue(Include.class, "include"));
 
-    assertResponse(
-            () -> listEntities(queryParams, ADMIN_AUTH_HEADERS),
-            BAD_REQUEST,
-            invalidEnumValue(Include.class));
+    assertResponse(() -> listEntities(queryParams, ADMIN_AUTH_HEADERS), BAD_REQUEST, invalidEnumValue(Include.class));
   }
 
   public DatabaseService putTestConnectionResult(
