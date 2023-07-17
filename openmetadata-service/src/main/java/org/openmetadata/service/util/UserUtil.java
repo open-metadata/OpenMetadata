@@ -74,7 +74,7 @@ public final class UserUtil {
       updatedUser = originalUser;
 
       // Update Auth Mechanism if not present, and send mail to the user
-      if (Objects.equals(authProvider.value(), SSOAuthMechanism.SsoServiceType.BASIC.value())) {
+      if (authProvider.equals(AuthProvider.BASIC)) {
         if (originalUser.getAuthenticationMechanism() == null
             || originalUser.getAuthenticationMechanism().equals(new AuthenticationMechanism())) {
           updateUserWithHashedPwd(updatedUser, getPassword());
@@ -92,7 +92,7 @@ public final class UserUtil {
     } catch (EntityNotFoundException e) {
       updatedUser = user(username, domain, username).withIsAdmin(isAdmin).withIsEmailVerified(true);
       // Update Auth Mechanism if not present, and send mail to the user
-      if (Objects.equals(authProvider.value(), SSOAuthMechanism.SsoServiceType.BASIC.value())) {
+      if (authProvider.equals(AuthProvider.BASIC)) {
         updateUserWithHashedPwd(updatedUser, getPassword());
         EmailUtil.sendInviteMailToAdmin(updatedUser, ADMIN_USER_NAME);
       }
