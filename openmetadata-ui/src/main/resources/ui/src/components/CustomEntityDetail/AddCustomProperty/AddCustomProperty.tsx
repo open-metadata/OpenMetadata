@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Form, Row } from 'antd';
+import { Button, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
@@ -204,34 +204,33 @@ const AddCustomProperty = () => {
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-      <Card className="p-lg m-t-md">
-        <Form
-          data-testid="custom-property-form"
-          layout="vertical"
-          onFinish={handleSubmit}
-          onFocus={handleFieldFocus}>
-          {generateFormFields(formFields)}
-          <Row justify="end">
-            <Col>
-              <Button
-                data-testid="back-button"
-                type="link"
-                onClick={handleCancel}>
-                {t('label.back')}
-              </Button>
-            </Col>
-            <Col>
-              <Button
-                data-testid="create-button"
-                htmlType="submit"
-                loading={isCreating}
-                type="primary">
-                {t('label.create')}
-              </Button>
-            </Col>
-          </Row>
-        </Form>
-      </Card>
+      <Form
+        className="m-t-md"
+        data-testid="custom-property-form"
+        layout="vertical"
+        onFinish={handleSubmit}
+        onFocus={handleFieldFocus}>
+        {generateFormFields(formFields)}
+        <Row justify="end">
+          <Col>
+            <Button
+              data-testid="back-button"
+              type="link"
+              onClick={handleCancel}>
+              {t('label.back')}
+            </Button>
+          </Col>
+          <Col>
+            <Button
+              data-testid="create-button"
+              htmlType="submit"
+              loading={isCreating}
+              type="primary">
+              {t('label.create')}
+            </Button>
+          </Col>
+        </Row>
+      </Form>
     </div>
   );
 

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Form, FormProps, Input, Space } from 'antd';
+import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -174,12 +174,14 @@ const RequestTag = () => {
                 },
               ]}
             />
-            <Card
-              className="m-t-0 request-tags"
-              key="request-tags"
-              title={t('label.create-entity', {
-                entity: t('label.task'),
-              })}>
+            <div className="m-t-0 request-tags" key="request-tags">
+              <Typography.Paragraph
+                className="text-base"
+                data-testid="form-title">
+                {t('label.create-entity', {
+                  entity: t('label.task'),
+                })}
+              </Typography.Paragraph>
               <Form
                 form={form}
                 initialValues={{
@@ -245,7 +247,7 @@ const RequestTag = () => {
                   </Space>
                 </Form.Item>
               </Form>
-            </Card>
+            </div>
           </div>
         ),
       }}
