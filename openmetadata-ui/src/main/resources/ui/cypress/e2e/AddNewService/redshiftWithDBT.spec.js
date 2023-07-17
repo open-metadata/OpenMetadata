@@ -92,9 +92,7 @@ describe('RedShift Ingestion', () => {
     );
   });
 
-  // skipping as backend flow is changed https://github.com/open-metadata/OpenMetadata/pull/11836,
-  // Todo: unskip once it is fixed from ingestion side https://github.com/open-metadata/OpenMetadata/issues/11592
-  it.skip('Add DBT ingestion', () => {
+  it('Add DBT ingestion', () => {
     interceptURL(
       'GET',
       'api/v1/teams/name/Organization?fields=*',
@@ -174,7 +172,8 @@ describe('RedShift Ingestion', () => {
     verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
 
     // Add DBT ingestion
-    cy.get('[data-testid="dbt-source"]').should('be.visible').click();
+    cy.get('[data-testid="dbt-source"]').scrollIntoView().should('be.visible');
+    cy.get('[data-testid="dbt-source"]').click();
     cy.get('.ant-select-item-option-content')
       .contains('HTTP Config Source')
       .click();
@@ -218,9 +217,7 @@ describe('RedShift Ingestion', () => {
     });
   });
 
-  // skipping as backend flow is changed https://github.com/open-metadata/OpenMetadata/pull/11836,
-  // Todo: unskip once it is fixed from ingestion side https://github.com/open-metadata/OpenMetadata/issues/11592
-  it.skip('Validate DBT is ingested properly', () => {
+  it('Validate DBT is ingested properly', () => {
     // Verify DBT tags
     interceptURL(
       'GET',
@@ -263,7 +260,7 @@ describe('RedShift Ingestion', () => {
 
     cy.get('[data-testid="lineage"]').should('be.visible').click();
 
-    cy.get('[data-testid="lineage-entity"]').should(
+    cy.get('[data-testid="entity-header-display-name"]').should(
       'contain',
       DBT.dbtLineageNodeLabel
     );

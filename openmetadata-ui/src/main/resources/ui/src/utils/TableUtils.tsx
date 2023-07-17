@@ -24,7 +24,6 @@ import { uniqueId, upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
-import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconForeignKey } from '../assets/svg/foriegnKey.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
@@ -36,8 +35,6 @@ import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
 import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-notnull.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
-import { ReactComponent as IconPendingBadge } from '../assets/svg/pending-badge.svg';
-import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
@@ -65,10 +62,8 @@ import {
   DataType,
   TableConstraint,
 } from '../generated/entity/data/table';
-import { TestCaseStatus } from '../generated/tests/testCase';
 import { TagLabel } from '../generated/type/tagLabel';
 import {
-  getPartialNameFromFQN,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
   sortTagsCaseInsensitive,
@@ -77,25 +72,6 @@ import { getGlossaryPath, getSettingPath } from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import { ordinalize } from './StringsUtils';
 import SVGIcons, { Icons } from './SvgUtils';
-
-export const getBadgeName = (tableType?: string) => {
-  switch (tableType) {
-    case 'QUERY':
-      return t('label.query-lowercase');
-    default:
-      return t('label.table-lowercase');
-  }
-};
-
-export const usageSeverity = (value: number): string => {
-  if (value > 75) {
-    return 'High';
-  } else if (value >= 25 && value <= 75) {
-    return 'Medium';
-  } else {
-    return 'Low';
-  }
-};
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
@@ -136,26 +112,6 @@ export const getTagsWithoutTier = (
     (item) =>
       !item.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) ||
       isNaN(parseInt(item.tagFQN.substring(9).trim()))
-  );
-};
-
-export const getTierFromSearchTableTags = (tags: Array<string>): string => {
-  const tierTag = tags.find(
-    (item) =>
-      item.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) &&
-      !isNaN(parseInt(item.substring(9).trim()))
-  );
-
-  return tierTag || '';
-};
-
-export const getSearchTableTagsWithoutTier = (
-  tags: Array<string>
-): Array<string> => {
-  return tags.filter(
-    (item) =>
-      !item.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) ||
-      isNaN(parseInt(item.substring(9).trim()))
   );
 };
 
@@ -304,28 +260,6 @@ export const getServiceIcon = (source: SourceType) => {
   }
 };
 
-export const getEntityHeaderLabel = (source: SourceType) => {
-  let headingText = '';
-  if ('databaseSchema' in source && 'database' in source) {
-    headingText = `${source.database?.name} / ${source.databaseSchema?.name}`;
-  } else if (
-    source.entityType === EntityType.GLOSSARY_TERM ||
-    source.entityType === EntityType.TAG
-  ) {
-    headingText = getPartialNameFromFQN(source.fullyQualifiedName || '', [
-      'service',
-    ]);
-  }
-
-  return headingText ? (
-    <span
-      className="text-grey-muted text-xs m-b-sm d-inline-block"
-      data-testid="database-schema">
-      {headingText}
-    </span>
-  ) : null;
-};
-
 export const getEntityIcon = (indexType: string) => {
   switch (indexType) {
     case SearchIndex.TOPIC:
@@ -440,22 +374,6 @@ export const getEntityFqnFromEntityLink = (
   }
 
   return tableFqn;
-};
-
-export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
-  switch (status) {
-    case TestCaseStatus.Success:
-      return IconSuccessBadge;
-
-    case TestCaseStatus.Failed:
-      return IconFailBadge;
-
-    case TestCaseStatus.Aborted:
-      return IconPendingBadge;
-
-    default:
-      return IconPendingBadge;
-  }
 };
 
 export function getTableExpandableConfig<T>(

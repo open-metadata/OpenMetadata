@@ -59,9 +59,6 @@ const mockPaginatedData = {
 
 jest.mock('../../utils/EntityLineageUtils', () => ({
   dragHandle: jest.fn(),
-  getDataLabel: jest
-    .fn()
-    .mockReturnValue(<span data-testid="lineage-entity">datalabel</span>),
   getDeletedLineagePlaceholder: jest
     .fn()
     .mockReturnValue(

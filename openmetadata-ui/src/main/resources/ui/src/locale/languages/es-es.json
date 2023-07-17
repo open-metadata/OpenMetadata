@@ -143,6 +143,7 @@
     "completed-entity": "{{entity}} completado",
     "condition": "Condición",
     "config": "Configuración",
+    "configuration": "Configuration",
     "configure-a-service": "Configurar un servicio",
     "configure-dbt-model": "Configurar modelo de dbt",
     "configure-entity": "Configurar {{entity}}",
