@@ -26,8 +26,8 @@ import {
   getEntityFieldDisplay,
   getEntityFQN,
   getEntityType,
-  prepareFeedLink,
 } from 'utils/FeedUtils';
+import { getEntityLink } from 'utils/TableUtils';
 import {
   getDateTimeFromMilliSeconds,
   getDayTimeByTimeStamp,
@@ -76,7 +76,7 @@ const FeedCardHeaderV1 = ({
             <Link
               className="break-all"
               data-testid="entitylink"
-              to={prepareFeedLink(entityType, entityFQN)}>
+              to={getEntityLink(entityType, entityFQN)}>
               <span>{entityDisplayName(entityType, entityFQN)}</span>
             </Link>
           </EntityPopOverCard>

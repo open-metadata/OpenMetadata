@@ -72,7 +72,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "glossaries", order = 6) // Initialize before GlossaryTerm and after Classification and Tags
 public class GlossaryResource extends EntityResource<Glossary, GlossaryRepository> {
   public static final String COLLECTION_PATH = "v1/glossaries/";
-  static final String FIELDS = "owner,tags,reviewers,usageCount,termCount";
+  static final String FIELDS = "owner,tags,reviewers,usageCount,termCount,domain";
 
   @Override
   public Glossary addHref(UriInfo uriInfo, Glossary glossary) {

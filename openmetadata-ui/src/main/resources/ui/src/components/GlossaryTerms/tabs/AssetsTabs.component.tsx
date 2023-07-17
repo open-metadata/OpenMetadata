@@ -16,8 +16,8 @@ import type { ButtonType } from 'antd/lib/button';
 import classNames from 'classnames';
 import { AssetsUnion } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
-import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
 import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
+import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import Loader from 'components/Loader/Loader';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import {
@@ -219,7 +219,7 @@ const AssetsTabs = forwardRef(
     }
 
     return (
-      <div data-testid="table-container">
+      <div className="p-md assets-tab-container" data-testid="table-container">
         {AssetsFilterOptions.map((option) => {
           const buttonStyle =
             activeFilter === option.value
@@ -253,7 +253,7 @@ const AssetsTabs = forwardRef(
         {data.length ? (
           <>
             {data.map(({ _source, _id = '' }, index) => (
-              <TableDataCardV2
+              <ExploreSearchCard
                 className={classNames(
                   'm-b-sm cursor-pointer',
                   selectedCard?.id === _source.id ? 'highlight-card' : ''
@@ -261,6 +261,7 @@ const AssetsTabs = forwardRef(
                 handleSummaryPanelDisplay={setSelectedCard}
                 id={_id}
                 key={index}
+                showTags={false}
                 source={_source}
               />
             ))}

@@ -24,7 +24,7 @@
     },
     "sourceUrl": {
       "description": "Dashboard URL suffix from its service.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "project": {
       "description": "Name of the project / workspace / collection in which the dashboard is contained",
@@ -65,6 +65,17 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Dashboard belongs to.",
+      "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "dataProducts" : {
+      "description": "List of fully qualified names of data products this entity is part of.",
+      "type": "array",
+      "items" : {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
     }
   },
   "required": ["name", "service"],

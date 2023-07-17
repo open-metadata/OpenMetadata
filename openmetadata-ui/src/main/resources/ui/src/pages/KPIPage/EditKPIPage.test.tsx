@@ -55,13 +55,17 @@ jest.mock('../../hooks/authHooks', () => ({
 
 jest.mock('../../utils/DataInsightUtils', () => ({
   getKpiTargetValueByMetricType: jest.fn().mockReturnValue(10),
-  getKPIFormattedDates: jest.fn().mockReturnValue({
-    startDate: `2022-12-08 00:00`,
-    endDate: `2022-12-28 23:59`,
-  }),
   getDisabledDates: jest.fn().mockReturnValue(true),
-  getKpiDateFormatByTimeStamp: jest.fn().mockReturnValue('2022-12-08'),
 }));
+
+jest.mock('components/common/ResizablePanels/ResizablePanels', () =>
+  jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <>
+      <div>{firstPanel.children}</div>
+      <div>{secondPanel.children}</div>
+    </>
+  ))
+);
 
 describe('Edit KPI page', () => {
   it('Should render all the components', async () => {

@@ -78,6 +78,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -89,9 +90,9 @@ import org.openmetadata.service.util.ResultList;
 public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
-  static final String TABLE_PATCH_FIELDS = "owner,tags,tableConstraints,tablePartition,extension,followers";
+  static final String PATCH_FIELDS = "owner,tags,tableConstraints,tablePartition,extension,followers";
   // Table fields that can be updated in a PUT request
-  static final String TABLE_UPDATE_FIELDS = "owner,tags,tableConstraints,tablePartition,dataModel,extension,followers";
+  static final String UPDATE_FIELDS = "owner,tags,tableConstraints,tablePartition,dataModel,extension,followers";
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
@@ -111,8 +112,8 @@ public class TableRepository extends EntityRepository<Table> {
         Table.class,
         daoCollection.tableDAO(),
         daoCollection,
-        TABLE_PATCH_FIELDS,
-        TABLE_UPDATE_FIELDS);
+        PATCH_FIELDS,
+        UPDATE_FIELDS);
   }
 
   @Override
@@ -132,16 +133,20 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public void setInheritedFields(Table table) throws IOException {
-    setInheritedProperties(table, table.getDatabaseSchema().getId());
-  }
+  public Table setInheritedFields(Table table, Fields fields) throws IOException {
+    DatabaseSchema schema = null;
+    // If table does not have owner, then inherit it from parent databaseSchema
+    if (fields.contains(FIELD_OWNER) && table.getOwner() == null) {
+      schema = Entity.getEntity(DATABASE_SCHEMA, table.getDatabaseSchema().getId(), "owner", ALL);
+      table.withOwner(schema.getOwner());
+    }
 
-  public void setInheritedProperties(Table table, UUID schemaId) throws IOException {
     // If table does not have retention period, then inherit it from parent databaseSchema
     if (table.getRetentionPeriod() == null) {
-      DatabaseSchema schema = Entity.getEntity(DATABASE_SCHEMA, schemaId, "", ALL);
+      schema = schema == null ? Entity.getEntity(DATABASE_SCHEMA, table.getDatabaseSchema().getId(), "", ALL) : schema;
       table.withRetentionPeriod(schema.getRetentionPeriod());
     }
+    return table;
   }
 
   private void setDefaultFields(Table table) throws IOException {
@@ -166,6 +171,11 @@ public class TableRepository extends EntityRepository<Table> {
     table.setFullyQualifiedName(
         FullyQualifiedName.add(table.getDatabaseSchema().getFullyQualifiedName(), table.getName()));
     ColumnUtil.setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(Table entity) {
+    return FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
   }
 
   @Transaction
@@ -238,7 +248,11 @@ public class TableRepository extends EntityRepository<Table> {
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
 
     // Set the column tags. Will be used to mask the sample data
-    if (!authorizePII) getColumnTags(true, table.getColumns());
+    if (!authorizePII) {
+      getColumnTags(true, table.getColumns());
+      table.setTags(getTags(table.getFullyQualifiedName()));
+      return PIIMasker.getSampleData(table);
+    }
 
     return table;
   }
@@ -341,32 +355,18 @@ public class TableRepository extends EntityRepository<Table> {
   public Table addTableProfileData(UUID tableId, CreateTableProfile createTableProfile) throws IOException {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
-    TableProfile storedTableProfile =
-        JsonUtils.readValue(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .getExtensionAtTimestamp(
-                    table.getFullyQualifiedName(),
-                    TABLE_PROFILE_EXTENSION,
-                    createTableProfile.getTableProfile().getTimestamp()),
-            TableProfile.class);
-    if (storedTableProfile != null) {
-      daoCollection
-          .entityExtensionTimeSeriesDao()
-          .update(
-              table.getFullyQualifiedName(),
-              TABLE_PROFILE_EXTENSION,
-              JsonUtils.pojoToJson(createTableProfile.getTableProfile()),
-              createTableProfile.getTableProfile().getTimestamp());
-    } else {
-      daoCollection
-          .entityExtensionTimeSeriesDao()
-          .insert(
-              table.getFullyQualifiedName(),
-              TABLE_PROFILE_EXTENSION,
-              "tableProfile",
-              JsonUtils.pojoToJson(createTableProfile.getTableProfile()));
-    }
+    String storedTableProfile =
+        getExtensionAtTimestamp(
+            table.getFullyQualifiedName(),
+            TABLE_PROFILE_EXTENSION,
+            createTableProfile.getTableProfile().getTimestamp());
+    storeTimeSeries(
+        table.getFullyQualifiedName(),
+        TABLE_PROFILE_EXTENSION,
+        "tableProfile",
+        JsonUtils.pojoToJson(createTableProfile.getTableProfile()),
+        createTableProfile.getTableProfile().getTimestamp(),
+        storedTableProfile != null);
 
     for (ColumnProfile columnProfile : createTableProfile.getColumnProfile()) {
       // Validate all the columns
@@ -374,64 +374,35 @@ public class TableRepository extends EntityRepository<Table> {
       if (column == null) {
         throw new IllegalArgumentException("Invalid column name " + columnProfile.getName());
       }
-      ColumnProfile storedColumnProfile =
-          JsonUtils.readValue(
-              daoCollection
-                  .entityExtensionTimeSeriesDao()
-                  .getExtensionAtTimestamp(
-                      column.getFullyQualifiedName(), TABLE_COLUMN_PROFILE_EXTENSION, columnProfile.getTimestamp()),
-              ColumnProfile.class);
-
-      if (storedColumnProfile != null) {
-        daoCollection
-            .entityExtensionTimeSeriesDao()
-            .update(
-                column.getFullyQualifiedName(),
-                TABLE_COLUMN_PROFILE_EXTENSION,
-                JsonUtils.pojoToJson(columnProfile),
-                storedColumnProfile.getTimestamp());
-      } else {
-        daoCollection
-            .entityExtensionTimeSeriesDao()
-            .insert(
-                column.getFullyQualifiedName(),
-                TABLE_COLUMN_PROFILE_EXTENSION,
-                "columnProfile",
-                JsonUtils.pojoToJson(columnProfile));
-      }
+      String storedColumnProfile =
+          getExtensionAtTimestamp(
+              column.getFullyQualifiedName(), TABLE_COLUMN_PROFILE_EXTENSION, columnProfile.getTimestamp());
+      storeTimeSeries(
+          column.getFullyQualifiedName(),
+          TABLE_COLUMN_PROFILE_EXTENSION,
+          "columnProfile",
+          JsonUtils.pojoToJson(columnProfile),
+          columnProfile.getTimestamp(),
+          storedColumnProfile != null);
     }
 
     List<SystemProfile> systemProfiles = createTableProfile.getSystemProfile();
     if (systemProfiles != null && !systemProfiles.isEmpty()) {
       for (SystemProfile systemProfile : createTableProfile.getSystemProfile()) {
-        SystemProfile storedSystemProfile =
-            JsonUtils.readValue(
-                daoCollection
-                    .entityExtensionTimeSeriesDao()
-                    .getExtensionAtTimestampWithOperation(
-                        table.getFullyQualifiedName(),
-                        SYSTEM_PROFILE_EXTENSION,
-                        systemProfile.getTimestamp(),
-                        systemProfile.getOperation().value()),
-                SystemProfile.class);
-        if (storedSystemProfile != null) {
-          daoCollection
-              .entityExtensionTimeSeriesDao()
-              .updateExtensionByOperation(
-                  table.getFullyQualifiedName(),
-                  SYSTEM_PROFILE_EXTENSION,
-                  JsonUtils.pojoToJson(systemProfile),
-                  storedSystemProfile.getTimestamp(),
-                  storedSystemProfile.getOperation().value());
-        } else {
-          daoCollection
-              .entityExtensionTimeSeriesDao()
-              .insert(
-                  table.getFullyQualifiedName(),
-                  SYSTEM_PROFILE_EXTENSION,
-                  "systemProfile",
-                  JsonUtils.pojoToJson(systemProfile));
-        }
+        String storedSystemProfile =
+            getExtensionAtTimestampWithOperation(
+                table.getFullyQualifiedName(),
+                SYSTEM_PROFILE_EXTENSION,
+                systemProfile.getTimestamp(),
+                systemProfile.getOperation().value());
+        storeTimeSeriesWithOperation(
+            table.getFullyQualifiedName(),
+            SYSTEM_PROFILE_EXTENSION,
+            "systemProfile",
+            JsonUtils.pojoToJson(systemProfile),
+            systemProfile.getTimestamp(),
+            systemProfile.getOperation().value(),
+            storedSystemProfile != null);
       }
     }
 
@@ -452,13 +423,11 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     TableProfile storedTableProfile =
-        JsonUtils.readValue(
-            daoCollection.entityExtensionTimeSeriesDao().getExtensionAtTimestamp(fqn, extension, timestamp),
-            TableProfile.class);
+        JsonUtils.readValue(getExtensionAtTimestamp(fqn, extension, timestamp), TableProfile.class);
     if (storedTableProfile == null) {
       throw new EntityNotFoundException(String.format("Failed to find table profile for %s at %s", fqn, timestamp));
     }
-    daoCollection.entityExtensionTimeSeriesDao().deleteAtTimestamp(fqn, extension, timestamp);
+    deleteExtensionAtTimestamp(fqn, extension, timestamp);
   }
 
   @Transaction
@@ -466,10 +435,7 @@ public class TableRepository extends EntityRepository<Table> {
     List<TableProfile> tableProfiles;
     tableProfiles =
         JsonUtils.readObjects(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .listBetweenTimestamps(fqn, TABLE_PROFILE_EXTENSION, startTs, endTs),
-            TableProfile.class);
+            getResultsFromAndToTimestamps(fqn, TABLE_PROFILE_EXTENSION, startTs, endTs), TableProfile.class);
     return new ResultList<>(tableProfiles, startTs.toString(), endTs.toString(), tableProfiles.size());
   }
 
@@ -478,10 +444,7 @@ public class TableRepository extends EntityRepository<Table> {
     List<ColumnProfile> columnProfiles;
     columnProfiles =
         JsonUtils.readObjects(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .listBetweenTimestamps(fqn, TABLE_COLUMN_PROFILE_EXTENSION, startTs, endTs),
-            ColumnProfile.class);
+            getResultsFromAndToTimestamps(fqn, TABLE_COLUMN_PROFILE_EXTENSION, startTs, endTs), ColumnProfile.class);
     return new ResultList<>(columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
   }
 
@@ -490,10 +453,7 @@ public class TableRepository extends EntityRepository<Table> {
     List<SystemProfile> systemProfiles;
     systemProfiles =
         JsonUtils.readObjects(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .listBetweenTimestamps(fqn, SYSTEM_PROFILE_EXTENSION, startTs, endTs),
-            SystemProfile.class);
+            getResultsFromAndToTimestamps(fqn, SYSTEM_PROFILE_EXTENSION, startTs, endTs), SystemProfile.class);
     return new ResultList<>(systemProfiles, startTs.toString(), endTs.toString(), systemProfiles.size());
   }
 
@@ -501,9 +461,7 @@ public class TableRepository extends EntityRepository<Table> {
     for (Column column : columnList) {
       ColumnProfile columnProfile =
           JsonUtils.readValue(
-              daoCollection
-                  .entityExtensionTimeSeriesDao()
-                  .getLatestExtension(column.getFullyQualifiedName(), TABLE_COLUMN_PROFILE_EXTENSION),
+              getLatestExtensionFromTimeseries(column.getFullyQualifiedName(), TABLE_COLUMN_PROFILE_EXTENSION),
               ColumnProfile.class);
       column.setProfile(columnProfile);
       if (column.getChildren() != null) {
@@ -517,15 +475,16 @@ public class TableRepository extends EntityRepository<Table> {
     Table table = dao.findEntityByName(fqn);
     TableProfile tableProfile =
         JsonUtils.readValue(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .getLatestExtension(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION),
+            getLatestExtensionFromTimeseries(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION),
             TableProfile.class);
     table.setProfile(tableProfile);
     setColumnProfile(table.getColumns());
 
     // Set the column tags. Will be used to hide the data
-    if (!authorizePII) getColumnTags(true, table.getColumns());
+    if (!authorizePII) {
+      getColumnTags(true, table.getColumns());
+      return PIIMasker.getTableProfile(table);
+    }
 
     return table;
   }
@@ -629,11 +588,9 @@ public class TableRepository extends EntityRepository<Table> {
       stored.setTags(modelColumn.getTags());
     }
     applyTags(table.getColumns());
-    dao.update(table.getId(), JsonUtils.pojoToJson(table));
-
+    dao.update(table.getId(), FullyQualifiedName.buildHash(table.getFullyQualifiedName()), JsonUtils.pojoToJson(table));
     setFieldsInternal(table, new Fields(List.of(FIELD_OWNER), FIELD_OWNER));
     setFieldsInternal(table, new Fields(List.of(FIELD_TAGS), FIELD_TAGS));
-
     return table;
   }
 
@@ -652,17 +609,12 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void prepare(Table table) throws IOException {
-    DatabaseSchema schema = Entity.getEntity(table.getDatabaseSchema(), "owner", ALL);
+    DatabaseSchema schema = Entity.getEntity(table.getDatabaseSchema(), "", ALL);
     table
         .withDatabaseSchema(schema.getEntityReference())
         .withDatabase(schema.getDatabase())
         .withService(schema.getService())
         .withServiceType(schema.getServiceType());
-
-    // Carry forward ownership from database schema
-    if (table.getOwner() == null && schema.getOwner() != null) {
-      table.setOwner(schema.getOwner().withDescription("inherited"));
-    }
 
     // Validate column tags
     addDerivedColumnTags(table.getColumns());
@@ -690,12 +642,6 @@ public class TableRepository extends EntityRepository<Table> {
   public void storeRelationships(Table table) {
     // Add relationship from database to table
     addRelationship(table.getDatabaseSchema().getId(), table.getId(), DATABASE_SCHEMA, TABLE, Relationship.CONTAINS);
-
-    // Add table owner relationship
-    storeOwner(table, table.getOwner());
-
-    // Add tag to table relationship
-    applyTags(table);
   }
 
   @Override
@@ -747,19 +693,31 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) throws IOException {
-    // TODO move this as the first check
     validateEntityLinkFieldExists(entityLink, task.getType());
     if (entityLink.getFieldName().equals("columns")) {
+      String columnName = entityLink.getArrayFieldName();
+      String childrenName = "";
+      if (entityLink.getArrayFieldName().contains(".")) {
+        String fieldNameWithoutQuotes =
+            entityLink.getArrayFieldName().substring(1, entityLink.getArrayFieldName().length() - 1);
+        columnName = fieldNameWithoutQuotes.substring(0, fieldNameWithoutQuotes.indexOf("."));
+        childrenName = fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
+      }
       Table table = getByName(null, entityLink.getEntityFQN(), getFields("columns,tags"), Include.ALL);
-      Column column =
-          table.getColumns().stream()
-              .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
-              .findFirst()
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          CatalogExceptionMessage.invalidFieldName("column", entityLink.getArrayFieldName())));
-
+      Column column = null;
+      for (Column c : table.getColumns()) {
+        if (c.getName().equals(columnName)) {
+          column = c;
+          break;
+        }
+      }
+      if (childrenName != "" && column != null) {
+        column = getChildrenColumn(column.getChildren(), childrenName);
+      }
+      if (column == null) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.invalidFieldName("column", entityLink.getArrayFieldName()));
+      }
       String origJson = JsonUtils.pojoToJson(table);
       if (EntityUtil.isDescriptionTask(task.getType())) {
         column.setDescription(newValue);
@@ -773,6 +731,27 @@ public class TableRepository extends EntityRepository<Table> {
       return;
     }
     super.update(task, entityLink, newValue, user);
+  }
+
+  private static Column getChildrenColumn(List<Column> column, String childrenName) {
+    Column childrenColumn = null;
+    for (Column col : column) {
+      if (col.getName().equals(childrenName)) {
+        childrenColumn = col;
+        break;
+      }
+    }
+    if (childrenColumn == null) {
+      for (int i = 0; i < column.size(); i++) {
+        if (column.get(i).getChildren() != null) {
+          childrenColumn = getChildrenColumn(column.get(i).getChildren(), childrenName);
+          if (childrenColumn != null) {
+            break;
+          }
+        }
+      }
+    }
+    return childrenColumn;
   }
 
   private void getColumnTags(boolean setTags, List<Column> columns) {
@@ -843,8 +822,8 @@ public class TableRepository extends EntityRepository<Table> {
                   daoCollection
                       .fieldRelationshipDAO()
                       .find(
-                          fromEntityFQN,
-                          toEntityFQN,
+                          FullyQualifiedName.buildHash(fromEntityFQN),
+                          FullyQualifiedName.buildHash(toEntityFQN),
                           entityRelationType,
                           entityRelationType,
                           Relationship.JOINED_WITH.ordinal()))
@@ -858,6 +837,8 @@ public class TableRepository extends EntityRepository<Table> {
       daoCollection
           .fieldRelationshipDAO()
           .upsert(
+              FullyQualifiedName.buildHash(fromEntityFQN),
+              FullyQualifiedName.buildHash(toEntityFQN),
               fromEntityFQN,
               toEntityFQN,
               entityRelationType,
@@ -913,7 +894,7 @@ public class TableRepository extends EntityRepository<Table> {
     List<Pair<String, List<DailyCount>>> entityRelations =
         daoCollection.fieldRelationshipDAO()
             .listBidirectional(
-                table.getFullyQualifiedName(),
+                FullyQualifiedName.buildHash(table.getFullyQualifiedName()),
                 FIELD_RELATION_TABLE_TYPE,
                 FIELD_RELATION_TABLE_TYPE,
                 Relationship.JOINED_WITH.ordinal())
@@ -935,7 +916,7 @@ public class TableRepository extends EntityRepository<Table> {
     List<Triple<String, String, List<DailyCount>>> entityRelations =
         daoCollection.fieldRelationshipDAO()
             .listBidirectionalByPrefix(
-                table.getFullyQualifiedName(),
+                FullyQualifiedName.buildHash(table.getFullyQualifiedName()),
                 FIELD_RELATION_COLUMN_TYPE,
                 FIELD_RELATION_COLUMN_TYPE,
                 Relationship.JOINED_WITH.ordinal())

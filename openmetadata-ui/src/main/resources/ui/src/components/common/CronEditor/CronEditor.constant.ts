@@ -41,7 +41,12 @@ export const getPeriodOptions = () => {
       label: i18n.t('label.week'),
       value: 'week',
       prep: 'on',
-    } /* ,
+    },
+    {
+      label: i18n.t('label.custom'),
+      value: 'custom',
+    },
+    /* ,
     {
       label: 'month',
       value: 'month',
@@ -51,7 +56,7 @@ export const getPeriodOptions = () => {
       label: 'year',
       value: 'year',
       prep: 'on the'
-    }*/,
+    }*/
   ];
 };
 
@@ -202,4 +207,6 @@ export const SELECTED_PERIOD_OPTIONS = {
   day: 'selectedDayOption',
   week: 'selectedWeekOption',
   minute: 'selectedMinuteOption',
+  month: 'selectedMonthOption',
+  year: 'selectedYearOption',
 };

@@ -13,7 +13,7 @@ Airflow source to extract metadata from OM UI
 """
 import traceback
 from datetime import datetime
-from typing import Any, Iterable, List, Optional, cast
+from typing import Iterable, List, Optional, cast
 
 from airflow.models import BaseOperator, DagRun, TaskInstance
 from airflow.models.serialized_dag import SerializedDagModel
@@ -49,6 +49,7 @@ from metadata.ingestion.source.pipeline.airflow.models import (
     AirflowDag,
     AirflowDagDetails,
 )
+from metadata.ingestion.source.pipeline.airflow.utils import get_schedule_interval
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.helpers import clean_uri, datetime_to_ts
 from metadata.utils.logger import ingestion_logger
@@ -60,21 +61,6 @@ STATUS_MAP = {
     "failed": StatusType.Failed.value,
     "queued": StatusType.Pending.value,
 }
-
-
-class OMSerializedDagDetails(BaseModel):
-    """
-    Custom model we get from the Airflow db
-    as a scoped SELECT from SerializedDagModel
-    """
-
-    dag_id: str
-    data: Any
-    fileloc: str
-
-    # We don't have a validator for SerializedDag
-    class Config:
-        arbitrary_types_allowed = True
 
 
 class OMTaskInstance(BaseModel):
@@ -204,7 +190,7 @@ class AirflowSource(PipelineServiceSource):
         ]
 
     def yield_pipeline_status(
-        self, pipeline_details: SerializedDAG
+        self, pipeline_details: AirflowDagDetails
     ) -> OMetaPipelineStatus:
         try:
             dag_run_list = self.get_pipeline_status(pipeline_details.dag_id)
@@ -249,7 +235,7 @@ class AirflowSource(PipelineServiceSource):
                 " Skipping status ingestion."
             )
 
-    def get_pipelines_list(self) -> Iterable[OMSerializedDagDetails]:
+    def get_pipelines_list(self) -> Iterable[AirflowDagDetails]:
         """
         List all DAGs from the metadata db.
 
@@ -262,27 +248,27 @@ class AirflowSource(PipelineServiceSource):
             if hasattr(SerializedDagModel, "_data")
             else SerializedDagModel.data  # For 2.2.5 and 2.1.4
         )
-
         for serialized_dag in self.session.query(
             SerializedDagModel.dag_id,
             json_data_column,
             SerializedDagModel.fileloc,
         ).all():
             try:
-                data = serialized_dag[1]["dag"]
-                dag = AirflowDagDetails(
-                    dag_id=serialized_dag[0],
-                    fileloc=serialized_dag[2],
-                    data=AirflowDag(**serialized_dag[1]),
-                    max_active_runs=data.get("max_active_runs", None),
-                    description=data.get("_description", None),
-                    start_date=data.get("start_date", None),
-                    tasks=data.get("tasks", []),
-                    owners=data.get("default_args", [])["__var"].get("email", [])
-                    if data.get("default_args")
-                    else None,
-                )
-                yield dag
+                if serialized_dag[0] in ("example_subdag_operator"):
+                    data = serialized_dag[1]["dag"]
+                    dag = AirflowDagDetails(
+                        dag_id=serialized_dag[0],
+                        fileloc=serialized_dag[2],
+                        data=AirflowDag.parse_obj(serialized_dag[1]),
+                        max_active_runs=data.get("max_active_runs", None),
+                        description=data.get("_description", None),
+                        start_date=data.get("start_date", None),
+                        tasks=data.get("tasks", []),
+                        schedule_interval=get_schedule_interval(data),
+                        owners=self.fetch_owners(data),
+                    )
+
+                    yield dag
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(
@@ -291,6 +277,14 @@ class AirflowSource(PipelineServiceSource):
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Wild error yielding dag {serialized_dag} - {err}")
+
+    def fetch_owners(self, data) -> Optional[str]:
+        try:
+            if self.source_config.includeOwners and data.get("default_args"):
+                return data.get("default_args", [])["__var"].get("email", [])
+        except TypeError:
+            pass
+        return None
 
     def get_pipeline_name(self, pipeline_details: SerializedDAG) -> str:
         """
@@ -302,7 +296,8 @@ class AirflowSource(PipelineServiceSource):
     def get_tasks_from_dag(dag: AirflowDagDetails, host_port: str) -> List[Task]:
         """
         Obtain the tasks from a SerializedDAG
-        :param dag: SerializedDAG
+        :param dag: AirflowDagDetails
+        :param host_port: service host
         :return: List of tasks
         """
         return [
@@ -322,18 +317,6 @@ class AirflowSource(PipelineServiceSource):
             for task in cast(Iterable[BaseOperator], dag.tasks)
         ]
 
-    @staticmethod
-    def _build_dag(data: Any) -> SerializedDAG:
-        """
-        Use the queried data to fetch the DAG
-        :param data: from SQA query
-        :return: SerializedDAG
-        """
-        if isinstance(data, dict):
-            return SerializedDAG.from_dict(data)
-
-        return SerializedDAG.from_json(data)
-
     def get_user_details(self, email) -> Optional[EntityReference]:
         user = self.metadata.get_user_by_email(email=email)
         if user:
@@ -349,7 +332,7 @@ class AirflowSource(PipelineServiceSource):
                 for owner in owners or []:
                     return self.get_user_details(email=owner)
 
-            logger.debug(f"No user for found for email {owners} in OMD")
+            logger.debug(f"No user found with email [{owners}] in OMD")
         except Exception as exc:
             logger.warning(f"Error while getting details of user {owners} - {exc}")
         return None
@@ -379,6 +362,7 @@ class AirflowSource(PipelineServiceSource):
                 ),
                 service=self.context.pipeline_service.fullyQualifiedName.__root__,
                 owner=self.get_owner(pipeline_details.owners),
+                scheduleInterval=pipeline_details.schedule_interval,
             )
             yield pipeline_request
             self.register_record(pipeline_request=pipeline_request)
@@ -396,52 +380,6 @@ class AirflowSource(PipelineServiceSource):
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Wild error ingesting pipeline {pipeline_details} - {err}")
-
-    @staticmethod
-    def parse_xlets(xlet: Optional[List[Any]]) -> Optional[List[str]]:
-        """
-        Parse airflow xlets for 2.1.4. E.g.,
-
-        [{'__var': {'tables': ['sample_data.ecommerce_db.shopify.fact_order']},
-        '__type': 'dict'}]
-
-        :param xlet: airflow v2 xlet dict
-        :return: table FQN list or None
-        """
-        if xlet and len(xlet) and isinstance(xlet[0], dict):
-            tables = xlet[0].get("__var").get("tables")
-            if tables and isinstance(tables, list):
-                return tables
-
-        return None
-
-    def get_inlets(self, task: BaseOperator) -> Optional[List[str]]:
-        """
-        Get inlets from serialised operator
-        :param task: SerializedBaseOperator
-        :return: maybe an inlet list
-        """
-        inlets = task.get_inlet_defs()
-        try:
-            return self.parse_xlets(inlets)
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to parse inlets: {exc}")
-            return None
-
-    def get_outlets(self, task: BaseOperator) -> Optional[List[str]]:
-        """
-        Get outlets from serialised operator
-        :param task: SerializedBaseOperator
-        :return: maybe an inlet list
-        """
-        outlets = task.get_outlet_defs()
-        try:
-            return self.parse_xlets(outlets)
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to parse outlets: {exc}")
-            return None
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: AirflowDagDetails

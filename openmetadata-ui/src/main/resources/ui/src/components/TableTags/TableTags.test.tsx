@@ -12,15 +12,12 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import { EntityType } from 'enums/entity.enum';
 import { Constraint, DataType } from 'generated/entity/data/table';
 import { LabelType, State, TagSource } from 'generated/type/schema';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import TableTags from './TableTags.component';
-
-jest.mock('components/Tag/TagsViewer/tags-viewer', () => {
-  return jest.fn().mockReturnValue(<p data-testid="tags-viewer">TagViewer</p>);
-});
 
 jest.mock('utils/FeedElementUtils', () => ({
   getFieldThreadElement: jest
@@ -29,6 +26,10 @@ jest.mock('utils/FeedElementUtils', () => ({
       <p data-testid="field-thread-element">FieldThreadElement</p>
     ),
 }));
+
+jest.mock('pages/TasksPage/EntityTasks/EntityTasks.component', () => {
+  return jest.fn().mockImplementation(() => <div>EntityTasks</div>);
+});
 
 const glossaryTags = [
   {
@@ -66,12 +67,7 @@ const requestUpdateTags = {
 };
 
 const mockProp = {
-  placeholder: 'Search Tags',
-  dataTestId: 'tag-container',
-  tags: {
-    Classification: [],
-    Glossary: [],
-  },
+  tags: [],
   record: {
     constraint: Constraint.Null,
     dataLength: 1,
@@ -88,9 +84,7 @@ const mockProp = {
   },
   index: 0,
   isReadOnly: false,
-  isTagLoading: false,
   hasTagEditAccess: true,
-  entityFieldTasks: [],
   onThreadLinkSelect: jest.fn(),
   entityFieldThreads: [
     {
@@ -101,11 +95,9 @@ const mockProp = {
     },
   ],
   entityFqn: 'sample_data.ecommerce_db.shopify.raw_customer',
-  tagList: [],
   handleTagSelection: jest.fn(),
   type: TagSource.Classification,
-  fetchTags: jest.fn(),
-  tagFetchFailed: false,
+  entityType: EntityType.TABLE,
 };
 
 describe('Test EntityTableTags Component', () => {
@@ -114,7 +106,7 @@ describe('Test EntityTableTags Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const tagContainer = await screen.findByTestId('tag-container-0');
+    const tagContainer = await screen.findByTestId('Classification-tags-0');
 
     expect(tagContainer).toBeInTheDocument();
   });
@@ -128,21 +120,16 @@ describe('Test EntityTableTags Component', () => {
           ...mockProp.record,
           tags: [...classificationTags, ...glossaryTags],
         }}
-        tags={{
-          Classification: classificationTags,
-          Glossary: glossaryTags,
-        }}
+        tags={[...classificationTags, ...glossaryTags]}
       />,
       {
         wrapper: MemoryRouter,
       }
     );
 
-    const tagContainer = await screen.findByTestId('tag-container-0');
-    const tagViewer = await screen.findByTestId('tags-viewer');
+    const tagContainer = await screen.findByTestId('Classification-tags-0');
 
     expect(tagContainer).toBeInTheDocument();
-    expect(tagViewer).toBeInTheDocument();
   });
 
   it('Tags list should be visible', async () => {
@@ -153,46 +140,41 @@ describe('Test EntityTableTags Component', () => {
           ...mockProp.record,
           tags: [...classificationTags, ...glossaryTags],
         }}
-        tags={{
-          Classification: classificationTags,
-          Glossary: glossaryTags,
-        }}
+        tags={[...classificationTags, ...glossaryTags]}
       />,
       {
         wrapper: MemoryRouter,
       }
     );
 
-    const tagContainer = await screen.findByTestId('tag-container-0');
+    const tagContainer = await screen.findByTestId('Classification-tags-0');
     const tagPersonal = await screen.findByTestId('tag-PersonalData.Personal');
 
     expect(tagContainer).toBeInTheDocument();
     expect(tagPersonal).toBeInTheDocument();
   });
 
-  it('Should not render update and request tags buttons', async () => {
+  it('Should not render entity task component if entity is deleted', async () => {
     render(
       <TableTags
         {...mockProp}
+        isReadOnly
         record={{
           ...mockProp.record,
           tags: [...classificationTags, ...glossaryTags],
         }}
-        tags={{
-          Classification: classificationTags,
-          Glossary: glossaryTags,
-        }}
+        tags={[...classificationTags, ...glossaryTags]}
       />,
       {
         wrapper: MemoryRouter,
       }
     );
 
-    const tagContainer = await screen.findByTestId('tag-container-0');
-    const requestTags = screen.queryByTestId('field-thread-element');
+    const tagContainer = await screen.findByTestId('Classification-tags-0');
+    const entityTasks = screen.queryByText('EntityTasks');
 
     expect(tagContainer).toBeInTheDocument();
-    expect(requestTags).not.toBeInTheDocument();
+    expect(entityTasks).not.toBeInTheDocument();
   });
 
   it('Should render update and request tags buttons', async () => {
@@ -204,20 +186,17 @@ describe('Test EntityTableTags Component', () => {
           ...mockProp.record,
           tags: [...classificationTags, ...glossaryTags],
         }}
-        tags={{
-          Classification: classificationTags,
-          Glossary: glossaryTags,
-        }}
+        tags={[...classificationTags, ...glossaryTags]}
       />,
       {
         wrapper: MemoryRouter,
       }
     );
 
-    const tagContainer = await screen.findByTestId('tag-container-0');
-    const requestTags = await screen.findAllByTestId('field-thread-element');
+    const tagContainer = await screen.findByTestId('Classification-tags-0');
+    const entityTasks = screen.queryByText('EntityTasks');
 
     expect(tagContainer).toBeInTheDocument();
-    expect(requestTags).toHaveLength(2);
+    expect(entityTasks).toBeInTheDocument();
   });
 });

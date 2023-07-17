@@ -27,6 +27,7 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testDefinition import (
@@ -36,6 +37,7 @@ from metadata.generated.schema.tests.testDefinition import (
     TestPlatform,
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import model_str
@@ -195,6 +197,36 @@ class OMetaTestsMixin:
             )  # type: ignore
         )
         return test_case
+
+    def get_or_create_executable_test_suite(
+        self, entity_fqn: str
+    ) -> Union[EntityReference, TestSuite]:
+        """Given an entity fqn, retrieve the link test suite if it exists or create a new one
+
+        Args:
+            table_fqn (str): entity fully qualified name
+
+        Returns:
+            TestSuite:
+        """
+        table_entity = self.get_by_name(
+            entity=Table, fqn=entity_fqn, fields=["testSuite"]
+        )
+        if not table_entity:
+            raise RuntimeError(
+                f"Unable to find table {entity_fqn} in OpenMetadata. "
+                "This could be because the table has not been ingested yet or your JWT Token is expired or missing."
+            )
+
+        if table_entity.testSuite:
+            return table_entity.testSuite
+
+        create_test_suite = CreateTestSuiteRequest(
+            name=f"{table_entity.fullyQualifiedName.__root__}.TestSuite",
+            executableEntityReference=table_entity.fullyQualifiedName.__root__,
+        )  # type: ignore
+        test_suite = self.create_or_update_executable_test_suite(create_test_suite)
+        return test_suite
 
     def get_test_case_results(
         self,

@@ -22,7 +22,7 @@
     },
     "sourceUrl": {
       "description": "Pipeline URL suffix to visit/manage. This URL points to respective pipeline service UI",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "concurrency": {
       "description": "Concurrency of the Pipeline",
@@ -63,6 +63,15 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "scheduleInterval": {
+      "description": "Scheduler Interval for the pipeline in cron format.",
+      "type": "string",
+      "default": null
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Pipeline belongs to.",
+      "type": "string"
     }
   },
   "required": ["name", "service"],

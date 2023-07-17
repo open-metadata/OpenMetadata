@@ -54,6 +54,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
       {
         title: t('label.team-plural'),
         dataIndex: 'teams',
+        className: 'whitespace-nowrap',
         key: 'teams',
         render: (_, record) => (
           <Link
@@ -66,17 +67,20 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
       {
         title: t('label.type'),
         dataIndex: 'teamType',
+        width: 120,
         key: 'teamType',
       },
       {
         title: t('label.sub-team-plural'),
         dataIndex: 'childrenCount',
+        width: 100,
         key: 'subTeams',
         render: (childrenCount: number) => childrenCount ?? '--',
       },
       {
         title: t('label.user-plural'),
         dataIndex: 'userCount',
+        width: 60,
         key: 'users',
         render: (userCount: number) => userCount ?? '--',
       },
@@ -85,13 +89,14 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           entity: t('label.asset'),
         }),
         dataIndex: 'owns',
+        width: 120,
         key: 'owns',
         render: (owns) => owns?.length || 0,
       },
       {
         title: t('label.description'),
         dataIndex: 'description',
-        width: 450,
+        width: 300,
         key: 'description',
         render: (description: string) => (
           <Typography.Paragraph

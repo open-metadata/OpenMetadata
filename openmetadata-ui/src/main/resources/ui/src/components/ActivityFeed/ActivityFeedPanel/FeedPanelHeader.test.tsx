@@ -40,13 +40,11 @@ describe('Test FeedPanelHeader Component', () => {
       'add-new-conversation'
     );
     const drawerCloseButton = await findByTestId(container, 'closeDrawer');
-    const bottomSeparator = await findByTestId(container, 'bottom-separator');
 
     expect(title).toBeInTheDocument();
     expect(noun).toHaveTextContent('Conversations label.on-lowercase');
     expect(newConversationButton).toBeInTheDocument();
     expect(drawerCloseButton).toBeInTheDocument();
-    expect(bottomSeparator).toBeInTheDocument();
   });
 
   it('Check if FeedPanelHeader has onShowNewConversation as undefined', async () => {

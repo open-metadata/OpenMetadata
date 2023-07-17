@@ -222,7 +222,6 @@ class LookerSource(DashboardServiceSource):
         Depending on the type of the credentials we'll need a different reader
         """
         if not self._reader_class:
-
             if self.service_connection.gitCredentials and isinstance(
                 self.service_connection.gitCredentials, GitHubCredentials
             ):
@@ -243,7 +242,6 @@ class LookerSource(DashboardServiceSource):
         We either get GitHubCredentials or `NoGitHubCredentials`
         """
         if not self._repo_credentials:
-
             if self.service_connection.gitCredentials and isinstance(
                 self.service_connection.gitCredentials, GitHubCredentials
             ):
@@ -327,6 +325,8 @@ class LookerSource(DashboardServiceSource):
                     serviceType=DashboardServiceType.Looker.value,
                     columns=get_columns_from_model(model),
                     sql=self._get_explore_sql(model),
+                    # In Looker, you need to create Explores and Views within a Project
+                    project=model.project_name,
                 )
                 yield explore_datamodel
                 self.status.scanned(f"Data Model Scanned: {model.name}")
@@ -403,7 +403,6 @@ class LookerSource(DashboardServiceSource):
 
         project_parser = self.parser.get(explore.project_name)
         if project_parser:
-
             view: Optional[LookMlView] = project_parser.find_view(
                 view_name=view_name,
                 path=Includes(get_path_from_link(explore.lookml_link)),
@@ -419,6 +418,8 @@ class LookerSource(DashboardServiceSource):
                     serviceType=DashboardServiceType.Looker.value,
                     columns=get_columns_from_model(view),
                     sql=project_parser.parsed_files.get(Includes(view.source_file)),
+                    # In Looker, you need to create Explores and Views within a Project
+                    project=explore.project_name,
                 )
                 self.status.scanned(f"Data Model Scanned: {view.name}")
 
@@ -431,19 +432,22 @@ class LookerSource(DashboardServiceSource):
         Add the lineage source -> view -> explore
         """
         try:
+            # This is the name we store in the cache
+            explore_name = build_datamodel_name(explore.model_name, explore.name)
+            explore_model = self._explores_cache.get(explore_name)
+
             # TODO: column-level lineage parsing the explore columns with the format `view_name.col`
             # Now the context has the newly created view
-            yield AddLineageRequest(
-                edge=EntitiesEdge(
-                    fromEntity=EntityReference(
-                        id=self.context.dataModel.id.__root__, type="dashboardDataModel"
-                    ),
-                    toEntity=EntityReference(
-                        id=self._explores_cache[explore.name].id.__root__,
-                        type="dashboardDataModel",
-                    ),
+            if explore_model:
+                yield self._get_add_lineage_request(
+                    from_entity=self.context.dataModel, to_entity=explore_model
                 )
-            )
+
+            else:
+                logger.info(
+                    f"Could not find model for explore [{explore.model_name}: {explore.name}] in the cache"
+                    " while processing view lineage."
+                )
 
             if view.sql_table_name:
                 source_table_name = self._clean_table_name(view.sql_table_name)
@@ -538,11 +542,27 @@ class LookerSource(DashboardServiceSource):
                 )
                 for chart in self.context.charts
             ],
+            # Dashboards are created from the UI directly. They are not linked to a project
+            # like LookML assets, but rather just organised in folders.
+            project=self._get_dashboard_project(dashboard_details),
             sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/dashboards/{dashboard_details.id}",
             service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
         yield dashboard_request
         self.register_record(dashboard_request=dashboard_request)
+
+    @staticmethod
+    def _get_dashboard_project(dashboard_details: LookerDashboard) -> Optional[str]:
+        """
+        Get dashboard project if the folder is informed
+        """
+        try:
+            return dashboard_details.folder.name
+        except Exception as exc:
+            logger.debug(
+                f"Cannot get folder name from dashboard [{dashboard_details.title}] - [{exc}]"
+            )
+            return None
 
     @staticmethod
     def _clean_table_name(table_name: str) -> str:
@@ -704,7 +724,9 @@ class LookerSource(DashboardServiceSource):
                     displayName=chart.title or chart.id,
                     description=self.build_chart_description(chart) or None,
                     chartType=get_standard_chart_type(chart.type).value,
-                    sourceUrl=f"{clean_uri(self.service_connection.hostPort)}/dashboard_elements/{chart.id}",
+                    sourceUrl=chart.query.share_url
+                    if chart.query is not None
+                    else f"{clean_uri(self.service_connection.hostPort)}/merge?mid={chart.merge_result_id}",
                     service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
                 self.status.scanned(chart.id)

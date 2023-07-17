@@ -98,7 +98,6 @@ class GluepipelineSource(PipelineServiceSource):
         pipeline_request = CreatePipelineRequest(
             name=pipeline_details[NAME],
             displayName=pipeline_details[NAME],
-            description="",
             tasks=self.get_tasks(pipeline_details),
             service=self.context.pipeline_service.fullyQualifiedName.__root__,
         )

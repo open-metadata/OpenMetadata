@@ -8,31 +8,47 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+#  pylint: disable=unused-argument
 """
 System Metric
 """
 
 import traceback
-from collections import defaultdict, namedtuple
-from enum import Enum
+from collections import defaultdict
 from textwrap import dedent
 from typing import Dict, List, Optional
 
-import sqlparse
 from sqlalchemy import text
 from sqlalchemy.orm import DeclarativeMeta, Session
 
-from metadata.generated.schema.entity.data.table import DmlOperationType
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
 from metadata.profiler.metrics.core import SystemMetric
+from metadata.profiler.metrics.system.dml_operation import (
+    DML_OPERATION_MAP,
+    DatabaseDMLOperations,
+)
+from metadata.profiler.metrics.system.queries.bigquery import (
+    DML_STAT_TO_DML_STATEMENT_MAPPING,
+    JOBS,
+    BigQueryQueryResult,
+)
+from metadata.profiler.metrics.system.queries.redshift import (
+    STL_QUERY,
+    get_metric_result,
+    get_query_results,
+)
+from metadata.profiler.metrics.system.queries.snowflake import (
+    INFORMATION_SCHEMA_QUERY,
+    RESULT_SCAN,
+    get_snowflake_system_queries,
+)
 from metadata.profiler.orm.registry import Dialects
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.helpers import deep_size_of_dict
 from metadata.utils.logger import profiler_logger
-from metadata.utils.profiler_utils import clean_up_query, get_snowflake_system_queries
+from metadata.utils.profiler_utils import get_value_from_cache, set_cache
 
 logger = profiler_logger()
 
@@ -43,22 +59,6 @@ def recursive_dic():
     """recursive default dict"""
     return defaultdict(recursive_dic)
 
-
-class DatabaseDMLOperations(Enum):
-    """enum of supported DML operation on database engine side"""
-
-    INSERT = "INSERT"
-    UPDATE = "UPDATE"
-    DELETE = "DELETE"
-    MERGE = "MERGE"
-
-
-DML_OPERATION_MAP = {
-    DatabaseDMLOperations.INSERT.value: DmlOperationType.INSERT.value,
-    DatabaseDMLOperations.MERGE.value: DmlOperationType.UPDATE.value,
-    DatabaseDMLOperations.UPDATE.value: DmlOperationType.UPDATE.value,
-    DatabaseDMLOperations.DELETE.value: DmlOperationType.DELETE.value,
-}
 
 SYSTEM_QUERY_RESULT_CACHE = recursive_dic()
 
@@ -108,100 +108,83 @@ def _(
         List[Dict]:
     """
     logger.debug(f"Fetching system metrics for {dialect}")
-    dml_stat_to_dml_statement_mapping = {
-        "inserted_row_count": DatabaseDMLOperations.INSERT.value,
-        "deleted_row_count": DatabaseDMLOperations.DELETE.value,
-        "updated_row_count": DatabaseDMLOperations.UPDATE.value,
-    }
-    project_id = session.get_bind().url.host
-    dataset_id = table.__table_args__["schema"]
 
-    jobs = dedent(
-        f"""
-        SELECT
-            statement_type,
-            start_time,
-            destination_table,
-            dml_statistics
-        FROM
-            `region-{conn_config.usageLocation}`.INFORMATION_SCHEMA.JOBS
-        WHERE
-            DATE(creation_time) >= CURRENT_DATE() - 1 AND
-            destination_table.dataset_id = '{dataset_id}' AND
-            destination_table.project_id = '{project_id}' AND
-            statement_type IN (
-                '{DatabaseDMLOperations.INSERT.value}',
-                '{DatabaseDMLOperations.DELETE.value}',
-                '{DatabaseDMLOperations.UPDATE.value}',
-                '{DatabaseDMLOperations.MERGE.value}'
-            )
-        ORDER BY creation_time DESC;
-        """
-    )
+    project_id = session.get_bind().url.host
+    dataset_id = table.__table_args__["schema"]  # type: ignore
 
     metric_results: List[Dict] = []
-    QueryResult = namedtuple(
-        "QueryResult",
-        "query_type,timestamp,destination_table,dml_statistics",
+    # QueryResult = namedtuple(
+    #     "QueryResult",
+    #     "query_type,timestamp,destination_table,dml_statistics",
+    # )
+
+    jobs = get_value_from_cache(
+        SYSTEM_QUERY_RESULT_CACHE, f"{Dialects.BigQuery}.{project_id}.{dataset_id}.jobs"
     )
 
-    if (
-        "query_results"
-        in SYSTEM_QUERY_RESULT_CACHE[Dialects.BigQuery][project_id][dataset_id]
-    ):
-        # we'll try to get the cached data first
-        query_results = SYSTEM_QUERY_RESULT_CACHE[Dialects.BigQuery][project_id][
-            dataset_id
-        ]["query_results"]
-    else:
-        cursor_jobs = session.execute(text(jobs))
-        query_results = [
-            QueryResult(
-                row.statement_type,
-                row.start_time,
-                row.destination_table,
-                row.dml_statistics,
+    if not jobs:
+        cursor_jobs = session.execute(
+            text(
+                JOBS.format(
+                    usage_location=conn_config.usageLocation,
+                    dataset_id=dataset_id,
+                    project_id=project_id,
+                    insert=DatabaseDMLOperations.INSERT.value,
+                    update=DatabaseDMLOperations.UPDATE.value,
+                    delete=DatabaseDMLOperations.DELETE.value,
+                    merge=DatabaseDMLOperations.MERGE.value,
+                )
             )
-            for row in cursor_jobs.fetchall()
+        )
+        jobs = [
+            BigQueryQueryResult(
+                query_type=row.statement_type,
+                timestamp=row.start_time,
+                table_name=row.destination_table,
+                dml_statistics=row.dml_statistics,
+            )
+            for row in cursor_jobs
         ]
-        SYSTEM_QUERY_RESULT_CACHE[Dialects.BigQuery][project_id][dataset_id][
-            "query_results"
-        ] = query_results
+        set_cache(
+            SYSTEM_QUERY_RESULT_CACHE,
+            f"{Dialects.BigQuery}.{project_id}.{dataset_id}.jobs",
+            jobs,
+        )
 
-    for row_jobs in query_results:
-        if row_jobs.destination_table.get("table_id") == table.__tablename__:
+    for job in jobs:
+        if job.table_name.get("table_id") == table.__tablename__:  # type: ignore
             rows_affected = None
             try:
-                if row_jobs.query_type == DatabaseDMLOperations.INSERT.value:
-                    rows_affected = row_jobs.dml_statistics.get("inserted_row_count")
-                if row_jobs.query_type == DatabaseDMLOperations.DELETE.value:
-                    rows_affected = row_jobs.dml_statistics.get("deleted_row_count")
-                if row_jobs.query_type == DatabaseDMLOperations.UPDATE.value:
-                    rows_affected = row_jobs.dml_statistics.get("updated_row_count")
+                if job.query_type == DatabaseDMLOperations.INSERT.value:
+                    rows_affected = job.dml_statistics.get("inserted_row_count")
+                if job.query_type == DatabaseDMLOperations.DELETE.value:
+                    rows_affected = job.dml_statistics.get("deleted_row_count")
+                if job.query_type == DatabaseDMLOperations.UPDATE.value:
+                    rows_affected = job.dml_statistics.get("updated_row_count")
             except AttributeError:
                 logger.debug(traceback.format_exc())
                 rows_affected = None
 
-            if row_jobs.query_type == DatabaseDMLOperations.MERGE.value:
-                for indx, key in enumerate(row_jobs.dml_statistics):
-                    if row_jobs.dml_statistics[key] != 0:
+            if job.query_type == DatabaseDMLOperations.MERGE.value:
+                for indx, key in enumerate(job.dml_statistics):
+                    if job.dml_statistics[key] != 0:
                         metric_results.append(
                             {
                                 # Merge statement can include multiple DML operations
                                 # We are padding timestamps by 0,1,2 millisesond to avoid
                                 # duplicate timestamps
-                                "timestamp": int(row_jobs.timestamp.timestamp() * 1000)
+                                "timestamp": int(job.timestamp.timestamp() * 1000)
                                 + indx,
-                                "operation": dml_stat_to_dml_statement_mapping.get(key),
-                                "rowsAffected": row_jobs.dml_statistics[key],
+                                "operation": DML_STAT_TO_DML_STATEMENT_MAPPING.get(key),
+                                "rowsAffected": job.dml_statistics[key],
                             }
                         )
                 continue
 
             metric_results.append(
                 {
-                    "timestamp": int(row_jobs.timestamp.timestamp() * 1000),
-                    "operation": row_jobs.query_type,
+                    "timestamp": int(job.timestamp.timestamp() * 1000),
+                    "operation": job.query_type,
                     "rowsAffected": rows_affected,
                 }
             )
@@ -229,237 +212,147 @@ def _(
     """
     logger.debug(f"Fetching system metrics for {dialect}")
     database = session.get_bind().url.database
-    schema = table.__table_args__["schema"]
-
-    stl_deleted = dedent(
-        f"""
-        SELECT
-            SUM(si."rows") AS "rows",
-            sti."database",
-            sti."schema",
-            sti."table",
-            sq.text,
-            DATE_TRUNC('second', si.starttime) AS starttime
-        FROM
-            pg_catalog.stl_delete si
-            INNER JOIN  pg_catalog.svv_table_info sti ON si.tbl = sti.table_id
-            INNER JOIN pg_catalog.stl_querytext sq ON si.query = sq.query
-        WHERE
-            sti."database" = '{database}' AND
-            sti."schema" = '{schema}' AND
-            "rows" != 0 AND
-            DATE(starttime) >= CURRENT_DATE - 1
-        GROUP BY 2,3,4,5,6
-        ORDER BY 6 desc
-        """
-    )
-
-    stl_insert = dedent(
-        f"""
-        SELECT
-            SUM(si."rows") AS "rows",
-            sti."database",
-            sti."schema",
-            sti."table",
-            sq.text,
-            DATE_TRUNC('second', si.starttime) AS starttime
-        FROM
-            pg_catalog.stl_insert si
-            INNER JOIN  pg_catalog.svv_table_info sti ON si.tbl = sti.table_id
-            INNER JOIN pg_catalog.stl_querytext sq ON si.query = sq.query
-        WHERE
-            sti."database" = '{database}' AND
-            sti."schema" = '{schema}' AND
-            "rows" != 0 AND
-            DATE(starttime) >= CURRENT_DATE - 1
-        GROUP BY 2,3,4,5,6
-        ORDER BY 6 desc
-        """
-    )
+    schema = table.__table_args__["schema"]  # type: ignore
 
     metric_results: List[Dict] = []
-    QueryResult = namedtuple(
-        "QueryResult",
-        "database_name,schema_name,table_name,query_text,timestamp,rowsAffected",
+
+    # get inserts ddl queries
+    inserts = get_value_from_cache(
+        SYSTEM_QUERY_RESULT_CACHE, f"{Dialects.Redshift}.{database}.{schema}.inserts"
     )
+    if not inserts:
+        insert_query = STL_QUERY.format(
+            alias="si",
+            join_type="LEFT",
+            condition="sd.query is null",
+            database=database,
+            schema=schema,
+        )
+        inserts = get_query_results(
+            session,
+            insert_query,
+            DatabaseDMLOperations.INSERT.value,
+        )
+        set_cache(
+            SYSTEM_QUERY_RESULT_CACHE,
+            f"{Dialects.Redshift}.{database}.{schema}.inserts",
+            inserts,
+        )
+    metric_results.extend(get_metric_result(inserts, table.__tablename__))  # type: ignore
 
-    if (
-        "query_results_inserted"
-        in SYSTEM_QUERY_RESULT_CACHE[Dialects.Redshift][database][schema]
-    ):
-        # we'll try to get the cached data first
-        query_results_inserted = SYSTEM_QUERY_RESULT_CACHE[Dialects.Redshift][database][
-            schema
-        ]["query_results_inserted"]
-    else:
-        cursor_insert = session.execute(text(stl_insert))
-        query_results_inserted = [
-            QueryResult(
-                row.database,
-                row.schema,
-                row.table,
-                sqlparse.parse(clean_up_query(row.text))[0],
-                row.starttime,
-                row.rows,
-            )
-            for row in cursor_insert.fetchall()
-        ]
-        SYSTEM_QUERY_RESULT_CACHE[Dialects.Redshift][database][schema][
-            "query_results_inserted"
-        ] = query_results_inserted
+    # get deletes ddl queries
+    deletes = get_value_from_cache(
+        SYSTEM_QUERY_RESULT_CACHE, f"{Dialects.Redshift}.{database}.{schema}.deletes"
+    )
+    if not deletes:
+        delete_query = STL_QUERY.format(
+            alias="sd",
+            join_type="RIGHT",
+            condition="si.query is null",
+            database=database,
+            schema=schema,
+        )
+        deletes = get_query_results(
+            session,
+            delete_query,
+            DatabaseDMLOperations.DELETE.value,
+        )
+        set_cache(
+            SYSTEM_QUERY_RESULT_CACHE,
+            f"{Dialects.Redshift}.{database}.{schema}.deletes",
+            deletes,
+        )
+    metric_results.extend(get_metric_result(deletes, table.__tablename__))  # type: ignore
 
-    if (
-        "query_results_deleted"
-        in SYSTEM_QUERY_RESULT_CACHE[Dialects.Redshift][database][schema]
-    ):
-        # we'll try to get the cached data first
-        query_results_deleted = SYSTEM_QUERY_RESULT_CACHE[Dialects.Redshift][database][
-            schema
-        ]["query_results_deleted"]
-    else:
-        cursor_deleted = session.execute(text(stl_deleted))
-        query_results_deleted = [
-            QueryResult(
-                row.database,
-                row.schema,
-                row.table,
-                sqlparse.parse(clean_up_query(row.text))[0],
-                row.starttime,
-                row.rows,
-            )
-            for row in cursor_deleted.fetchall()
-        ]
-        SYSTEM_QUERY_RESULT_CACHE[Dialects.Redshift][database][schema][
-            "query_results_deleted"
-        ] = query_results_deleted
-
-    for row_inserted in query_results_inserted:
-        if row_inserted.table_name == table.__tablename__:
-            query_text = row_inserted.query_text
-            operation = next(
-                (
-                    token.value.upper()
-                    for token in query_text.tokens
-                    if token.ttype is sqlparse.tokens.DML
-                    and token.value.upper()
-                    in DmlOperationType._member_names_  # pylint: disable=protected-access
-                ),
-                None,
-            )
-            if operation:
-                metric_results.append(
-                    {
-                        "timestamp": int(row_inserted.timestamp.timestamp() * 1000),
-                        "operation": operation,
-                        "rowsAffected": row_inserted.rowsAffected,
-                    }
-                )
-
-    for row_deleted in query_results_deleted:
-        if row_deleted.table_name == table.__tablename__:
-            query_text = row_deleted.query_text
-            operation = next(
-                (
-                    token.value.upper()
-                    for token in query_text.tokens
-                    if token.ttype is sqlparse.tokens.DML and token.value != "UPDATE"
-                ),
-                None,
-            )
-
-            if operation:
-                metric_results.append(
-                    {
-                        "timestamp": int(row_deleted.timestamp.timestamp() * 1000),
-                        "operation": operation,
-                        "rowsAffected": row_deleted.rowsAffected,
-                    }
-                )
+    # get updates ddl queries
+    updates = get_value_from_cache(
+        SYSTEM_QUERY_RESULT_CACHE, f"{Dialects.Redshift}.{database}.{schema}.updates"
+    )
+    if not updates:
+        update_query = STL_QUERY.format(
+            alias="si",
+            join_type="INNER",
+            condition="sd.query is not null",
+            database=database,
+            schema=schema,
+        )
+        updates = get_query_results(
+            session,
+            update_query,
+            DatabaseDMLOperations.UPDATE.value,
+        )
+        set_cache(
+            SYSTEM_QUERY_RESULT_CACHE,
+            f"{Dialects.Redshift}.{database}.{schema}.updates",
+            updates,
+        )
+    metric_results.extend(get_metric_result(updates, table.__tablename__))  # type: ignore
 
     return metric_results
 
 
-# @get_system_metrics_for_dialect.register(Dialects.Snowflake)
-# def _(
-#     dialect: str,
-#     session: Session,
-#     table: DeclarativeMeta,
-#     *args,
-#     **kwargs,
-# ) -> Optional[List[Dict]]:
-#     """Fetch system metrics for Snowflake. query_history will return maximum 10K rows in one request.
-#     We'll be fetching all the queries ran for the past 24 hours and filtered on specific query types
-#     (INSERTS, MERGE, DELETE, UPDATE).
+@get_system_metrics_for_dialect.register(Dialects.Snowflake)
+def _(
+    dialect: str,
+    session: Session,
+    table: DeclarativeMeta,
+    *args,
+    **kwargs,
+) -> Optional[List[Dict]]:
+    """Fetch system metrics for Snowflake. query_history will return maximum 10K rows in one request.
+    We'll be fetching all the queries ran for the past 24 hours and filtered on specific query types
+    (INSERTS, MERGE, DELETE, UPDATE).
 
-#     To get the number of rows affected we'll use the specific query ID.
+    :waring: Unlike redshift and bigquery results are not cached as we'll be looking
+    at DDL for each table
 
-#     Args:
-#         dialect (str): dialect
-#         session (Session): session object
+    To get the number of rows affected we'll use the specific query ID.
 
-#     Returns:
-#         Dict: system metric
-#     """
-#     logger.debug(f"Fetching system metrics for {dialect}")
-#     database = session.get_bind().url.database
-#     schema = table.__table_args__["schema"]
+    Args:
+        dialect (str): dialect
+        session (Session): session object
 
-#     metric_results: List[Dict] = []
+    Returns:
+        Dict: system metric
+    """
+    logger.debug(f"Fetching system metrics for {dialect}")
+    database = session.get_bind().url.database
+    schema = table.__table_args__["schema"]  # type: ignore
 
-#     information_schema_query_history = f"""
-#         SELECT * FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"
-#         WHERE
-#         start_time>= DATEADD('DAY', -1, CURRENT_TIMESTAMP)
-#         AND QUERY_TYPE IN (
-#             '{DatabaseDMLOperations.INSERT.value}',
-#             '{DatabaseDMLOperations.UPDATE.value}',
-#             '{DatabaseDMLOperations.DELETE.value}',
-#             '{DatabaseDMLOperations.MERGE.value}'
-#         )
-#         AND EXECUTION_STATUS = 'SUCCESS';
-#     """
-#     result_scan = """
-#     SELECT *
-#     FROM TABLE(RESULT_SCAN('{query_id}'));
-#     """
+    metric_results: List[Dict] = []
 
-#     if (
-#         "query_results"
-#         in SYSTEM_QUERY_RESULT_CACHE[Dialects.Snowflake][database][schema]
-#     ):
-#         # we'll try to get the cached data first
-#         query_results = SYSTEM_QUERY_RESULT_CACHE[Dialects.Snowflake][database][schema][
-#             "query_results"
-#         ]
-#     else:
-#         rows = session.execute(text(information_schema_query_history))
-#         query_results = []
-#         for row in rows:
-#             result = get_snowflake_system_queries(row, database, schema)
-#             if result:
-#                 query_results.append(result)
-#         SYSTEM_QUERY_RESULT_CACHE[Dialects.Snowflake][database][schema][
-#             "query_results"
-#         ] = query_results
+    rows = session.execute(
+        text(
+            INFORMATION_SCHEMA_QUERY.format(
+                tablename=table.__tablename__,  # type: ignore
+                insert=DatabaseDMLOperations.INSERT.value,
+                update=DatabaseDMLOperations.UPDATE.value,
+                delete=DatabaseDMLOperations.DELETE.value,
+                merge=DatabaseDMLOperations.MERGE.value,
+            )
+        )
+    )
+    query_results = []
+    for row in rows:
+        result = get_snowflake_system_queries(row, database, schema)
+        if result:
+            query_results.append(result)
 
-#     for query_result in query_results:
-#         if table.__tablename__.lower() == query_result.table_name:
-#             cursor_for_result_scan = session.execute(
-#                 text(dedent(result_scan.format(query_id=query_result.query_id)))
-#             )
-#             row_for_result_scan = cursor_for_result_scan.first()
+    for query_result in query_results:
+        cursor_for_result_scan = session.execute(
+            text(dedent(RESULT_SCAN.format(query_id=query_result.query_id)))
+        )
+        row_for_result_scan = cursor_for_result_scan.first()
 
-#             metric_results.append(
-#                 {
-#                     "timestamp": int(query_result.timestamp.timestamp() * 1000),
-#                     "operation": DML_OPERATION_MAP.get(query_result.query_type),
-#                     "rowsAffected": row_for_result_scan[0]
-#                     if row_for_result_scan
-#                     else None,
-#                 }
-#             )
+        metric_results.append(
+            {
+                "timestamp": int(query_result.timestamp.timestamp() * 1000),
+                "operation": DML_OPERATION_MAP.get(query_result.query_type),
+                "rowsAffected": row_for_result_scan[0] if row_for_result_scan else None,
+            }
+        )
 
-#     return metric_results
+    return metric_results
 
 
 class System(SystemMetric):
@@ -513,7 +406,7 @@ class System(SystemMetric):
         system_metrics = get_system_metrics_for_dialect(
             session.get_bind().dialect.name,
             session=session,
-            table=self.table,
+            table=self.table,  # pylint: disable=no-member
             conn_config=conn_config,
         )
         self._manage_cache()

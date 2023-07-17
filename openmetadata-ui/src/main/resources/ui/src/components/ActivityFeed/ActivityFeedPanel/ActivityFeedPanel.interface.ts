@@ -38,6 +38,7 @@ export interface FeedPanelHeaderProp
   noun?: string;
   threadType?: ThreadType;
   onShowNewConversation?: (v: boolean) => void;
+  hideCloseIcon?: boolean;
 }
 export interface FeedPanelOverlayProp
   extends HTMLAttributes<HTMLButtonElement>,

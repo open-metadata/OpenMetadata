@@ -1,4 +1,4 @@
-FROM apache/airflow:2.3.3-python3.9
+FROM apache/airflow:2.6.3-python3.9
 USER root
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
@@ -75,12 +75,12 @@ USER airflow
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"
 RUN pip install --upgrade pip
-RUN pip install "openmetadata-managed-apis==1.0.0.0.dev0" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
-RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]==1.0.0.0.dev0"
+RUN pip install "openmetadata-managed-apis==1.2.0.0.dev0" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.6.3/constraints-3.9.txt"
+RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]==1.2.0.0.dev0"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN echo "Image built for $(uname -m)"
-RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
+RUN if [[ $(uname -m) == "arm64" ]]; \
  then \
  pip install "ibm-db-sa~=0.4"; \
  fi
@@ -93,7 +93,7 @@ RUN pip freeze | grep "apache-airflow-providers" | grep -v "docker\|http" | xarg
 # because the psycopg2-binary generates a architecture specific error 
 # while authrenticating connection with the airflow, psycopg2 solves this error 
 RUN pip uninstall psycopg2-binary -y
-RUN pip install psycopg2 mysqlclient
+RUN pip install psycopg2 mysqlclient==2.1.1
 # Make required folders for openmetadata-airflow-apis
 RUN mkdir -p /opt/airflow/dag_generated_configs
 # This is required as it's responsible to create airflow.cfg file

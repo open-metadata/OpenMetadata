@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { checkEmailInUse } from 'rest/auth-API';
 import { createBotWithPut } from 'rest/botsAPI';
 import { createUserWithPut, getUserByName } from 'rest/userAPI';
-import { validEmailRegEx } from '../../constants/regex.constants';
+import { EMAIL_REG_EX } from '../../constants/regex.constants';
 import { SsoServiceType } from '../../generated/auth/ssoAuth';
 import { Bot } from '../../generated/entity/bot';
 import {
@@ -649,7 +649,7 @@ const AuthMechanismForm: FC<Props> = ({
               name="email"
               rules={[
                 {
-                  pattern: validEmailRegEx,
+                  pattern: EMAIL_REG_EX,
                   required: true,
                   type: 'email',
                   message: t('message.email-is-invalid'),

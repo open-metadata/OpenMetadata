@@ -74,10 +74,10 @@ function GlossaryTermSummary({
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
       <>
-        <Row className="m-md" gutter={[0, 16]}>
+        <Row className="m-md m-t-0" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-grey-muted"
+              className="summary-panel-section-title"
               data-testid="reviewer-header">
               {t('label.reviewer-plural')}
             </Typography.Text>
@@ -106,7 +106,9 @@ function GlossaryTermSummary({
               <Typography.Text
                 className="text-grey-body"
                 data-testid="no-reviewer-header">
-                {t('label.no-reviewer')}
+                {t('label.no-entity', {
+                  entity: t('label.children-lowercase'),
+                })}
               </Typography.Text>
             )}
           </Col>
@@ -117,7 +119,7 @@ function GlossaryTermSummary({
         <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-grey-muted"
+              className="summary-panel-section-title"
               data-testid="synonyms-header">
               {t('label.synonym-plural')}
             </Typography.Text>
@@ -148,13 +150,16 @@ function GlossaryTermSummary({
         <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-grey-muted"
+              className="summary-panel-section-title"
               data-testid="children-header">
               {t('label.children')}
             </Typography.Text>
           </Col>
           <Col span={24}>
             <SummaryList
+              emptyPlaceholderText={t('label.no-entity', {
+                entity: t('label.children-lowercase'),
+              })}
               entityType={SummaryEntityType.COLUMN}
               formattedEntityData={formattedColumnsData}
             />

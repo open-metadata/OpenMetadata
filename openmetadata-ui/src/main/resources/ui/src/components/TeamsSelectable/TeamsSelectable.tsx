@@ -91,6 +91,7 @@ const TeamsSelectable = ({
         multiple
         showSearch
         treeDefaultExpandAll
+        data-testid="team-select"
         dropdownStyle={{ maxHeight: 300, overflow: 'auto' }}
         placeholder={placeholder}
         showCheckedStrategy={TreeSelect.SHOW_CHILD}

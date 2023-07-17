@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 
 import AssignErrorPlaceHolder from './AssignErrorPlaceHolder';
@@ -33,7 +33,7 @@ const ErrorPlaceHolder = ({
   button,
   permission,
 }: ErrorPlaceholderProps) => {
-  const errorPlaceHolder = useMemo(() => {
+  const getErrorPlaceHolder = () => {
     switch (type) {
       case ERROR_PLACEHOLDER_TYPE.CREATE:
         return (
@@ -81,9 +81,9 @@ const ErrorPlaceHolder = ({
           </NoDataPlaceholder>
         );
     }
-  }, [type]);
+  };
 
-  return errorPlaceHolder;
+  return getErrorPlaceHolder();
 };
 
 export default ErrorPlaceHolder;

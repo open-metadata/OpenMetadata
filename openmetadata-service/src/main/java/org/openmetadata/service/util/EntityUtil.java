@@ -17,20 +17,24 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 
 import java.io.IOException;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import javax.ws.rs.WebApplicationException;
 import lombok.Getter;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.binary.Hex;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
@@ -41,11 +45,15 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.system.FailureDetails;
+import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO;
@@ -58,8 +66,6 @@ public final class EntityUtil {
   //
   // Comparators used for sorting list based on the given type
   //
-
-  // Note ordering is same as server side ordering by ID as string to ensure PATCH operations work
   public static final Comparator<EntityReference> compareEntityReference =
       Comparator.comparing(EntityReference::getName);
   public static final Comparator<EntityVersionPair> compareVersion =
@@ -109,8 +115,7 @@ public final class EntityUtil {
   public static final BiPredicate<GlossaryTerm, GlossaryTerm> glossaryTermMatch =
       (filter1, filter2) -> filter1.getFullyQualifiedName().equals(filter2.getFullyQualifiedName());
 
-  public static final BiPredicate<ContainerFileFormat, ContainerFileFormat> containerFileFormatMatch =
-      (format1, format2) -> format1.equals(format2);
+  public static final BiPredicate<ContainerFileFormat, ContainerFileFormat> containerFileFormatMatch = Enum::equals;
   public static final BiPredicate<TermReference, TermReference> termReferenceMatch =
       (ref1, ref2) -> ref1.getName().equals(ref2.getName()) && ref1.getEndpoint().equals(ref2.getEndpoint());
 
@@ -166,6 +171,9 @@ public final class EntityUtil {
 
   public static List<EntityReference> populateEntityReferences(
       List<EntityRelationshipRecord> records, @NonNull String entityType) throws IOException {
+    //    if (nullOrEmpty(records)) {
+    //      return null;
+    //    }
     List<EntityReference> refs = new ArrayList<>(records.size());
     for (EntityRelationshipRecord id : records) {
       refs.add(Entity.getEntityReferenceById(entityType, id.getId(), ALL));
@@ -200,6 +208,32 @@ public final class EntityUtil {
               .withDate(RestUtil.DATE_FORMAT.format(new Date()));
     }
     return details;
+  }
+
+  public static TestSummary getTestCaseExecutionSummary(
+      CollectionDAO.EntityExtensionTimeSeriesDAO entityExtensionTimeSeriesDAO,
+      List<String> testCaseFQNs,
+      String extensionName)
+      throws IOException {
+    List<String> testCaseFQNHashes =
+        testCaseFQNs.stream().map(FullyQualifiedName::buildHash).collect(Collectors.toList());
+
+    if (testCaseFQNHashes.isEmpty()) return new TestSummary();
+
+    List<String> jsonList = entityExtensionTimeSeriesDAO.getLatestExtensionByFQNs(testCaseFQNHashes, extensionName);
+
+    HashMap<String, Integer> testCaseSummary = new HashMap<>();
+    for (String json : jsonList) {
+      TestCaseResult testCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
+      String status = testCaseResult.getTestCaseStatus().toString();
+      testCaseSummary.put(status, testCaseSummary.getOrDefault(status, 0) + 1);
+    }
+
+    return new TestSummary()
+        .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
+        .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
+        .withSuccess(testCaseSummary.getOrDefault(TestCaseStatus.Success.toString(), 0))
+        .withTotal(jsonList.size());
   }
 
   /** Merge two sets of tags */
@@ -258,10 +292,13 @@ public final class EntityUtil {
     return ids;
   }
 
-  @RequiredArgsConstructor
   public static class Fields {
-    public static final Fields EMPTY_FIELDS = new Fields(null, "");
+    public static final Fields EMPTY_FIELDS = new Fields(Collections.emptyList());
     @Getter private final List<String> fieldList;
+
+    public Fields(List<String> fieldList) {
+      this.fieldList = fieldList;
+    }
 
     public Fields(List<String> allowedFields, String fieldsParam) {
       if (nullOrEmpty(fieldsParam)) {
@@ -292,10 +329,6 @@ public final class EntityUtil {
     @Override
     public String toString() {
       return fieldList.toString();
-    }
-
-    public void add(Fields fields) {
-      fieldList.addAll(fields.fieldList);
     }
 
     public boolean contains(String field) {
@@ -513,6 +546,15 @@ public final class EntityUtil {
         throw new IllegalArgumentException("Profile sample value must be between 0 and 100");
       }
     }
+  }
+
+  @SneakyThrows
+  public static String hash(String input) {
+    if (input != null) {
+      byte[] checksum = MessageDigest.getInstance("MD5").digest(input.getBytes());
+      return Hex.encodeHexString(checksum);
+    }
+    return input;
   }
 
   public static boolean isDescriptionTask(TaskType taskType) {

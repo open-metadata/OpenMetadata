@@ -10,15 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Row, Space, Tooltip } from 'antd';
+import Icon, { DownOutlined } from '@ant-design/icons';
+import { Button, Col, Dropdown, Row, Space, Tooltip, Typography } from 'antd';
+import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as IconFolder } from 'assets/svg/folder.svg';
+import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
 import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
 import { ReactComponent as IconFlatDoc } from 'assets/svg/ic-flat-doc.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
+import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
+import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
@@ -26,7 +30,6 @@ import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.compon
 import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import VersionButton from 'components/VersionButton/VersionButton.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { EntityAction, EntityType } from 'enums/entity.enum';
@@ -39,17 +42,25 @@ import { cloneDeep, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { exportGlossaryInCSVFormat } from 'rest/glossaryAPI';
+import {
+  exportGlossaryInCSVFormat,
+  getGlossariesById,
+  getGlossaryTermsById,
+} from 'rest/glossaryAPI';
 import { getEntityDeleteMessage } from 'utils/CommonUtils';
 import {
   getGlossaryPath,
   getGlossaryPathWithAction,
+  getGlossaryTermsPath,
   getGlossaryTermsVersionsPath,
   getGlossaryVersionsPath,
 } from 'utils/RouterUtils';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
+import { showErrorToast } from 'utils/ToastUtils';
+import Fqn from '../../../utils/Fqn';
 
 export interface GlossaryHeaderProps {
+  isVersionView?: boolean;
   supportAddOwner?: boolean;
   selectedData: Glossary | GlossaryTerm;
   permissions: OperationPermission;
@@ -68,6 +79,7 @@ const GlossaryHeader = ({
   isGlossary,
   onAssetAdd,
   onAddGlossaryTerm,
+  isVersionView,
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -82,6 +94,23 @@ const GlossaryHeader = ({
   const [showActions, setShowActions] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
+  const [latestGlossaryData, setLatestGlossaryData] = useState<
+    Glossary | GlossaryTerm
+  >();
+
+  // To fetch the latest glossary data
+  // necessary to handle back click functionality to work properly in version page
+  const fetchCurrentGlossaryInfo = async () => {
+    try {
+      const res = isGlossary
+        ? await getGlossariesById(glossaryFqn)
+        : await getGlossaryTermsById(glossaryFqn);
+
+      setLatestGlossaryData(res);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   const editDisplayNamePermission = useMemo(() => {
     return permissions.EditAll || permissions.EditDisplayName;
@@ -93,16 +122,29 @@ const GlossaryHeader = ({
 
   const handleGlossaryImport = () =>
     history.push(
-      getGlossaryPathWithAction(selectedData.name, EntityAction.IMPORT)
+      getGlossaryPathWithAction(
+        selectedData.fullyQualifiedName ?? '',
+        EntityAction.IMPORT
+      )
     );
 
   const handleVersionClick = async () => {
-    const path = isGlossary
-      ? getGlossaryVersionsPath(selectedData.id, toString(selectedData.version))
-      : getGlossaryTermsVersionsPath(
-          selectedData.id,
-          toString(selectedData.version)
-        );
+    let path: string;
+    if (isVersionView) {
+      path = isGlossary
+        ? getGlossaryPath(latestGlossaryData?.fullyQualifiedName)
+        : getGlossaryTermsPath(latestGlossaryData?.fullyQualifiedName ?? '');
+    } else {
+      path = isGlossary
+        ? getGlossaryVersionsPath(
+            selectedData.id,
+            toString(selectedData.version)
+          )
+        : getGlossaryTermsVersionsPath(
+            selectedData.id,
+            toString(selectedData.version)
+          );
+    }
 
     history.push(path);
   };
@@ -143,7 +185,7 @@ const GlossaryHeader = ({
   const handleGlossaryExportClick = useCallback(async () => {
     if (selectedData) {
       showModal({
-        name: selectedData?.name,
+        name: selectedData?.fullyQualifiedName || '',
         onExport: exportGlossaryInCSVFormat,
       });
     }
@@ -174,7 +216,7 @@ const GlossaryHeader = ({
             label: (
               <ManageButtonItemLabel
                 description={t('message.import-entity-help', {
-                  entity: t('label.glossary-terms-lowercase'),
+                  entity: t('label.glossary-term-lowercase'),
                 })}
                 icon={<ImportIcon width="20px" />}
                 id="import-button"
@@ -284,7 +326,7 @@ const GlossaryHeader = ({
       return;
     }
 
-    const arr = fqn.split(FQN_SEPARATOR_CHAR);
+    const arr = !isGlossary ? Fqn.split(fqn) : [];
     const dataFQN: Array<string> = [];
     const newData = [
       {
@@ -311,6 +353,12 @@ const GlossaryHeader = ({
     handleBreadcrumb(fullyQualifiedName ? fullyQualifiedName : name);
   }, [selectedData]);
 
+  useEffect(() => {
+    if (isVersionView) {
+      fetchCurrentGlossaryInfo();
+    }
+  }, []);
+
   return (
     <>
       <Row gutter={[0, 16]} justify="space-between" wrap={false}>
@@ -321,7 +369,7 @@ const GlossaryHeader = ({
             entityType={EntityType.GLOSSARY_TERM}
             icon={
               isGlossary ? (
-                <IconFolder
+                <GlossaryIcon
                   color={DE_ACTIVE_COLOR}
                   height={36}
                   name="folder"
@@ -343,36 +391,48 @@ const GlossaryHeader = ({
           <div style={{ textAlign: 'right' }}>
             <div>
               {createButtons}
-              {selectedData && selectedData.version && (
-                <VersionButton
-                  className="m-l-xs tw-px-1.5"
-                  selected={Boolean(version)}
-                  version={toString(selectedData.version)}
-                  onClick={handleVersionClick}
-                />
-              )}
 
-              <Dropdown
-                align={{ targetOffset: [-12, 0] }}
-                className="m-l-xs"
-                menu={{
-                  items: manageButtonContent,
-                }}
-                open={showActions}
-                overlayClassName="glossary-manage-dropdown-list-container"
-                overlayStyle={{ width: '350px' }}
-                placement="bottomRight"
-                trigger={['click']}
-                onOpenChange={setShowActions}>
-                <Tooltip placement="right">
+              <ButtonGroup className="p-l-xs" size="small">
+                {selectedData && selectedData.version && (
                   <Button
-                    className="glossary-manage-dropdown-button tw-px-1.5"
-                    data-testid="manage-button"
-                    onClick={() => setShowActions(true)}>
-                    <IconDropdown className="anticon self-center manage-dropdown-icon" />
+                    className={classNames('', {
+                      'text-primary border-primary': version,
+                    })}
+                    icon={<Icon component={VersionIcon} />}
+                    onClick={handleVersionClick}>
+                    <Typography.Text
+                      className={classNames('', {
+                        'text-primary': version,
+                      })}>
+                      {toString(selectedData.version)}
+                    </Typography.Text>
                   </Button>
-                </Tooltip>
-              </Dropdown>
+                )}
+
+                {!isVersionView && (
+                  <Dropdown
+                    align={{ targetOffset: [-12, 0] }}
+                    className="m-l-xs"
+                    menu={{
+                      items: manageButtonContent,
+                    }}
+                    open={showActions}
+                    overlayClassName="glossary-manage-dropdown-list-container"
+                    overlayStyle={{ width: '350px' }}
+                    placement="bottomRight"
+                    trigger={['click']}
+                    onOpenChange={setShowActions}>
+                    <Tooltip placement="right">
+                      <Button
+                        className="glossary-manage-dropdown-button tw-px-1.5"
+                        data-testid="manage-button"
+                        onClick={() => setShowActions(true)}>
+                        <IconDropdown className="anticon self-center manage-dropdown-icon" />
+                      </Button>
+                    </Tooltip>
+                  </Dropdown>
+                )}
+              </ButtonGroup>
             </div>
           </div>
         </Col>

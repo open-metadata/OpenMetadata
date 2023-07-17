@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row } from 'antd';
+import { Card, Col, Row, Typography } from 'antd';
 import React, { useState } from 'react';
 import {
   CartesianGrid,
@@ -40,7 +40,8 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   tickFormatter,
   name,
   curveType,
-}) => {
+  title,
+}: ProfilerDetailsCardProps) => {
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
 
@@ -51,8 +52,15 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   };
 
   return (
-    <Card className="shadow-none" data-testid="profiler-details-card-container">
+    <Card
+      className="shadow-none global-border-radius"
+      data-testid="profiler-details-card-container">
       <Row gutter={[16, 16]}>
+        {title && (
+          <Col span={24}>
+            <Typography.Title level={5}>{title}</Typography.Title>
+          </Col>
+        )}
         <Col span={4}>
           <ProfilerLatestValue
             information={information}
@@ -62,6 +70,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
         <Col span={20}>
           {data.length > 0 ? (
             <ResponsiveContainer
+              className="custom-legend"
               debounce={200}
               id={`${name}_graph`}
               minHeight={300}>

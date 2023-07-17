@@ -67,8 +67,8 @@ const AddPipeLineModal = ({
         </Button>,
       ]}
       maskClosable={false}
+      open={showAddPipelineModal}
       title={isUndefined(selectedPipelineId) ? 'Add Pipeline' : 'Edit Pipeline'}
-      visible={showAddPipelineModal}
       onCancel={onModalCancel}>
       <Select
         allowClear

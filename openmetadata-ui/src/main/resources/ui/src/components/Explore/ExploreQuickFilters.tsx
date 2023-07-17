@@ -11,24 +11,26 @@
  *  limitations under the License.
  */
 
-import { Space, Switch, Typography } from 'antd';
+import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import { SearchIndex } from 'enums/search.enum';
 import { isEqual, isUndefined, uniqWith } from 'lodash';
+import { Bucket } from 'Models';
 import React, { FC, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   getAdvancedFieldDefaultOptions,
   getAdvancedFieldOptions,
   getTagSuggestions,
   getUserSuggestions,
 } from 'rest/miscAPI';
+import { getTags } from 'rest/tagAPI';
 import {
   MISC_FIELDS,
   OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY,
 } from '../../constants/AdvancedSearch.constants';
 import {
   getAdvancedField,
+  getOptionsFromAggregationBucket,
   getOptionTextFromKey,
 } from '../../utils/AdvancedSearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -38,30 +40,52 @@ import { ExploreQuickFiltersProps } from './ExploreQuickFilters.interface';
 
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   fields,
-  onAdvanceSearch,
   index,
+  aggregations,
   onFieldValueSelect,
-  showDeleted,
-  onChangeShowDeleted,
 }) => {
-  const { t } = useTranslation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
   const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
+  const [tierOptions, setTierOptions] = useState<SearchDropdownOption[]>();
 
   const fetchDefaultOptions = async (
     index: SearchIndex | SearchIndex[],
     key: string
   ) => {
-    const res = await getAdvancedFieldDefaultOptions(index, key);
+    let buckets: Bucket[] = [];
 
-    const buckets = res.data.aggregations[`sterms#${key}`].buckets;
+    if (aggregations?.[key] && key !== 'tier.tagFQN') {
+      buckets = aggregations[key].buckets;
+    } else {
+      const [res, tierTags] = await Promise.all([
+        getAdvancedFieldDefaultOptions(index, key),
+        key === 'tier.tagFQN'
+          ? getTags({ parent: 'Tier' })
+          : Promise.resolve(null),
+      ]);
 
-    const optionsArray = buckets.map((option) => ({
-      key: option.key,
-      label: option.key,
-    }));
+      buckets = res.data.aggregations[`sterms#${key}`].buckets;
 
-    setOptions(uniqWith(optionsArray, isEqual));
+      if (key === 'tier.tagFQN' && tierTags) {
+        const options = tierTags.data.map((option) => {
+          const bucketItem = buckets.find(
+            (item) => item.key === option.fullyQualifiedName
+          );
+
+          return {
+            key: option.fullyQualifiedName ?? '',
+            label: option.name,
+            count: bucketItem?.doc_count ?? 0,
+          };
+        });
+        setTierOptions(uniqWith(options, isEqual));
+        setOptions(uniqWith(options, isEqual));
+
+        return;
+      }
+    }
+
+    setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
   };
 
   const getInitialOptions = async (key: string) => {
@@ -87,61 +111,69 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     setIsOptionsLoading(true);
     setOptions([]);
     try {
-      if (value) {
-        const advancedField = getAdvancedField(key);
-        if (!MISC_FIELDS.includes(key)) {
-          const res = await getAdvancedFieldOptions(
-            value,
-            index,
-            advancedField
-          );
-
-          const suggestOptions =
-            res.data.suggest['metadata-suggest'][0].options ?? [];
-
-          const formattedSuggestions = suggestOptions.map((option) => {
-            const optionsText = getOptionTextFromKey(index, option, key);
-
-            return {
-              key: optionsText,
-              label: optionsText,
-            };
-          });
-
-          setOptions(uniqWith(formattedSuggestions, isEqual));
-        } else {
-          if (key === 'tags.tagFQN') {
-            const res = await getTagSuggestions(value);
-
-            const suggestOptions =
-              res.data.suggest['metadata-suggest'][0].options ?? [];
-
-            const formattedSuggestions = suggestOptions
-              .filter((op) => !isUndefined(op._source.fullyQualifiedName))
-              .map((op) => op._source.fullyQualifiedName as string);
-
-            const optionsArray = formattedSuggestions.map((op) => ({
-              key: op,
-              label: op,
-            }));
-
-            setOptions(uniqWith(optionsArray, isEqual));
-          } else {
-            const res = await getUserSuggestions(value);
-
-            const suggestOptions =
-              res.data.suggest['metadata-suggest'][0].options ?? [];
-
-            const formattedSuggestions = suggestOptions.map((op) => ({
-              key: op._source.displayName ?? op._source.name,
-              label: op._source.displayName ?? op._source.name,
-            }));
-
-            setOptions(uniqWith(formattedSuggestions, isEqual));
-          }
-        }
-      } else {
+      if (!value) {
         getInitialOptions(key);
+
+        return;
+      }
+      if (aggregations?.[key] && key !== 'tier.tagFQN') {
+        const defaultOptions = getOptionsFromAggregationBucket(
+          aggregations[key].buckets
+        );
+        const filteredOptions = defaultOptions.filter((option) => {
+          return option.label.toLowerCase().includes(value.toLowerCase());
+        });
+        setOptions(filteredOptions);
+      } else if (key === 'tier.tagFQN') {
+        const filteredOptions = tierOptions?.filter((option) => {
+          return option.label.toLowerCase().includes(value.toLowerCase());
+        });
+        setOptions(filteredOptions);
+      } else if (!MISC_FIELDS.includes(key)) {
+        const advancedField = getAdvancedField(key);
+        const res = await getAdvancedFieldOptions(value, index, advancedField);
+
+        const suggestOptions =
+          res.data.suggest['metadata-suggest'][0].options ?? [];
+
+        const formattedSuggestions = suggestOptions.map((option) => {
+          const optionsText = getOptionTextFromKey(index, option, key);
+
+          return {
+            key: optionsText,
+            label: optionsText,
+          };
+        });
+
+        setOptions(uniqWith(formattedSuggestions, isEqual));
+      } else if (key === 'tags.tagFQN') {
+        const res = await getTagSuggestions(value);
+
+        const suggestOptions =
+          res.data.suggest['metadata-suggest'][0].options ?? [];
+
+        const formattedSuggestions = suggestOptions
+          .filter((op) => !isUndefined(op._source.fullyQualifiedName))
+          .map((op) => op._source.fullyQualifiedName as string);
+
+        const optionsArray = formattedSuggestions.map((op) => ({
+          key: op,
+          label: op,
+        }));
+
+        setOptions(uniqWith(optionsArray, isEqual));
+      } else {
+        const res = await getUserSuggestions(value);
+
+        const suggestOptions =
+          res.data.suggest['metadata-suggest'][0].options ?? [];
+
+        const formattedSuggestions = suggestOptions.map((op) => ({
+          key: op._source.displayName ?? op._source.name,
+          label: op._source.displayName ?? op._source.name,
+        }));
+
+        setOptions(uniqWith(formattedSuggestions, isEqual));
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -151,7 +183,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   };
 
   return (
-    <Space wrap className="explore-quick-filters-container" size={[4, 16]}>
+    <Space wrap className="explore-quick-filters-container" size={[4, 0]}>
       {fields.map((field) => (
         <SearchDropdown
           highlight
@@ -168,25 +200,6 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           onSearch={getFilterOptions}
         />
       ))}
-
-      <span>
-        <Switch
-          checked={showDeleted}
-          data-testid="show-deleted"
-          onChange={onChangeShowDeleted}
-        />
-        <Typography.Text className="p-l-xs">
-          {t('label.show-deleted')}
-        </Typography.Text>
-      </span>
-      <span
-        className="text-primary self-center cursor-pointer p-l-xs"
-        data-testid="advance-search-button"
-        onClick={onAdvanceSearch}>
-        {t('label.advanced-entity', {
-          entity: t('label.search'),
-        })}
-      </span>
     </Space>
   );
 };

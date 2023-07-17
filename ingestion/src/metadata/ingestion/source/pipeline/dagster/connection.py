@@ -14,9 +14,6 @@ Source connection handler
 """
 from typing import Optional
 
-from dagster_graphql import DagsterGraphQLClient
-from gql.transport.requests import RequestsHTTPTransport
-
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -25,32 +22,20 @@ from metadata.generated.schema.entity.services.connections.pipeline.dagsterConne
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.pipeline.dagster.client import DagsterClient
 from metadata.ingestion.source.pipeline.dagster.queries import TEST_QUERY_GRAPHQL
-from metadata.utils.helpers import clean_uri
 
 
-def get_connection(connection: DagsterConnection) -> DagsterGraphQLClient:
+def get_connection(connection: DagsterConnection) -> DagsterClient:
     """
     Create connection
     """
-    url = clean_uri(connection.host)
-    dagster_connection = DagsterGraphQLClient(
-        url,
-        transport=RequestsHTTPTransport(
-            url=f"{url}/graphql",
-            headers={"Dagster-Cloud-Api-Token": connection.token.get_secret_value()}
-            if connection.token
-            else None,
-            timeout=connection.timeout,
-        ),
-    )
-
-    return dagster_connection
+    return DagsterClient(connection)
 
 
 def test_connection(
     metadata: OpenMetadata,
-    client: DagsterGraphQLClient,
+    client: DagsterClient,
     service_connection: DagsterConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
 ) -> None:
@@ -60,7 +45,7 @@ def test_connection(
     """
 
     def custom_executor_for_pipeline():
-        client._execute(TEST_QUERY_GRAPHQL)  # pylint: disable=protected-access
+        client.client._execute(TEST_QUERY_GRAPHQL)  # pylint: disable=protected-access
 
     test_fn = {"GetPipelines": custom_executor_for_pipeline}
 

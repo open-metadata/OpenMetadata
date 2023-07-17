@@ -83,5 +83,5 @@ export const getMovedTeamData = (team: Team, parents: string[]): CreateTeam => {
     parents: parents,
     policies: getEntityValue(policies),
     users: getEntityValue(users),
-  };
+  } as CreateTeam;
 };

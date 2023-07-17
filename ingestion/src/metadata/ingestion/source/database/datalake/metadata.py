@@ -59,10 +59,9 @@ from metadata.ingestion.source.database.datalake.models import (
     DatalakeTableSchemaWrapper,
 )
 from metadata.utils import fqn
-from metadata.utils.constants import DEFAULT_DATABASE
+from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, DEFAULT_DATABASE
 from metadata.utils.datalake.datalake_utils import (
-    COMPLEX_COLUMN_SEPARATOR,
-    SUPPORTED_TYPES,
+    SupportedTypes,
     clean_dataframe,
     fetch_dataframe,
 )
@@ -392,7 +391,6 @@ class DatalakeSource(DatabaseServiceSource):
                 table_request = CreateTableRequest(
                     name=table_name,
                     tableType=table_type,
-                    description="",
                     columns=columns,
                     tableConstraints=table_constraints if table_constraints else None,
                     databaseSchema=self.context.database_schema.fullyQualifiedName,
@@ -518,7 +516,7 @@ class DatalakeSource(DatabaseServiceSource):
                         return DataType.STRING.value
             except Exception as err:
                 logger.warning(
-                    f"Failed to disinguish data type for column {column_name}, Falling back to {data_type}, exc: {err}"
+                    f"Failed to distinguish data type for column {column_name}, Falling back to {data_type}, exc: {err}"
                 )
                 logger.debug(traceback.format_exc())
         return data_type
@@ -581,7 +579,7 @@ class DatalakeSource(DatabaseServiceSource):
         return table
 
     def check_valid_file_type(self, key_name):
-        for supported_types in SUPPORTED_TYPES:
+        for supported_types in SupportedTypes:
             if key_name.endswith(supported_types.value):
                 return True
         return False

@@ -15,7 +15,7 @@ import { t } from 'i18next';
 import { lowerCase } from 'lodash';
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import Searchbar from '../common/searchbar/Searchbar';
-import EntityTableV1 from '../EntityTable/EntityTable.component';
+import SchemaTable from '../SchemaTable/SchemaTable.component';
 import { Props } from './SchemaTab.interfaces';
 
 const SchemaTab: FunctionComponent<Props> = ({
@@ -27,11 +27,9 @@ const SchemaTab: FunctionComponent<Props> = ({
   hasTagEditAccess,
   entityFieldThreads,
   onThreadLinkSelect,
-  onEntityFieldSelect,
   isReadOnly = false,
   entityFqn,
   tableConstraints,
-  entityFieldTasks,
 }: Props) => {
   const [searchText, setSearchText] = useState('');
 
@@ -41,36 +39,30 @@ const SchemaTab: FunctionComponent<Props> = ({
 
   return (
     <Fragment>
-      <div className="tw-grid tw-grid-cols-3 tw-gap-x-2">
-        <div>
-          <Searchbar
-            placeholder={`${t('message.find-in-table')}..`}
-            searchValue={searchText}
-            typingInterval={500}
-            onSearch={handleSearchAction}
-          />
-        </div>
+      <div className="w-1/2">
+        <Searchbar
+          removeMargin
+          placeholder={`${t('message.find-in-table')}`}
+          searchValue={searchText}
+          typingInterval={500}
+          onSearch={handleSearchAction}
+        />
       </div>
-      <div className="row">
-        <div className="col-sm-12">
-          <EntityTableV1
-            columnName={columnName}
-            entityFieldTasks={entityFieldTasks}
-            entityFieldThreads={entityFieldThreads}
-            entityFqn={entityFqn}
-            hasDescriptionEditAccess={hasDescriptionEditAccess}
-            hasTagEditAccess={hasTagEditAccess}
-            isReadOnly={isReadOnly}
-            joins={joins}
-            searchText={lowerCase(searchText)}
-            tableColumns={columns}
-            tableConstraints={tableConstraints}
-            onEntityFieldSelect={onEntityFieldSelect}
-            onThreadLinkSelect={onThreadLinkSelect}
-            onUpdate={onUpdate}
-          />
-        </div>
-      </div>
+
+      <SchemaTable
+        columnName={columnName}
+        entityFieldThreads={entityFieldThreads}
+        entityFqn={entityFqn}
+        hasDescriptionEditAccess={hasDescriptionEditAccess}
+        hasTagEditAccess={hasTagEditAccess}
+        isReadOnly={isReadOnly}
+        joins={joins}
+        searchText={lowerCase(searchText)}
+        tableColumns={columns}
+        tableConstraints={tableConstraints}
+        onThreadLinkSelect={onThreadLinkSelect}
+        onUpdate={onUpdate}
+      />
     </Fragment>
   );
 };

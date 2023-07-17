@@ -101,7 +101,7 @@ const TableQueryRightPanel = ({
                     onUpdate={handleUpdateOwner}>
                     <Button
                       className="cursor-pointer flex-center"
-                      data-testid="edit-owner-button"
+                      data-testid="edit-owner"
                       icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
                       size="small"
                       type="text"
@@ -119,7 +119,7 @@ const TableQueryRightPanel = ({
                       width="20"
                     />
                     <Link
-                      data-testid="owner-name"
+                      data-testid="owner-link"
                       to={getUserPath(query.owner.name ?? '')}>
                       {getEntityName(query.owner)}
                     </Link>

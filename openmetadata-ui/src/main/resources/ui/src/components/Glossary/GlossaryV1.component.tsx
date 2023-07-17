@@ -220,7 +220,9 @@ const GlossaryV1 = ({
         reviewers: formData.reviewers.map(
           (item) => item.fullyQualifiedName || ''
         ),
-        glossary: activeGlossaryTerm?.glossary?.name || selectedData.name,
+        glossary:
+          activeGlossaryTerm?.glossary?.name ||
+          (selectedData.fullyQualifiedName ?? ''),
         parent: activeGlossaryTerm?.fullyQualifiedName,
       });
       onTermModalSuccess();
@@ -299,7 +301,7 @@ const GlossaryV1 = ({
   }, [id, isGlossaryActive, isVersionsView, action]);
 
   return isImportAction ? (
-    <ImportGlossary glossaryName={selectedData.name} />
+    <ImportGlossary glossaryName={selectedData.fullyQualifiedName ?? ''} />
   ) : (
     <>
       {isLoading && <Loader />}
@@ -310,6 +312,7 @@ const GlossaryV1 = ({
             glossary={selectedData as Glossary}
             glossaryTerms={glossaryTerms}
             handleGlossaryDelete={onGlossaryDelete}
+            isVersionView={isVersionsView}
             permissions={glossaryPermission}
             refreshGlossaryTerms={() => loadGlossaryTerms(true)}
             termsLoading={isTermsLoading}
@@ -328,6 +331,7 @@ const GlossaryV1 = ({
             handleGlossaryTermDelete={onGlossaryTermDelete}
             handleGlossaryTermUpdate={onGlossaryTermUpdate}
             isSummaryPanelOpen={isSummaryPanelOpen}
+            isVersionView={isVersionsView}
             permissions={glossaryTermPermission}
             refreshGlossaryTerms={() => loadGlossaryTerms(true)}
             termsLoading={isTermsLoading}

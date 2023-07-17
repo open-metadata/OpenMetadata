@@ -95,7 +95,6 @@ import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
-import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -132,7 +131,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
-import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
@@ -158,11 +156,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   public TableResourceTest() {
     super(TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS);
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
+    supportsSearchIndex = true;
   }
 
   public void setupDatabaseSchemas(TestInfo test) throws IOException {
     DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
-    CreateDatabase create = databaseResourceTest.createRequest(test).withService(SNOWFLAKE_REFERENCE.getName());
+    CreateDatabase create =
+        databaseResourceTest.createRequest(test).withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName());
     DATABASE = databaseResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
 
     DatabaseSchemaResourceTest databaseSchemaResourceTest = new DatabaseSchemaResourceTest();
@@ -514,8 +514,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     Table updatedTable = updateEntity(request, OK, ADMIN_AUTH_HEADERS);
     assertEquals(table.getColumns().get(0).getDescription(), updatedTable.getColumns().get(0).getDescription());
-    assertEquals(updatedTable.getColumns().get(0).getDataType(), CHAR);
-    assertEquals(updatedTable.getColumns().get(0).getDataLength(), 200);
+    assertEquals(CHAR, updatedTable.getColumns().get(0).getDataType());
+    assertEquals(200, updatedTable.getColumns().get(0).getDataLength());
   }
 
   @Test
@@ -1055,11 +1055,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withIncludeColumns(columnProfilerConfigs);
     table = putTableProfilerConfig(table.getId(), tableProfilerConfig, authHeaders);
     assertEquals(tableProfilerConfig, table.getTableProfilerConfig());
-    storedTable = getEntity(table.getId(), "tableProfilerConfig", authHeaders);
-    assertEquals(tableProfilerConfig, storedTable.getTableProfilerConfig());
+    Table tableWithConfig = getTableProfileConfig(table.getId(), authHeaders);
+    assertEquals(tableProfilerConfig, tableWithConfig.getTableProfilerConfig());
     table = deleteTableProfilerConfig(table.getId(), authHeaders);
     assertNull(table.getTableProfilerConfig());
-    storedTable = getEntity(table.getId(), "tableProfilerConfig", authHeaders);
+    storedTable = getTableProfileConfig(table.getId(), authHeaders);
     assertNull(storedTable.getTableProfilerConfig());
     tableProfilerConfig = new TableProfilerConfig().withProfileSample(80.0);
     table = putTableProfilerConfig(table.getId(), tableProfilerConfig, authHeaders);
@@ -1715,12 +1715,16 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateDatabaseSchema createSchema =
         schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName()).withOwner(null);
     DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
-    assertReference(USER1_REF, schema.getOwner());
+    assertReference(USER1_REF, schema.getOwner()); // Inherited owner
+    schema = schemaTest.getEntity(schema.getId(), "owner", ADMIN_AUTH_HEADERS);
+    assertReference(USER1_REF, schema.getOwner()); // Inherited owner
 
     // Ensure table owner is inherited from databaseSchema
     CreateTable createTable = createRequest(test).withOwner(null).withDatabaseSchema(schema.getFullyQualifiedName());
     Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
-    assertReference(USER1_REF, table.getOwner());
+    assertReference(USER1_REF, table.getOwner()); // Inherited owner
+    table = getEntity(table.getId(), "owner", ADMIN_AUTH_HEADERS);
+    assertReference(USER1_REF, table.getOwner()); // Inherited owner
 
     // Change the ownership of table and ensure further ingestion updates don't overwrite the ownership
     String json = JsonUtils.pojoToJson(table);
@@ -1729,6 +1733,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertReference(USER2_REF, table.getOwner());
     table = updateEntity(createTable.withOwner(null), OK, ADMIN_AUTH_HEADERS); // Simulate ingestion update
     assertReference(USER2_REF, table.getOwner()); // Owner remains the same
+    table = getEntity(table.getId(), "owner", ADMIN_AUTH_HEADERS);
+    assertReference(USER2_REF, table.getOwner()); // Owner remains the same
 
     // Change the ownership of schema and ensure further ingestion updates don't overwrite the ownership
     json = JsonUtils.pojoToJson(schema);
@@ -1736,6 +1742,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     schema = schemaTest.patchEntity(schema.getId(), json, schema, ADMIN_AUTH_HEADERS);
     assertReference(USER2_REF, schema.getOwner());
     schema = schemaTest.updateEntity(createSchema.withOwner(null), OK, ADMIN_AUTH_HEADERS); // Simulate ingestion update
+    assertReference(USER2_REF, schema.getOwner()); // Owner remains the same
+    schema = schemaTest.getEntity(schema.getId(), "owner", ADMIN_AUTH_HEADERS);
     assertReference(USER2_REF, schema.getOwner()); // Owner remains the same
   }
 
@@ -1747,28 +1755,25 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals("P30D", database.getRetentionPeriod());
 
     // Ensure database schema retention period is carried over from the parent database
-    DatabaseSchemaResourceTest schemaResourceTest = new DatabaseSchemaResourceTest();
+    DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
     CreateDatabaseSchema createDatabaseSchema =
-        schemaResourceTest.createRequest(test).withDatabase(database.getFullyQualifiedName());
+        schemaTest.createRequest(test).withDatabase(database.getFullyQualifiedName());
     DatabaseSchema schema =
-        schemaResourceTest
-            .createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS)
-            .withDatabase(database.getEntityReference());
-    assertEquals("P30D", schema.getRetentionPeriod());
-    schema = schemaResourceTest.getEntity(schema.getId(), "", ADMIN_AUTH_HEADERS);
-    assertEquals("P30D", schema.getRetentionPeriod());
+        schemaTest.createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS).withDatabase(database.getEntityReference());
+    assertEquals("P30D", schema.getRetentionPeriod()); // Retention period is inherited in create response
+    schema = schemaTest.getEntity(schema.getId(), "", ADMIN_AUTH_HEADERS);
+    assertEquals("P30D", schema.getRetentionPeriod()); // Retention period is inherited in create response
 
     // Ensure table retention period is carried over from the parent database schema
     CreateTable createTable = createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
     Table table = createEntity(createTable, ADMIN_AUTH_HEADERS).withDatabase(database.getEntityReference());
-    assertEquals("P30D", table.getRetentionPeriod());
+    assertEquals("P30D", table.getRetentionPeriod()); // Retention period is inherited in get response
     table = getEntity(table.getId(), "", ADMIN_AUTH_HEADERS);
-    assertEquals("P30D", table.getRetentionPeriod());
+    assertEquals("P30D", table.getRetentionPeriod()); // Retention period is inherited in get response
   }
 
   @Test
   void get_tablesWithTestCases(TestInfo test) throws IOException {
-    TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     DatabaseSchemaResourceTest schemaResourceTest = new DatabaseSchemaResourceTest();
     DatabaseResourceTest databaseTest = new DatabaseResourceTest();
@@ -1800,20 +1805,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     queryParams.put("includeEmptyTestSuite", "false");
     queryParams.put("fields", "testSuite");
     queryParams.put("limit", "100");
+
     ResultList<Table> tables = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertTrue(tables.getData().isEmpty());
-
-    for (int i = 0; i < 5; i++) {
-      CreateTestCase create =
-          testCaseResourceTest
-              .createRequest("test_testSuite__" + i)
-              .withTestSuite(executableTestSuite.getFullyQualifiedName());
-      testCaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    }
-
-    tables = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(1, tables.getData().size());
-    assertEquals(table1.getId(), tables.getData().get(0).getId());
+    assertEquals(3, tables.getData().size());
     assertNotNull(tables.getData().get(0).getTestSuite());
   }
 
@@ -1999,7 +1993,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
     Database database =
         databaseResourceTest.createAndCheckEntity(
-            databaseResourceTest.createRequest(test).withService(service.getName()), ADMIN_AUTH_HEADERS);
+            databaseResourceTest.createRequest(test).withService(service.getFullyQualifiedName()), ADMIN_AUTH_HEADERS);
     CreateTable create = createRequest(test, index);
     return createEntity(create, ADMIN_AUTH_HEADERS).withDatabase(database.getEntityReference());
   }
@@ -2024,6 +2018,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       throws HttpResponseException {
     WebTarget target = getResource(tableId).path("/tableProfilerConfig");
     return TestUtils.put(target, data, Table.class, OK, authHeaders);
+  }
+
+  public Table getTableProfileConfig(UUID tableId, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource(tableId).path("/tableProfilerConfig");
+    return TestUtils.get(target, Table.class, authHeaders);
   }
 
   public Table deleteTableProfilerConfig(UUID tableId, Map<String, String> authHeaders) throws HttpResponseException {

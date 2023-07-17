@@ -14,8 +14,10 @@
 import { Button as AntdButton, Button, Space } from 'antd';
 import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import classNames from 'classnames';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { isString, isUndefined, lowerCase, noop, toLower } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -41,10 +43,9 @@ export interface GetInfoElementsProps {
   teamType?: TeamType;
   showGroupOption?: boolean;
   isGroupType?: boolean;
-  updateTier?: (value: string) => void;
+  updateTier?: (value?: string) => void;
   updateTeamType?: (type: TeamType) => void;
   currentOwner?: Dashboard['owner'];
-  removeTier?: () => void;
   deleted?: boolean;
   allowTeamOwner?: boolean;
 }
@@ -68,7 +69,6 @@ const EntitySummaryDetails = ({
   updateOwner,
   updateTier,
   updateTeamType,
-  removeTier,
   currentOwner,
   deleted = false,
   allowTeamOwner = true,
@@ -135,7 +135,9 @@ const EntitySummaryDetails = ({
                       type="circle"
                       width="24"
                     />
-                    <span>{userDetails.ownerName}</span>
+                    <span data-testid="owner-link">
+                      {userDetails.ownerName}
+                    </span>
                     <span className="tw-mr-1 tw-inline-block tw-text-gray-400">
                       {t('label.pipe-symbol')}
                     </span>
@@ -157,10 +159,12 @@ const EntitySummaryDetails = ({
               <></>
             )
           ) : (
-            <>
+            <span
+              className="d-flex gap-1 items-center"
+              data-testid="owner-link">
               {t('label.no-entity', { entity: t('label.owner') })}
               {updateOwner && !deleted ? ownerDropdown : null}
-            </>
+            </span>
           );
       }
 
@@ -173,12 +177,13 @@ const EntitySummaryDetails = ({
             <>
               {t('label.no-entity', { entity: t('label.tier') })}
               {updateTier && !deleted ? (
-                <TierCard
-                  currentTier={tier?.tagFQN}
-                  removeTier={removeTier}
-                  updateTier={updateTier}>
-                  <span data-testid={`edit-${data.key}-icon`}>
-                    <EditIcon className="tw-cursor-pointer" width={14} />
+                <TierCard currentTier={tier?.tagFQN} updateTier={updateTier}>
+                  <span data-testid="edit-tier">
+                    <EditIcon
+                      className="tw-cursor-pointer"
+                      color={DE_ACTIVE_COLOR}
+                      width={14}
+                    />
                   </span>
                 </TierCard>
               ) : null}
@@ -256,12 +261,7 @@ const EntitySummaryDetails = ({
                 {data.openInNewTab && (
                   <>
                     &nbsp;
-                    <SVGIcons
-                      alt="external-link"
-                      className="tw-align-middle"
-                      icon="external-link"
-                      width="16px"
-                    />
+                    <IconExternalLink width={12} />
                   </>
                 )}
               </a>
@@ -295,7 +295,7 @@ const EntitySummaryDetails = ({
                     'tw-w-52': (displayVal as string).length > 32,
                   }
                 )}
-                data-testid="owner-name"
+                data-testid="owner-link"
                 title={displayVal as string}>
                 <Button data-testid="owner-dropdown" type="link">
                   {displayVal}
@@ -312,17 +312,19 @@ const EntitySummaryDetails = ({
               data-testid="tier-name"
               direction="horizontal"
               title={displayVal as string}>
-              <span data-testid="tier-dropdown">{displayVal}</span>
-              <TierCard
-                currentTier={tier?.tagFQN}
-                removeTier={removeTier}
-                updateTier={updateTier}>
-                {updateTier && !deleted ? (
-                  <span data-testid={`edit-${data.key}-icon`}>
-                    <EditIcon className="cursor-pointer" width={14} />
+              <span data-testid="Tier">{displayVal}</span>
+
+              {updateTier && !deleted ? (
+                <TierCard currentTier={tier?.tagFQN} updateTier={updateTier}>
+                  <span data-testid="edit-tier">
+                    <EditIcon
+                      className="cursor-pointer"
+                      color={DE_ACTIVE_COLOR}
+                      width={14}
+                    />
                   </span>
-                ) : null}
-              </TierCard>
+                </TierCard>
+              ) : null}
             </Space>
           ) : isTeamType ? (
             showTypeSelector ? (

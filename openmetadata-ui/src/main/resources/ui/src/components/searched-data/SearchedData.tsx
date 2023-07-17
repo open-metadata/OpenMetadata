@@ -93,7 +93,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
         : [];
 
       return (
-        <div className="m-b-md" key={index}>
+        <div className="m-b-md" key={`tabledatacard${index}`}>
           <ExploreSearchCard
             className={classNames(
               table.id === selectedEntityId && isSummaryPanelVisible
@@ -103,6 +103,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
             handleSummaryPanelDisplay={handleSummaryPanelDisplay}
             id={`tabledatacard${index}`}
             matches={matches}
+            showTags={false}
             source={{ ...table, name, description: tDesc, displayName }}
           />
         </div>
@@ -127,7 +128,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
     }
   };
 
-  const { page, size } = useMemo(
+  const { page = 1, size = PAGE_SIZE } = useMemo(
     () =>
       Qs.parse(
         location.search.startsWith('?')

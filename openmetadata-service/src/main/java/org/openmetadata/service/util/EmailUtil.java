@@ -84,18 +84,18 @@ public class EmailUtil {
 
   private static final String REPORT_SUBJECT = "%s: Data Insights Weekly - %s";
   public static final String DATA_INSIGHT_REPORT_TEMPLATE = "dataInsightReport.ftl";
-  private static EmailUtil INSTANCE;
+  private static EmailUtil instance;
   private static SmtpSettings STORED_SMTP_SETTINGS;
-  private static Mailer MAILER;
-  private static Configuration TEMPLATE_CONFIGURATION;
+  private static Mailer mailer;
+  private static Configuration templateConfiguration;
 
   private static final String EMAIL_IGNORE_MSG = "Email was not sent to %s as SMTP setting is not enabled";
 
   private EmailUtil() {
     try {
       STORED_SMTP_SETTINGS = getSmtpSettings();
-      MAILER = createMailer(STORED_SMTP_SETTINGS);
-      TEMPLATE_CONFIGURATION = new Configuration(VERSION_2_3_28);
+      mailer = createMailer(STORED_SMTP_SETTINGS);
+      templateConfiguration = new Configuration(VERSION_2_3_28);
       LOG.info("Email Util cache is initialized");
     } catch (Exception ex) {
       LOG.warn("[MAILER] Smtp Configurations are missing : Reason {} ", ex.getMessage(), ex);
@@ -128,10 +128,10 @@ public class EmailUtil {
   }
 
   public static EmailUtil getInstance() {
-    if (INSTANCE == null) {
-      INSTANCE = new EmailUtil();
+    if (instance == null) {
+      instance = new EmailUtil();
     }
-    return INSTANCE;
+    return instance;
   }
 
   public void sendAccountStatus(User user, String action, String status) throws IOException, TemplateException {
@@ -238,8 +238,8 @@ public class EmailUtil {
       emailBuilder.to(to);
       emailBuilder.from(getSmtpSettings().getSenderMail());
 
-      TEMPLATE_CONFIGURATION.setClassForTemplateLoading(getClass(), baseTemplatePackage);
-      Template template = TEMPLATE_CONFIGURATION.getTemplate(templatePath);
+      templateConfiguration.setClassForTemplateLoading(getClass(), baseTemplatePackage);
+      Template template = templateConfiguration.getTemplate(templatePath);
 
       // write the freemarker output to a StringWriter
       StringWriter stringWriter = new StringWriter();
@@ -261,8 +261,8 @@ public class EmailUtil {
       emailBuilder.toMultiple(to);
       emailBuilder.from(getSmtpSettings().getSenderMail());
 
-      TEMPLATE_CONFIGURATION.setClassForTemplateLoading(getClass(), baseTemplatePackage);
-      Template template = TEMPLATE_CONFIGURATION.getTemplate(templatePath);
+      templateConfiguration.setClassForTemplateLoading(getClass(), baseTemplatePackage);
+      Template template = templateConfiguration.getTemplate(templatePath);
 
       // write the freemarker output to a StringWriter
       StringWriter stringWriter = new StringWriter();
@@ -274,8 +274,8 @@ public class EmailUtil {
   }
 
   public void sendMail(Email email) {
-    if (MAILER != null && getSmtpSettings().getEnableSmtpServer()) {
-      MAILER.sendMail(email, true);
+    if (mailer != null && getSmtpSettings().getEnableSmtpServer()) {
+      mailer.sendMail(email, true);
     }
   }
 
@@ -366,7 +366,7 @@ public class EmailUtil {
   }
 
   public void testConnection() {
-    MAILER.testConnection();
+    mailer.testConnection();
   }
 
   private String getEmailVerificationSubject() {
@@ -419,7 +419,7 @@ public class EmailUtil {
         SettingsCache.getInstance().getSetting(SettingsType.EMAIL_CONFIGURATION, SmtpSettings.class);
     if (!emailConfig.equals(STORED_SMTP_SETTINGS)) {
       STORED_SMTP_SETTINGS = emailConfig;
-      MAILER = createMailer(emailConfig);
+      mailer = createMailer(emailConfig);
     }
     return emailConfig;
   }

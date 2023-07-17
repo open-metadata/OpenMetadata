@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { Include } from 'generated/type/include';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
@@ -23,7 +24,8 @@ import APIClient from './index';
 export const getDatabases = async (
   service: string,
   fields: string,
-  paging?: PagingWithoutTotal
+  paging?: PagingWithoutTotal,
+  include: Include = Include.NonDeleted
 ) => {
   const response = await APIClient.get<{
     data: Database[];
@@ -33,6 +35,7 @@ export const getDatabases = async (
       service,
       fields,
       ...paging,
+      include,
     },
   });
 
@@ -96,7 +99,8 @@ export const patchDatabaseSchemaDetails = async (
 export const getDatabaseSchemas = async (
   databaseName: string,
   paging?: string,
-  arrQueryFields?: string | string[]
+  arrQueryFields?: string | string[],
+  include: Include = Include.NonDeleted
 ) => {
   const url = `${getURLWithQueryFields(
     `/databaseSchemas`,
@@ -106,7 +110,11 @@ export const getDatabaseSchemas = async (
   const response = await APIClient.get<{
     data: DatabaseSchema[];
     paging: Paging;
-  }>(url);
+  }>(url, {
+    params: {
+      include,
+    },
+  });
 
   return response.data;
 };

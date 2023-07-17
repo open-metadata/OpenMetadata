@@ -88,6 +88,8 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
       );
       const lastPost = thread?.posts?.[postLength - 1];
 
+      //   ashish
+
       return (
         <Fragment key={index}>
           <Card
@@ -104,7 +106,7 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
                 entityLink={thread.about}
                 feed={mainFeed}
                 feedType={thread.type || ThreadType.Conversation}
-                taskDetails={thread.task}
+                task={thread}
                 threadId={thread.id}
                 updateThreadHandler={updateThreadHandler}
                 onConfirmation={onConfirmation}
@@ -136,6 +138,7 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
                     className="tw-ml-9"
                     feed={lastPost as Post}
                     feedType={thread.type || ThreadType.Conversation}
+                    task={thread}
                     threadId={thread.id}
                     updateThreadHandler={updateThreadHandler}
                     onConfirmation={onConfirmation}

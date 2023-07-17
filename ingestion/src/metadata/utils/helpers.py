@@ -29,7 +29,9 @@ from sqlparse.sql import Statement
 
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -200,13 +202,15 @@ def replace_special_with(raw: str, replacement: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]", replacement, raw)
 
 
-def get_standard_chart_type(raw_chart_type: str) -> str:
+def get_standard_chart_type(raw_chart_type: str) -> ChartType.Other:
     """
     Get standard chart type supported by OpenMetadata based on raw chart type input
     :param raw_chart_type: raw chart type to be standardize
     :return: standard chart type
     """
-    return om_chart_type_dict.get(raw_chart_type.lower(), ChartType.Other)
+    if raw_chart_type is not None:
+        return om_chart_type_dict.get(raw_chart_type.lower(), ChartType.Other)
+    return ChartType.Other
 
 
 def find_in_iter(element: Any, container: Iterable[Any]) -> Optional[Any]:
@@ -431,3 +435,23 @@ def is_safe_sql_query(sql_query: str) -> bool:
         if any(validation):
             return False
     return True
+
+
+def get_database_name_for_lineage(
+    db_service_entity: DatabaseService, default_db_name: str
+) -> Optional[str]:
+    # If the database service supports multiple db or
+    # database service connection details are not available
+    # then pick the database name available from api response
+    if db_service_entity.connection is None or hasattr(
+        db_service_entity.connection.config, "supportsDatabase"
+    ):
+        return default_db_name
+
+    # otherwise if it is an single db source then use "databaseName"
+    # and if databaseName field is not available or is empty then use
+    # "default" as database name
+    return (
+        db_service_entity.connection.config.__dict__.get("databaseName")
+        or DEFAULT_DATABASE
+    )

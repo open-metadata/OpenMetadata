@@ -45,9 +45,11 @@ import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -76,9 +78,22 @@ public class UserRepository extends EntityRepository<User> {
     List<String> tempFields = getAllowedFieldsCopy();
     if (fields != null && fields.equals("*")) {
       tempFields.add(AUTH_MECHANISM_FIELD);
-      return new Fields(tempFields, String.join(",", tempFields));
+      return new Fields(tempFields);
     }
     return new Fields(tempFields, fields);
+  }
+
+  @Override
+  public User getByName(UriInfo uriInfo, String name, Fields fields) throws IOException {
+    return super.getByName(uriInfo, EntityInterfaceUtil.quoteName(name), fields);
+  }
+
+  public User getByEmail(UriInfo uriInfo, String email, Fields fields) throws IOException {
+    String userString = ((CollectionDAO.UserDAO) dao).findUserByEmail(email);
+    if (userString == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(USER, email));
+    }
+    return withHref(uriInfo, setFieldsInternal(JsonUtils.readValue(userString, User.class), fields));
   }
 
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
@@ -281,7 +296,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   /* Get all the teams that user belongs to User entity */
-  private List<EntityReference> getTeams(User user) throws IOException {
+  public List<EntityReference> getTeams(User user) throws IOException {
     List<EntityRelationshipRecord> records = findFrom(user.getId(), USER, Relationship.HAS, Entity.TEAM);
     List<EntityReference> teams = EntityUtil.populateEntityReferences(records, Entity.TEAM);
     teams = teams.stream().filter(team -> !team.getDeleted()).collect(Collectors.toList()); // Filter deleted teams

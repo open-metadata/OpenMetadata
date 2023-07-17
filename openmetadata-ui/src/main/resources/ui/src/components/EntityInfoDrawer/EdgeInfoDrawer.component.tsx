@@ -108,6 +108,7 @@ const EdgeInfoDrawer = ({
     <Drawer
       destroyOnClose
       bodyStyle={{ padding: 16 }}
+      className="entity-panel-container"
       closable={false}
       extra={<CloseOutlined onClick={onClose} />}
       getContainer={false}
@@ -125,7 +126,7 @@ const EdgeInfoDrawer = ({
               (data) =>
                 data.value && (
                   <Col key={data.key} span={24}>
-                    <Typography.Text className="m-r-sm">
+                    <Typography.Text className="m-r-sm summary-panel-section-title">
                       {`${data.key}:`}
                     </Typography.Text>
 
@@ -141,7 +142,7 @@ const EdgeInfoDrawer = ({
             )}
           <Col span={24}>
             <Divider />
-            <Typography.Paragraph>
+            <Typography.Paragraph className="summary-panel-section-title">
               {`${t('label.description')}:`}
             </Typography.Paragraph>
             {edge?.data.edge?.description?.trim() ? (
@@ -149,7 +150,7 @@ const EdgeInfoDrawer = ({
                 markdown={edge?.data.edge?.description}
               />
             ) : (
-              <Typography.Paragraph className="text-grey-muted m-b-0">
+              <Typography.Paragraph className=" m-b-0">
                 {t('label.no-entity', {
                   entity: t('label.description'),
                 })}
@@ -158,7 +159,7 @@ const EdgeInfoDrawer = ({
           </Col>
           <Col span={24}>
             <Divider />
-            <Typography.Paragraph>
+            <Typography.Paragraph className="summary-panel-section-title">
               {`${t('label.sql-uppercase-query')}:`}
             </Typography.Paragraph>
             {mysqlQuery ? (
@@ -168,7 +169,7 @@ const EdgeInfoDrawer = ({
                 value={mysqlQuery}
               />
             ) : (
-              <Typography.Paragraph className="text-grey-muted m-b-0">
+              <Typography.Paragraph className="m-b-0">
                 {t('server.no-query-available')}
               </Typography.Paragraph>
             )}

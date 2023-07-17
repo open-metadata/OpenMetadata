@@ -14,13 +14,14 @@ import { Space, SpaceProps, Typography } from 'antd';
 import { ReactComponent as IconRetry } from 'assets/svg/ic-retry-icon.svg';
 import classNames from 'classnames';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
+import { isEmpty } from 'lodash';
 import React, { FC } from 'react';
 import './airflow-message-banner.less';
 
 const AirflowMessageBanner: FC<SpaceProps> = ({ className }) => {
   const { reason, isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
 
-  if (isAirflowAvailable || isFetchingStatus) {
+  if (isAirflowAvailable || isFetchingStatus || isEmpty(reason)) {
     return null;
   }
 

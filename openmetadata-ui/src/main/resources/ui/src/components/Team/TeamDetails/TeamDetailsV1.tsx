@@ -15,6 +15,8 @@ import { CheckOutlined, CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
+  Form,
+  FormProps,
   Input,
   Modal,
   Row,
@@ -30,10 +32,10 @@ import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { ReactComponent as IconRestore } from 'assets/svg/ic-restore.svg';
 import { ReactComponent as IconOpenLock } from 'assets/svg/open-lock.svg';
-import { ReactComponent as IconShowPassword } from 'assets/svg/show-password.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
 import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import {
@@ -41,6 +43,7 @@ import {
   GlobalSettingsMenuCategory,
 } from 'constants/GlobalSettings.constants';
 import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
+import { EMAIL_REG_EX } from 'constants/regex.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
@@ -68,12 +71,7 @@ import { useHistory, useLocation } from 'react-router-dom';
 import { getSuggestions } from 'rest/miscAPI';
 import { exportTeam, restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../../AppState';
-import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
-  LIST_SIZE,
-  ROUTES,
-} from '../../../constants/constants';
+import { LIST_SIZE, ROUTES } from '../../../constants/constants';
 import { ROLE_DOCS, TEAMS_DOCS } from '../../../constants/docs.constants';
 import { EntityAction, EntityType } from '../../../enums/entity.enum';
 import { OwnerType } from '../../../enums/user.enum';
@@ -195,7 +193,7 @@ const TeamDetailsV1 = ({
   }>(DELETE_USER_INITIAL_STATE);
   const [searchTerm, setSearchTerm] = useState('');
   const [table, setTable] = useState<Team[]>([]);
-  const [slashedDatabaseName, setSlashedDatabaseName] = useState<
+  const [slashedTeamName, setSlashedTeamName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
   const [addAttribute, setAddAttribute] = useState<AddAttribute>();
@@ -207,7 +205,6 @@ const TeamDetailsV1 = ({
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
-  const [email, setEmail] = useState<string>(currentTeam.email || '');
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
   const { showModal } = useEntityExportModalProvider();
 
@@ -310,30 +307,7 @@ const TeamDetailsV1 = ({
     []
   );
 
-  const ownerValue = useMemo(() => {
-    switch (currentTeam.owner?.type) {
-      case 'team':
-        return getTeamAndUserDetailsPath(currentTeam.owner?.name || '');
-      case 'user':
-        return getUserPath(currentTeam.owner?.fullyQualifiedName ?? '');
-      default:
-        return '';
-    }
-  }, [currentTeam]);
-
   const extraInfo: ExtraInfo[] = [
-    {
-      key: 'Owner',
-      value: ownerValue,
-      placeholderText:
-        currentTeam?.owner?.displayName || currentTeam?.owner?.name || '',
-      isLink: true,
-      openInNewTab: false,
-      profileName:
-        currentTeam?.owner?.type === OwnerType.USER
-          ? currentTeam?.owner?.name
-          : undefined,
-    },
     ...(isOrganization
       ? []
       : [
@@ -558,11 +532,12 @@ const TeamDetailsV1 = ({
     }
   };
 
-  const handleUpdateEmail = () => {
+  const handleUpdateEmail: FormProps['onFinish'] = (values) => {
+    const { email } = values;
     if (currentTeam) {
       const updatedData: Team = {
         ...currentTeam,
-        email,
+        email: isEmpty(email) ? undefined : email,
       };
 
       updateTeamHandler(updatedData);
@@ -612,7 +587,7 @@ const TeamDetailsV1 = ({
           url: '',
         },
       ];
-      setSlashedDatabaseName(breadcrumb);
+      setSlashedTeamName(breadcrumb);
       setHeading(currentTeam.displayName || currentTeam.name);
     }
   }, [currentTeam, parentTeams, showDeletedTeam]);
@@ -668,42 +643,6 @@ const TeamDetailsV1 = ({
       search: Qs.stringify({ type: ImportType.TEAMS }),
     });
   }, []);
-
-  const DELETED_TOGGLE_MENU_ITEM = {
-    label: (
-      <ManageButtonItemLabel
-        description={t('message.view-deleted-entity', {
-          entity: t('label.team-plural'),
-          parent: t('label.team'),
-        })}
-        icon={<IconShowPassword {...DROPDOWN_ICON_SIZE_PROPS} />}
-        id="deleted-team-dropdown"
-        name={
-          <Row>
-            <Col span={21}>
-              <Typography.Text
-                className="font-medium"
-                data-testid="deleted-menu-item-label">
-                {t('label.show-deleted-entity', {
-                  entity: t('label.team'),
-                })}
-              </Typography.Text>
-            </Col>
-
-            <Col span={3}>
-              <Switch
-                checked={showDeletedTeam}
-                data-testid="deleted-menu-item-switch"
-                size="small"
-              />
-            </Col>
-          </Row>
-        }
-      />
-    ),
-    onClick: onShowDeletedTeamChange,
-    key: 'deleted-team-dropdown',
-  };
 
   const IMPORT_EXPORT_MENU_ITEM = useMemo(() => {
     const options = [
@@ -795,9 +734,6 @@ const TeamDetailsV1 = ({
         onClick: handleOpenToJoinToggle,
         key: 'open-group-dropdown',
       },
-      ...(currentTeam.teamType === TeamType.BusinessUnit
-        ? [DELETED_TOGGLE_MENU_ITEM]
-        : []),
     ],
     [
       entityPermissions,
@@ -953,34 +889,48 @@ const TeamDetailsV1 = ({
   const emailElement = (
     <Space className="m-b-xs">
       {isEmailEdit ? (
-        <Space>
-          <Input
-            className="w-64"
-            data-testid="email-input"
-            placeholder={t('label.enter-entity', {
-              entity: t('label.email-lowercase'),
-            })}
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Button
-            className="h-8 p-x-xss"
-            data-testid="cancel-edit-email"
-            size="small"
-            type="primary"
-            onClick={() => setIsEmailEdit(false)}>
-            <CloseOutlined />
-          </Button>
-          <Button
-            className="h-8 p-x-xss"
-            data-testid="save-edit-email"
-            size="small"
-            type="primary"
-            onClick={handleUpdateEmail}>
-            <CheckOutlined />
-          </Button>
-        </Space>
+        <Form
+          initialValues={{ email: currentTeam.email }}
+          onFinish={handleUpdateEmail}>
+          <Space align="baseline">
+            <Form.Item
+              className="m-b-0"
+              name="email"
+              rules={[
+                {
+                  pattern: EMAIL_REG_EX,
+                  type: 'email',
+                  message: t('message.field-text-is-invalid', {
+                    fieldText: t('label.email'),
+                  }),
+                },
+              ]}>
+              <Input
+                className="w-64"
+                data-testid="email-input"
+                placeholder={t('label.enter-entity', {
+                  entity: t('label.email-lowercase'),
+                })}
+              />
+            </Form.Item>
+            <Button
+              className="h-8 p-x-xss"
+              data-testid="cancel-edit-email"
+              size="small"
+              type="primary"
+              onClick={() => setIsEmailEdit(false)}>
+              <CloseOutlined />
+            </Button>
+            <Button
+              className="h-8 p-x-xss"
+              data-testid="save-edit-email"
+              htmlType="submit"
+              size="small"
+              type="primary">
+              <CheckOutlined />
+            </Button>
+          </Space>
+        </Form>
       ) : (
         <>
           <Typography.Text data-testid="email-value">
@@ -1024,10 +974,7 @@ const TeamDetailsV1 = ({
       {!isEmpty(currentTeam) ? (
         <Fragment>
           {!isOrganization && (
-            <TitleBreadcrumb
-              className="p-b-xs"
-              titleLinks={slashedDatabaseName}
-            />
+            <TitleBreadcrumb className="p-b-xs" titleLinks={slashedTeamName} />
           )}
           <div
             className="d-flex tw-justify-between tw-items-center"
@@ -1067,16 +1014,24 @@ const TeamDetailsV1 = ({
               <ManageButton
                 canDelete={false}
                 entityName={currentTeam.fullyQualifiedName ?? currentTeam.name}
-                extraDropdownContent={[
-                  ...IMPORT_EXPORT_MENU_ITEM,
-                  DELETED_TOGGLE_MENU_ITEM,
-                ]}
+                extraDropdownContent={[...IMPORT_EXPORT_MENU_ITEM]}
               />
             )}
           </div>
           {emailElement}
           <Space size={0}>
-            {extraInfo.map((info, index) => (
+            <OwnerLabel
+              hasPermission={hasAccess}
+              owner={currentTeam?.owner}
+              onUpdate={updateOwner}
+            />
+            {!isOrganization && (
+              <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
+                {t('label.pipe-symbol')}
+              </span>
+            )}
+
+            {extraInfo.map((info) => (
               <Fragment key={uniqueId()}>
                 <EntitySummaryDetails
                   allowTeamOwner={false}
@@ -1094,11 +1049,6 @@ const TeamDetailsV1 = ({
                     entityPermissions.EditAll ? updateTeamType : undefined
                   }
                 />
-                {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
-                  <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
-                    {t('label.pipe-symbol')}
-                  </span>
-                ) : null}
               </Fragment>
             ))}
           </Space>
@@ -1123,7 +1073,7 @@ const TeamDetailsV1 = ({
               onChange={updateActiveTab}
             />
 
-            <div className="flex-grow d-flex flex-col tw-pt-4">
+            <div className="flex-grow d-flex flex-col">
               {currentTab === TeamsPageTab.TEAMS &&
                 (currentTeam.childrenCount === 0 && !searchTerm ? (
                   fetchErrorPlaceHolder({
@@ -1149,18 +1099,30 @@ const TeamDetailsV1 = ({
                     </Col>
                     <Col>
                       <Space align="center">
-                        <Button
-                          data-testid="add-team"
-                          disabled={!createTeamPermission}
-                          title={
-                            createTeamPermission
-                              ? addTeam
-                              : t('message.no-permission-for-action')
-                          }
-                          type="primary"
-                          onClick={() => handleAddTeam(true)}>
-                          {addTeam}
-                        </Button>
+                        <span>
+                          <Switch
+                            checked={showDeletedTeam}
+                            data-testid="show-deleted"
+                            onClick={onShowDeletedTeamChange}
+                          />
+                          <Typography.Text className="m-l-xs">
+                            {t('label.deleted')}
+                          </Typography.Text>
+                        </span>
+
+                        {createTeamPermission && (
+                          <Button
+                            data-testid="add-team"
+                            title={
+                              createTeamPermission
+                                ? addTeam
+                                : t('message.no-permission-for-action')
+                            }
+                            type="primary"
+                            onClick={() => handleAddTeam(true)}>
+                            {addTeam}
+                          </Button>
+                        )}
                       </Space>
                     </Col>
                     <Col span={24}>

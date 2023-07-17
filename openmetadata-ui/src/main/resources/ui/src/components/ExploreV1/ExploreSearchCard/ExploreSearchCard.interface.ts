@@ -26,5 +26,7 @@ export interface ExploreSearchCardProps {
   ) => void;
   checked?: boolean;
   showCheckboxes?: boolean;
+  showTags?: boolean;
   openEntityInNewPage?: boolean;
+  hideBreadcrumbs?: boolean;
 }

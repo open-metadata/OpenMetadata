@@ -119,13 +119,11 @@ EXPECTED_PIPELINE_STATUS = [
 EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
     name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
     displayName="MSSQL <> Postgres",
-    description="",
     sourceUrl=MOCK_CONNECTION_URI_PATH,
     tasks=[
         Task(
             name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
             displayName="MSSQL <> Postgres",
-            description="",
             sourceUrl=f"{MOCK_CONNECTION_URI_PATH}/status",
         )
     ],
@@ -145,13 +143,11 @@ MOCK_PIPELINE = Pipeline(
     name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
     fullyQualifiedName="airbyte_source.a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
     displayName="MSSQL <> Postgres",
-    description="",
     sourceUrl=MOCK_CONNECTION_URI_PATH,
     tasks=[
         Task(
             name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
             displayName="MSSQL <> Postgres",
-            description="",
             sourceUrl=f"{MOCK_CONNECTION_URI_PATH}/status",
         )
     ],

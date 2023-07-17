@@ -23,6 +23,8 @@ import {
 } from 'components/Explore/explore.interface';
 import ExploreV1 from 'components/ExploreV1/ExploreV1.component';
 import { withAdvanceSearch } from 'components/router/withAdvanceSearch';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
+import { mockSearchData } from 'constants/mockTourData.constants';
 import { SORT_ORDER } from 'enums/common.enum';
 import { get, isEmpty, isNil, isString, isUndefined } from 'lodash';
 import Qs from 'qs';
@@ -35,7 +37,6 @@ import React, {
 } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchQuery } from 'rest/searchAPI';
-import useDeepCompareEffect from 'use-deep-compare-effect';
 import {
   getCombinedQueryFilterObject,
   getUpdatedAggregateFieldValue,
@@ -49,10 +50,6 @@ import {
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
-import {
-  filterObjectToElasticsearchQuery,
-  isFilterObject,
-} from '../../utils/FilterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   QueryFieldInterface,
@@ -63,6 +60,7 @@ import {
 const ExplorePageV1: FunctionComponent = () => {
   const location = useLocation();
   const history = useHistory();
+  const { isTourOpen } = useTourProvider();
 
   const { tab } = useParams<UrlParams>();
 
@@ -104,19 +102,6 @@ const ExplorePageV1: FunctionComponent = () => {
   const searchQueryParam = useMemo(
     () => (isString(parsedSearch.search) ? parsedSearch.search : ''),
     [location.search]
-  );
-
-  const facetFilters = useMemo(
-    () =>
-      isFilterObject(parsedSearch.facetFilter)
-        ? parsedSearch.facetFilter
-        : undefined,
-    [parsedSearch.facetFilter]
-  );
-
-  const elasticsearchQueryFilter = useMemo(
-    () => filterObjectToElasticsearchQuery(facetFilters),
-    [facetFilters]
   );
 
   const handlePageChange: ExploreProps['onChangePage'] = (page, size) => {
@@ -194,14 +179,6 @@ const ExplorePageV1: FunctionComponent = () => {
     [history, parsedSearch]
   );
 
-  const handleFacetFilterChange: ExploreProps['onChangeFacetFilters'] = (
-    facetFilter
-  ) => {
-    history.push({
-      search: Qs.stringify({ ...parsedSearch, facetFilter, page: 1 }),
-    });
-  };
-
   const handleShowDeletedChange: ExploreProps['onChangeShowDeleted'] = (
     showDeleted
   ) => {
@@ -246,8 +223,10 @@ const ExplorePageV1: FunctionComponent = () => {
   }, [parsedSearch.size]);
 
   useEffect(() => {
-    handlePageChange(page, size);
-  }, [page, size]);
+    if (!isEmpty(parsedSearch)) {
+      handlePageChange(page, size);
+    }
+  }, [page, size, parsedSearch]);
 
   const showDeleted = useMemo(() => {
     const showDeletedParam = parsedSearch.showDeleted;
@@ -298,14 +277,19 @@ const ExplorePageV1: FunctionComponent = () => {
     fetchFilterAggregationsWithoutFilters();
   }, [searchIndex]);
 
-  useDeepCompareEffect(() => {
+  useEffect(() => {
     const updatedQuickFilters = getAdvancedSearchQuickFilters();
 
     const combinedQueryFilter = getCombinedQueryFilterObject(
-      elasticsearchQueryFilter as unknown as QueryFilterInterface,
       updatedQuickFilters as QueryFilterInterface,
       queryFilter as unknown as QueryFilterInterface
     );
+
+    let newSortValue = sortValue;
+    if (searchQueryParam !== '') {
+      newSortValue = '_score';
+      setSortValue(newSortValue);
+    }
 
     setIsLoading(true);
     Promise.all([
@@ -313,7 +297,7 @@ const ExplorePageV1: FunctionComponent = () => {
         query: searchQueryParam,
         searchIndex,
         queryFilter: combinedQueryFilter,
-        sortField: sortValue,
+        sortField: newSortValue,
         sortOrder,
         pageNumber: page,
         pageSize: size,
@@ -344,6 +328,7 @@ const ExplorePageV1: FunctionComponent = () => {
             includeDeleted: showDeleted,
             trackTotalHits: true,
             fetchSource: false,
+            filters: index === SearchIndex.TAG ? 'disabled:false' : '',
           })
         )
       ).then(
@@ -381,7 +366,6 @@ const ExplorePageV1: FunctionComponent = () => {
     sortValue,
     sortOrder,
     showDeleted,
-    elasticsearchQueryFilter,
     searchIndex,
     page,
     size,
@@ -431,17 +415,19 @@ const ExplorePageV1: FunctionComponent = () => {
   return (
     <ExploreV1
       aggregations={updatedAggregations}
-      facetFilters={facetFilters}
-      loading={isLoading}
+      loading={isLoading && !isTourOpen}
       quickFilters={advancesSearchQuickFilters}
       searchIndex={searchIndex}
-      searchResults={searchResults}
+      searchResults={
+        isTourOpen
+          ? (mockSearchData as unknown as SearchResponse<ExploreSearchIndex>)
+          : searchResults
+      }
       showDeleted={showDeleted}
       sortOrder={sortOrder}
       sortValue={sortValue}
       tabCounts={searchHitCounts}
       onChangeAdvancedSearchQuickFilters={handleAdvanceSearchQuickFiltersChange}
-      onChangeFacetFilters={handleFacetFilterChange}
       onChangePage={handlePageChange}
       onChangeSearchIndex={handleSearchIndexChange}
       onChangeShowDeleted={handleShowDeletedChange}

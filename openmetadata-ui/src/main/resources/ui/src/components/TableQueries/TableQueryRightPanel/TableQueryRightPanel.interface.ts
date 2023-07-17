@@ -13,7 +13,6 @@
 
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { Query } from 'generated/entity/data/query';
-import { TagOption } from 'Models';
 
 export interface TableQueryRightPanelProps {
   query: Query;
@@ -21,9 +20,3 @@ export interface TableQueryRightPanelProps {
   permission: OperationPermission;
   onQueryUpdate: (updatedQuery: Query, key: keyof Query) => Promise<void>;
 }
-
-export type TagDetails = {
-  isLoading: boolean;
-  options: TagOption[];
-  isError: boolean;
-};

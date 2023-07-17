@@ -260,12 +260,12 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
         putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
-    assertEquals(updatedService.getTestConnectionResult().getStatus(), TestConnectionResultStatus.SUCCESSFUL);
+    assertEquals(TestConnectionResultStatus.SUCCESSFUL, updatedService.getTestConnectionResult().getStatus());
     assertEquals(updatedService.getConnection(), service.getConnection());
     // Check that the stored data is also correct
     DatabaseService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     assertNotNull(stored.getTestConnectionResult());
-    assertEquals(stored.getTestConnectionResult().getStatus(), TestConnectionResultStatus.SUCCESSFUL);
+    assertEquals(TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
     assertEquals(stored.getConnection(), service.getConnection());
   }
 
@@ -389,8 +389,8 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     assertEquals(expectedMysqlConnection.getConnectionArguments(), actualMysqlConnection.getConnectionArguments());
     if (maskedPasswords) {
       assertEquals(
-          JsonUtils.convertValue(actualMysqlConnection.getAuthType(), basicAuth.class).getPassword(),
-          PasswordEntityMasker.PASSWORD_MASK);
+          PasswordEntityMasker.PASSWORD_MASK,
+          JsonUtils.convertValue(actualMysqlConnection.getAuthType(), basicAuth.class).getPassword());
     } else {
       assertEquals(
           JsonUtils.convertValue(expectedMysqlConnection.getAuthType(), basicAuth.class).getPassword(),
@@ -425,7 +425,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
         expectedRedshiftConnection.getConnectionArguments(), actualRedshiftConnection.getConnectionArguments());
     assertEquals(expectedRedshiftConnection.getConnectionOptions(), actualRedshiftConnection.getConnectionOptions());
     if (maskedPasswords) {
-      assertEquals(actualRedshiftConnection.getPassword(), PasswordEntityMasker.PASSWORD_MASK);
+      assertEquals(PasswordEntityMasker.PASSWORD_MASK, actualRedshiftConnection.getPassword());
     } else {
       assertEquals(expectedRedshiftConnection.getPassword(), actualRedshiftConnection.getPassword());
     }
@@ -443,7 +443,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
         expectedSnowflakeConnection.getConnectionArguments(), actualSnowflakeConnection.getConnectionArguments());
     assertEquals(expectedSnowflakeConnection.getConnectionOptions(), actualSnowflakeConnection.getConnectionOptions());
     if (maskedPasswords) {
-      assertEquals(actualSnowflakeConnection.getPassword(), PasswordEntityMasker.PASSWORD_MASK);
+      assertEquals(PasswordEntityMasker.PASSWORD_MASK, actualSnowflakeConnection.getPassword());
     } else {
       assertEquals(expectedSnowflakeConnection.getPassword(), actualSnowflakeConnection.getPassword());
     }

@@ -258,7 +258,7 @@ class RuleEvaluatorTest {
       Team parentTeam = SubjectCache.getInstance().getTeam(parentId);
       team.setParents(listOf(parentTeam.getEntityReference()));
     }
-    SubjectCache.TEAM_CACHE_WITH_ID.put(team.getId(), team);
+    SubjectCache.teamCacheWithId.put(team.getId(), team);
     return team;
   }
 
@@ -278,7 +278,7 @@ class RuleEvaluatorTest {
   private Role createRole(String roleName) {
     UUID roleId = UUID.nameUUIDFromBytes(roleName.getBytes(StandardCharsets.UTF_8));
     Role role = new Role().withName(roleName).withId(roleId);
-    RoleCache.ROLE_CACHE_WITH_ID.put(role.getId(), role);
+    RoleCache.roleCacheWithId.put(role.getId(), role);
     return role;
   }
 

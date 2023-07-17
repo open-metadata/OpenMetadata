@@ -14,7 +14,7 @@ or ping us on [Slack](https://slack.open-metadata.org/) If you would like to pri
 You can check the latest release [here](/releases/all-releases).
 
 
-## 1.1 Release - June 22nd, 2023
+## 1.1 Release - June 29th, 2023
 
 {% tilesContainer %}
 
@@ -22,7 +22,7 @@ You can check the latest release [here](/releases/all-releases).
 - We will be adding support for NoSQL DB entities and Services with APIs
 - Support for Long Entity Names such as S3 paths
 - Import/Export support at all entities
-- Tag Propgation using Import/Export
+- Tag Propagation using Import/Export
 - Thumbs up & down to capture popularity of the Entities
 {% /tile %}
 

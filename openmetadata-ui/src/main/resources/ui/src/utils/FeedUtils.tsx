@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
+import { RightOutlined } from '@ant-design/icons';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import i18next from 'i18next';
 import { isEqual } from 'lodash';
+import React from 'react';
 import {
   deletePostById,
   deleteThread,
@@ -28,12 +30,12 @@ import {
   getUserSuggestions,
   searchData,
 } from 'rest/miscAPI';
-
-import { RightOutlined } from '@ant-design/icons';
-import React from 'react';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import {
+  FQN_SEPARATOR_CHAR,
+  WILD_CARD_CHAR,
+} from '../constants/char.constants';
 import {
   entityLinkRegEx,
   EntityRegEx,
@@ -57,6 +59,7 @@ import {
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
 } from './CommonUtils';
+import EntityLink from './EntityLink';
 import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
 import { getEncodedFqn } from './StringsUtils';
 import { getEntityLink } from './TableUtils';
@@ -64,14 +67,10 @@ import { getRelativeDateByTimeStamp } from './TimeUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const getEntityType = (entityLink: string) => {
-  const match = EntityRegEx.exec(entityLink);
-
-  return match?.[1];
+  return EntityLink.getEntityType(entityLink);
 };
 export const getEntityFQN = (entityLink: string) => {
-  const match = EntityRegEx.exec(entityLink);
-
-  return match?.[2];
+  return EntityLink.getEntityFqn(entityLink);
 };
 export const getEntityField = (entityLink: string) => {
   const match = EntityRegEx.exec(entityLink);
@@ -153,23 +152,6 @@ export const getThreadField = (
   return value.split(separator).slice(-2);
 };
 
-export const getThreadValue = (
-  columnName: string,
-  columnField: string,
-  entityFieldThreads: EntityFieldThreads[]
-) => {
-  let threadValue;
-
-  entityFieldThreads?.forEach((thread) => {
-    const threadField = getThreadField(thread.entityField);
-    if (threadField[0] === columnName && threadField[1] === columnField) {
-      threadValue = thread;
-    }
-  });
-
-  return threadValue;
-};
-
 export const buildMentionLink = (entityType: string, entityFqn: string) => {
   return `${document.location.protocol}//${document.location.host}/${entityType}/${entityFqn}`;
 };
@@ -178,7 +160,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
   if (mentionChar === '@') {
     let atValues = [];
     if (!searchTerm) {
-      const data = await getSearchedUsers('*', 0, 5);
+      const data = await getSearchedUsers(WILD_CARD_CHAR, 1, 5);
       const hits = data.data.hits.hits;
 
       atValues = hits.map((hit) => {
@@ -222,7 +204,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
   } else {
     let hashValues = [];
     if (!searchTerm) {
-      const data = await searchData('*', 0, 5, '', '', '', SearchIndex.TABLE);
+      const data = await searchData('*', 1, 5, '', '', '', SearchIndex.TABLE);
       const hits = data.data.hits.hits;
 
       hashValues = hits.map((hit) => {
@@ -412,7 +394,7 @@ export const getEntityFieldDisplay = (entityField: string) => {
 
     return entityFields.map((field, i) => {
       return (
-        <span className="tw-font-bold" key={`field-${i}`}>
+        <span key={`field-${i}`}>
           {field}
           {i < entityFields.length - 1 ? separator : null}
         </span>
@@ -482,21 +464,12 @@ export const updateThreadData = (
   }
 };
 
-export const getFeedAction = (type: ThreadType) => {
-  if (type === ThreadType.Task) {
-    return i18next.t('label.created-a-task-lowercase');
-  }
-
-  return i18next.t('label.posted-on-lowercase');
-};
-
 export const prepareFeedLink = (entityType: string, entityFQN: string) => {
   const withoutFeedEntities = [
     EntityType.WEBHOOK,
     EntityType.GLOSSARY,
     EntityType.GLOSSARY_TERM,
     EntityType.TYPE,
-    EntityType.MLMODEL,
   ];
 
   const entityLink = getEntityLink(entityType, entityFQN);

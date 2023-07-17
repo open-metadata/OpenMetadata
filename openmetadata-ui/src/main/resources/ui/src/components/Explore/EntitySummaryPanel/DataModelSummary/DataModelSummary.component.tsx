@@ -12,6 +12,7 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
@@ -25,7 +26,6 @@ import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from 'utils/EntityUtils';
-import SVGIcons from 'utils/SvgUtils';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import SummaryList from '../SummaryList/SummaryList.component';
@@ -96,12 +96,7 @@ const DataModelSummary = ({
                             to={{ pathname: info.url }}>
                             {info.value}
                             {info.isExternal ? (
-                              <SVGIcons
-                                alt="external-link"
-                                className="m-l-xs"
-                                icon="external-link"
-                                width="12px"
-                              />
+                              <IconExternalLink className="m-l-xs" width={12} />
                             ) : null}
                           </Link>
                         ) : (

@@ -29,7 +29,6 @@ import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
-import { FilterObject } from './AdvanceSearchProvider/AdvanceSearchProvider.interface';
 
 export type UrlParams = {
   searchQuery: string;
@@ -66,9 +65,6 @@ export interface ExploreProps {
   onChangeAdvancedSearchQuickFilters: (
     queryFilter: QueryFilterInterface | undefined
   ) => void;
-
-  facetFilters?: FilterObject;
-  onChangeFacetFilters: (filter: FilterObject) => void;
 
   searchIndex: ExploreSearchIndex;
   onChangeSearchIndex: (searchIndex: ExploreSearchIndex) => void;
@@ -131,7 +127,9 @@ export type EntityWithServices =
   | Dashboard
   | Pipeline
   | Mlmodel
-  | Container;
+  | Container
+  | DashboardDataModel
+  | Database;
 
 export interface EntityDetailsObjectInterface {
   details: SearchedDataProps['data'][number]['_source'];

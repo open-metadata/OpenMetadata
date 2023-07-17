@@ -13,7 +13,6 @@
 
 import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
-import { activeLink, normalLink } from '../../utils/styleconstant';
 import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
 import AnchorDropDownList from './AnchorDropDownList';
 import CheckBoxDropDownList from './CheckBoxDropDownList';
@@ -71,8 +70,8 @@ const DropDown: React.FC<DropDownProp> = ({
   return (
     <>
       <div
-        className={`tw-relative tw-inline-block tw-text-left ${
-          type === DropDownType.CHECKBOX && 'tw-w-full'
+        className={`relative d-inline-block text-left ${
+          type === DropDownType.CHECKBOX && 'w-full'
         }`}
         data-testid={dataTestId}>
         <div>
@@ -80,11 +79,11 @@ const DropDown: React.FC<DropDownProp> = ({
             aria-expanded="true"
             aria-haspopup="true"
             className={classNames(
-              'tw-inline-flex tw-px-2 tw-py-1 focus:tw-outline-none',
+              'tw-inline-flex focus:tw-outline-none',
               type === DropDownType.CHECKBOX
-                ? 'tw-rounded tw-text-body tw-text-gray-400 tw-border tw-border-main focus:tw-border-gray-500 tw-w-full'
-                : 'tw-justify-center tw-nav',
-              { 'tw-cursor-not-allowed': isDisabled },
+                ? 'tw-rounded tw-text-body tw-text-gray-400 tw-border tw-border-main focus:tw-border-gray-500 w-full'
+                : 'tw-justify-center',
+              { 'cursor-not-allowed': isDisabled },
               className
             )}
             data-testid="menu-button"
@@ -129,16 +128,16 @@ const DropDown: React.FC<DropDownProp> = ({
                 {Icon && Icon}
                 {label && isLableVisible && (
                   <span
-                    className="hover:tw-underline"
-                    style={{ color: `${isOpen ? activeLink : normalLink}` }}>
+                    className={classNames('hover:tw-underline', {
+                      'text-black': isOpen,
+                      'text-base-color': !isOpen,
+                    })}>
                     {label}
                   </span>
                 )}
 
                 {isDropDownIconVisible ? (
-                  <DropdownIcon
-                    style={{ marginTop: '5px', color: normalLink }}
-                  />
+                  <DropdownIcon className="text-base-color m-t-xss" />
                 ) : null}
               </>
             )}

@@ -439,7 +439,7 @@
 .ql-snow .ql-toolbar .ql-picker-item:hover,
 .ql-snow.ql-toolbar .ql-picker-item.ql-selected,
 .ql-snow .ql-toolbar .ql-picker-item.ql-selected {
-  color: #7147e8;
+  color: #0968da;
 }
 .ql-snow.ql-toolbar button:hover .ql-fill,
 .ql-snow .ql-toolbar button:hover .ql-fill,
@@ -469,7 +469,7 @@
 .ql-snow .ql-toolbar .ql-picker-item:hover .ql-stroke.ql-fill,
 .ql-snow.ql-toolbar .ql-picker-item.ql-selected .ql-stroke.ql-fill,
 .ql-snow .ql-toolbar .ql-picker-item.ql-selected .ql-stroke.ql-fill {
-  fill: #7147e8;
+  fill: #0968da;
 }
 .ql-snow.ql-toolbar button:hover .ql-stroke,
 .ql-snow .ql-toolbar button:hover .ql-stroke,
@@ -499,7 +499,7 @@
 .ql-snow .ql-toolbar .ql-picker-item:hover .ql-stroke-miter,
 .ql-snow.ql-toolbar .ql-picker-item.ql-selected .ql-stroke-miter,
 .ql-snow .ql-toolbar .ql-picker-item.ql-selected .ql-stroke-miter {
-  stroke: #7147e8;
+  stroke: #0968da;
 }
 @media (pointer: coarse) {
   .ql-snow.ql-toolbar button:hover:not(.ql-active),
@@ -916,7 +916,7 @@
   content: 'Edit';
   padding-right: 8px;
   color: #ffffff;
-  background: #7147e8;
+  background: #0968da;
   padding-top: 4px;
   padding-bottom: 4px;
   padding-left: 8px;
@@ -927,7 +927,7 @@
   content: 'Remove';
   margin-left: 8px;
   color: #ffffff;
-  background: #7147e8;
+  background: #0968da;
   padding-top: 4px;
   padding-bottom: 4px;
   padding-left: 8px;
@@ -936,11 +936,11 @@
 }
 .ql-snow .ql-tooltip a {
   line-height: 26px;
-  color: #7147e8;
+  color: #0968da;
 }
 
 .ql-snow .ql-tooltip a:hover {
-  color: #7147e8;
+  color: #0968da;
 }
 .ql-snow .ql-tooltip.ql-editing a.ql-preview,
 .ql-snow .ql-tooltip.ql-editing a.ql-remove {
@@ -951,7 +951,7 @@
 }
 .ql-snow .ql-tooltip.ql-editing input[type='text']:hover,
 .ql-snow .ql-tooltip.ql-editing input[type='text']:focus {
-  border: 1px solid #7147e8;
+  border: 1px solid #0968da;
   outline: none;
 }
 .ql-snow .ql-tooltip.ql-editing a.ql-action {
@@ -964,7 +964,7 @@
   padding-right: 0px;
   margin: 0px;
   color: #ffffff;
-  background: #7147e8;
+  background: #0968da;
   padding-top: 4px;
   padding-bottom: 4px;
   padding-left: 8px;
@@ -989,7 +989,6 @@
 
 /* custom css */
 .editor-container {
-  margin: 8px 16px;
   border-radius: 6px;
   background: white;
 }
@@ -1035,7 +1034,7 @@
   vertical-align: middle;
 }
 .ql-mention-list-item.selected {
-  background-color: #dbd1f9;
+  background-color: #e6f4ff;
   text-decoration: none;
 }
 

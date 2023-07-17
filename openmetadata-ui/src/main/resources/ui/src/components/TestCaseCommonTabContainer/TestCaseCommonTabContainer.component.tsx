@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Tooltip } from 'antd';
+import { Button, Col, Row } from 'antd';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import { PAGE_SIZE } from '../../constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { Paging } from '../../generated/type/paging';
 import NextPrevious from '../common/next-previous/NextPrevious';
 
@@ -73,14 +72,11 @@ const TestCaseCommonTabContainer = ({
     <Row className="tw-mt-4" gutter={[16, 16]}>
       {showButton && (
         <Col className="d-flex tw-justify-end" span={24}>
-          <Tooltip title={hasAccess ? buttonName : NO_PERMISSION_FOR_ACTION}>
-            <Button
-              disabled={!hasAccess}
-              type="primary"
-              onClick={onButtonClick}>
+          {hasAccess && (
+            <Button type="primary" onClick={onButtonClick}>
               {buttonName}
             </Button>
-          </Tooltip>
+          )}
         </Col>
       )}
       {children}

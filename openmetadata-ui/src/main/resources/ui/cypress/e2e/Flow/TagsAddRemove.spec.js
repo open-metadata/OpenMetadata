@@ -19,39 +19,48 @@ import {
 import { TAGS_ADD_REMOVE_ENTITIES } from '../../constants/tagsAddRemove.constants';
 
 const addTags = (tag) => {
-  cy.get('[data-testid="tag-selector"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .click()
-    .type(tag);
+  const tagName = Cypress._.split(tag, '.')[1];
 
-  cy.get('.ant-select-item-option-content').should('be.visible').click();
+  cy.get('[data-testid="tag-selector"]').scrollIntoView().should('be.visible');
+  cy.get('[data-testid="tag-selector"]').click().type(tagName);
+
+  cy.get(`[data-testid='tag-${tag}']`).click();
   cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
 };
 
 const checkTags = (tag, checkForParentEntity) => {
   if (checkForParentEntity) {
-    cy.get('[data-testid="entity-tags"]  [data-testid="tag-container"]')
+    cy.get(
+      '[data-testid="entity-right-panel"]  [data-testid="tags-container"] [data-testid="entity-tags"] '
+    )
       .scrollIntoView()
-      .should('be.visible')
       .contains(tag);
   } else {
-    cy.get(`[data-testid="tag-${tag}"]`).should('be.visible');
+    cy.get(
+      '[data-testid="Classification-tags-0"]  [data-testid="tags-container"] [data-testid="entity-tags"] '
+    )
+      .scrollIntoView()
+      .contains(tag);
   }
 };
 
-const removeTags = (checkForParentEntity, separate) => {
+const removeTags = (checkForParentEntity) => {
   if (checkForParentEntity) {
-    cy.get('[data-testid="entity-tags"] [data-testid="edit-button"] ')
+    cy.get(
+      '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="edit-button"]'
+    )
       .scrollIntoView()
       .should('be.visible')
       .click();
 
     cy.get('[data-testid="remove-tags"]').should('be.visible').click();
 
-    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+    cy.get('[data-testid="saveAssociatedTag"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
   } else {
-    cy.get('[data-testid="classification-tags-0"] [data-testid="edit-button"]')
+    cy.get('[data-testid="Classification-tags-0"] [data-testid="edit-button"]')
       .scrollIntoView()
       .trigger('mouseover')
       .click();
@@ -79,7 +88,7 @@ describe('Check if tags addition and removal flow working properly from tables',
       );
 
       cy.get(
-        '[data-testid="entity-tags"] [data-testid="tags-wrapper"] [data-testid="tag-container"] [data-testid="tags"]  [data-testid="add-tag"]'
+        '[data-testid="entity-right-panel"] [data-testid="tags-container"]  [data-testid="add-tag"]'
       )
         .should('be.visible')
         .click();
@@ -88,7 +97,10 @@ describe('Check if tags addition and removal flow working properly from tables',
 
       interceptURL('PATCH', `/api/v1/${entityDetails.entity}/*`, 'tagsChange');
 
-      cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+      cy.get('[data-testid="saveAssociatedTag"]')
+        .scrollIntoView()
+        .should('be.visible')
+        .click();
 
       verifyResponseStatusCode('@tagsChange', 200);
 
@@ -98,22 +110,21 @@ describe('Check if tags addition and removal flow working properly from tables',
 
       if (entityDetails.entity === 'mlmodels') {
         cy.get(
-          `[data-testid="feature-card-${entityDetails.fieldName}"] [data-testid="classification-tags-0"] [data-testid="add-tag"]`
+          `[data-testid="feature-card-${entityDetails.fieldName}"] [data-testid="Classification-tags-0"] [data-testid="add-tag"]`
         )
           .should('be.visible')
           .click();
       } else {
         cy.get(
-          `.ant-table-tbody [data-testid="tag-container"] [data-testid="add-tag"]`
+          `.ant-table-tbody [data-testid="Classification-tags-0"] [data-testid="tags-container"] [data-testid="entity-tags"]`
         )
-          .eq(0)
           .scrollIntoView()
           .should('be.visible')
           .click();
       }
 
       entityDetails.tags.map((tag) => addTags(tag));
-
+      cy.clickOutside();
       interceptURL(
         'PATCH',
         `/api/v1/${entityDetails.insideEntity ?? entityDetails.entity}/*`,

@@ -28,7 +28,7 @@ import classNames from 'classnames';
 import Loader from 'components/Loader/Loader';
 import { t } from 'i18next';
 import { LoadingState } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { getTags } from 'rest/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -37,12 +37,7 @@ import './tier-card.style.less';
 import { CardWithListItems, TierCardProps } from './TierCard.interface';
 
 const { Panel } = Collapse;
-const TierCard = ({
-  currentTier,
-  updateTier,
-  removeTier,
-  children,
-}: TierCardProps) => {
+const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
   const [tierData, setTierData] = useState<Array<CardWithListItems>>([]);
   const [activeTier, setActiveTier] = useState(currentTier);
   const [statusTier, setStatusTier] = useState<LoadingState>('initial');
@@ -122,7 +117,7 @@ const TierCard = ({
             className="text-xl"
             component={IconRemove}
             data-testid="remove-tier"
-            onClick={removeTier}
+            onClick={() => updateTier?.()}
           />
         );
 
@@ -139,34 +134,37 @@ const TierCard = ({
     }
   };
 
-  const getCardIcon = (cardId: string) => {
-    const isSelected = currentTier === cardId;
-    const isActive = activeTier === cardId;
+  const getCardIcon = useCallback(
+    (cardId: string) => {
+      const isSelected = currentTier === cardId;
+      const isActive = activeTier === cardId;
 
-    if ((isSelected && isActive) || isSelected) {
-      return (
-        <Icon
-          className="text-xl"
-          component={IconRemove}
-          data-testid="remove-tier"
-          onClick={removeTier}
-        />
-      );
-    } else if (isActive) {
-      return getTierSelectButton(cardId);
-    } else {
-      return (
-        <Button
-          ghost
-          data-testid="select-tier-button"
-          size="small"
-          type="primary"
-          onClick={() => handleTierSave(cardId)}>
-          {t('label.select')}
-        </Button>
-      );
-    }
-  };
+      if ((isSelected && isActive) || isSelected) {
+        return (
+          <Icon
+            className="text-xl"
+            component={IconRemove}
+            data-testid="remove-tier"
+            onClick={() => updateTier?.()}
+          />
+        );
+      } else if (isActive) {
+        return getTierSelectButton(cardId);
+      } else {
+        return (
+          <Button
+            ghost
+            data-testid="select-tier-button"
+            size="small"
+            type="primary"
+            onClick={() => handleTierSave(cardId)}>
+            {t('label.select')}
+          </Button>
+        );
+      }
+    },
+    [currentTier, activeTier]
+  );
 
   useEffect(() => {
     setActiveTier(currentTier);

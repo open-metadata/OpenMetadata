@@ -53,7 +53,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.profiler.processor.core import Profiler
-from metadata.profiler.source.base_profiler_source import BaseProfilerSource
+from metadata.profiler.source.base.profiler_source import ProfilerSource
 from metadata.profiler.source.profiler_source_factory import profiler_source_factory
 from metadata.timer.repeated_timer import RepeatedTimer
 from metadata.timer.workflow_reporter import get_ingestion_status_timer
@@ -261,15 +261,16 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         yield from self.filter_entities(tables)
 
     def run_profiler(
-        self, entity: Table, profiler_source: BaseProfilerSource
+        self, entity: Table, profiler_source: ProfilerSource
     ) -> Optional[ProfilerResponse]:
         """
         Main logic for the profiler workflow
         """
+        profiler_runner: Profiler = profiler_source.get_profiler_runner(
+            entity, self.profiler_config
+        )
+
         try:
-            profiler_runner: Profiler = profiler_source.get_profiler_runner(
-                entity, self.profiler_config
-            )
             profile: ProfilerResponse = profiler_runner.process(
                 self.source_config.generateSampleData,
                 self.source_config.processPiiSensitive,
@@ -280,17 +281,12 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             logger.debug(traceback.format_exc())
             logger.error(error)
             self.source_status.failed(name, error, traceback.format_exc())
-            try:
-                # if we fail to instantiate a profiler_interface, we won't have a profiler_interface variable
-                # we'll also catch scenarios where we don't have an interface set
-                self.source_status.fail_all(
-                    profiler_source.interface.processor_status.failures
-                )
-                self.source_status.records.extend(
-                    profiler_source.interface.processor_status.records
-                )
-            except (UnboundLocalError, AttributeError):
-                pass
+            self.source_status.fail_all(
+                profiler_source.interface.processor_status.failures
+            )
+            self.source_status.records.extend(
+                profiler_source.interface.processor_status.records
+            )
         else:
             # at this point we know we have an interface variable since we the `try` block above didn't raise
             self.source_status.fail_all(profiler_source.interface.processor_status.failures)  # type: ignore
@@ -298,6 +294,8 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                 profiler_source.interface.processor_status.records  # type: ignore
             )
             return profile
+        finally:
+            profiler_runner.close()
 
         return None
 
@@ -326,6 +324,9 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         except Exception as err:
             self.set_ingestion_pipeline_status(PipelineState.failed)
             raise err
+        # Force resource closing. Required for killing the threading
+        finally:
+            self.stop()
 
     def print_status(self) -> None:
         """

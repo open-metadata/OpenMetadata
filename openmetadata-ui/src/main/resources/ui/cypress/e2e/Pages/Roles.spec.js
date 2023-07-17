@@ -32,7 +32,7 @@ const policies = {
 
 const errorMessageValidation = {
   ifPolicyNotSelected: 'Enter at least one policy',
-  ifNameNotEntered: 'invalid name',
+  ifNameNotEntered: 'Name size must be between 1 and 128',
   lastPolicyCannotBeRemoved: 'At least one policy is required in a role',
 };
 

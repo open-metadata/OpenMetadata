@@ -47,11 +47,13 @@ import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.csv.CsvImportResult.Status;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil.PutResponse;
+import org.openmetadata.service.util.ValidatorUtil;
 
 /**
  * EntityCsv provides export and import capabilities for an entity. Each entity must implement the abstract methods to
@@ -153,8 +155,18 @@ public abstract class EntityCsv<T extends EntityInterface> {
     List<String> list = CsvUtil.fieldToStrings(owner);
     if (list.size() != 2) {
       importFailure(printer, invalidOwner(fieldNumber), csvRecord);
+      return null;
     }
-    return getEntityReference(printer, csvRecord, fieldNumber, list.get(0), list.get(1));
+    return getEntityReference(printer, csvRecord, fieldNumber, list.get(0), EntityInterfaceUtil.quoteName(list.get(1)));
+  }
+
+  /** Owner field is in entityName format */
+  public EntityReference getOwnerAsUser(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
+    String owner = csvRecord.get(fieldNumber);
+    if (nullOrEmpty(owner)) {
+      return null;
+    }
+    return getEntityReference(printer, csvRecord, fieldNumber, Entity.USER, EntityInterfaceUtil.quoteName(owner));
   }
 
   protected final Boolean getBoolean(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
@@ -212,6 +224,27 @@ public abstract class EntityCsv<T extends EntityInterface> {
     List<EntityReference> refs = new ArrayList<>();
     for (String fqn : fqnList) {
       EntityReference ref = getEntityReference(printer, csvRecord, fieldNumber, entityType, fqn);
+      if (!processRecord) {
+        return null;
+      }
+      if (ref != null) {
+        refs.add(ref);
+      }
+    }
+    return refs.isEmpty() ? null : refs;
+  }
+
+  protected final List<EntityReference> getUserOrTeamEntityReferences(
+      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType) throws IOException {
+    String fqns = csvRecord.get(fieldNumber);
+    if (nullOrEmpty(fqns)) {
+      return null;
+    }
+    List<String> fqnList = listOrEmpty(CsvUtil.fieldToStrings(fqns));
+    List<EntityReference> refs = new ArrayList<>();
+    for (String fqn : fqnList) {
+      EntityReference ref =
+          getEntityReference(printer, csvRecord, fieldNumber, entityType, EntityInterfaceUtil.quoteName(fqn));
       if (!processRecord) {
         return null;
       }
@@ -313,6 +346,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (Boolean.FALSE.equals(importResult.getDryRun())) {
       try {
         repository.prepareInternal(entity);
+        String violations = ValidatorUtil.validate(entity);
+        if (violations != null) {
+          // JSON schema based validation failed for the entity
+          importFailure(resultsPrinter, violations, csvRecord);
+          return;
+        }
         PutResponse<T> response = repository.createOrUpdate(null, entity);
         responseStatus = response.getStatus();
       } catch (Exception ex) {

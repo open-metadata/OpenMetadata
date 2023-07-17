@@ -11,215 +11,60 @@
  *  limitations under the License.
  */
 
-import { Button, Popover } from 'antd';
-import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import classNames from 'classnames';
-import TagsContainer from 'components/Tag/TagsContainer/tags-container';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { EntityField } from 'constants/Feeds.constants';
-import { EntityType } from 'enums/entity.enum';
-import { ThreadType } from 'generated/entity/feed/thread';
-import { TagSource } from 'generated/type/schema';
-import { EntityFieldThreads } from 'interface/feed.interface';
-import { isEmpty } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { getFieldThreadElement } from 'utils/FeedElementUtils';
-import { ReactComponent as IconRequest } from '../../assets/svg/request-icon.svg';
+import EntityTasks from 'pages/TasksPage/EntityTasks/EntityTasks.component';
+import React from 'react';
 import { TableTagsComponentProps, TableUnion } from './TableTags.interface';
 
 const TableTags = <T extends TableUnion>({
   tags,
   record,
   index,
-  isReadOnly,
-  isTagLoading,
-  hasTagEditAccess,
-  onUpdateTagsHandler,
-  onRequestTagsHandler,
-  getColumnName,
-  getColumnFieldFQN,
-  entityFieldTasks,
-  onThreadLinkSelect,
-  entityFieldThreads,
-  entityFqn,
-  tagList,
-  handleTagSelection,
   type,
-  fetchTags,
-  tagFetchFailed,
-  dataTestId,
+  entityFqn,
+  isReadOnly,
+  hasTagEditAccess,
+  entityFieldThreads,
   showInlineEditTagButton,
+  onThreadLinkSelect,
+  handleTagSelection,
+  entityType,
 }: TableTagsComponentProps<T>) => {
-  const { t } = useTranslation();
-  const [isEdit, setIsEdit] = useState<boolean>(false);
-
-  const isGlossaryType = useMemo(() => type === TagSource.Glossary, [type]);
-
-  const showEditTagButton = useMemo(
-    () =>
-      tags[type].length &&
-      hasTagEditAccess &&
-      !isEdit &&
-      !showInlineEditTagButton,
-    [tags, type, hasTagEditAccess, isEdit, showInlineEditTagButton]
-  );
-
-  const hasTagOperationAccess = useMemo(
-    () =>
-      getColumnFieldFQN &&
-      getColumnName &&
-      onUpdateTagsHandler &&
-      onRequestTagsHandler,
-    [
-      getColumnFieldFQN,
-      getColumnName,
-      onUpdateTagsHandler,
-      onRequestTagsHandler,
-    ]
-  );
-
-  const otherTags = useMemo(
-    () =>
-      isGlossaryType
-        ? tags[TagSource.Classification]
-        : tags[TagSource.Glossary],
-    [tags, isGlossaryType]
-  );
-
-  const searchPlaceholder = useMemo(
-    () =>
-      isGlossaryType
-        ? t('label.search-entity', {
-            entity: t('label.glossary-term-plural'),
-          })
-        : t('label.search-entity', {
-            entity: t('label.tag-plural'),
-          }),
-    [isGlossaryType]
-  );
-
-  const addButtonHandler = useCallback(() => {
-    setIsEdit(true);
-    // Fetch Classification or Glossary only once
-    if (isEmpty(tagList) || tagFetchFailed) {
-      fetchTags();
-    }
-  }, [tagList, tagFetchFailed, fetchTags]);
-
-  const getRequestTagsElement = useMemo(() => {
-    const hasTags = !isEmpty(record.tags || []);
-    const text = hasTags
-      ? t('label.update-request-tag-plural')
-      : t('label.request-tag-plural');
-
-    return (
-      <Popover
-        destroyTooltipOnHide
-        content={text}
-        overlayClassName="ant-popover-request-description"
-        trigger="hover"
-        zIndex={9999}>
-        <Button
-          className="p-0 w-7 h-7 flex-center m-r-xss link-text hover-cell-icon"
-          data-testid="request-tags"
-          icon={
-            <IconRequest
-              height={16}
-              name={t('label.request-tag-plural')}
-              width={16}
-            />
-          }
-          type="text"
-          onClick={() =>
-            hasTags
-              ? onUpdateTagsHandler?.(record)
-              : onRequestTagsHandler?.(record)
-          }
-        />
-      </Popover>
-    );
-  }, [record, onUpdateTagsHandler, onRequestTagsHandler]);
-
   return (
-    <div className="hover-icon-group" data-testid={`${dataTestId}-${index}`}>
-      {isReadOnly ? (
-        <TagsViewer sizeCap={-1} tags={tags[type]} type="border" />
-      ) : (
-        <div
-          className={classNames(
-            `d-flex justify-content`,
-            isEdit || !isEmpty(tags) ? 'flex-col items-start' : 'items-center'
-          )}
-          data-testid="tags-wrapper">
-          <TagsContainer
-            className="w-min-13"
-            editable={isEdit}
-            isLoading={isTagLoading && isEdit}
-            placeholder={searchPlaceholder}
-            selectedTags={tags[type]}
-            showAddTagButton={hasTagEditAccess && isEmpty(tags[type])}
-            showEditTagButton={showInlineEditTagButton}
-            size="small"
-            tagList={tagList}
-            type="label"
-            onAddButtonClick={addButtonHandler}
-            onCancel={() => setIsEdit(false)}
-            onEditButtonClick={addButtonHandler}
-            onSelectionChange={async (selectedTags) => {
-              await handleTagSelection(selectedTags, record, otherTags);
-              setIsEdit(false);
-            }}
-          />
-
-          <div className="m-t-xss d-flex items-center">
-            {showEditTagButton ? (
-              <Button
-                className="p-0 w-7 h-7 flex-center text-primary hover-cell-icon"
-                data-testid="edit-button"
-                icon={
-                  <IconEdit height={16} name={t('label.edit')} width={16} />
-                }
-                size="small"
-                type="text"
-                onClick={addButtonHandler}
+    <div className="hover-icon-group" data-testid={`${type}-tags-${index}`}>
+      <div
+        className={classNames('d-flex justify-content flex-col items-start')}
+        data-testid="tags-wrapper">
+        <TagsContainerV2
+          showBottomEditButton
+          permission={hasTagEditAccess && !isReadOnly}
+          selectedTags={tags}
+          showHeader={false}
+          showInlineEditButton={showInlineEditTagButton}
+          tagType={type}
+          onSelectionChange={async (selectedTags) => {
+            await handleTagSelection(selectedTags, record);
+          }}>
+          <>
+            {!isReadOnly && (
+              <EntityTasks
+                data={{
+                  fqn: record.fullyQualifiedName ?? '',
+                  field: record.tags ?? [],
+                }}
+                entityFieldThreads={entityFieldThreads}
+                entityFqn={entityFqn}
+                entityTaskType={EntityField.TAGS}
+                entityType={entityType}
+                tagSource={type}
+                onThreadLinkSelect={onThreadLinkSelect}
               />
-            ) : null}
-
-            {hasTagOperationAccess && (
-              <>
-                {/*  Request and Update tags */}
-                {getRequestTagsElement}
-
-                {/*  List Conversation */}
-                {getFieldThreadElement(
-                  getColumnName?.(record) ?? '',
-                  EntityField.TAGS,
-                  entityFieldThreads as EntityFieldThreads[],
-                  onThreadLinkSelect,
-                  EntityType.TABLE,
-                  entityFqn,
-                  getColumnFieldFQN,
-                  Boolean(record?.name?.length)
-                )}
-
-                {/*  List Task */}
-                {getFieldThreadElement(
-                  getColumnName?.(record) ?? '',
-                  EntityField.TAGS,
-                  entityFieldTasks as EntityFieldThreads[],
-                  onThreadLinkSelect,
-                  EntityType.TABLE,
-                  entityFqn,
-                  getColumnFieldFQN,
-                  Boolean(record?.name),
-                  ThreadType.Task
-                )}
-              </>
             )}
-          </div>
-        </div>
-      )}
+          </>
+        </TagsContainerV2>
+      </div>
     </div>
   );
 };

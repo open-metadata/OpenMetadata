@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 import { EntityHistory } from '../../generated/type/entityHistory';
@@ -30,4 +31,5 @@ export interface DataModelVersionProp {
   deleted?: boolean;
   backHandler: () => void;
   versionHandler: (v: string) => void;
+  entityPermissions: OperationPermission;
 }

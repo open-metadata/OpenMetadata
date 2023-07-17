@@ -114,10 +114,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
             },
             {
               pattern: ENTITY_NAME_REGEX,
-              message: t('message.entity-pattern-validation', {
-                entity: `${t('label.name')}`,
-                pattern: `- _ & . '`,
-              }),
+              message: t('message.entity-name-validation'),
             },
             {
               validator: (_, value) => {

@@ -58,7 +58,8 @@ export const getMlModelByFQN = async (
 export const getMlModels = async (
   service: string,
   fields: string,
-  paging?: PagingWithoutTotal
+  paging?: PagingWithoutTotal,
+  include: Include = Include.NonDeleted
 ) => {
   const response = await APIClient.get<{
     data: ServicePageData[];
@@ -68,6 +69,7 @@ export const getMlModels = async (
       service,
       fields,
       ...paging,
+      include,
     },
   });
 

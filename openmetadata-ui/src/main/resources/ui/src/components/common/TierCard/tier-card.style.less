@@ -16,7 +16,7 @@
 .tier-card {
   width: 760px;
   border: 1px solid #dde3ea;
-  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.12);
+  box-shadow: @box-shadow-base;
   border-radius: 4px !important;
 }
 
@@ -37,7 +37,7 @@
 
     &.ant-collapse-item-active {
       border: 1px solid @primary-color;
-      background: #f3f0fd;
+      background: @primary-color-hover;
     }
 
     &.selected {

@@ -37,6 +37,8 @@ interface SubmitProps {
 
 export interface RenameFormProps {
   visible: boolean;
+  isEditing: boolean;
+  isTier: boolean;
   onCancel: () => void;
   header: string;
   initialValues?: Tag;
@@ -46,4 +48,10 @@ export interface RenameFormProps {
   data?: Classification[];
   isLoading: boolean;
   isSystemTag?: boolean;
+  permissions?: {
+    createTags?: boolean;
+    editDescription?: boolean;
+    editDisplayName?: boolean;
+    editAll?: boolean;
+  };
 }

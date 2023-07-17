@@ -145,7 +145,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         ),
       },
     ],
-    []
+    [hasAccess]
   );
 
   return (

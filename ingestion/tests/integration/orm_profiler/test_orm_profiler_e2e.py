@@ -21,7 +21,6 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 from unittest import TestCase
 
-import pytest
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 

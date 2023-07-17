@@ -57,16 +57,11 @@ jest.mock('antd', () => ({
 }));
 
 const MockOnUpdate = jest.fn();
-const MockOnRemove = jest.fn();
 
 describe('Test TierCard Component', () => {
   it('Component should have card', async () => {
     const { container } = render(
-      <TierCard
-        currentTier=""
-        removeTier={MockOnRemove}
-        updateTier={MockOnUpdate}
-      />
+      <TierCard currentTier="" updateTier={MockOnUpdate} />
     );
 
     expect(await findByTestId(container, 'cards')).toBeInTheDocument();

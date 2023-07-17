@@ -14,13 +14,20 @@
 
 .explore-search-card {
   background-color: @white;
-  border-radius: 10px;
   padding: 20px;
   &.highlight-card {
-    border-left: 6px solid @border-color;
+    border-left: 4px solid @info-color;
     box-shadow: none;
   }
   .entity-summary-details {
-    font-size: 14px;
+    font-size: 12px;
+  }
+
+  .max-two-lines {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
   }
 }

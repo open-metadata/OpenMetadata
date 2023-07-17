@@ -16,7 +16,7 @@ import { VALIDATION_MESSAGES } from 'constants/constants';
 import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { DEFAULT_FORM_VALUE } from 'constants/Tags.constant';
 import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { generateFormFields } from 'utils/formUtils';
 import { RenameFormProps } from './TagsPage.interface';
@@ -30,6 +30,10 @@ const TagsForm = ({
   showMutuallyExclusive = false,
   isLoading,
   isSystemTag,
+  permissions,
+  isClassification,
+  isEditing = false,
+  isTier = false,
 }: RenameFormProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
@@ -37,6 +41,40 @@ const TagsForm = ({
   useEffect(() => {
     form.setFieldsValue(initialValues);
   }, [initialValues]);
+
+  const disableNameField = useMemo(
+    () => isEditing && isSystemTag,
+    [isEditing, isSystemTag]
+  );
+
+  const disableDisplayNameField = useMemo(
+    () =>
+      isEditing
+        ? !(permissions?.editDisplayName || permissions?.editAll)
+        : !(permissions?.createTags || isClassification),
+    [isEditing, isClassification, permissions]
+  );
+
+  const disableDescriptionField = useMemo(
+    () =>
+      isEditing
+        ? !(permissions?.editDescription || permissions?.editAll)
+        : !(permissions?.createTags || isClassification),
+    [isEditing, isClassification, permissions]
+  );
+
+  const disableDisabledField = useMemo(
+    () =>
+      isEditing
+        ? !permissions?.editAll
+        : !(permissions?.createTags || isClassification),
+    [isEditing, isClassification, permissions]
+  );
+
+  const disableMutuallyExclusiveField = useMemo(
+    () => (isEditing ? !permissions?.editAll : !isClassification),
+    [isEditing, isClassification, permissions]
+  );
 
   const formFields: FieldProp[] = [
     {
@@ -54,7 +92,7 @@ const TagsForm = ({
       ],
       props: {
         'data-testid': 'name',
-        disabled: isSystemTag,
+        disabled: disableNameField,
       },
       placeholder: t('label.name'),
     },
@@ -66,6 +104,7 @@ const TagsForm = ({
       type: FieldTypes.TEXT,
       props: {
         'data-testid': 'displayName',
+        disabled: disableDisplayNameField,
       },
       placeholder: t('label.display-name'),
     },
@@ -78,8 +117,26 @@ const TagsForm = ({
       props: {
         'data-testid': 'description',
         initialValue: '',
+        readonly: disableDescriptionField,
       },
     },
+    ...(isSystemTag && !isTier
+      ? ([
+          {
+            name: 'disabled',
+            required: false,
+            label: t('label.disable-tag'),
+            id: 'root/disabled',
+            type: FieldTypes.SWITCH,
+            formItemLayout: 'horizontal',
+            props: {
+              'data-testid': 'disabled',
+              initialValue: initialValues?.disabled ?? false,
+              disabled: disableDisabledField,
+            },
+          },
+        ] as FieldProp[])
+      : []),
     ...(showMutuallyExclusive
       ? ([
           {
@@ -89,6 +146,7 @@ const TagsForm = ({
             required: false,
             props: {
               'data-testid': 'mutually-exclusive-button',
+              disabled: disableMutuallyExclusiveField,
             },
             id: 'root/mutuallyExclusive',
             formItemLayout: 'horizontal',

@@ -9,8 +9,8 @@
 
   "properties": {
     "glossary": {
-      "description": "Name of the glossary that this term is part of.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "description": "FullyQualifiedName of the glossary that this term is part of.",
+      "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "parent": {
       "description": "Fully qualified name of  the parent glossary term.",

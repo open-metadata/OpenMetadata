@@ -108,11 +108,10 @@ const GlobalSettingPage = () => {
   ) : null;
 
   return (
-    <PageLayoutV1
-      className="tw-h-full tw-px-6"
-      leftPanel={leftPanel}
-      pageTitle={t('label.setting-plural')}>
-      <GlobalSettingRouter />
+    <PageLayoutV1 leftPanel={leftPanel} pageTitle={t('label.setting-plural')}>
+      <div className="page-container">
+        <GlobalSettingRouter />
+      </div>
     </PageLayoutV1>
   );
 };

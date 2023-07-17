@@ -12,8 +12,8 @@
  */
 
 import { Modal, Space } from 'antd';
-import AppState from 'AppState';
 import { AxiosError } from 'axios';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { mockDatasetData } from 'constants/mockTourData.constants';
 import {
   debounce,
@@ -27,7 +27,6 @@ import {
 import { LoadingState } from 'Models';
 import React, {
   DragEvent,
-  Fragment,
   FunctionComponent,
   useCallback,
   useEffect,
@@ -39,7 +38,6 @@ import { useHistory, useParams } from 'react-router-dom';
 import ReactFlow, {
   addEdge,
   Background,
-  BackgroundVariant,
   Connection,
   Edge,
   getConnectedEdges,
@@ -146,7 +144,6 @@ import {
 } from './EntityLineage.interface';
 import './entityLineage.style.less';
 import EntityLineageSidebar from './EntityLineageSidebar.component';
-import LineageNodeLabel from './LineageNodeLabel';
 import NodeSuggestions from './NodeSuggestions.component';
 
 const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
@@ -156,6 +153,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   isFullScreen = false,
 }: EntityLineageProp) => {
   const { t } = useTranslation();
+  const { isTourOpen } = useTourProvider();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
@@ -225,7 +223,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
   const fetchLineageData = useCallback(
     async (config: LineageConfig) => {
-      if (AppState.isTourOpen) {
+      if (isTourOpen) {
         setPaginationData({});
         setEntityLineage(mockDatasetData.entityLineage);
         setUpdatedLineageData(mockDatasetData.entityLineage);
@@ -277,7 +275,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         if (res && entityLineage) {
           setNodeLoading((prev) => ({ ...prev, id: node.id, state: false }));
           setLeafNode(res, pos);
-          setEntityLineage(getEntityLineage(entityLineage, res, pos));
+          const newLineageData = getEntityLineage(entityLineage, res, pos);
+          setEntityLineage(newLineageData);
+          setUpdatedLineageData(newLineageData);
         }
       } catch (err) {
         setNodeLoading((prev) => ({ ...prev, id: node.id, state: false }));
@@ -675,18 +675,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         const newNodes = prevState.map((prevNode) => {
           if (prevNode.id === node.id) {
             const nodeId = node.id;
-            prevNode.data.label = (
-              <LineageNodeLabel
-                isExpanded
-                isNodeLoading={isNodeLoading}
-                lineageLeafNodes={leafNodes}
-                loadNodeHandler={loadNodeHandler}
-                node={node}
-                type={prevNode.type}
-                onNodeExpand={handleNodeExpand}
-                onSelect={selectNodeHandler}
-              />
-            );
             prevNode.data.isExpanded = true;
             if (isUndefined(tableColumnsRef.current[nodeId])) {
               getTableColumns(node);
@@ -716,18 +704,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       setNodes((prevState) => {
         const newNodes = prevState.map((n) => {
           if (n.id === node.id) {
-            n.data.label = (
-              <LineageNodeLabel
-                isExpanded={false}
-                isNodeLoading={isNodeLoading}
-                lineageLeafNodes={leafNodes}
-                loadNodeHandler={loadNodeHandler}
-                node={node}
-                type={n.type}
-                onNodeExpand={handleNodeExpand}
-                onSelect={selectNodeHandler}
-              />
-            );
             n.data.isExpanded = false;
             n.data.columns = undefined;
           }
@@ -1261,13 +1237,13 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         id: uniqueId(),
         nodeType,
         position,
-        className: 'leaf-node',
+        className: '',
         connectable: false,
         selectable: false,
         type: 'default',
         data: {
           label: (
-            <div className="tw-relative">
+            <div className="relative">
               {getNodeRemoveButton(() => {
                 removeNodeHandler(newNode as Node);
               })}
@@ -1286,6 +1262,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             </div>
           ),
           removeNodeHandler,
+          onNodeExpand: handleNodeExpand,
           isEditMode,
           isNewNode: true,
         },
@@ -1334,25 +1311,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                   removeNodeHandler,
                   isEditMode,
                   node: selectedEntity,
-                  label: (
-                    <Fragment>
-                      <LineageNodeLabel
-                        isNodeLoading={isNodeLoading}
-                        lineageLeafNodes={leafNodes}
-                        loadNodeHandler={loadNodeHandler}
-                        node={selectedEntity}
-                        type={el.type}
-                        onNodeExpand={handleNodeExpand}
-                        onSelect={selectNodeHandler}
-                      />
-                      {getNodeRemoveButton(() => {
-                        removeNodeHandler({
-                          ...el,
-                          id: selectedEntity.id,
-                        } as Node);
-                      })}
-                    </Fragment>
-                  ),
                 },
               };
             } else {
@@ -1405,18 +1363,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     setNodes((prevNodes) => {
       const updatedNode = prevNodes.map((node) => {
         node.data.isExpanded = value;
-        node.data.label = (
-          <LineageNodeLabel
-            isExpanded={value}
-            isNodeLoading={isNodeLoading}
-            lineageLeafNodes={leafNodes}
-            loadNodeHandler={loadNodeHandler}
-            node={node.data.node}
-            type={node.type}
-            onNodeExpand={handleNodeExpand}
-            onSelect={selectNodeHandler}
-          />
-        );
 
         return node;
       });
@@ -1428,10 +1374,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
       return node;
     });
-
-    setTimeout(() => {
-      reactFlowInstance?.fitView();
-    }, 100);
   };
 
   const handleExpandColumnClick = () => {
@@ -1548,17 +1490,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             ...el,
             data: {
               ...el.data,
-              label: (
-                <LineageNodeLabel
-                  isNodeLoading={isNodeLoading}
-                  lineageLeafNodes={leafNodes}
-                  loadNodeHandler={loadNodeHandler}
-                  node={newlyAddedNode}
-                  type={el.type}
-                  onNodeExpand={handleNodeExpand}
-                  onSelect={selectNodeHandler}
-                />
-              ),
             },
           };
         } else {
@@ -1696,7 +1627,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             onPaneClick={onPaneClick}>
             {updatedLineageData && (
               <CustomControlsComponent
-                className="absolute top-1 right-1 bottom-full"
+                className="absolute top-1 right-1 bottom-full p-md"
                 deleted={deleted}
                 fitViewParams={{
                   minZoom: MIN_ZOOM_VALUE,
@@ -1722,9 +1653,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                 onOptionSelect={handleOptionSelect}
               />
             )}
-            {isEditMode && (
-              <Background gap={12} size={1} variant={BackgroundVariant.Lines} />
-            )}
+            <Background gap={12} size={1} />
           </ReactFlow>
         </ReactFlowProvider>
       </div>

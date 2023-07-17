@@ -14,6 +14,7 @@ import { SpaceProps } from 'antd';
 import { ReactNode } from 'react';
 
 export interface InlineEditProps {
+  className?: string;
   children: ReactNode;
   onCancel: () => void;
   // onSave it can be API call or normal function

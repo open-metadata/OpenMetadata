@@ -19,7 +19,11 @@ from typing import Generic, List, Optional, Type, TypeVar
 
 from pydantic import BaseModel
 
-from metadata.ingestion.ometa.client import REST
+from metadata.generated.schema.api.createEventPublisherJob import (
+    CreateEventPublisherJob,
+)
+from metadata.generated.schema.system.eventPublisherJob import EventPublisherResult
+from metadata.ingestion.ometa.client import REST, APIError
 from metadata.utils.elasticsearch import ES_INDEX_MAP
 from metadata.utils.logger import ometa_logger
 
@@ -108,3 +112,30 @@ class ESMixin(Generic[T]):
                 f"Elasticsearch search failed for query [{query_string}]: {exc}"
             )
         return None
+
+    def reindex_es(
+        self,
+        config: CreateEventPublisherJob,
+    ) -> Optional[EventPublisherResult]:
+        """
+        Method to trigger elasticsearch reindex
+        """
+        try:
+            resp = self.client.post(path="/search/reindex", data=config.json())
+            return EventPublisherResult(**resp)
+        except APIError as err:
+            logger.debug(traceback.format_exc())
+            logger.debug(f"Failed to trigger es reindex job due to {err}")
+            return None
+
+    def get_reindex_job_status(self, job_id: str) -> Optional[EventPublisherResult]:
+        """
+        Method to fetch the elasticsearch reindex job status
+        """
+        try:
+            resp = self.client.get(path=f"/search/reindex/{job_id}")
+            return EventPublisherResult(**resp)
+        except APIError as err:
+            logger.debug(traceback.format_exc())
+            logger.debug(f"Failed to fetch reindex job status due to {err}")
+            return None

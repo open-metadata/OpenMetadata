@@ -37,19 +37,18 @@ export const getAllFeeds = async (
   taskStatus?: ThreadTaskStatus,
   userId?: string
 ) => {
-  const isFilterAll = filterType === FeedFilter.ALL;
-  const isFilterUndefined = isUndefined(filterType);
+  const isFilterAll = filterType === FeedFilter.ALL || isUndefined(filterType);
 
   const response = await APIClient.get<{ data: Thread[]; paging: Paging }>(
     `/feed`,
     {
       params: {
-        entityLink: entityLink,
+        ...(entityLink ? { entityLink: entityLink } : {}),
         after,
         type,
-        filterType: isFilterAll || isFilterUndefined ? undefined : filterType,
+        filterType: isFilterAll ? undefined : filterType,
         taskStatus,
-        userId: isFilterAll || isFilterUndefined ? undefined : userId,
+        userId: isFilterAll ? undefined : userId,
       },
     }
   );

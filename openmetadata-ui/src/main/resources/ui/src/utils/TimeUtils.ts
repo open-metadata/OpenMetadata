@@ -174,11 +174,21 @@ export const getPastDatesTimeStampFromCurrentDate = (pastDayCount: number) =>
  * Get the current date and time in seconds.
  */
 export const getCurrentDateTimeStamp = () => DateTime.now().toUnixInteger();
+/**
+ * Get the current UTC date and time in seconds.
+ */
+export const getCurrentUTCDateTimeStamp = () => DateTime.now().toUnixInteger();
 
 /**
  * Get the current date and time in milliseconds.
  */
 export const getCurrentDateTimeMillis = () => DateTime.now().toMillis();
+
+/**
+ * Get the current UTC date and time in milliseconds.
+ */
+export const getCurrentUTCDateTimeMillis = () =>
+  DateTime.now().toUTC().toMillis();
 
 /**
  * It returns the number of milliseconds since the Unix Epoch for a date that is pastDayCount days before

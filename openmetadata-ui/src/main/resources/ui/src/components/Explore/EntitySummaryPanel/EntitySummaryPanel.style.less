@@ -12,16 +12,16 @@
  */
 
 @import url('../../../styles/variables.less');
-@summary-panel-offset: 80px; // (topnav height) 64px + page padding top and bottom 16px
+@summary-panel-offset: 176px;
 
 .summary-panel-container {
-  margin-right: -8px;
   position: sticky;
   height: calc(100vh - @summary-panel-offset);
   z-index: 9;
   box-shadow: none;
   border: @global-border;
   border-top: none;
+  border-left: none;
   font-size: 14px;
   overflow-y: scroll;
   overflow-x: hidden;
@@ -35,6 +35,10 @@
     padding: unset;
   }
 
+  .ant-divider {
+    visibility: hidden;
+  }
+
   .summary-panel-statistics-count {
     color: @text-color-secondary;
     font-size: 18px;
@@ -44,6 +48,17 @@
 
   .entity-title {
     font-weight: 500;
+  }
+
+  .summary-panel-title {
+    color: @link-color;
+    font-weight: 500;
+    font-size: 18px;
+  }
+
+  .summary-panel-section-title {
+    font-size: 14px;
+    color: @text-grey-muted;
   }
 
   .ant-divider-horizontal {

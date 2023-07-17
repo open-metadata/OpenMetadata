@@ -69,6 +69,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
   public TagResourceTest() {
     super(Entity.TAG, Tag.class, TagList.class, "tags", TagResource.FIELDS);
     supportsEmptyDescription = false;
+    supportsSearchIndex = true;
   }
 
   public void setupTags() throws IOException {

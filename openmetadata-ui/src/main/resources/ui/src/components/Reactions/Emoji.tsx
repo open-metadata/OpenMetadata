@@ -110,11 +110,12 @@ const Emoji: FC<EmojiProps> = ({
       zIndex={9999}
       onOpenChange={setVisible}>
       <Button
-        className={classNames('ant-btn-reaction tw-mr-1 d-flex', {
+        className={classNames('ant-btn-reaction m-r-xss flex-center', {
           'ant-btn-isReacted': isReacted,
         })}
         data-testid="emoji-button"
         shape="round"
+        size="small"
         onClick={handleEmojiOnClick}
         onMouseOver={() => setVisible(true)}>
         <div
@@ -129,9 +130,7 @@ const Emoji: FC<EmojiProps> = ({
           }}
         />
 
-        <span
-          className="tw-text-sm tw-ml-1 self-center"
-          data-testid="emoji-count">
+        <span className="text-xs m-l-xss self-center" data-testid="emoji-count">
           {reactionList.length}
         </span>
       </Button>

@@ -1,6 +1,8 @@
 package org.openmetadata.service.resources.analytics;
 
-import static javax.ws.rs.core.Response.Status.*;
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -39,6 +41,7 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
         WebAnalyticEventResource.WebAnalyticEventList.class,
         "analytics/web/events",
         WebAnalyticEventResource.FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Test
@@ -98,7 +101,7 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
             TestUtils.dateToTimestamp("2022-10-11"),
             ADMIN_AUTH_HEADERS);
 
-    assertEquals(webAnalyticEventDataResultList.getData().size(), 1);
+    assertEquals(1, webAnalyticEventDataResultList.getData().size());
 
     ResultList<WebAnalyticEventData> emptyWebAnalyticEventDataResultList =
         getWebAnalyticEventData(
@@ -107,7 +110,7 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
             TestUtils.dateToTimestamp("2022-10-10"),
             ADMIN_AUTH_HEADERS);
 
-    assertEquals(emptyWebAnalyticEventDataResultList.getData().size(), 0);
+    assertEquals(0, emptyWebAnalyticEventDataResultList.getData().size());
   }
 
   @Test

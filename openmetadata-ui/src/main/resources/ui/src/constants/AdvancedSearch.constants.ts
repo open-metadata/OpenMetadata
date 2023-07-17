@@ -32,31 +32,34 @@ const BaseConfig = AntdConfig as BasicConfig;
 export const COMMON_DROPDOWN_ITEMS = [
   {
     label: t('label.owner'),
-    key: 'owner.displayName',
+    key: 'owner.displayName.keyword',
   },
   {
     label: t('label.tag'),
     key: 'tags.tagFQN',
   },
   {
+    label: t('label.tier'),
+    key: 'tier.tagFQN',
+  },
+  {
     label: t('label.service'),
-    key: 'service.name',
+    key: 'service.name.keyword',
   },
 ];
 
 export const TABLE_DROPDOWN_ITEMS = [
   {
-    label: t('label.column'),
-    key: 'columns.name',
+    label: t('label.database'),
+    key: 'database.name.keyword',
   },
-
   {
     label: t('label.schema'),
-    key: 'databaseSchema.name',
+    key: 'databaseSchema.name.keyword',
   },
   {
-    label: t('label.database'),
-    key: 'database.name',
+    label: t('label.column'),
+    key: 'columns.name',
   },
 ];
 
@@ -96,6 +99,14 @@ export const GLOSSARY_DROPDOWN_ITEMS = [
   {
     label: t('label.owner'),
     key: 'owner.displayName',
+  },
+  {
+    label: t('label.tag'),
+    key: 'tags.tagFQN',
+  },
+  {
+    label: t('label.glossary-plural'),
+    key: 'glossary.name.keyword',
   },
 ];
 

@@ -2,11 +2,11 @@
 	 xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 16 16"
 	 style="enable-background:new 0 0 16 16;" xml:space="preserve">
 <style type="text/css">
-	.st0{fill:#FFFFFF;stroke:#7147E8;stroke-width:0.5;stroke-miterlimit:10;}
-	.st1{fill:#FFFFFF;stroke:#7147E8;stroke-width:0.5;stroke-linecap:square;stroke-miterlimit:10;}
-	.st2{fill:none;stroke:#7147E8;stroke-width:0.5;stroke-miterlimit:10;}
-	.st3{fill:none;stroke:#7147E8;stroke-width:0.5;stroke-linecap:round;stroke-miterlimit:10;}
-	.st4{fill:#FFFFFF;stroke:#7147E8;stroke-width:0.5;stroke-linejoin:bevel;stroke-miterlimit:10;}
+	.st0{fill:#FFFFFF;stroke:#0968da;stroke-width:0.5;stroke-miterlimit:10;}
+	.st1{fill:#FFFFFF;stroke:#0968da;stroke-width:0.5;stroke-linecap:square;stroke-miterlimit:10;}
+	.st2{fill:none;stroke:#0968da;stroke-width:0.5;stroke-miterlimit:10;}
+	.st3{fill:none;stroke:#0968da;stroke-width:0.5;stroke-linecap:round;stroke-miterlimit:10;}
+	.st4{fill:#FFFFFF;stroke:#0968da;stroke-width:0.5;stroke-linejoin:bevel;stroke-miterlimit:10;}
 </style>
 <polygon class="st0" points="2.9,8.3 2.9,0.4 11.4,0.4 13.1,2.1 13.1,8.3 "/>
 <rect x="0.4" y="7.9" class="st0" width="15.2" height="7.8"/>

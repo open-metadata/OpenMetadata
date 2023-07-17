@@ -61,7 +61,7 @@ describe('Services page should work properly', () => {
     cy.get(descriptionBox).clear().type(service.newDescription);
     cy.get('[data-testid="save"]').click();
     cy.get(
-      '[data-testid="description"] > [data-testid="viewer-container"] > [data-testid="markdown-parser"] > :nth-child(1) > .toastui-editor-contents > p'
+      '[data-testid="description-container"] [data-testid="viewer-container"] [data-testid="markdown-parser"] :nth-child(1) .toastui-editor-contents p'
     ).contains(service.newDescription);
     cy.get(':nth-child(1) > .link-title').click();
     cy.get('.toastui-editor-contents > p').contains(service.newDescription);
@@ -105,7 +105,6 @@ describe('Services page should work properly', () => {
 
     verifyResponseStatusCode('@updateService', 200);
 
-    cy.get('[data-testid="owner-dropdown"]').should('have.text', service.Owner);
     // Checking if description exists after assigning the owner
     cy.get(':nth-child(1) > .link-title').click();
     // need wait here
@@ -148,7 +147,7 @@ describe('Services page should work properly', () => {
     verifyResponseStatusCode('@removeOwner', 200);
 
     // Check if Owner exist
-    cy.get('[data-testid="entity-summary-details"]')
+    cy.get('[data-testid="owner-link"]')
       .scrollIntoView()
       .should('exist')
       .contains('No Owner');

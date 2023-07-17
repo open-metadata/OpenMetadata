@@ -95,7 +95,7 @@
     },
     "sourceUrl": {
       "description": "Chart URL suffix from its service.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
@@ -138,6 +138,14 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "domain" : {
+      "description": "Domain the Chart belongs to. The Chart inherits domain from the dashboard service it belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "dataProducts" : {
+      "description": "List of of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json#/definitions/entityReferenceList"
     }
   },
   "required": ["id", "name", "service"],

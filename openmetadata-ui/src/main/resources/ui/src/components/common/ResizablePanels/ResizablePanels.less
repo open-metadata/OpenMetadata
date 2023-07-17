@@ -10,6 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import url('../../../styles/variables.less');
+
 body.reflex-col-resize {
   cursor: col-resize;
 }
@@ -30,7 +33,6 @@ body.reflex-row-resize {
   /* NEW - Chrome */
   display: flex;
   position: relative;
-  height: calc(100% + 70px);
   width: 100%;
 }
 
@@ -47,7 +49,6 @@ body.reflex-row-resize {
 .reflex-container > .reflex-element {
   position: relative;
   overflow: hidden;
-  height: 100%;
   width: 100%;
 }
 
@@ -96,8 +97,6 @@ body.reflex-row-resize {
 }
 
 .reflex-container.vertical > .reflex-splitter {
-  border-right: 1px solid #c6c6c6;
-  border-left: 1px solid #c6c6c6;
   cursor: col-resize;
   height: 100%;
   width: 2px;
@@ -210,7 +209,7 @@ h2.rotated-header {
 }
 
 .panel-grabber-vertical {
-  height: 100vh;
+  height: calc(100vh - 64px);
   width: 10px;
   display: flex;
   flex-direction: row;
@@ -245,8 +244,8 @@ h2.rotated-header {
 }
 
 .splitter {
-  border: 0 !important;
   background-color: transparent !important;
+  border-left: 1px solid @border-color;
 }
 
 .hidden {

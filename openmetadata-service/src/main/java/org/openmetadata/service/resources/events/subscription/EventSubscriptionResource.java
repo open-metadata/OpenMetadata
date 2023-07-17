@@ -73,8 +73,9 @@ import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.search.IndexUtil;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.ElasticSearchClientUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -121,12 +122,13 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
+    SearchClient searchClient;
     try {
       repository.initSeedDataFromResources();
       EventsSubscriptionRegistry.initialize(listOrEmpty(EventSubscriptionResource.getDescriptors()));
       ActivityFeedAlertCache.initialize("ActivityFeedAlert", repository);
-      ReportsHandler.initialize(
-          daoCollection, ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration()));
+      searchClient = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), daoCollection);
+      ReportsHandler.initialize(daoCollection, searchClient);
       initializeEventSubscriptions();
     } catch (Exception ex) {
       // Starting application should not fail
@@ -142,7 +144,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
               .listAllEventsSubscriptions(daoCollection.eventSubscriptionDAO().getTableName());
       List<EventSubscription> eventSubList = JsonUtils.readObjects(listAllEventsSubscriptions, EventSubscription.class);
       eventSubList.forEach(
-          (subscription) -> {
+          subscription -> {
             if (subscription.getSubscriptionType() != ACTIVITY_FEED) {
               repository.addSubscriptionPublisher(subscription);
             }

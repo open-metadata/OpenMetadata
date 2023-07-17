@@ -12,28 +12,33 @@
  */
 
 import {
-  Button,
   Card,
+  Col,
   Image,
   Input,
+  Row,
   Select,
   Space,
-  Switch,
   Tabs,
   Typography,
 } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import { AxiosError } from 'axios';
-import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
+import ActivityFeedProvider from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import InlineEdit from 'components/InlineEdit/InlineEdit.component';
+import SearchedData from 'components/searched-data/SearchedData';
+import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
-import { capitalize, isEmpty, isEqual, toLower } from 'lodash';
+import { EntityType } from 'enums/entity.enum';
+import { isEmpty, noop, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
   Fragment,
-  RefObject,
   useCallback,
   useEffect,
   useMemo,
@@ -45,44 +50,30 @@ import { changePassword } from 'rest/auth-API';
 import { getRoles } from 'rest/rolesAPIV1';
 import { getEntityName } from 'utils/EntityUtils';
 import {
+  DE_ACTIVE_COLOR,
   getUserPath,
-  PAGE_SIZE,
   PAGE_SIZE_LARGE,
   TERM_ADMIN,
 } from '../../constants/constants';
-import { observerOptions } from '../../constants/Mydata.constants';
 import { USER_PROFILE_TABS } from '../../constants/usersprofile.constants';
-import { FeedFilter } from '../../enums/mydata.enum';
 import { AuthTypes } from '../../enums/signin.enum';
 import {
   ChangePasswordRequest,
   RequestType,
 } from '../../generated/auth/changePasswordRequest';
-import { ThreadType } from '../../generated/entity/feed/thread';
 import { Role } from '../../generated/entity/teams/role';
 import { EntityReference } from '../../generated/entity/teams/user';
-import { Paging } from '../../generated/type/paging';
-import { useElementInView } from '../../hooks/useElementInView';
 import { getNonDeletedTeams } from '../../utils/CommonUtils';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from '../../utils/ProfilerUtils';
-import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
-import {
-  filterListTasks,
-  getFeedFilterDropdownIcon,
-} from '../ActivityFeed/ActivityFeedList/ActivityFeedList.util';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import Description from '../common/description/Description';
-import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../common/next-previous/NextPrevious';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import PageLayoutV1 from '../containers/PageLayoutV1';
-import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
 import ChangePasswordForm from './ChangePasswordForm';
 import { Props, UserPageTabs } from './Users.interface';
@@ -93,28 +84,15 @@ const Users = ({
   userData,
   followingEntities,
   ownedEntities,
-  feedData,
-  isFeedLoading,
   isUserEntitiesLoading,
-  postFeedHandler,
-  deletePostHandler,
-  fetchFeedHandler,
-  paging,
   updateUserDetails,
   isAdminUser,
   isLoggedinUser,
   isAuthDisabled,
-  updateThreadHandler,
   username,
-  feedFilter,
-  setFeedFilter,
-  threadType,
-  onFollowingEntityPaginate,
-  onOwnedEntityPaginate,
-  onSwitchChange,
+  handlePaginate,
 }: Props) => {
   const { tab = UserPageTabs.ACTIVITY } = useParams<{ tab: UserPageTabs }>();
-  const [elementRef, isInView] = useElementInView(observerOptions);
   const [displayName, setDisplayName] = useState(userData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
@@ -124,13 +102,15 @@ const Users = ({
   const [selectedTeams, setSelectedTeams] = useState<Array<string>>([]);
   const [roles, setRoles] = useState<Array<Role>>([]);
   const history = useHistory();
-  const [showFilterList, setShowFilterList] = useState(false);
   const [isImgUrlValid, SetIsImgUrlValid] = useState<boolean>(true);
   const [isChangePassword, setIsChangePassword] = useState<boolean>(false);
   const location = useLocation();
-  const isTaskType = isEqual(threadType, ThreadType.Task);
   const [isLoading, setIsLoading] = useState(false);
   const [isRolesLoading, setIsRolesLoading] = useState<boolean>(false);
+
+  const [showSummaryPanel, setShowSummaryPanel] = useState(false);
+  const [entityDetails, setEntityDetails] =
+    useState<SearchedDataProps['data'][number]['_source']>();
 
   const { authConfig } = useAuthContext();
   const { t } = useTranslation();
@@ -149,17 +129,6 @@ const Users = ({
       key: data.key,
     }));
   }, []);
-
-  const handleFilterDropdownChange = useCallback(
-    (_e: React.MouseEvent<HTMLElement, MouseEvent>, value?: string) => {
-      if (value) {
-        fetchFeedHandler(threadType, undefined, value as FeedFilter);
-        setFeedFilter(value as FeedFilter);
-      }
-      setShowFilterList(false);
-    },
-    [threadType, fetchFeedHandler]
-  );
 
   const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDisplayName(e.target.value);
@@ -281,7 +250,7 @@ const Users = ({
                 className="tw-ml-2 focus:tw-outline-none"
                 data-testid="edit-displayName"
                 onClick={() => setIsDisplayNameEdit(true)}>
-                <EditIcon width={16} />
+                <EditIcon color={DE_ACTIVE_COLOR} width={16} />
               </button>
             </Fragment>
           )}
@@ -313,17 +282,15 @@ const Users = ({
       );
     } else {
       return (
-        <div className="p-x-sm">
-          <p className="m-t-xs">
-            {userData.description || (
-              <span className="text-grey-muted">
-                {t('label.no-entity', {
-                  entity: t('label.description'),
-                })}
-              </span>
-            )}
-          </p>
-        </div>
+        <Typography.Paragraph className="m-b-0">
+          {userData.description || (
+            <span className="text-grey-muted">
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
+            </span>
+          )}
+        </Typography.Paragraph>
       );
     }
   };
@@ -373,14 +340,16 @@ const Users = ({
     if (!isAdminUser && !isAuthDisabled) {
       return (
         <Card
-          className="ant-card-feed tw-relative panel-shadow-color"
+          className="ant-card-feed relative card-body-border-none card-padding-y-0"
           key="teams-card"
           style={{
             marginTop: '20px',
           }}
           title={
             <div className="d-flex tw-items-center tw-justify-between">
-              <h6 className="tw-heading tw-mb-0">{t('label.team-plural')}</h6>
+              <h6 className="right-panel-label tw-mb-0">
+                {t('label.team-plural')}
+              </h6>
             </div>
           }>
           <div className="tw-mb-4">{teamsElement}</div>
@@ -389,20 +358,22 @@ const Users = ({
     } else {
       return (
         <Card
-          className="ant-card-feed tw-relative panel-shadow-color"
+          className="ant-card-feed relative card-body-border-none card-padding-y-0"
           key="teams-card"
           style={{
             marginTop: '20px',
           }}
           title={
             <div className="d-flex tw-items-center tw-justify-between">
-              <h6 className="tw-heading tw-mb-0">{t('label.team-plural')}</h6>
+              <h6 className="right-panel-label tw-mb-0">
+                {t('label.team-plural')}
+              </h6>
               {!isTeamsEdit && (
                 <button
                   className="tw-ml-2 focus:tw-outline-none "
                   data-testid="edit-teams"
                   onClick={() => setIsTeamsEdit(true)}>
-                  <EditIcon width={16} />
+                  <EditIcon color={DE_ACTIVE_COLOR} width={16} />
                 </button>
               )}
             </div>
@@ -469,14 +440,16 @@ const Users = ({
     if (!isAdminUser && !isAuthDisabled) {
       return (
         <Card
-          className="ant-card-feed tw-relative"
-          key="roles-card panel-shadow-color"
+          className="ant-card-feed relative card-body-border-none card-padding-y-0"
+          key="roles-card "
           style={{
             marginTop: '20px',
           }}
           title={
             <div className="d-flex tw-items-center tw-justify-between">
-              <h6 className="tw-heading tw-mb-0">{t('label.role-plural')}</h6>
+              <h6 className="right-panel-label tw-mb-0">
+                {t('label.role-plural')}
+              </h6>
             </div>
           }>
           <div className="roles-container">{rolesElement}</div>
@@ -485,20 +458,22 @@ const Users = ({
     } else {
       return (
         <Card
-          className="ant-card-feed tw-relative panel-shadow-color"
+          className="ant-card-feed relative card-body-border-none card-padding-y-0"
           key="roles-card"
           style={{
             marginTop: '20px',
           }}
           title={
             <div className="d-flex tw-items-center tw-justify-between">
-              <h6 className="tw-heading tw-mb-0">{t('label.role-plural')}</h6>
+              <h6 className="right-panel-label tw-mb-0">
+                {t('label.role-plural')}
+              </h6>
               {!isRolesEdit && (
                 <button
                   className="tw-ml-2 focus:tw-outline-none"
                   data-testid="edit-roles"
                   onClick={() => setIsRolesEdit(true)}>
-                  <EditIcon width={16} />
+                  <EditIcon color={DE_ACTIVE_COLOR} width={16} />
                 </button>
               )}
             </div>
@@ -535,14 +510,16 @@ const Users = ({
   const getInheritedRolesComponent = () => {
     return (
       <Card
-        className="ant-card-feed tw-relative panel-shadow-color"
+        className="ant-card-feed relative card-body-border-none card-padding-y-0"
         key="inherited-roles-card-component"
         style={{
           marginTop: '20px',
         }}
         title={
           <div className="d-flex">
-            <h6 className="tw-heading tw-mb-0" data-testid="inherited-roles">
+            <h6
+              className="right-panel-label tw-mb-0"
+              data-testid="inherited-roles">
               {t('label.inherited-role-plural')}
             </h6>
           </div>
@@ -587,10 +564,8 @@ const Users = ({
 
   const fetchLeftPanel = () => {
     return (
-      <div className="user-profile-antd-card" data-testid="left-panel">
-        <Card
-          className="ant-card-feed tw-relative panel-shadow-color"
-          key="left-panel-card">
+      <div className="p-xs user-profile-antd-card" data-testid="left-panel">
+        <Card className="ant-card-feed relative" key="left-panel-card">
           {isImgUrlValid ? (
             <Image
               alt="profile"
@@ -616,7 +591,11 @@ const Users = ({
           )}
           <Space className="p-sm w-full" direction="vertical" size={8}>
             {getDisplayNameComponent()}
-            <p>{userData.email}</p>
+            <Typography.Paragraph
+              className="m-b-0"
+              ellipsis={{ tooltip: true }}>
+              {userData.email}
+            </Typography.Paragraph>
             {getDescriptionComponent()}
             {isAuthProviderBasic &&
               (isAdminUser || isLoggedinUser) &&
@@ -628,10 +607,6 @@ const Users = ({
         {getInheritedRolesComponent()}
       </div>
     );
-  };
-
-  const getLoader = () => {
-    return isFeedLoading ? <Loader /> : null;
   };
 
   const prepareSelectedRoles = () => {
@@ -646,18 +621,6 @@ const Users = ({
     setSelectedTeams(
       getNonDeletedTeams(userData.teams || []).map((team) => team.id)
     );
-  };
-
-  const fetchMoreFeed = (
-    isElementInView: boolean,
-    pagingObj: Paging,
-    isLoading: boolean
-  ) => {
-    if (isElementInView && pagingObj?.after && !isLoading) {
-      const threadType =
-        tab === UserPageTabs.TASKS ? ThreadType.Task : ThreadType.Conversation;
-      fetchFeedHandler(threadType, pagingObj.after);
-    }
   };
 
   const fetchRoles = async () => {
@@ -684,9 +647,31 @@ const Users = ({
     }
   };
 
+  const handleSummaryPanelDisplay = useCallback(
+    (details: SearchedDataProps['data'][number]['_source']) => {
+      setShowSummaryPanel(true);
+      setEntityDetails(details);
+    },
+    []
+  );
+
+  const handleClosePanel = () => {
+    setShowSummaryPanel(false);
+  };
+
   useEffect(() => {
-    fetchMoreFeed(isInView, paging, isFeedLoading);
-  }, [isInView, paging, isFeedLoading]);
+    if ([UserPageTabs.FOLLOWING, UserPageTabs.MY_DATA].includes(tab)) {
+      const entityData =
+        tab === UserPageTabs.MY_DATA ? ownedEntities : followingEntities;
+
+      if (!isEmpty(entityData.data) && entityData.data[0]) {
+        handleSummaryPanelDisplay(entityData.data[0]?._source);
+      } else {
+        setShowSummaryPanel(false);
+        setEntityDetails(undefined);
+      }
+    }
+  }, [tab, ownedEntities, followingEntities]);
 
   useEffect(() => {
     prepareSelectedRoles();
@@ -716,142 +701,82 @@ const Users = ({
         }
 
         return (
-          <div data-testid="table-container">
-            {entityData.data.length ? (
-              <>
-                {entityData.data.map(({ _source, _id = '' }, index) => (
-                  <TableDataCardV2
-                    className="m-b-sm cursor-pointer"
-                    id={_id}
-                    key={index}
-                    source={_source}
-                  />
-                ))}
-                {entityData.total > PAGE_SIZE && entityData.data.length > 0 && (
-                  <NextPrevious
-                    isNumberBased
-                    currentPage={entityData.currPage}
-                    pageSize={PAGE_SIZE}
-                    paging={{} as Paging}
-                    pagingHandler={
-                      tab === UserPageTabs.MY_DATA
-                        ? onOwnedEntityPaginate
-                        : onFollowingEntityPaginate
-                    }
-                    totalCount={entityData.total}
-                  />
-                )}
-              </>
-            ) : (
-              <ErrorPlaceHolder>
-                <Typography.Paragraph>
-                  {tab === UserPageTabs.MY_DATA
-                    ? t('server.you-have-not-action-anything-yet', {
-                        action: t('label.owned-lowercase'),
-                      })
-                    : t('server.you-have-not-action-anything-yet', {
-                        action: t('label.followed-lowercase'),
-                      })}
-                </Typography.Paragraph>
-              </ErrorPlaceHolder>
+          <Row className="user-page-layout" wrap={false}>
+            <Col className="user-layout-scroll" flex="auto">
+              {entityData.data.length ? (
+                <SearchedData
+                  data={entityData.data ?? []}
+                  handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+                  isFilterSelected={false}
+                  isSummaryPanelVisible={showSummaryPanel}
+                  selectedEntityId={entityDetails?.id || ''}
+                  totalValue={entityData.total ?? 0}
+                  onPaginationChange={handlePaginate}
+                />
+              ) : (
+                <ErrorPlaceHolder className="m-0">
+                  <Typography.Paragraph>
+                    {tab === UserPageTabs.MY_DATA
+                      ? t('server.you-have-not-action-anything-yet', {
+                          action: t('label.owned-lowercase'),
+                        })
+                      : t('server.you-have-not-action-anything-yet', {
+                          action: t('label.followed-lowercase'),
+                        })}
+                  </Typography.Paragraph>
+                </ErrorPlaceHolder>
+              )}
+            </Col>
+
+            {showSummaryPanel && entityDetails && (
+              <Col className="user-page-layout-right-panel " flex="400px">
+                <EntitySummaryPanel
+                  entityDetails={{ details: entityDetails }}
+                  handleClosePanel={handleClosePanel}
+                />
+              </Col>
             )}
-          </div>
+          </Row>
         );
       }
       case UserPageTabs.ACTIVITY:
-      case UserPageTabs.TASKS:
         return (
-          <Fragment>
-            <div className="px-1.5 d-flex justify-between">
-              <div className="relative">
-                <Button
-                  className="d-flex items-center p-0"
-                  data-testid="feeds"
-                  icon={getFeedFilterDropdownIcon(feedFilter)}
-                  type="link"
-                  onClick={() => setShowFilterList((visible) => !visible)}>
-                  <span className="font-medium text-grey-muted">
-                    {(tab === UserPageTabs.ACTIVITY
-                      ? userPageFilterList
-                      : filterListTasks
-                    ).find((f) => f.value === feedFilter)?.name ||
-                      capitalize(feedFilter)}
-                  </span>
-                  <DropDownIcon />
-                </Button>
-                {showFilterList && (
-                  <DropDownList
-                    dropDownList={
-                      tab === UserPageTabs.ACTIVITY
-                        ? userPageFilterList
-                        : filterListTasks
-                    }
-                    value={feedFilter}
-                    onSelect={handleFilterDropdownChange}
-                  />
-                )}
-              </div>
-              {isTaskType ? (
-                <Space align="end" size={5}>
-                  <Switch onChange={onSwitchChange} />
-                  <span className="tw-ml-1">
-                    {t('label.closed-task-plural')}
-                  </span>
-                </Space>
-              ) : null}
-            </div>
-            <div className="m-t-xs">
-              <ActivityFeedList
-                hideFeedFilter
-                hideThreadFilter
-                withSidePanel
-                deletePostHandler={deletePostHandler}
-                feedList={feedData}
-                isFeedLoading={isFeedLoading}
-                postFeedHandler={postFeedHandler}
-                updateThreadHandler={updateThreadHandler}
-              />
-            </div>
-            <div
-              data-testid="observer-element"
-              id="observer-element"
-              ref={elementRef as RefObject<HTMLDivElement>}>
-              {getLoader()}
-            </div>
-            <div className="p-t-md" />
-          </Fragment>
+          <ActivityFeedProvider user={userData.id}>
+            <ActivityFeedTab
+              entityType={EntityType.USER_NAME}
+              fqn={username}
+              onFeedUpdate={noop}
+            />
+          </ActivityFeedProvider>
         );
 
       default:
         return <></>;
     }
   }, [
-    isTaskType,
+    tab,
     followingEntities,
     ownedEntities,
     isUserEntitiesLoading,
-    feedFilter,
     userPageFilterList,
-    filterListTasks,
-    feedData,
-    isFeedLoading,
-    elementRef,
+    entityDetails,
   ]);
 
   return (
     <PageLayoutV1
-      className="tw-h-full"
+      className="user-layout h-full"
       leftPanel={fetchLeftPanel()}
       pageTitle={t('label.user')}>
-      <div className="m-b-md">
+      <div data-testid="table-container">
         <Tabs
           activeKey={tab ?? UserPageTabs.ACTIVITY}
+          className="user-page-tabs"
           data-testid="tabs"
           items={tabs}
           onChange={activeTabHandler}
         />
+        <div>{tabDetails}</div>
       </div>
-      <div>{tabDetails}</div>
     </PageLayoutV1>
   );
 };

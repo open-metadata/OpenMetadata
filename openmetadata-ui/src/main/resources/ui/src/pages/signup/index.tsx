@@ -171,7 +171,7 @@ const SignUp = () => {
                 readOnly
                 required
                 autoComplete="off"
-                className="tw-cursor-not-allowed tw-appearance-none tw-border tw-border-main tw-rounded tw-bg-gray-100
+                className="cursor-not-allowed tw-appearance-none tw-border tw-border-main tw-rounded tw-bg-gray-100
                   tw-w-full tw-py-2 tw-px-3 tw-text-grey-body tw-leading-tight focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
                 data-testid="username-input"
                 id="name"
@@ -193,7 +193,7 @@ const SignUp = () => {
                 readOnly
                 required
                 autoComplete="off"
-                className="tw-cursor-not-allowed tw-appearance-none tw-border tw-border-main tw-rounded tw-bg-gray-100
+                className="cursor-not-allowed tw-appearance-none tw-border tw-border-main tw-rounded tw-bg-gray-100
                   tw-w-full tw-py-2 tw-px-3 tw-text-grey-body tw-leading-tight focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
                 data-testid="email-input"
                 id="email"

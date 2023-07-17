@@ -28,7 +28,7 @@ def get_long_description():
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==2.3.3",
+    "airflow": "apache-airflow==2.6.3",
     "avro": "avro~=1.11",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
@@ -44,6 +44,8 @@ VERSIONS = {
     "pyodbc": "pyodbc>=4.0.35,<5",
     "scikit-learn": "scikit-learn~=1.0",  # Python 3.7 only goes up to 1.0.2
     "packaging": "packaging==21.3",
+    "azure-storage-blob": "azure-storage-blob~=12.14",
+    "azure-identity": "azure-identity~=1.12",
 }
 
 COMMONS = {
@@ -95,6 +97,7 @@ base_requirements = {
     "Jinja2>=2.11.3",
     "jsonpatch==1.32",
     "jsonschema",
+    "memory-profiler",
     "mypy_extensions>=0.4.3",
     "pydantic~=1.10",
     VERSIONS["pymysql"],
@@ -141,12 +144,14 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["boto3"],
         VERSIONS["google-cloud-storage"],
         "dbt-artifacts-parser",
+        VERSIONS["azure-storage-blob"],
+        VERSIONS["azure-identity"],
     },
     "db2": {"ibm-db-sa~=0.3"},
     "databricks": {"sqlalchemy-databricks~=0.1", "databricks-sdk~=0.1"},
     "datalake-azure": {
-        "azure-storage-blob~=12.14",
-        "azure-identity~=1.12",
+        VERSIONS["azure-storage-blob"],
+        VERSIONS["azure-identity"],
         "adlfs>=2022.2.0",  # Python 3.7 does only support up to 2022.2.0
         *COMMONS["datalake"],
     },
@@ -199,6 +204,7 @@ plugins: Dict[str, Set[str]] = {
     "nifi": {},  # uses requests
     "okta": {"okta~=2.3"},
     "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2"},
+    "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
     "pinotdb": {"pinotdb~=0.3"},
     "postgres": {
         VERSIONS["pymysql"],
@@ -213,7 +219,8 @@ plugins: Dict[str, Set[str]] = {
     "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
-        "sqlalchemy-redshift~=0.8",
+        # Going higher has memory and performance issues
+        "sqlalchemy-redshift==0.8.12",
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
     },
@@ -258,7 +265,7 @@ test = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="1.1.0.0.dev0",
+    version="1.2.0.0.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",

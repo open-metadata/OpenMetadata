@@ -13,7 +13,9 @@
 
 package org.openmetadata.service;
 
+import static org.openmetadata.service.migration.api.MigrationWorkflow.validateMigrationsForServer;
 import static org.openmetadata.service.util.MicrometerBundleSingleton.webAnalyticEvents;
+import static org.openmetadata.service.util.TablesInitializer.getServerMigrationFiles;
 
 import io.dropwizard.Application;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
@@ -56,7 +58,6 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jetty.http.pathmap.ServletPathSpec;
-import org.eclipse.jetty.servlet.ErrorPageErrorHandler;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.websocket.server.NativeWebSocketServletContainerInitializer;
@@ -75,16 +76,19 @@ import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.service.elasticsearch.ElasticSearchEventPublisher;
 import org.openmetadata.service.events.EventFilter;
 import org.openmetadata.service.events.EventPubSub;
+import org.openmetadata.service.events.scheduled.PipelineServiceStatusJobHandler;
 import org.openmetadata.service.events.scheduled.ReportsHandler;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
+import org.openmetadata.service.exception.OMErrorPageHandler;
 import org.openmetadata.service.extension.OpenMetadataExtension;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationConfiguration;
+import org.openmetadata.service.migration.api.MigrationStep;
 import org.openmetadata.service.monitoring.EventMonitor;
 import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
@@ -129,6 +133,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           NoSuchAlgorithmException {
     validateConfiguration(catalogConfig);
 
+    // init for dataSourceFactory
+    DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
+
     ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
 
@@ -161,9 +168,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Authenticator
     registerAuthenticator(catalogConfig);
-
-    // init for dataSourceFactory
-    DatasourceConfig.initialize(catalogConfig);
 
     // Unregister dropwizard default exception mappers
     ((DefaultServerFactory) catalogConfig.getServerFactory()).setRegisterDefaultExceptionMappers(false);
@@ -215,6 +219,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.servlets().addServlet("static", assetServlet).addMapping(pathPattern);
 
     registerExtensions(catalogConfig, environment, jdbi);
+
+    // Handle Pipeline Service Client Status job
+    PipelineServiceStatusJobHandler pipelineServiceStatusJobHandler =
+        PipelineServiceStatusJobHandler.create(
+            catalogConfig.getPipelineServiceClientConfiguration(), catalogConfig.getClusterName());
+    pipelineServiceStatusJobHandler.addPipelineServiceStatusJob();
   }
 
   private void registerExtensions(OpenMetadataApplicationConfig catalogConfig, Environment environment, Jdbi jdbi) {
@@ -331,6 +341,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
               + " You can find more information on upgrading OpenMetadata at"
               + " https://docs.open-metadata.org/deployment/upgrade ");
     }
+
+    LOG.info("Validating Server migrations");
+    List<MigrationStep> loadedMigrationFiles = getServerMigrationFiles(DatasourceConfig.getConnectionType());
+    validateMigrationsForServer(jdbi, loadedMigrationFiles);
   }
 
   private void validateConfiguration(OpenMetadataApplicationConfig catalogConfig) throws ConfigurationException {
@@ -423,7 +437,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     CollectionRegistry.initialize(extensionResources);
     CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer, authenticatorHandler);
     environment.jersey().register(new JsonPatchProvider());
-    ErrorPageErrorHandler eph = new ErrorPageErrorHandler();
+    OMErrorPageHandler eph = new OMErrorPageHandler(config.getWebConfiguration());
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");
     environment.getApplicationContext().setErrorHandler(eph);
   }
@@ -452,12 +466,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       WebSocketUpgradeFilter.configure(environment.getApplicationContext());
       NativeWebSocketServletContainerInitializer.configure(
           environment.getApplicationContext(),
-          (context, container) -> {
-            container.addMapping(
-                new ServletPathSpec(pathSpec),
-                (servletUpgradeRequest, servletUpgradeResponse) ->
-                    new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
-          });
+          (context, container) ->
+              container.addMapping(
+                  new ServletPathSpec(pathSpec),
+                  (servletUpgradeRequest, servletUpgradeResponse) ->
+                      new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer())));
     } catch (ServletException ex) {
       LOG.error("Websocket Upgrade Filter error : " + ex.getMessage());
     }

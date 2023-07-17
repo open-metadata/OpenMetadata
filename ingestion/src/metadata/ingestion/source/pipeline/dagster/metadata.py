@@ -12,7 +12,7 @@
 Dagster source to extract metadata from OM UI
 """
 import traceback
-from typing import Dict, Iterable, List, Optional
+from typing import Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -34,10 +34,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.source.pipeline.dagster.queries import (
-    DAGSTER_PIPELINE_DETAILS_GRAPHQL,
-    GRAPHQL_QUERY_FOR_JOBS,
-    GRAPHQL_RUNS_QUERY,
+from metadata.ingestion.source.pipeline.dagster.models import (
+    DagsterPipeline,
+    RunStepStats,
+    SolidHandle,
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.logger import ingestion_logger
@@ -70,72 +70,73 @@ class DagsterSource(PipelineServiceSource):
             )
         return cls(config, metadata_config)
 
-    def get_run_list(self):
-        try:
-            # pylint: disable=protected-access
-            result = self.client._execute(DAGSTER_PIPELINE_DETAILS_GRAPHQL)
-        except ConnectionError as conerr:
-            logger.error(f"Cannot connect to dagster client {conerr}")
-            logger.debug(f"Failed due to : {traceback.format_exc()}")
+    def _get_downstream_tasks(self, job: SolidHandle) -> Optional[List[str]]:
+        """
+        Method to get downstream tasks
+        """
+        down_stream_tasks = []
+        if job.solid:
+            for tasks in job.solid.inputs or []:
+                if tasks:
+                    for task in tasks.dependsOn or []:
+                        down_stream_tasks.append(task.solid.name)
+        return down_stream_tasks or None
 
-        return result["repositoriesOrError"]["nodes"]
+    def _get_task_list(self, pipeline_name: str) -> Optional[List[Task]]:
+        """
+        Method to collect all the tasks from dagster and return it in a task list
+        """
+        jobs = self.client.get_jobs(
+            pipeline_name=pipeline_name,
+            repository_name=self.context.repository_name,
+            repository_location=self.context.repository_location,
+        )
+        task_list: List[Task] = []
+        if jobs:
+            for job in jobs.solidHandles or []:
+                try:
+                    task = Task(
+                        name=job.handleID,
+                        displayName=job.handleID,
+                        downstreamTasks=self._get_downstream_tasks(job=job),
+                    )
+                    task_list.append(task)
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Error to fetch tasks for {pipeline_name}:{job}: {exc}"
+                    )
 
-    def get_jobs(self, pipeline_name) -> Iterable[dict]:
-        try:
-            parameters = {
-                "selector": {
-                    "graphName": pipeline_name,
-                    "repositoryName": self.context.repository_name,
-                    "repositoryLocationName": self.context.repository_location,
-                }
-            }
-            jobs = self.client._execute(  # pylint: disable=protected-access
-                query=GRAPHQL_QUERY_FOR_JOBS, variables=parameters
-            )
-            return jobs["graphOrError"]
-        except Exception as err:
-            logger.error(f"Error while getting jobs {pipeline_name} - {err}")
-            logger.debug(traceback.format_exc())
+        return task_list or None
 
-        return []
-
-    def yield_pipeline(self, pipeline_details) -> Iterable[CreatePipelineRequest]:
+    def yield_pipeline(
+        self, pipeline_details: DagsterPipeline
+    ) -> Iterable[CreatePipelineRequest]:
         """
         Convert a DAG into a Pipeline Entity
         :param serialized_dag: SerializedDAG from dagster metadata DB
         :return: Create Pipeline request with tasks
         """
-        jobs = self.get_jobs(pipeline_name=pipeline_details.get("name"))
-        task_list: List[Task] = []
-        for job in jobs["solidHandles"]:
-            down_stream_task = []
-            for tasks in job.get("solid")["inputs"]:
-                for task in tasks["dependsOn"]:
-                    down_stream_task.append(task["solid"]["name"])
 
-            task = Task(
-                name=job["handleID"],
-                displayName=job["handleID"],
-                downstreamTasks=down_stream_task,
+        try:
+            pipeline_request = CreatePipelineRequest(
+                name=pipeline_details.id.replace(":", ""),
+                displayName=pipeline_details.name,
+                description=pipeline_details.description,
+                tasks=self._get_task_list(pipeline_name=pipeline_details.name),
+                service=self.context.pipeline_service.fullyQualifiedName.__root__,
+                tags=get_tag_labels(
+                    metadata=self.metadata,
+                    tags=[self.context.repository_name],
+                    classification_name=DAGSTER_TAG_CATEGORY,
+                    include_tags=self.source_config.includeTags,
+                ),
             )
-
-            task_list.append(task)
-
-        pipeline_request = CreatePipelineRequest(
-            name=pipeline_details["id"].replace(":", ""),
-            displayName=pipeline_details["name"],
-            description=pipeline_details.get("description", ""),
-            tasks=task_list,
-            service=self.context.pipeline_service.fullyQualifiedName.__root__,
-            tags=get_tag_labels(
-                metadata=self.metadata,
-                tags=[self.context.repository_name],
-                classification_name=DAGSTER_TAG_CATEGORY,
-                include_tags=self.source_config.includeTags,
-            ),
-        )
-        yield pipeline_request
-        self.register_record(pipeline_request=pipeline_request)
+            yield pipeline_request
+            self.register_record(pipeline_request=pipeline_request)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error to yield pipeline for {pipeline_details}: {exc}")
 
     def yield_tag(self, *_, **__) -> OMetaTagAndClassification:
         yield from get_ometa_tag_and_classification(
@@ -146,81 +147,85 @@ class DagsterSource(PipelineServiceSource):
             include_tags=self.source_config.includeTags,
         )
 
-    def get_task_runs(self, job_id, pipeline_name):
+    def _get_task_status(
+        self, run: RunStepStats, task_name: str
+    ) -> Iterable[OMetaPipelineStatus]:
         """
-        To get all the runs details
+        Prepare the OMetaPipelineStatus
         """
         try:
-            parameters = {
-                "handleID": job_id,
-                "selector": {
-                    "pipelineName": pipeline_name,
-                    "repositoryName": self.context.repository_name,
-                    "repositoryLocationName": self.context.repository_location,
-                },
-            }
-            runs = self.client._execute(  # pylint: disable=protected-access
-                query=GRAPHQL_RUNS_QUERY, variables=parameters
+            task_status = TaskStatus(
+                name=task_name,
+                executionStatus=STATUS_MAP.get(
+                    run.status.lower(), StatusType.Pending.value
+                ),
+                startTime=round(run.startTime) if run.startTime else None,
+                endTime=round(run.endTime) if run.endTime else None,
             )
 
-            return runs["pipelineOrError"]
-        except Exception as err:
-            logger.error(
-                f"Error while getting runs for {job_id} - {pipeline_name} - {err}"
+            pipeline_status = PipelineStatus(
+                taskStatus=[task_status],
+                executionStatus=STATUS_MAP.get(
+                    run.status.lower(), StatusType.Pending.value
+                ),
+                timestamp=round(run.endTime) if run.endTime else None,
             )
+            pipeline_status_yield = OMetaPipelineStatus(
+                pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
+                pipeline_status=pipeline_status,
+            )
+            yield pipeline_status_yield
+        except Exception as exc:
             logger.debug(traceback.format_exc())
+            logger.warning(f"Error to yield run status for {run}: {exc}")
 
-        return []
-
-    def yield_pipeline_status(self, pipeline_details) -> OMetaPipelineStatus:
-        tasks = self.context.pipeline.tasks
-        for task in tasks:
-            runs = self.get_task_runs(
-                task.name, pipeline_name=pipeline_details.get("name")
-            )
-            for run in runs["solidHandle"]["stepStats"].get("nodes") or []:
-                task_status = TaskStatus(
-                    name=task.name,
-                    executionStatus=STATUS_MAP.get(
-                        run["status"].lower(), StatusType.Pending.value
-                    ),
-                    startTime=round(run["startTime"]),
-                    endTime=round(run["endTime"]),
+    def yield_pipeline_status(
+        self, pipeline_details: DagsterPipeline
+    ) -> OMetaPipelineStatus:
+        """
+        Yield the pipeline and task status
+        """
+        for task in self.context.pipeline.tasks or []:
+            try:
+                runs = self.client.get_task_runs(
+                    task.name,
+                    pipeline_name=pipeline_details.name,
+                    repository_name=self.context.repository_name,
+                    repository_location=self.context.repository_location,
                 )
-
-                pipeline_status = PipelineStatus(
-                    taskStatus=[task_status],
-                    executionStatus=STATUS_MAP.get(
-                        run["status"].lower(), StatusType.Pending.value
-                    ),
-                    timestamp=round(run["endTime"]),
+                for run in runs.solidHandle.stepStats.nodes or []:
+                    yield from self._get_task_status(run=run, task_name=task.name)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error to yield pipeline status for {pipeline_details}: {exc}"
                 )
-                pipeline_status_yield = OMetaPipelineStatus(
-                    pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
-                    pipeline_status=pipeline_status,
-                )
-                yield pipeline_status_yield
 
     def yield_pipeline_lineage_details(
-        self, pipeline_details
+        self, pipeline_details: DagsterPipeline
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Not implemented, as this connector does not create any lineage
         """
 
-    def get_pipelines_list(self) -> Dict:
-        results = self.get_run_list()
+    def get_pipelines_list(self) -> Iterable[DagsterPipeline]:
+        """
+        Get List of all pipelines
+        """
+
+        results = self.client.get_run_list()
         for result in results:
-            self.context.repository_location = result.get("location")["name"]
-            self.context.repository_name = result["name"]
-            for job in result.get("pipelines") or []:
+            self.context.repository_location = result.location.name
+            self.context.repository_name = result.name
+            for job in result.pipelines or []:
                 yield job
 
-    def get_pipeline_name(self, pipeline_details) -> str:
+    def get_pipeline_name(self, pipeline_details: DagsterPipeline) -> str:
         """
         Get Pipeline Name
         """
-        return pipeline_details["name"]
+
+        return pipeline_details.name
 
     def test_connection(self) -> None:
         pass

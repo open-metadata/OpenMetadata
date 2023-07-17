@@ -34,6 +34,7 @@ export interface PreviewerProp {
   maxLength?: number;
   className?: string;
   enableSeeMoreVariant?: boolean;
+  showReadMoreBtn?: boolean;
   textVariant?: TextVariant;
 }
 

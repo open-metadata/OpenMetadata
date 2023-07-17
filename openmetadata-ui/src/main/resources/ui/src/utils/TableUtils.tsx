@@ -14,9 +14,9 @@
 import Icon from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
-import { ReactComponent as IconFlatFolder } from 'assets/svg/folder.svg';
+import { ReactComponent as ClassificationIcon } from 'assets/svg/classification.svg';
+import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
 import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
-import { ReactComponent as IconTag } from 'assets/svg/tag-grey.svg';
 import classNames from 'classnames';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
 import { t } from 'i18next';
@@ -24,7 +24,6 @@ import { uniqueId, upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
-import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconForeignKey } from '../assets/svg/foriegnKey.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
@@ -36,11 +35,10 @@ import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
 import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-notnull.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
-import { ReactComponent as IconPendingBadge } from '../assets/svg/pending-badge.svg';
-import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
+  getContainerDetailPath,
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
@@ -50,12 +48,13 @@ import {
   getPipelineDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
+  getTableTabPath,
   getTagsDetailsPath,
   getTopicDetailsPath,
   TEXT_BODY_COLOR,
 } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
-import { EntityType, FqnPart } from '../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
 import {
@@ -63,38 +62,16 @@ import {
   DataType,
   TableConstraint,
 } from '../generated/entity/data/table';
-import { TestCaseStatus } from '../generated/tests/testCase';
 import { TagLabel } from '../generated/type/tagLabel';
 import {
-  getPartialNameFromFQN,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
   sortTagsCaseInsensitive,
 } from './CommonUtils';
-import { getContainerDetailPath } from './ContainerDetailUtils';
 import { getGlossaryPath, getSettingPath } from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import { ordinalize } from './StringsUtils';
 import SVGIcons, { Icons } from './SvgUtils';
-
-export const getBadgeName = (tableType?: string) => {
-  switch (tableType) {
-    case 'QUERY':
-      return t('label.query-lowercase');
-    default:
-      return t('label.table-lowercase');
-  }
-};
-
-export const usageSeverity = (value: number): string => {
-  if (value > 75) {
-    return 'High';
-  } else if (value >= 25 && value <= 75) {
-    return 'Medium';
-  } else {
-    return 'Low';
-  }
-};
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
@@ -138,30 +115,11 @@ export const getTagsWithoutTier = (
   );
 };
 
-export const getTierFromSearchTableTags = (tags: Array<string>): string => {
-  const tierTag = tags.find(
-    (item) =>
-      item.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) &&
-      !isNaN(parseInt(item.substring(9).trim()))
-  );
-
-  return tierTag || '';
-};
-
-export const getSearchTableTagsWithoutTier = (
-  tags: Array<string>
-): Array<string> => {
-  return tags.filter(
-    (item) =>
-      !item.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) ||
-      isNaN(parseInt(item.substring(9).trim()))
-  );
-};
-
 export const getConstraintIcon = (
   constraint = '',
   className = '',
-  width = '16px'
+  width = '16px',
+  isConstraintUpdated?: boolean
 ) => {
   let title: string, icon: SvgComponent;
   switch (constraint) {
@@ -203,7 +161,12 @@ export const getConstraintIcon = (
       placement="bottom"
       title={title}
       trigger="hover">
-      <Icon alt={title} component={icon} style={{ fontSize: width }} />
+      <Icon
+        alt={title}
+        className={classNames({ 'diff-added': isConstraintUpdated })}
+        component={icon}
+        style={{ fontSize: width }}
+      />
     </Tooltip>
   );
 };
@@ -266,6 +229,12 @@ export const getEntityLink = (
     case EntityType.DASHBOARD_DATA_MODEL:
       return getDataModelDetailsPath(fullyQualifiedName);
 
+    case EntityType.TEST_CASE:
+      return `${getTableTabPath(
+        getTableFQNFromColumnFQN(fullyQualifiedName),
+        EntityTabs.PROFILER
+      )}?activeTab=Data Quality`;
+
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:
@@ -275,42 +244,20 @@ export const getEntityLink = (
 
 export const getServiceIcon = (source: SourceType) => {
   if (source.entityType === EntityType.GLOSSARY_TERM) {
-    return (
-      <IconFlatFolder className="h-9" style={{ color: DE_ACTIVE_COLOR }} />
-    );
+    return <GlossaryIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />;
   } else if (source.entityType === EntityType.TAG) {
-    return <IconTag className="h-9" style={{ color: DE_ACTIVE_COLOR }} />;
+    return (
+      <ClassificationIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />
+    );
   } else {
     return (
       <img
         alt="service-icon"
-        className="inline h-9"
+        className="inline h-7"
         src={serviceTypeLogo(source.serviceType || '')}
       />
     );
   }
-};
-
-export const getEntityHeaderLabel = (source: SourceType) => {
-  let headingText = '';
-  if ('databaseSchema' in source && 'database' in source) {
-    headingText = `${source.database?.name} / ${source.databaseSchema?.name}`;
-  } else if (
-    source.entityType === EntityType.GLOSSARY_TERM ||
-    source.entityType === EntityType.TAG
-  ) {
-    headingText = getPartialNameFromFQN(source.fullyQualifiedName || '', [
-      'service',
-    ]);
-  }
-
-  return headingText ? (
-    <span
-      className="text-grey-muted text-xs m-b-sm d-inline-block"
-      data-testid="database-schema">
-      {headingText}
-    </span>
-  ) : null;
 };
 
 export const getEntityIcon = (indexType: string) => {
@@ -429,22 +376,6 @@ export const getEntityFqnFromEntityLink = (
   return tableFqn;
 };
 
-export const getTestResultBadgeIcon = (status?: TestCaseStatus) => {
-  switch (status) {
-    case TestCaseStatus.Success:
-      return IconSuccessBadge;
-
-    case TestCaseStatus.Failed:
-      return IconFailBadge;
-
-    case TestCaseStatus.Aborted:
-      return IconPendingBadge;
-
-    default:
-      return IconPendingBadge;
-  }
-};
-
 export function getTableExpandableConfig<T>(
   isDraggable?: boolean
 ): ExpandableConfig<T> {
@@ -493,7 +424,8 @@ export const prepareConstraintIcon = (
   columnConstraint?: string,
   tableConstraints?: TableConstraint[],
   iconClassName?: string,
-  iconWidth?: string
+  iconWidth?: string,
+  isConstraintUpdated?: boolean
 ) => {
   // get the table constraint for column
   const tableConstraint = tableConstraints?.find((constraint) =>
@@ -502,7 +434,12 @@ export const prepareConstraintIcon = (
 
   // prepare column constraint element
   const columnConstraintEl = columnConstraint
-    ? getConstraintIcon(columnConstraint, iconClassName || 'm-r-xs', iconWidth)
+    ? getConstraintIcon(
+        columnConstraint,
+        iconClassName || 'm-r-xs',
+        iconWidth,
+        isConstraintUpdated
+      )
     : null;
 
   // prepare table constraint element

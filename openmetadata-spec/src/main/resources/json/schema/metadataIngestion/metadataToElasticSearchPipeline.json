@@ -51,6 +51,21 @@
       "description": "Region name. Required when using AWS Credentials.",
       "type": "string",
       "default": null
+    },
+    "searchIndexMappingLanguage": {
+      "description": "Recreate Indexes with updated Language",
+      "$ref": "../configuration/elasticSearchConfiguration.json#/definitions/searchIndexMappingLanguage"
+    },
+    "batchSize": {
+      "title": "Batch Size",
+      "description": "Maximum number of events entities in a batch (Default 1000).",
+      "type": "integer",
+      "default": 1000
+    },
+    "recreateIndex": {
+      "title": "Recreate Indexes",
+      "type": "boolean",
+      "default": true
     }
   },
   "required": ["type"],

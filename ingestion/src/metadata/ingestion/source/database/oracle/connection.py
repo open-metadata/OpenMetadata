@@ -98,7 +98,7 @@ def get_connection(connection: OracleConnection) -> Engine:
             os.environ[LD_LIB_ENV] = connection.instantClientDirectory
             oracledb.init_oracle_client()
     except DatabaseError as err:
-        logger.error(f"Could not initialize Oracle thick client: {err}")
+        logger.info(f"Could not initialize Oracle thick client: {err}")
 
     return create_generic_db_connection(
         connection=connection,

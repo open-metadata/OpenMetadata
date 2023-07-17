@@ -13,6 +13,7 @@
 
 import '@github/g-emoji-element';
 import { Button, Popover } from 'antd';
+import { ReactComponent as AddReactionIcon } from 'assets/svg/add-reaction-emoji.svg';
 import { groupBy, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { FC, useMemo, useState } from 'react';
@@ -27,9 +28,9 @@ import {
   Reaction as ReactionProp,
   ReactionType,
 } from '../../generated/type/reaction';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import Emoji from './Emoji';
 import Reaction from './Reaction';
+import './reactions.less';
 
 interface ReactionsProps {
   reactions: ReactionProp[];
@@ -103,7 +104,7 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
   });
 
   return (
-    <div className="d-flex">
+    <div className="d-flex items-center">
       {emojis}
       <Popover
         align={{ targetOffset: [0, -10] }}
@@ -115,19 +116,16 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
         zIndex={9999}
         onOpenChange={handleVisibleChange}>
         <Button
-          className="ant-btn-reaction ant-btn-add-reactions"
+          className="flex-center"
           data-testid="add-reactions"
-          shape="round"
-          onClick={(e) => e.stopPropagation()}>
-          <SVGIcons
-            alt="add-reaction"
-            icon={Icons.ADD_REACTION}
-            title={t('label.add-entity', {
-              entity: t('label.reaction-lowercase-plural'),
-            })}
-            width="16px"
-          />
-        </Button>
+          icon={<AddReactionIcon width={18} />}
+          shape="circle"
+          size="small"
+          title={t('label.add-entity', {
+            entity: t('label.reaction-lowercase-plural'),
+          })}
+          onClick={(e) => e.stopPropagation()}
+        />
       </Popover>
     </div>
   );

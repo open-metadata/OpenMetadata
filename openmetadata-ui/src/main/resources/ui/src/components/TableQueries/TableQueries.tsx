@@ -302,7 +302,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     <Row gutter={8} id="tablequeries" wrap={false}>
       <Col flex="auto">
         <Row
-          className="p-r-md m-t-md"
+          className="p-x-md m-t-md"
           data-testid="queries-container"
           gutter={[8, 16]}>
           <Col span={24}>

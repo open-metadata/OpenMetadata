@@ -26,12 +26,12 @@ describe('Restore entity functionality should work properly', () => {
     cy.login();
     interceptURL(
       'GET',
-      'api/v1/search/query?q=*&index=*&from=0&size=10&deleted=true&query_filter=*&sort_field=_score&sort_order=desc',
+      'api/v1/search/query?q=*&index=*&from=0&size=10&deleted=true&query_filter=*&sort_field=updatedAt&sort_order=desc',
       'showDeletedTables'
     );
     interceptURL(
       'GET',
-      'api/v1/search/query?q=*&index=*&from=0&size=10&deleted=false&query_filter=*&sort_field=_score&sort_order=desc',
+      'api/v1/search/query?q=*&index=*&from=0&size=10&deleted=false&query_filter=*&sort_field=updatedAt&sort_order=desc',
       'nonDeletedTables'
     );
   });
@@ -115,21 +115,16 @@ describe('Restore entity functionality should work properly', () => {
       .contains(ENTITY_TABLE.schemaName)
       .click();
 
-    cy.get('[data-testid="manage-button"]').should('exist').click();
-
-    cy.get('[data-testid="deleted-table-menu-item-label"]')
-      .should('exist')
-      .contains('Show Deleted Table');
-
     interceptURL(
       'GET',
-      '/api/v1/search/query?q=*&index=table_search_index&from=0&size=10&deleted=true&sort_field=name.keyword&sort_order=asc',
+      '/api/v1/tables?databaseSchema=sample_data.ecommerce_db.shopify&include=deleted',
       'queryDeletedTables'
     );
-    cy.get('[data-testid="deleted-table-menu-item-switch')
-      .should('exist')
-      .click();
+
+    cy.get('[data-testid="show-deleted"]').should('exist').click();
+
     verifyResponseStatusCode('@queryDeletedTables', 200);
+
     cy.get('[data-testid="table"] [data-testid="count"]')
       .should('exist')
       .contains('1');

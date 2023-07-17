@@ -143,6 +143,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   public UserResourceTest() {
     super(USER, User.class, UserList.class, "users", UserResource.FIELDS);
     supportedNameCharacters = "_-.";
+    supportsSearchIndex = true;
   }
 
   public void setupUsers(TestInfo test) throws HttpResponseException {
@@ -185,15 +186,14 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Create user with mandatory email field empty
     create.withEmail("");
-    assertResponseContains(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "email must match \"^\\S+@\\S+\\.\\S+$\"");
+    String emailMatchError = "email must match \"^[\\S.!#$%&’*+/=?^_`{|}~-]+@\\S+\\.\\S+$\"";
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, emailMatchError);
     assertResponseContains(
         () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "email size must be between 6 and 127");
 
     // Create user with mandatory email field with invalid email address
     create.withEmail("invalidEmail");
-    assertResponseContains(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[email must match \"^\\S+@\\S+\\.\\S+$\"]");
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, emailMatchError);
   }
 
   @Test
@@ -787,7 +787,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             .withAuthenticationMechanism(authMechanism);
     User user = createEntity(create, authHeaders("ingestion-bot-jwt@email.com"));
     user = getEntity(user.getId(), "*", ADMIN_AUTH_HEADERS);
-    assertEquals(user.getRoles().size(), 1);
+    assertEquals(1, user.getRoles().size());
     TestUtils.put(
         getResource(String.format("users/generateToken/%s", user.getId())),
         new GenerateTokenRequest().withJWTTokenExpiry(JWTTokenExpiry.Seven),
@@ -795,7 +795,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         ADMIN_AUTH_HEADERS);
     user = getEntity(user.getId(), "*", ADMIN_AUTH_HEADERS);
     assertNull(user.getAuthenticationMechanism());
-    assertEquals(user.getRoles().size(), 1);
+    assertEquals(1, user.getRoles().size());
     JWTAuthMechanism jwtAuthMechanism =
         TestUtils.get(
             getResource(String.format("users/token/%s", user.getId())), JWTAuthMechanism.class, ADMIN_AUTH_HEADERS);
@@ -963,13 +963,22 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // Headers - name,displayName,description,email,timezone,isAdmin,teams,roles
     Team team = TEAM_TEST.createEntity(TEAM_TEST.createRequest("team-invalidCsv"), ADMIN_AUTH_HEADERS);
 
-    // Invalid team
+    // Invalid user name with "::"
     String resultsHeader = recordToString(EntityCsv.getResultHeaders(UserCsv.HEADERS));
-    String record = "user,,,user@domain.com,,,invalidTeam,";
+    String record = "invalid::User,,,user@domain.com,,,team-invalidCsv,";
     String csv = createCsv(UserCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(team.getName(), csv, false);
     assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
-    String[] expectedRows = {resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(6, "invalidTeam"))};
+    String[] expectedRows = {resultsHeader, getFailedRecord(record, "[name must match \"\"^(?U)[\\w\\-.]+$\"\"]")};
+    assertRows(result, expectedRows);
+
+    // Invalid team
+    resultsHeader = recordToString(EntityCsv.getResultHeaders(UserCsv.HEADERS));
+    record = "user,,,user@domain.com,,,invalidTeam,";
+    csv = createCsv(UserCsv.HEADERS, listOf(record), null);
+    result = importCsv(team.getName(), csv, false);
+    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    expectedRows = new String[] {resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(6, "invalidTeam"))};
     assertRows(result, expectedRows);
 
     // Invalid roles

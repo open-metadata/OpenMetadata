@@ -13,6 +13,7 @@
 
 import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import PageHeader from 'components/header/PageHeader.component';
 import { isEmpty, round, uniqueId } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -140,16 +141,14 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
       id={DataInsightChartType.PercentageOfEntitiesWithDescriptionByType}
       loading={isLoading}
       title={
-        <>
-          <Typography.Title level={5}>
-            {t('label.data-insight-description-summary')}
-          </Typography.Title>
-          <Typography.Text className="data-insight-label-text">
-            {t('message.field-insight', {
+        <PageHeader
+          data={{
+            header: t('label.data-insight-description-summary'),
+            subHeader: t('message.field-insight', {
               field: t('label.description-lowercase'),
-            })}
-          </Typography.Text>
-        </>
+            }),
+          }}
+        />
       }>
       {data.length ? (
         <Row gutter={DI_STRUCTURE.rowContainerGutter}>

@@ -39,3 +39,9 @@ class LineageTableStreams(BaseModel):
 class LineageColumnStreams(BaseModel):
     upstream_cols: Optional[List[DatabricksColumn]] = []
     downstream_cols: Optional[List[DatabricksColumn]] = []
+
+
+class ForeignConstrains(BaseModel):
+    child_columns: Optional[List[str]] = []
+    parent_columns: Optional[List[str]] = []
+    parent_table: str

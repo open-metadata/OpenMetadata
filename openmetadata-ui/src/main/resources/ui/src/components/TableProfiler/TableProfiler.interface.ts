@@ -18,6 +18,7 @@ import {
   ColumnProfilerConfig,
   PartitionProfilerConfig,
   ProfileSampleType,
+  Table,
   TableProfile,
   TableProfilerConfig,
 } from '../../generated/entity/data/table';
@@ -26,8 +27,8 @@ import { OperationPermission } from '../PermissionProvider/PermissionProvider.in
 
 export interface TableProfilerProps {
   isTableDeleted?: boolean;
-  tableFqn: string;
   permissions: OperationPermission;
+  testSuite?: Table['testSuite'];
 }
 
 export type TableTestsType = {
@@ -51,6 +52,7 @@ export interface ColumnProfileTableProps {
   columns: Column[];
   hasEditAccess: boolean;
   columnTests: TestCase[];
+  dateRangeObject: DateRangeObject;
 }
 
 export interface ProfilerProgressWidgetProps {
@@ -83,6 +85,8 @@ export type TableProfilerData = {
 
 export type TableProfilerChartProps = {
   dateRangeObject: DateRangeObject;
+  entityFqn?: string;
+  showOperationGraph?: boolean;
 };
 
 export interface ProfilerSettingModalState {

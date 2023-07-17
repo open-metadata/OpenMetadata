@@ -22,12 +22,17 @@ import {
   Tooltip,
 } from 'antd';
 import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
+import { ReactComponent as Help } from 'assets/svg/ic-help.svg';
+import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import SearchOptions from 'components/AppBar/SearchOptions';
+import Suggestions from 'components/AppBar/Suggestions';
 import BrandImage from 'components/common/BrandImage/BrandImage';
 import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import WhatsNewAlert from 'components/Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component';
 import { CookieStorage } from 'cookie-storage';
+import { EntityTabs, EntityType } from 'enums/entity.enum';
 import i18next from 'i18next';
-import { debounce, toString, upperCase } from 'lodash';
+import { debounce, upperCase } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -37,7 +42,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { refreshPage } from 'utils/CommonUtils';
+import { getEntityDetailLink, refreshPage } from 'utils/CommonUtils';
 import { isCommandKeyPress, Keys } from 'utils/KeyboardUtil';
 import AppState from '../../AppState';
 import Logo from '../../assets/svg/logo-monogram.svg';
@@ -64,9 +69,6 @@ import {
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { getTaskDetailPath } from '../../utils/TasksUtils';
-import SearchOptions from '../app-bar/SearchOptions';
-import Suggestions from '../app-bar/Suggestions';
 import Avatar from '../common/avatar/Avatar';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
 import LegacyDropDown from '../dropdown/DropDown';
@@ -200,14 +202,13 @@ const NavBar = ({
   const showBrowserNotification = (
     about: string,
     createdBy: string,
-    type: string,
-    id?: string
+    type: string
   ) => {
     if (!hasNotificationPermission()) {
       return;
     }
     const entityType = getEntityType(about);
-    const entityFQN = getEntityFQN(about);
+    const entityFQN = getEntityFQN(about) ?? '';
     let body;
     let path: string;
     switch (type) {
@@ -215,7 +216,13 @@ const NavBar = ({
         body = t('message.user-assign-new-task', {
           user: createdBy,
         });
-        path = getTaskDetailPath(toString(id)).pathname;
+
+        path = getEntityDetailLink(
+          entityType as EntityType,
+          entityFQN,
+          EntityTabs.ACTIVITY_FEED,
+          ActivityFeedTabs.TASKS
+        );
 
         break;
       case 'Conversation':
@@ -262,8 +269,7 @@ const NavBar = ({
           showBrowserNotification(
             activity.about,
             activity.createdBy,
-            activity.type,
-            activity.task?.id
+            activity.type
           );
         }
       });
@@ -275,8 +281,7 @@ const NavBar = ({
           showBrowserNotification(
             activity.about,
             activity.createdBy,
-            activity.type,
-            activity.task?.id
+            activity.type
           );
         }
       });
@@ -336,13 +341,12 @@ const NavBar = ({
           <Input
             addonBefore={entitiesSelect}
             autoComplete="off"
-            className="search-grey rounded-4  appbar-search"
+            className="rounded-4  appbar-search"
             data-testid="searchBox"
             id="searchBox"
             placeholder={t('message.search-for-entity-types')}
             ref={searchRef}
             style={{
-              boxShadow: 'none',
               height: '37px',
             }}
             suffix={
@@ -407,35 +411,10 @@ const NavBar = ({
               />
             ))}
         </div>
-        <Dropdown
-          className="cursor-pointer m-r-lg"
-          menu={{ items: supportDropdown }}
-          overlayStyle={{ width: 175 }}
-          placement="bottomRight"
-          trigger={['click']}>
-          <Space size={2}>
-            <span>{t('label.help')}</span>
-            <DropDownIcon className="m-y-xs m-l-xss" height={14} width={14} />
-          </Space>
-        </Dropdown>
-
-        <Dropdown
-          className="cursor-pointer m-r-lg"
-          menu={{
-            items: languageSelectOptions,
-            onClick: handleLanguageChange,
-          }}
-          placement="bottomRight"
-          trigger={['click']}>
-          <Space size={2}>
-            {upperCase((language || SupportedLocales.English).split('-')[0])}
-            <DropDownIcon className="m-y-xs m-l-xss" height={14} width={14} />
-          </Space>
-        </Dropdown>
-
-        <button className="focus:tw-no-underline hover:tw-underline flex-shrink m-r-lg">
+        <Space size={24}>
           <Dropdown
             destroyPopupOnHide
+            className="cursor-pointer"
             dropdownRender={() => (
               <NotificationBox
                 hasMentionNotification={hasMentionNotification}
@@ -461,32 +440,56 @@ const NavBar = ({
               />
             </Badge>
           </Dropdown>
-        </button>
-        <div className="profile-dropdown " data-testid="dropdown-profile">
-          <LegacyDropDown
-            dropDownList={profileDropdown}
-            icon={
-              <Tooltip placement="bottom" title="Profile" trigger="hover">
-                {isImgUrlValid ? (
-                  <div className="profile-image circle tw--mr-2">
-                    <Image
-                      alt="user"
-                      preview={false}
-                      referrerPolicy="no-referrer"
-                      src={profilePicture || ''}
-                      width={24}
-                      onError={handleOnImageError}
-                    />
-                  </div>
-                ) : (
-                  <Avatar name={username} type="circle" width="24" />
-                )}
-              </Tooltip>
-            }
-            isDropDownIconVisible={false}
-            type="link"
-          />
-        </div>
+
+          <Dropdown
+            className="cursor-pointer"
+            menu={{
+              items: languageSelectOptions,
+              onClick: handleLanguageChange,
+            }}
+            placement="bottomRight"
+            trigger={['click']}>
+            <Space size={2}>
+              {upperCase((language || SupportedLocales.English).split('-')[0])}
+              <DropDownIcon className="m-y-xs" height={14} width={14} />
+            </Space>
+          </Dropdown>
+
+          <Dropdown
+            className="cursor-pointer"
+            menu={{ items: supportDropdown }}
+            overlayStyle={{ width: 175 }}
+            placement="bottomRight"
+            trigger={['click']}>
+            <Help height={20} width={20} />
+          </Dropdown>
+
+          <div className="profile-dropdown " data-testid="dropdown-profile">
+            <LegacyDropDown
+              dropDownList={profileDropdown}
+              icon={
+                <Tooltip placement="bottom" title="Profile" trigger="hover">
+                  {isImgUrlValid ? (
+                    <div className="profile-image circle tw--mr-2">
+                      <Image
+                        alt="user"
+                        preview={false}
+                        referrerPolicy="no-referrer"
+                        src={profilePicture || ''}
+                        width={24}
+                        onError={handleOnImageError}
+                      />
+                    </div>
+                  ) : (
+                    <Avatar name={username} type="circle" width="24" />
+                  )}
+                </Tooltip>
+              }
+              isDropDownIconVisible={false}
+              type="link"
+            />
+          </div>
+        </Space>
       </div>
       <WhatsNewModal
         header={`${t('label.whats-new')}!`}

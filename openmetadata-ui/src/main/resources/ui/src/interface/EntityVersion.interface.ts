@@ -13,7 +13,7 @@
 
 import { FieldChange } from 'generated/entity/type';
 
-export interface ColumnDiffProps {
+export interface EntityDiffProps {
   added?: FieldChange;
   deleted?: FieldChange;
   updated?: FieldChange;

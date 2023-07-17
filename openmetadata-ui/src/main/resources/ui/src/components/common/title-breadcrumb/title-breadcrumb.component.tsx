@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import React, {
   FunctionComponent,
@@ -20,6 +19,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import TitleBreadcrumbSkeleton from '../../Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import { TitleBreadcrumbProps } from './title-breadcrumb.interface';
@@ -28,8 +28,10 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   titleLinks,
   className = '',
   noLink = false,
+  loading = false,
   widthDeductions,
 }: TitleBreadcrumbProps) => {
+  const { t } = useTranslation();
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
 
   const finalWidthOfBreadcrumb = useMemo(() => {
@@ -58,9 +60,9 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   }, []);
 
   return (
-    <TitleBreadcrumbSkeleton titleLinks={titleLinks}>
+    <TitleBreadcrumbSkeleton loading={loading}>
       <nav className={className} data-testid="breadcrumb">
-        <ol className="rounded-4 d-flex">
+        <ol className="rounded-4 d-flex flex-wrap">
           {titleLinks.map((link, index) => {
             const classes =
               'link-title tw-truncate' +
@@ -89,7 +91,9 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                       to={link.url}>
                       {link.name}
                     </Link>
-                    <span className="p-x-xs text-grey-muted">/</span>
+                    <span className="text-xss p-x-xs text-grey-muted">
+                      {t('label.slash-symbol')}
+                    </span>
                   </>
                 ) : link.url ? (
                   <Link
@@ -102,21 +106,21 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                   </Link>
                 ) : (
                   <>
-                    <Tooltip align={{ offset: [0, 10] }} title={link.name}>
-                      <span
-                        className={classNames(
-                          classes,
-                          'inactive-link tw-cursor-text hover:tw-text-primary hover:tw-no-underline'
-                        )}
-                        data-testid="inactive-link"
-                        style={{
-                          maxWidth,
-                        }}>
-                        {link.name}
-                      </span>
-                    </Tooltip>
+                    <span
+                      className={classNames(
+                        classes,
+                        'inactive-link tw-cursor-text hover:tw-text-primary hover:tw-no-underline'
+                      )}
+                      data-testid="inactive-link"
+                      style={{
+                        maxWidth,
+                      }}>
+                      {link.name}
+                    </span>
                     {noLink && index < titleLinks.length - 1 && (
-                      <span className="tw-px-2 text-grey-muted">/</span>
+                      <span className="text-xss tw-px-2 text-grey-muted">
+                        {t('label.slash-symbol')}
+                      </span>
                     )}
                   </>
                 )}

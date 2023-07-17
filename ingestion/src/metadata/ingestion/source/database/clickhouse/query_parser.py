@@ -13,6 +13,7 @@ Clickhouse usage module
 """
 
 import ast
+import traceback
 from abc import ABC
 from datetime import datetime
 from typing import List
@@ -29,6 +30,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 class ClickhouseQueryParserSource(QueryParserSource, ABC):
@@ -51,11 +55,19 @@ class ClickhouseQueryParserSource(QueryParserSource, ABC):
         """
         Method to fetch schema name from row data
         """
-        schema = None
-        if data.get("schema_name"):
-            schema_list = ast.literal_eval(data["schema_name"])
-            schema = schema_list[0] if len(schema_list) == 1 else None
-        return schema
+        try:
+            if data.get("schema_name"):
+                schema_list = []
+                if isinstance(data["schema_name"], str):
+                    schema_list = ast.literal_eval(data["schema_name"])
+                elif isinstance(data["schema_name"], list):
+                    schema_list = data["schema_name"]
+                schema = schema_list[0] if len(schema_list) == 1 else None
+                return schema
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.debug(f"Failed to fetch the schema name due to: {exc}")
+        return None
 
     def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
         """

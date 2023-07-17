@@ -66,6 +66,12 @@ SNOWFLAKE_GET_VIEW_NAMES = """
 select TABLE_NAME from information_schema.tables 
 where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'VIEW'
 """
+SNOWFLAKE_GET_TRANSIENT_NAMES = """
+select TABLE_NAME from information_schema.tables 
+where TABLE_SCHEMA = '{}' 
+AND TABLE_TYPE = 'BASE TABLE' 
+AND IS_TRANSIENT = 'YES'
+"""
 
 SNOWFLAKE_GET_COMMENTS = textwrap.dedent(
     """
@@ -131,3 +137,7 @@ SELECT /* sqlalchemy:_get_schema_columns */
     WHERE ic.table_schema=:table_schema
     ORDER BY ic.ordinal_position
 """
+
+SNOWFLAKE_GET_CURRENT_REGION = "SELECT CURRENT_REGION() AS region"
+
+SNOWFLAKE_GET_CURRENT_ACCOUNT = "SELECT CURRENT_ACCOUNT() AS account"

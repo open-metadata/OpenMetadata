@@ -105,7 +105,6 @@ class DatabaseServiceTopology(ServiceTopology):
             )
         ],
         children=["databaseSchema"],
-        post_process=["mark_tables_as_deleted"],
     )
     databaseSchema = TopologyNode(
         producer="get_database_schema_names",
@@ -126,6 +125,7 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["table"],
+        post_process=["mark_tables_as_deleted"],
     )
     table = TopologyNode(
         producer="get_tables_name_and_type",
@@ -348,7 +348,7 @@ class DatabaseServiceSource(
                 entity_type=Table,
                 entity_source_state=self.database_source_state,
                 mark_deleted_entity=self.source_config.markDeletedTables,
-                params={"database": schema.fullyQualifiedName.__root__},
+                params={"databaseSchema": schema.fullyQualifiedName.__root__},
             )
 
         # Delete the schema

@@ -10,10 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-@manage-button-bg-primary: #7147e8;
-@manage-dropdown-bg-primary: #d9ceee;
-@white: #ffffff;
+@import url('../../../../styles/variables.less');
 
 .manage-button {
   .ant-space-item:first-child {
@@ -24,7 +21,7 @@
 
 .manage-dropdown-button {
   border: none;
-  background-color: @manage-dropdown-bg-primary;
+  background-color: @primary-color-hover;
   padding: 0;
   border-radius: 4px;
   width: 24px;
@@ -40,7 +37,7 @@
 .manage-dropdown-button:focus {
   .ant-btn {
     .manage-dropdown-icon {
-      color: @manage-button-bg-primary;
+      color: @primary-color;
       opacity: 0.5;
     }
   }
@@ -48,7 +45,7 @@
     color: @white;
     font-weight: 600;
   }
-  background-color: @manage-button-bg-primary;
+  background-color: @primary-color;
 }
 
 .manage-dropdown-list-container {

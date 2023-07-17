@@ -17,6 +17,7 @@ import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import i18next from 'i18next';
 import {
+  Bucket,
   ContainerSearchSource,
   DashboardSearchSource,
   ExploreSearchSource,
@@ -26,11 +27,11 @@ import {
   TableSearchSource,
   TopicSearchSource,
 } from 'interface/search.interface';
-import { isArray, isEmpty, isUndefined } from 'lodash';
+import { isArray, isEmpty } from 'lodash';
 import React from 'react';
 import { RenderSettings } from 'react-awesome-query-builder';
+import { getCountBadge } from 'utils/CommonUtils';
 import {
-  ALL_DROPDOWN_ITEMS,
   COMMON_DROPDOWN_ITEMS,
   CONTAINER_DROPDOWN_ITEMS,
   DASHBOARD_DROPDOWN_ITEMS,
@@ -70,12 +71,6 @@ export const getDropDownItems = (index: string) => {
     default:
       return [];
   }
-};
-
-export const getItemLabel = (key: string) => {
-  const item = ALL_DROPDOWN_ITEMS.find((dItem) => dItem.key === key);
-
-  return !isUndefined(item) ? item.label : 'label';
 };
 
 export const getAdvancedField = (field: string) => {
@@ -183,35 +178,45 @@ export const getSearchDropdownLabels = (
   showProfilePicture = false
 ): MenuProps['items'] => {
   if (isArray(optionsArray)) {
-    return optionsArray.map((option) => ({
+    const sortedOptions = optionsArray.sort(
+      (a, b) => (b.count ?? 0) - (a.count ?? 0)
+    );
+
+    return sortedOptions.map((option) => ({
       key: option.key,
       label: (
-        <Space
-          align="center"
-          className="m-x-sm"
-          data-testid={option.key}
-          size={8}>
-          <Checkbox checked={checked} data-testid={`${option.key}-checkbox`} />
-          {showProfilePicture && (
-            <ProfilePicture
-              displayName={option.label}
-              id={option.key || ''}
-              name={option.label || ''}
-              textClass="text-xs"
-              width="18"
+        <div className="d-flex justify-between">
+          <Space
+            align="center"
+            className="m-x-sm"
+            data-testid={option.key}
+            size={8}>
+            <Checkbox
+              checked={checked}
+              data-testid={`${option.key}-checkbox`}
             />
-          )}
-          <Typography.Text
-            ellipsis
-            className="dropdown-option-label"
-            title={option.label}>
-            <span
-              dangerouslySetInnerHTML={{
-                __html: getSearchLabel(option.label, searchKey),
-              }}
-            />
-          </Typography.Text>
-        </Space>
+            {showProfilePicture && (
+              <ProfilePicture
+                displayName={option.label}
+                id={option.key || ''}
+                name={option.label || ''}
+                textClass="text-xs"
+                width="18"
+              />
+            )}
+            <Typography.Text
+              ellipsis
+              className="dropdown-option-label"
+              title={option.label}>
+              <span
+                dangerouslySetInnerHTML={{
+                  __html: getSearchLabel(option.label, searchKey),
+                }}
+              />
+            </Typography.Text>
+          </Space>
+          {getCountBadge(option.count, 'm-r-sm', false)}
+        </div>
       ),
     }));
   } else {
@@ -377,4 +382,16 @@ export const getOptionTextFromKey = (
       return option.text;
     }
   }
+};
+
+export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
+  if (!buckets) {
+    return [];
+  }
+
+  return buckets.map((option) => ({
+    key: option.key,
+    label: option.key,
+    count: option.doc_count ?? 0,
+  }));
 };

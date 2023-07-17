@@ -37,7 +37,10 @@ from metadata.generated.schema.type.schema import DataTypeTopic
 from metadata.ingestion.source.database.datalake.models import DatalakeColumnWrapper
 from metadata.parsers.avro_parser import parse_avro_schema
 from metadata.utils.constants import UTF_8
-from metadata.utils.datalake.datalake_utils import DatalakeFileFormatException
+from metadata.utils.datalake.common import (
+    DatalakeFileFormatException,
+    dataframe_to_chunks,
+)
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -93,24 +96,18 @@ def _(_: GCSConfig, key: str, bucket_name: str, client, **kwargs):
     """
     Read the avro file from the gcs bucket and return a dataframe
     """
-    from metadata.utils.datalake.datalake_utils import dataframe_to_chunks
-
     avro_text = client.get_bucket(bucket_name).get_blob(key).download_as_string()
     return dataframe_to_chunks(read_from_avro(avro_text).dataframes)
 
 
 @read_avro_dispatch.register
 def _(_: S3Config, key: str, bucket_name: str, client, **kwargs):
-    from metadata.utils.datalake.datalake_utils import dataframe_to_chunks
-
     avro_text = client.get_object(Bucket=bucket_name, Key=key)["Body"].read()
     return dataframe_to_chunks(read_from_avro(avro_text).dataframes)
 
 
 @read_avro_dispatch.register
 def _(_: AzureConfig, key: str, bucket_name: str, client, **kwargs):
-    from metadata.utils.datalake.datalake_utils import dataframe_to_chunks
-
     container_client = client.get_container_client(bucket_name)
     avro_text = container_client.get_blob_client(key).download_blob().readall()
     return dataframe_to_chunks(read_from_avro(avro_text).dataframes)

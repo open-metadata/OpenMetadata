@@ -14,7 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { CreateTestCase } from 'generated/api/tests/createTestCase';
-import { RestoreRequestType } from 'Models';
+import { PagingResponse, RestoreRequestType } from 'Models';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import { TestCase, TestCaseResult } from '../generated/tests/testCase';
 import {
@@ -22,7 +22,7 @@ import {
   TestDefinition,
   TestPlatform,
 } from '../generated/tests/testDefinition';
-import { TestSuite } from '../generated/tests/testSuite';
+import { TestSuite, TestSummary } from '../generated/tests/testSuite';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import APIClient from './index';
@@ -33,6 +33,15 @@ export type ListParams = {
   before?: string;
   after?: string;
   include?: Include;
+};
+
+export enum TestSuiteType {
+  executable = 'executable',
+  logical = 'logical',
+}
+
+export type ListTestSuitePrams = ListParams & {
+  testSuiteType?: TestSuiteType;
 };
 
 export type ListTestCaseParams = ListParams & {
@@ -55,13 +64,18 @@ export type ListTestCaseResultsParams = Omit<
   endTs?: number;
 };
 
+export type AddTestCaseToLogicalTestSuiteType = {
+  testCaseIds: string[];
+  testSuiteId: string;
+};
+
 const testCaseUrl = '/dataQuality/testCases';
 const testSuiteUrl = '/dataQuality/testSuites';
 const testDefinitionUrl = '/dataQuality/testDefinitions';
 
 // testCase section
 export const getListTestCase = async (params?: ListTestCaseParams) => {
-  const response = await APIClient.get<{ data: TestCase[]; paging: Paging }>(
+  const response = await APIClient.get<PagingResponse<TestCase[]>>(
     testCaseUrl,
     {
       params,
@@ -99,6 +113,16 @@ export const getTestCaseByFqn = async (
 
   return response;
 };
+export const getTestCaseById = async (
+  id: string,
+  params?: Pick<ListParams, 'fields' | 'include'>
+) => {
+  const response = await APIClient.get<TestCase>(`${testCaseUrl}/${id}`, {
+    params,
+  });
+
+  return response;
+};
 
 export const createTestCase = async (data: CreateTestCase) => {
   const response = await APIClient.post<
@@ -114,11 +138,43 @@ export const updateTestCaseById = async (id: string, data: Operation[]) => {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
 
-  const response = await APIClient.patch<Operation[], AxiosResponse<TestSuite>>(
+  const response = await APIClient.patch<Operation[], AxiosResponse<TestCase>>(
     `${testCaseUrl}/${id}`,
     data,
     configOptions
   );
+
+  return response.data;
+};
+
+export const getTestCaseExecutionSummary = async (testSuiteId?: string) => {
+  const response = await APIClient.get<TestSummary>(
+    `${testCaseUrl}/executionSummary`,
+    { params: { testSuiteId } }
+  );
+
+  return response.data;
+};
+
+export const addTestCaseToLogicalTestSuite = async (
+  data: AddTestCaseToLogicalTestSuiteType
+) => {
+  const response = await APIClient.put<
+    AddTestCaseToLogicalTestSuiteType,
+    AxiosResponse<TestSuite>
+  >(`${testCaseUrl}/logicalTestCases`, data);
+
+  return response.data;
+};
+
+export const removeTestCaseFromTestSuite = async (
+  testCaseId: string,
+  testSuiteId: string
+) => {
+  const response = await APIClient.delete<
+    AddTestCaseToLogicalTestSuiteType,
+    AxiosResponse<TestCase>
+  >(`${testCaseUrl}/logicalTestCases/${testSuiteId}/${testCaseId}`);
 
   return response.data;
 };
@@ -151,7 +207,7 @@ export const getTestDefinitionById = async (
 };
 
 // testSuite Section
-export const getListTestSuites = async (params?: ListParams) => {
+export const getListTestSuites = async (params?: ListTestSuitePrams) => {
   const response = await APIClient.get<{
     data: TestSuite[];
     paging: Paging;
@@ -167,6 +223,15 @@ export const createTestSuites = async (data: CreateTestSuite) => {
     CreateTestSuite,
     AxiosResponse<TestSuite>
   >(testSuiteUrl, data);
+
+  return response.data;
+};
+
+export const createExecutableTestSuite = async (data: CreateTestSuite) => {
+  const response = await APIClient.post<
+    CreateTestSuite,
+    AxiosResponse<TestSuite>
+  >(`${testSuiteUrl}/executable`, data);
 
   return response.data;
 };
@@ -202,6 +267,20 @@ export const restoreTestSuite = async (id: string) => {
     RestoreRequestType,
     AxiosResponse<TestSuite>
   >('/dataQuality/testSuites/restore', { id });
+
+  return response.data;
+};
+
+// Test Result
+
+export const putTestCaseResult = async (
+  testCaseFqn: string,
+  data: TestCaseResult
+) => {
+  const response = await APIClient.put<
+    TestCaseResult,
+    AxiosResponse<TestSuite>
+  >(`${testCaseUrl}/${testCaseFqn}/testCaseResult`, data);
 
   return response.data;
 };

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 import { Topic } from '../../generated/entity/data/topic';
 import { EntityHistory } from '../../generated/type/entityHistory';
@@ -29,4 +30,5 @@ export interface TopicVersionProp {
   deleted?: boolean;
   backHandler: () => void;
   versionHandler: (v: string) => void;
+  entityPermissions: OperationPermission;
 }

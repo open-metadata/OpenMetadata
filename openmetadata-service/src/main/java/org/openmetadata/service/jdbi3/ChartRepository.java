@@ -47,7 +47,7 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   @Override
   public void setFullyQualifiedName(Chart chart) {
-    chart.setFullyQualifiedName(FullyQualifiedName.add(chart.getService().getName(), chart.getName()));
+    chart.setFullyQualifiedName(FullyQualifiedName.add(chart.getService().getFullyQualifiedName(), chart.getName()));
   }
 
   @Override
@@ -71,8 +71,6 @@ public class ChartRepository extends EntityRepository<Chart> {
   public void storeRelationships(Chart chart) {
     EntityReference service = chart.getService();
     addRelationship(service.getId(), chart.getId(), service.getType(), Entity.CHART, Relationship.CONTAINS);
-    storeOwner(chart, chart.getOwner());
-    applyTags(chart);
   }
 
   @Override
