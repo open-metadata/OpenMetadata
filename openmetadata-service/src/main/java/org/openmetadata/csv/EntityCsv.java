@@ -53,6 +53,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil.PutResponse;
+import org.openmetadata.service.util.ValidatorUtil;
 
 /**
  * EntityCsv provides export and import capabilities for an entity. Each entity must implement the abstract methods to
@@ -345,6 +346,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (Boolean.FALSE.equals(importResult.getDryRun())) {
       try {
         repository.prepareInternal(entity);
+        String violations = ValidatorUtil.validate(entity);
+        if (violations != null) {
+          // JSON schema based validation failed for the entity
+          importFailure(resultsPrinter, violations, csvRecord);
+          return;
+        }
         PutResponse<T> response = repository.createOrUpdate(null, entity);
         responseStatus = response.getStatus();
       } catch (Exception ex) {

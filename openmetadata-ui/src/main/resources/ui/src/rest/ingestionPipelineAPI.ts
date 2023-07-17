@@ -13,7 +13,6 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { AirflowResponse } from 'interface/AirflowStatus.interface';
 import { PagingResponse } from 'Models';
 import { IngestionPipelineLogByIdInterface } from 'pages/LogsViewer/LogsViewer.interfaces';
 import QueryString from 'qs';
@@ -25,6 +24,7 @@ import {
   IngestionPipeline,
   PipelineStatus,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { PipelineServiceClientResponse } from '../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
 import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
@@ -155,7 +155,7 @@ export const patchIngestionPipeline = async (id: string, data: Operation[]) => {
 };
 
 export const getAirflowStatus = async () => {
-  const response = await APIClient.get<AirflowResponse>(
+  const response = await APIClient.get<PipelineServiceClientResponse>(
     '/services/ingestionPipelines/status'
   );
 

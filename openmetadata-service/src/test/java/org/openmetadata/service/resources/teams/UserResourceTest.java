@@ -963,13 +963,22 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // Headers - name,displayName,description,email,timezone,isAdmin,teams,roles
     Team team = TEAM_TEST.createEntity(TEAM_TEST.createRequest("team-invalidCsv"), ADMIN_AUTH_HEADERS);
 
-    // Invalid team
+    // Invalid user name with "::"
     String resultsHeader = recordToString(EntityCsv.getResultHeaders(UserCsv.HEADERS));
-    String record = "user,,,user@domain.com,,,invalidTeam,";
+    String record = "invalid::User,,,user@domain.com,,,team-invalidCsv,";
     String csv = createCsv(UserCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(team.getName(), csv, false);
     assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
-    String[] expectedRows = {resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(6, "invalidTeam"))};
+    String[] expectedRows = {resultsHeader, getFailedRecord(record, "[name must match \"\"^(?U)[\\w\\-.]+$\"\"]")};
+    assertRows(result, expectedRows);
+
+    // Invalid team
+    resultsHeader = recordToString(EntityCsv.getResultHeaders(UserCsv.HEADERS));
+    record = "user,,,user@domain.com,,,invalidTeam,";
+    csv = createCsv(UserCsv.HEADERS, listOf(record), null);
+    result = importCsv(team.getName(), csv, false);
+    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    expectedRows = new String[] {resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(6, "invalidTeam"))};
     assertRows(result, expectedRows);
 
     // Invalid roles
