@@ -30,7 +30,6 @@ import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineS
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
-import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
@@ -186,11 +185,6 @@ public final class UserUtil {
         : new JWTAuthMechanism()
             .withJWTToken(jwtClientConfig.getJwtToken())
             .withJWTTokenExpiry(JWTTokenExpiry.Unlimited);
-  }
-
-  private static SSOAuthMechanism buildAuthMechanismConfig(
-      SSOAuthMechanism.SsoServiceType ssoServiceType, Object config) {
-    return new SSOAuthMechanism().withSsoServiceType(ssoServiceType).withAuthConfig(config);
   }
 
   private static AuthenticationMechanism buildAuthMechanism(AuthenticationMechanism.AuthType authType, Object config) {
