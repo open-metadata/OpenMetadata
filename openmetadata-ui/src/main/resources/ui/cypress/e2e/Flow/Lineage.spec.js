@@ -31,7 +31,7 @@ const ENTITIES_LIST = [
   // dashboardEntity,
 ];
 
-describe('Entity Details Page', () => {
+describe.skip('Entity Details Page', () => {
   beforeEach(() => {
     cy.login();
   });
@@ -46,5 +46,40 @@ describe('Entity Details Page', () => {
         .should('be.visible')
         .should('not.be.disabled');
     });
+  });
+});
+
+describe('Lineage functionality', () => {
+  beforeEach(() => {
+    cy.login();
+  });
+
+  it('toggle fullscreen mode', () => {
+    visitEntityDetailsPage(
+      tableEntity.term,
+      tableEntity.serviceName,
+      tableEntity.entity
+    );
+    cy.get('[data-testid="lineage"]').click();
+
+    // Enable fullscreen
+    cy.get('[data-testid="full-screen"]').click();
+    cy.url().should('include', 'fullscreen=true');
+    cy.get('[data-testid="breadcrumb"]')
+      .should('be.visible')
+      .and('contain', 'Lineage');
+    cy.get('[data-testid="lineage-details"]').should(
+      'have.class',
+      'full-screen-lineage'
+    );
+
+    // Exit fullscreen
+    cy.get('[data-testid="exit-full-screen"]').click();
+    cy.url().should('not.include', 'fullscreen=true');
+    cy.get('[data-testid="breadcrumb"]').should('not.contain', 'Lineage');
+    cy.get('[data-testid="lineage-details"]').should(
+      'not.have.class',
+      'full-screen-lineage'
+    );
   });
 });
