@@ -16,19 +16,10 @@ import org.openmetadata.service.util.ResultList;
 
 public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEvent> {
   public static final String COLLECTION_PATH = "/v1/analytics/web/events";
-  private static final String UPDATE_FIELDS = "owner";
-  private static final String PATCH_FIELDS = "owner";
   private static final String WEB_ANALYTICS_EVENT_DATA_EXTENSION = "webAnalyticEvent.webAnalyticEventData";
 
   public WebAnalyticEventRepository(CollectionDAO dao) {
-    super(
-        COLLECTION_PATH,
-        WEB_ANALYTIC_EVENT,
-        WebAnalyticEvent.class,
-        dao.webAnalyticEventDAO(),
-        dao,
-        PATCH_FIELDS,
-        UPDATE_FIELDS);
+    super(COLLECTION_PATH, WEB_ANALYTIC_EVENT, WebAnalyticEvent.class, dao.webAnalyticEventDAO(), dao, "", "");
   }
 
   @Override

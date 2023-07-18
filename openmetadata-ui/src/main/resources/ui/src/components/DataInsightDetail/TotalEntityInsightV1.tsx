@@ -181,9 +181,10 @@ const TotalEntityInsightV1: FC<Props> = ({ selectedDays }) => {
                       </Col>
                       <Col md={12} sm={24}>
                         <Progress
-                          className="p-l-xss data-insight-progress-bar"
+                          className="p-l-xss"
                           percent={progress}
                           showInfo={false}
+                          size="small"
                           strokeColor={TOTAL_ENTITY_CHART_COLOR[entity]}
                         />
                       </Col>

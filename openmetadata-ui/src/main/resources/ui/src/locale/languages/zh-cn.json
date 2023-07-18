@@ -143,6 +143,7 @@
     "completed-entity": "已完成{{entity}}",
     "condition": "条件",
     "config": "配置",
+    "configuration": "Configuration",
     "configure-a-service": "配置服务",
     "configure-dbt-model": "配置 dbt 模型",
     "configure-entity": "配置{{entity}}",

@@ -26,7 +26,6 @@ import { oidcTokenKey, ROUTES } from '../constants/constants';
 import { EMAIL_REG_EX } from '../constants/regex.constants';
 import { AuthTypes } from '../enums/signin.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
-import { SamlSSOClientConfig } from '../generated/security/client/samlSSOClientConfig';
 import { isDev } from './EnvironmentUtils';
 
 export let msalInstance: IPublicClientApplication;
@@ -61,15 +60,6 @@ export const getUserManagerConfig = (
     scope,
     userStore: new WebStorageStateStore({ store: localStorage }),
   };
-};
-
-export type AuthClient = {
-  authority: string;
-  clientId: string;
-  callbackUrl: string;
-  provider: string;
-  providerName: string;
-  samlConfiguration?: SamlSSOClientConfig;
 };
 
 export const getAuthConfig = (
@@ -206,10 +196,6 @@ export const setMsalInstance = (configs: Configuration) => {
 // Add here scopes for id token to be used at MS Identity Platform endpoints.
 export const msalLoginRequest: PopupRequest = {
   scopes: ['openid', 'profile', 'email', 'offline_access'],
-};
-// Add here the endpoints for MS Graph API services you would like to use.
-export const msalGraphConfig = {
-  graphMeEndpoint: 'https://graph.microsoft.com',
 };
 
 export const getNameFromEmail = (email: string) => {

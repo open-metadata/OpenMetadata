@@ -74,6 +74,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   onTestCaseResultUpdate,
   removeFromTestSuite,
   showTableColumn = true,
+  afterDeleteAction,
 }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -150,7 +151,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         selectedTestCase?.data.id ?? '',
         removeFromTestSuite.testSuite?.id ?? ''
       );
-      onTestUpdate?.();
+      afterDeleteAction?.();
       setSelectedTestCase(undefined);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -469,7 +470,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           />
         ) : (
           <DeleteWidgetModal
-            afterDeleteAction={onTestUpdate}
+            afterDeleteAction={afterDeleteAction}
             allowSoftDelete={false}
             entityId={selectedTestCase?.data?.id ?? ''}
             entityName={selectedTestCase?.data?.name ?? ''}
