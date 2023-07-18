@@ -23,8 +23,8 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class TestSuiteRepository extends EntityRepository<TestSuite> {
-  private static final String UPDATE_FIELDS = "owner,tests";
-  private static final String PATCH_FIELDS = "owner,tests";
+  private static final String UPDATE_FIELDS = "tests";
+  private static final String PATCH_FIELDS = "tests";
 
   public TestSuiteRepository(CollectionDAO dao) {
     super(
