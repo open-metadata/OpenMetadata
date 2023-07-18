@@ -14,6 +14,7 @@ Converter logic to transform an OpenMetadata Table Entity
 to an SQLAlchemy ORM class.
 """
 
+from abc import abstractmethod
 from typing import Optional, cast
 
 import sqlalchemy
@@ -26,7 +27,6 @@ from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source import sqa_types
 from metadata.profiler.orm.registry import CustomTypes
-from metadata.profiler.source.bigquery.type_mapper import bigquery_type_mapper
 
 Base = declarative_base()
 
@@ -70,31 +70,25 @@ _TYPE_MAP = {
     DataType.BYTEA: CustomTypes.BYTEA.value,
 }
 
+
 SQA_RESERVED_ATTRIBUTES = ["metadata"]
 
 
-def map_types(col: Column, table_service_type):
-    """returns an ORM type"""
+class BaseMapTypes:
+    """
+    Base Class for mapping types
+    """
 
-    if col.arrayDataType:
-        return _TYPE_MAP.get(col.dataType)(item_type=col.arrayDataType)
+    def map_types(self, col: Column, table_service_type):
+        """returns an ORM type"""
 
-    if (
-        table_service_type == databaseService.DatabaseServiceType.Snowflake
-        and col.dataType == DataType.JSON
-    ):
-        # pylint: disable=import-outside-toplevel
-        from snowflake.sqlalchemy import VARIANT
+        if col.arrayDataType:
+            return _TYPE_MAP.get(col.dataType)(item_type=col.arrayDataType)
+        return self.return_custom_type(col, table_service_type)
 
-        return VARIANT
-
-    if (
-        table_service_type == databaseService.DatabaseServiceType.BigQuery
-        and col.dataType == DataType.STRUCT
-    ):
-        return bigquery_type_mapper(_TYPE_MAP, col)
-
-    return _TYPE_MAP.get(col.dataType)
+    @abstractmethod
+    def return_custom_type(self, col: Column, table_service_type):
+        return _TYPE_MAP.get(col.dataType)
 
 
 def check_snowflake_case_sensitive(table_service_type, table_or_col) -> Optional[bool]:
@@ -145,7 +139,7 @@ def build_orm_col(idx: int, col: Column, table_service_type) -> sqlalchemy.Colum
 
     return sqlalchemy.Column(
         name=str(col.name.__root__),
-        type_=map_types(col, table_service_type),
+        type_=BaseMapTypes().map_types(col, table_service_type),
         primary_key=not bool(idx),  # The first col seen is used as PK
         quote=check_if_should_quote_column_name(table_service_type)
         or check_snowflake_case_sensitive(table_service_type, col.name.__root__),
