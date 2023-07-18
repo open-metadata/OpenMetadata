@@ -315,15 +315,26 @@ applicationConfig:
 
 
 web:
-  uriPath: /api
+  uriPath: ${WEB_CONF_URI_PATH:-"/api"}
   hsts:
-    enabled: true
+    enabled: ${WEB_CONF_HSTS_ENABLED:-false}
+    maxAge: ${WEB_CONF_HSTS_MAX_AGE:-"365 days"}
+    includeSubDomains: ${WEB_CONF_HSTS_INCLUDE_SUBDOMAINS:-"true"}
+    preload: ${WEB_CONF_HSTS_PRELOAD:-"true"}
   frame-options:
-    enabled: true
+    enabled: ${WEB_CONF_FRAME_OPTION_ENABLED:-false}
+    option: ${WEB_CONF_FRAME_OPTION:-"SAMEORIGIN"}
+    origin: ${WEB_CONF_FRAME_ORIGIN:-""}
   content-type-options:
-    enabled: true
+    enabled: ${WEB_CONF_CONTENT_TYPE_OPTIONS_ENABLED:-false}
   xss-protection:
-    enabled: true
+    enabled: ${WEB_CONF_XSS_PROTECTION_ENABLED:-false}
+    on: ${WEB_CONF_XSS_PROTECTION_ON:-true}
+    block: ${WEB_CONF_XSS_PROTECTION_BLOCK:-true}
+  csp:
+    enabled: ${WEB_CONF_XSS_CSP_ENABLED:-false}
+    policy: ${WEB_CONF_XSS_CSP_POLICY:-"default-src 'self'"}
+    reportOnlyPolicy: ${WEB_CONF_XSS_CSP_REPORT_ONLY_POLICY:-""}
 
 changeEventConfig:
   omUri: ${OM_URI:- "http://localhost:8585"} #openmetadata in om uri for eg http://localhost:8585
