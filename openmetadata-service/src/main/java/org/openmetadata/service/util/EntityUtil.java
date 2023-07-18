@@ -24,7 +24,9 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.regex.Pattern;
@@ -188,7 +190,7 @@ public final class EntityUtil {
     return populateEntityReferences(refs);
   }
 
-  public static EntityReference validateEntityLink(EntityLink entityLink) throws IOException {
+  public static EntityReference validateEntityLink(EntityLink entityLink) {
     String entityType = entityLink.getEntityType();
     String fqn = entityLink.getEntityFQN();
     return Entity.getEntityReferenceByName(entityType, fqn, ALL);
@@ -293,19 +295,19 @@ public final class EntityUtil {
   }
 
   public static class Fields {
-    public static final Fields EMPTY_FIELDS = new Fields(Collections.emptyList());
-    @Getter private final List<String> fieldList;
+    public static final Fields EMPTY_FIELDS = new Fields(Collections.emptySet());
+    @Getter private final Set<String> fieldList;
 
-    public Fields(List<String> fieldList) {
+    public Fields(Set<String> fieldList) {
       this.fieldList = fieldList;
     }
 
-    public Fields(List<String> allowedFields, String fieldsParam) {
+    public Fields(Set<String> allowedFields, String fieldsParam) {
       if (nullOrEmpty(fieldsParam)) {
-        fieldList = new ArrayList<>();
+        fieldList = new HashSet<>();
         return;
       }
-      fieldList = Arrays.asList(fieldsParam.replace(" ", "").split(","));
+      fieldList = new HashSet<>(Arrays.asList(fieldsParam.replace(" ", "").split(",")));
       for (String field : fieldList) {
         if (!allowedFields.contains(field)) {
           throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
@@ -313,9 +315,9 @@ public final class EntityUtil {
       }
     }
 
-    public Fields(List<String> allowedFields, List<String> fieldsParam) {
+    public Fields(Set<String> allowedFields, Set<String> fieldsParam) {
       if (CommonUtil.nullOrEmpty(fieldsParam)) {
-        fieldList = new ArrayList<>();
+        fieldList = new HashSet<>();
         return;
       }
       for (String field : fieldsParam) {
@@ -323,7 +325,14 @@ public final class EntityUtil {
           throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
         }
       }
-      fieldList = fieldsParam;
+      fieldList = new HashSet<>(fieldsParam);
+    }
+
+    public void addField(Set<String> allowedFields, String field) {
+      if (!allowedFields.contains(field)) {
+        throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
+      }
+      fieldList.add(field);
     }
 
     @Override

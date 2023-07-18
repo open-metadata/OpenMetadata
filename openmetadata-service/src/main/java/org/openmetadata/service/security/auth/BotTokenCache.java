@@ -7,7 +7,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import java.io.IOException;
-import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
@@ -18,7 +18,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.teams.UserResource;
-import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -59,8 +59,7 @@ public class BotTokenCache {
     public String load(@CheckForNull String botName) throws IOException {
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       User user =
-          userRepository.getByName(
-              null, botName, new EntityUtil.Fields(List.of(UserResource.USER_PROTECTED_FIELDS)), NON_DELETED);
+          userRepository.getByName(null, botName, new Fields(Set.of(UserResource.USER_PROTECTED_FIELDS)), NON_DELETED);
       AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
       if (authenticationMechanism != null) {
         JWTAuthMechanism jwtAuthMechanism =

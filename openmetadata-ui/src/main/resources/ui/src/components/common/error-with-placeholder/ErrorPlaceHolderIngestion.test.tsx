@@ -11,13 +11,20 @@
  *  limitations under the License.
  */
 
-import { getByTestId, render } from '@testing-library/react';
+import {
+  getByTestId,
+  render,
+  screen,
+  waitForElementToBeRemoved,
+} from '@testing-library/react';
 import React from 'react';
 import ErrorPlaceHolderIngestion from './ErrorPlaceHolderIngestion';
 
 describe('Test Error placeholder ingestion Component', () => {
-  it('Component should render', () => {
+  it('Component should render', async () => {
     const { container } = render(<ErrorPlaceHolderIngestion />);
+
+    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     expect(getByTestId(container, 'error-steps')).toBeInTheDocument();
   });
