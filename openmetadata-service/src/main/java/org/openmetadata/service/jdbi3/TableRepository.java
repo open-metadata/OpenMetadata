@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -90,9 +91,9 @@ import org.openmetadata.service.util.ResultList;
 public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
-  static final String PATCH_FIELDS = "owner,tags,tableConstraints,tablePartition,extension,followers";
+  static final String PATCH_FIELDS = "tableConstraints,tablePartition";
   // Table fields that can be updated in a PUT request
-  static final String UPDATE_FIELDS = "owner,tags,tableConstraints,tablePartition,dataModel,extension,followers";
+  static final String UPDATE_FIELDS = "tableConstraints,tablePartition,dataModel";
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
@@ -589,8 +590,8 @@ public class TableRepository extends EntityRepository<Table> {
     }
     applyTags(table.getColumns());
     dao.update(table.getId(), FullyQualifiedName.buildHash(table.getFullyQualifiedName()), JsonUtils.pojoToJson(table));
-    setFieldsInternal(table, new Fields(List.of(FIELD_OWNER), FIELD_OWNER));
-    setFieldsInternal(table, new Fields(List.of(FIELD_TAGS), FIELD_TAGS));
+    setFieldsInternal(table, new Fields(Set.of(FIELD_OWNER), FIELD_OWNER));
+    setFieldsInternal(table, new Fields(Set.of(FIELD_TAGS), FIELD_TAGS));
     return table;
   }
 

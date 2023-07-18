@@ -143,6 +143,7 @@
     "completed-entity": "完了した{{entity}}",
     "condition": "条件",
     "config": "設定",
+    "configuration": "Configuration",
     "configure-a-service": "サービスの設定",
     "configure-dbt-model": "dbtモデルの設定",
     "configure-entity": "{{entity}}の設定",

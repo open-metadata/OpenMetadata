@@ -33,9 +33,6 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
-  private static final String DATABASE_SCHEMA_UPDATE_FIELDS = "owner,tags,extension";
-  private static final String DATABASE_SCHEMA_PATCH_FIELDS = DATABASE_SCHEMA_UPDATE_FIELDS;
-
   public DatabaseSchemaRepository(CollectionDAO dao) {
     super(
         DatabaseSchemaResource.COLLECTION_PATH,
@@ -43,8 +40,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         DatabaseSchema.class,
         dao.databaseSchemaDAO(),
         dao,
-        DATABASE_SCHEMA_PATCH_FIELDS,
-        DATABASE_SCHEMA_UPDATE_FIELDS);
+        "",
+        "");
   }
 
   @Override

@@ -80,8 +80,8 @@ import org.openmetadata.service.util.ResultList;
 @Slf4j
 public class TeamRepository extends EntityRepository<Team> {
   static final String PARENTS_FIELD = "parents";
-  static final String TEAM_UPDATE_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies,teamType,email";
-  static final String TEAM_PATCH_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies,teamType,email";
+  static final String TEAM_UPDATE_FIELDS = "profile,users,defaultRoles,parents,children,policies,teamType,email";
+  static final String TEAM_PATCH_FIELDS = "profile,users,defaultRoles,parents,children,policies,teamType,email";
   private static final String DEFAULT_ROLES = "defaultRoles";
   private Team organization = null;
 
