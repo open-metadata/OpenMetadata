@@ -240,8 +240,8 @@ export const NEW_GLOSSARY = {
   tag: 'PII.None',
 };
 export const NEW_GLOSSARY_1 = {
-  name: 'Product Glossary',
-  description: 'This is the Product glossary',
+  name: 'Product%Glossary',
+  description: 'This is the Product glossary with percentage',
   reviewer: 'Brandy Miller',
   tag: 'PII.None',
 };
@@ -273,16 +273,16 @@ export const GLOSSARY_TERM_WITH_DETAILS = {
 
 export const NEW_GLOSSARY_1_TERMS = {
   term_1: {
-    name: 'Features',
+    name: 'Features%Term',
     description: 'This is the Features',
     synonyms: 'data,collect,time',
-    fullyQualifiedName: 'Product Glossary.Features',
+    fullyQualifiedName: 'Product%Glossary.Features%Term',
   },
   term_2: {
     name: 'Uses',
     description: 'This is the Uses',
     synonyms: 'home,business,adventure',
-    fullyQualifiedName: 'Product Glossary.Uses',
+    fullyQualifiedName: 'Product%Glossary.Uses',
   },
 };
 
