@@ -52,7 +52,7 @@
       "default": null
     },
     "profileSampleType": {
-      "$ref": "../entity/data/table.json#definitions/profileSampleType"
+      "$ref": "../entity/data/table.json#/definitions/profileSampleType"
     },
     "threadCount": {
       "description": "Number of threads to use during metric computations",
