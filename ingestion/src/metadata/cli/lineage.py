@@ -15,6 +15,7 @@ Lineage utility for the metadata CLI
 import pathlib
 import sys
 import traceback
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -35,6 +36,7 @@ class LineageWorkflow(BaseModel):
     filePath: str
     serviceName: str
     workflowConfig: WorkflowConfig
+    parseTimeout: Optional[int] = 5 * 60  # default parsing timeout to be 5 mins
 
 
 def run_lineage(config_path: str) -> None:
@@ -71,6 +73,7 @@ def run_lineage(config_path: str) -> None:
                 query=sql,
                 database_name=None,
                 schema_name=None,
+                timeout_seconds=workflow.parseTimeout,
             )
             for lineage_request in add_lineage_request or []:
                 resp = metadata.add_lineage(lineage_request)
