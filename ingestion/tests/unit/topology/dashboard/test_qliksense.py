@@ -29,6 +29,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.ingestion.source.dashboard.qliksense.client import QlikSenseClient
 from metadata.ingestion.source.dashboard.qliksense.metadata import QliksenseSource
 from metadata.ingestion.source.dashboard.qliksense.models import (
     QlikDashboard,
@@ -169,10 +170,15 @@ class QlikSenseUnitTest(TestCase):
     @pytest.mark.order(3)
     def test_chart(self):
         dashboard_details = MOCK_DASHBOARD_DETAILS
-        results = self.qliksense.yield_dashboard_chart(dashboard_details)
-        chart_list = []
-        for result in results:
-            if isinstance(result, CreateChartRequest):
-                chart_list.append(result)
-        for _, (expected, original) in enumerate(zip(EXPECTED_DASHBOARDS, chart_list)):
-            self.assertEqual(expected, original)
+        with patch.object(
+            QlikSenseClient, "get_dashboard_charts", return_value=MOCK_CHARTS
+        ):
+            results = list(self.qliksense.yield_dashboard_chart(dashboard_details))
+            chart_list = []
+            for result in results:
+                if isinstance(result, CreateChartRequest):
+                    chart_list.append(result)
+            for _, (expected, original) in enumerate(
+                zip(EXPECTED_DASHBOARDS, chart_list)
+            ):
+                self.assertEqual(expected, original)

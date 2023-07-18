@@ -16,6 +16,8 @@ import traceback
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from pydantic import ValidationError
+
 from metadata.generated.schema.entity.services.connections.dashboard.qlikSenseConnection import (
     QlikCertificatePath,
     QlikCertificateValues,
@@ -51,6 +53,20 @@ class QlikSenseClient:
     Client Handling API communication with Qlik Engine APIs
     """
 
+    def _clean_cert_value(self, cert_data: str) -> str:
+        return cert_data.replace("\\n", "\n")
+
+    def write_data_to_file(self, file_path: str, cert_data: str) -> None:
+        with open(
+            file_path,
+            "w+",
+            encoding=UTF_8,
+        ) as file:
+            cert_data
+            data = self._clean_cert_value(cert_data)
+
+            file.write(data)
+
     def _get_ssl_context(self) -> Optional[dict]:
         if isinstance(self.config.certificates, QlikCertificatePath):
             context = {
@@ -64,37 +80,20 @@ class QlikSenseClient:
         root_path = Path(self.config.certificates.stagingDir, "root.pem")
         client_path = Path(self.config.certificates.stagingDir, "client.pem")
         client_key_path = Path(self.config.certificates.stagingDir, "client_key.pem")
-        with open(
-            root_path,
-            "w+",
-            encoding=UTF_8,
-        ) as file:
-            data = (
-                self.config.certificates.rootCertificateData.get_secret_value().replace(
-                    "\\n", "\n"
-                )
-            )
-            file.write(data)
 
-        with open(
+        self.write_data_to_file(
+            root_path, self.config.certificates.rootCertificateData.get_secret_value()
+        )
+
+        self.write_data_to_file(
             client_path,
-            "w+",
-            encoding=UTF_8,
-        ) as file:
-            data = self.config.certificates.clientCertificateData.get_secret_value().replace(
-                "\\n", "\n"
-            )
-            file.write(data)
+            self.config.certificates.clientCertificateData.get_secret_value(),
+        )
 
-        with open(
+        self.write_data_to_file(
             client_key_path,
-            "w+",
-            encoding=UTF_8,
-        ) as file:
-            data = self.config.certificates.clientKeyCertificateData.get_secret_value().replace(
-                "\\n", "\n"
-            )
-            file.write(data)
+            self.config.certificates.clientKeyCertificateData.get_secret_value(),
+        )
 
         context = {
             "ca_certs": root_path,
@@ -213,8 +212,13 @@ class QlikSenseClient:
         return []
 
     def get_dashboard_for_test_connection(self):
-        self.connect_websocket()
-        self._websocket_send_request(GET_DOCS_LIST_REQ)
-        resp = self.socket_connection.recv()
-        self.close_websocket()
-        return QlikDashboardResult(**json.loads(resp))
+        try:
+            self.connect_websocket()
+            self._websocket_send_request(GET_DOCS_LIST_REQ)
+            resp = self.socket_connection.recv()
+            self.close_websocket()
+            return QlikDashboardResult(**json.loads(resp))
+        except ValidationError:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the dashboard datamodels")
+        return None

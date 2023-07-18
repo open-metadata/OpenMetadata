@@ -213,6 +213,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["packaging"],
     },
     "powerbi": {VERSIONS["msal"]},
+    "qliksense": {"websockets~=11.0.3"},
     "presto": {*COMMONS["hive"]},
     # "pymssql": {"pymssql==2.2.5"}, pymssql build is failing ref issue: https://github.com/pymssql/pymssql/issues/826
     "quicksight": {VERSIONS["boto3"]},
