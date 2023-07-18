@@ -160,7 +160,7 @@ function ServiceMainTabContent({
             <Link
               to={getLinkForFqn(
                 serviceCategory,
-                record.fullyQualifiedName || ''
+                record.fullyQualifiedName ?? ''
               )}>
               {getEntityName(record)}
             </Link>

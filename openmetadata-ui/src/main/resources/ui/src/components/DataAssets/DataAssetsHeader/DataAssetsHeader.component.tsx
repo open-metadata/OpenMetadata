@@ -247,7 +247,7 @@ export const DataAssetsHeader = ({
       fetchTaskCount();
     }
     if (entityType === EntityType.CONTAINER) {
-      const asset = dataAsset as Container;
+      const asset = dataAsset;
       fetchContainerParent(asset.parent?.fullyQualifiedName ?? '');
     }
   }, [dataAsset]);

@@ -107,7 +107,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const [schemaDataLoading, setSchemaDataLoading] = useState<boolean>(true);
 
   const [databaseName, setDatabaseName] = useState<string>(
-    databaseFQN.split(FQN_SEPARATOR_CHAR).slice(-1).pop() || ''
+    databaseFQN.split(FQN_SEPARATOR_CHAR).slice(-1).pop() ?? ''
   );
   const [isDatabaseDetailsLoading, setIsDatabaseDetailsLoading] =
     useState<boolean>(true);
@@ -440,7 +440,7 @@ const DatabaseDetails: FunctionComponent = () => {
         dataIndex: 'usageSummary',
         key: 'usageSummary',
         render: (text: UsageDetails) =>
-          getUsagePercentile(text?.weeklyStats?.percentileRank || 0),
+          getUsagePercentile(text?.weeklyStats?.percentileRank ?? 0),
       },
     ],
     []

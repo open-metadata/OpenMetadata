@@ -111,7 +111,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const { tags, tier } = useMemo(
     () => ({
       tier: getTierTags(databaseSchema.tags ?? []),
-      tags: getTagsWithoutTier(databaseSchema.tags || []),
+      tags: getTagsWithoutTier(databaseSchema.tags ?? []),
     }),
     [databaseSchema]
   );

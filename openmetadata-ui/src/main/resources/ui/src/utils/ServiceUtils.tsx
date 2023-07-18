@@ -13,17 +13,12 @@
 
 import { AxiosError } from 'axios';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
-import { Container, StorageServiceType } from 'generated/entity/data/container';
-import { Dashboard } from 'generated/entity/data/dashboard';
-import { Pipeline } from 'generated/entity/data/pipeline';
-import { Topic } from 'generated/entity/data/topic';
+import { StorageServiceType } from 'generated/entity/data/container';
 import { t } from 'i18next';
 import { ServiceTypes } from 'Models';
-import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 import React from 'react';
 import { getEntityCount } from 'rest/miscAPI';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
@@ -95,7 +90,7 @@ import {
 import { PROMISE_STATE } from '../enums/common.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { Database } from '../generated/entity/data/database';
-import { Mlmodel, MlModelServiceType } from '../generated/entity/data/mlmodel';
+import { MlModelServiceType } from '../generated/entity/data/mlmodel';
 import {
   DashboardService,
   DashboardServiceType,
@@ -120,7 +115,7 @@ import {
 } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
 import { getBrokers } from './MessagingServiceUtils';
-import { getEntityLink, getUsagePercentile } from './TableUtils';
+import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const serviceTypeLogo = (type: string) => {
@@ -698,59 +693,5 @@ export const getLinkForFqn = (serviceCategory: ServiceTypes, fqn: string) => {
     case ServiceCategory.DATABASE_SERVICES:
     default:
       return `/database/${fqn}`;
-  }
-};
-
-export const getOptionalTableCells = (
-  serviceCategory: ServiceTypes,
-  data: ServicePageData
-) => {
-  switch (serviceCategory) {
-    case ServiceCategory.DATABASE_SERVICES: {
-      const database = data as Database;
-
-      return (
-        <p>
-          {getUsagePercentile(
-            database?.usageSummary?.weeklyStats?.percentileRank || 0
-          )}
-        </p>
-      );
-    }
-    case ServiceCategory.MESSAGING_SERVICES: {
-      const topic = data as Topic;
-
-      return <TagsViewer sizeCap={-1} tags={topic.tags ?? []} type="border" />;
-    }
-    case ServiceCategory.DASHBOARD_SERVICES: {
-      const dashboard = data as Dashboard;
-
-      return (
-        <TagsViewer sizeCap={-1} tags={dashboard.tags ?? []} type="border" />
-      );
-    }
-    case ServiceCategory.PIPELINE_SERVICES: {
-      const pipeline = data as Pipeline;
-
-      return (
-        <TagsViewer sizeCap={-1} tags={pipeline.tags ?? []} type="border" />
-      );
-    }
-    case ServiceCategory.ML_MODEL_SERVICES: {
-      const mlmodal = data as Mlmodel;
-
-      return (
-        <TagsViewer sizeCap={-1} tags={mlmodal.tags ?? []} type="border" />
-      );
-    }
-    case ServiceCategory.STORAGE_SERVICES: {
-      const container = data as Container;
-
-      return (
-        <TagsViewer sizeCap={-1} tags={container.tags ?? []} type="border" />
-      );
-    }
-    default:
-      return <></>;
   }
 };
