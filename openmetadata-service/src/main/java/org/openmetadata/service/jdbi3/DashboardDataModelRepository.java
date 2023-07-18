@@ -43,10 +43,6 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class DashboardDataModelRepository extends EntityRepository<DashboardDataModel> {
-
-  private static final String DATA_MODEL_UPDATE_FIELDS = "owner,tags,followers";
-  private static final String DATA_MODEL_PATCH_FIELDS = "owner,tags,followers";
-
   public DashboardDataModelRepository(CollectionDAO dao) {
     super(
         DashboardDataModelResource.COLLECTION_PATH,
@@ -54,8 +50,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         DashboardDataModel.class,
         dao.dashboardDataModelDAO(),
         dao,
-        DATA_MODEL_PATCH_FIELDS,
-        DATA_MODEL_UPDATE_FIELDS);
+        "",
+        "");
   }
 
   @Override

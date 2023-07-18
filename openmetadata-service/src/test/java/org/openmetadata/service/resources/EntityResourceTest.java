@@ -82,6 +82,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
@@ -380,7 +381,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     this.collectionName = collectionName;
     this.allFields = fields;
     ENTITY_RESOURCE_TEST_MAP.put(entityType, this);
-    List<String> allowedFields = Entity.getEntityFields(entityClass);
+    Set<String> allowedFields = Entity.getEntityFields(entityClass);
     this.supportsFollowers = allowedFields.contains(FIELD_FOLLOWERS);
     this.supportsOwner = allowedFields.contains(FIELD_OWNER);
     this.supportsTags = allowedFields.contains(FIELD_TAGS);

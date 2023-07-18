@@ -49,7 +49,7 @@ import org.openmetadata.service.util.ResultList;
 public abstract class EntityResource<T extends EntityInterface, K extends EntityRepository<T>> {
   protected final Class<T> entityClass;
   protected final String entityType;
-  protected final List<String> allowedFields;
+  protected final Set<String> allowedFields;
   @Getter protected final K repository;
   protected final Authorizer authorizer;
   protected final Map<String, MetadataOperation> fieldsToViewOperations = new HashMap<>();
