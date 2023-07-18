@@ -239,7 +239,7 @@ class OMetaGlossaryTest(TestCase):
         self.assertIsNotNone(res)
         self.assertEqual(self.create_glossary_term_1.name, res.name)
         self.assertEqual(
-            f"{self.create_glossary.name}.{res.name.__root__}",
+            f"{self.create_glossary.name.__root__}.{res.name.__root__}",
             res.fullyQualifiedName.__root__,
         )
 
