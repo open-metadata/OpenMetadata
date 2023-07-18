@@ -26,7 +26,7 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -49,6 +49,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public final class UserUtil {
@@ -72,11 +73,11 @@ public final class UserUtil {
     User updatedUser;
     try {
       // Create Required Fields List
-      List<String> fieldList = new ArrayList<>(userRepository.getPatchFields().getFieldList());
+      Set<String> fieldList = new HashSet<>(userRepository.getPatchFields().getFieldList());
       fieldList.add("authenticationMechanism");
 
       // Fetch Original User, is available
-      User originalUser = userRepository.getByName(null, username, new EntityUtil.Fields(fieldList));
+      User originalUser = userRepository.getByName(null, username, new Fields(fieldList));
       updatedUser = originalUser;
 
       // Update Auth Mechanism if not present, and send mail to the user
@@ -248,7 +249,7 @@ public final class UserUtil {
   private static User retrieveWithAuthMechanism(User user) {
     EntityRepository<User> userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     try {
-      return userRepository.getByName(null, user.getName(), new EntityUtil.Fields(List.of("authenticationMechanism")));
+      return userRepository.getByName(null, user.getName(), new Fields(Set.of("authenticationMechanism")));
     } catch (IOException | EntityNotFoundException e) {
       LOG.debug("Bot entity: {} does not exists.", user);
       return null;

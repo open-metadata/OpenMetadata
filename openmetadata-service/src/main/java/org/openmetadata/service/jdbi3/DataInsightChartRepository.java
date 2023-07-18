@@ -11,8 +11,6 @@ import org.openmetadata.service.util.EntityUtil;
 public class DataInsightChartRepository extends EntityRepository<DataInsightChart> {
   public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/charts";
   public static final String LAST_SESSION = "lastSession";
-  private static final String UPDATE_FIELDS = "owner";
-  private static final String PATCH_FIELDS = "owner";
   public static final String DATA_ENTITY_TYPE = "data.entityType";
   public static final String TIMESTAMP = "timestamp";
   public static final String ENTITY_COUNT = "entityCount";
@@ -61,14 +59,7 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
           "MostViewedEntities");
 
   public DataInsightChartRepository(CollectionDAO dao) {
-    super(
-        COLLECTION_PATH,
-        DATA_INSIGHT_CHART,
-        DataInsightChart.class,
-        dao.dataInsightChartDAO(),
-        dao,
-        PATCH_FIELDS,
-        UPDATE_FIELDS);
+    super(COLLECTION_PATH, DATA_INSIGHT_CHART, DataInsightChart.class, dao.dataInsightChartDAO(), dao, "", "");
   }
 
   @Override

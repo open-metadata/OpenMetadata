@@ -56,9 +56,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TopicRepository extends EntityRepository<Topic> {
-  private static final String TOPIC_UPDATE_FIELDS = "owner,tags,extension,followers";
-  private static final String TOPIC_PATCH_FIELDS = "owner,tags,extension,followers";
-
   @Override
   public void setFullyQualifiedName(Topic topic) {
     topic.setFullyQualifiedName(FullyQualifiedName.add(topic.getService().getFullyQualifiedName(), topic.getName()));
@@ -73,14 +70,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   public TopicRepository(CollectionDAO dao) {
-    super(
-        TopicResource.COLLECTION_PATH,
-        Entity.TOPIC,
-        Topic.class,
-        dao.topicDAO(),
-        dao,
-        TOPIC_PATCH_FIELDS,
-        TOPIC_UPDATE_FIELDS);
+    super(TopicResource.COLLECTION_PATH, Entity.TOPIC, Topic.class, dao.topicDAO(), dao, "", "");
   }
 
   @Override
@@ -291,7 +281,7 @@ public class TopicRepository extends EntityRepository<Topic> {
           break;
         }
       }
-      if (childrenSchemaName != "" && schemaField != null) {
+      if (!"".equals(childrenSchemaName) && schemaField != null) {
         schemaField = getchildrenSchemaField(schemaField.getChildren(), childrenSchemaName);
       }
       if (schemaField == null) {
@@ -323,9 +313,9 @@ public class TopicRepository extends EntityRepository<Topic> {
       }
     }
     if (childrenSchemaField == null) {
-      for (int i = 0; i < fields.size(); i++) {
-        if (fields.get(i).getChildren() != null) {
-          childrenSchemaField = getchildrenSchemaField(fields.get(i).getChildren(), childrenSchemaName);
+      for (Field field : fields) {
+        if (field.getChildren() != null) {
+          childrenSchemaField = getchildrenSchemaField(field.getChildren(), childrenSchemaName);
           if (childrenSchemaField != null) {
             break;
           }

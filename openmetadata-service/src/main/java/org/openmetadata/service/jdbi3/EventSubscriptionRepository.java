@@ -40,8 +40,8 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   private static final String INVALID_ALERT = "Invalid Alert Type";
   private static final ConcurrentHashMap<UUID, SubscriptionPublisher> subscriptionPublisherMap =
       new ConcurrentHashMap<>();
-  static final String ALERT_PATCH_FIELDS = "owner,trigger,enabled,batchSize,timeout";
-  static final String ALERT_UPDATE_FIELDS = "owner,trigger,enabled,batchSize,timeout,filteringRules";
+  static final String ALERT_PATCH_FIELDS = "trigger,enabled,batchSize,timeout";
+  static final String ALERT_UPDATE_FIELDS = "trigger,enabled,batchSize,timeout,filteringRules";
 
   public EventSubscriptionRepository(CollectionDAO dao) {
     super(
