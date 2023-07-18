@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row, Space, Tabs } from 'antd';
+import { Col, Row, Space, Tabs } from 'antd';
 import AppState from 'AppState';
 import { AxiosError } from 'axios';
 import ActivityFeedProvider, {
@@ -691,24 +691,11 @@ const ContainerPage = () => {
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <Card className="lineage-card card-body-full m-md w-auto">
-            <EntityLineageComponent
-              addLineageHandler={handleAddLineage}
-              deleted={deleted}
-              entityLineage={entityLineage}
-              entityLineageHandler={(lineage: EntityLineage) =>
-                setEntityLineage(lineage)
-              }
-              entityType={EntityType.CONTAINER}
-              hasEditAccess={hasEditLineagePermission}
-              isLoading={isLineageLoading}
-              isNodeLoading={isNodeLoading}
-              lineageLeafNodes={leafNodes}
-              loadNodeHandler={handleLoadLineageNode}
-              removeLineageHandler={handleRemoveLineage}
-              onFullScreenClick={handleFullScreenClick}
-            />
-          </Card>
+          <EntityLineageComponent
+            entity={containerData}
+            entityType={EntityType.CONTAINER}
+            hasEditAccess={hasEditLineagePermission}
+          />
         ),
       },
       {

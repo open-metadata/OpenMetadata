@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Space, Tabs } from 'antd';
+import { Col, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import ActivityFeedProvider, {
   useActivityFeedProvider,
@@ -397,17 +397,13 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <Card
-            className="lineage-card card-body-full w-auto border-none"
-            data-testid="lineage-details"
-            id="lineageDetails">
-            <EntityLineageComponent
-              entityType={EntityType.TOPIC}
-              hasEditAccess={
-                topicPermissions.EditAll || topicPermissions.EditLineage
-              }
-            />
-          </Card>
+          <EntityLineageComponent
+            entity={topicDetails}
+            entityType={EntityType.TOPIC}
+            hasEditAccess={
+              topicPermissions.EditAll || topicPermissions.EditLineage
+            }
+          />
         ),
       },
       {
