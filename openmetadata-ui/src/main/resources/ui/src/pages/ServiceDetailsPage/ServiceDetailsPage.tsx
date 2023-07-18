@@ -37,14 +37,28 @@ import { usePermissionProvider } from 'components/PermissionProvider/PermissionP
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import ServiceConnectionDetails from 'components/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
+import { getServiceDetailsPath, pagingObject } from 'constants/constants';
+import { OPEN_METADATA } from 'constants/Services.constant';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityTabs } from 'enums/entity.enum';
+import { ServiceCategory } from 'enums/service.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
+import { Dashboard } from 'generated/entity/data/dashboard';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
+import { Database } from 'generated/entity/data/database';
+import { Mlmodel } from 'generated/entity/data/mlmodel';
+import { Pipeline } from 'generated/entity/data/pipeline';
+import { Topic } from 'generated/entity/data/topic';
+import { DashboardConnection } from 'generated/entity/services/dashboardService';
+import { DatabaseService } from 'generated/entity/services/databaseService';
+import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Include } from 'generated/type/include';
+import { Paging } from 'generated/type/paging';
 import { LabelType, State } from 'generated/type/tagLabel';
 import { useAuth } from 'hooks/authHooks';
+import { useAirflowStatus } from 'hooks/useAirflowStatus';
+import { ConfigData, ServicesType } from 'interface/service.interface';
 import { isEmpty, isUndefined } from 'lodash';
 import {
   PagingWithoutTotal,
@@ -80,30 +94,16 @@ import { getServiceByFQN, patchService } from 'rest/serviceAPI';
 import { getContainers } from 'rest/storageAPI';
 import { getTopics } from 'rest/topicsAPI';
 import { getEntityName } from 'utils/EntityUtils';
-import { getServiceDetailsPath, pagingObject } from '../../constants/constants';
-import { OPEN_METADATA } from '../../constants/Services.constant';
-import { ServiceCategory } from '../../enums/service.enum';
-import { Dashboard } from '../../generated/entity/data/dashboard';
-import { Database } from '../../generated/entity/data/database';
-import { Mlmodel } from '../../generated/entity/data/mlmodel';
-import { Pipeline } from '../../generated/entity/data/pipeline';
-import { Topic } from '../../generated/entity/data/topic';
-import { DashboardConnection } from '../../generated/entity/services/dashboardService';
-import { DatabaseService } from '../../generated/entity/services/databaseService';
-import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { Paging } from '../../generated/type/paging';
-import { useAirflowStatus } from '../../hooks/useAirflowStatus';
-import { ConfigData, ServicesType } from '../../interface/service.interface';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getEditConnectionPath } from '../../utils/RouterUtils';
+import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { getEditConnectionPath } from 'utils/RouterUtils';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
   getResourceEntityFromServiceCategory,
   shouldTestConnection,
-} from '../../utils/ServiceUtils';
-import { getTagsWithoutTier } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+} from 'utils/ServiceUtils';
+import { getTagsWithoutTier } from 'utils/TableUtils';
+import { showErrorToast } from 'utils/ToastUtils';
 import ServiceMainTabContent from './ServiceMainTabContent';
 
 export type ServicePageData =
@@ -115,7 +115,7 @@ export type ServicePageData =
   | Container
   | DashboardDataModel;
 
-const ServicePage: FunctionComponent = () => {
+const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { isAirflowAvailable } = useAirflowStatus();
   const { serviceFQN, serviceCategory, tab } = useParams<{
@@ -182,7 +182,7 @@ const ServicePage: FunctionComponent = () => {
       );
       setServicePermission(response);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      // Error
     } finally {
       setIsLoading(false);
     }
@@ -986,7 +986,7 @@ const ServicePage: FunctionComponent = () => {
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(serviceDetails),
       })}>
-      <Row gutter={[0, 12]}>
+      <Row data-testid="service-page" gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
             isRecursiveDelete
@@ -1015,4 +1015,4 @@ const ServicePage: FunctionComponent = () => {
   );
 };
 
-export default ServicePage;
+export default ServiceDetailsPage;

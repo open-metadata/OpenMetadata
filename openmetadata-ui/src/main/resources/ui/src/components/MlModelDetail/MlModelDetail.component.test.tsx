@@ -200,10 +200,6 @@ jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
-jest.mock('../common/entityPageInfo/EntityPageInfo', () => {
-  return jest.fn().mockReturnValue(<p>EntityPageInfo</p>);
-});
-
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
