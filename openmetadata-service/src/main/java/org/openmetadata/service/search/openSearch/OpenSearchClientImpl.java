@@ -126,6 +126,9 @@ import org.opensearch.search.aggregations.AggregationBuilder;
 import org.opensearch.search.aggregations.AggregationBuilders;
 import org.opensearch.search.aggregations.Aggregations;
 import org.opensearch.search.aggregations.BucketOrder;
+import org.opensearch.search.aggregations.bucket.composite.CompositeAggregationBuilder;
+import org.opensearch.search.aggregations.bucket.composite.CompositeValuesSourceBuilder;
+import org.opensearch.search.aggregations.bucket.composite.TermsValuesSourceBuilder;
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval;
 import org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
@@ -340,15 +343,15 @@ public class OpenSearchClientImpl implements SearchClient {
     return Response.status(OK).entity(response).build();
   }
 
-  public Response aggregate(String index, String fieldName) throws IOException {
+  public Response aggregate(String index, String fieldName, String after) throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder
-        .aggregation(
-            AggregationBuilders.terms(fieldName)
-                .field(fieldName)
-                .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE)
-                .order(BucketOrder.key(true)))
-        .size(0);
+    List<CompositeValuesSourceBuilder<?>> sources = new ArrayList<>();
+    sources.add(new TermsValuesSourceBuilder(fieldName).field(fieldName));
+    Map<String, Object> afterKey = new HashMap<>();
+    afterKey.put(fieldName, after);
+    CompositeAggregationBuilder compositeAggregationBuilder =
+        new CompositeAggregationBuilder(fieldName, sources).size(EntityBuilderConstant.MAX_AGGREGATE_SIZE);
+    searchSourceBuilder.aggregation(compositeAggregationBuilder.aggregateAfter(afterKey)).size(0);
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     String response =
         client.search(new SearchRequest(index).source(searchSourceBuilder), RequestOptions.DEFAULT).toString();

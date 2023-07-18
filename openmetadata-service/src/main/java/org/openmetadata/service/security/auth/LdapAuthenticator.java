@@ -148,7 +148,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
               storedUser,
               "Multiple Failed Login Attempts.",
               String.format(
-                  "Someone is tried accessing your account. Login is Blocked for %s minutes.",
+                  "Someone is tried accessing your account. Login is Blocked for %s seconds.",
                   loginConfiguration.getAccessBlockTime()));
     }
   }

@@ -98,6 +98,7 @@ const PipelineDetailsProps = {
   pipelineTags: [],
   slashedPipelineName: [],
   taskUpdateHandler: mockTaskUpdateHandler,
+  fetchPipeline: jest.fn(),
   setActiveTabHandler: jest.fn(),
   followPipelineHandler: jest.fn(),
   unFollowPipelineHandler: jest.fn(),

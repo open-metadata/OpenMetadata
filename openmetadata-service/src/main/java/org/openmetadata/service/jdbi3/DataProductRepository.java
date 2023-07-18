@@ -31,7 +31,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class DataProductRepository extends EntityRepository<DataProduct> {
-  private static final String UPDATE_FIELDS = "domain,owner,experts"; // Domain field can't be updated
+  private static final String UPDATE_FIELDS = "experts"; // Domain field can't be updated
 
   public DataProductRepository(CollectionDAO dao) {
     super(

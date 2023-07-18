@@ -28,18 +28,9 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class DatabaseRepository extends EntityRepository<Database> {
-  private static final String DATABASE_UPDATE_FIELDS = "owner,tags,extension";
-  private static final String DATABASE_PATCH_FIELDS = DATABASE_UPDATE_FIELDS;
 
   public DatabaseRepository(CollectionDAO dao) {
-    super(
-        DatabaseResource.COLLECTION_PATH,
-        Entity.DATABASE,
-        Database.class,
-        dao.databaseDAO(),
-        dao,
-        DATABASE_PATCH_FIELDS,
-        DATABASE_UPDATE_FIELDS);
+    super(DatabaseResource.COLLECTION_PATH, Entity.DATABASE, Database.class, dao.databaseDAO(), dao, "", "");
   }
 
   @Override

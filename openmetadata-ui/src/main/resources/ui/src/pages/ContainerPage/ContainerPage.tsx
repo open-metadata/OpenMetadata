@@ -124,9 +124,6 @@ const ContainerPage = () => {
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
     EntityFieldThreadCount[]
   >([]);
-  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
 
   const [threadLink, setThreadLink] = useState<string>('');
   const [threadType, setThreadType] = useState<ThreadType>(
@@ -238,6 +235,7 @@ const ContainerPage = () => {
     isUserFollowing,
     tags,
     tier,
+    entityFqn,
   } = useMemo(() => {
     return {
       deleted: containerData?.deleted,
@@ -255,6 +253,7 @@ const ContainerPage = () => {
       size: containerData?.size || 0,
       numberOfObjects: containerData?.numberOfObjects || 0,
       partitioned: containerData?.dataModel?.isPartitioned,
+      entityFqn: containerData?.fullyQualifiedName ?? '',
     };
   }, [containerData]);
 
@@ -269,7 +268,6 @@ const ContainerPage = () => {
       EntityType.CONTAINER,
       containerName,
       setEntityFieldThreadCount,
-      setEntityFieldTaskCount,
       setFeedCount
     );
   };
@@ -603,9 +601,15 @@ const ContainerPage = () => {
 
                 <ContainerDataModel
                   dataModel={containerData?.dataModel}
+                  entityFieldThreads={getEntityFieldThreadCounts(
+                    EntityField.DATA_MODEL,
+                    entityFieldThreadCount
+                  )}
+                  entityFqn={entityFqn}
                   hasDescriptionEditAccess={hasEditDescriptionPermission}
                   hasTagEditAccess={hasEditTagsPermission}
                   isReadOnly={Boolean(deleted)}
+                  onThreadLinkSelect={onThreadLinkSelect}
                   onUpdate={handleUpdateDataModel}
                 />
               </div>
@@ -748,7 +752,6 @@ const ContainerPage = () => {
       entityFieldThreadCount,
       tags,
       entityLineage,
-      entityFieldTaskCount,
       feedCount,
       containerChildrenData,
       handleAddLineage,

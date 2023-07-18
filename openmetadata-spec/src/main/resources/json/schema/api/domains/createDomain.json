@@ -45,6 +45,6 @@
       "default": null
     }
   },
-  "required": ["id", "name", "description", "domainType","href"],
+  "required": ["id", "name", "description", "domainType"],
   "additionalProperties": false
 }

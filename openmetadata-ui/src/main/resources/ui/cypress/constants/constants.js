@@ -46,7 +46,7 @@ export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
   entity: MYDATA_SUMMARY_OPTIONS.tables,
   serviceName: 'sample_data',
   testCaseName: 'column_value_max_to_be_between',
-  testSuiteName: 'critical_metrics_suite',
+  sqlTestCaseName: 'my_sql_test_case_cypress',
   sqlTestCase: 'Custom SQL Query',
   sqlQuery: 'Select * from dim_address',
 };
@@ -170,6 +170,7 @@ export const NEW_TEST_SUITE = {
 };
 
 export const NEW_TABLE_TEST_CASE = {
+  name: 'table_column_name_to_exist_in_id',
   label: 'Table Column Name To Exist',
   type: 'tableColumnNameToExist',
   field: 'id',
@@ -177,6 +178,7 @@ export const NEW_TABLE_TEST_CASE = {
 };
 
 export const NEW_COLUMN_TEST_CASE = {
+  name: 'id_column_value_lengths_to_be_between',
   column: 'id',
   type: 'columnValueLengthsToBeBetween',
   label: 'Column Value Lengths To Be Between',
@@ -186,6 +188,7 @@ export const NEW_COLUMN_TEST_CASE = {
 };
 
 export const NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE = {
+  name: 'id_column_values_to_be_not_null',
   column: 'id',
   type: 'columnValuesToBeNotNull',
   label: 'Column Values To Be Not Null',
@@ -237,8 +240,8 @@ export const NEW_GLOSSARY = {
   tag: 'PII.None',
 };
 export const NEW_GLOSSARY_1 = {
-  name: 'Product Glossary',
-  description: 'This is the Product glossary',
+  name: 'Product%Glossary',
+  description: 'This is the Product glossary with percentage',
   reviewer: 'Brandy Miller',
   tag: 'PII.None',
 };
@@ -270,16 +273,16 @@ export const GLOSSARY_TERM_WITH_DETAILS = {
 
 export const NEW_GLOSSARY_1_TERMS = {
   term_1: {
-    name: 'Features',
+    name: 'Features%Term',
     description: 'This is the Features',
     synonyms: 'data,collect,time',
-    fullyQualifiedName: 'Product Glossary.Features',
+    fullyQualifiedName: 'Product%Glossary.Features%Term',
   },
   term_2: {
     name: 'Uses',
     description: 'This is the Uses',
     synonyms: 'home,business,adventure',
-    fullyQualifiedName: 'Product Glossary.Uses',
+    fullyQualifiedName: 'Product%Glossary.Uses',
   },
 };
 

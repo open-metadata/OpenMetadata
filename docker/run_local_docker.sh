@@ -126,6 +126,7 @@ curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_data' \
 
 printf 'Validate sample data DAG...'
 sleep 5
+python -m pip install ingestion/
 python docker/validate_compose.py
 
 until curl -s -f --header "Authorization: Bearer $authorizationToken" "http://localhost:8585/api/v1/tables/name/sample_data.ecommerce_db.shopify.fact_sale"; do

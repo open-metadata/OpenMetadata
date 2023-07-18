@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Typography } from 'antd';
+import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
@@ -262,7 +262,7 @@ const AddService = ({
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-      <Card className="p-lg m-t-md">
+      <div className="m-t-md">
         {addIngestion ? (
           <AddIngestion
             activeIngestionStep={activeIngestionStep}
@@ -288,7 +288,7 @@ const AddService = ({
         ) : (
           addNewServiceElement
         )}
-      </Card>
+      </div>
     </div>
   );
 

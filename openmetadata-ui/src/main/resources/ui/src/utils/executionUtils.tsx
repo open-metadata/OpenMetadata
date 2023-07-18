@@ -103,18 +103,6 @@ export const getTreeViewData = (
   return groupBy(taskStatusArr, 'name');
 };
 
-export const getStatusLabel = (status: string) => {
-  switch (status) {
-    case StatusType.Successful:
-    case StatusType.Pending:
-    case StatusType.Failed:
-      return MenuOptions[status];
-
-    default:
-      return;
-  }
-};
-
 export const getExecutionElementByKey = (
   key: string,
   viewElements: {

@@ -237,6 +237,7 @@ const TopicDetailsPage: FunctionComponent = () => {
   return (
     <TopicDetails
       createThread={createThread}
+      fetchTopic={() => fetchTopicDetail(topicFQN)}
       followTopicHandler={followTopic}
       topicDetails={topicDetails}
       topicPermissions={topicPermissions}

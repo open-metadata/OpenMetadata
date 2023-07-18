@@ -27,7 +27,7 @@
       "default": null
     },
     "profileSampleType": {
-      "$ref": "../entity/data/table.json#definitions/profileSampleType"
+      "$ref": "../entity/data/table.json#/definitions/profileSampleType"
     }
   },
   "required": ["type", "entityFullyQualifiedName"],

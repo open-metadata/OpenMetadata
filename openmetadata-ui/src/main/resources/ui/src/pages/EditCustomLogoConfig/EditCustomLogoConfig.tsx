@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Col, Form, Row } from 'antd';
+import { Button, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from 'components/common/ServiceDocPanel/ServiceDocPanel';
@@ -151,39 +151,38 @@ const EditCustomLogoConfig = () => {
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
       <TitleBreadcrumb titleLinks={breadcrumb} />
-      <Card className="p-lg m-t-md">
-        <Form
-          data-testid="custom-logo-config-form"
-          form={form}
-          layout="vertical"
-          onFinish={handleSubmit}
-          onFocus={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setActiveField(e.target.id);
-          }}>
-          {generateFormFields(formFields)}
-          <Row justify="end">
-            <Col>
-              <Button
-                data-testid="cancel-button"
-                type="link"
-                onClick={handleGoBack}>
-                {t('label.cancel')}
-              </Button>
-            </Col>
-            <Col>
-              <Button
-                data-testid="save-button"
-                htmlType="submit"
-                loading={updating}
-                type="primary">
-                {t('label.save')}
-              </Button>
-            </Col>
-          </Row>
-        </Form>
-      </Card>
+      <Form
+        className="m-t-md"
+        data-testid="custom-logo-config-form"
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit}
+        onFocus={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setActiveField(e.target.id);
+        }}>
+        {generateFormFields(formFields)}
+        <Row justify="end">
+          <Col>
+            <Button
+              data-testid="cancel-button"
+              type="link"
+              onClick={handleGoBack}>
+              {t('label.cancel')}
+            </Button>
+          </Col>
+          <Col>
+            <Button
+              data-testid="save-button"
+              htmlType="submit"
+              loading={updating}
+              type="primary">
+              {t('label.save')}
+            </Button>
+          </Col>
+        </Row>
+      </Form>
     </div>
   );
 

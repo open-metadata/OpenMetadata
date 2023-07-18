@@ -19,7 +19,7 @@ import threading
 import traceback
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Union
+from typing import Dict, List
 
 from sqlalchemy import Column
 from sqlalchemy.exc import ProgrammingError
@@ -38,7 +38,7 @@ from metadata.profiler.orm.functions.table_metric_construct import (
     table_metric_construct_factory,
 )
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.profiler.processor.sampler.sampler_factory import sampler_factory
+from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
@@ -110,7 +110,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         session = kwargs.get("session")
         table = kwargs["table"]
 
-        return sampler_factory.create(
+        return sampler_factory_.create(
             self.service_connection_config.__class__.__name__,
             client=session or self.session,
             table=table,
@@ -118,28 +118,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
         )
-
-    @staticmethod
-    def _is_array_column(column) -> Dict[str, Union[Optional[str], bool]]:
-        """check if column is an array column
-
-        Args:
-            column: column to check
-        Returns:
-            True if column is an array column else False
-        """
-        kwargs = {}
-        try:
-            kwargs["is_array"] = column._is_array  # pylint: disable=protected-access
-        except AttributeError:
-            kwargs["is_array"] = False
-
-        try:
-            kwargs["array_col"] = column._array_col  # pylint: disable=protected-access
-        except AttributeError:
-            kwargs["array_col"] = None
-
-        return kwargs
 
     def _session_factory(self) -> scoped_session:
         """Create thread safe session that will be automatically

@@ -66,6 +66,7 @@ const dashboardDetailsProps: DashboardDetailsProps = {
   onDashboardUpdate: jest.fn(),
   versionHandler: jest.fn(),
   createThread: jest.fn(),
+  fetchDashboard: jest.fn(),
 };
 
 const mockEntityPermissions = {
@@ -153,7 +154,6 @@ jest.mock('../../utils/CommonUtils', () => ({
   getEntityPlaceHolder: jest.fn().mockReturnValue('value'),
   getEntityName: jest.fn().mockReturnValue('entityName'),
   pluralize: jest.fn().mockReturnValue('2 charts'),
-  isEven: jest.fn().mockReturnValue(true),
   getEntityDeleteMessage: jest.fn(),
   getOwnerValue: jest.fn().mockReturnValue('Owner'),
 }));

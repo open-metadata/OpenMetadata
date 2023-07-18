@@ -85,10 +85,10 @@ describe('Services page should work properly', () => {
       .click();
     verifyResponseStatusCode('@editOwner', 200);
 
-    cy.get('.select-owner-tabs')
+    cy.get(
+      '.ant-popover-inner-content > .ant-tabs > .ant-tabs-nav > .ant-tabs-nav-wrap'
+    )
       .contains('Users')
-      .should('exist')
-      .should('be.visible')
       .click();
 
     interceptURL(
@@ -96,11 +96,19 @@ describe('Services page should work properly', () => {
       '/api/v1/services/databaseServices/*',
       'updateService'
     );
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=*%20AND%20isBot:false*&index=user_search_index',
+      'searchApi'
+    );
 
+    cy.get(
+      '[id*="panel-users"] [data-testid="selectable-list"] [data-testid="search-bar-container"] [data-testid="searchbar"]'
+    ).type(service.Owner);
+    verifyResponseStatusCode('@searchApi', 200);
     cy.get('[data-testid="selectable-list"]')
       .contains(service.Owner)
       .scrollIntoView()
-      .should('be.visible')
       .click();
 
     verifyResponseStatusCode('@updateService', 200);

@@ -63,13 +63,13 @@ import MlModelFeaturesList from './MlModelFeaturesList';
 
 const MlModelDetail: FC<MlModelDetailProp> = ({
   mlModelDetail,
+  fetchMlModel,
   followMlModelHandler,
   unFollowMlModelHandler,
   descriptionUpdateHandler,
   settingsUpdateHandler,
   updateMlModelFeatures,
   onExtensionUpdate,
-
   createThread,
   versionHandler,
   tagUpdateHandler,
@@ -83,9 +83,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const [isEdit, setIsEdit] = useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
-  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
     EntityFieldThreadCount[]
   >([]);
 
@@ -127,7 +124,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     [AppState.nonSecureUserDetails, AppState.userDetails]
   );
 
-  const { mlModelTags, isFollowing, tier } = useMemo(() => {
+  const { mlModelTags, isFollowing, tier, entityFqn } = useMemo(() => {
     return {
       ...mlModelDetail,
       tier: getTierTags(mlModelDetail.tags ?? []),
@@ -136,6 +133,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       isFollowing: mlModelDetail.followers?.some(
         ({ id }: { id: string }) => id === currentUser?.id
       ),
+      entityFqn: mlModelDetail.fullyQualifiedName ?? '',
     };
   }, [mlModelDetail]);
 
@@ -144,7 +142,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       EntityType.MLMODEL,
       mlModelFqn,
       setEntityFieldThreadCount,
-      setEntityFieldTaskCount,
       setFeedCount
     );
   };
@@ -409,10 +406,16 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   onThreadLinkSelect={handleThreadLinkSelect}
                 />
                 <MlModelFeaturesList
+                  entityFieldThreads={getEntityFieldThreadCounts(
+                    EntityField.ML_FEATURES,
+                    entityFieldThreadCount
+                  )}
+                  entityFqn={entityFqn}
                   handleFeaturesUpdate={onFeaturesUpdate}
                   isDeleted={mlModelDetail.deleted}
                   mlFeatures={mlModelDetail.mlFeatures}
                   permissions={mlModelPermissions}
+                  onThreadLinkSelect={handleThreadLinkSelect}
                 />
               </div>
             </Col>
@@ -471,6 +474,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               entityType={EntityType.MLMODEL}
               fqn={mlModelDetail?.fullyQualifiedName ?? ''}
               onFeedUpdate={fetchEntityFeedCount}
+              onUpdateEntityDetails={fetchMlModel}
             />
           </ActivityFeedProvider>
         ),
@@ -534,7 +538,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       mlModelPermissions,
       isEdit,
       entityFieldThreadCount,
-      entityFieldTaskCount,
       getMlHyperParameters,
       getMlModelStore,
       onCancel,

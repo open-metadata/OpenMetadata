@@ -74,6 +74,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -166,7 +167,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     USER_TEAM21 = createEntity(create, ADMIN_AUTH_HEADERS);
     USER2_REF = USER2.getEntityReference();
 
-    List<String> userFields = Entity.getEntityFields(User.class);
+    Set<String> userFields = Entity.getEntityFields(User.class);
     userFields.remove("authenticationMechanism");
     BOT_USER = getEntityByName(INGESTION_BOT, String.join(",", userFields), ADMIN_AUTH_HEADERS);
   }
@@ -963,13 +964,22 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // Headers - name,displayName,description,email,timezone,isAdmin,teams,roles
     Team team = TEAM_TEST.createEntity(TEAM_TEST.createRequest("team-invalidCsv"), ADMIN_AUTH_HEADERS);
 
-    // Invalid team
+    // Invalid user name with "::"
     String resultsHeader = recordToString(EntityCsv.getResultHeaders(UserCsv.HEADERS));
-    String record = "user,,,user@domain.com,,,invalidTeam,";
+    String record = "invalid::User,,,user@domain.com,,,team-invalidCsv,";
     String csv = createCsv(UserCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(team.getName(), csv, false);
     assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
-    String[] expectedRows = {resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(6, "invalidTeam"))};
+    String[] expectedRows = {resultsHeader, getFailedRecord(record, "[name must match \"\"^(?U)[\\w\\-.]+$\"\"]")};
+    assertRows(result, expectedRows);
+
+    // Invalid team
+    resultsHeader = recordToString(EntityCsv.getResultHeaders(UserCsv.HEADERS));
+    record = "user,,,user@domain.com,,,invalidTeam,";
+    csv = createCsv(UserCsv.HEADERS, listOf(record), null);
+    result = importCsv(team.getName(), csv, false);
+    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    expectedRows = new String[] {resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(6, "invalidTeam"))};
     assertRows(result, expectedRows);
 
     // Invalid roles
@@ -1234,7 +1244,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   @Override
   public String getAllowedFields() {
-    List<String> allowedFields = Entity.getEntityFields(entityClass);
+    Set<String> allowedFields = Entity.getEntityFields(entityClass);
     allowedFields.removeAll(of(USER_PROTECTED_FIELDS.split(",")));
     return String.join(",", allowedFields);
   }
