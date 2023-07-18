@@ -16,7 +16,6 @@ Processor class used to compute refined report data
 from __future__ import annotations
 
 import abc
-from datetime import datetime, timezone
 from typing import Iterable, Optional
 
 from metadata.generated.schema.analytics.reportData import ReportData
