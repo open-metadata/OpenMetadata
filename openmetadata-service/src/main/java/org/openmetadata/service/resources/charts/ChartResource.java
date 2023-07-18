@@ -81,6 +81,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
     Entity.withHref(uriInfo, chart.getOwner());
     Entity.withHref(uriInfo, chart.getService());
     Entity.withHref(uriInfo, chart.getFollowers());
+    Entity.withHref(uriInfo, chart.getDomain());
     return chart;
   }
 

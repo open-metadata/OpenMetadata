@@ -50,9 +50,9 @@ public abstract class ServiceEntityRepository<
       CollectionDAO dao,
       EntityDAO<T> entityDAO,
       Class<S> serviceConnectionClass,
-      String updatedFields,
+      String updateFields,
       ServiceType serviceType) {
-    super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, dao, "", updatedFields);
+    super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, dao, "", updateFields);
     this.serviceConnectionClass = serviceConnectionClass;
     this.serviceType = serviceType;
   }

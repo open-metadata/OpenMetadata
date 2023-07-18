@@ -168,7 +168,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final boolean supportsFollower;
   protected final boolean supportsExtension;
   protected final boolean supportsVotes;
-  protected final boolean supportsDomain;
+  @Getter protected final boolean supportsDomain;
   protected final boolean supportsDataProducts;
 
   /** Fields that can be updated during PATCH operation */
@@ -1468,7 +1468,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final Fields getFields(String fields) {
-    if (fields != null && fields.equals("*")) {
+    if ("*".equals(fields)) {
       return new Fields(allowedFields, String.join(",", allowedFields));
     }
     return new Fields(allowedFields, fields);
@@ -1773,6 +1773,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
               original.getFullyQualifiedName());
           addRelationship(updatedDomain.getId(), original.getId(), Entity.DOMAIN, entityType, Relationship.HAS);
         }
+      } else {
+        updated.setDomain(original.getDomain());
       }
     }
 

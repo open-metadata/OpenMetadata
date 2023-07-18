@@ -34,13 +34,16 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateChart;
+import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.entity.data.Chart;
+import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChartType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.charts.ChartResource.ChartList;
+import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils.UpdateType;
@@ -159,6 +162,18 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
 
     chart.withChartType(type2).withSourceUrl("url2").withDescription("desc2");
     patchEntityAndCheck(chart, originalJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+  }
+
+  @Test
+  void test_inheritDomain(TestInfo test) throws IOException {
+    // When domain is not set for a dashboard service, carry it forward from the chart
+    DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
+    CreateDashboardService createService = serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+    DashboardService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+
+    // Create a chart without domain and ensure it inherits domain from the parent
+    CreateChart create = createRequest("chart").withService(service.getFullyQualifiedName());
+    assertDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Override

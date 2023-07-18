@@ -172,28 +172,36 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     //
     Glossary glossary = createGlossary(test, listOf(USER1_REF), USER2_REF);
 
-    // Create terms t1 and a term t12 under t1 in the glossary without reviewers and owner
+    // Create term t1 in the glossary without reviewers and owner
     CreateGlossaryTerm create =
-        new CreateGlossaryTerm().withGlossary(glossary.getFullyQualifiedName()).withDescription("description");
-    GlossaryTerm t1 = createEntity(create.withName("t1"), ADMIN_AUTH_HEADERS);
-    assertEntityReferences(glossary.getReviewers(), t1.getReviewers()); // Reviewers are inherited
-    assertReference(glossary.getOwner(), t1.getOwner()); // Owner is inherited
+        new CreateGlossaryTerm().withName("t1").withGlossary(glossary.getFullyQualifiedName()).withDescription("desc");
+    GlossaryTerm t1 = assertOwnerInheritance(create, USER2_REF);
     t1 = getEntity(t1.getId(), "reviewers,owner", ADMIN_AUTH_HEADERS);
     assertEntityReferences(glossary.getReviewers(), t1.getReviewers()); // Reviewers are inherited
-    assertReference(glossary.getOwner(), t1.getOwner()); // Owner is inherited
 
-    GlossaryTerm t12 =
-        createEntity(
-            create
-                .withName("t12")
-                .withGlossary(glossary.getFullyQualifiedName())
-                .withParent(t1.getFullyQualifiedName()),
-            ADMIN_AUTH_HEADERS);
-    assertEntityReferences(glossary.getReviewers(), t12.getReviewers()); // Reviewers are inherited
-    assertReference(glossary.getOwner(), t12.getOwner()); // Owner is inherited
+    // Create term t12 under t1 without reviewers and owner
+    create =
+        create.withName("t12").withGlossary(glossary.getFullyQualifiedName()).withParent(t1.getFullyQualifiedName());
+    GlossaryTerm t12 = assertOwnerInheritance(create, USER2_REF);
     t12 = getEntity(t12.getId(), "reviewers,owner", ADMIN_AUTH_HEADERS);
     assertEntityReferences(glossary.getReviewers(), t12.getReviewers()); // Reviewers are inherited
-    assertReference(glossary.getOwner(), t12.getOwner()); // Owner is inherited
+  }
+
+  @Test
+  void test_inheritDomain(TestInfo test) throws IOException {
+    // When domain is not set for a glossary term, carry it forward from the glossary
+    CreateGlossary createGlossary = glossaryResourceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+    Glossary glossary = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create term t1 in the glossary without domain
+    CreateGlossaryTerm create =
+        new CreateGlossaryTerm().withName("t1").withGlossary(glossary.getFullyQualifiedName()).withDescription("desc");
+    GlossaryTerm t1 = assertDomainInheritance(create, DOMAIN.getEntityReference());
+
+    // Create terms t12 under t1 without reviewers and owner
+    create =
+        create.withName("t12").withGlossary(glossary.getFullyQualifiedName()).withParent(t1.getFullyQualifiedName());
+    assertDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Test
