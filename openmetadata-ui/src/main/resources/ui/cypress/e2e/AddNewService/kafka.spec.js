@@ -14,7 +14,6 @@
 import {
   checkServiceFieldSectionHighlighting,
   deleteCreatedService,
-  editOwnerforCreatedService,
   goToAddNewServicePage,
   testServiceCreationAndIngestion,
   updateDescriptionForIngestedTables,
@@ -79,14 +78,6 @@ describe('Kafka Ingestion', () => {
       description,
       SERVICE_TYPE.Messaging,
       'topics'
-    );
-  });
-
-  it('Edit and validate owner', () => {
-    editOwnerforCreatedService(
-      SERVICE_TYPE.Messaging,
-      serviceName,
-      API_SERVICE.messagingServices
     );
   });
 

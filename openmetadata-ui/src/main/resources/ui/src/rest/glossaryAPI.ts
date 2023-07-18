@@ -135,7 +135,7 @@ export const getGlossaryTermByFQN = async (
   arrQueryFields: string | string[] = ''
 ) => {
   const url = getURLWithQueryFields(
-    `/glossaryTerms/name/${glossaryTermFQN}`,
+    `/glossaryTerms/name/${encodeURIComponent(glossaryTermFQN)}`,
     arrQueryFields
   );
 
@@ -193,7 +193,9 @@ export const importGlossaryInCSVFormat = async (
     headers: { 'Content-type': 'text/plain' },
   };
   const response = await APIClient.put<string, AxiosResponse<CSVImportResult>>(
-    `/glossaries/name/${glossaryName}/import?dryRun=${dryRun}`,
+    `/glossaries/name/${encodeURIComponent(
+      glossaryName
+    )}/import?dryRun=${dryRun}`,
     data,
     configOptions
   );

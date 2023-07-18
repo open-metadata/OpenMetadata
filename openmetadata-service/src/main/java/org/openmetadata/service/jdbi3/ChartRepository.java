@@ -31,18 +31,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class ChartRepository extends EntityRepository<Chart> {
-  private static final String CHART_UPDATE_FIELDS = "owner";
-  private static final String CHART_PATCH_FIELDS = "owner,tags";
-
   public ChartRepository(CollectionDAO dao) {
-    super(
-        ChartResource.COLLECTION_PATH,
-        Entity.CHART,
-        Chart.class,
-        dao.chartDAO(),
-        dao,
-        CHART_PATCH_FIELDS,
-        CHART_UPDATE_FIELDS);
+    super(ChartResource.COLLECTION_PATH, Entity.CHART, Chart.class, dao.chartDAO(), dao, "", "");
   }
 
   @Override

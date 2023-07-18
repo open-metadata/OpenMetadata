@@ -12,8 +12,6 @@
  */
 
 import { isString } from 'lodash';
-import React from 'react';
-import { LegendProps } from 'recharts';
 import { digitFormatter, getStatisticsDisplayValue } from './CommonUtils';
 
 export const tooltipFormatter = (
@@ -28,11 +26,6 @@ export const tooltipFormatter = (
     ? `${value.toFixed(2)}${tickFormatter}`
     : getStatisticsDisplayValue(value) ?? 0;
 };
-
-export const renderColorfulLegendText: LegendProps['formatter'] = (
-  value,
-  entry
-) => <span style={{ color: entry?.color }}>{value}</span>;
 
 export const axisTickFormatter = (value: number, tickFormatter?: string) => {
   return tickFormatter ? `${value}${tickFormatter}` : digitFormatter(value);

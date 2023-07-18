@@ -30,9 +30,6 @@ import org.openmetadata.service.util.JsonUtils;
 public abstract class ServiceEntityRepository<
         T extends ServiceEntityInterface, S extends ServiceConnectionEntityInterface>
     extends EntityRepository<T> {
-  private static final String UPDATE_FIELDS = "owner,tags";
-  private static final String PATCH_FIELDS = UPDATE_FIELDS;
-
   @Getter private final Class<S> serviceConnectionClass;
 
   @Getter private final ServiceType serviceType;
@@ -44,7 +41,7 @@ public abstract class ServiceEntityRepository<
       EntityDAO<T> entityDAO,
       Class<S> serviceConnectionClass,
       ServiceType serviceType) {
-    this(collectionPath, service, dao, entityDAO, serviceConnectionClass, UPDATE_FIELDS, serviceType);
+    this(collectionPath, service, dao, entityDAO, serviceConnectionClass, "", serviceType);
   }
 
   protected ServiceEntityRepository(
@@ -55,7 +52,7 @@ public abstract class ServiceEntityRepository<
       Class<S> serviceConnectionClass,
       String updatedFields,
       ServiceType serviceType) {
-    super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, dao, PATCH_FIELDS, updatedFields);
+    super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, dao, "", updatedFields);
     this.serviceConnectionClass = serviceConnectionClass;
     this.serviceType = serviceType;
   }
