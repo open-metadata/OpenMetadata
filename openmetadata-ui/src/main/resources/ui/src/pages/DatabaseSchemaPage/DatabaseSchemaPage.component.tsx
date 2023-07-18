@@ -432,6 +432,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [databaseSchemaPermission, databaseSchema]
   );
 
+  const editDescriptionPermission = useMemo(
+    () =>
+      (databaseSchemaPermission.EditDescription ||
+        databaseSchemaPermission.EditAll) &&
+      !databaseSchema.deleted,
+    [databaseSchemaPermission, databaseSchema]
+  );
+
   const tabs: TabsProps['items'] = [
     {
       label: (
@@ -449,12 +457,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             <SchemaTablesTab
               databaseSchemaDetails={databaseSchema}
               description={description}
+              editDescriptionPermission={editDescriptionPermission}
               entityFieldThreadCount={entityFieldThreadCount}
               getSchemaTables={getSchemaTables}
-              hasEditAccess={
-                databaseSchemaPermission.EditDescription ||
-                databaseSchemaPermission.EditAll
-              }
               isEdit={isEdit}
               showDeletedTables={showDeletedTables}
               tableData={tableData}

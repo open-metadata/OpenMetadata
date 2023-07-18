@@ -39,7 +39,7 @@ import { compare, Operation } from 'fast-json-patch';
 import { LabelType } from 'generated/entity/data/table';
 import { Include } from 'generated/type/include';
 import { State, TagSource } from 'generated/type/tagLabel';
-import { isEmpty, isNil, isUndefined } from 'lodash';
+import { isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
 import React, {
@@ -56,6 +56,7 @@ import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemas,
   patchDatabaseDetails,
+  restoreDatabase,
 } from 'rest/databaseAPI';
 import { getFeedCount, postThread } from 'rest/feedsAPI';
 import { default as appState } from '../../AppState';
@@ -89,7 +90,7 @@ import {
   getTierTags,
   getUsagePercentile,
 } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -221,7 +222,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const getDetailsByFQN = () => {
     setIsDatabaseDetailsLoading(true);
-    getDatabaseDetailsByFQN(databaseFQN, ['owner', 'tags'])
+    getDatabaseDetailsByFQN(databaseFQN, ['owner', 'tags'], Include.All)
       .then((res) => {
         if (res) {
           const { description, id, name, serviceType } = res;
@@ -230,6 +231,7 @@ const DatabaseDetails: FunctionComponent = () => {
           setDatabaseId(id ?? '');
           setDatabaseName(name);
           setServiceType(serviceType);
+          setShowDeletedSchemas(res.deleted ?? false);
           fetchDatabaseSchemasAndDBTModels();
         } else {
           throw t('server.unexpected-response');
@@ -516,37 +518,38 @@ const DatabaseDetails: FunctionComponent = () => {
   };
 
   const databaseTable = useMemo(() => {
-    if (schemaDataLoading) {
-      return <Loader />;
-    } else if (!isEmpty(schemaData)) {
-      return (
-        <Col span={24}>
-          <Table
-            bordered
-            columns={tableColumn}
-            data-testid="database-databaseSchemas"
-            dataSource={schemaData}
-            pagination={false}
-            rowKey="id"
-            size="small"
+    return (
+      <Col span={24}>
+        <Table
+          bordered
+          columns={tableColumn}
+          data-testid="database-databaseSchemas"
+          dataSource={schemaData}
+          loading={{
+            spinning: schemaDataLoading,
+            indicator: <Loader size="small" />,
+          }}
+          locale={{
+            emptyText: <ErrorPlaceHolder className="m-y-md" />,
+          }}
+          pagination={false}
+          rowKey="id"
+          size="small"
+        />
+        {Boolean(
+          !isNil(databaseSchemaPaging.after) ||
+            !isNil(databaseSchemaPaging.before)
+        ) && (
+          <NextPrevious
+            currentPage={currentPage}
+            pageSize={PAGE_SIZE}
+            paging={databaseSchemaPaging}
+            pagingHandler={databaseSchemaPagingHandler}
+            totalCount={databaseSchemaPaging.total}
           />
-          {Boolean(
-            !isNil(databaseSchemaPaging.after) ||
-              !isNil(databaseSchemaPaging.before)
-          ) && (
-            <NextPrevious
-              currentPage={currentPage}
-              pageSize={PAGE_SIZE}
-              paging={databaseSchemaPaging}
-              pagingHandler={databaseSchemaPagingHandler}
-              totalCount={databaseSchemaPaging.total}
-            />
-          )}
-        </Col>
-      );
-    } else {
-      return <ErrorPlaceHolder />;
-    }
+        )}
+      </Col>
+    );
   }, [
     schemaDataLoading,
     schemaData,
@@ -556,10 +559,37 @@ const DatabaseDetails: FunctionComponent = () => {
     databaseSchemaPagingHandler,
   ]);
 
+  const handleRestoreDatabase = useCallback(async () => {
+    try {
+      await restoreDatabase(databaseId);
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.database'),
+        }),
+        2000
+      );
+      getDetailsByFQN();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.database'),
+        })
+      );
+    }
+  }, [databaseId]);
+
   const editTagsPermission = useMemo(
     () =>
       (databasePermission.EditTags || databasePermission.EditAll) &&
-      !database?.deleted,
+      !database.deleted,
+    [databasePermission, database]
+  );
+
+  const editDescriptionPermission = useMemo(
+    () =>
+      (databasePermission.EditDescription || databasePermission.EditAll) &&
+      !database.deleted,
     [databasePermission, database]
   );
 
@@ -589,11 +619,9 @@ const DatabaseDetails: FunctionComponent = () => {
                     entityFqn={databaseFQN}
                     entityName={databaseName}
                     entityType={EntityType.DATABASE}
-                    hasEditAccess={
-                      databasePermission.EditDescription ||
-                      databasePermission.EditAll
-                    }
+                    hasEditAccess={editDescriptionPermission}
                     isEdit={isEdit}
+                    isReadOnly={database.deleted}
                     onCancel={onCancel}
                     onDescriptionEdit={onDescriptionEdit}
                     onDescriptionUpdate={onDescriptionUpdate}
@@ -683,6 +711,7 @@ const DatabaseDetails: FunctionComponent = () => {
       feedCount,
       showDeletedSchemas,
       editTagsPermission,
+      editDescriptionPermission,
     ]
   );
 
@@ -715,14 +744,14 @@ const DatabaseDetails: FunctionComponent = () => {
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            allowSoftDelete
             isRecursiveDelete
-            allowSoftDelete={false}
             dataAsset={database}
             entityType={EntityType.DATABASE}
             permissions={databasePermission}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onOwnerUpdate={handleUpdateOwner}
-            onRestoreDataAsset={() => Promise.resolve()}
+            onRestoreDataAsset={handleRestoreDatabase}
             onTierUpdate={handleUpdateTier}
           />
         </Col>

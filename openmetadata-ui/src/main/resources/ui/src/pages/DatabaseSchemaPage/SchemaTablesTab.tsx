@@ -15,7 +15,6 @@ import { Col, Row, Switch, Table as TableAntd, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
@@ -41,7 +40,7 @@ interface SchemaTablesTabProps {
   tableDataLoading: boolean;
   description: string;
   entityFieldThreadCount: EntityLinkThreadCount[];
-  hasEditAccess: boolean;
+  editDescriptionPermission: boolean;
   isEdit: boolean;
   showDeletedTables: boolean;
   tableData: PagingResponse<Table[]>;
@@ -58,7 +57,7 @@ function SchemaTablesTab({
   tableDataLoading,
   description,
   entityFieldThreadCount,
-  hasEditAccess,
+  editDescriptionPermission,
   isEdit,
   tableData,
   getSchemaTables,
@@ -130,8 +129,9 @@ function SchemaTablesTab({
           entityFqn={databaseSchemaDetails.fullyQualifiedName}
           entityName={getEntityName(databaseSchemaDetails)}
           entityType={EntityType.DATABASE_SCHEMA}
-          hasEditAccess={hasEditAccess}
+          hasEditAccess={editDescriptionPermission}
           isEdit={isEdit}
+          isReadOnly={databaseSchemaDetails.deleted}
           onCancel={onCancel}
           onDescriptionEdit={onDescriptionEdit}
           onDescriptionUpdate={onDescriptionUpdate}
@@ -169,7 +169,7 @@ function SchemaTablesTab({
               indicator: <Loader size="small" />,
             }}
             locale={{
-              emptyText: <FilterTablePlaceHolder />,
+              emptyText: <ErrorPlaceHolder />,
             }}
             pagination={false}
             rowKey="id"

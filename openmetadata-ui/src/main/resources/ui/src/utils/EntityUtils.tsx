@@ -1143,7 +1143,7 @@ export const getEntityBreadcrumbs = (
         {
           name: getEntityName((entity as DatabaseSchema).database),
           url: getDatabaseDetailsPath(
-            (entity as DatabaseSchema).database.fullyQualifiedName ?? ''
+            (entity as DatabaseSchema).database?.fullyQualifiedName ?? ''
           ),
         },
       ];
