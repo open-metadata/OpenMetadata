@@ -1,6 +1,6 @@
 serviceName: local_mysql
 filePath: test.sql
-# parseTimeout: 220 # timeout in seconds
+# parseTimeout: 360 # timeout in seconds
 workflowConfig:
   loggerLevel: DEBUG
   openMetadataServerConfig:
