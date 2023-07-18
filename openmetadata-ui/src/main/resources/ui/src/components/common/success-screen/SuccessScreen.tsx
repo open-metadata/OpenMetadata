@@ -11,22 +11,23 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from 'antd';
-import classNames from 'classnames';
+import { Button, Card, Space, Typography } from 'antd';
+import { ReactComponent as IconCollateSupport } from 'assets/svg/ic-collate-support.svg';
+import { ReactComponent as IconSuccessBadge } from 'assets/svg/success-badge.svg';
+import Loader from 'components/Loader/Loader';
 import { AIRFLOW_DOCS } from 'constants/docs.constants';
+import { PIPELINE_SERVICE_PLATFORM } from 'constants/Services.constant';
 import { isUndefined } from 'lodash';
-import React from 'react';
+import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Transi18next } from 'utils/CommonUtils';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import Loader from '../../Loader/Loader';
+import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
 
-type SuccessScreenProps = {
+export type SuccessScreenProps = {
   name: string;
   suffix?: string;
-  successMessage?: JSX.Element;
+  successMessage?: ReactNode;
   showIngestionButton: boolean;
   showDeployButton?: boolean;
   state: FormSubmitType;
@@ -41,7 +42,6 @@ const SuccessScreen = ({
   suffix,
   showIngestionButton,
   showDeployButton = false,
-
   handleIngestionClick,
   handleViewServiceClick,
   handleDeployClick,
@@ -49,111 +49,86 @@ const SuccessScreen = ({
   viewServiceText,
 }: SuccessScreenProps) => {
   const { t } = useTranslation();
-  const { isAirflowAvailable, fetchAirflowStatus, isFetchingStatus } =
-    useAirflowStatus();
+  const { isAirflowAvailable, platform, isFetchingStatus } = useAirflowStatus();
 
-  const getAirflowStatusIcon = () => {
-    let icon;
-    if (isFetchingStatus) {
-      icon = <Loader size="small" type="default" />;
-    } else if (isAirflowAvailable) {
-      icon = (
-        <SVGIcons
-          alt="success"
-          className="tw-w-5"
-          data-testid="success-icon"
-          icon={Icons.SUCCESS_BADGE}
-        />
-      );
-    } else {
-      icon = (
-        <SVGIcons
-          alt="fail"
-          className="tw-w-5"
-          data-testid="fail-icon"
-          icon={Icons.FAIL_BADGE}
-        />
-      );
-    }
+  const isAirflowPlatform = useMemo(
+    () => platform === PIPELINE_SERVICE_PLATFORM,
+    [platform]
+  );
 
-    return icon;
-  };
+  const messageElement = useMemo(
+    () =>
+      isAirflowPlatform ? (
+        <div data-testid="airflow-platform-message">
+          <div>
+            <h6 className="text-base text-grey-body font-medium">
+              {t('message.manage-airflow-api-failed')}
+            </h6>
+
+            <p className="text-grey-body text-sm m-b-md">
+              {t('message.airflow-guide-message')}
+            </p>
+          </div>
+
+          <p>
+            <a href={AIRFLOW_DOCS} rel="noopener noreferrer" target="_blank">
+              {`${t('label.install-airflow-api')} >>`}
+            </a>
+          </p>
+        </div>
+      ) : (
+        <Space
+          align="center"
+          className="justify-center w-full m-t-sm"
+          data-testid="argo-platform-message"
+          direction="vertical"
+          size={16}>
+          <IconCollateSupport
+            data-testid="collate-support"
+            height={100}
+            width={100}
+          />
+          <Typography>{t('message.pipeline-scheduler-message')}</Typography>
+        </Space>
+      ),
+    [isAirflowPlatform]
+  );
 
   return (
     <div
-      className="d-flex flex-col tw-mt-14 tw-mb-24 tw-mx-8 tw-px-1"
+      className="d-flex flex-col mt-14 mb-24 mx-8 p-x-xss"
       data-testid="success-screen-container">
-      <div className="d-flex tw-border tw-border-main tw-rounded tw-shadow tw-p-3">
-        <div className="tw-mr-2">
-          <SVGIcons
-            alt="success"
-            className="tw-w-5"
-            data-testid="success-icon"
-            icon={Icons.SUCCESS_BADGE}
-          />
-        </div>
-        <Typography.Paragraph data-testid="success-line" ellipsis={{ rows: 3 }}>
-          {isUndefined(successMessage) ? (
-            <span>
-              <span className="tw-mr-1 tw-font-semibold">
-                {`"${name || 'demo_mysql'}"`}
+      <Card>
+        <Space>
+          <IconSuccessBadge data-testid="success-icon" width="20px" />
+          <Typography.Paragraph
+            className="m-b-0"
+            data-testid="success-line"
+            ellipsis={{ rows: 3 }}>
+            {isUndefined(successMessage) ? (
+              <span>
+                <span className="m-r-xss font-semibold">
+                  {`"${name || 'demo_mysql'}"`}
+                </span>
+                {suffix && <span className="m-r-xss">{suffix}</span>}
+                <span>{t('message.has-been-created-successfully')}</span>
               </span>
-              {suffix && <span className="tw-mr-1">{suffix}</span>}
-              <span>{t('message.has-been-created-successfully')}</span>
-            </span>
-          ) : (
-            successMessage
-          )}
-        </Typography.Paragraph>
-      </div>
-
-      {!isAirflowAvailable && (
-        <div
-          className="tw-border tw-border-main tw-rounded tw-shadow tw-mt-7 tw-p-3"
-          data-testid="airflow-status-msg">
-          <div className="d-flex tw-justify-between items-center">
-            <div className="d-flex tw-mt-0.5">
-              <div className="flex-none tw-mr-2">{getAirflowStatusIcon()}</div>
-              <h6 className="tw-text-base tw-font-medium tw-mb-0.5">
-                {isAirflowAvailable
-                  ? t('message.manage-airflow-api')
-                  : t('message.manage-airflow-api-failed')}
-              </h6>
-            </div>
-            {!isUndefined(fetchAirflowStatus) && (
-              <div className="flex-none">
-                <Button
-                  ghost
-                  data-testid="airflow-status-check"
-                  loading={isFetchingStatus}
-                  size="small"
-                  type="primary"
-                  onClick={fetchAirflowStatus}>
-                  {t('label.check-status')}
-                </Button>
-              </div>
+            ) : (
+              successMessage
             )}
-          </div>
-          {!isAirflowAvailable && (
-            <Transi18next
-              i18nKey="message.configure-airflow"
-              renderElement={
-                <a
-                  data-testid="airflow-doc-link"
-                  href={AIRFLOW_DOCS}
-                  rel="noopener noreferrer"
-                  target="_blank"
-                />
-              }
-              values={{
-                text: t('label.documentation-lowercase'),
-              }}
-            />
-          )}
-        </div>
+          </Typography.Paragraph>
+        </Space>
+      </Card>
+      {!isAirflowAvailable && (
+        <>
+          <AirflowMessageBanner className="m-t-sm" />
+          <Card className="m-t-sm">
+            {isFetchingStatus ? <Loader /> : <>{messageElement}</>}
+          </Card>
+        </>
       )}
 
-      <div className="tw-mt-7 tw-text-center">
+      <div className="mt-7 text-center">
         <Button
           ghost
           data-testid="view-service-button"
@@ -167,9 +142,7 @@ const SuccessScreen = ({
 
         {showIngestionButton && (
           <Button
-            className={classNames('tw-ml-3.5', {
-              'tw-opacity-40 tw-pointer-events-none': !isAirflowAvailable,
-            })}
+            className="m-l-3.5"
             data-testid="add-ingestion-button"
             disabled={!isAirflowAvailable}
             type="primary"
@@ -182,10 +155,8 @@ const SuccessScreen = ({
 
         {showDeployButton && (
           <Button
-            className={classNames('tw-ml-3.5', {
-              'tw-opacity-40 tw-pointer-events-none': !isAirflowAvailable,
-            })}
-            data-testid="add-ingestion-button"
+            className="m-l-3.5"
+            data-testid="deploy-ingestion-button"
             disabled={!isAirflowAvailable}
             type="primary"
             onClick={handleDeployClick}>

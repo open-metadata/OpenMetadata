@@ -50,8 +50,8 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MlModelRepository extends EntityRepository<MlModel> {
-  private static final String MODEL_UPDATE_FIELDS = "owner,dashboard,tags,extension,followers";
-  private static final String MODEL_PATCH_FIELDS = "owner,dashboard,tags,extension,followers";
+  private static final String MODEL_UPDATE_FIELDS = "dashboard";
+  private static final String MODEL_PATCH_FIELDS = "dashboard";
 
   public MlModelRepository(CollectionDAO dao) {
     super(

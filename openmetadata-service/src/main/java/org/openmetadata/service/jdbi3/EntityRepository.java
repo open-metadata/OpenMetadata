@@ -161,11 +161,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final String entityType;
   @Getter protected final EntityDAO<T> dao;
   protected final CollectionDAO daoCollection;
-  @Getter protected final List<String> allowedFields;
+  @Getter protected final Set<String> allowedFields;
   public final boolean supportsSoftDelete;
   @Getter protected final boolean supportsTags;
   @Getter protected final boolean supportsOwner;
   protected final boolean supportsFollower;
+  protected final boolean supportsExtension;
   protected final boolean supportsVotes;
   protected final boolean supportsDomain;
   protected final boolean supportsDataProducts;
@@ -189,16 +190,38 @@ public abstract class EntityRepository<T extends EntityInterface> {
     allowedFields = getEntityFields(entityClass);
     this.dao = entityDAO;
     this.daoCollection = collectionDAO;
-    this.patchFields = getFields(patchFields);
-    this.putFields = getFields(putFields);
     this.entityType = entityType;
 
+    this.patchFields = getFields(patchFields);
+    this.putFields = getFields(putFields);
+
     this.supportsTags = allowedFields.contains(FIELD_TAGS);
+    if (supportsTags) {
+      this.patchFields.addField(allowedFields, FIELD_TAGS);
+      this.putFields.addField(allowedFields, FIELD_TAGS);
+    }
     this.supportsOwner = allowedFields.contains(FIELD_OWNER);
+    if (supportsOwner) {
+      this.patchFields.addField(allowedFields, FIELD_OWNER);
+      this.putFields.addField(allowedFields, FIELD_OWNER);
+    }
     this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
     this.supportsFollower = allowedFields.contains(FIELD_FOLLOWERS);
+    if (supportsFollower) {
+      this.patchFields.addField(allowedFields, FIELD_FOLLOWERS);
+      this.putFields.addField(allowedFields, FIELD_FOLLOWERS);
+    }
+    this.supportsExtension = allowedFields.contains(FIELD_EXTENSION);
+    if (supportsExtension) {
+      this.patchFields.addField(allowedFields, FIELD_EXTENSION);
+      this.putFields.addField(allowedFields, FIELD_EXTENSION);
+    }
     this.supportsVotes = allowedFields.contains(FIELD_VOTES);
     this.supportsDomain = allowedFields.contains(FIELD_DOMAIN);
+    if (supportsDomain) {
+      this.patchFields.addField(allowedFields, FIELD_DOMAIN);
+      this.putFields.addField(allowedFields, FIELD_DOMAIN);
+    }
     this.supportsDataProducts = allowedFields.contains(FIELD_DATA_PRODUCTS);
   }
 
@@ -712,7 +735,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           false);
     }
 
-    setFieldsInternal(originalEntity, new EntityUtil.Fields(allowedFields, "votes"));
+    setFieldsInternal(originalEntity, new Fields(allowedFields, "votes"));
     ChangeEvent changeEvent =
         new ChangeEvent()
             .withEntity(originalEntity)
@@ -1451,7 +1474,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new Fields(allowedFields, fields);
   }
 
-  protected final Fields getFields(List<String> fields) {
+  protected final Fields getFields(Set<String> fields) {
     return new Fields(allowedFields, fields);
   }
 
@@ -1465,8 +1488,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return result;
   }
 
-  public final List<String> getAllowedFieldsCopy() {
-    return new ArrayList<>(allowedFields);
+  public final Set<String> getAllowedFieldsCopy() {
+    return new HashSet<>(allowedFields);
   }
 
   protected String getCustomPropertyFQNPrefix(String entityType) {
@@ -1510,7 +1533,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL);
   }
 
-  public EntityReference validateDomain(String domainFqn) throws IOException {
+  public EntityReference validateDomain(String domainFqn) {
     if (!supportsDomain || domainFqn == null) {
       return null;
     }

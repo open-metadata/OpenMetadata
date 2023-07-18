@@ -14,7 +14,7 @@
 package org.openmetadata.service.util;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -160,7 +160,7 @@ public class OpenMetadataConnectionBuilder {
           userRepository.getByName(
               null,
               bot1.getBotUser().getFullyQualifiedName(),
-              new EntityUtil.Fields(List.of("authenticationMechanism")));
+              new EntityUtil.Fields(Set.of("authenticationMechanism")));
       if (user.getAuthenticationMechanism() != null) {
         user.getAuthenticationMechanism().setConfig(user.getAuthenticationMechanism().getConfig());
       }

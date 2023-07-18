@@ -27,12 +27,11 @@ import {
   TableSearchSource,
   TopicSearchSource,
 } from 'interface/search.interface';
-import { isArray, isEmpty, isUndefined } from 'lodash';
+import { isArray, isEmpty } from 'lodash';
 import React from 'react';
 import { RenderSettings } from 'react-awesome-query-builder';
 import { getCountBadge } from 'utils/CommonUtils';
 import {
-  ALL_DROPDOWN_ITEMS,
   COMMON_DROPDOWN_ITEMS,
   CONTAINER_DROPDOWN_ITEMS,
   DASHBOARD_DROPDOWN_ITEMS,
@@ -72,12 +71,6 @@ export const getDropDownItems = (index: string) => {
     default:
       return [];
   }
-};
-
-export const getItemLabel = (key: string) => {
-  const item = ALL_DROPDOWN_ITEMS.find((dItem) => dItem.key === key);
-
-  return !isUndefined(item) ? item.label : 'label';
 };
 
 export const getAdvancedField = (field: string) => {

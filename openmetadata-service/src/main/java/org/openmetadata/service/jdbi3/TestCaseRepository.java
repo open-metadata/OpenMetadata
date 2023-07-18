@@ -49,8 +49,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String TEST_SUITE_FIELD = "testSuite";
   private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
-  private static final String UPDATE_FIELDS = "owner,entityLink,testSuite,testDefinition";
-  private static final String PATCH_FIELDS = "owner,entityLink,testSuite,testDefinition";
+  private static final String UPDATE_FIELDS = "entityLink,testSuite,testDefinition";
+  private static final String PATCH_FIELDS = "entityLink,testSuite,testDefinition";
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
 
   public TestCaseRepository(CollectionDAO dao) {

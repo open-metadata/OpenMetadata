@@ -27,17 +27,8 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class MetricsRepository extends EntityRepository<Metrics> {
-  private static final String METRICS_UPDATE_FIELDS = "owner";
-
   public MetricsRepository(CollectionDAO dao) {
-    super(
-        MetricsResource.COLLECTION_PATH,
-        Entity.METRICS,
-        Metrics.class,
-        dao.metricsDAO(),
-        dao,
-        "",
-        METRICS_UPDATE_FIELDS);
+    super(MetricsResource.COLLECTION_PATH, Entity.METRICS, Metrics.class, dao.metricsDAO(), dao, "", "");
   }
 
   @Override

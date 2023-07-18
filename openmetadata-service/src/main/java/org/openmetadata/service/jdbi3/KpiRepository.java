@@ -37,9 +37,9 @@ import org.openmetadata.service.util.ResultList;
 public class KpiRepository extends EntityRepository<Kpi> {
   private static final String KPI_RESULT_FIELD = "kpiResult";
   public static final String COLLECTION_PATH = "/v1/kpi";
-  private static final String UPDATE_FIELDS = "owner,targetDefinition,dataInsightChart,startDate,endDate,metricType";
+  private static final String UPDATE_FIELDS = "targetDefinition,dataInsightChart,startDate,endDate,metricType";
   private static final String PATCH_FIELDS =
-      "owner,targetDefinition,dataInsightChart,description,owner,startDate,endDate,metricType";
+      "targetDefinition,dataInsightChart,description,startDate,endDate,metricType";
   public static final String KPI_RESULT_EXTENSION = "kpi.kpiResult";
 
   public KpiRepository(CollectionDAO dao) {
