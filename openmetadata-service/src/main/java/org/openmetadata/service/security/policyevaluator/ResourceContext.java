@@ -63,6 +63,9 @@ public class ResourceContext implements ResourceContextInterface {
       if (entityRepository.isSupportsTags()) {
         fields = EntityUtil.addField(fields, Entity.FIELD_TAGS);
       }
+      if (entityRepository.isSupportsDomain()) {
+        fields = EntityUtil.addField(fields, Entity.FIELD_DOMAIN);
+      }
       if (id != null) {
         entity = entityRepository.findOrNull(id, fields, Include.NON_DELETED);
       } else if (name != null) {

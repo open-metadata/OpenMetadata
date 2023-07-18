@@ -95,6 +95,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     Entity.withHref(uriInfo, table.getService());
     Entity.withHref(uriInfo, table.getOwner());
     Entity.withHref(uriInfo, table.getFollowers());
+    Entity.withHref(uriInfo, table.getDomain());
     return table;
   }
 
