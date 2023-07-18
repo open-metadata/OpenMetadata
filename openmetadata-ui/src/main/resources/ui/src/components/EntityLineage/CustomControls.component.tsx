@@ -278,7 +278,7 @@ const CustomControls: FC<ControlProps> = ({
                 className={classNames(
                   'custom-control-edit-button h-8 w-8 rounded-full p-x-xss',
                   {
-                    'bg-primary': isEditMode,
+                    active: isEditMode,
                   }
                 )}
                 data-testid="edit-lineage"
