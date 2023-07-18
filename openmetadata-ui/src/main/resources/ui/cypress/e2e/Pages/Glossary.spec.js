@@ -663,12 +663,12 @@ describe('Glossary page should work properly', () => {
       '[data-testid="entity-right-panel"] [data-testid="glossary-container"] > [data-testid="entity-tags"]'
     ).click();
     // Select 1st term
-    cy.get('[data-testid="tag-selector"]').click().type(`${glossary}.${term1}`);
-    cy.get('.ant-select-item-option-content').contains(term1).click();
+    cy.get('[data-testid="tag-selector"]').click().type(term1);
+    cy.get(`[data-testid="tag-${glossary}.${term1}"]`).click();
     cy.get('[data-testid="tag-selector"]').should('contain', term1);
     // Select 2nd term
-    cy.get('[data-testid="tag-selector"]').click().type(`${glossary}.${term2}`);
-    cy.get('.ant-select-item-option-content').contains(term2).click();
+    cy.get('[data-testid="tag-selector"]').click().type(term2);
+    cy.get(`[data-testid="tag-${glossary}.${term2}"]`).click();
     cy.get('[data-testid="tag-selector"]').should('contain', term2);
 
     interceptURL('GET', '/api/v1/feed/count*', 'countTag');
@@ -688,18 +688,13 @@ describe('Glossary page should work properly', () => {
     ).click();
 
     // Select 1st term
-    cy.get('[data-testid="tag-selector"]')
-      .click()
-      .type(`${glossary1}.${term3}`);
-    cy.get('.ant-select-item-option-content').contains(term3).click();
+    cy.get('[data-testid="tag-selector"]').click().type(term3);
+
+    cy.get(`[data-testid="tag-${glossary1}.${term3}"]`).click();
     cy.get('[data-testid="tag-selector"]').should('contain', term3);
     // Select 2nd term
-    cy.get('[data-testid="tag-selector"]')
-      .click()
-      .type(`${glossary1}.${term4}`);
-    cy.get('.ant-select-item-option-content').contains(term4).click();
-    cy.get('[data-testid="tag-selector"]').should('contain', term4);
-
+    cy.get('[data-testid="tag-selector"]').click().type(term4);
+    cy.get(`[data-testid="tag-${glossary1}.${term4}"]`).click();
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@saveTag', 200);
     verifyResponseStatusCode('@countTag', 200);
@@ -716,10 +711,10 @@ describe('Glossary page should work properly', () => {
     cy.get(firstColumn).scrollIntoView();
     cy.get(firstColumn).click();
 
-    cy.get('[data-testid="tag-selector"]')
-      .click()
-      .type(`${glossary1}.${term3}`);
-    cy.get('.ant-select-item-option-content').contains(term3).click();
+    cy.get('[data-testid="tag-selector"]').click().type(term3);
+    cy.get(
+      `.ant-select-dropdown [data-testid="tag-${glossary1}.${term3}"]`
+    ).click();
 
     cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(
       term3
