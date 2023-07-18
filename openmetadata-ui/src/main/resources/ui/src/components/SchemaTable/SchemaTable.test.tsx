@@ -106,7 +106,6 @@ jest.mock(
     return jest.fn().mockReturnValue(<p>FilterTablePlaceHolder</p>);
   }
 );
-[];
 
 jest.mock('components/Tag/TagsViewer/tags-viewer', () => {
   return jest.fn().mockReturnValue(<p>TagViewer</p>);
