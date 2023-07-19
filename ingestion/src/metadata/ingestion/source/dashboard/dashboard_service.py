@@ -290,7 +290,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def yield_datamodel_dashboard_lineage(
         self,
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[AddLineageRequest]:
         """
         Returns:
             Lineage request between Data Models and Dashboards
@@ -309,7 +309,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def yield_dashboard_lineage(
         self, dashboard_details: Any
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[AddLineageRequest]:
         """
         Yields lineage if config is enabled.
 

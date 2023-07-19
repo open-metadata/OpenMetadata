@@ -80,7 +80,7 @@ class QliksenseSource(DashboardServiceSource):
         super().__init__(config, metadata_config)
         self.collections: List[QlikDashboard] = []
 
-    def get_dashboards_list(self) -> Optional[List[QlikDashboard]]:
+    def get_dashboards_list(self) -> Iterable[QlikDashboard]:
         """
         Get List of all dashboards
         """
@@ -144,7 +144,7 @@ class QliksenseSource(DashboardServiceSource):
 
     def yield_dashboard_chart(
         self, dashboard_details: QlikDashboard
-    ) -> Optional[Iterable[CreateChartRequest]]:
+    ) -> Iterable[CreateChartRequest]:
         """Get chart method
 
         Args:
@@ -296,7 +296,7 @@ class QliksenseSource(DashboardServiceSource):
         self,
         dashboard_details: QlikDashboard,
         db_service_name: Optional[str],
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[AddLineageRequest]:
         """Get lineage method
 
         Args:

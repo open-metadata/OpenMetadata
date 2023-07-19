@@ -56,13 +56,12 @@ class QlikSenseClient:
     def _clean_cert_value(self, cert_data: str) -> str:
         return cert_data.replace("\\n", "\n")
 
-    def write_data_to_file(self, file_path: str, cert_data: str) -> None:
+    def write_data_to_file(self, file_path: Path, cert_data: str) -> None:
         with open(
             file_path,
             "w+",
             encoding=UTF_8,
         ) as file:
-            cert_data
             data = self._clean_cert_value(cert_data)
 
             file.write(data)
