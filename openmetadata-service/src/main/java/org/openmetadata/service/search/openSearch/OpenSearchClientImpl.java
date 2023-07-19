@@ -343,12 +343,12 @@ public class OpenSearchClientImpl implements SearchClient {
     return Response.status(OK).entity(response).build();
   }
 
-  public Response aggregate(String index, String fieldName, String after) throws IOException {
+  public Response aggregate(String index, String fieldName, String value, String query) throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     List<CompositeValuesSourceBuilder<?>> sources = new ArrayList<>();
     sources.add(new TermsValuesSourceBuilder(fieldName).field(fieldName));
     Map<String, Object> afterKey = new HashMap<>();
-    afterKey.put(fieldName, after);
+    afterKey.put(fieldName, value);
     CompositeAggregationBuilder compositeAggregationBuilder =
         new CompositeAggregationBuilder(fieldName, sources).size(EntityBuilderConstant.MAX_AGGREGATE_SIZE);
     searchSourceBuilder.aggregation(compositeAggregationBuilder.aggregateAfter(afterKey)).size(0);

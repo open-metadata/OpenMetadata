@@ -82,11 +82,9 @@ import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.Aggregations;
 import org.elasticsearch.search.aggregations.BucketOrder;
-import org.elasticsearch.search.aggregations.bucket.composite.CompositeAggregationBuilder;
-import org.elasticsearch.search.aggregations.bucket.composite.CompositeValuesSourceBuilder;
-import org.elasticsearch.search.aggregations.bucket.composite.TermsValuesSourceBuilder;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
+import org.elasticsearch.search.aggregations.bucket.terms.IncludeExclude;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import org.elasticsearch.search.aggregations.metrics.MaxAggregationBuilder;
 import org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
@@ -350,15 +348,20 @@ public class ElasticSearchClientImpl implements SearchClient {
   }
 
   @Override
-  public Response aggregate(String index, String fieldName, String after) throws IOException {
+  public Response aggregate(String index, String fieldName, String value, String query) throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    List<CompositeValuesSourceBuilder<?>> sources = new ArrayList<>();
-    sources.add(new TermsValuesSourceBuilder(fieldName).field(fieldName));
-    Map<String, Object> afterKey = new HashMap<>();
-    afterKey.put(fieldName, after);
-    CompositeAggregationBuilder compositeAggregationBuilder =
-        new CompositeAggregationBuilder(fieldName, sources).size(EntityBuilderConstant.MAX_AGGREGATE_SIZE);
-    searchSourceBuilder.aggregation(compositeAggregationBuilder.aggregateAfter(afterKey)).size(0);
+    XContentParser filterParser =
+        XContentType.JSON.xContent().createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
+    QueryBuilder filter = searchSourceBuilder.fromXContent(filterParser).query();
+    searchSourceBuilder
+        .aggregation(
+            AggregationBuilders.terms(fieldName)
+                .field(fieldName)
+                .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE)
+                .includeExclude(new IncludeExclude(value, null))
+                .order(BucketOrder.key(true)))
+        .query(filter)
+        .size(0);
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     String response =
         client.search(new SearchRequest(index).source(searchSourceBuilder), RequestOptions.DEFAULT).toString();
