@@ -30,11 +30,11 @@
     },
     "upVoters": {
       "description": "List of all the Users who upVoted",
-      "$ref": "./entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "./entityReferenceList.json"
     },
     "downVoters": {
       "description": "List of all the Users who downVoted",
-      "$ref": "./entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "./entityReferenceList.json"
     }
   },
   "additionalProperties": false

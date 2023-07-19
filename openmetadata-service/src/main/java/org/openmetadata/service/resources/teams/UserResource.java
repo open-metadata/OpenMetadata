@@ -169,6 +169,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     Entity.withHref(uriInfo, user.getInheritedRoles());
     Entity.withHref(uriInfo, user.getOwns());
     Entity.withHref(uriInfo, user.getFollows());
+    Entity.withHref(uriInfo, user.getDomain());
     return user;
   }
 

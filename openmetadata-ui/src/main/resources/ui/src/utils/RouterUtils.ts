@@ -139,7 +139,7 @@ export const getGlossaryPath = (fqn?: string) => {
   let path = ROUTES.GLOSSARY;
   if (fqn) {
     path = ROUTES.GLOSSARY_DETAILS;
-    path = path.replace(PLACEHOLDER_GLOSSARY_NAME, fqn);
+    path = path.replace(PLACEHOLDER_GLOSSARY_NAME, encodeURIComponent(fqn));
   }
 
   return path;
@@ -456,7 +456,7 @@ export const getGlossaryTermsVersionsPath = (
     ? ROUTES.GLOSSARY_TERMS_VERSION_TAB
     : ROUTES.GLOSSARY_TERMS_VERSION;
   path = path
-    .replace(PLACEHOLDER_GLOSSARY_NAME, glossaryTermsFQN)
+    .replace(PLACEHOLDER_GLOSSARY_NAME, encodeURIComponent(glossaryTermsFQN))
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   if (tab) {

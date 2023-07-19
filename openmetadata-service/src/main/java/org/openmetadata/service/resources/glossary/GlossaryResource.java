@@ -79,6 +79,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     glossary.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, glossary.getId()));
     Entity.withHref(uriInfo, glossary.getOwner());
     Entity.withHref(uriInfo, glossary.getReviewers());
+    Entity.withHref(uriInfo, glossary.getDomain());
     return glossary;
   }
 
