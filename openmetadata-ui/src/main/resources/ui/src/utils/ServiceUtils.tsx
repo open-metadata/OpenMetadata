@@ -67,6 +67,7 @@ import {
   POSTGRES,
   POWERBI,
   PRESTO,
+  QLIK_SENSE,
   QUICKSIGHT,
   REDASH,
   REDPANDA,
@@ -244,6 +245,9 @@ export const serviceTypeLogo = (type: string) => {
       return DOMO;
     case DashboardServiceType.Mode:
       return MODE;
+
+    case DashboardServiceType.QlikSense:
+      return QLIK_SENSE;
 
     case PipelineServiceType.Airflow:
       return AIRFLOW;
