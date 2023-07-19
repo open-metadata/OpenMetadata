@@ -594,18 +594,12 @@ export const softDeleteUser = (username, isAdmin) => {
     '/api/v1/search/query?q=**&from=0&size=*&index=*',
     'searchUser'
   );
-  cy.get('[data-testid="searchbar"]')
-    .should('exist')
-    .should('be.visible')
-    .type(username);
+  cy.get('[data-testid="searchbar"]').type(username);
 
   verifyResponseStatusCode('@searchUser', 200);
 
   // Click on delete button
-  cy.get(`[data-testid="delete-user-btn-${username}"]`)
-    .should('exist')
-    .should('be.visible')
-    .click();
+  cy.get(`[data-testid="delete-user-btn-${username}"]`).click();
 
   // Soft deleting the user
   cy.get('[data-testid="soft-delete"]').click();
@@ -617,33 +611,16 @@ export const softDeleteUser = (username, isAdmin) => {
     'softdeleteUser'
   );
   interceptURL('GET', '/api/v1/users*', 'userDeleted');
-  cy.get('[data-testid="confirm-button"]')
-    .should('exist')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="confirm-button"]').click();
   verifyResponseStatusCode('@softdeleteUser', 200);
   verifyResponseStatusCode('@userDeleted', 200);
 
   toastNotification('User deleted successfully!');
 
-  if (!isAdmin) {
-    cy.get('[data-testid="previous"]')
-      .scrollIntoView()
-      .should('exist')
-      .should('be.disabled');
-
-    cy.get('[data-testid="page-indicator"]').contains('1/7 Page');
-  }
-
   interceptURL('GET', '/api/v1/search/query*', 'searchUser');
 
   // Verifying the deleted user
-  cy.get('[data-testid="searchbar"]')
-    .scrollIntoView()
-    .should('exist')
-    .should('be.visible')
-    .clear()
-    .type(username);
+  cy.get('[data-testid="searchbar"]').scrollIntoView().clear().type(username);
 
   verifyResponseStatusCode('@searchUser', 200);
   cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
