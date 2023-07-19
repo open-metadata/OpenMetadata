@@ -10,11 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export interface TeamsSelectableProps {
-  showTeamsAlert?: boolean;
-  onSelectionChange: (teams: string[]) => void;
-  filterJoinable?: boolean;
-  placeholder?: string;
-  selectedTeams?: string[];
-  maxValueCount?: number;
+
+@import url('../../../styles/variables.less');
+
+.user-profile-container {
+  padding: 30px 0;
+  height: 260px;
+  background: @user-profile-background;
+
+  .ant-col {
+    height: 100%;
+    overflow: hidden;
+
+    .ant-card {
+      background: none;
+    }
+  }
+}
+
+.profile-image-container {
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid @white;
 }

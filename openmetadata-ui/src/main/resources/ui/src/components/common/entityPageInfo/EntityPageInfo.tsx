@@ -32,7 +32,7 @@ import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { ReactComponent as IconCommentPlus } from '../../../assets/svg/add-chat.svg';
 import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
-import { ReactComponent as IconTaskColor } from '../../../assets/svg/Task-ic.svg';
+import { ReactComponent as IconTaskColor } from '../../../assets/svg/task-ic.svg';
 import { FOLLOWERS_VIEW_CAP, ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Dashboard } from '../../../generated/entity/data/dashboard';

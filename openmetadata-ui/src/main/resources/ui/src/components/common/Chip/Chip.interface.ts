@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export interface TeamsSelectableProps {
-  showTeamsAlert?: boolean;
-  onSelectionChange: (teams: string[]) => void;
-  filterJoinable?: boolean;
-  placeholder?: string;
-  selectedTeams?: string[];
-  maxValueCount?: number;
+import { EntityReference } from 'generated/entity/type';
+
+export interface ChipProps {
+  data: EntityReference[];
+  icon: React.ReactElement;
+  noDataPlaceholder: string;
+  showNoDataPlaceholder?: boolean;
 }
