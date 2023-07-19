@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { SourceType } from 'components/searched-data/SearchedData.interface';
 import { LoadingState } from 'Models';
 import { HTMLAttributes } from 'react';
 import { Edge as FlowEdge, FitViewOptions, Node } from 'reactflow';
@@ -33,6 +34,7 @@ export interface EntityLineageProp {
   deleted?: boolean;
   hasEditAccess?: boolean;
   isFullScreen?: boolean;
+  entity?: SourceType;
 }
 
 export interface Edge {

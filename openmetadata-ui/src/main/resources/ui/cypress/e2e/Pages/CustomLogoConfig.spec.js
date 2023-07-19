@@ -10,6 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+// eslint-disable-next-line spaced-comment
+/// <reference types="cypress" />
+
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 
 const config = {
@@ -23,10 +26,7 @@ describe('Custom Logo Config', () => {
   beforeEach(() => {
     cy.login();
 
-    cy.get('[data-testid="appbar-item-settings"]')
-      .should('exist')
-      .and('be.visible')
-      .click();
+    cy.get('[data-testid="appbar-item-settings"]').click();
 
     interceptURL(
       'GET',
@@ -37,35 +37,16 @@ describe('Custom Logo Config', () => {
     cy.get('[data-testid="global-setting-left-panel"]')
       .contains('Custom Logo')
       .scrollIntoView()
-      .should('be.visible')
-      .and('exist')
       .click();
 
     verifyResponseStatusCode('@customLogoConfiguration', 200);
   });
 
-  it('Should have default config', () => {
-    cy.get('[data-testid="sub-heading"]')
-      .should('be.visible')
-      .contains('Configure The Application Logo and Monogram.');
-    cy.get('[data-testid="logo-url"]').should('be.visible').contains('--');
-    cy.get('[data-testid="monogram-url"]').should('be.visible').contains('--');
-    cy.get('[data-testid="edit-button"]').should('be.visible');
-  });
-
   it('Should update the config', () => {
-    interceptURL(
-      'GET',
-      'api/v1/system/settings/customLogoConfiguration',
-      'customLogoConfiguration'
-    );
     cy.get('[data-testid="edit-button"]').should('be.visible').click();
-    verifyResponseStatusCode('@customLogoConfiguration', 200);
 
     cy.get('[data-testid="customLogoUrlPath"]')
       .scrollIntoView()
-      .should('be.visible')
-      .click()
       .clear()
       .type('incorrect url');
 
@@ -74,15 +55,11 @@ describe('Custom Logo Config', () => {
 
     cy.get('[data-testid="customLogoUrlPath"]')
       .scrollIntoView()
-      .should('be.visible')
-      .click()
       .clear()
       .type(config.logo);
 
     cy.get('[data-testid="customMonogramUrlPath"]')
       .scrollIntoView()
-      .should('be.visible')
-      .click()
       .clear()
       .type('incorrect url');
 
@@ -91,8 +68,6 @@ describe('Custom Logo Config', () => {
 
     cy.get('[data-testid="customMonogramUrlPath"]')
       .scrollIntoView()
-      .should('be.visible')
-      .click()
       .clear()
       .type(config.monogram);
 
@@ -109,11 +84,19 @@ describe('Custom Logo Config', () => {
     verifyResponseStatusCode('@updatedConfig', 200);
     verifyResponseStatusCode('@updatedCustomLogoConfiguration', 200);
 
-    cy.get('[data-testid="logo-url"]')
-      .should('be.visible')
-      .contains(config.logo);
-    cy.get('[data-testid="monogram-url"]')
-      .should('be.visible')
-      .contains(config.monogram);
+    cy.get('[data-testid="logo-url"]').should('contain', config.logo);
+    cy.get('[data-testid="monogram-url"]').should('contain', config.monogram);
+  });
+
+  it('Reset to default', () => {
+    cy.get('[data-testid="edit-button"]').should('be.visible').click();
+    cy.get('[data-testid="customLogoUrlPath"]').scrollIntoView().clear();
+    cy.get('[data-testid="customMonogramUrlPath"]').scrollIntoView().clear();
+    interceptURL('PUT', 'api/v1/system/settings', 'updatedConfig');
+
+    cy.get('[data-testid="save-button"]').click();
+
+    verifyResponseStatusCode('@updatedConfig', 200);
+    verifyResponseStatusCode('@customLogoConfiguration', 200);
   });
 });

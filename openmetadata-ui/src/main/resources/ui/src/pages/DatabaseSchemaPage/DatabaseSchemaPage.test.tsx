@@ -66,14 +66,6 @@ jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
     ))
 );
 
-jest.mock('components/common/entityPageInfo/EntityPageInfo', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="entityPageInfo">EntityPageInfo</div>
-    ))
-);
-
 jest.mock('components/common/description/Description', () =>
   jest
     .fn()

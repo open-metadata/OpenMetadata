@@ -34,6 +34,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { glossaryName } = useParams<{ glossaryName: string }>();
+  const glossaryFqn = glossaryName ? decodeURIComponent(glossaryName) : null;
   const history = useHistory();
 
   const createGlossaryPermission = useMemo(
@@ -42,12 +43,12 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
     [permissions]
   );
   const selectedKey = useMemo(() => {
-    if (glossaryName) {
-      return Fqn.split(glossaryName)[0];
+    if (glossaryFqn) {
+      return Fqn.split(glossaryFqn)[0];
     }
 
     return glossaries[0].name;
-  }, [glossaryName]);
+  }, [glossaryFqn]);
 
   const menuItems: ItemType[] = useMemo(() => {
     return glossaries.reduce((acc, glossary) => {

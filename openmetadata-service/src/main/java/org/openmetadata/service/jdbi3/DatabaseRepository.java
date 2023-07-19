@@ -13,6 +13,10 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.DATABASE_SERVICE;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
+
 import java.io.IOException;
 import java.util.List;
 import org.openmetadata.schema.entity.data.Database;
@@ -28,7 +32,6 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class DatabaseRepository extends EntityRepository<Database> {
-
   public DatabaseRepository(CollectionDAO dao) {
     super(DatabaseResource.COLLECTION_PATH, Entity.DATABASE, Database.class, dao.databaseDAO(), dao, "", "");
   }
@@ -61,6 +64,16 @@ public class DatabaseRepository extends EntityRepository<Database> {
   public void storeRelationships(Database database) {
     EntityReference service = database.getService();
     addRelationship(service.getId(), database.getId(), service.getType(), Entity.DATABASE, Relationship.CONTAINS);
+  }
+
+  @Override
+  public Database setInheritedFields(Database database, Fields fields) throws IOException {
+    // If database does not have domain, then inherit it from parent database service
+    if (fields.contains(FIELD_DOMAIN) && database.getDomain() == null) {
+      DatabaseService service = Entity.getEntity(DATABASE_SERVICE, database.getService().getId(), "domain", ALL);
+      database.withDomain(service.getDomain());
+    }
+    return database;
   }
 
   private List<EntityReference> getSchemas(Database database) throws IOException {

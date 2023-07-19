@@ -18,7 +18,7 @@ import {
   getDatabaseDetailsByFQN,
   patchDatabaseDetails,
 } from 'rest/databaseAPI';
-import DatabaseDetails from './';
+import DatabaseDetailsPage from './DatabaseDetailsPage';
 
 const mockDatabase = {
   id: 'b705cc69-55fd-4338-aa45-86f34b655ae6',
@@ -256,7 +256,7 @@ jest.mock(
 
 describe('Test DatabaseDetails page', () => {
   it('Component should render', async () => {
-    const { container } = render(<DatabaseDetails />, {
+    const { container } = render(<DatabaseDetailsPage />, {
       wrapper: MemoryRouter,
     });
 
@@ -273,7 +273,7 @@ describe('Test DatabaseDetails page', () => {
   });
 
   it('Table and its header should render', async () => {
-    const { container } = render(<DatabaseDetails />, {
+    const { container } = render(<DatabaseDetailsPage />, {
       wrapper: MemoryRouter,
     });
     const databaseTable = await findByTestId(
@@ -305,7 +305,7 @@ describe('Test DatabaseDetails page', () => {
         },
       })
     );
-    const { container } = render(<DatabaseDetails />, {
+    const { container } = render(<DatabaseDetailsPage />, {
       wrapper: MemoryRouter,
     });
 
@@ -327,7 +327,7 @@ describe('Test DatabaseDetails page', () => {
         },
       })
     );
-    const { container } = render(<DatabaseDetails />, {
+    const { container } = render(<DatabaseDetailsPage />, {
       wrapper: MemoryRouter,
     });
 

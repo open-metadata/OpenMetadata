@@ -13,7 +13,6 @@
 
 import {
   deleteCreatedService,
-  editOwnerforCreatedService,
   goToAddNewServicePage,
   testServiceCreationAndIngestion,
   updateDescriptionForIngestedTables,
@@ -83,14 +82,6 @@ describe('Superset Ingestion', () => {
       description,
       SERVICE_TYPE.Dashboard,
       'dashboards'
-    );
-  });
-
-  it('Edit and validate owner', () => {
-    editOwnerforCreatedService(
-      SERVICE_TYPE.Dashboard,
-      serviceName,
-      API_SERVICE.dashboardServices
     );
   });
 

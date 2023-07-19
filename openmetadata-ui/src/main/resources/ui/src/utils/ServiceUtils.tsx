@@ -12,12 +12,10 @@
  */
 
 import { AxiosError } from 'axios';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { EntityTabs } from 'enums/entity.enum';
+import { EntityType } from 'enums/entity.enum';
+import { SearchIndex } from 'enums/search.enum';
 import { StorageServiceType } from 'generated/entity/data/container';
 import { t } from 'i18next';
 import { ServiceTypes } from 'Models';
@@ -117,6 +115,7 @@ import {
 } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
 import { getBrokers } from './MessagingServiceUtils';
+import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const serviceTypeLogo = (type: string) => {
@@ -645,52 +644,54 @@ export const getCountLabel = (serviceName: ServiceTypes) => {
   }
 };
 
-export const getServicePageTabs = (
-  serviceName: ServiceTypes,
-  instanceCount: number,
-  ingestionCount: number,
-  servicePermission: OperationPermission,
-  dataModelCount: number,
-  showIngestionTab: boolean
-) => {
-  const tabs = [];
-
-  if (serviceName !== ServiceCategory.METADATA_SERVICES) {
-    tabs.push({
-      name: getCountLabel(serviceName),
-      key: getCountLabel(serviceName).toLowerCase(),
-      count: instanceCount,
-    });
-  }
-
-  if (serviceName === ServiceCategory.DASHBOARD_SERVICES) {
-    tabs.push({
-      name: t('label.data-model'),
-      key: EntityTabs.DATA_Model,
-      count: dataModelCount,
-    });
-  }
-
-  tabs.push(
-    {
-      name: t('label.ingestion-plural'),
-      key: EntityTabs.INGESTIONS,
-      isHidden: !showIngestionTab,
-      count: ingestionCount,
-    },
-    {
-      name: t('label.connection'),
-      isHidden: !servicePermission.EditAll,
-      key: EntityTabs.CONNECTION,
-    }
-  );
-
-  return tabs.filter((tab) => !tab.isHidden);
-};
-
 export const getTestConnectionName = (connectionType: string) => {
   return `test-connection-${connectionType}-${cryptoRandomString({
     length: 8,
     type: 'alphanumeric',
   })}`;
+};
+
+export const getEntityTypeFromServiceCategory = (
+  serviceCategory: ServiceTypes
+) => {
+  switch (serviceCategory) {
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return EntityType.DASHBOARD_SERVICE;
+    case ServiceCategory.MESSAGING_SERVICES:
+      return EntityType.MESSAGING_SERVICE;
+    case ServiceCategory.PIPELINE_SERVICES:
+      return EntityType.PIPELINE_SERVICE;
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return EntityType.MLMODEL_SERVICE;
+    case ServiceCategory.METADATA_SERVICES:
+      return EntityType.METADATA_SERVICE;
+    case ServiceCategory.STORAGE_SERVICES:
+      return EntityType.STORAGE_SERVICE;
+    case ServiceCategory.DATABASE_SERVICES:
+    default:
+      return EntityType.DATABASE_SERVICE;
+  }
+};
+
+export const getLinkForFqn = (serviceCategory: ServiceTypes, fqn: string) => {
+  switch (serviceCategory) {
+    case ServiceCategory.MESSAGING_SERVICES:
+      return getEntityLink(SearchIndex.TOPIC, fqn);
+
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return getEntityLink(SearchIndex.DASHBOARD, fqn);
+
+    case ServiceCategory.PIPELINE_SERVICES:
+      return getEntityLink(SearchIndex.PIPELINE, fqn);
+
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return getEntityLink(SearchIndex.MLMODEL, fqn);
+
+    case ServiceCategory.STORAGE_SERVICES:
+      return getEntityLink(EntityType.CONTAINER, fqn);
+
+    case ServiceCategory.DATABASE_SERVICES:
+    default:
+      return `/database/${fqn}`;
+  }
 };
