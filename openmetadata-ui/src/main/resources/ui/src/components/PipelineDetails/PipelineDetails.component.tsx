@@ -672,18 +672,14 @@ const PipelineDetails = ({
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <Card
-            className="lineage-card card-body-full w-auto border-none"
-            data-testid="lineage-details"
-            id="lineageDetails">
-            <EntityLineageComponent
-              deleted={deleted}
-              entityType={EntityType.PIPELINE}
-              hasEditAccess={
-                pipelinePermissions.EditAll || pipelinePermissions.EditLineage
-              }
-            />
-          </Card>
+          <EntityLineageComponent
+            deleted={deleted}
+            entity={pipelineDetails}
+            entityType={EntityType.PIPELINE}
+            hasEditAccess={
+              pipelinePermissions.EditAll || pipelinePermissions.EditLineage
+            }
+          />
         ),
       },
       {
