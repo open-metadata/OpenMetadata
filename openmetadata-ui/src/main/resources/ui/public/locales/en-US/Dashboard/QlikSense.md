@@ -116,7 +116,7 @@ This field specifies the path to temporary staging directory, where the certific
 $$
 
 $$section
-### Client Certificate Value $(id="clientCertificate")
+### Client Certificate Path $(id="clientCertificate")
 
 This field specifies the path of `client.pem` certificate required for authentication. 
 
@@ -125,31 +125,26 @@ $$
 
 
 $$section
-### Client Key Certificate Value $(id="clientKeyCertificate")
+### Client Key Certificate Path $(id="clientKeyCertificate")
 
 This field specifies the path of `client_key.pem` certificate required for authentication. 
 
 Example: `/path/to/client_key.pem`
-
 $$
 
 
 $$section
-### Root Certificate Value $(id="rootCertificate")
+### Root Certificate Path $(id="rootCertificate")
 
 This field specifies the path of `root.pem` certificate required for authentication. 
 
 Example: `/path/to/root.pem`
-
 $$
-
-
 
 $$section
 ### User Directory $(id="userDirectory")
 
 This field specifies the user directory of the user.
-
 $$
 
 
@@ -158,5 +153,4 @@ $$section
 ### User ID $(id="userId")
 
 This field specifies the user id of the user.
-
 $$
