@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row, Space, Tabs, Typography } from 'antd';
+import { Col, Row, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import ActivityFeedProvider, {
@@ -35,6 +35,7 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import SampleDataTableComponent from 'components/SampleDataTable/SampleDataTable.component';
 import SchemaTab from 'components/SchemaTab/SchemaTab.component';
+import { SourceType } from 'components/searched-data/SearchedData.interface';
 import TableProfilerV1 from 'components/TableProfiler/TableProfilerV1';
 import TableQueries from 'components/TableQueries/TableQueries';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
@@ -101,9 +102,6 @@ const TableDetailsPageV1 = () => {
   const USERId = getCurrentUserId();
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
-  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
     EntityFieldThreadCount[]
   >([]);
   const [isEdit, setIsEdit] = useState(false);
@@ -281,7 +279,6 @@ const TableDetailsPageV1 = () => {
       EntityType.TABLE,
       datasetFQN,
       setEntityFieldThreadCount,
-      setEntityFieldTaskCount,
       setFeedCount
     );
   };
@@ -460,10 +457,6 @@ const TableDetailsPageV1 = () => {
                 FQN_SEPARATOR_CHAR
               )}
               columns={tableDetails?.columns ?? []}
-              entityFieldTasks={getEntityFieldThreadCounts(
-                EntityField.COLUMNS,
-                entityFieldTaskCount
-              )}
               entityFieldThreads={getEntityFieldThreadCounts(
                 EntityField.COLUMNS,
                 entityFieldThreadCount
@@ -632,17 +625,14 @@ const TableDetailsPageV1 = () => {
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <Card
-            className="lineage-card card-body-full w-auto border-none"
-            id="lineageDetails">
-            <EntityLineageComponent
-              deleted={tableDetails?.deleted}
-              entityType={EntityType.TABLE}
-              hasEditAccess={
-                tablePermissions.EditAll || tablePermissions.EditLineage
-              }
-            />
-          </Card>
+          <EntityLineageComponent
+            deleted={tableDetails?.deleted}
+            entity={tableDetails as SourceType}
+            entityType={EntityType.TABLE}
+            hasEditAccess={
+              tablePermissions.EditAll || tablePermissions.EditLineage
+            }
+          />
         ),
       },
 

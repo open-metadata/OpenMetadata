@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Form, FormProps, Input, Space } from 'antd';
+import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -34,7 +34,6 @@ import {
   TaskType,
   ThreadType,
 } from '../../../generated/api/feed/createThread';
-import { Table } from '../../../generated/entity/data/table';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
@@ -45,6 +44,7 @@ import {
   fetchOptions,
   getBreadCrumbList,
   getColumnObject,
+  getEntityColumnsDetails,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
@@ -86,8 +86,12 @@ const UpdateDescription = () => {
   const columnObject = useMemo(() => {
     const column = getSanitizeValue.split(FQN_SEPARATOR_CHAR).slice(-1);
 
-    return getColumnObject(column[0], (entityData as Table).columns || []);
-  }, [field, entityData as Table]);
+    return getColumnObject(
+      column[0],
+      getEntityColumnsDetails(entityType, entityData),
+      entityType as EntityType
+    );
+  }, [field, entityData, entityType]);
 
   const getDescription = () => {
     if (!isEmpty(columnObject) && !isUndefined(columnObject)) {
@@ -197,12 +201,14 @@ const UpdateDescription = () => {
               ]}
             />
 
-            <Card
-              className="m-t-0 request-description"
-              key="update-description"
-              title={t('label.create-entity', {
-                entity: t('label.task'),
-              })}>
+            <div className="m-t-0 request-description" key="update-description">
+              <Typography.Paragraph
+                className="text-base"
+                data-testid="form-title">
+                {t('label.create-entity', {
+                  entity: t('label.task'),
+                })}
+              </Typography.Paragraph>
               <Form form={form} layout="vertical" onFinish={onCreateTask}>
                 <Form.Item
                   data-testid="title"
@@ -269,7 +275,7 @@ const UpdateDescription = () => {
                   </Space>
                 </Form.Item>
               </Form>
-            </Card>
+            </div>
           </div>
         ),
       }}

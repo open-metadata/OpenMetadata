@@ -225,8 +225,6 @@ jest.mock('../../utils/TagsUtils', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve({ data: MOCK_TAGS_CATEGORY })),
   getTaglist: jest.fn().mockReturnValue(['tag 1', 'tag 2']),
-  getTagOptionsFromFQN: jest.fn().mockReturnValue([]),
-  tagsNameValidator: jest.fn().mockImplementation(() => Promise.resolve(true)),
   getDeleteIcon: jest.fn().mockImplementation(() => <div>Icon</div>),
   getUsageCountLink: jest
     .fn()

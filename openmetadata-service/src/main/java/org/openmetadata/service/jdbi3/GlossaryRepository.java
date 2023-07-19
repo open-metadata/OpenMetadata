@@ -60,8 +60,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class GlossaryRepository extends EntityRepository<Glossary> {
-  private static final String UPDATE_FIELDS = "owner,tags,reviewers";
-  private static final String PATCH_FIELDS = "owner,tags,reviewers";
+  private static final String UPDATE_FIELDS = "reviewers";
+  private static final String PATCH_FIELDS = "reviewers";
 
   public GlossaryRepository(CollectionDAO dao) {
     super(

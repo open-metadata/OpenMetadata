@@ -321,6 +321,7 @@ const DataModelsPage = () => {
       createThread={createThread}
       dataModelData={dataModelData}
       dataModelPermissions={dataModelPermissions}
+      fetchDataModel={() => fetchDataModelDetails(dashboardDataModelFQN)}
       handleColumnUpdateDataModel={handleColumnUpdateDataModel}
       handleFollowDataModel={handleFollowDataModel}
       handleUpdateDescription={handleUpdateDescription}

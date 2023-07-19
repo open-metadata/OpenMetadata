@@ -16,7 +16,7 @@ Factory class for creating profiler source objects
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigqueryType,
 )
-from metadata.profiler.source.base_profiler_source import BaseProfilerSource
+from metadata.profiler.source.base.profiler_source import ProfilerSource
 from metadata.profiler.source.bigquery.profiler_source import BigQueryProfilerSource
 
 
@@ -24,13 +24,13 @@ class ProfilerSourceFactory:
     """Creational factory for profiler source objects"""
 
     def __init__(self):
-        self._source_type = {"base": BaseProfilerSource}
+        self._source_type = {"base": ProfilerSource}
 
     def register_source(self, source_type: str, source_class):
         """Register a new source type"""
         self._source_type[source_type] = source_class
 
-    def create(self, source_type: str, *args, **kwargs) -> BaseProfilerSource:
+    def create(self, source_type: str, *args, **kwargs) -> ProfilerSource:
         """Create source object based on source type"""
         source_class = self._source_type.get(source_type)
         if not source_class:

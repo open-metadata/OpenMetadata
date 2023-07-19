@@ -28,11 +28,12 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
-import { SummaryCardProps } from 'components/common/SummaryCard/SummaryCard.interface';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
+import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
+import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
+import { SummaryCardProps } from 'components/common/SummaryCard/SummaryCard.interface';
 import { mockDatasetData } from 'constants/mockTourData.constants';
 import { Column } from 'generated/entity/data/container';
 import {
@@ -46,22 +47,29 @@ import {
   toLower,
 } from 'lodash';
 import Qs from 'qs';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import { getLatestTableProfileByFqn } from 'rest/tableAPI';
-import { getListTestCase, ListTestCaseParams } from 'rest/testAPI';
+import { ListTestCaseParams, getListTestCase } from 'rest/testAPI';
 import { ReactComponent as ColumnProfileIcon } from '../../assets/svg/column-profile.svg';
 import { ReactComponent as DataQualityIcon } from '../../assets/svg/data-quality.svg';
 import { ReactComponent as SettingIcon } from '../../assets/svg/ic-settings-primery.svg';
 import { ReactComponent as NoDataIcon } from '../../assets/svg/no-data-icon.svg';
 import { ReactComponent as TableProfileIcon } from '../../assets/svg/table-profile.svg';
-import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import { API_RES_MAX_SIZE } from '../../constants/constants';
 import {
-  allowedServiceForOperationGraph,
   DEFAULT_RANGE_DATA,
   INITIAL_TEST_RESULT_SUMMARY,
+  allowedServiceForOperationGraph,
 } from '../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { ProfileSampleType, Table } from '../../generated/entity/data/table';
@@ -71,8 +79,8 @@ import { updateTestResults } from '../../utils/DataQualityAndProfilerUtils';
 import { getAddDataQualityTableTestPath } from '../../utils/RouterUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import PageHeader from '../header/PageHeader.component';
 import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
+import PageHeader from '../header/PageHeader.component';
 import ColumnPickerMenu from './Component/ColumnPickerMenu';
 import ColumnProfileTable from './Component/ColumnProfileTable';
 import ColumnSummary from './Component/ColumnSummary';
@@ -116,6 +124,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     return { profile: table?.profile, columns: table?.columns || [] };
   }, [table]);
   const [settingModalVisible, setSettingModalVisible] = useState(false);
+  const allTests = useRef<TestCase[]>([]);
   const [columnTests, setColumnTests] = useState<TestCase[]>([]);
   const [tableTests, setTableTests] = useState<TableTestsType>({
     tests: [],
@@ -130,7 +139,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
 
   const showOperationGraph = useMemo(() => {
-    if (table && table.serviceType) {
+    if (table?.serviceType) {
       return allowedServiceForOperationGraph.includes(table.serviceType);
     }
 
@@ -281,12 +290,12 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
   const addButtonContent = [
     {
-      label: t('label.table'),
+      label: <TabsLabel id="table" name={t('label.table')} />,
       key: '1',
       onClick: () => handleAddTestClick(ProfilerDashboardType.TABLE),
     },
     {
-      label: t('label.column'),
+      label: <TabsLabel id="column" name={t('label.column')} />,
       key: '2',
       onClick: () => handleAddTestClick(ProfilerDashboardType.COLUMN),
     },
@@ -332,36 +341,41 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     }
   };
 
+  const splitTableAndColumnTest = (data: TestCase[]) => {
+    const columnTestsCase: TestCase[] = [];
+    const tableTests: TableTestsType = {
+      tests: [],
+      results: { ...INITIAL_TEST_RESULT_SUMMARY },
+    };
+    data.forEach((test) => {
+      if (test.entityFQN === table?.fullyQualifiedName) {
+        tableTests.tests.push(test);
+
+        updateTestResults(
+          tableTests.results,
+          test.testCaseResult?.testCaseStatus || ''
+        );
+
+        return;
+      }
+      columnTestsCase.push(test);
+    });
+    setTableTests(tableTests);
+    setColumnTests(columnTestsCase);
+  };
+
   const fetchAllTests = async (params?: ListTestCaseParams) => {
     setIsTestCaseLoading(true);
     try {
       const { data } = await getListTestCase({
+        ...params,
         fields: 'testCaseResult,entityLink,testDefinition,testSuite',
         entityLink: generateEntityLink(table?.fullyQualifiedName || ''),
         includeAllTests: true,
         limit: API_RES_MAX_SIZE,
-        ...params,
       });
-      const columnTestsCase: TestCase[] = [];
-      const tableTests: TableTestsType = {
-        tests: [],
-        results: { ...INITIAL_TEST_RESULT_SUMMARY },
-      };
-      data.forEach((test) => {
-        if (test.entityFQN === table?.fullyQualifiedName) {
-          tableTests.tests.push(test);
-
-          updateTestResults(
-            tableTests.results,
-            test.testCaseResult?.testCaseStatus || ''
-          );
-
-          return;
-        }
-        columnTestsCase.push(test);
-      });
-      setTableTests(tableTests);
-      setColumnTests(columnTestsCase);
+      allTests.current = data;
+      splitTableAndColumnTest(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -369,6 +383,19 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     }
   };
 
+  const handleTestUpdate = useCallback(
+    (testCase?: TestCase) => {
+      if (isUndefined(testCase)) {
+        return;
+      }
+      const updatedTests = allTests.current.map((test) => {
+        return testCase.id === test.id ? { ...test, ...testCase } : test;
+      });
+      splitTableAndColumnTest(updatedTests);
+      allTests.current = updatedTests;
+    },
+    [allTests.current]
+  );
   const handleTestCaseStatusChange = (value: string) => {
     if (value !== selectedTestCaseStatus) {
       setSelectedTestCaseStatus(value);
@@ -615,12 +642,13 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
           {isDataQuality && (
             <QualityTab
+              afterDeleteAction={fetchAllTests}
               isLoading={isTestCaseLoading}
               showTableColumn={false}
               testCases={getFilterTestCase()}
               testSuite={testSuite}
               onTestCaseResultUpdate={handleResultUpdate}
-              onTestUpdate={fetchAllTests}
+              onTestUpdate={handleTestUpdate}
             />
           )}
 

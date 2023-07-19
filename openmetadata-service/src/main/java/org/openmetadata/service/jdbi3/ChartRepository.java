@@ -13,6 +13,9 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -31,18 +34,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class ChartRepository extends EntityRepository<Chart> {
-  private static final String CHART_UPDATE_FIELDS = "owner";
-  private static final String CHART_PATCH_FIELDS = "owner,tags";
-
   public ChartRepository(CollectionDAO dao) {
-    super(
-        ChartResource.COLLECTION_PATH,
-        Entity.CHART,
-        Chart.class,
-        dao.chartDAO(),
-        dao,
-        CHART_PATCH_FIELDS,
-        CHART_UPDATE_FIELDS);
+    super(ChartResource.COLLECTION_PATH, Entity.CHART, Chart.class, dao.chartDAO(), dao, "", "");
   }
 
   @Override
@@ -71,6 +64,15 @@ public class ChartRepository extends EntityRepository<Chart> {
   public void storeRelationships(Chart chart) {
     EntityReference service = chart.getService();
     addRelationship(service.getId(), chart.getId(), service.getType(), Entity.CHART, Relationship.CONTAINS);
+  }
+
+  @Override
+  public Chart setInheritedFields(Chart chart, Fields fields) throws IOException {
+    if (fields.contains(FIELD_DOMAIN) && nullOrEmpty(chart.getDomain())) {
+      DashboardService dashboardService = Entity.getEntity(chart.getService(), "domain", ALL);
+      chart.setDomain(dashboardService.getDomain());
+    }
+    return chart;
   }
 
   @Override

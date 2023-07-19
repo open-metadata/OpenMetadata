@@ -82,6 +82,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     Entity.withHref(uriInfo, mlmodel.getDashboard());
     Entity.withHref(uriInfo, mlmodel.getService());
     Entity.withHref(uriInfo, mlmodel.getFollowers());
+    Entity.withHref(uriInfo, mlmodel.getDomain());
     return mlmodel;
   }
 

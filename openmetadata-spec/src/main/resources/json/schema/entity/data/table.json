@@ -39,7 +39,8 @@
         "Iceberg",
         "Local",
         "Partitioned",
-        "Foreign"
+        "Foreign",
+        "Transient"
       ],
       "javaEnums": [
         {
@@ -68,6 +69,9 @@
         },
         {
           "name": "Foreign"
+        },
+        {
+          "name": "Transient"
         }
       ]
     },
@@ -957,7 +961,7 @@
     },
     "followers": {
       "description": "Followers of this table.",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "joins": {
       "description": "Details of other tables this table is frequently joined with.",
@@ -1013,7 +1017,7 @@
     },
     "dataProducts" : {
       "description": "List of of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref" : "../../type/entityReferenceList.json"
     }
   },
   "required": [

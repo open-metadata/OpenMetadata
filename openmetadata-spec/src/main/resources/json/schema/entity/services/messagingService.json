@@ -97,7 +97,7 @@
     },
     "pipelines": {
       "description": "References to pipelines deployed for this messaging service to extract topic configs and schemas.",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "testConnectionResult": {
       "description": "Last test connection results for this service",

@@ -18,9 +18,9 @@ import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
 import { getDataModelDetailsPath, PAGE_SIZE } from 'constants/constants';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { DataModelTableProps } from 'pages/DataModelPage/DataModelsInterface';
-import { ServicePageData } from 'pages/service';
+import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -69,12 +69,8 @@ const DataModelTable = ({
     []
   );
 
-  if (isEmpty(data)) {
-    return <ErrorPlaceHolder />;
-  }
-
   return (
-    <Col data-testid="table-container" span={24}>
+    <Col className="p-x-lg" data-testid="table-container" span={24}>
       <Table
         bordered
         className="mt-4 table-shadow"
@@ -84,6 +80,9 @@ const DataModelTable = ({
         loading={{
           spinning: isLoading,
           indicator: <Loader size="small" />,
+        }}
+        locale={{
+          emptyText: <ErrorPlaceHolder className="m-y-md" />,
         }}
         pagination={false}
         rowKey="id"

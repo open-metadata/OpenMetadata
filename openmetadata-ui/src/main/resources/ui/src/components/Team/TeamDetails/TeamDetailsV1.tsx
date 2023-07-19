@@ -15,6 +15,8 @@ import { CheckOutlined, CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
+  Form,
+  FormProps,
   Input,
   Modal,
   Row,
@@ -41,6 +43,7 @@ import {
   GlobalSettingsMenuCategory,
 } from 'constants/GlobalSettings.constants';
 import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
+import { EMAIL_REG_EX } from 'constants/regex.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
@@ -202,7 +205,6 @@ const TeamDetailsV1 = ({
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
-  const [email, setEmail] = useState<string>(currentTeam.email || '');
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
   const { showModal } = useEntityExportModalProvider();
 
@@ -530,11 +532,12 @@ const TeamDetailsV1 = ({
     }
   };
 
-  const handleUpdateEmail = () => {
+  const handleUpdateEmail: FormProps['onFinish'] = (values) => {
+    const { email } = values;
     if (currentTeam) {
       const updatedData: Team = {
         ...currentTeam,
-        email,
+        email: isEmpty(email) ? undefined : email,
       };
 
       updateTeamHandler(updatedData);
@@ -886,34 +889,48 @@ const TeamDetailsV1 = ({
   const emailElement = (
     <Space className="m-b-xs">
       {isEmailEdit ? (
-        <Space>
-          <Input
-            className="w-64"
-            data-testid="email-input"
-            placeholder={t('label.enter-entity', {
-              entity: t('label.email-lowercase'),
-            })}
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Button
-            className="h-8 p-x-xss"
-            data-testid="cancel-edit-email"
-            size="small"
-            type="primary"
-            onClick={() => setIsEmailEdit(false)}>
-            <CloseOutlined />
-          </Button>
-          <Button
-            className="h-8 p-x-xss"
-            data-testid="save-edit-email"
-            size="small"
-            type="primary"
-            onClick={handleUpdateEmail}>
-            <CheckOutlined />
-          </Button>
-        </Space>
+        <Form
+          initialValues={{ email: currentTeam.email }}
+          onFinish={handleUpdateEmail}>
+          <Space align="baseline">
+            <Form.Item
+              className="m-b-0"
+              name="email"
+              rules={[
+                {
+                  pattern: EMAIL_REG_EX,
+                  type: 'email',
+                  message: t('message.field-text-is-invalid', {
+                    fieldText: t('label.email'),
+                  }),
+                },
+              ]}>
+              <Input
+                className="w-64"
+                data-testid="email-input"
+                placeholder={t('label.enter-entity', {
+                  entity: t('label.email-lowercase'),
+                })}
+              />
+            </Form.Item>
+            <Button
+              className="h-8 p-x-xss"
+              data-testid="cancel-edit-email"
+              size="small"
+              type="primary"
+              onClick={() => setIsEmailEdit(false)}>
+              <CloseOutlined />
+            </Button>
+            <Button
+              className="h-8 p-x-xss"
+              data-testid="save-edit-email"
+              htmlType="submit"
+              size="small"
+              type="primary">
+              <CheckOutlined />
+            </Button>
+          </Space>
+        </Form>
       ) : (
         <>
           <Typography.Text data-testid="email-value">
