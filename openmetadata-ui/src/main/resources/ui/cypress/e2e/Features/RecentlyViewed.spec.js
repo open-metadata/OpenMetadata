@@ -36,11 +36,7 @@ const RECENTLY_VIEW_ENTITIES = [
 ];
 
 describe('Recently viwed data assets', () => {
-  after(() => {
-    Cypress.session.clearAllSavedSessions();
-  });
-
-  before(() => {
+  beforeEach(() => {
     cy.login();
   });
 
@@ -54,8 +50,8 @@ describe('Recently viwed data assets', () => {
     ).should('have.length', 0);
   });
 
-  RECENTLY_VIEW_ENTITIES.map((entity, index) => {
-    it(`recently view section should have ${entity.term} visited`, () => {
+  it(`recently view section should have at max list of 5 entity`, () => {
+    RECENTLY_VIEW_ENTITIES.map((entity, index) => {
       visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
 
       interceptURL(

@@ -52,11 +52,7 @@ const followEntity = ({ term, serviceName, entity }, isUnfollow) => {
 };
 
 describe('Following data assets', () => {
-  after(() => {
-    Cypress.session.clearAllSavedSessions();
-  });
-
-  before(() => {
+  beforeEach(() => {
     cy.login();
   });
 
