@@ -51,7 +51,7 @@ const followEntity = ({ term, serviceName, entity }, isUnfollow) => {
   verifyResponseStatusCode('@waitAfterFollow', 200);
 };
 
-describe('Recently viwed data assets', () => {
+describe('Following data assets', () => {
   after(() => {
     Cypress.session.clearAllSavedSessions();
   });
