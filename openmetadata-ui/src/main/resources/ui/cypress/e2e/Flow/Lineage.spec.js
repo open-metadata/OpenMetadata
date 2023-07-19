@@ -31,7 +31,7 @@ const ENTITIES_LIST = [
   // dashboardEntity,
 ];
 
-describe.skip('Entity Details Page', () => {
+describe('Entity Details Page', () => {
   beforeEach(() => {
     cy.login();
   });

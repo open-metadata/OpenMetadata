@@ -314,14 +314,12 @@ const DataModelDetails = ({
         ),
         key: EntityTabs.LINEAGE,
         children: (
-          <div className="h-60vh">
-            <EntityLineageComponent
-              deleted={deleted}
-              entity={dataModelData as SourceType}
-              entityType={EntityType.DASHBOARD_DATA_MODEL}
-              hasEditAccess={hasEditLineagePermission}
-            />
-          </div>
+          <EntityLineageComponent
+            deleted={deleted}
+            entity={dataModelData as SourceType}
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
+            hasEditAccess={hasEditLineagePermission}
+          />
         ),
       },
     ];
