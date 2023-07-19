@@ -14,6 +14,7 @@ Define Count function
 """
 # Keep SQA docs style defining custom constructs
 # pylint: disable=consider-using-f-string,duplicate-code
+from metadata.profiler.orm.types.custom_image import CustomImage
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 from sqlalchemy.sql.sqltypes import NVARCHAR, TEXT
@@ -36,6 +37,9 @@ def _(element, compiler, **kw):
 
 @compiles(CountFn, Dialects.MSSQL)
 def _(element, compiler, **kw):
-    if isinstance(element.clauses.clauses[0].type, (NVARCHAR, TEXT)):
+    col_type = element.clauses.clauses[0].type
+    if isinstance(col_type, (NVARCHAR, TEXT)):
         return "cast(%s as [nvarchar])" % compiler.process(element.clauses, **kw)
+    if isinstance(col_type, CustomImage):
+        return "cast(%s as [varbinary])" % compiler.process(element.clauses, **kw)
     return compiler.process(element.clauses, **kw)

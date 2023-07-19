@@ -64,7 +64,7 @@ class CommonMapTypes:
         DataType.UUID: CustomTypes.UUID.value,
         DataType.BYTEA: CustomTypes.BYTEA.value,
         DataType.NTEXT: sqlalchemy.NVARCHAR,
-        DataType.IMAGE: sqlalchemy.VARBINARY,
+        DataType.IMAGE: CustomTypes.IMAGE.value,
     }
 
     def map_types(self, col: Column, table_service_type):

@@ -116,7 +116,7 @@ class ColumnTypeParser:
         "GEOGRAPHY": "GEOGRAPHY",
         "GEOMETRY": "GEOMETRY",
         "HYPERLOGLOG": "BINARY",
-        "IMAGE": "BINARY",
+        "IMAGE": "IMAGE",
         "INT": "INT",
         "INT2": "SMALLINT",
         "INT4": "INT",
@@ -285,7 +285,6 @@ class ColumnTypeParser:
 
         _COLUMN_TYPE_MAPPING[BIT] = "BINARY"
         _SOURCE_TYPE_TO_OM_TYPE["BIT"] = "BINARY"
-        _SOURCE_TYPE_TO_OM_TYPE["IMAGE"] = "IMAGE"
     except ImportError:
         pass
 
