@@ -77,7 +77,6 @@ import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interfa
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
 const PipelineDetails = ({
-  followers,
   pipelineDetails,
   fetchPipeline,
   descriptionUpdateHandler,
@@ -93,6 +92,7 @@ const PipelineDetails = ({
   const { tab } = useParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
+  const userID = getCurrentUserId();
   const {
     deleted,
     owner,
@@ -102,6 +102,7 @@ const PipelineDetails = ({
     tier,
     tags,
     entityFqn,
+    followers,
   } = useMemo(() => {
     return {
       deleted: pipelineDetails.deleted,
@@ -114,6 +115,7 @@ const PipelineDetails = ({
       tags: getTagsWithoutTier(pipelineDetails.tags ?? []),
       entityName: getEntityName(pipelineDetails),
       entityFqn: pipelineDetails.fullyQualifiedName ?? '',
+      followers: pipelineDetails.followers ?? [],
     };
   }, [pipelineDetails]);
 
@@ -193,8 +195,8 @@ const PipelineDetails = ({
   }, [pipelineDetails.id]);
 
   const isFollowing = useMemo(
-    () => followers.some(({ id }: { id: string }) => id === getCurrentUserId()),
-    [followers]
+    () => followers.some(({ id }: { id: string }) => id === userID),
+    [followers, userID]
   );
 
   const onTaskUpdate = async (taskDescription: string) => {
@@ -297,13 +299,13 @@ const PipelineDetails = ({
     }
   };
 
-  const followPipeline = async () => {
+  const followPipeline = useCallback(async () => {
     if (isFollowing) {
       await unFollowPipelineHandler(getEntityFeedCount);
     } else {
       await followPipelineHandler(getEntityFeedCount);
     }
-  };
+  }, [isFollowing, followPipelineHandler, unFollowPipelineHandler]);
 
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);

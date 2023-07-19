@@ -1207,7 +1207,7 @@ export const followAndOwnTheEntity = (termObj) => {
 
   // Check followed entity on mydata page
   cy.get('[data-testid="following-data-container"]')
-    .find(`[data-testid="Following data-${termObj.displayName}"]`)
+    .find(`[data-testid="following-${termObj.displayName}"]`)
     .should('be.visible');
 
   // Check owned entity

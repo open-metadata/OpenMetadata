@@ -132,6 +132,7 @@ export const SEARCH_ENTITY_MLMODEL = {
     term: 'eta_predictions',
     entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
     serviceName: 'mlflow_svc',
+    displayName: 'ETA Predictions',
   },
 };
 
