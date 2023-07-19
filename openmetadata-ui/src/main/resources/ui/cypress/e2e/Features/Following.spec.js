@@ -88,7 +88,7 @@ describe('Following data assets', () => {
       );
 
       // Checking count of following
-      cy.get(`[data-testid="following-data"]`).contains(index + 1);
+      cy.get(`[data-testid="following-data"]`).should('contain', index + 1);
     });
   });
 
@@ -115,7 +115,8 @@ describe('Following data assets', () => {
         cy.get(`[data-testid="following-data"]`).should('not.exist');
       } else {
         // Checking count of following
-        cy.get(`[data-testid="following-data"]`).contains(
+        cy.get(`[data-testid="following-data"]`).should(
+          'contain',
           FOLLOWING_ENTITIES.length - (index + 1)
         );
       }
