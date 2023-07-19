@@ -27,78 +27,45 @@ const mockPush = jest.fn();
 
 jest.mock(
   'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="DataAssetsVersionHeader">DataAssetsVersionHeader</div>
-      ))
+  () => jest.fn().mockImplementation(() => <div>DataAssetsVersionHeader</div>)
 );
 
 jest.mock('components/TabsLabel/TabsLabel.component', () =>
-  jest
-    .fn()
-    .mockImplementation(({ name }) => (
-      <div data-testid={`TabsLabel-${name}`}>{name}</div>
-    ))
+  jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
 );
 
 jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="TagsContainerV2">TagsContainerV2</div>
-    ))
+  jest.fn().mockImplementation(() => <div>TagsContainerV2</div>)
 );
 
 jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="RichTextEditorPreviewer">RichTextEditorPreviewer</div>
-    ))
+  jest.fn().mockImplementation(() => <div>RichTextEditorPreviewer</div>)
 );
 
 jest.mock('components/Tag/TagsViewer/tags-viewer', () =>
-  jest
-    .fn()
-    .mockImplementation(() => <div data-testid="TagsViewer">TagsViewer</div>)
+  jest.fn().mockImplementation(() => <div>TagsViewer</div>)
 );
 
 jest.mock('components/common/CustomPropertyTable/CustomPropertyTable', () => ({
   CustomPropertyTable: jest
     .fn()
-    .mockImplementation(() => (
-      <div data-testid="CustomPropertyTable">CustomPropertyTable</div>
-    )),
+    .mockImplementation(() => <div>CustomPropertyTable</div>),
 }));
 
 jest.mock('components/common/description/DescriptionV1', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="DescriptionV1">DescriptionV1</div>
-    ))
+  jest.fn().mockImplementation(() => <div>DescriptionV1</div>)
 );
 
 jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="ErrorPlaceHolder">ErrorPlaceHolder</div>
-    ))
+  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
 jest.mock('components/EntityVersionTimeLine/EntityVersionTimeLine', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="EntityVersionTimeLine">EntityVersionTimeLine</div>
-    ))
+  jest.fn().mockImplementation(() => <div>EntityVersionTimeLine</div>)
 );
 
 jest.mock('components/Loader/Loader', () =>
-  jest.fn().mockImplementation(() => <div data-testid="Loader">Loader</div>)
+  jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
 jest.mock('react-router-dom', () => ({
@@ -108,32 +75,26 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     tab: EntityTabs.PIPELINE,
   }),
-  Link: jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <div data-testid="Link">{children}</div>
-    )),
+  Link: jest.fn().mockImplementation(() => <div>Link</div>),
 }));
 
 JSON.parse = jest.fn().mockReturnValue([]);
 
 describe('PipelineVersion tests', () => {
-  it('Component should render properly when not loading', async () => {
+  it('Should render component properly if not loading', async () => {
     await act(async () => {
       render(<PipelineVersion {...mockColumnDiffPipelineVersionMockProps} />, {
         wrapper: MemoryRouter,
       });
     });
 
-    const dataAssetsVersionHeader = screen.getByTestId(
-      'DataAssetsVersionHeader'
+    const dataAssetsVersionHeader = screen.getByText('DataAssetsVersionHeader');
+    const description = screen.getByText('DescriptionV1');
+    const schemaTabLabel = screen.getByText('label.task-plural');
+    const customPropertyTabLabel = screen.getByText(
+      'label.custom-property-plural'
     );
-    const description = screen.getByTestId('DescriptionV1');
-    const schemaTabLabel = screen.getByTestId('TabsLabel-label.task-plural');
-    const customPropertyTabLabel = screen.getByTestId(
-      'TabsLabel-label.custom-property-plural'
-    );
-    const entityVersionTimeLine = screen.getByTestId('EntityVersionTimeLine');
+    const entityVersionTimeLine = screen.getByText('EntityVersionTimeLine');
     const schemaTable = screen.getByTestId('schema-table');
 
     expect(dataAssetsVersionHeader).toBeInTheDocument();
@@ -144,21 +105,21 @@ describe('PipelineVersion tests', () => {
     expect(schemaTable).toBeInTheDocument();
   });
 
-  it('Only loader should be visible when the isVersionLoading is true', async () => {
+  it('Should display Loader if isVersionLoading is true', async () => {
     await act(async () => {
       render(
         <PipelineVersion {...pipelineVersionMockProps} isVersionLoading />
       );
     });
 
-    const loader = screen.getByTestId('Loader');
-    const entityVersionTimeLine = screen.getByTestId('EntityVersionTimeLine');
-    const dataAssetsVersionHeader = screen.queryByTestId(
+    const loader = screen.getByText('Loader');
+    const entityVersionTimeLine = screen.getByText('EntityVersionTimeLine');
+    const dataAssetsVersionHeader = screen.queryByText(
       'DataAssetsVersionHeader'
     );
-    const schemaTabLabel = screen.queryByTestId('TabsLabel-label.schema');
-    const customPropertyTabLabel = screen.queryByTestId(
-      'TabsLabel-label.custom-property-plural'
+    const schemaTabLabel = screen.queryByText('label.schema');
+    const customPropertyTabLabel = screen.queryByText(
+      'label.custom-property-plural'
     );
     const schemaTable = screen.queryByTestId('schema-table');
 
@@ -170,7 +131,7 @@ describe('PipelineVersion tests', () => {
     expect(schemaTable).toBeNull();
   });
 
-  it('Only error placeholder should be displayed in case of no view permissions', async () => {
+  it('Should display ErrorPlaceholder if no viewing permission', async () => {
     await act(async () => {
       render(
         <PipelineVersion
@@ -180,16 +141,16 @@ describe('PipelineVersion tests', () => {
       );
     });
 
-    const errorPlaceHolder = screen.getByTestId('ErrorPlaceHolder');
-    const loader = screen.queryByTestId('Loader');
-    const dataAssetsVersionHeader = screen.queryByTestId(
+    const errorPlaceHolder = screen.getByText('ErrorPlaceHolder');
+    const loader = screen.queryByText('Loader');
+    const dataAssetsVersionHeader = screen.queryByText(
       'DataAssetsVersionHeader'
     );
-    const schemaTabLabel = screen.queryByTestId('TabsLabel-label.schema');
-    const customPropertyTabLabel = screen.queryByTestId(
-      'TabsLabel-label.custom-property-plural'
+    const schemaTabLabel = screen.queryByText('label.schema');
+    const customPropertyTabLabel = screen.queryByText(
+      'label.custom-property-plural'
     );
-    const entityVersionTimeLine = screen.queryByTestId('EntityVersionTimeLine');
+    const entityVersionTimeLine = screen.queryByText('EntityVersionTimeLine');
     const schemaTable = screen.queryByTestId('schema-table');
 
     expect(errorPlaceHolder).toBeInTheDocument();
@@ -201,15 +162,15 @@ describe('PipelineVersion tests', () => {
     expect(schemaTable).toBeNull();
   });
 
-  it('New path should be pushed to the history object on click of customProperty tab', async () => {
+  it('Should update url on click of tab', async () => {
     await act(async () => {
       render(<PipelineVersion {...pipelineVersionMockProps} />, {
         wrapper: MemoryRouter,
       });
     });
 
-    const customPropertyTabLabel = screen.getByTestId(
-      'TabsLabel-label.custom-property-plural'
+    const customPropertyTabLabel = screen.getByText(
+      'label.custom-property-plural'
     );
 
     expect(customPropertyTabLabel).toBeInTheDocument();
@@ -223,7 +184,7 @@ describe('PipelineVersion tests', () => {
     );
   });
 
-  it('Custom property tab should show error placeholder in case of no "ViewAll" permission', async () => {
+  it('Should display ErrorPlaceholder in Custom Property tab if no "viewAll" permission', async () => {
     await act(async () => {
       render(
         <PipelineVersion
@@ -236,11 +197,11 @@ describe('PipelineVersion tests', () => {
       );
     });
 
-    const customPropertyTabLabel = screen.getByTestId(
-      'TabsLabel-label.custom-property-plural'
+    const customPropertyTabLabel = screen.getByText(
+      'label.custom-property-plural'
     );
     const schemaTable = screen.getByTestId('schema-table');
-    let errorPlaceHolder = screen.queryByTestId('ErrorPlaceHolder');
+    let errorPlaceHolder = screen.queryByText('ErrorPlaceHolder');
 
     expect(customPropertyTabLabel).toBeInTheDocument();
     expect(schemaTable).toBeInTheDocument();
@@ -250,7 +211,7 @@ describe('PipelineVersion tests', () => {
       userEvent.click(customPropertyTabLabel);
     });
 
-    errorPlaceHolder = screen.getByTestId('ErrorPlaceHolder');
+    errorPlaceHolder = screen.getByText('ErrorPlaceHolder');
 
     expect(errorPlaceHolder).toBeInTheDocument();
   });

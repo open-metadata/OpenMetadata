@@ -25,72 +25,41 @@ const mockPush = jest.fn();
 
 jest.mock(
   'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="DataAssetsVersionHeader">DataAssetsVersionHeader</div>
-      ))
+  () => jest.fn().mockImplementation(() => <div>DataAssetsVersionHeader</div>)
 );
 
 jest.mock('components/TabsLabel/TabsLabel.component', () =>
-  jest
-    .fn()
-    .mockImplementation(({ name }) => (
-      <div data-testid={`TabsLabel-${name}`}>{name}</div>
-    ))
+  jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
 );
 
 jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="TagsContainerV2">TagsContainerV2</div>
-    ))
+  jest.fn().mockImplementation(() => <div>TagsContainerV2</div>)
 );
 
 jest.mock('components/common/CustomPropertyTable/CustomPropertyTable', () => ({
   CustomPropertyTable: jest
     .fn()
-    .mockImplementation(() => (
-      <div data-testid="CustomPropertyTable">CustomPropertyTable</div>
-    )),
+    .mockImplementation(() => <div>CustomPropertyTable</div>),
 }));
 
 jest.mock('components/common/description/DescriptionV1', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="DescriptionV1">DescriptionV1</div>
-    ))
+  jest.fn().mockImplementation(() => <div>DescriptionV1</div>)
 );
 
 jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="ErrorPlaceHolder">ErrorPlaceHolder</div>
-    ))
+  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
 jest.mock('components/EntityVersionTimeLine/EntityVersionTimeLine', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="EntityVersionTimeLine">EntityVersionTimeLine</div>
-    ))
+  jest.fn().mockImplementation(() => <div>EntityVersionTimeLine</div>)
 );
 
 jest.mock('components/VersionTable/VersionTable.component', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="VersionTable">VersionTable</div>
-    ))
+  jest.fn().mockImplementation(() => <div>VersionTable</div>)
 );
 
 jest.mock('components/Loader/Loader', () =>
-  jest.fn().mockImplementation(() => <div data-testid="Loader">Loader</div>)
+  jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
 jest.mock('react-router-dom', () => ({
@@ -102,23 +71,19 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-describe('TableVersion tests', () => {
-  it('Component should render properly when not loading', async () => {
+describe('MlModelVersion tests', () => {
+  it('Should render component properly if not loading', async () => {
     await act(async () => {
       render(<MlModelVersion {...mlModelVersionMockProps} />);
     });
 
-    const dataAssetsVersionHeader = screen.getByTestId(
-      'DataAssetsVersionHeader'
+    const dataAssetsVersionHeader = screen.getByText('DataAssetsVersionHeader');
+    const description = screen.getByText('DescriptionV1');
+    const featureTabLabel = screen.getByText('label.feature-plural');
+    const customPropertyTabLabel = screen.getByText(
+      'label.custom-property-plural'
     );
-    const description = screen.getByTestId('DescriptionV1');
-    const featureTabLabel = screen.getByTestId(
-      'TabsLabel-label.feature-plural'
-    );
-    const customPropertyTabLabel = screen.getByTestId(
-      'TabsLabel-label.custom-property-plural'
-    );
-    const entityVersionTimeLine = screen.getByTestId('EntityVersionTimeLine');
+    const entityVersionTimeLine = screen.getByText('EntityVersionTimeLine');
 
     expect(dataAssetsVersionHeader).toBeInTheDocument();
     expect(description).toBeInTheDocument();
@@ -127,21 +92,19 @@ describe('TableVersion tests', () => {
     expect(entityVersionTimeLine).toBeInTheDocument();
   });
 
-  it('Only loader should be visible when the isVersionLoading is true', async () => {
+  it('Should display Loader if isVersionLoading is true', async () => {
     await act(async () => {
       render(<MlModelVersion {...mlModelVersionMockProps} isVersionLoading />);
     });
 
-    const loader = screen.getByTestId('Loader');
-    const entityVersionTimeLine = screen.getByTestId('EntityVersionTimeLine');
-    const dataAssetsVersionHeader = screen.queryByTestId(
+    const loader = screen.getByText('Loader');
+    const entityVersionTimeLine = screen.getByText('EntityVersionTimeLine');
+    const dataAssetsVersionHeader = screen.queryByText(
       'DataAssetsVersionHeader'
     );
-    const featureTabLabel = screen.queryByTestId(
-      'TabsLabel-label.feature-plural'
-    );
-    const customPropertyTabLabel = screen.queryByTestId(
-      'TabsLabel-label.custom-property-plural'
+    const featureTabLabel = screen.queryByText('label.feature-plural');
+    const customPropertyTabLabel = screen.queryByText(
+      'label.custom-property-plural'
     );
 
     expect(loader).toBeInTheDocument();
@@ -151,7 +114,7 @@ describe('TableVersion tests', () => {
     expect(customPropertyTabLabel).toBeNull();
   });
 
-  it('Only error placeholder should be displayed in case of no view permissions', async () => {
+  it('Should display ErrorPlaceholder if no viewing permission', async () => {
     await act(async () => {
       render(
         <MlModelVersion
@@ -161,18 +124,16 @@ describe('TableVersion tests', () => {
       );
     });
 
-    const errorPlaceHolder = screen.getByTestId('ErrorPlaceHolder');
-    const loader = screen.queryByTestId('Loader');
-    const dataAssetsVersionHeader = screen.queryByTestId(
+    const errorPlaceHolder = screen.getByText('ErrorPlaceHolder');
+    const loader = screen.queryByText('Loader');
+    const dataAssetsVersionHeader = screen.queryByText(
       'DataAssetsVersionHeader'
     );
-    const featureTabLabel = screen.queryByTestId(
-      'TabsLabel-label.feature-plural'
+    const featureTabLabel = screen.queryByText('label.feature-plural');
+    const customPropertyTabLabel = screen.queryByText(
+      'label.custom-property-plural'
     );
-    const customPropertyTabLabel = screen.queryByTestId(
-      'TabsLabel-label.custom-property-plural'
-    );
-    const entityVersionTimeLine = screen.queryByTestId('EntityVersionTimeLine');
+    const entityVersionTimeLine = screen.queryByText('EntityVersionTimeLine');
 
     expect(errorPlaceHolder).toBeInTheDocument();
     expect(loader).toBeNull();
@@ -192,22 +153,20 @@ describe('TableVersion tests', () => {
       );
     });
 
-    const featureTabLabel = screen.getByTestId(
-      'TabsLabel-label.feature-plural'
-    );
-    const errorPlaceHolder = screen.getByTestId('ErrorPlaceHolder');
+    const featureTabLabel = screen.getByText('label.feature-plural');
+    const errorPlaceHolder = screen.getByText('ErrorPlaceHolder');
 
     expect(featureTabLabel).toBeInTheDocument();
     expect(errorPlaceHolder).toBeInTheDocument();
   });
 
-  it('New path should be pushed to the history object on click of customProperty tab', async () => {
+  it('Should update url on click of tab', async () => {
     await act(async () => {
       render(<MlModelVersion {...mlModelVersionMockProps} />);
     });
 
-    const customPropertyTabLabel = screen.getByTestId(
-      'TabsLabel-label.custom-property-plural'
+    const customPropertyTabLabel = screen.getByText(
+      'label.custom-property-plural'
     );
 
     expect(customPropertyTabLabel).toBeInTheDocument();
@@ -221,7 +180,7 @@ describe('TableVersion tests', () => {
     );
   });
 
-  it('Custom property tab should show error placeholder in case of no "ViewAll" permission', async () => {
+  it('Should display ErrorPlaceholder in Custom Property tab if no "viewAll" permission', async () => {
     await act(async () => {
       render(
         <MlModelVersion
@@ -231,10 +190,10 @@ describe('TableVersion tests', () => {
       );
     });
 
-    const customPropertyTabLabel = screen.getByTestId(
-      'TabsLabel-label.custom-property-plural'
+    const customPropertyTabLabel = screen.getByText(
+      'label.custom-property-plural'
     );
-    let errorPlaceHolder = screen.queryByTestId('ErrorPlaceHolder');
+    let errorPlaceHolder = screen.queryByText('ErrorPlaceHolder');
 
     expect(customPropertyTabLabel).toBeInTheDocument();
     expect(errorPlaceHolder).toBeNull();
@@ -243,7 +202,7 @@ describe('TableVersion tests', () => {
       userEvent.click(customPropertyTabLabel);
     });
 
-    errorPlaceHolder = screen.getByTestId('ErrorPlaceHolder');
+    errorPlaceHolder = screen.getByText('ErrorPlaceHolder');
 
     expect(errorPlaceHolder).toBeInTheDocument();
   });

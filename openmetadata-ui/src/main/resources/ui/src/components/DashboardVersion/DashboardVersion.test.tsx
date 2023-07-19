@@ -48,51 +48,30 @@ jest.mock('components/Loader/Loader', () => {
 });
 
 jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="ErrorPlaceHolder">ErrorPlaceHolder</div>
-    ));
+  return jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>);
 });
 
 jest.mock(
   'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="DataAssetsVersionHeader">DataAssetsVersionHeader</div>
-      ))
+  () => jest.fn().mockImplementation(() => <div>DataAssetsVersionHeader</div>)
 );
 
 jest.mock('components/TabsLabel/TabsLabel.component', () =>
-  jest
-    .fn()
-    .mockImplementation(({ name }) => (
-      <div data-testid={`TabsLabel-${name}`}>{name}</div>
-    ))
+  jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
 );
 
 jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="TagsContainerV2">TagsContainerV2</div>
-    ))
+  jest.fn().mockImplementation(() => <div>TagsContainerV2</div>)
 );
 
 jest.mock('components/Tag/TagsViewer/tags-viewer', () =>
-  jest
-    .fn()
-    .mockImplementation(() => <div data-testid="TagsViewer">TagsViewer</div>)
+  jest.fn().mockImplementation(() => <div>TagsViewer</div>)
 );
 
 jest.mock('components/common/CustomPropertyTable/CustomPropertyTable', () => ({
   CustomPropertyTable: jest
     .fn()
-    .mockImplementation(() => (
-      <div data-testid="CustomPropertyTable">CustomPropertyTable</div>
-    )),
+    .mockImplementation(() => <div>CustomPropertyTable</div>),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -102,17 +81,13 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     tab: 'dashboard',
   }),
-  Link: jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <div data-testid="Link">{children}</div>
-    )),
+  Link: jest.fn().mockImplementation(() => <div>Link</div>),
 }));
 
 JSON.parse = jest.fn().mockReturnValue([]);
 
-describe('Test DashboardVersion page', () => {
-  it('Checks if the page has all the proper components rendered', async () => {
+describe('DashboardVersion tests', () => {
+  it('Should render component properly if not loading', async () => {
     await act(async () => {
       render(<DashboardVersion {...dashboardVersionProps} />, {
         wrapper: MemoryRouter,
@@ -139,7 +114,7 @@ describe('Test DashboardVersion page', () => {
     expect(richTextEditorPreviewer).toBeInTheDocument();
   });
 
-  it('Checks if the page has all the proper components rendered, if change version is related to tags', async () => {
+  it('Should render components properly if version changes are related to tags', async () => {
     await act(async () => {
       render(
         <DashboardVersion
@@ -174,7 +149,7 @@ describe('Test DashboardVersion page', () => {
     expect(richTextEditorPreviewer).toBeInTheDocument();
   });
 
-  it('Checks if the page has all the proper components rendered, if the dashboard deleted is undefined', async () => {
+  it('Should render component properly if "deleted" field for dashboard is undefined', async () => {
     await act(async () => {
       render(
         <DashboardVersion
@@ -201,7 +176,7 @@ describe('Test DashboardVersion page', () => {
     expect(description).toBeInTheDocument();
   });
 
-  it('If version is loading it should show loading component', async () => {
+  it('Should display Loader if isVersionLoading is true', async () => {
     await act(async () => {
       render(<DashboardVersion {...dashboardVersionProps} isVersionLoading />, {
         wrapper: MemoryRouter,
@@ -217,7 +192,7 @@ describe('Test DashboardVersion page', () => {
     expect(loader).toBeInTheDocument();
   });
 
-  it('New path should be pushed to the history object on click of customProperty tab', async () => {
+  it('Should update url on click of tab', async () => {
     await act(async () => {
       render(
         <DashboardVersion
@@ -230,8 +205,8 @@ describe('Test DashboardVersion page', () => {
       );
     });
 
-    const customPropertyTabLabel = screen.getByTestId(
-      'TabsLabel-label.custom-property-plural'
+    const customPropertyTabLabel = screen.getByText(
+      'label.custom-property-plural'
     );
 
     expect(customPropertyTabLabel).toBeInTheDocument();
@@ -245,7 +220,7 @@ describe('Test DashboardVersion page', () => {
     );
   });
 
-  it('ErrorPlaceholder should be displayed in case of no view permissions', async () => {
+  it('Should display ErrorPlaceholder if no viewing permission', async () => {
     await act(async () => {
       render(
         <DashboardVersion
@@ -269,7 +244,7 @@ describe('Test DashboardVersion page', () => {
     const entityVersionTimeLine = screen.queryByText(
       'EntityVersionTimeLine.component'
     );
-    const errorPlaceHolder = screen.getByTestId('ErrorPlaceHolder');
+    const errorPlaceHolder = screen.getByText('ErrorPlaceHolder');
 
     expect(entityVersionTimeLine).toBeNull();
     expect(versionData).toBeNull();
