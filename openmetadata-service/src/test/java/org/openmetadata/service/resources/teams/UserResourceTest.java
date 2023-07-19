@@ -91,6 +91,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.csv.EntityCsvTest;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.CreatePersonalToken;
 import org.openmetadata.schema.auth.GenerateTokenRequest;
@@ -1112,6 +1113,18 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     patchEntityAndCheck(user, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
+  @Test
+  void test_inheritDomain(TestInfo test) throws IOException {
+    // When domain is not set for a user term, carry it forward from the parent team
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    CreateTeam createTeam = teamResourceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+    Team team = teamResourceTest.createEntity(createTeam, ADMIN_AUTH_HEADERS);
+
+    // Create a user without domain and ensure it inherits domain from the parent
+    CreateUser create = createRequest(test).withTeams(listOf(team.getId()));
+    assertDomainInheritance(create, DOMAIN.getEntityReference());
+  }
+
   private DecodedJWT decodedJWT(String token) {
     DecodedJWT jwt;
     try {
@@ -1245,7 +1258,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Override
   public String getAllowedFields() {
     Set<String> allowedFields = Entity.getEntityFields(entityClass);
-    allowedFields.removeAll(of(USER_PROTECTED_FIELDS.split(",")));
+    of(USER_PROTECTED_FIELDS.split(",")).forEach(allowedFields::remove);
     return String.join(",", allowedFields);
   }
 
