@@ -1232,7 +1232,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         .withFullyQualifiedName(create.getName())
         .withEmail(create.getEmail())
         .withDescription(create.getDescription())
-        .withDisplayName(CommonUtil.nullOrEmpty(create.getDisplayName()) ? create.getName() : create.getDisplayName())
+        .withDisplayName(create.getDisplayName())
         .withIsBot(create.getIsBot())
         .withIsAdmin(create.getIsAdmin())
         .withProfile(create.getProfile())
