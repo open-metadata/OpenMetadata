@@ -15,8 +15,8 @@ Define Count function
 # Keep SQA docs style defining custom constructs
 # pylint: disable=consider-using-f-string,duplicate-code
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql.functions import FunctionElement
+from sqlalchemy.sql.sqltypes import NVARCHAR, TEXT
 
 from metadata.profiler.metrics.core import CACHE
 from metadata.profiler.orm.registry import Dialects
@@ -36,6 +36,6 @@ def _(element, compiler, **kw):
 
 @compiles(CountFn, Dialects.MSSQL)
 def _(element, compiler, **kw):
-    if isinstance(element.clauses.clauses[0].type, sqltypes.TEXT):
-        return "cast(%s as [nvarchar]))" % compiler.process(element.clauses, **kw)
+    if isinstance(element.clauses.clauses[0].type, (NVARCHAR, TEXT)):
+        return "cast(%s as [nvarchar])" % compiler.process(element.clauses, **kw)
     return compiler.process(element.clauses, **kw)

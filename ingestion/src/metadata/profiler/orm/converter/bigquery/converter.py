@@ -17,15 +17,15 @@ to an SQLAlchemy ORM class.
 
 from metadata.generated.schema.entity.data.database import databaseService
 from metadata.generated.schema.entity.data.table import Column, DataType
-from metadata.profiler.orm.converter.base import _TYPE_MAP, BaseMapTypes
+from metadata.profiler.orm.converter.common import CommonMapTypes
 from metadata.profiler.source.bigquery.type_mapper import bigquery_type_mapper
 
 
-class BigqueryMapTypes(BaseMapTypes):
+class BigqueryMapTypes(CommonMapTypes):
     def return_custom_type(self, col: Column, table_service_type):
         if (
             table_service_type == databaseService.DatabaseServiceType.BigQuery
             and col.dataType == DataType.STRUCT
         ):
-            return bigquery_type_mapper(_TYPE_MAP, col)
+            return bigquery_type_mapper(self._TYPE_MAP, col)
         return super().return_custom_type(col, table_service_type)

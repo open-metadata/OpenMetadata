@@ -165,7 +165,7 @@ class Histogram(HybridMetric):
         ending_bin_bound = res_min + bin_width
 
         if is_concatenable(self.col.type):
-            col = LenFn(column(self.col.name))
+            col = LenFn(column(self.col.name, self.col.type))
         else:
             col = column(self.col.name)  # type: ignore
 

@@ -66,6 +66,6 @@ def _(element, compiler, **kw):
 
 @compiles(LenFn, Dialects.MSSQL)
 def _(element, compiler, **kw):
-    if isinstance(element.clauses.clauses[0].type, sqltypes.TEXT):
+    if isinstance(element.clauses.clauses[0].type, (sqltypes.TEXT, sqltypes.NVARCHAR)):
         return "LEN(CAST(%s as [nvarchar]))" % compiler.process(element.clauses, **kw)
     return "LEN(%s)" % compiler.process(element.clauses, **kw)

@@ -61,7 +61,7 @@ class FirstQuartile(StaticMetric):
 
         if is_concatenable(self.col.type):
             return MedianFn(
-                LenFn(column(self.col.name)),
+                LenFn(column(self.col.name, self.col.type)),
                 self.col.table.fullname if self.col.table is not None else None,
                 0.25,
             )
