@@ -14,8 +14,8 @@ Map Types to convert/cast mssql related data types to relevant data types
 """
 
 
-from enum import Enum
-from sqlalchemy import TEXT, NVARCHAR
+from sqlalchemy import NVARCHAR, TEXT
+
 from metadata.profiler.orm.registry import CustomImage
 
 cast_dict = {
