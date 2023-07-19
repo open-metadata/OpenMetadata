@@ -63,7 +63,7 @@ const BotDetailsPage = withSuspenseFallback(
   React.lazy(() => import('pages/BotDetailsPage/BotDetailsPage'))
 );
 const ServicePage = withSuspenseFallback(
-  React.lazy(() => import('pages/service'))
+  React.lazy(() => import('pages/ServiceDetailsPage/ServiceDetailsPage'))
 );
 
 const SwaggerPage = withSuspenseFallback(
@@ -114,7 +114,7 @@ const DashboardDetailsPage = withSuspenseFallback(
   )
 );
 const DatabaseDetails = withSuspenseFallback(
-  React.lazy(() => import('pages/database-details/index'))
+  React.lazy(() => import('pages/DatabaseDetailsPage/DatabaseDetailsPage'))
 );
 const DatabaseSchemaPageComponent = withSuspenseFallback(
   React.lazy(

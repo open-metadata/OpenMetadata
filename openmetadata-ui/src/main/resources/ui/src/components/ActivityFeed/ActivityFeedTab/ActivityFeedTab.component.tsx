@@ -171,8 +171,10 @@ export const ActivityFeedTab = ({
   };
 
   useEffect(() => {
-    fetchFeedsCount();
-  }, []);
+    if (fqn) {
+      fetchFeedsCount();
+    }
+  }, [fqn]);
 
   const { feedFilter, threadType } = useMemo(() => {
     return {
@@ -191,12 +193,14 @@ export const ActivityFeedTab = ({
     (after?: string) => {
       getFeedData(feedFilter, after, threadType, entityType, fqn);
     },
-    [threadType, feedFilter]
+    [threadType, feedFilter, entityType, fqn]
   );
 
   useEffect(() => {
-    getFeedData(feedFilter, undefined, threadType, entityType, fqn);
-  }, [feedFilter, threadType]);
+    if (fqn) {
+      getFeedData(feedFilter, undefined, threadType, entityType, fqn);
+    }
+  }, [feedFilter, threadType, fqn]);
 
   const handleFeedClick = useCallback(
     (feed: Thread) => {
@@ -216,8 +220,10 @@ export const ActivityFeedTab = ({
   };
 
   useEffect(() => {
-    fetchMoreThread(isInView, entityPaging, loading);
-  }, [entityPaging, loading, isInView]);
+    if (fqn) {
+      fetchMoreThread(isInView, entityPaging, loading);
+    }
+  }, [entityPaging, loading, isInView, fqn]);
 
   const loader = useMemo(() => (loading ? <Loader /> : null), [loading]);
 
