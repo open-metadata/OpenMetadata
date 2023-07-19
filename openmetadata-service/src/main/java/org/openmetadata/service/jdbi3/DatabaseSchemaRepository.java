@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 
 import java.io.IOException;
@@ -107,8 +108,16 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     UUID databaseId = schema.getDatabase().getId();
     // If schema does not have owner, then inherit parent database owner
     if (fields.contains(FIELD_OWNER) && schema.getOwner() == null) {
-      database = Entity.getEntity(Entity.DATABASE, databaseId, "owner", ALL);
+      database = Entity.getEntity(Entity.DATABASE, databaseId, "owner,domain", ALL);
       schema.withOwner(database.getOwner());
+    }
+
+    // If schema does not have domain, then inherit it from parent database
+    if (fields.contains(FIELD_DOMAIN) && schema.getDomain() == null) {
+      if (database == null) {
+        database = Entity.getEntity(Entity.DATABASE, databaseId, "domain", ALL);
+      }
+      schema.withDomain(database.getDomain());
     }
 
     // If schema does not have its own retention period, then inherit parent database retention period

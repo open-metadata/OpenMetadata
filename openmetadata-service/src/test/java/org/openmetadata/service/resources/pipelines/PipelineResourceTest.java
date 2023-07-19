@@ -49,8 +49,10 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreatePipeline;
+import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
+import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
@@ -61,6 +63,7 @@ import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.pipelines.PipelineResource.PipelineList;
+import org.openmetadata.service.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -537,6 +540,18 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     change.getFieldsUpdated().add(new FieldChange().withNewValue(new_tasks).withOldValue(TASKS));
     pipeline = updateEntity(request, OK, ADMIN_AUTH_HEADERS);
     assertEquals(2, pipeline.getTasks().size());
+  }
+
+  @Test
+  void test_inheritDomain(TestInfo test) throws IOException {
+    // When domain is not set for a pipeline, carry it forward from the pipeline service
+    PipelineServiceResourceTest serviceTest = new PipelineServiceResourceTest();
+    CreatePipelineService createService = serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+    PipelineService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+
+    // Create a pipeline without domain and ensure it inherits domain from the parent
+    CreatePipeline create = createRequest("pipeline").withService(service.getFullyQualifiedName());
+    assertDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Override

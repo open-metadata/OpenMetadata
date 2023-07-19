@@ -104,7 +104,7 @@
     },
     "followers": {
       "description": "Followers of this dashboard.",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "service": {
       "description": "Link to service where this data model is hosted in.",

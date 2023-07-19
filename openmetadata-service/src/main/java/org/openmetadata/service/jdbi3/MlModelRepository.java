@@ -15,9 +15,12 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.MLMODEL;
+import static org.openmetadata.service.Entity.MLMODEL_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.service.util.EntityUtil.mlHyperParameterMatch;
@@ -175,6 +178,16 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     setMlFeatureSourcesLineage(mlModel);
+  }
+
+  @Override
+  public MlModel setInheritedFields(MlModel mlModel, Fields fields) throws IOException {
+    // If mlModel does not have domain, then inherit it from parent MLModel service
+    if (fields.contains(FIELD_DOMAIN) && mlModel.getDomain() == null) {
+      MlModelService service = Entity.getEntity(MLMODEL_SERVICE, mlModel.getService().getId(), "domain", ALL);
+      mlModel.withDomain(service.getDomain());
+    }
+    return mlModel;
   }
 
   /**

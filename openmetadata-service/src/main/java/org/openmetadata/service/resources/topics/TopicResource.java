@@ -84,6 +84,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     Entity.withHref(uriInfo, topic.getOwner());
     Entity.withHref(uriInfo, topic.getService());
     Entity.withHref(uriInfo, topic.getFollowers());
+    Entity.withHref(uriInfo, topic.getDomain());
     return topic;
   }
 

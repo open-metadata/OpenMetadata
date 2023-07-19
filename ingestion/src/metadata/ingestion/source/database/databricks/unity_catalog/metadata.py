@@ -11,6 +11,7 @@
 """
 Databricks Unity Catalog Source source methods.
 """
+import json
 import traceback
 from typing import Dict, Iterable, List, Optional, Tuple
 
@@ -53,7 +54,12 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.databricks.connection import get_connection
-from metadata.ingestion.source.database.databricks.models import ForeignConstrains
+from metadata.ingestion.source.database.databricks.models import (
+    ColumnJson,
+    ElementType,
+    ForeignConstrains,
+    Type,
+)
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.db_utils import get_view_lineage
@@ -377,6 +383,44 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
     def prepare(self):
         pass
 
+    def add_complex_datatype_descriptions(
+        self, column: Column, column_json: ColumnJson
+    ):
+        """
+        Method to add descriptions to complex datatypes
+        """
+        try:
+            if column.children is None:
+                if column_json.metadata:
+                    column.description = column_json.metadata.comment
+            else:
+                for i, child in enumerate(column.children):
+                    if column_json.metadata:
+                        column.description = column_json.metadata.comment
+                    if (
+                        column_json.type
+                        and isinstance(column_json.type, Type)
+                        and column_json.type.fields
+                    ):
+                        self.add_complex_datatype_descriptions(
+                            child, column_json.type.fields[i]
+                        )
+                    if (
+                        column_json.type
+                        and isinstance(column_json.type, Type)
+                        and column_json.type.type.lower() == "array"
+                        and isinstance(column_json.type.elementType, ElementType)
+                    ):
+                        self.add_complex_datatype_descriptions(
+                            child,
+                            column_json.type.elementType.fields[i],
+                        )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Unable to add description to complex datatypes for column [{column.name}]: {exc}"
+            )
+
     def get_columns(self, column_data: List[ColumnInfo]) -> Optional[Iterable[Column]]:
         # process table regular columns info
 
@@ -389,7 +433,12 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
             parsed_string["name"] = column.name[:64]
             parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
             parsed_string["description"] = column.comment
-            yield Column(**parsed_string)
+            parsed_column = Column(**parsed_string)
+            self.add_complex_datatype_descriptions(
+                column=parsed_column,
+                column_json=ColumnJson.parse_obj(json.loads(column.type_json)),
+            )
+            yield parsed_column
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
         logger.info("Processing Lineage for Views")

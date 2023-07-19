@@ -15,8 +15,11 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.Entity.PIPELINE_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -212,6 +215,16 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   public void storeRelationships(Pipeline pipeline) {
     EntityReference service = pipeline.getService();
     addRelationship(service.getId(), pipeline.getId(), service.getType(), Entity.PIPELINE, Relationship.CONTAINS);
+  }
+
+  @Override
+  public Pipeline setInheritedFields(Pipeline pipeline, Fields fields) throws IOException {
+    // If pipeline does not have domain, then inherit it from parent Pipeline service
+    if (fields.contains(FIELD_DOMAIN) && pipeline.getDomain() == null) {
+      PipelineService service = Entity.getEntity(PIPELINE_SERVICE, pipeline.getService().getId(), "domain", ALL);
+      pipeline.withDomain(service.getDomain());
+    }
+    return pipeline;
   }
 
   @Override

@@ -175,6 +175,7 @@ const CustomControls: FC<ControlProps> = ({
             className={classNames('custom-control-search-box', {
               'custom-control-search-box-edit-mode': isEditMode,
             })}
+            data-testid="lineage-search"
             filterOption={handleSearchFilterOption}
             options={nodeOptions}
             placeholder={t('label.search-entity', {
@@ -200,6 +201,7 @@ const CustomControls: FC<ControlProps> = ({
               <div className="flow-control custom-control-fit-screen-button custom-control-zoom-slide">
                 <ControlButton
                   className="custom-control-basic-button"
+                  data-testid="zoom-in-button"
                   onClick={onZoomOutHandler}>
                   <SVGIcons
                     alt="minus-icon"
@@ -211,6 +213,7 @@ const CustomControls: FC<ControlProps> = ({
 
                 <input
                   className="tw-bg-body-hover"
+                  data-testid="lineage-zoom-slider"
                   max={MAX_ZOOM_VALUE}
                   min={MIN_ZOOM_VALUE}
                   step={ZOOM_SLIDER_STEP}
@@ -220,6 +223,7 @@ const CustomControls: FC<ControlProps> = ({
                 />
                 <ControlButton
                   className="custom-control-basic-button"
+                  data-testid="zoom-out-button"
                   onClick={onZoomInHandler}>
                   <SVGIcons
                     alt="plus-icon"
@@ -233,6 +237,7 @@ const CustomControls: FC<ControlProps> = ({
             {showFitView && (
               <ControlButton
                 className="custom-control-basic-button custom-control-fit-screen-button"
+                data-testid="fit-to-screen"
                 title={t('label.fit-to-screen')}
                 onClick={onFitViewHandler}>
                 <SVGIcons alt="fit-view" icon={Icons.FITVEW} width="16" />
@@ -241,6 +246,7 @@ const CustomControls: FC<ControlProps> = ({
             {handleFullScreenViewClick && (
               <ControlButton
                 className="custom-control-basic-button custom-control-fit-screen-button"
+                data-testid="full-screen"
                 title={t('label.full-screen')}
                 onClick={handleFullScreenViewClick}>
                 <FullScreen color={PRIMERY_COLOR} height={16} width={16} />
@@ -249,6 +255,7 @@ const CustomControls: FC<ControlProps> = ({
             {onExitFullScreenViewClick && (
               <ControlButton
                 className="custom-control-basic-button custom-control-fit-screen-button"
+                data-testid="exit-full-screen"
                 title={t('label.exit-fit-to-screen')}
                 onClick={onExitFullScreenViewClick}>
                 <ExitFullScreen color={PRIMERY_COLOR} height={16} width={16} />
@@ -257,6 +264,7 @@ const CustomControls: FC<ControlProps> = ({
 
             <ControlButton
               className="custom-control-basic-button custom-control-fit-screen-button"
+              data-testid="lineage-config"
               disabled={isEditMode}
               title={t('label.setting-plural')}
               onClick={() => setDialogVisible(true)}>
@@ -270,7 +278,7 @@ const CustomControls: FC<ControlProps> = ({
                 className={classNames(
                   'custom-control-edit-button h-8 w-8 rounded-full p-x-xss',
                   {
-                    'bg-primary': isEditMode,
+                    active: isEditMode,
                   }
                 )}
                 data-testid="edit-lineage"

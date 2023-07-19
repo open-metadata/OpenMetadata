@@ -86,6 +86,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     Entity.withHref(uriInfo, pipeline.getOwner());
     Entity.withHref(uriInfo, pipeline.getService());
     Entity.withHref(uriInfo, pipeline.getFollowers());
+    Entity.withHref(uriInfo, pipeline.getDomain());
     return pipeline;
   }
 

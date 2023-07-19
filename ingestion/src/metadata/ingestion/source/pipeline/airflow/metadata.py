@@ -313,6 +313,7 @@ class AirflowSource(PipelineServiceSource):
                 else [],
                 startDate=task.start_date.isoformat() if task.start_date else None,
                 endDate=task.end_date.isoformat() if task.end_date else None,
+                taskType=task.task_type,
             )
             for task in cast(Iterable[BaseOperator], dag.tasks)
         ]

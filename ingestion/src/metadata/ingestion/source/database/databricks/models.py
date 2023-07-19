@@ -13,7 +13,7 @@
 Databricks Source Model module
 """
 
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pydantic import BaseModel
 
@@ -45,3 +45,27 @@ class ForeignConstrains(BaseModel):
     child_columns: Optional[List[str]] = []
     parent_columns: Optional[List[str]] = []
     parent_table: str
+
+
+class Metadata(BaseModel):
+    comment: Optional[str]
+
+
+class ColumnJson(BaseModel):
+    name: Optional[str]
+    type: Optional[Union["Type", str]]
+    metadata: Optional[Metadata]
+
+
+class ElementType(BaseModel):
+    type: Optional[str]
+    fields: Optional[List[ColumnJson]]
+
+
+class Type(BaseModel):
+    type: Optional[str]
+    elementType: Optional[Union[ElementType, str]]
+    fields: Optional[List[ColumnJson]]
+
+
+ColumnJson.update_forward_refs()
