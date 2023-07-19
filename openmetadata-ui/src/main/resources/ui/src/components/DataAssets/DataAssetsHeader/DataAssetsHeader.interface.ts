@@ -61,7 +61,7 @@ export type DataAssetsWithoutServiceField =
   | MetadataService
   | StorageService;
 
-export type DataAssetsWithoutFollowersField = Exclude<
+export type DataAssetsWithFollowersField = Exclude<
   DataAssetsType,
   DataAssetsWithoutServiceField | Database | DatabaseSchema
 >;

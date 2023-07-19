@@ -14,6 +14,7 @@
 import { Popover } from 'antd';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import QueryCount from 'components/common/QueryCount/QueryCount.component';
+import { DataAssetsWithoutServiceField } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import {
   LeafNodes,
   LineagePos,
@@ -1064,7 +1065,9 @@ export const getEntityBreadcrumbs = (
   entity:
     | SearchedDataProps['data'][number]['_source']
     | DashboardDataModel
-    | Database,
+    | Database
+    | DatabaseSchema
+    | DataAssetsWithoutServiceField,
   entityType?: EntityType,
   includeCurrent = false
 ) => {
@@ -1130,12 +1133,13 @@ export const getEntityBreadcrumbs = (
           ),
         },
         {
-          name: getEntityName(entity.service),
-          url: entity.service?.name
+          name: getEntityName((entity as DatabaseSchema).service),
+          url: (entity as DatabaseSchema).service?.name
             ? getServiceDetailsPath(
-                entity.service?.name,
+                (entity as DatabaseSchema).service?.name ?? '',
                 ServiceCategoryPlural[
-                  entity.service?.type as keyof typeof ServiceCategoryPlural
+                  (entity as DatabaseSchema).service
+                    ?.type as keyof typeof ServiceCategoryPlural
                 ]
               )
             : '',

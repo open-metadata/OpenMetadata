@@ -1,4 +1,3 @@
-/* eslint-disable no-case-declarations */
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,48 +31,33 @@ import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb
 import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { DE_ACTIVE_COLOR, getDashboardDetailsPath } from 'constants/constants';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { SERVICE_CATEGORIES } from 'constants/Services.constant';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
-import { Dashboard } from 'generated/entity/data/dashboard';
-import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
-import { Database } from 'generated/entity/data/database';
-import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
-import { Mlmodel } from 'generated/entity/data/mlmodel';
-import { Pipeline } from 'generated/entity/data/pipeline';
-import { Table } from 'generated/entity/data/table';
-import { Topic } from 'generated/entity/data/topic';
 import {
   Thread,
   ThreadTaskStatus,
   ThreadType,
 } from 'generated/entity/feed/thread';
 import { useClipboard } from 'hooks/useClipBoard';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { getActiveAnnouncement, getFeedCount } from 'rest/feedsAPI';
 import { getContainerByName } from 'rest/storageAPI';
 import { getCurrentUserId, getEntityDetailLink } from 'utils/CommonUtils';
-import {
-  getBreadcrumbForContainer,
-  getBreadcrumbForEntitiesWithServiceOnly,
-  getBreadcrumbForTable,
-  getEntityBreadcrumbs,
-  getEntityFeedLink,
-  getEntityName,
-} from 'utils/EntityUtils';
+import { getDataAssetsHeaderInfo } from 'utils/DataAssetsHeader.utils';
+import { getEntityFeedLink, getEntityName } from 'utils/EntityUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
-import { bytesToSize } from 'utils/StringsUtils';
-import { getTierTags, getUsagePercentile } from 'utils/TableUtils';
+import { getTierTags } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
   DataAssetsType,
-  DataAssetsWithoutFollowersField,
+  DataAssetsWithFollowersField,
   DataAssetsWithServiceField,
 } from './DataAssetsHeader.interface';
 
@@ -163,12 +147,12 @@ export const DataAssetsHeader = ({
   const { entityName, tier, isFollowing, version, followers } = useMemo(
     () => ({
       isFollowing: hasFollowers
-        ? (dataAsset as DataAssetsWithoutFollowersField).followers?.some(
+        ? (dataAsset as DataAssetsWithFollowersField).followers?.some(
             ({ id }) => id === USERId
           )
         : false,
       followers: hasFollowers
-        ? (dataAsset as DataAssetsWithoutFollowersField).followers?.length
+        ? (dataAsset as DataAssetsWithFollowersField).followers?.length
         : 0,
 
       tier: getTierTags(dataAsset.tags ?? []),
@@ -252,317 +236,16 @@ export const DataAssetsHeader = ({
     }
   }, [dataAsset]);
 
-  const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(() => {
-    const returnData: DataAssetHeaderInfo = {
-      extraInfo: <></>,
-      breadcrumbs: [],
-    };
-    switch (entityType) {
-      case EntityType.TOPIC:
-        const topicDetails = dataAsset as Topic;
-        returnData.breadcrumbs =
-          getBreadcrumbForEntitiesWithServiceOnly(topicDetails);
-        returnData.extraInfo = (
-          <>
-            {topicDetails?.partitions && (
-              <ExtraInfoLabel
-                label={t('label.partition-plural')}
-                value={topicDetails.partitions}
-              />
-            )}
-            {topicDetails?.replicationFactor && (
-              <ExtraInfoLabel
-                label={t('label.replication-factor')}
-                value={topicDetails.replicationFactor}
-              />
-            )}
-          </>
-        );
-
-        break;
-
-      case EntityType.DASHBOARD:
-        const dashboardDetails = dataAsset as Dashboard;
-
-        returnData.extraInfo = (
-          <>
-            {dashboardDetails.sourceUrl && (
-              <ExtraInfoLink
-                href={dashboardDetails.sourceUrl}
-                label={entityName}
-                value={dashboardDetails.sourceUrl}
-              />
-            )}
-            {dashboardDetails.dashboardType && (
-              <ExtraInfoLabel
-                label={t('label.entity-type-plural', {
-                  entity: t('label.dashboard'),
-                })}
-                value={dashboardDetails.dashboardType}
-              />
-            )}
-            {dashboardDetails.project && (
-              <ExtraInfoLabel
-                label={t('label.project')}
-                value={dashboardDetails.project}
-              />
-            )}
-          </>
-        );
-
-        returnData.breadcrumbs =
-          getBreadcrumbForEntitiesWithServiceOnly(dashboardDetails);
-
-        break;
-      case EntityType.PIPELINE:
-        const pipelineDetails = dataAsset as Pipeline;
-
-        returnData.extraInfo = (
-          <>
-            {pipelineDetails.sourceUrl && (
-              <ExtraInfoLink
-                href={pipelineDetails.sourceUrl}
-                label=""
-                value={pipelineDetails.sourceUrl}
-              />
-            )}
-          </>
-        );
-
-        returnData.breadcrumbs =
-          getBreadcrumbForEntitiesWithServiceOnly(pipelineDetails);
-
-        break;
-      case EntityType.MLMODEL:
-        const mlModelDetail = dataAsset as Mlmodel;
-
-        returnData.extraInfo = (
-          <>
-            {mlModelDetail.algorithm && (
-              <ExtraInfoLabel
-                label={t('label.algorithm')}
-                value={mlModelDetail.algorithm}
-              />
-            )}
-            {mlModelDetail.target && (
-              <ExtraInfoLabel
-                label={t('label.target')}
-                value={mlModelDetail.target}
-              />
-            )}
-            {mlModelDetail.server && (
-              <ExtraInfoLink
-                href={mlModelDetail.server}
-                label={t('label.server')}
-                value={mlModelDetail.server}
-              />
-            )}
-            {mlModelDetail.dashboard && (
-              <ExtraInfoLink
-                href={getDashboardDetailsPath(
-                  mlModelDetail.dashboard?.fullyQualifiedName as string
-                )}
-                label={t('label.dashboard')}
-                value={entityName}
-              />
-            )}
-          </>
-        );
-
-        returnData.breadcrumbs =
-          getBreadcrumbForEntitiesWithServiceOnly(mlModelDetail);
-
-        break;
-      case EntityType.CONTAINER:
-        const containerDetails = dataAsset as Container;
-
-        returnData.extraInfo = (
-          <>
-            {!isUndefined(containerDetails?.dataModel?.isPartitioned) && (
-              <ExtraInfoLabel
-                label=""
-                value={
-                  containerDetails?.dataModel?.isPartitioned
-                    ? (t('label.partitioned') as string)
-                    : (t('label.non-partitioned') as string)
-                }
-              />
-            )}
-            {containerDetails.numberOfObjects && (
-              <ExtraInfoLabel
-                label={t('label.number-of-object-plural')}
-                value={containerDetails.numberOfObjects}
-              />
-            )}
-            {containerDetails.size && (
-              <ExtraInfoLabel
-                label={t('label.size')}
-                value={bytesToSize(containerDetails.size)}
-              />
-            )}
-          </>
-        );
-
-        returnData.breadcrumbs = getBreadcrumbForContainer({
-          entity: containerDetails,
-          parents: parentContainers,
-        });
-
-        break;
-
-      case EntityType.DASHBOARD_DATA_MODEL:
-        const dataModelDetails = dataAsset as DashboardDataModel;
-
-        returnData.extraInfo = (
-          <>
-            {dataModelDetails.dataModelType && (
-              <ExtraInfoLabel
-                label={t('label.data-model-type')}
-                value={dataModelDetails.dataModelType}
-              />
-            )}
-          </>
-        );
-
-        returnData.breadcrumbs =
-          getBreadcrumbForEntitiesWithServiceOnly(dataModelDetails);
-
-        break;
-
-      case EntityType.DATABASE:
-        const databaseDetails = dataAsset as Database;
-
-        returnData.breadcrumbs = getEntityBreadcrumbs(
-          databaseDetails,
-          EntityType.DATABASE
-        );
-
-        break;
-
-      case EntityType.DATABASE_SCHEMA:
-        const databaseSchemaDetails = dataAsset as DatabaseSchema;
-
-        returnData.breadcrumbs = getEntityBreadcrumbs(
-          databaseSchemaDetails,
-          EntityType.DATABASE_SCHEMA,
-          true
-        );
-
-        break;
-
-      case EntityType.DATABASE_SERVICE:
-        const databaseServiceDetails = dataAsset as DatabaseSchema;
-
-        returnData.breadcrumbs = getEntityBreadcrumbs(
-          databaseServiceDetails,
-          EntityType.DATABASE_SERVICE
-        );
-
-        break;
-
-      case EntityType.DASHBOARD_SERVICE:
-        const dashboardServiceDetails = dataAsset as DatabaseSchema;
-
-        returnData.breadcrumbs = getEntityBreadcrumbs(
-          dashboardServiceDetails,
-          EntityType.DASHBOARD_SERVICE
-        );
-
-        break;
-
-      case EntityType.MESSAGING_SERVICE:
-        const messagingServiceDetails = dataAsset as DatabaseSchema;
-
-        returnData.breadcrumbs = getEntityBreadcrumbs(
-          messagingServiceDetails,
-          EntityType.MESSAGING_SERVICE
-        );
-
-        break;
-
-      case EntityType.PIPELINE_SERVICE:
-        const pipelineServiceDetails = dataAsset as DatabaseSchema;
-
-        returnData.breadcrumbs = getEntityBreadcrumbs(
-          pipelineServiceDetails,
-          EntityType.PIPELINE_SERVICE
-        );
-
-        break;
-
-      case EntityType.MLMODEL_SERVICE:
-        const mlModelServiceDetails = dataAsset as DatabaseSchema;
-
-        returnData.breadcrumbs = getEntityBreadcrumbs(
-          mlModelServiceDetails,
-          EntityType.MLMODEL_SERVICE
-        );
-
-        break;
-
-      case EntityType.METADATA_SERVICE:
-        const metadataServiceDetails = dataAsset as DatabaseSchema;
-
-        returnData.breadcrumbs = getEntityBreadcrumbs(
-          metadataServiceDetails,
-          EntityType.METADATA_SERVICE
-        );
-
-        break;
-
-      case EntityType.STORAGE_SERVICE:
-        const storageServiceDetails = dataAsset as DatabaseSchema;
-
-        returnData.breadcrumbs = getEntityBreadcrumbs(
-          storageServiceDetails,
-          EntityType.STORAGE_SERVICE
-        );
-
-        break;
-
-      case EntityType.TABLE:
-      default:
-        const tableDetails = dataAsset as Table;
-
-        returnData.extraInfo = (
-          <>
-            {tableDetails.tableType && (
-              <ExtraInfoLabel
-                label={t('label.type')}
-                value={tableDetails.tableType}
-              />
-            )}
-            {tableDetails?.usageSummary && (
-              <ExtraInfoLabel
-                label={t('label.usage')}
-                value={getUsagePercentile(
-                  tableDetails.usageSummary?.weeklyStats?.percentileRank || 0,
-                  false
-                )}
-              />
-            )}
-            {tableDetails?.profile?.columnCount && (
-              <ExtraInfoLabel
-                label={t('label.column-plural')}
-                value={tableDetails.profile?.columnCount}
-              />
-            )}
-            {tableDetails?.profile?.rowCount && (
-              <ExtraInfoLabel
-                label={t('label.row-plural')}
-                value={tableDetails.profile?.rowCount}
-              />
-            )}
-          </>
-        );
-
-        returnData.breadcrumbs = getBreadcrumbForTable(tableDetails);
-
-        break;
-    }
-
-    return returnData;
-  }, [dataAsset, entityType, parentContainers]);
+  const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(
+    () =>
+      getDataAssetsHeaderInfo(
+        entityType,
+        dataAsset,
+        entityName,
+        parentContainers
+      ),
+    [entityType, dataAsset, entityName, parentContainers]
+  );
 
   const handleOpenTaskClick = () => {
     if (!dataAsset.fullyQualifiedName) {
