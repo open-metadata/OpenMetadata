@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import javax.json.JsonPatch;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
@@ -42,6 +41,7 @@ import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -124,7 +124,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         PipelineStatus.class);
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public Pipeline addPipelineStatus(String fqn, PipelineStatus pipelineStatus) throws IOException {
     // Validate the request content
     Pipeline pipeline = daoCollection.pipelineDAO().findEntityByName(fqn);
@@ -148,7 +148,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     return pipeline.withPipelineStatus(pipelineStatus);
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public Pipeline deletePipelineStatus(String fqn, Long timestamp) throws IOException {
     // Validate the request content
     Pipeline pipeline = dao.findEntityByName(fqn);

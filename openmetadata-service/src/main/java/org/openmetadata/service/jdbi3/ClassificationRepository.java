@@ -20,7 +20,6 @@ import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.mapper.RowMapper;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
@@ -28,6 +27,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.tags.ClassificationResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -82,7 +82,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
         .getTagCount(TagSource.CLASSIFICATION.ordinal(), FullyQualifiedName.buildHash(classification.getName()));
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public Classification delete(UriInfo uriInfo, UUID id) throws IOException {
     Classification classification = get(uriInfo, id, Fields.EMPTY_FIELDS, Include.NON_DELETED);
     checkSystemEntityDeletion(classification);

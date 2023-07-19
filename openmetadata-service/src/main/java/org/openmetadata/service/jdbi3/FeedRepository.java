@@ -49,7 +49,6 @@ import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
@@ -78,6 +77,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FeedMessage;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.feeds.FeedResource;
 import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -115,13 +115,13 @@ public class FeedRepository {
     AFTER
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public int getNextTaskId() {
     dao.feedDAO().updateTaskId();
     return dao.feedDAO().getTaskId();
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public Thread create(Thread thread) throws IOException {
     // Validate about data entity is valid and get the owner for that entity
     EntityLink about = EntityLink.parse(thread.getAbout());
@@ -135,7 +135,7 @@ public class FeedRepository {
     return createThread(thread, about, aboutEntity.getOwner());
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   private Thread createThread(Thread thread, EntityLink about, EntityReference entityOwner)
       throws JsonProcessingException {
     // Validate user creating thread
@@ -188,7 +188,7 @@ public class FeedRepository {
     return thread;
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public Thread create(Thread thread, ContainerResponseContext responseContext) throws IOException {
     // Validate about data entity is valid and get the owner for that entity
     EntityInterface entity;
@@ -323,7 +323,7 @@ public class FeedRepository {
                         null));
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public Thread addPostToThread(String id, Post post, String userName) throws IOException {
     // Validate the user posting the message
     User fromUser = SubjectCache.getInstance().getUser(post.getFrom());
@@ -355,7 +355,7 @@ public class FeedRepository {
     return post.get();
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public DeleteResponse<Post> deletePost(Thread thread, Post post, String userName) throws IOException {
     List<Post> posts = thread.getPosts();
     // Remove the post to be deleted from the posts list
@@ -370,7 +370,7 @@ public class FeedRepository {
     return new DeleteResponse<>(post, RestUtil.ENTITY_DELETED);
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public DeleteResponse<Thread> deleteThread(Thread thread, String deletedByUser) {
     String id = thread.getId().toString();
 
@@ -391,7 +391,7 @@ public class FeedRepository {
     return dao.userDAO().findEntityByName(EntityInterfaceUtil.quoteName(username)).getEntityReference();
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public ThreadCount getThreadsCount(FeedFilter filter, String link) {
     List<List<String>> result;
     if (link == null) {
@@ -449,7 +449,6 @@ public class FeedRepository {
   }
 
   /** List threads based on the filters and limits in the order of the updated timestamp. */
-  @Transaction
   public ResultList<Thread> list(FeedFilter filter, String link, int limitPosts, String userId, int limit)
       throws IOException {
     int total;
@@ -552,7 +551,7 @@ public class FeedRepository {
             null);
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public final PatchResponse<Post> patchPost(Thread thread, Post post, String user, JsonPatch patch)
       throws IOException {
     // Apply JSON patch to the original post to get the updated post
@@ -578,7 +577,7 @@ public class FeedRepository {
     return new PatchResponse<>(Status.OK, updated, change);
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public final PatchResponse<Thread> patchThread(UriInfo uriInfo, UUID id, String user, JsonPatch patch)
       throws IOException {
     // Get all the fields in the original thread that can be updated during PATCH operation

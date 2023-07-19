@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.entity.data.Table;
@@ -31,6 +30,7 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -41,20 +41,20 @@ public class LineageRepository {
     this.dao = dao;
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public EntityLineage get(String entityType, String id, int upstreamDepth, int downstreamDepth) throws IOException {
     EntityReference ref = Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public EntityLineage getByName(String entityType, String fqn, int upstreamDepth, int downstreamDepth)
       throws IOException {
     EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public void addLineage(AddLineage addLineage) throws IOException {
     // Validate from entity
     EntityReference from = addLineage.getEdge().getFromEntity();
@@ -124,7 +124,7 @@ public class LineageRepository {
         || !(to.getType().equals(Entity.TABLE) || to.getType().equals(Entity.DASHBOARD_DATA_MODEL));
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public boolean deleteLineage(String fromEntity, String fromId, String toEntity, String toId) throws IOException {
     // Validate from entity
     EntityReference from = Entity.getEntityReferenceById(fromEntity, UUID.fromString(fromId), Include.NON_DELETED);

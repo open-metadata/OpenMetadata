@@ -21,8 +21,8 @@ import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.util.JsonUtils;
 
 public class ChangeEventRepository {
@@ -32,7 +32,7 @@ public class ChangeEventRepository {
     this.dao = dao.changeEventDAO();
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public List<ChangeEvent> list(
       long timestamp, List<String> entityCreatedList, List<String> entityUpdatedList, List<String> entityDeletedList)
       throws IOException {
@@ -49,7 +49,7 @@ public class ChangeEventRepository {
     return changeEvents;
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public void deleteAll(String entityType) {
     dao.deleteAll(entityType);
   }

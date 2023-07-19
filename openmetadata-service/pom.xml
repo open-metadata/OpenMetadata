@@ -20,6 +20,7 @@
     <expiring.map.version>0.5.10</expiring.map.version>
     <java.saml>2.9.0</java.saml>
     <quartz.version>2.3.2</quartz.version>
+    <org.reflections.version>0.10.2</org.reflections.version>
   </properties>
 
   <dependencyManagement>
@@ -231,8 +232,6 @@
       <groupId>io.github.resilience4j</groupId>
       <artifactId>resilience4j-retry</artifactId>
     </dependency>
-
-
     <!-- Dependencies for secret store manager providers -->
     <dependency>
       <groupId>software.amazon.awssdk</groupId>

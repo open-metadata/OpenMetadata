@@ -74,7 +74,6 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.VoteRequest;
@@ -110,6 +109,7 @@ import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
@@ -364,7 +364,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /** Initialize a given entity if it does not exist. */
-  @Transaction
+  @JdbiUnitOfWork
   public void initializeEntity(T entity) throws IOException {
     String existingJson = dao.findJsonByFqn(entity.getFullyQualifiedName(), ALL);
     if (existingJson != null) {
@@ -384,12 +384,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new EntityUpdater(original, updated, operation);
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public final T get(UriInfo uriInfo, UUID id, Fields fields) throws IOException {
     return get(uriInfo, id, fields, NON_DELETED);
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public final T get(UriInfo uriInfo, UUID id, Fields fields, Include include) throws IOException {
     T entity = dao.findEntityById(id, include);
     setFieldsInternal(entity, fields);
@@ -397,23 +397,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return withHref(uriInfo, entity);
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public final T findOrNull(UUID id, String fields, Include include) throws IOException {
     String json = dao.findJsonById(id, include);
     return json == null ? null : setFieldsInternal(JsonUtils.readValue(json, entityClass), getFields(fields));
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public T getByName(UriInfo uriInfo, String fqn, Fields fields) throws IOException {
     return getByName(uriInfo, fqn, fields, NON_DELETED);
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public final T getByName(UriInfo uriInfo, String fqn, Fields fields, Include include) throws IOException {
     return withHref(uriInfo, setFieldsInternal(dao.findEntityByName(fqn, include), fields));
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public final T findByNameOrNull(String fqn, String fields, Include include) {
     String json = dao.findJsonByFqn(fqn, include);
     try {
@@ -423,7 +423,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public final List<T> listAll(Fields fields, ListFilter filter) throws IOException {
     // forward scrolling, if after == null then first page is being asked
     List<String> jsons = dao.listAfter(filter, Integer.MAX_VALUE, "");
@@ -435,7 +435,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entities;
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public ResultList<T> listAfter(UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after)
       throws IOException {
     int total = dao.listCount(filter);
@@ -463,7 +463,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public ResultList<T> listAfterWithSkipFailure(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) throws IOException {
     Map<UUID, String> errors = new LinkedHashMap<>();
@@ -504,7 +504,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public ResultList<T> listBefore(UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String before)
       throws IOException {
     // Reverse scrolling - Get one extra result used for computing before cursor
@@ -527,7 +527,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return getResultList(entities, beforeCursor, afterCursor, total);
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public T getVersion(UUID id, String version) throws IOException {
     Double requestedVersion = Double.parseDouble(version);
     String extension = EntityUtil.getVersionExtension(entityType, requestedVersion);
@@ -546,7 +546,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         CatalogExceptionMessage.entityVersionNotFound(entityType, id, requestedVersion));
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public EntityHistory listVersions(UUID id) throws IOException {
     T latest = setFieldsInternal(dao.findEntityById(id, ALL), putFields);
     String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
@@ -567,7 +567,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entity;
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public final T createInternal(T entity) throws IOException {
     prepareInternal(entity);
     return createNewEntity(entity);
@@ -612,7 +612,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return response;
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public final PutResponse<T> createOrUpdateInternal(UriInfo uriInfo, T updated) throws IOException {
     T original = JsonUtils.readValue(dao.findJsonByFqn(updated.getFullyQualifiedName(), ALL), entityClass);
     if (original == null) { // If an original entity does not exist then create it, else update
@@ -633,7 +633,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // For example ingestion pipeline creates a pipeline in AirFlow.
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public PutResponse<T> update(UriInfo uriInfo, T original, T updated) throws IOException {
     // Get all the fields in the original entity that can be updated during PUT operation
     setFieldsInternal(original, putFields);
@@ -651,7 +651,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) throws IOException {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFieldsInternal(dao.findEntityById(id), patchFields);
@@ -673,7 +673,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public PutResponse<T> addFollower(String updatedBy, UUID entityId, UUID userId) throws IOException {
     // Get entity
     T entity = dao.findEntityById(entityId);
@@ -706,7 +706,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public PutResponse<T> updateVote(String updatedBy, UUID entityId, VoteRequest request) throws IOException {
     // Get entity
     T originalEntity = dao.findEntityById(entityId);
@@ -778,6 +778,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private DeleteResponse<T> delete(String updatedBy, T original, boolean recursive, boolean hardDelete)
       throws IOException {
+
     checkSystemEntityDeletion(original);
     preDelete(original);
     setFieldsInternal(original, putFields);
@@ -802,7 +803,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new DeleteResponse<>(updated, changeType);
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public final DeleteResponse<T> deleteInternalByName(
       String updatedBy, String name, boolean recursive, boolean hardDelete) throws IOException {
     // Validate entity
@@ -810,10 +811,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return delete(updatedBy, entity, recursive, hardDelete);
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public final DeleteResponse<T> deleteInternal(String updatedBy, UUID id, boolean recursive, boolean hardDelete)
       throws IOException {
     // Validate entity
+
     T entity = dao.findEntityById(id, ALL);
     return delete(updatedBy, entity, recursive, hardDelete);
   }
@@ -878,7 +880,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     dao.delete(id);
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public PutResponse<T> deleteFollower(String updatedBy, UUID entityId, UUID userId) throws IOException {
     T entity = dao.findEntityById(entityId);
 

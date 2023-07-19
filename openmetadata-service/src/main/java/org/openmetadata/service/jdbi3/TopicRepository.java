@@ -36,7 +36,6 @@ import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.json.JsonPatch;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.MessagingService;
@@ -49,6 +48,7 @@ import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.topics.TopicResource;
 import org.openmetadata.service.security.mask.PIIMasker;
@@ -168,7 +168,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     return topic;
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public Topic addSampleData(UUID topicId, TopicSampleData sampleData) throws IOException {
     // Validate the request content
     Topic topic = daoCollection.topicDAO().findEntityById(topicId);

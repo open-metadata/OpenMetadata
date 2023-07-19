@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
@@ -36,6 +35,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWork;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -88,7 +88,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     ingestionPipeline.setService(entityReference);
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public IngestionPipeline deletePipelineStatus(UUID ingestionPipelineId) throws IOException {
     // Validate the request content
     IngestionPipeline ingestionPipeline = dao.findEntityById(ingestionPipelineId);
@@ -167,7 +167,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return change;
   }
 
-  @Transaction
+  @JdbiUnitOfWork
   public RestUtil.PutResponse<?> addPipelineStatus(UriInfo uriInfo, String fqn, PipelineStatus pipelineStatus)
       throws IOException {
     // Validate the request content

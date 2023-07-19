@@ -44,6 +44,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import javax.naming.ConfigurationException;
@@ -86,6 +87,8 @@ import org.openmetadata.service.extension.OpenMetadataExtension;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkApplicationEventListener;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.migration.api.MigrationStep;
@@ -138,6 +141,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
+    JdbiUnitOfWorkProvider provider = JdbiUnitOfWorkProvider.withLinked(jdbi);
+    environment.jersey().register(new JdbiUnitOfWorkApplicationEventListener(provider, new HashSet<>()));
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
