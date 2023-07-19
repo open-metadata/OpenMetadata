@@ -17,6 +17,8 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
 import static org.openmetadata.csv.CsvUtil.addField;
+import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.ROLE;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
@@ -149,6 +151,20 @@ public class UserRepository extends EntityRepository<User> {
     assignRoles(user, user.getRoles());
     assignTeams(user, user.getTeams());
     user.setInheritedRoles(getInheritedRoles(user));
+  }
+
+  @Override
+  public User setInheritedFields(User user, Fields fields) throws IOException {
+    // If user does not have domain, then inherit it from parent Team
+    // TODO have default team when a user belongs to multiple teams
+    if (fields.contains(FIELD_DOMAIN) && user.getDomain() == null) {
+      List<EntityReference> teams = !fields.contains("teams") ? getTeams(user) : user.getTeams();
+      if (!nullOrEmpty(teams)) {
+        Team team = Entity.getEntity(TEAM, teams.get(0).getId(), "domain", ALL);
+        user.withDomain(team.getDomain());
+      }
+    }
+    return user;
   }
 
   @Override

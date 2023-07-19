@@ -57,6 +57,10 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_SESSION_TAG_QUERY,
 )
 from metadata.ingestion.source.database.snowflake.utils import (
+    _current_database_schema,
+    get_columns,
+    get_foreign_keys,
+    get_pk_constraint,
     get_schema_columns,
     get_table_comment,
     get_table_names,
@@ -91,6 +95,12 @@ SnowflakeDialect._get_schema_columns = (  # pylint: disable=protected-access
     get_schema_columns
 )
 Inspector.get_table_names = get_table_names_reflection
+SnowflakeDialect._current_database_schema = (  # pylint: disable=protected-access
+    _current_database_schema
+)
+SnowflakeDialect.get_pk_constraint = get_pk_constraint
+SnowflakeDialect.get_foreign_keys = get_foreign_keys
+SnowflakeDialect.get_columns = get_columns
 
 
 class SnowflakeSource(CommonDbSourceService):

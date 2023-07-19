@@ -335,6 +335,13 @@ public final class EntityUtil {
       fieldList.add(field);
     }
 
+    public void addField(List<String> allowedFields, String field) {
+      if (!allowedFields.contains(field)) {
+        throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
+      }
+      fieldList.add(field);
+    }
+
     @Override
     public String toString() {
       return fieldList.toString();
