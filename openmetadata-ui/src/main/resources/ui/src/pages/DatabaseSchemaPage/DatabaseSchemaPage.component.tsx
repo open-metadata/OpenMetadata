@@ -69,7 +69,6 @@ import {
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import './database-schema-page.less';
 import SchemaTablesTab from './SchemaTablesTab';
 
 const DatabaseSchemaPage: FunctionComponent = () => {
@@ -479,7 +478,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               <TagsContainerV2
                 entityFqn={databaseSchemaFQN}
                 entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
-                entityType={EntityType.DATABASE}
+                entityType={EntityType.DATABASE_SCHEMA}
                 permission={editTagsPermission}
                 selectedTags={tags}
                 tagType={TagSource.Classification}
@@ -489,7 +488,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               <TagsContainerV2
                 entityFqn={databaseSchemaFQN}
                 entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
-                entityType={EntityType.DATABASE}
+                entityType={EntityType.DATABASE_SCHEMA}
                 permission={editTagsPermission}
                 selectedTags={tags}
                 tagType={TagSource.Glossary}
@@ -515,7 +514,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         <ActivityFeedProvider>
           <ActivityFeedTab
             entityType={EntityType.DATABASE_SCHEMA}
-            fqn={databaseSchema?.fullyQualifiedName ?? ''}
+            fqn={databaseSchema.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchDatabaseSchemaDetails}
           />
