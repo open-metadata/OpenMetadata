@@ -24,7 +24,7 @@ import {
   mockVersionHandler,
   mockVersionList,
 } from 'mocks/VersionCommon.mock';
-import { MlModelVersionProp } from './MlModelVersion.interface';
+import { MlModelVersionProp } from '../components/MlModelVersion/MlModelVersion.interface';
 
 export const mockMlModelDetails = {
   id: '68b51299-dfd1-48ce-a00e-9611da93e7a3',

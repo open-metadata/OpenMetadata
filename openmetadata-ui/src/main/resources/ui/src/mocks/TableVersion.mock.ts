@@ -20,7 +20,7 @@ import {
   mockVersionHandler,
   mockVersionList,
 } from 'mocks/VersionCommon.mock';
-import { TableVersionProp } from './TableVersion.interface';
+import { TableVersionProp } from '../components/TableVersion/TableVersion.interface';
 
 export const mockTableData = {
   id: 'ab4f893b-c303-43d9-9375-3e620a670b02',

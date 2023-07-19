@@ -15,8 +15,8 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { containerVersionMockProps } from '../../mocks/ContainerVersion.mock';
 import ContainerVersion from './ContainerVersion.component';
-import { containerVersionMockProps } from './ContainerVersion.mock';
 
 const mockPush = jest.fn();
 

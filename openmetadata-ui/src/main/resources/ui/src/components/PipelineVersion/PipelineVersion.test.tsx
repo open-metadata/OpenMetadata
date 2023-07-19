@@ -17,11 +17,11 @@ import { EntityTabs } from 'enums/entity.enum';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import PipelineVersion from './PipelineVersion.component';
 import {
   mockColumnDiffPipelineVersionMockProps,
   pipelineVersionMockProps,
-} from './PipelineVersion.mock';
+} from '../../mocks/PipelineVersion.mock';
+import PipelineVersion from './PipelineVersion.component';
 
 const mockPush = jest.fn();
 

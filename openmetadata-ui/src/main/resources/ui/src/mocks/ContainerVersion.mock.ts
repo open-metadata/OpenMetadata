@@ -25,7 +25,7 @@ import {
   mockVersionHandler,
   mockVersionList,
 } from 'mocks/VersionCommon.mock';
-import { ContainerVersionProp } from './ContainerVersion.interface';
+import { ContainerVersionProp } from '../components/ContainerVersion/ContainerVersion.interface';
 
 export const mockContainerData = {
   id: 'fa390cbe-63a3-4ebb-976b-4cc9cbe5a234',

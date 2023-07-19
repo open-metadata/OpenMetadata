@@ -36,7 +36,7 @@ import {
   mockVersionHandler,
   mockVersionList,
 } from 'mocks/VersionCommon.mock';
-import { TopicVersionProp } from './TopicVersion.interface';
+import { TopicVersionProp } from '../components/TopicVersion/TopicVersion.interface';
 
 export const mockTopicData = {
   id: 'eccc8f43-abd8-494b-9173-6b18644d5336',

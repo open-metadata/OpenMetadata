@@ -15,8 +15,8 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { tableVersionMockProps } from '../../mocks/TableVersion.mock';
 import TableVersion from './TableVersion.component';
-import { tableVersionMockProps } from './TableVersion.mock';
 
 const mockPush = jest.fn();
 

@@ -15,8 +15,8 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { topicVersionMockProps } from '../../mocks/TopicVersion.mock';
 import TopicVersion from './TopicVersion.component';
-import { topicVersionMockProps } from './TopicVersion.mock';
 
 const mockPush = jest.fn();
 

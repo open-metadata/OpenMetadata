@@ -17,13 +17,13 @@ import { ENTITY_PERMISSIONS } from 'mocks/Permissions.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import DashboardVersion from './DashboardVersion.component';
-import { DashboardVersionProp } from './DashboardVersion.interface';
 import {
   dashboardVersionProps,
   mockNoChartData,
   mockTagChangeVersion,
-} from './dashboardVersion.mock';
+} from '../../mocks/dashboardVersion.mock';
+import DashboardVersion from './DashboardVersion.component';
+import { DashboardVersionProp } from './DashboardVersion.interface';
 
 const mockPush = jest.fn();
 

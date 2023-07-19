@@ -15,11 +15,11 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import MlModelVersion from './MlModelVersion.component';
 import {
   mlModelVersionMockProps,
   mockMlModelDetails,
-} from './MlModelVersion.mock';
+} from '../../mocks/MlModelVersion.mock';
+import MlModelVersion from './MlModelVersion.component';
 
 const mockPush = jest.fn();
 
