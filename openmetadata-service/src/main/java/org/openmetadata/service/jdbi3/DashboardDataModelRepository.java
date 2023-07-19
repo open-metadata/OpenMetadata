@@ -14,6 +14,9 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 
@@ -43,10 +46,6 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class DashboardDataModelRepository extends EntityRepository<DashboardDataModel> {
-
-  private static final String DATA_MODEL_UPDATE_FIELDS = "owner,tags,followers";
-  private static final String DATA_MODEL_PATCH_FIELDS = "owner,tags,followers";
-
   public DashboardDataModelRepository(CollectionDAO dao) {
     super(
         DashboardDataModelResource.COLLECTION_PATH,
@@ -54,8 +53,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         DashboardDataModel.class,
         dao.dashboardDataModelDAO(),
         dao,
-        DATA_MODEL_PATCH_FIELDS,
-        DATA_MODEL_UPDATE_FIELDS);
+        "",
+        "");
   }
 
   @Override
@@ -134,6 +133,15 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         service.getType(),
         Entity.DASHBOARD_DATA_MODEL,
         Relationship.CONTAINS);
+  }
+
+  @Override
+  public DashboardDataModel setInheritedFields(DashboardDataModel dataModel, Fields fields) throws IOException {
+    if (fields.contains(FIELD_DOMAIN) && nullOrEmpty(dataModel.getDomain())) {
+      DashboardService dashboardService = Entity.getEntity(dataModel.getService(), "domain", ALL);
+      dataModel.setDomain(dashboardService.getDomain());
+    }
+    return dataModel;
   }
 
   @Override

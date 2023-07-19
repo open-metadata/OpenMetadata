@@ -98,6 +98,7 @@ import {
   getTierTags,
 } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import './database-schema-page.less';
 
 const DatabaseSchemaPage: FunctionComponent = () => {
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
@@ -673,57 +674,52 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             <Col span={24}>
               <Tabs
                 activeKey={activeTab}
+                className="database-schema-page-tabs"
                 data-testid="tabs"
                 items={tabs}
                 onChange={activeTabHandler}
               />
             </Col>
-            <Col className="p-y-md" span={24}>
+            <Col className="p-b-md" span={24}>
               {activeTab === EntityTabs.TABLE && (
-                <>
-                  {tableDataLoading ? (
-                    <Loader />
-                  ) : (
-                    <Row gutter={[16, 16]}>
-                      <Col data-testid="description-container" span={24}>
-                        <DescriptionV1
-                          description={description}
-                          entityFieldThreads={getEntityFieldThreadCounts(
-                            EntityField.DESCRIPTION,
-                            entityFieldThreadCount
-                          )}
-                          entityFqn={databaseSchemaFQN}
-                          entityName={databaseSchemaName}
-                          entityType={EntityType.DATABASE_SCHEMA}
-                          hasEditAccess={
-                            databaseSchemaPermission.EditDescription ||
-                            databaseSchemaPermission.EditAll
-                          }
-                          isEdit={isEdit}
-                          onCancel={onCancel}
-                          onDescriptionEdit={onDescriptionEdit}
-                          onDescriptionUpdate={onDescriptionUpdate}
-                          onThreadLinkSelect={onThreadLinkSelect}
+                <Row className="p-t-md" gutter={[16, 16]}>
+                  <Col data-testid="description-container" span={24}>
+                    <DescriptionV1
+                      description={description}
+                      entityFieldThreads={getEntityFieldThreadCounts(
+                        EntityField.DESCRIPTION,
+                        entityFieldThreadCount
+                      )}
+                      entityFqn={databaseSchemaFQN}
+                      entityName={databaseSchemaName}
+                      entityType={EntityType.DATABASE_SCHEMA}
+                      hasEditAccess={
+                        databaseSchemaPermission.EditDescription ||
+                        databaseSchemaPermission.EditAll
+                      }
+                      isEdit={isEdit}
+                      onCancel={onCancel}
+                      onDescriptionEdit={onDescriptionEdit}
+                      onDescriptionUpdate={onDescriptionUpdate}
+                      onThreadLinkSelect={onThreadLinkSelect}
+                    />
+                  </Col>
+                  <Col span={24}>
+                    <Row justify="end">
+                      <Col>
+                        <Switch
+                          checked={showDeletedTables}
+                          data-testid="show-deleted"
+                          onClick={setShowDeletedTables}
                         />
+                        <Typography.Text className="m-l-xs">
+                          {t('label.deleted')}
+                        </Typography.Text>{' '}
                       </Col>
-                      <Col span={24}>
-                        <Row justify="end">
-                          <Col>
-                            <Switch
-                              checked={showDeletedTables}
-                              data-testid="show-deleted"
-                              onClick={setShowDeletedTables}
-                            />
-                            <Typography.Text className="m-l-xs">
-                              {t('label.deleted')}
-                            </Typography.Text>{' '}
-                          </Col>
-                        </Row>
-                      </Col>
-                      {getSchemaTableList()}
                     </Row>
-                  )}
-                </>
+                  </Col>
+                  {tableDataLoading ? <Loader /> : getSchemaTableList()}
+                </Row>
               )}
               {activeTab === EntityTabs.ACTIVITY_FEED && (
                 <ActivityFeedProvider>

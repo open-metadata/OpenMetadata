@@ -72,11 +72,11 @@
     },
     "teams" : {
       "description": "Teams that use this policy directly and not through roles.",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "roles" : {
       "description": "Roles that use this policy.",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "location": {
       "description": "Location to which a policy is applied. This field is relevant only for `lifeCycle` policies.",

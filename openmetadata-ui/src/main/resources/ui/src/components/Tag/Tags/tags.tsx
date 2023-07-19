@@ -92,7 +92,9 @@ const Tags: FunctionComponent<TagProps> = ({
         onClick={() => {
           if (tag.source && startWith !== TAG_START_WITH.PLUS) {
             tag.source === TagSource.Glossary
-              ? history.push(`${ROUTES.GLOSSARY}/${tag.tagFQN}`)
+              ? history.push(
+                  `${ROUTES.GLOSSARY}/${encodeURIComponent(tag.tagFQN)}`
+                )
               : history.push(`${ROUTES.TAGS}/${tag.tagFQN.split('.')[0]}`);
           }
         }}>

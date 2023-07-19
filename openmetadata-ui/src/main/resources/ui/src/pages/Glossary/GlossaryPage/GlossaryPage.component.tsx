@@ -48,7 +48,8 @@ import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component'
 const GlossaryPage = () => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const { glossaryName: glossaryFqn } = useParams<{ glossaryName: string }>();
+  const { glossaryName } = useParams<{ glossaryName: string }>();
+  const glossaryFqn = decodeURIComponent(glossaryName);
   const history = useHistory();
   const [glossaries, setGlossaries] = useState<Glossary[]>([]);
   const [isLoading, setIsLoading] = useState(true);

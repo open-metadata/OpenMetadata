@@ -76,6 +76,7 @@ import org.openmetadata.service.migration.api.MigrationStep;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -136,7 +137,7 @@ public class MigrationUtil {
       for (String json : jsons) {
         // Update the Statements to Database
         T entity = JsonUtils.readValue(json, clazz);
-        String hash = "";
+        String hash;
         try {
           hash =
               withName
@@ -407,8 +408,7 @@ public class MigrationUtil {
     IngestionPipelineRepository ingestionPipelineRepository = new IngestionPipelineRepository(collectionDAO);
     TestSuiteRepository testSuiteRepository = new TestSuiteRepository(collectionDAO);
     TestCaseRepository testCaseRepository = new TestCaseRepository(collectionDAO);
-    List<TestCase> testCases =
-        testCaseRepository.listAll(new EntityUtil.Fields(List.of("id")), new ListFilter(Include.ALL));
+    List<TestCase> testCases = testCaseRepository.listAll(new Fields(Set.of("id")), new ListFilter(Include.ALL));
 
     for (TestCase test : testCases) {
 
@@ -422,14 +422,14 @@ public class MigrationUtil {
         testSuiteRepository.getByName(
             null,
             EntityInterfaceUtil.quoteName(FullyQualifiedName.buildHash(testSuiteFqn)),
-            new EntityUtil.Fields(List.of("id")),
+            new Fields(Set.of("id")),
             Include.ALL);
       } catch (EntityNotFoundException entityNotFoundException) {
         try {
           // Check if the test Suite Exists, this brings the data on nameHash basis
           stored =
               testSuiteRepository.getByName(
-                  null, EntityInterfaceUtil.quoteName(testSuiteFqn), new EntityUtil.Fields(List.of("id")), Include.ALL);
+                  null, EntityInterfaceUtil.quoteName(testSuiteFqn), new Fields(Set.of("id")), Include.ALL);
           testSuiteRepository.addRelationship(
               stored.getId(), test.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
           stored.setExecutable(true);
@@ -477,7 +477,7 @@ public class MigrationUtil {
     // Update Test Suites
     ListFilter filter = new ListFilter(Include.ALL);
     filter.addQueryParam("testSuiteType", "logical");
-    List<TestSuite> testSuites = testSuiteRepository.listAll(new EntityUtil.Fields(List.of("id")), filter);
+    List<TestSuite> testSuites = testSuiteRepository.listAll(new Fields(Set.of("id")), filter);
 
     for (TestSuite testSuiteRecord : testSuites) {
       TestSuite temp = testSuiteRepository.getDao().findEntityById(testSuiteRecord.getId());
