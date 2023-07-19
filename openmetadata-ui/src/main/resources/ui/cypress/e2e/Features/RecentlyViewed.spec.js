@@ -47,7 +47,7 @@ describe('Recently viwed data assets', () => {
   });
 
   it('recently view section should be present', () => {
-    cy.get('[data-testid="my-data-widget"]')
+    cy.get('[data-testid="recently-viewed-container"]')
       .scrollIntoView()
       .should('be.visible');
 
@@ -57,7 +57,7 @@ describe('Recently viwed data assets', () => {
   });
 
   RECENTLY_VIEW_ENTITIES.map((entity, index) => {
-    it(`recently view section should be have ${entity.term} visited`, () => {
+    it(`recently view section should have ${entity.term} visited`, () => {
       visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
 
       interceptURL(
