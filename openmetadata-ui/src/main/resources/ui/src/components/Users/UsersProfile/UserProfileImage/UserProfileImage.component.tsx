@@ -42,17 +42,17 @@ const UserProfileImage = ({ userData }: UserProfileImageProps) => {
           alt="profile"
           preview={false}
           referrerPolicy="no-referrer"
-          src={image || ''}
+          src={image ?? ''}
           onError={() => {
             SetIsImgUrlValid(false);
           }}
         />
       ) : (
         <ProfilePicture
-          displayName={userData?.displayName || userData.name}
+          displayName={userData?.displayName ?? userData.name}
           height="186"
-          id={userData?.id || ''}
-          name={userData?.name || ''}
+          id={userData?.id ?? ''}
+          name={userData?.name ?? ''}
           textClass="text-5xl"
           width=""
         />

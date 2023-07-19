@@ -16,11 +16,11 @@ import Chip from 'components/common/Chip/Chip.component';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as UserIcons } from '../../../../assets/svg/user.svg';
-import { UserProfileInheritedRoles } from './UserProfileInheritedRoles.interface';
+import { UserProfileInheritedRolesProps } from './UserProfileInheritedRoles.interface';
 
 const UserProfileInheritedRoles = ({
   inheritedRoles,
-}: UserProfileInheritedRoles) => {
+}: UserProfileInheritedRolesProps) => {
   const { t } = useTranslation();
 
   return (

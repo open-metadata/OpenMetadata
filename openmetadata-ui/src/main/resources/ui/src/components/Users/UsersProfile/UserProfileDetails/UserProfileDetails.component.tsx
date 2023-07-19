@@ -81,7 +81,7 @@ const UserProfileDetails = ({
 
   const handleDisplayNameSave = () => {
     if (displayName !== userData.displayName) {
-      updateUserDetails({ displayName: displayName || '' });
+      updateUserDetails({ displayName: displayName ?? '' });
     }
     setIsDisplayNameEdit(false);
   };
@@ -108,7 +108,7 @@ const UserProfileDetails = ({
         <Space align="center">
           <Typography.Text className="text-lg font-medium">
             {hasEditPermission
-              ? userData.displayName ||
+              ? userData.displayName ??
                 t('label.add-entity', { entity: t('label.display-name') })
               : getEntityName(userData)}
           </Typography.Text>
@@ -139,7 +139,7 @@ const UserProfileDetails = ({
       hasEditPermission ? (
         <Description
           reduceDescription
-          description={userData.description || ''}
+          description={userData.description ?? ''}
           entityName={getEntityName(userData as unknown as EntityReference)}
           hasEditAccess={isAdminUser}
           isEdit={isDescriptionEdit}
@@ -149,7 +149,7 @@ const UserProfileDetails = ({
         />
       ) : (
         <Typography.Paragraph className="m-b-0">
-          {userData.description || (
+          {userData.description ?? (
             <span className="text-grey-muted">
               {t('label.no-entity', {
                 entity: t('label.description'),

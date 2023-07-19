@@ -13,6 +13,6 @@
 
 import { User } from 'generated/entity/teams/user';
 
-export interface UserProfileInheritedRoles {
+export interface UserProfileInheritedRolesProps {
   inheritedRoles: User['inheritedRoles'];
 }

@@ -61,7 +61,7 @@ const UserProfileTeams = ({
   );
 
   useEffect(() => {
-    setSelectedTeams(getNonDeletedTeams(teams || []).map((team) => team.id));
+    setSelectedTeams(getNonDeletedTeams(teams ?? []).map((team) => team.id));
   }, [teams]);
 
   return (
