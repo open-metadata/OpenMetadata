@@ -483,7 +483,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Transaction
   public Table getLatestTableProfile(String fqn, boolean authorizePII) throws IOException {
-    Table table = dao.findEntityByName(fqn);
+    Table table = dao.findEntityByName(fqn, ALL);
     TableProfile tableProfile =
         JsonUtils.readValue(
             getLatestExtensionFromTimeseries(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION),

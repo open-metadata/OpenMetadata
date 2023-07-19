@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Space, Table, Tabs, Typography } from 'antd';
+import { Col, Row, Space, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import ActivityFeedProvider, {
@@ -661,14 +661,13 @@ const DashboardDetails = ({
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <Card className="lineage-card card-body-full w-auto border-none">
-            <EntityLineageComponent
-              entityType={EntityType.DASHBOARD}
-              hasEditAccess={
-                dashboardPermissions.EditAll || dashboardPermissions.EditLineage
-              }
-            />
-          </Card>
+          <EntityLineageComponent
+            entity={dashboardDetails}
+            entityType={EntityType.DASHBOARD}
+            hasEditAccess={
+              dashboardPermissions.EditAll || dashboardPermissions.EditLineage
+            }
+          />
         ),
       },
       {
