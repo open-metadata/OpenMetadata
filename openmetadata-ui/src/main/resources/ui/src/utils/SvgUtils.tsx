@@ -185,7 +185,7 @@ import IconTableGrey from '../assets/svg/table-grey.svg';
 import IconTable from '../assets/svg/table.svg';
 import IconTagGrey from '../assets/svg/tag-grey.svg';
 import IconTag from '../assets/svg/tag.svg';
-import IconTaskColor from '../assets/svg/Task-ic.svg';
+import IconTaskColor from '../assets/svg/task-ic.svg';
 import IconTeamsGrey from '../assets/svg/teams-grey.svg';
 import IconTerns from '../assets/svg/terms.svg';
 import IconTier from '../assets/svg/tier.svg';
