@@ -106,7 +106,7 @@ describe('Tags page should work', () => {
     interceptURL('GET', `/api/v1/permissions/classification/*`, 'permissions');
     interceptURL(
       'GET',
-      `/api/v1/search/suggest?q=*&index=tag_search_index*glossary_search_index`,
+      `/api/v1/search/query?q=*%20AND%20disabled%3Afalse&index=tag_search_index*`,
       'suggestTag'
     );
     interceptURL('GET', '/api/v1/tags*', 'getTags');
@@ -298,7 +298,7 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="tags"] [data-testid="add-tag"]').should('be.visible');
   });
 
-  it.skip('Add tag at DatabaseSchema level with task & suggestions', () => {
+  it('Add tag at DatabaseSchema level with task & suggestions', () => {
     interceptURL(
       'GET',
       '/api/v1/permissions/databaseSchema/name/*',
@@ -307,12 +307,12 @@ describe('Tags page should work', () => {
     interceptURL('PUT', '/api/v1/feed/tasks/*/resolve', 'taskResolve');
     interceptURL(
       'GET',
-      '/api/v1/databaseSchemas/name/*?fields=owner,usageSummary,tags',
+      '/api/v1/databaseSchemas/name/*?fields=*',
       'databaseSchemasPage'
     );
 
     const entity = SEARCH_ENTITY_TABLE.table_2;
-    const tag = 'PersonalData.Personal';
+    const tag = 'Personal';
     const assignee = 'admin';
 
     visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
@@ -333,53 +333,39 @@ describe('Tags page should work', () => {
     cy.get(
       '[data-testid="select-assignee"] > .ant-select-selector > .ant-select-selection-overflow'
     )
-      .should('be.visible')
       .click()
       .type(assignee);
     cy.get('.ant-select-item-option-content').contains(assignee).click();
 
     // click outside the select box
-    cy.get('[data-testid="entity-details"]').should('exist').click();
+    cy.clickOutside();
 
-    cy.get(
-      '[data-testid="select-tags"] > .ant-select-selector > .ant-select-selection-overflow'
-    )
-      .should('be.visible')
-      .click()
-      .type(tag);
+    cy.get('[data-testid="tag-selector"]').click().type(tag);
 
     verifyResponseStatusCode('@suggestTag', 200);
-    cy.get('.ant-select-item-option-content').contains(tag).click();
+    cy.get('[data-testid="tag-PersonalData.Personal"]').click();
 
     cy.get('[data-testid="tags-label"]').click();
 
-    cy.get('[data-testid="submit-tag-request"]').should('be.visible').click();
+    cy.get('[data-testid="submit-tag-request"]').click();
     verifyResponseStatusCode('@taskCreated', 201);
 
     // Accept the tag suggestion which is created
-    cy.get('.ant-btn-compact-first-item')
-      .should('be.visible')
-      .contains('Accept Suggestion')
-      .click();
+    cy.get('.ant-btn-compact-first-item').contains('Accept Suggestion').click();
 
     verifyResponseStatusCode('@taskResolve', 200);
     verifyResponseStatusCode('@databaseSchemasPage', 200);
 
-    cy.get('[data-testid="entity-tags"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .contains(tag);
+    cy.get('[data-testid="entity-tags"]').scrollIntoView().contains(tag);
 
-    cy.get('[data-testid="add-tag"]').should('exist').click();
+    cy.get('[data-testid="edit-button"]').click();
 
     // Remove all added tags
-    cy.get('[data-testid="remove-tags"]').eq(0).should('be.visible').click();
+    cy.get('[data-testid="remove-tags"]').click({ multiple: true });
 
     interceptURL('PATCH', '/api/v1/databaseSchemas/*', 'removeTags');
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@removeTags', 200);
-
-    cy.get('[data-testid="tags"] [data-testid="add-tag"]').should('be.visible');
   });
 
   it('Check Usage of tag and it should redirect to explore page with tags filter', () => {

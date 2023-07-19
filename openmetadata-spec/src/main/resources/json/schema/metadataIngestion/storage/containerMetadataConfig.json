@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/metadataIngestion/containerMetadataConfig.json",
+  "$id": "https://open-metadata.org/schema/metadataIngestion/storage/containerMetadataConfig.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "StorageContainerConfig",
   "description": "Definition of the properties contained by an object store container template config file",

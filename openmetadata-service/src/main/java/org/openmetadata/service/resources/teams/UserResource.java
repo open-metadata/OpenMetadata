@@ -45,6 +45,7 @@ import java.time.ZoneId;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.json.JsonObject;
@@ -168,6 +169,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     Entity.withHref(uriInfo, user.getInheritedRoles());
     Entity.withHref(uriInfo, user.getOwns());
     Entity.withHref(uriInfo, user.getFollows());
+    Entity.withHref(uriInfo, user.getDomain());
     return user;
   }
 
@@ -656,7 +658,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
 
-    User user = repository.get(uriInfo, id, new Fields(List.of(AUTH_MECHANISM_FIELD)));
+    User user = repository.get(uriInfo, id, new Fields(Set.of(AUTH_MECHANISM_FIELD)));
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
@@ -693,7 +695,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
 
-    User user = repository.get(uriInfo, id, new Fields(List.of(AUTH_MECHANISM_FIELD)));
+    User user = repository.get(uriInfo, id, new Fields(Set.of(AUTH_MECHANISM_FIELD)));
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
@@ -898,7 +900,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     User registeredUser;
     try {
       registeredUser =
-          repository.getByName(uriInfo, userName, new Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+          repository.getByName(uriInfo, userName, new Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
     } catch (IOException | EntityNotFoundException ex) {
       LOG.error(
           "[GeneratePasswordReset] Got Error while fetching user : {},  error message {}", userName, ex.getMessage());
@@ -1017,7 +1019,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     try {
       decodedBytes = Base64.getDecoder().decode(loginRequest.getPassword());
     } catch (Exception ex) {
-      throw new IllegalArgumentException("Password need to be encoded in Base-64.");
+      throw new IllegalArgumentException("Password needs to be encoded in Base-64.");
     }
     loginRequest.withPassword(new String(decodedBytes));
     return Response.status(Response.Status.OK).entity(authHandler.loginUser(loginRequest)).build();

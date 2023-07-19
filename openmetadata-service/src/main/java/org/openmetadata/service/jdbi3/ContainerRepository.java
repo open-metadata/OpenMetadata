@@ -33,9 +33,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public class ContainerRepository extends EntityRepository<Container> {
-
-  private static final String CONTAINER_UPDATE_FIELDS = "dataModel,owner,tags,extension";
-  private static final String CONTAINER_PATCH_FIELDS = "dataModel,owner,tags,extension";
+  private static final String CONTAINER_UPDATE_FIELDS = "dataModel";
+  private static final String CONTAINER_PATCH_FIELDS = "dataModel";
 
   public ContainerRepository(CollectionDAO dao) {
     super(

@@ -28,6 +28,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_VIEW_NAMES,
     SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
 )
+from metadata.utils import fqn
 from metadata.utils.sqlalchemy_utils import (
     get_display_datatype,
     get_table_comment_wrapper,
@@ -70,8 +71,7 @@ def get_table_names(self, connection, schema, **kw):
 
     if kw.get("external_tables"):
         query = SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES
-
-    cursor = connection.execute(query.format(schema))
+    cursor = connection.execute(query.format(fqn.unquote_name(schema)))
     result = [self.normalize_name(row[0]) for row in cursor]
     return result
 
@@ -122,13 +122,6 @@ def get_table_comment(
     )
 
 
-@reflection.cache
-def get_unique_constraints(  # pylint: disable=unused-argument
-    self, connection, table_name, schema=None, **kw
-):
-    return []
-
-
 def normalize_names(self, name):  # pylint: disable=unused-argument
     return name
 
@@ -140,15 +133,19 @@ def get_schema_columns(self, connection, schema, **kw):
     None, as it is cacheable and is an unexpected return type for this function"""
     ans = {}
     current_database, _ = self._current_database_schema(connection, **kw)
-    full_schema_name = self._denormalize_quote_join(current_database, schema)
+    full_schema_name = self._denormalize_quote_join(
+        current_database, fqn.quote_name(schema)
+    )
     try:
         schema_primary_keys = self._get_schema_primary_keys(
             connection, full_schema_name, **kw
         )
         result = connection.execute(
             text(SNOWFLAKE_GET_SCHEMA_COLUMNS),
-            {"table_schema": self.denormalize_name(schema)},
+            {"table_schema": self.denormalize_name(fqn.unquote_name(schema))}
+            # removing " " from schema name because schema name is in the WHERE clause of a query
         )
+
     except sa_exc.ProgrammingError as p_err:
         if p_err.orig.errno == 90030:
             # This means that there are too many tables in the schema, we need to go more granular
@@ -168,7 +165,7 @@ def get_schema_columns(self, connection, schema, **kw):
         identity_start,
         identity_increment,
     ) in result:
-        table_name = self.normalize_name(table_name)
+        table_name = self.normalize_name(fqn.quote_name(table_name))
         column_name = self.normalize_name(column_name)
         if table_name not in ans:
             ans[table_name] = []
@@ -223,3 +220,75 @@ def get_schema_columns(self, connection, schema, **kw):
                 "increment": identity_increment,
             }
     return ans
+
+
+@reflection.cache
+def _current_database_schema(self, connection, **kw):  # pylint: disable=unused-argument
+    """Getting table name in quotes"""
+    res = connection.exec_driver_sql(
+        "select current_database(), current_schema();"
+    ).fetchone()
+    return (
+        self.normalize_name(fqn.quote_name(res[0])),
+        self.normalize_name(res[1]),
+    )
+
+
+@reflection.cache
+def get_pk_constraint(self, connection, table_name, schema=None, **kw):
+    schema = fqn.quote_name(schema or self.default_schema_name)
+    current_database, current_schema = self._current_database_schema(connection, **kw)
+    full_schema_name = self._denormalize_quote_join(
+        current_database, schema if schema else current_schema
+    )
+    return self._get_schema_primary_keys(
+        connection, self.denormalize_name(full_schema_name), **kw
+    ).get(table_name, {"constrained_columns": [], "name": None})
+
+
+@reflection.cache
+def get_foreign_keys(self, connection, table_name, schema=None, **kw):
+    """
+    Gets all foreign keys for a table
+    """
+    schema = fqn.quote_name(schema or self.default_schema_name)
+    current_database, current_schema = self._current_database_schema(connection, **kw)
+    full_schema_name = self._denormalize_quote_join(
+        current_database, schema if schema else current_schema
+    )
+
+    foreign_key_map = self._get_schema_foreign_keys(
+        connection, self.denormalize_name(full_schema_name), **kw
+    )
+    return foreign_key_map.get(table_name, [])
+
+
+@reflection.cache
+def get_unique_constraints(self, connection, table_name, schema, **kw):
+    schema = fqn.quote_name(schema or self.default_schema_name)
+    current_database, current_schema = self._current_database_schema(connection, **kw)
+    full_schema_name = self._denormalize_quote_join(
+        current_database, schema if schema else current_schema
+    )
+    return self._get_schema_unique_constraints(
+        connection, self.denormalize_name(full_schema_name), **kw
+    ).get(table_name, [])
+
+
+@reflection.cache
+def get_columns(self, connection, table_name, schema=None, **kw):
+    """
+    Gets all column info given the table info
+    """
+    schema = schema or self.default_schema_name
+    if not schema:
+        _, schema = self._current_database_schema(connection, **kw)
+
+    schema_columns = self._get_schema_columns(connection, schema, **kw)
+    if schema_columns is None:
+        # Too many results, fall back to only query about single table
+        return self._get_table_columns(connection, table_name, schema, **kw)
+    normalized_table_name = self.normalize_name(fqn.quote_name(table_name))
+    if normalized_table_name not in schema_columns:
+        raise sa_exc.NoSuchTableError()
+    return schema_columns[normalized_table_name]

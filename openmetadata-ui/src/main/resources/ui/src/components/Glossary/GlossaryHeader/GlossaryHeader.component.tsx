@@ -123,7 +123,7 @@ const GlossaryHeader = ({
   const handleGlossaryImport = () =>
     history.push(
       getGlossaryPathWithAction(
-        selectedData.fullyQualifiedName ?? '',
+        encodeURIComponent(selectedData.fullyQualifiedName ?? ''),
         EntityAction.IMPORT
       )
     );

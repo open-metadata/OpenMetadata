@@ -109,7 +109,7 @@
     },
     "children": {
       "description": "References to child containers residing under this entity.",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "dataModel": {
       "description": "References to the container's data model, if data is structured, or null otherwise",
@@ -145,7 +145,7 @@
     },
     "followers": {
       "description": "Followers of this container.",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "tags": {
       "description": "Tags for this container.",

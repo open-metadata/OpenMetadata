@@ -86,6 +86,10 @@ def _build(*args) -> str:
     return FQN_SEPARATOR.join(quoted)
 
 
+def unquote_name(name: str) -> str:
+    return name[1:-1] if name is not None and '"' in name else name
+
+
 def quote_name(name: str) -> str:
     """
     Equivalent of Java's FullyQualifiedName#quoteName

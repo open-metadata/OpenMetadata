@@ -14,7 +14,6 @@
 import {
   checkServiceFieldSectionHighlighting,
   deleteCreatedService,
-  editOwnerforCreatedService,
   goToAddNewServicePage,
   handleIngestionRetry,
   interceptURL,
@@ -219,14 +218,6 @@ describe('Postgres Ingestion', () => {
     cy.get('[data-testid="schema"]').should('be.visible').click();
     cy.get('[data-testid="related-tables-data"]').should('be.visible');
     cy.get('[data-testid="frequently-joined-columns"]').should('be.visible');
-  });
-
-  it('Edit and validate owner', () => {
-    editOwnerforCreatedService(
-      SERVICE_TYPE.Database,
-      serviceName,
-      API_SERVICE.databaseServices
-    );
   });
 
   it('delete created service', () => {

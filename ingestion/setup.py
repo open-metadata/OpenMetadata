@@ -307,6 +307,7 @@ setup(
                         "airflow",
                         "db2",
                         "great-expectations",
+                        "pymssql",  # pymssql build is failing ref issue: https://github.com/pymssql/pymssql/issues/826
                     }
                 ]
             )

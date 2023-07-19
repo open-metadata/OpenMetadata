@@ -21,7 +21,6 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getCurrentServiceTab } from '../../utils/ServiceUtils';
 import ServicePage from './index';
 import {
   CONTAINERS_DATA,
@@ -173,10 +172,8 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('../../utils/ServiceUtils', () => ({
-  getCurrentServiceTab: jest.fn().mockImplementation(() => 1),
   getIsIngestionEnable: jest.fn().mockReturnValue(true),
   getServiceRouteFromServiceType: jest.fn().mockReturnValue('/database'),
-  getServiceCategoryFromType: jest.fn().mockReturnValue('databaseServices'),
   getResourceEntityFromServiceCategory: jest
     .fn()
     .mockReturnValue('databaseServices'),
@@ -349,8 +346,6 @@ describe('Test ServicePage Component', () => {
   it('Should render the ingestion component', async () => {
     mockParams = { ...mockParams, tab: 'ingestions' };
 
-    (getCurrentServiceTab as jest.Mock).mockImplementationOnce(() => 2);
-
     await act(async () => {
       render(<ServicePage />, {
         wrapper: MemoryRouter,
@@ -366,8 +361,6 @@ describe('Test ServicePage Component', () => {
 
   it('Should render the connection component', async () => {
     mockParams = { ...mockParams, tab: 'connection' };
-
-    (getCurrentServiceTab as jest.Mock).mockImplementationOnce(() => 3);
 
     await act(async () => {
       render(<ServicePage />, {

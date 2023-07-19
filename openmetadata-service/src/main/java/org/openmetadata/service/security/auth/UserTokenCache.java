@@ -23,7 +23,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.teams.UserResource;
-import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class UserTokenCache {
@@ -74,8 +74,7 @@ public class UserTokenCache {
       HashSet<String> result = new HashSet<>();
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       User user =
-          userRepository.getByName(
-              null, userName, new EntityUtil.Fields(List.of(UserResource.USER_PROTECTED_FIELDS)), NON_DELETED);
+          userRepository.getByName(null, userName, new Fields(Set.of(UserResource.USER_PROTECTED_FIELDS)), NON_DELETED);
       List<TokenInterface> tokens =
           tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
       tokens.forEach(t -> result.add(((PersonalAccessToken) t).getJwtToken()));

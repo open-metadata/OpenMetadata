@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Space, Table, Tabs, Typography } from 'antd';
+import { Col, Row, Space, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import ActivityFeedProvider, {
@@ -495,16 +495,13 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <Card
-            className="lineage-card card-body-full w-auto border-none"
-            data-testid="lineage-details">
-            <EntityLineageComponent
-              entityType={EntityType.MLMODEL}
-              hasEditAccess={
-                mlModelPermissions.EditAll || mlModelPermissions.EditLineage
-              }
-            />
-          </Card>
+          <EntityLineageComponent
+            entity={mlModelDetail}
+            entityType={EntityType.MLMODEL}
+            hasEditAccess={
+              mlModelPermissions.EditAll || mlModelPermissions.EditLineage
+            }
+          />
         ),
       },
       {
