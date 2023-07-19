@@ -58,8 +58,6 @@ describe('Recently viwed data assets', () => {
 
   before(() => {
     cy.login();
-    interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
-    interceptURL('GET', '/api/v1/search/*', 'explorePageSearch');
   });
 
   it('following section should be present', () => {
