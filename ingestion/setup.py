@@ -214,7 +214,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "powerbi": {VERSIONS["msal"]},
     "presto": {*COMMONS["hive"]},
-    # "pymssql": {"pymssql==2.2.5"}, pymssql build is failing ref issue: https://github.com/pymssql/pymssql/issues/826
+    "pymssql": {"pymssql==2.2.5"},
     "quicksight": {VERSIONS["boto3"]},
     "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},
@@ -307,6 +307,7 @@ setup(
                         "airflow",
                         "db2",
                         "great-expectations",
+                        "pymssql",  # pymssql build is failing ref issue: https://github.com/pymssql/pymssql/issues/826
                     }
                 ]
             )

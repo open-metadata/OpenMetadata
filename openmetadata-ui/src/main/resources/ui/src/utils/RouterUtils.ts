@@ -25,8 +25,6 @@ import {
   PLACEHOLDER_ENTITY_TYPE_FQN,
   PLACEHOLDER_GLOSSARY_NAME,
   PLACEHOLDER_GLOSSARY_TERMS_FQN,
-  PLACEHOLDER_ROUTE_ENTITY_FQN,
-  PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_INGESTION_FQN,
   PLACEHOLDER_ROUTE_INGESTION_TYPE,
@@ -48,7 +46,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import { arrServiceTypes } from '../constants/Services.constant';
-import { EntityAction, EntityType } from '../enums/entity.enum';
+import { EntityAction } from '../enums/entity.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
@@ -393,16 +391,6 @@ export const getLogEntityPath = (
     GlobalSettingsMenuCategory.SERVICES,
     getServiceRouteFromServiceType(logEntityType as ServiceTypes)
   );
-};
-
-export const getLineageViewPath = (entity: EntityType, fqn: string) => {
-  let path = ROUTES.LINEAGE_FULL_SCREEN_VIEW;
-
-  path = path
-    .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entity)
-    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, fqn);
-
-  return path;
 };
 
 export const getGlossaryPathWithAction = (
