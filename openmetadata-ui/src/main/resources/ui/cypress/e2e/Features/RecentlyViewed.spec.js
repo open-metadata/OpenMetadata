@@ -66,7 +66,7 @@ describe('Recently viwed data assets', () => {
         'getAnnoucemenets'
       );
 
-      cy.get('#brand-image').click();
+      cy.clickOnLogo();
       verifyResponseStatusCode('@getAnnoucemenets', 200);
 
       cy.get(
