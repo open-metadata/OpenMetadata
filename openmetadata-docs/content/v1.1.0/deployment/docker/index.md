@@ -231,7 +231,7 @@ We support
 - Amazon RDS (PostgreSQL) engine version between 12 and 14.6
 
 Note:-
-    When using AWS Services the SearchType Configuration for elastic search should be opensearch, for both cases ElasticSearch and OpenSearch,
+    When using AWS Services the SearchType Configuration for elastic search should be `opensearch`, for both cases ElasticSearch and OpenSearch,
 as you can see in the ElasticSearch configuration example.
 
 For Production Systems, we recommend Amazon RDS to be in Multiple Availibility Zones. For Amazon OpenSearch (or ElasticSearch) Service, we recommend Multiple Availibility Zones with minimum 3 Master Nodes.
