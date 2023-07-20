@@ -146,7 +146,9 @@
         "POLYGON",
         "TUPLE",
         "SPATIAL",
-        "TABLE"
+        "TABLE",
+        "NTEXT",
+        "IMAGE"
       ]
     },
     "constraint": {
