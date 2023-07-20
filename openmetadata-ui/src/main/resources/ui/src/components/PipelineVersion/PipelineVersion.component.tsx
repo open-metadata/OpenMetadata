@@ -19,7 +19,10 @@ import { CustomPropertyTable } from 'components/common/CustomPropertyTable/Custo
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import EntityVersionTimeLine from 'components/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from 'components/Loader/Loader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
@@ -55,9 +58,6 @@ import {
   getTextDiff,
 } from '../../utils/EntityVersionUtils';
 import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
-import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from '../Loader/Loader';
 import { PipelineVersionProp } from './PipelineVersion.interface';
 
 const PipelineVersion: FC<PipelineVersionProp> = ({

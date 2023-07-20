@@ -55,7 +55,7 @@
     },
     "queryUsedIn": {
       "description": "list of entities to which the query is joined.",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     }
   },
   "required": ["query"],

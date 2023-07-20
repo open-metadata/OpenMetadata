@@ -16,7 +16,6 @@ Usage via query logs tests
 
 from pathlib import Path
 from unittest import TestCase
-from unittest.mock import patch
 
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,

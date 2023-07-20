@@ -14,6 +14,8 @@
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import ErrorPlaceHolderIngestion from 'components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
+import Loader from 'components/Loader/Loader';
 import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -49,6 +51,8 @@ const Ingestion: React.FC<IngestionProps> = ({
   handleIngestionDataChange,
   pipelineNameColWidth,
   containerClassName,
+  isAirflowAvailable = true,
+  isLoading,
 }: IngestionProps) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -217,6 +221,14 @@ const Ingestion: React.FC<IngestionProps> = ({
       </div>
     );
   };
+
+  if (!isAirflowAvailable) {
+    return <ErrorPlaceHolderIngestion />;
+  }
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <div data-testid="ingestion-container">

@@ -66,7 +66,7 @@
     },
     "followers": {
       "description": "Followers of this Query.",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "votes" : {
       "$ref": "../../type/votes.json"
@@ -93,7 +93,7 @@
     },
     "queryUsedIn": {
       "description": "Entities that are using this query",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",

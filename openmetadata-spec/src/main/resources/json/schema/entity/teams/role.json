@@ -66,15 +66,15 @@
     },
     "policies": {
       "description": "Policies that is attached to this role.",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "users": {
       "description": "Users that have this role assigned to them.",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "teams": {
       "description": "Teams that have this role assigned to them.",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "provider" : {
       "$ref": "../../type/basic.json#/definitions/providerType"

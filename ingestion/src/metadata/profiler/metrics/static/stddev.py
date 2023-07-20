@@ -86,7 +86,7 @@ class StdDev(StaticMetric):
             return StdDevFn(column(self.col.name))
 
         if is_concatenable(self.col.type):
-            return StdDevFn(LenFn(column(self.col.name)))
+            return StdDevFn(LenFn(column(self.col.name, self.col.type)))
 
         logger.debug(
             f"{self.col} has type {self.col.type}, which is not listed as quantifiable."

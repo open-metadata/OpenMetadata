@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
-import { Modal, Space } from 'antd';
+import { Card, Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { mockDatasetData } from 'constants/mockTourData.constants';
 import {
@@ -25,16 +27,18 @@ import {
   upperCase,
 } from 'lodash';
 import { LoadingState } from 'Models';
+import Qs from 'qs';
 import React, {
   DragEvent,
   FunctionComponent,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
 import ReactFlow, {
   addEdge,
   Background,
@@ -52,8 +56,11 @@ import { getDataModelDetails } from 'rest/dataModelsAPI';
 import { getLineageByFQN } from 'rest/lineageAPI';
 import { searchData } from 'rest/miscAPI';
 import { getTableDetails } from 'rest/tableAPI';
-import { getEntityLineage, getEntityName } from 'utils/EntityUtils';
-import { getLineageViewPath } from 'utils/RouterUtils';
+import {
+  getEntityBreadcrumbs,
+  getEntityLineage,
+  getEntityName,
+} from 'utils/EntityUtils';
 import { PAGE_SIZE } from '../../constants/constants';
 import {
   ELEMENT_DELETE_STATE,
@@ -90,7 +97,6 @@ import {
   getDeletedLineagePlaceholder,
   getEdgeStyle,
   getEdgeType,
-  getEntityLineagePath,
   getEntityNodeIcon,
   getLayoutedElements,
   getLineageData,
@@ -150,9 +156,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   deleted,
   hasEditAccess,
   entityType,
-  isFullScreen = false,
+  entity,
 }: EntityLineageProp) => {
   const { t } = useTranslation();
+  const location = useLocation();
   const { isTourOpen } = useTourProvider();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] =
@@ -213,13 +220,33 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   });
 
   const params = useParams<Record<string, string>>();
+  const queryParams = new URLSearchParams(location.search);
+
+  const isFullScreen = queryParams.get('fullscreen') === 'true';
   const entityFQN =
     params[getParamByEntityType(entityType)] ?? params['entityFQN'];
   const history = useHistory();
 
   const onFullScreenClick = useCallback(() => {
-    history.push(getLineageViewPath(entityType, entityFQN));
+    history.push({
+      search: Qs.stringify({ fullscreen: true }),
+    });
   }, [entityType, entityFQN]);
+
+  const breadcrumbs = useMemo(
+    () =>
+      entity
+        ? [
+            ...getEntityBreadcrumbs(entity, entityType),
+            {
+              name: t('label.lineage'),
+              url: '',
+              activeTitle: true,
+            },
+          ]
+        : [],
+    [entity]
+  );
 
   const fetchLineageData = useCallback(
     async (config: LineageConfig) => {
@@ -311,10 +338,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   );
 
   const onExitFullScreenViewClick = useCallback(() => {
-    const path = getEntityLineagePath(entityType, entityFQN);
-    if (path !== '') {
-      history.push(path);
-    }
+    history.push({
+      search: '',
+    });
   }, [entityType, entityFQN, history]);
 
   /**
@@ -1587,128 +1613,140 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   }
 
   return (
-    <div className="relative h-full" data-testid="lineage-container">
-      <div className="w-full h-full" ref={reactFlowWrapper}>
-        <ReactFlowProvider>
-          <ReactFlow
-            onlyRenderVisibleElements
-            className="custom-react-flow"
-            data-testid="react-flow-component"
-            edgeTypes={customEdges}
-            edges={edges}
-            maxZoom={MAX_ZOOM_VALUE}
-            minZoom={MIN_ZOOM_VALUE}
-            nodeTypes={nodeTypes}
-            nodes={nodes}
-            nodesConnectable={isEditMode}
-            selectNodesOnDrag={false}
-            onConnect={onConnect}
-            onDragOver={onDragOver}
-            onDrop={onDrop}
-            onEdgeClick={handleEdgeClick}
-            onEdgesChange={onEdgesChange}
-            onInit={(reactFlowInstance: ReactFlowInstance) => {
-              onLoad(reactFlowInstance);
-              setReactFlowInstance(reactFlowInstance);
-            }}
-            onMove={(_e, viewPort) => handleZoomLevel(viewPort.zoom)}
-            onNodeClick={(_e, node) => {
-              onNodeClick(node);
-              _e.stopPropagation();
-            }}
-            onNodeContextMenu={onNodeContextMenu}
-            onNodeDrag={dragHandle}
-            onNodeDragStart={dragHandle}
-            onNodeDragStop={dragHandle}
-            onNodeMouseEnter={onNodeMouseEnter}
-            onNodeMouseLeave={onNodeMouseLeave}
-            onNodeMouseMove={onNodeMouseMove}
-            onNodesChange={onNodesChange}
-            onPaneClick={onPaneClick}>
-            {updatedLineageData && (
-              <CustomControlsComponent
-                className="absolute top-1 right-1 bottom-full p-md"
-                deleted={deleted}
-                fitViewParams={{
-                  minZoom: MIN_ZOOM_VALUE,
-                  maxZoom: MAX_ZOOM_VALUE,
-                }}
-                handleFullScreenViewClick={
-                  !isFullScreen ? onFullScreenClick : undefined
-                }
-                hasEditAccess={hasEditAccess}
-                isColumnsExpanded={expandAllColumns}
-                isEditMode={isEditMode}
-                lineageConfig={lineageConfig}
-                lineageData={updatedLineageData}
-                loading={loading}
-                status={status}
-                zoomValue={zoomValue}
-                onEditLinageClick={handleEditLineageClick}
-                onExitFullScreenViewClick={
-                  isFullScreen ? onExitFullScreenViewClick : undefined
-                }
-                onExpandColumnClick={handleExpandColumnClick}
-                onLineageConfigUpdate={handleLineageConfigUpdate}
-                onOptionSelect={handleOptionSelect}
-              />
-            )}
-            <Background gap={12} size={1} />
-          </ReactFlow>
-        </ReactFlowProvider>
-      </div>
-      {isDrawerOpen &&
-        !isEditMode &&
-        (selectedEdgeInfo ? (
-          <EdgeInfoDrawer
-            edge={selectedEdgeInfo}
-            nodes={nodes}
-            visible={isDrawerOpen}
-            onClose={() => {
-              setIsDrawerOpen(false);
-              setSelectedEdgeInfo(undefined);
-            }}
-          />
-        ) : (
-          <EntityInfoDrawer
-            isMainNode={selectedNode.name === updatedLineageData?.entity?.name}
-            selectedNode={selectedNode}
-            show={isDrawerOpen}
-            onCancel={closeDrawer}
-          />
-        ))}
-      <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
-      {showDeleteModal && (
-        <Modal
-          maskClosable={false}
-          okText={getLoadingStatusValue(
-            t('label.confirm'),
-            deletionState.loading,
-            deletionState.status
-          )}
-          open={showDeleteModal}
-          title={t('message.remove-lineage-edge')}
-          onCancel={() => {
-            setShowDeleteModal(false);
-          }}
-          onOk={onRemove}>
-          {getModalBodyText(selectedEdge)}
-        </Modal>
+    <Card
+      className={classNames('lineage-card card-body-full w-auto border-none', {
+        'full-screen-lineage': isFullScreen,
+      })}
+      data-testid="lineage-details"
+      id="lineageDetails">
+      {isFullScreen && (
+        <TitleBreadcrumb className="p-md" titleLinks={breadcrumbs} />
       )}
+      <div className="relative h-full" data-testid="lineage-container">
+        <div className="w-full h-full" ref={reactFlowWrapper}>
+          <ReactFlowProvider>
+            <ReactFlow
+              onlyRenderVisibleElements
+              className="custom-react-flow"
+              data-testid="react-flow-component"
+              edgeTypes={customEdges}
+              edges={edges}
+              maxZoom={MAX_ZOOM_VALUE}
+              minZoom={MIN_ZOOM_VALUE}
+              nodeTypes={nodeTypes}
+              nodes={nodes}
+              nodesConnectable={isEditMode}
+              selectNodesOnDrag={false}
+              onConnect={onConnect}
+              onDragOver={onDragOver}
+              onDrop={onDrop}
+              onEdgeClick={handleEdgeClick}
+              onEdgesChange={onEdgesChange}
+              onInit={(reactFlowInstance: ReactFlowInstance) => {
+                onLoad(reactFlowInstance);
+                setReactFlowInstance(reactFlowInstance);
+              }}
+              onMove={(_e, viewPort) => handleZoomLevel(viewPort.zoom)}
+              onNodeClick={(_e, node) => {
+                onNodeClick(node);
+                _e.stopPropagation();
+              }}
+              onNodeContextMenu={onNodeContextMenu}
+              onNodeDrag={dragHandle}
+              onNodeDragStart={dragHandle}
+              onNodeDragStop={dragHandle}
+              onNodeMouseEnter={onNodeMouseEnter}
+              onNodeMouseLeave={onNodeMouseLeave}
+              onNodeMouseMove={onNodeMouseMove}
+              onNodesChange={onNodesChange}
+              onPaneClick={onPaneClick}>
+              {updatedLineageData && (
+                <CustomControlsComponent
+                  className="absolute top-1 right-1 bottom-full p-md"
+                  deleted={deleted}
+                  fitViewParams={{
+                    minZoom: MIN_ZOOM_VALUE,
+                    maxZoom: MAX_ZOOM_VALUE,
+                  }}
+                  handleFullScreenViewClick={
+                    !isFullScreen ? onFullScreenClick : undefined
+                  }
+                  hasEditAccess={hasEditAccess}
+                  isColumnsExpanded={expandAllColumns}
+                  isEditMode={isEditMode}
+                  lineageConfig={lineageConfig}
+                  lineageData={updatedLineageData}
+                  loading={loading}
+                  status={status}
+                  zoomValue={zoomValue}
+                  onEditLinageClick={handleEditLineageClick}
+                  onExitFullScreenViewClick={
+                    isFullScreen ? onExitFullScreenViewClick : undefined
+                  }
+                  onExpandColumnClick={handleExpandColumnClick}
+                  onLineageConfigUpdate={handleLineageConfigUpdate}
+                  onOptionSelect={handleOptionSelect}
+                />
+              )}
+              <Background gap={12} size={1} />
+            </ReactFlow>
+          </ReactFlowProvider>
+        </div>
+        {isDrawerOpen &&
+          !isEditMode &&
+          (selectedEdgeInfo ? (
+            <EdgeInfoDrawer
+              edge={selectedEdgeInfo}
+              nodes={nodes}
+              visible={isDrawerOpen}
+              onClose={() => {
+                setIsDrawerOpen(false);
+                setSelectedEdgeInfo(undefined);
+              }}
+            />
+          ) : (
+            <EntityInfoDrawer
+              isMainNode={
+                selectedNode.name === updatedLineageData?.entity?.name
+              }
+              selectedNode={selectedNode}
+              show={isDrawerOpen}
+              onCancel={closeDrawer}
+            />
+          ))}
+        <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
+        {showDeleteModal && (
+          <Modal
+            maskClosable={false}
+            okText={getLoadingStatusValue(
+              t('label.confirm'),
+              deletionState.loading,
+              deletionState.status
+            )}
+            open={showDeleteModal}
+            title={t('message.remove-lineage-edge')}
+            onCancel={() => {
+              setShowDeleteModal(false);
+            }}
+            onOk={onRemove}>
+            {getModalBodyText(selectedEdge)}
+          </Modal>
+        )}
 
-      <AddPipeLineModal
-        pipelineOptions={pipelineOptions}
-        pipelineSearchValue={pipelineSearchValue}
-        selectedPipelineId={selectedPipelineId}
-        showAddPipelineModal={showAddPipelineModal}
-        onClear={onPipelineSelectionClear}
-        onModalCancel={handleModalCancel}
-        onRemoveEdgeClick={handleRemoveEdgeClick}
-        onSave={handleModalSave}
-        onSearch={(value) => setPipelineSearchValue(value)}
-        onSelect={handlePipelineSelection}
-      />
-    </div>
+        <AddPipeLineModal
+          pipelineOptions={pipelineOptions}
+          pipelineSearchValue={pipelineSearchValue}
+          selectedPipelineId={selectedPipelineId}
+          showAddPipelineModal={showAddPipelineModal}
+          onClear={onPipelineSelectionClear}
+          onModalCancel={handleModalCancel}
+          onRemoveEdgeClick={handleRemoveEdgeClick}
+          onSave={handleModalSave}
+          onSearch={(value) => setPipelineSearchValue(value)}
+          onSelect={handlePipelineSelection}
+        />
+      </div>
+    </Card>
   );
 };
 

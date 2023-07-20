@@ -238,7 +238,7 @@ public final class CollectionRegistry {
       AuthenticatorHandler authHandler)
       throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException,
           InstantiationException {
-    Object resource;
+    Object resource = null;
     Class<?> clz = Class.forName(resourceClass);
 
     // Create the resource identified by resourceClass
@@ -252,6 +252,8 @@ public final class CollectionRegistry {
       } catch (NoSuchMethodException ex) {
         resource = Class.forName(resourceClass).getConstructor().newInstance();
       }
+    } catch (Exception ex) {
+      LOG.warn("Exception encountered", ex);
     }
 
     // Call initialize method, if it exists

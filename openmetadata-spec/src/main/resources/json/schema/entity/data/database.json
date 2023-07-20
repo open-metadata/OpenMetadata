@@ -84,7 +84,7 @@
     },
     "databaseSchemas": {
       "description": "References to schemas in the database.",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",

@@ -42,12 +42,6 @@ jest.mock('antd', () => ({
     .mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
-jest.mock('../../../generated/entity/data/table', () =>
-  jest.fn().mockReturnValue(<>Table</>)
-);
-jest.mock('../../../generated/type/tagLabel', () =>
-  jest.fn().mockReturnValue(<>TagLabel</>)
-);
 jest.mock('../../../utils/CommonUtils', () => ({
   getTeamsUser: jest.fn().mockReturnValue({
     ownerName: 'test-owner',

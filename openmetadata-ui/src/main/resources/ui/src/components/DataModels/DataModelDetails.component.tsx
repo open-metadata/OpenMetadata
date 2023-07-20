@@ -23,6 +23,7 @@ import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAss
 import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
+import { SourceType } from 'components/searched-data/SearchedData.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { getDataModelDetailsPath, getVersionPath } from 'constants/constants';
@@ -313,15 +314,12 @@ const DataModelDetails = ({
         ),
         key: EntityTabs.LINEAGE,
         children: (
-          <Card
-            className="card-body-full m-md w-auto h-60vh"
-            data-testid="lineage-details">
-            <EntityLineageComponent
-              deleted={deleted}
-              entityType={EntityType.DASHBOARD_DATA_MODEL}
-              hasEditAccess={hasEditLineagePermission}
-            />
-          </Card>
+          <EntityLineageComponent
+            deleted={deleted}
+            entity={dataModelData as SourceType}
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
+            hasEditAccess={hasEditLineagePermission}
+          />
         ),
       },
     ];

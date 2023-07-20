@@ -15,6 +15,7 @@ import { Popover } from 'antd';
 import { EntityUnion } from 'components/Explore/explore.interface';
 import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import Loader from 'components/Loader/Loader';
+import { Include } from 'generated/type/include';
 import React, {
   FC,
   HTMLAttributes,
@@ -88,11 +89,15 @@ const PopoverContent: React.FC<{
 
         break;
       case EntityType.DATABASE:
-        promise = getDatabaseDetailsByFQN(entityFQN, 'owner');
+        promise = getDatabaseDetailsByFQN(entityFQN, 'owner', Include.All);
 
         break;
       case EntityType.DATABASE_SCHEMA:
-        promise = getDatabaseSchemaDetailsByFQN(entityFQN, 'owner');
+        promise = getDatabaseSchemaDetailsByFQN(
+          entityFQN,
+          'owner',
+          'include=all'
+        );
 
         break;
       case EntityType.GLOSSARY_TERM:

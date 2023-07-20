@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row, Space, Tabs, Typography } from 'antd';
+import { Col, Row, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import ActivityFeedProvider, {
@@ -35,6 +35,7 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import SampleDataTableComponent from 'components/SampleDataTable/SampleDataTable.component';
 import SchemaTab from 'components/SchemaTab/SchemaTab.component';
+import { SourceType } from 'components/searched-data/SearchedData.interface';
 import TableProfilerV1 from 'components/TableProfiler/TableProfilerV1';
 import TableQueries from 'components/TableQueries/TableQueries';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
@@ -566,16 +567,16 @@ const TableDetailsPageV1 = () => {
         ),
 
         key: EntityTabs.SAMPLE_DATA,
-        children: !(
-          tablePermissions.ViewAll || tablePermissions.ViewSampleData
-        ) ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-        ) : (
-          <SampleDataTableComponent
-            isTableDeleted={tableDetails?.deleted}
-            tableId={tableDetails?.id ?? ''}
-          />
-        ),
+        children:
+          !isTourOpen &&
+          !(tablePermissions.ViewAll || tablePermissions.ViewSampleData) ? (
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          ) : (
+            <SampleDataTableComponent
+              isTableDeleted={tableDetails?.deleted}
+              tableId={tableDetails?.id ?? ''}
+            />
+          ),
       },
       {
         label: (
@@ -606,35 +607,34 @@ const TableDetailsPageV1 = () => {
           />
         ),
         key: EntityTabs.PROFILER,
-        children: !(
-          tablePermissions.ViewAll ||
-          tablePermissions.ViewDataProfile ||
-          tablePermissions.ViewTests
-        ) ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-        ) : (
-          <TableProfilerV1
-            isTableDeleted={tableDetails?.deleted}
-            permissions={tablePermissions}
-            testSuite={tableDetails?.testSuite}
-          />
-        ),
+        children:
+          !isTourOpen &&
+          !(
+            tablePermissions.ViewAll ||
+            tablePermissions.ViewDataProfile ||
+            tablePermissions.ViewTests
+          ) ? (
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          ) : (
+            <TableProfilerV1
+              isTableDeleted={tableDetails?.deleted}
+              permissions={tablePermissions}
+              testSuite={tableDetails?.testSuite}
+            />
+          ),
       },
       {
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <Card
-            className="lineage-card card-body-full w-auto border-none"
-            id="lineageDetails">
-            <EntityLineageComponent
-              deleted={tableDetails?.deleted}
-              entityType={EntityType.TABLE}
-              hasEditAccess={
-                tablePermissions.EditAll || tablePermissions.EditLineage
-              }
-            />
-          </Card>
+          <EntityLineageComponent
+            deleted={tableDetails?.deleted}
+            entity={tableDetails as SourceType}
+            entityType={EntityType.TABLE}
+            hasEditAccess={
+              tablePermissions.EditAll || tablePermissions.EditLineage
+            }
+          />
         ),
       },
 
@@ -862,7 +862,10 @@ const TableDetailsPageV1 = () => {
     return <Loader />;
   }
 
-  if (!(tablePermissions.ViewAll || tablePermissions.ViewBasic)) {
+  if (
+    !(isTourOpen || isTourPage) &&
+    !(tablePermissions.ViewAll || tablePermissions.ViewBasic)
+  ) {
     return (
       <ErrorPlaceHolder
         className="m-0"
