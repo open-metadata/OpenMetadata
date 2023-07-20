@@ -29,7 +29,12 @@ import './tagsV1.less';
 
 const color = '';
 
-const TagsV1 = ({ tag, startWith, showOnlyName = false }: TagsV1Props) => {
+const TagsV1 = ({
+  tag,
+  startWith,
+  className,
+  showOnlyName = false,
+}: TagsV1Props) => {
   const history = useHistory();
 
   const isGlossaryTag = useMemo(
@@ -93,6 +98,7 @@ const TagsV1 = ({ tag, startWith, showOnlyName = false }: TagsV1Props) => {
         <span className="d-flex items-center p-x-xs">
           <span className="m-r-xss">{startIcon}</span>
           <Typography.Paragraph
+            ellipsis
             className="m-0 tags-label"
             data-testid={`tag-${tag.tagFQN}`}>
             {getTagDisplay(tagName)}
@@ -106,14 +112,14 @@ const TagsV1 = ({ tag, startWith, showOnlyName = false }: TagsV1Props) => {
   const tagChip = useMemo(
     () => (
       <Tag
-        className={classNames('tag-chip tag-chip-content')}
+        className={classNames(className, 'tag-chip tag-chip-content')}
         data-testid="tags"
         style={{ backgroundColor: reduceColorOpacity(color, 0.1) }}
         onClick={() => redirectLink()}>
         {tagContent}
       </Tag>
     ),
-    [color, tagContent]
+    [color, tagContent, className]
   );
 
   const addTagChip = useMemo(
@@ -131,9 +137,11 @@ const TagsV1 = ({ tag, startWith, showOnlyName = false }: TagsV1Props) => {
     [tagName]
   );
 
-  return startWith === TAG_START_WITH.PLUS ? (
-    addTagChip
-  ) : (
+  if (startWith === TAG_START_WITH.PLUS) {
+    return addTagChip;
+  }
+
+  return (
     <Tooltip
       className="cursor-pointer"
       mouseEnterDelay={1.5}

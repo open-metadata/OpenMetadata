@@ -71,7 +71,9 @@ export const ExtraInfoLabel = ({
   <>
     <Divider className="self-center m-x-sm" type="vertical" />
     <Typography.Text className="self-center text-xs whitespace-nowrap">
-      <span className="text-grey-muted">{`${label}: `}</span>
+      {!isEmpty(label) && (
+        <span className="text-grey-muted">{`${label}: `}</span>
+      )}
       <span className="font-medium">{value}</span>
     </Typography.Text>
   </>

@@ -29,7 +29,11 @@
   margin: 0 5px 4px 0;
   border: none;
   padding: 0;
-  background: rgba(0, 0, 0, 0.03);
+  background: @tag-background-color;
+
+  &.diff-added {
+    background: @success-background-color;
+  }
 }
 
 .tag-chip-add-button {
@@ -40,14 +44,14 @@
 .tag-color-bar {
   width: 5px;
   height: auto;
-  background: rgba(0, 0, 0, 0.03);
+  background: @tag-background-color;
 }
 
 .tags-label {
   display: inline-block;
-  white-space: normal;
-  word-break: break-all;
-  font-size: 14px;
-  font-weight: 400;
+  max-width: 200px;
+  font-size: 12px;
+  font-weight: 500;
   line-height: 30px;
+  color: inherit;
 }
