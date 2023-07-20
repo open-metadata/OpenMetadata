@@ -585,6 +585,7 @@ export const addUser = (username, email) => {
   cy.wait(1000);
   interceptURL('POST', ' /api/v1/users', 'add-user');
   cy.get('[data-testid="save-user"]').scrollIntoView().click();
+  verifyResponseStatusCode('@add-user', 201);
 };
 
 export const softDeleteUser = (username, isAdmin) => {
