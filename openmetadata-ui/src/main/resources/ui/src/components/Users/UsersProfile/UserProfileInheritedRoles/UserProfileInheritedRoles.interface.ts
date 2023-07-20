@@ -10,11 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export interface TeamsSelectableProps {
-  showTeamsAlert?: boolean;
-  onSelectionChange: (teams: string[]) => void;
-  filterJoinable?: boolean;
-  placeholder?: string;
-  selectedTeams?: string[];
-  maxValueCount?: number;
+
+import { User } from 'generated/entity/teams/user';
+
+export interface UserProfileInheritedRolesProps {
+  inheritedRoles: User['inheritedRoles'];
 }

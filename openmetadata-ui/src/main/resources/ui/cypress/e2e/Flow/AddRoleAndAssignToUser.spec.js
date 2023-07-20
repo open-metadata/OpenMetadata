@@ -139,8 +139,8 @@ describe('Test Add role and assign it to the user', () => {
     cy.get(`[data-testid="${userName}"]`).should('be.visible').click();
     verifyResponseStatusCode('@userDetailsPage', 200);
 
-    cy.get('[data-testid="left-panel"]')
-      .should('be.visible')
-      .should('contain', roleName);
+    cy.get(
+      '[data-testid="user-profile"] [data-testid="user-profile-roles"]'
+    ).should('contain', roleName);
   });
 });

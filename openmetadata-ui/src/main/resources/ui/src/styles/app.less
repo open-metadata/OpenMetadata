@@ -172,6 +172,15 @@ a[href].link-text-grey,
   white-space: pre-wrap;
 }
 
+//  Reduce text to 2 lines
+.max-two-lines {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
 .mx-auto {
   margin-right: auto;
   margin-left: auto;
