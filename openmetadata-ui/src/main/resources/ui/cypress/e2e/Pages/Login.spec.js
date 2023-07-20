@@ -82,10 +82,9 @@ describe('Login flow should work properly', () => {
       .should('be.visible')
       .click({ force: true });
     verifyResponseStatusCode('@getUser', 200);
-    cy.get('[data-testid="left-panel"]').should(
-      'contain',
-      `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`
-    );
+    cy.get(
+      '[data-testid="user-profile"] [data-testid="user-profile-details"]'
+    ).should('contain', `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`);
   });
 
   it('Signin using invalid credentials', () => {
