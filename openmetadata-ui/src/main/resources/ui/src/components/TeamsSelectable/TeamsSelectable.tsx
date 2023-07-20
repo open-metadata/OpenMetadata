@@ -30,6 +30,7 @@ const TeamsSelectable = ({
     type: t('label.team-plural-lowercase'),
   }),
   selectedTeams,
+  maxValueCount,
 }: TeamsSelectableProps) => {
   const [value, setValue] = useState<Array<string>>();
   const [noTeam, setNoTeam] = useState<boolean>(false);
@@ -93,6 +94,7 @@ const TeamsSelectable = ({
         treeDefaultExpandAll
         data-testid="team-select"
         dropdownStyle={{ maxHeight: 300, overflow: 'auto' }}
+        maxTagCount={maxValueCount}
         placeholder={placeholder}
         showCheckedStrategy={TreeSelect.SHOW_CHILD}
         style={{ width: '100%' }}

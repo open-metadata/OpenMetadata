@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Menu, Typography } from 'antd';
+import { Menu, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import Loader from 'components/Loader/Loader';
 import { TaskTab } from 'components/Task/TaskTab/TaskTab.component';
@@ -52,6 +52,11 @@ import {
 } from './ActivityFeedTab.interface';
 import { ReactComponent as CheckIcon } from '/assets/svg/ic-check.svg';
 import { ReactComponent as TaskIcon } from '/assets/svg/ic-task.svg';
+
+import { ICON_DIMENSION } from 'constants/constants';
+import { ReactComponent as AllActivityIcon } from '/assets/svg/all-activity-v2.svg';
+import { ReactComponent as MentionIcon } from '/assets/svg/ic-mentions.svg';
+import { ReactComponent as TaskListIcon } from '/assets/svg/task-ic.svg';
 
 export const ActivityFeedTab = ({
   fqn,
@@ -280,7 +285,11 @@ export const ActivityFeedTab = ({
           {
             label: (
               <div className="d-flex justify-between">
-                <span>{t('label.all')}</span>
+                <Space align="center" size="small">
+                  <AllActivityIcon {...ICON_DIMENSION} />
+                  <span>{t('label.all')}</span>
+                </Space>
+
                 <span>
                   {getCountBadge(
                     allCount,
@@ -294,16 +303,20 @@ export const ActivityFeedTab = ({
           },
           {
             label: (
-              <div className="d-flex justify-between">
+              <Space align="center" size="small">
+                <MentionIcon {...ICON_DIMENSION} />
                 <span>{t('label.mention-plural')}</span>
-              </div>
+              </Space>
             ),
             key: 'mentions',
           },
           {
             label: (
               <div className="d-flex justify-between">
-                <span>{t('label.task-plural')}</span>
+                <Space align="center" size="small">
+                  <TaskListIcon {...ICON_DIMENSION} />
+                  <span>{t('label.task-plural')}</span>
+                </Space>
                 <span>
                   {getCountBadge(
                     tasksCount,
