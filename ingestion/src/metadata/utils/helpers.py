@@ -17,10 +17,12 @@ from __future__ import annotations
 
 import itertools
 import re
+import shutil
 import sys
 from datetime import datetime, timedelta
 from functools import wraps
 from math import floor, log
+from pathlib import Path
 from time import perf_counter
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
@@ -202,13 +204,15 @@ def replace_special_with(raw: str, replacement: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]", replacement, raw)
 
 
-def get_standard_chart_type(raw_chart_type: str) -> str:
+def get_standard_chart_type(raw_chart_type: str) -> ChartType.Other:
     """
     Get standard chart type supported by OpenMetadata based on raw chart type input
     :param raw_chart_type: raw chart type to be standardize
     :return: standard chart type
     """
-    return om_chart_type_dict.get(raw_chart_type.lower(), ChartType.Other)
+    if raw_chart_type is not None:
+        return om_chart_type_dict.get(raw_chart_type.lower(), ChartType.Other)
+    return ChartType.Other
 
 
 def find_in_iter(element: Any, container: Iterable[Any]) -> Optional[Any]:
@@ -453,3 +457,20 @@ def get_database_name_for_lineage(
         db_service_entity.connection.config.__dict__.get("databaseName")
         or DEFAULT_DATABASE
     )
+
+
+def delete_dir_content(directory: str) -> None:
+    location = Path(directory)
+    if location.is_dir():
+        logger.info("Location exists, cleaning it up")
+        shutil.rmtree(directory)
+
+
+def init_staging_dir(directory: str) -> None:
+    """
+    Prepare the the staging directory
+    """
+    delete_dir_content(directory=directory)
+    location = Path(directory)
+    logger.info(f"Creating the directory to store staging data in {location}")
+    location.mkdir(parents=True, exist_ok=True)

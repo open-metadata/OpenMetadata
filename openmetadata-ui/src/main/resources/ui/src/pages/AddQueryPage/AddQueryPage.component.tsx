@@ -10,15 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  Card,
-  Form,
-  FormProps,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Form, FormProps, Space, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { AsyncSelect } from 'components/AsyncSelect/AsyncSelect';
@@ -196,7 +188,7 @@ const AddQueryPage = () => {
         children: (
           <div className="max-width-md w-9/10 service-form-container">
             <TitleBreadcrumb titleLinks={titleBreadcrumb} />
-            <Card className="m-t-md">
+            <div className="m-t-md">
               <Typography.Paragraph
                 className="text-base"
                 data-testid="form-title">
@@ -281,7 +273,7 @@ const AddQueryPage = () => {
                   </Space>
                 </Form.Item>
               </Form>
-            </Card>
+            </div>
           </div>
         ),
         minWidth: 700,

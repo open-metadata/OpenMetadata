@@ -145,10 +145,9 @@ If you have configured the encrypted key pair authentication for the given user 
 $$
 
 $$section
-### Include Temporary and Transient Tables $(id="includeTempTables")
+### Include Transient Tables $(id="includeTransientTables")
 
-In Snowflake, we also have `TRANSIENT` and `TEMPORARY` tables, which will be ignored during the ingestion by default.
-
+In Snowflake, we have `TRANSIENT` tables, which will be ignored during the ingestion by default. Based on a flag only Transient Tables will be extracted, Temporary tables are not supported.
 Enable this setting to ingest them during the metadata workflow.
 $$
 

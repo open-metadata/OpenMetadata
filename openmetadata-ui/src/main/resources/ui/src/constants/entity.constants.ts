@@ -13,6 +13,7 @@
 
 import { startCase } from 'lodash';
 import i18n from 'utils/i18next/LocalUtil';
+import { EntityField } from './Feeds.constants';
 
 export const ENTITY_DELETE_STATE = {
   loading: 'initial',
@@ -32,3 +33,14 @@ export const STEPS_FOR_IMPORT_ENTITY = [
     step: 2,
   },
 ];
+
+export const ENTITY_TASKS_TOOLTIP = {
+  [EntityField.DESCRIPTION]: {
+    request: i18n.t('message.request-description'),
+    update: i18n.t('message.request-update-description'),
+  },
+  [EntityField.TAGS]: {
+    request: i18n.t('label.request-tag-plural'),
+    update: i18n.t('label.update-request-tag-plural'),
+  },
+};

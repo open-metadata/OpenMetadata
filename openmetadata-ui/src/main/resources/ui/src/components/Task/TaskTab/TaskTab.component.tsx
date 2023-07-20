@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
+import Icon, { DownOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
@@ -21,40 +21,51 @@ import {
   Space,
   Typography,
 } from 'antd';
+import { useForm } from 'antd/lib/form/Form';
 import Modal from 'antd/lib/modal/Modal';
 import AppState from 'AppState';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import ActivityFeedCardV1 from 'components/ActivityFeed/ActivityFeedCard/ActivityFeedCardV1';
 import ActivityFeedEditor from 'components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import AssigneeList from 'components/common/AssigneeList/AssigneeList';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import EntityPopOverCard from 'components/common/PopOverCard/EntityPopOverCard';
+import InlineEdit from 'components/InlineEdit/InlineEdit.component';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { TaskOperation } from 'constants/Feeds.constants';
+import { compare } from 'fast-json-patch';
 import { TaskType } from 'generated/api/feed/createThread';
 import { TaskDetails, ThreadTaskStatus } from 'generated/entity/feed/thread';
 import { TagLabel } from 'generated/type/tagLabel';
 import { useAuth } from 'hooks/authHooks';
 import { isEmpty, isEqual, isUndefined, noop } from 'lodash';
+import Assignees from 'pages/TasksPage/shared/Assignees';
 import DescriptionTask from 'pages/TasksPage/shared/DescriptionTask';
 import TagsTask from 'pages/TasksPage/shared/TagsTask';
 import {
+  Option,
   TaskAction,
   TaskActionMode,
 } from 'pages/TasksPage/TasksPage.interface';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
-import { updateTask } from 'rest/feedsAPI';
-import { getNameFromFQN } from 'utils/CommonUtils';
-import { getEntityFQN, prepareFeedLink } from 'utils/FeedUtils';
+import { useHistory } from 'react-router-dom';
+import { updateTask, updateThread } from 'rest/feedsAPI';
+import EntityLink from 'utils/EntityLink';
+import { getEntityName } from 'utils/EntityUtils';
+import { getEntityFQN } from 'utils/FeedUtils';
 import { getEntityLink } from 'utils/TableUtils';
 import {
+  fetchOptions,
   isDescriptionTask,
   isTagsTask,
   TASK_ACTION_LIST,
 } from 'utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
 import { ReactComponent as TaskCloseIcon } from '/assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '/assets/svg/ic-open-task.svg';
@@ -65,6 +76,9 @@ export const TaskTab = ({
   entityType,
   ...rest
 }: TaskTabProps) => {
+  const [assigneesForm] = useForm();
+  const updatedAssignees = Form.useWatch('assignees', assigneesForm);
+
   const { task: taskDetails } = taskThread;
   const entityFQN = getEntityFQN(taskThread.about) ?? '';
   const entityCheck = !isUndefined(entityFQN) && !isUndefined(entityType);
@@ -72,18 +86,41 @@ export const TaskTab = ({
   const [form] = Form.useForm();
   const history = useHistory();
   const { isAdminUser } = useAuth();
-  const { postFeed } = useActivityFeedProvider();
+  const { postFeed, setActiveThread } = useActivityFeedProvider();
   const [taskAction, setTaskAction] = useState<TaskAction>(TASK_ACTION_LIST[0]);
 
   const isTaskClosed = isEqual(taskDetails?.status, ThreadTaskStatus.Closed);
   const [showEditTaskModel, setShowEditTaskModel] = useState(false);
   const [comment, setComment] = useState('');
+  const [isEditAssignee, setIsEditAssignee] = useState<boolean>(false);
+  const [options, setOptions] = useState<Option[]>([]);
+
+  const initialAssignees = useMemo(
+    () =>
+      taskDetails?.assignees.map((assignee) => ({
+        label: getEntityName(assignee),
+        value: assignee.id || '',
+        type: assignee.type,
+      })) ?? [],
+    [taskDetails]
+  );
 
   // get current user details
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
+
+  const taskField = useMemo(() => {
+    const entityField = EntityLink.getEntityField(taskThread.about) ?? '';
+    const columnName = EntityLink.getTableColumnName(taskThread.about) ?? '';
+
+    if (columnName) {
+      return `${entityField}/${columnName}`;
+    }
+
+    return entityField;
+  }, [taskThread]);
 
   const isOwner = isEqual(owner?.id, currentUser?.id);
   const isCreator = isEqual(taskThread.createdBy, currentUser?.name);
@@ -113,18 +150,8 @@ export const TaskTab = ({
 
       <Typography.Text>{taskDetails?.type}</Typography.Text>
       <span className="m-x-xss">{t('label.for-lowercase')}</span>
-      <>
-        <span className="p-r-xss">{entityType}</span>
-        <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-          <Link
-            className="break-all"
-            data-testid="entitylink"
-            to={prepareFeedLink(entityType, entityFQN)}
-            onClick={(e) => e.stopPropagation()}>
-            {getNameFromFQN(entityFQN)}
-          </Link>
-        </EntityPopOverCard>
-      </>
+
+      {!isEmpty(taskField) ? <span>{taskField}</span> : null}
     </Typography.Text>
   );
 
@@ -259,6 +286,7 @@ export const TaskTab = ({
               </Button>
             ) : (
               <Dropdown.Button
+                icon={<DownOutlined />}
                 menu={{
                   items: TASK_ACTION_LIST,
                   selectable: true,
@@ -304,6 +332,32 @@ export const TaskTab = ({
     }
   }, [taskDetails, isTaskDescription]);
 
+  const handleAssigneeUpdate = async () => {
+    const updatedTaskThread = {
+      ...taskThread,
+      task: {
+        ...taskThread.task,
+        assignees: updatedAssignees.map((assignee: Option) => ({
+          id: assignee.value,
+          type: assignee.type,
+        })),
+      },
+    };
+    try {
+      const patch = compare(taskThread, updatedTaskThread);
+      const data = await updateThread(taskThread.id, patch);
+      setIsEditAssignee(false);
+      setActiveThread(data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  useEffect(() => {
+    assigneesForm.setFieldValue('assignees', initialAssignees);
+    setOptions(initialAssignees);
+  }, [initialAssignees]);
+
   return (
     <Row className="p-y-sm p-x-md" gutter={[0, 24]}>
       <Col className="d-flex items-center" span={24}>
@@ -320,19 +374,78 @@ export const TaskTab = ({
         {getTaskLinkElement}
       </Col>
       <Col span={24}>
-        <div className="d-flex justify-between">
-          <div className="flex-center gap-2">
-            <Typography.Text className="text-grey-muted">
-              {t('label.assignee-plural')}:{' '}
-            </Typography.Text>
-
-            <OwnerLabel
-              hasPermission={false}
-              owner={taskDetails?.assignees[0]}
-              onUpdate={noop}
-            />
+        <div
+          className={classNames('d-flex justify-between', {
+            'flex-column': isEditAssignee,
+          })}>
+          <div
+            className={classNames('gap-2', { 'flex-center': !isEditAssignee })}>
+            {isEditAssignee ? (
+              <Form
+                form={assigneesForm}
+                layout="vertical"
+                onFinish={handleAssigneeUpdate}>
+                <Form.Item
+                  data-testid="assignees"
+                  label={`${t('label.assignee-plural')}:`}
+                  name="assignees"
+                  rules={[
+                    {
+                      required: true,
+                      message: t('message.field-text-is-required', {
+                        fieldText: t('label.assignee-plural'),
+                      }),
+                    },
+                  ]}>
+                  <InlineEdit
+                    className="assignees-edit-input"
+                    direction="horizontal"
+                    onCancel={() => {
+                      setIsEditAssignee(false);
+                      assigneesForm.setFieldValue(
+                        'assignees',
+                        initialAssignees
+                      );
+                    }}
+                    onSave={() => assigneesForm.submit()}>
+                    <Assignees
+                      options={options}
+                      value={updatedAssignees}
+                      onChange={(values) =>
+                        assigneesForm.setFieldValue('assignees', values)
+                      }
+                      onSearch={(query) => fetchOptions(query, setOptions)}
+                    />
+                  </InlineEdit>
+                </Form.Item>
+              </Form>
+            ) : (
+              <>
+                <Typography.Text className="text-grey-muted">
+                  {t('label.assignee-plural')}:{' '}
+                </Typography.Text>
+                <AssigneeList
+                  assignees={taskDetails?.assignees ?? []}
+                  className="d-flex gap-1"
+                  profilePicType="circle"
+                  profileWidth="24"
+                  showUserName={false}
+                />
+                {isCreator || hasTaskUpdateAccess() ? (
+                  <Button
+                    className="flex-center p-0"
+                    data-testid="edit-assignees"
+                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                    size="small"
+                    type="text"
+                    onClick={() => setIsEditAssignee(true)}
+                  />
+                ) : null}
+              </>
+            )}
           </div>
-          <div className="flex-center gap-2">
+          <div
+            className={classNames('gap-2', { 'flex-center': !isEditAssignee })}>
             <Typography.Text className="text-grey-muted">
               {t('label.created-by')}:{' '}
             </Typography.Text>

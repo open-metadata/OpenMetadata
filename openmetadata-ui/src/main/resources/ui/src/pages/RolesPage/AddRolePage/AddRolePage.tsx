@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Form, Input, Select, Space, Typography } from 'antd';
+import { Button, Form, Input, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
@@ -114,7 +114,7 @@ const AddRolePage = () => {
             className="max-width-md w-9/10 service-form-container"
             data-testid="add-role-container">
             <TitleBreadcrumb titleLinks={breadcrumb} />
-            <Card className="p-sm m-t-md">
+            <div className="m-t-md">
               <Typography.Paragraph
                 className="text-base"
                 data-testid="form-title">
@@ -202,7 +202,7 @@ const AddRolePage = () => {
                   </Button>
                 </Space>
               </Form>
-            </Card>
+            </div>
           </div>
         ),
         minWidth: 700,

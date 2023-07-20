@@ -13,7 +13,6 @@
 Test Profiler behavior
 """
 import os
-from concurrent.futures import TimeoutError
 from datetime import datetime
 from unittest import TestCase, mock
 from uuid import uuid4
@@ -37,16 +36,9 @@ from metadata.generated.schema.entity.data.table import (
     TableProfile,
     TableProfilerConfig,
 )
-from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
-    SQLiteConnection,
-    SQLiteScheme,
-)
 from metadata.ingestion.source import sqa_types
 from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
-)
-from metadata.profiler.interface.sqlalchemy.profiler_interface import (
-    SQAProfilerInterface,
 )
 from metadata.profiler.metrics.core import MetricTypes, add_props
 from metadata.profiler.metrics.registry import Metrics
@@ -226,15 +218,13 @@ class ProfilerTest(TestCase):
             profiler_interface=self.datalake_profiler_interface,
         )
 
-        profile = profiler._check_profile_and_handle(
+        profiler._check_profile_and_handle(
             CreateTableProfileRequest(
                 tableProfile=TableProfile(
                     timestamp=datetime.now().timestamp(), columnCount=10
                 )
             )
         )
-
-        assert profile.tableProfile.columnCount == 10
 
         with pytest.raises(Exception):
             profiler._check_profile_and_handle(

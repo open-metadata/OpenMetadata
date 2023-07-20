@@ -266,34 +266,6 @@ class TableauSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
             logger.warning(f"Error to yield dashboard for {dashboard_details}: {exc}")
 
-    def yield_dashboard_lineage(
-        self, dashboard_details: TableauDashboard
-    ) -> Optional[Iterable[AddLineageRequest]]:
-        yield from self.yield_datamodel_dashboard_lineage() or []
-
-        for db_service_name in self.source_config.dbServiceNames or []:
-            yield from self.yield_dashboard_lineage_details(
-                dashboard_details, db_service_name
-            ) or []
-
-    def yield_datamodel_dashboard_lineage(
-        self,
-    ) -> Optional[Iterable[AddLineageRequest]]:
-        """
-        Returns:
-            Lineage request between Data Models and Dashboards
-        """
-        for datamodel in self.context.dataModels or []:
-            try:
-                yield self._get_add_lineage_request(
-                    to_entity=self.context.dashboard, from_entity=datamodel
-                )
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.error(
-                    f"Error to yield dashboard lineage details for data model name [{datamodel.name}]: {err}"
-                )
-
     def yield_dashboard_lineage_details(
         self, dashboard_details: TableauDashboard, db_service_name: str
     ) -> Optional[Iterable[AddLineageRequest]]:

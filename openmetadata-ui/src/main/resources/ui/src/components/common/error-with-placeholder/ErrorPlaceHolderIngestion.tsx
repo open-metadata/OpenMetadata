@@ -13,6 +13,7 @@
 
 import { Card, Space, Typography } from 'antd';
 import { ReactComponent as IconCollateSupport } from 'assets/svg/ic-collate-support.svg';
+import Loader from 'components/Loader/Loader';
 import { AIRFLOW_DOCS } from 'constants/docs.constants';
 import { PIPELINE_SERVICE_PLATFORM } from 'constants/Services.constant';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
@@ -21,7 +22,7 @@ import React from 'react';
 import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
 
 const ErrorPlaceHolderIngestion = () => {
-  const { platform } = useAirflowStatus();
+  const { platform, isFetchingStatus } = useAirflowStatus();
 
   const isAirflowPlatform = platform === PIPELINE_SERVICE_PLATFORM;
 
@@ -68,7 +69,7 @@ const ErrorPlaceHolderIngestion = () => {
 
   return (
     <div className="tw-mt-5 tw-text-base tw-font-medium">
-      {airflowSetupGuide()}
+      {isFetchingStatus ? <Loader /> : airflowSetupGuide()}
     </div>
   );
 };

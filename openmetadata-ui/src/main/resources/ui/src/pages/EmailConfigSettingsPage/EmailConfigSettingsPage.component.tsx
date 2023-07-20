@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Card, Col, Row, Skeleton, Typography } from 'antd';
+import { Button, Col, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageHeader from 'components/header/PageHeader.component';
@@ -108,20 +108,17 @@ function EmailConfigSettingsPage() {
     }
 
     return (
-      <Card>
+      <>
         {loading ? (
           <Skeleton title paragraph={{ rows: 8 }} />
         ) : (
           <>
-            <Typography.Title level={5}>
-              {t('label.email-configuration')}
-            </Typography.Title>
-            <Row align="middle" className="m-t-md" gutter={[16, 16]}>
+            <Row align="middle" gutter={[16, 16]}>
               {configValues}
             </Row>
           </>
         )}
-      </Card>
+      </>
     );
   }, [loading, emailConfigValues, configValues]);
 

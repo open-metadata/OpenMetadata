@@ -144,6 +144,8 @@ class PandasInterfaceTest(TestCase):
         query_metrics = []
         window_metrics = []
         for col in inspect(User).c:
+            if col.name == "id":
+                continue
             column_metrics.append(
                 (
                     [

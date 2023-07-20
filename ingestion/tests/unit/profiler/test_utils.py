@@ -17,8 +17,8 @@ from datetime import datetime
 from unittest import TestCase
 
 import pytest
-from sqlalchemy import Column, create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import Column
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql.sqltypes import Integer, String
 
 from metadata.profiler.metrics.hybrid.histogram import Histogram
@@ -31,7 +31,7 @@ from metadata.utils.profiler_utils import (
     get_value_from_cache,
     set_cache,
 )
-from metadata.utils.sqa_utils import handle_array, is_array
+from metadata.utils.sqa_utils import is_array
 
 from .conftest import Row
 

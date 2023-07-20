@@ -33,7 +33,6 @@ import {
 import { getVersionPath } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Pipeline } from '../../generated/entity/data/pipeline';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import {
   addToRecentViewed,
@@ -59,7 +58,6 @@ const PipelineDetailsPage = () => {
   );
 
   const [isLoading, setLoading] = useState<boolean>(true);
-  const [followers, setFollowers] = useState<Array<EntityReference>>([]);
 
   const [isError, setIsError] = useState(false);
 
@@ -70,6 +68,8 @@ const PipelineDetailsPage = () => {
   );
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
+
+  const { followers = [] } = pipelineDetails;
 
   const fetchResourcePermission = async (entityFqn: string) => {
     setLoading(true);
@@ -143,39 +143,53 @@ const PipelineDetailsPage = () => {
     }
   };
 
-  const followPipeline = async (fetchCount: () => void) => {
-    try {
-      const res = await addFollower(pipelineId, USERId);
-      const { newValue } = res.changeDescription.fieldsAdded[0];
-      setFollowers([...followers, ...newValue]);
-      fetchCount();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-follow-error', {
-          entity: getEntityName(pipelineDetails),
-        })
-      );
-    }
-  };
+  const followPipeline = useCallback(
+    async (fetchCount: () => void) => {
+      try {
+        const res = await addFollower(pipelineId, USERId);
+        const { newValue } = res.changeDescription.fieldsAdded[0];
+        const newFollowers = [...(followers ?? []), ...newValue];
+        setPipelineDetails((prev) => {
+          return { ...prev, followers: newFollowers };
+        });
 
-  const unFollowPipeline = async (fetchCount: () => void) => {
-    try {
-      const res = await removeFollower(pipelineId, USERId);
-      const { oldValue } = res.changeDescription.fieldsDeleted[0];
-      setFollowers(
-        followers.filter((follower) => follower.id !== oldValue[0].id)
-      );
-      fetchCount();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-unfollow-error', {
-          entity: getEntityName(pipelineDetails),
-        })
-      );
-    }
-  };
+        fetchCount();
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-follow-error', {
+            entity: getEntityName(pipelineDetails),
+          })
+        );
+      }
+    },
+    [followers, USERId]
+  );
+
+  const unFollowPipeline = useCallback(
+    async (fetchCount: () => void) => {
+      try {
+        const res = await removeFollower(pipelineId, USERId);
+        const { oldValue } = res.changeDescription.fieldsDeleted[0];
+        setPipelineDetails((prev) => ({
+          ...prev,
+          followers: followers.filter(
+            (follower) => follower.id !== oldValue[0].id
+          ),
+        }));
+
+        fetchCount();
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-unfollow-error', {
+            entity: getEntityName(pipelineDetails),
+          })
+        );
+      }
+    },
+    [followers, USERId]
+  );
 
   const descriptionUpdateHandler = async (updatedPipeline: Pipeline) => {
     try {
@@ -261,7 +275,6 @@ const PipelineDetailsPage = () => {
       descriptionUpdateHandler={descriptionUpdateHandler}
       fetchPipeline={() => fetchPipelineDetail(pipelineFQN)}
       followPipelineHandler={followPipeline}
-      followers={followers}
       paging={paging}
       pipelineDetails={pipelineDetails}
       pipelineFQN={pipelineFQN}

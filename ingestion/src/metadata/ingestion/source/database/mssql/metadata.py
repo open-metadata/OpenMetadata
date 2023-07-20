@@ -42,7 +42,10 @@ from metadata.utils.sqlalchemy_utils import (
 
 logger = ingestion_logger()
 
-
+# The ntext, text, and image data types will be removed in a future version of SQL Server.
+# Avoid using these data types in new development work, and plan to modify applications that currently use them.
+# Use nvarchar(max), varchar(max), and varbinary(max) instead.
+# ref: https://learn.microsoft.com/en-us/sql/t-sql/data-types/ntext-text-and-image-transact-sql?view=sql-server-ver16
 ischema_names.update(
     {
         "nvarchar": create_sqlalchemy_type("NVARCHAR"),
