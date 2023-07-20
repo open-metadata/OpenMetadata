@@ -10,11 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export interface TeamsSelectableProps {
-  showTeamsAlert?: boolean;
-  onSelectionChange: (teams: string[]) => void;
-  filterJoinable?: boolean;
-  placeholder?: string;
-  selectedTeams?: string[];
-  maxValueCount?: number;
+
+import { ImageList } from 'generated/type/profile';
+
+export interface UserProfileImageProps {
+  userData: {
+    id?: string;
+    name?: string;
+    displayName?: string;
+    images?: ImageList;
+  };
 }

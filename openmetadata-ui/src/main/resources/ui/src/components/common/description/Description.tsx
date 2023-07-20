@@ -13,7 +13,7 @@
 import { Button, Popover, Space, Typography } from 'antd';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
+import { DE_ACTIVE_COLOR, ICON_DIMENSION } from 'constants/constants';
 import { t } from 'i18next';
 import { isFunction, isUndefined } from 'lodash';
 import React, { FC, Fragment } from 'react';
@@ -21,7 +21,7 @@ import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconCommentPlus } from '../../../assets/svg/add-chat.svg';
 import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
-import { ReactComponent as IconTaskColor } from '../../../assets/svg/Task-ic.svg';
+import { ReactComponent as IconTaskColor } from '../../../assets/svg/task-ic.svg';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
@@ -55,6 +55,7 @@ const Description: FC<DescriptionProps> = ({
   entityType,
   entityFqn,
   entityFieldTasks,
+  reduceDescription,
 }) => {
   const history = useHistory();
 
@@ -111,9 +112,8 @@ const Description: FC<DescriptionProps> = ({
           trigger="hover"
           zIndex={9999}>
           <IconRequest
-            height={16}
             name={t('message.request-description')}
-            width={16}
+            {...ICON_DIMENSION}
           />
         </Popover>
       </Button>
@@ -132,7 +132,7 @@ const Description: FC<DescriptionProps> = ({
         type="text"
         onClick={() => onThreadLinkSelect?.(descriptionThread.entityLink)}>
         <Space align="center" className="h-full" size={2}>
-          <IconComments height={16} name="tasks" width={16} />
+          <IconComments {...ICON_DIMENSION} name="tasks" />
           <Typography.Text data-testid="description-thread-count">
             {descriptionThread.count}
           </Typography.Text>
@@ -144,7 +144,7 @@ const Description: FC<DescriptionProps> = ({
           <Button
             className="w-7 h-7 link-text p-0 flex-center"
             data-testid="start-description-thread"
-            icon={<IconCommentPlus height={16} name="comments" width={16} />}
+            icon={<IconCommentPlus {...ICON_DIMENSION} name="comments" />}
             type="text"
             onClick={() =>
               onThreadLinkSelect?.(
@@ -168,7 +168,7 @@ const Description: FC<DescriptionProps> = ({
         type="text"
         onClick={() => onThreadLinkSelect?.(tasks.entityLink, ThreadType.Task)}>
         <Space align="center" className="h-full" size={2}>
-          <IconTaskColor height={16} name="tasks" width={16} />
+          <IconTaskColor {...ICON_DIMENSION} name="tasks" />
           <Typography.Text data-testid="description-tasks-count">
             {tasks.count}
           </Typography.Text>
@@ -183,7 +183,7 @@ const Description: FC<DescriptionProps> = ({
           <Button
             className="w-7 h-7 p-0 flex-center"
             data-testid="edit-description"
-            icon={<IconEdit color={DE_ACTIVE_COLOR} height={16} width={16} />}
+            icon={<IconEdit color={DE_ACTIVE_COLOR} {...ICON_DIMENSION} />}
             type="text"
             onClick={handleUpdate}
           />
@@ -210,6 +210,7 @@ const Description: FC<DescriptionProps> = ({
             id="center">
             {description?.trim() ? (
               <RichTextEditorPreviewer
+                className={reduceDescription ? 'max-two-lines' : ''}
                 enableSeeMoreVariant={!removeBlur}
                 markdown={description}
               />
