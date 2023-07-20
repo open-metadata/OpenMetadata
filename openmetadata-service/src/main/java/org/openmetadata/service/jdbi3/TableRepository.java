@@ -19,6 +19,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -37,6 +38,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -90,9 +92,9 @@ import org.openmetadata.service.util.ResultList;
 public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
-  static final String PATCH_FIELDS = "owner,tags,tableConstraints,tablePartition,extension,followers";
+  static final String PATCH_FIELDS = "tableConstraints,tablePartition";
   // Table fields that can be updated in a PUT request
-  static final String UPDATE_FIELDS = "owner,tags,tableConstraints,tablePartition,dataModel,extension,followers";
+  static final String UPDATE_FIELDS = "tableConstraints,tablePartition,dataModel";
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
@@ -135,10 +137,19 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public Table setInheritedFields(Table table, Fields fields) throws IOException {
     DatabaseSchema schema = null;
+    UUID schemaId = table.getDatabaseSchema().getId();
     // If table does not have owner, then inherit it from parent databaseSchema
     if (fields.contains(FIELD_OWNER) && table.getOwner() == null) {
-      schema = Entity.getEntity(DATABASE_SCHEMA, table.getDatabaseSchema().getId(), "owner", ALL);
+      schema = Entity.getEntity(DATABASE_SCHEMA, schemaId, "owner,domain", ALL);
       table.withOwner(schema.getOwner());
+    }
+
+    // If table does not have domain, then inherit it from parent databaseSchema
+    if (fields.contains(FIELD_DOMAIN) && table.getDomain() == null) {
+      if (schema == null) {
+        schema = Entity.getEntity(DATABASE_SCHEMA, schemaId, "domain", ALL);
+      }
+      table.withDomain(schema.getDomain());
     }
 
     // If table does not have retention period, then inherit it from parent databaseSchema
@@ -472,7 +483,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Transaction
   public Table getLatestTableProfile(String fqn, boolean authorizePII) throws IOException {
-    Table table = dao.findEntityByName(fqn);
+    Table table = dao.findEntityByName(fqn, ALL);
     TableProfile tableProfile =
         JsonUtils.readValue(
             getLatestExtensionFromTimeseries(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION),
@@ -589,8 +600,8 @@ public class TableRepository extends EntityRepository<Table> {
     }
     applyTags(table.getColumns());
     dao.update(table.getId(), FullyQualifiedName.buildHash(table.getFullyQualifiedName()), JsonUtils.pojoToJson(table));
-    setFieldsInternal(table, new Fields(List.of(FIELD_OWNER), FIELD_OWNER));
-    setFieldsInternal(table, new Fields(List.of(FIELD_TAGS), FIELD_TAGS));
+    setFieldsInternal(table, new Fields(Set.of(FIELD_OWNER), FIELD_OWNER));
+    setFieldsInternal(table, new Fields(Set.of(FIELD_TAGS), FIELD_TAGS));
     return table;
   }
 
@@ -695,16 +706,29 @@ public class TableRepository extends EntityRepository<Table> {
   public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) throws IOException {
     validateEntityLinkFieldExists(entityLink, task.getType());
     if (entityLink.getFieldName().equals("columns")) {
+      String columnName = entityLink.getArrayFieldName();
+      String childrenName = "";
+      if (entityLink.getArrayFieldName().contains(".")) {
+        String fieldNameWithoutQuotes =
+            entityLink.getArrayFieldName().substring(1, entityLink.getArrayFieldName().length() - 1);
+        columnName = fieldNameWithoutQuotes.substring(0, fieldNameWithoutQuotes.indexOf("."));
+        childrenName = fieldNameWithoutQuotes.substring(fieldNameWithoutQuotes.lastIndexOf(".") + 1);
+      }
       Table table = getByName(null, entityLink.getEntityFQN(), getFields("columns,tags"), Include.ALL);
-      Column column =
-          table.getColumns().stream()
-              .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
-              .findFirst()
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          CatalogExceptionMessage.invalidFieldName("column", entityLink.getArrayFieldName())));
-
+      Column column = null;
+      for (Column c : table.getColumns()) {
+        if (c.getName().equals(columnName)) {
+          column = c;
+          break;
+        }
+      }
+      if (childrenName != "" && column != null) {
+        column = getChildrenColumn(column.getChildren(), childrenName);
+      }
+      if (column == null) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.invalidFieldName("column", entityLink.getArrayFieldName()));
+      }
       String origJson = JsonUtils.pojoToJson(table);
       if (EntityUtil.isDescriptionTask(task.getType())) {
         column.setDescription(newValue);
@@ -718,6 +742,27 @@ public class TableRepository extends EntityRepository<Table> {
       return;
     }
     super.update(task, entityLink, newValue, user);
+  }
+
+  private static Column getChildrenColumn(List<Column> column, String childrenName) {
+    Column childrenColumn = null;
+    for (Column col : column) {
+      if (col.getName().equals(childrenName)) {
+        childrenColumn = col;
+        break;
+      }
+    }
+    if (childrenColumn == null) {
+      for (int i = 0; i < column.size(); i++) {
+        if (column.get(i).getChildren() != null) {
+          childrenColumn = getChildrenColumn(column.get(i).getChildren(), childrenName);
+          if (childrenColumn != null) {
+            break;
+          }
+        }
+      }
+    }
+    return childrenColumn;
   }
 
   private void getColumnTags(boolean setTags, List<Column> columns) {

@@ -15,7 +15,7 @@ import { Popover, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import cronstrue from 'cronstrue';
 import { Paging } from 'generated/type/paging';
-import { isEmpty, isNil } from 'lodash';
+import { isNil } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
@@ -185,13 +185,20 @@ function IngestionListTable({
     [paging]
   );
 
-  return !isEmpty(ingestionData) ? (
+  return (
     <div className="tw-mb-6" data-testid="ingestion-table">
       <Table
         bordered
         columns={tableColumn}
         data-testid="schema-table"
         dataSource={ingestionData}
+        locale={{
+          emptyText: getErrorPlaceHolder(
+            isRequiredDetailsAvailable,
+            ingestionData.length,
+            pipelineType
+          ),
+        }}
         pagination={false}
         rowKey="name"
         size="small"
@@ -207,12 +214,6 @@ function IngestionListTable({
         />
       )}
     </div>
-  ) : (
-    getErrorPlaceHolder(
-      isRequiredDetailsAvailable,
-      ingestionData.length,
-      pipelineType
-    )
   );
 }
 

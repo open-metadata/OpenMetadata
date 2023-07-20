@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { PagingResponse } from 'Models';
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import Searchbar from 'components/common/searchbar/Searchbar';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import DataQualityTab from 'components/ProfilerDashboard/component/DataQualityTab';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import Searchbar from 'components/common/searchbar/Searchbar';
 import { INITIAL_PAGING_VALUE, PAGE_SIZE } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { SearchIndex } from 'enums/search.enum';
@@ -26,16 +27,15 @@ import {
   TestCaseSearchSource,
 } from 'interface/search.interface';
 import { isString } from 'lodash';
-import { PagingResponse } from 'Models';
 import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchQuery } from 'rest/searchAPI';
 import {
+  ListTestCaseParams,
   getListTestCase,
   getTestCaseById,
-  ListTestCaseParams,
 } from 'rest/testAPI';
 import { showErrorToast } from 'utils/ToastUtils';
 import { DataQualitySearchParams } from '../DataQuality.interface';
@@ -209,6 +209,7 @@ export const TestCases = () => {
       </Col>
       <Col span={24}>
         <DataQualityTab
+          afterDeleteAction={fetchTestCases}
           isLoading={isLoading}
           pagingData={{
             paging: testCase.paging,

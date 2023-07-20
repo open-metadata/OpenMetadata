@@ -23,7 +23,9 @@ import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DEPARTMENT;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DIVISION;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.ORGANIZATION;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.Entity.POLICY;
@@ -54,6 +56,7 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
@@ -79,8 +82,8 @@ import org.openmetadata.service.util.ResultList;
 @Slf4j
 public class TeamRepository extends EntityRepository<Team> {
   static final String PARENTS_FIELD = "parents";
-  static final String TEAM_UPDATE_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies,teamType,email";
-  static final String TEAM_PATCH_FIELDS = "owner,profile,users,defaultRoles,parents,children,policies,teamType,email";
+  static final String TEAM_UPDATE_FIELDS = "profile,users,defaultRoles,parents,children,policies,teamType,email";
+  static final String TEAM_PATCH_FIELDS = "profile,users,defaultRoles,parents,children,policies,teamType,email";
   private static final String DEFAULT_ROLES = "defaultRoles";
   private Team organization = null;
 
@@ -172,6 +175,20 @@ public class TeamRepository extends EntityRepository<Team> {
     for (EntityReference policy : listOrEmpty(team.getPolicies())) {
       addRelationship(team.getId(), policy.getId(), TEAM, POLICY, Relationship.HAS);
     }
+  }
+
+  @Override
+  public Team setInheritedFields(Team team, Fields fields) throws IOException {
+    // If user does not have domain, then inherit it from parent Team
+    // TODO have default team when a user belongs to multiple teams
+    if (fields.contains(FIELD_DOMAIN) && team.getDomain() == null) {
+      List<EntityReference> parents = !fields.contains(PARENTS_FIELD) ? getParents(team) : team.getParents();
+      if (!nullOrEmpty(parents)) {
+        Team parent = Entity.getEntity(TEAM, parents.get(0).getId(), "domain", ALL);
+        team.withDomain(parent.getDomain());
+      }
+    }
+    return team;
   }
 
   @Override
@@ -667,6 +684,10 @@ public class TeamRepository extends EntityRepository<Team> {
       recordChange("profile", original.getProfile(), updated.getProfile());
       recordChange("isJoinable", original.getIsJoinable(), updated.getIsJoinable());
       recordChange("teamType", original.getTeamType(), updated.getTeamType());
+      // If the team is empty then email should be null, not be empty
+      if (CommonUtil.nullOrEmpty(updated.getEmail())) {
+        updated.setEmail(null);
+      }
       recordChange("email", original.getEmail(), updated.getEmail());
       updateUsers(original, updated);
       updateDefaultRoles(original, updated);

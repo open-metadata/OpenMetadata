@@ -48,19 +48,10 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class PolicyRepository extends EntityRepository<Policy> {
-  private static final String POLICY_UPDATE_FIELDS = "owner";
-  private static final String POLICY_PATCH_FIELDS = "owner";
   public static final String ENABLED = "enabled";
 
   public PolicyRepository(CollectionDAO dao) {
-    super(
-        PolicyResource.COLLECTION_PATH,
-        POLICY,
-        Policy.class,
-        dao.policyDAO(),
-        dao,
-        POLICY_PATCH_FIELDS,
-        POLICY_UPDATE_FIELDS);
+    super(PolicyResource.COLLECTION_PATH, POLICY, Policy.class, dao.policyDAO(), dao, "", "");
   }
 
   @Override

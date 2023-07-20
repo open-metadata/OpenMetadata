@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Space, Tabs } from 'antd';
+import { Col, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import ActivityFeedProvider, {
   useActivityFeedProvider,
@@ -58,6 +58,7 @@ import TopicSchemaFields from './TopicSchema/TopicSchema';
 
 const TopicDetails: React.FC<TopicDetailsProps> = ({
   topicDetails,
+  fetchTopic,
   followTopicHandler,
   unFollowTopicHandler,
   versionHandler,
@@ -74,9 +75,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const [threadLink, setThreadLink] = useState<string>('');
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
-  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
     EntityFieldThreadCount[]
   >([]);
 
@@ -253,7 +251,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       EntityType.TOPIC,
       topicFQN,
       setEntityFieldThreadCount,
-      setEntityFieldTaskCount,
       setFeedCount
     );
   };
@@ -294,12 +291,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   onThreadLinkSelect={onThreadLinkSelect}
                 />
                 <TopicSchemaFields
-                  entityFieldTasks={getEntityFieldThreadCounts(
-                    EntityField.COLUMNS,
-                    entityFieldTaskCount
-                  )}
                   entityFieldThreads={getEntityFieldThreadCounts(
-                    EntityField.COLUMNS,
+                    EntityField.MESSAGE_SCHEMA,
                     entityFieldThreadCount
                   )}
                   entityFqn={topicDetails.fullyQualifiedName ?? ''}
@@ -369,6 +362,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               entityType={EntityType.TOPIC}
               fqn={topicDetails?.fullyQualifiedName ?? ''}
               onFeedUpdate={getEntityFeedCount}
+              onUpdateEntityDetails={fetchTopic}
             />
           </ActivityFeedProvider>
         ),
@@ -403,17 +397,13 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <Card
-            className="lineage-card card-body-full w-auto border-none"
-            data-testid="lineage-details"
-            id="lineageDetails">
-            <EntityLineageComponent
-              entityType={EntityType.TOPIC}
-              hasEditAccess={
-                topicPermissions.EditAll || topicPermissions.EditLineage
-              }
-            />
-          </Card>
+          <EntityLineageComponent
+            entity={topicDetails}
+            entityType={EntityType.TOPIC}
+            hasEditAccess={
+              topicPermissions.EditAll || topicPermissions.EditLineage
+            }
+          />
         ),
       },
       {
@@ -443,7 +433,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       activeTab,
       feedCount,
       topicDetails,
-      entityFieldTaskCount,
       entityFieldThreadCount,
       topicPermissions,
       isEdit,

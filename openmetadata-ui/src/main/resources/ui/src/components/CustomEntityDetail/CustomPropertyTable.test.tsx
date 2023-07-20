@@ -23,7 +23,6 @@ import { CustomPropertyTable } from './CustomPropertyTable';
 
 jest.mock('../../utils/CommonUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityName'),
-  isEven: jest.fn().mockReturnValue(true),
 }));
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {

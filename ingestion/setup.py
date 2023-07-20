@@ -28,7 +28,7 @@ def get_long_description():
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==2.3.3",
+    "airflow": "apache-airflow==2.6.3",
     "avro": "avro~=1.11",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
@@ -213,6 +213,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["packaging"],
     },
     "powerbi": {VERSIONS["msal"]},
+    "qliksense": {"websockets~=11.0.3"},
     "presto": {*COMMONS["hive"]},
     "pymssql": {"pymssql==2.2.5"},
     "quicksight": {VERSIONS["boto3"]},
@@ -307,6 +308,7 @@ setup(
                         "airflow",
                         "db2",
                         "great-expectations",
+                        "pymssql",  # pymssql build is failing ref issue: https://github.com/pymssql/pymssql/issues/826
                     }
                 ]
             )

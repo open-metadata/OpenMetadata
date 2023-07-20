@@ -23,10 +23,9 @@ import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
 import { oidcTokenKey, ROUTES } from '../constants/constants';
-import { validEmailRegEx } from '../constants/regex.constants';
+import { EMAIL_REG_EX } from '../constants/regex.constants';
 import { AuthTypes } from '../enums/signin.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
-import { SamlSSOClientConfig } from '../generated/security/client/samlSSOClientConfig';
 import { isDev } from './EnvironmentUtils';
 
 export let msalInstance: IPublicClientApplication;
@@ -61,15 +60,6 @@ export const getUserManagerConfig = (
     scope,
     userStore: new WebStorageStateStore({ store: localStorage }),
   };
-};
-
-export type AuthClient = {
-  authority: string;
-  clientId: string;
-  callbackUrl: string;
-  provider: string;
-  providerName: string;
-  samlConfiguration?: SamlSSOClientConfig;
 };
 
 export const getAuthConfig = (
@@ -207,13 +197,9 @@ export const setMsalInstance = (configs: Configuration) => {
 export const msalLoginRequest: PopupRequest = {
   scopes: ['openid', 'profile', 'email', 'offline_access'],
 };
-// Add here the endpoints for MS Graph API services you would like to use.
-export const msalGraphConfig = {
-  graphMeEndpoint: 'https://graph.microsoft.com',
-};
 
 export const getNameFromEmail = (email: string) => {
-  if (email?.match(validEmailRegEx)) {
+  if (email?.match(EMAIL_REG_EX)) {
     return email.split('@')[0];
   } else {
     // if the string does not conform to email format return the string

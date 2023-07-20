@@ -36,7 +36,6 @@ import {
 import {
   CurrentState,
   ExtraInfo,
-  FormattedTableData,
   RecentlySearched,
   RecentlySearchedData,
   RecentlyViewed,
@@ -65,14 +64,11 @@ import {
   LOCALSTORAGE_RECENTLY_SEARCHED,
   LOCALSTORAGE_RECENTLY_VIEWED,
 } from '../constants/constants';
-import {
-  UrlEntityCharRegEx,
-  validEmailRegEx,
-} from '../constants/regex.constants';
+import { UrlEntityCharRegEx } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { FilterPatternEnum } from '../enums/filterPattern.enum';
-import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
+import { ThreadType } from '../generated/entity/feed/thread';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
@@ -81,7 +77,6 @@ import { EntityFieldThreadCount } from '../interface/feed.interface';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
 import { serviceTypeLogo } from './ServiceUtils';
-import { getTierFromSearchTableTags } from './TableUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -100,10 +95,6 @@ export const arraySorterByKey = <T extends object>(
         : 0) * sortOrder
     );
   };
-};
-
-export const isEven = (value: number): boolean => {
-  return value % 2 === 0;
 };
 
 export const getPartialNameFromFQN = (
@@ -144,6 +135,12 @@ export const getPartialNameFromTableFQN = (
 
     return splitFqn.slice(4).join(FQN_SEPARATOR_CHAR);
   }
+
+  if (fqnParts.includes(FqnPart.Topic)) {
+    // Remove the first 2 parts ( service, database)
+    return splitFqn.slice(2).join(FQN_SEPARATOR_CHAR);
+  }
+
   const arrPartialName = [];
   if (splitFqn.length > 0) {
     if (fqnParts.includes(FqnPart.Service)) {
@@ -205,13 +202,6 @@ export const hasEditAccess = (type: string, id: string) => {
         loggedInUser?.teams?.some((team) => team.id === id)
     );
   }
-};
-
-export const getTabClasses = (
-  tab: number | string,
-  activeTab: number | string
-) => {
-  return 'tw-gh-tabs' + (activeTab === tab ? ' active' : '');
 };
 
 export const getCountBadge = (
@@ -412,20 +402,6 @@ export const isValidUrl = (href?: string) => {
   }
 };
 
-/**
- *
- * @param email - email address string
- * @returns - True|False
- */
-export const isValidEmail = (email?: string) => {
-  let isValid = false;
-  if (email && email.match(validEmailRegEx)) {
-    isValid = true;
-  }
-
-  return isValid;
-};
-
 export const getEntityMissingError = (entityType: string, fqn: string) => {
   return (
     <p>
@@ -551,7 +527,6 @@ export const getFeedCounts = (
   conversationCallback: (
     value: React.SetStateAction<EntityFieldThreadCount[]>
   ) => void,
-  taskCallback: (value: React.SetStateAction<EntityFieldThreadCount[]>) => void,
   entityCallback: (value: React.SetStateAction<number>) => void
 ) => {
   // To get conversation count
@@ -562,23 +537,6 @@ export const getFeedCounts = (
     .then((res) => {
       if (res) {
         conversationCallback(res.counts);
-      } else {
-        throw t('server.entity-feed-fetch-error');
-      }
-    })
-    .catch((err: AxiosError) => {
-      showErrorToast(err, t('server.entity-feed-fetch-error'));
-    });
-
-  // To get open tasks count
-  getFeedCount(
-    getEntityFeedLink(entityType, entityFQN),
-    ThreadType.Task,
-    ThreadTaskStatus.Open
-  )
-    .then((res) => {
-      if (res) {
-        taskCallback(res.counts);
       } else {
         throw t('server.entity-feed-fetch-error');
       }
@@ -739,13 +697,6 @@ export const refreshPage = () => window.location.reload();
 export const getEntityIdArray = (entities: EntityReference[]): string[] =>
   entities.map((item) => item.id);
 
-export const getTierFromEntityInfo = (entity: FormattedTableData) => {
-  return (
-    entity.tier?.tagFQN ||
-    getTierFromSearchTableTags((entity.tags || []).map((tag) => tag.tagFQN))
-  )?.split(FQN_SEPARATOR_CHAR)[1];
-};
-
 export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
   if (isString(tag)) {
     return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
@@ -805,36 +756,6 @@ export const Transi18next = ({
     {renderElement}
   </Trans>
 );
-
-/**
- * It returns a link to the documentation for the given filter pattern type
- * @param {FilterPatternEnum} type - The type of filter pattern.
- * @returns A string
- */
-export const getFilterPatternDocsLinks = (type: FilterPatternEnum) => {
-  switch (type) {
-    case FilterPatternEnum.DATABASE:
-    case FilterPatternEnum.SCHEMA:
-    case FilterPatternEnum.TABLE:
-      return `https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/${FilterPatternEnum.DATABASE}#${type}-filter-pattern`;
-
-    case FilterPatternEnum.DASHBOARD:
-    case FilterPatternEnum.CHART:
-      return 'https://docs.open-metadata.org/connectors/dashboard/metabase#6-configure-metadata-ingestion';
-
-    case FilterPatternEnum.TOPIC:
-      return 'https://docs.open-metadata.org/connectors/messaging/kafka#6-configure-metadata-ingestion';
-
-    case FilterPatternEnum.PIPELINE:
-      return 'https://docs.open-metadata.org/connectors/pipeline/airflow#6-configure-metadata-ingestion';
-
-    case FilterPatternEnum.MLMODEL:
-      return 'https://docs.open-metadata.org/connectors/ml-model/mlflow';
-
-    default:
-      return 'https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns';
-  }
-};
 
 /**
  * It takes a string and returns a string
@@ -976,8 +897,4 @@ export const getEntityDetailLink = (
   }
 
   return path;
-};
-
-export const getPartialNameFromTopicFQN = (fqn: string): string => {
-  return Fqn.split(fqn).slice(2).join(FQN_SEPARATOR_CHAR);
 };

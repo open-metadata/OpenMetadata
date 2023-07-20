@@ -142,6 +142,7 @@ const settingsUpdateHandler = jest.fn();
 const mockProp = {
   mlModelDetail: mockData as Mlmodel,
   activeTab: 1,
+  fetchMlModel: jest.fn(),
   followMlModelHandler,
   unFollowMlModelHandler,
   descriptionUpdateHandler,
@@ -197,10 +198,6 @@ jest.mock('components/TabsLabel/TabsLabel.component', () => {
 
 jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
-});
-
-jest.mock('../common/entityPageInfo/EntityPageInfo', () => {
-  return jest.fn().mockReturnValue(<p>EntityPageInfo</p>);
 });
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {

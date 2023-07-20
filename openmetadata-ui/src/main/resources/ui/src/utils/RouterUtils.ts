@@ -11,11 +11,9 @@
  *  limitations under the License.
  */
 
-import { ProfilerDashboardTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getServiceDetailsPath,
   INGESTION_NAME,
@@ -27,8 +25,6 @@ import {
   PLACEHOLDER_ENTITY_TYPE_FQN,
   PLACEHOLDER_GLOSSARY_NAME,
   PLACEHOLDER_GLOSSARY_TERMS_FQN,
-  PLACEHOLDER_ROUTE_ENTITY_FQN,
-  PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_INGESTION_FQN,
   PLACEHOLDER_ROUTE_INGESTION_TYPE,
@@ -50,15 +46,10 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import { arrServiceTypes } from '../constants/Services.constant';
-import { EntityAction, EntityType } from '../enums/entity.enum';
-import { ProfilerDashboardType } from '../enums/table.enum';
+import { EntityAction } from '../enums/entity.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
-
-export const isDashboard = (pathname: string): boolean => {
-  return pathname === ROUTES.FEEDS;
-};
 
 export const isInPageSearchAllowed = (pathname: string): boolean => {
   return Boolean(
@@ -146,22 +137,10 @@ export const getGlossaryPath = (fqn?: string) => {
   let path = ROUTES.GLOSSARY;
   if (fqn) {
     path = ROUTES.GLOSSARY_DETAILS;
-    path = path.replace(PLACEHOLDER_GLOSSARY_NAME, fqn);
+    path = path.replace(PLACEHOLDER_GLOSSARY_NAME, encodeURIComponent(fqn));
   }
 
   return path;
-};
-
-export const getParentGlossaryPath = (fqn?: string) => {
-  if (fqn) {
-    const parts = fqn.split(FQN_SEPARATOR_CHAR);
-    if (parts.length > 1) {
-      // remove the last part to get parent FQN
-      fqn = parts.slice(0, -1).join(FQN_SEPARATOR_CHAR);
-    }
-  }
-
-  return getGlossaryPath(fqn);
 };
 
 export const getGlossaryTermsPath = (
@@ -169,22 +148,6 @@ export const getGlossaryTermsPath = (
   glossaryTerm = ''
 ) => {
   let path = glossaryTerm ? ROUTES.GLOSSARY_TERMS : ROUTES.GLOSSARY_DETAILS;
-  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName);
-
-  if (glossaryTerm) {
-    path = path.replace(PLACEHOLDER_GLOSSARY_TERMS_FQN, glossaryTerm);
-  }
-
-  return path;
-};
-
-export const getAddGlossaryTermsPath = (
-  glossaryName: string,
-  glossaryTerm = ''
-) => {
-  let path = glossaryTerm
-    ? ROUTES.ADD_GLOSSARY_TERMS_CHILD
-    : ROUTES.ADD_GLOSSARY_TERMS;
   path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName);
 
   if (glossaryTerm) {
@@ -313,26 +276,6 @@ export const getPath = (pathName: string) => {
   }
 };
 
-export const getProfilerDashboardWithFqnPath = (
-  dashboardType: ProfilerDashboardType,
-  entityTypeFQN: string,
-  tab?: ProfilerDashboardTab
-) => {
-  let path = tab
-    ? ROUTES.PROFILER_DASHBOARD_WITH_TAB
-    : ROUTES.PROFILER_DASHBOARD;
-
-  path = path
-    .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
-    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, getEncodedFqn(entityTypeFQN));
-
-  if (tab) {
-    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
-  }
-
-  return path;
-};
-
 export const getAddPolicyRulePath = (fqn: string) => {
   let path = ROUTES.ADD_POLICY_RULE;
 
@@ -450,16 +393,6 @@ export const getLogEntityPath = (
   );
 };
 
-export const getLineageViewPath = (entity: EntityType, fqn: string) => {
-  let path = ROUTES.LINEAGE_FULL_SCREEN_VIEW;
-
-  path = path
-    .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entity)
-    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, fqn);
-
-  return path;
-};
-
 export const getGlossaryPathWithAction = (
   fqn: string,
   action: EntityAction
@@ -511,7 +444,7 @@ export const getGlossaryTermsVersionsPath = (
     ? ROUTES.GLOSSARY_TERMS_VERSION_TAB
     : ROUTES.GLOSSARY_TERMS_VERSION;
   path = path
-    .replace(PLACEHOLDER_GLOSSARY_NAME, glossaryTermsFQN)
+    .replace(PLACEHOLDER_GLOSSARY_NAME, encodeURIComponent(glossaryTermsFQN))
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   if (tab) {

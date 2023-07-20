@@ -71,6 +71,9 @@ export enum EntityField {
   EXTENSION = 'extension',
   DISPLAYNAME = 'displayName',
   NAME = 'name',
+  MESSAGE_SCHEMA = 'messageSchema',
+  CHARTS = 'charts',
+  DATA_MODEL = 'dataModel',
 }
 
 export const ANNOUNCEMENT_BG = '#FFFDF8';

@@ -32,10 +32,9 @@ export interface TopicSchemaFieldsProps
   entityFqn: string;
   defaultExpandAllRows?: boolean;
   showSchemaDisplayTypeSwitch?: boolean;
+  entityFieldThreads: EntityFieldThreads[];
   onUpdate?: (updatedMessageSchema: Topic['messageSchema']) => Promise<void>;
-  entityFieldThreads?: EntityFieldThreads[];
-  entityFieldTasks?: EntityFieldThreads[];
-  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
+  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
 }
 
 export enum SchemaViewType {

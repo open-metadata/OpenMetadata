@@ -37,7 +37,6 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -208,7 +207,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   public void resetUserPasswordWithToken(UriInfo uriInfo, PasswordResetRequest request) throws IOException {
     String tokenID = request.getToken();
     PasswordResetToken passwordResetToken = (PasswordResetToken) tokenRepository.findByToken(tokenID);
-    List<String> fields = userRepository.getAllowedFieldsCopy();
+    Set<String> fields = userRepository.getAllowedFieldsCopy();
     fields.add(USER_PROTECTED_FIELDS);
     User storedUser =
         userRepository.getByName(
@@ -471,17 +470,17 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
   @Override
   public User lookUserInProvider(String userName) {
-    User storedUser = null;
+    User storedUser;
     try {
       if (userName.contains("@")) {
         // lookup by User Email
         storedUser =
             userRepository.getByEmail(
-                null, userName, new EntityUtil.Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+                null, userName, new EntityUtil.Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
       } else {
         storedUser =
             userRepository.getByName(
-                null, userName, new EntityUtil.Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+                null, userName, new EntityUtil.Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
       }
 
       if (storedUser != null && Boolean.TRUE.equals(storedUser.getIsBot())) {

@@ -18,6 +18,8 @@ import { CustomPropertyProps } from 'components/common/CustomPropertyTable/Custo
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import EntityVersionTimeLine from 'components/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from 'components/Loader/Loader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import TopicSchemaFields from 'components/TopicDetails/TopicSchema/TopicSchema';
@@ -26,6 +28,7 @@ import { EntityField } from 'constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { TagSource } from 'generated/type/tagLabel';
+import { noop } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -36,8 +39,6 @@ import {
   getEntityVersionTags,
   getUpdatedMessageSchema,
 } from '../../utils/EntityVersionUtils';
-import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from '../Loader/Loader';
 import { TopicVersionProp } from './TopicVersion.interface';
 
 const TopicVersion: FC<TopicVersionProp> = ({
@@ -127,11 +128,13 @@ const TopicVersion: FC<TopicVersionProp> = ({
                   <TopicSchemaFields
                     defaultExpandAllRows
                     isReadOnly
+                    entityFieldThreads={[]}
                     entityFqn={currentVersionData?.fullyQualifiedName ?? ''}
                     hasDescriptionEditAccess={false}
                     hasTagEditAccess={false}
                     messageSchema={messageSchemaDiff}
                     showSchemaDisplayTypeSwitch={false}
+                    onThreadLinkSelect={noop}
                   />
                 </Col>
               </Row>
@@ -143,7 +146,6 @@ const TopicVersion: FC<TopicVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
-                    isVersionView
                     entityFqn={currentVersionData.fullyQualifiedName}
                     entityType={EntityType.TOPIC}
                     key={tagType}

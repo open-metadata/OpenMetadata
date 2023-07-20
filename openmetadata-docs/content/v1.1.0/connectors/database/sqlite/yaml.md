@@ -37,6 +37,8 @@ Configure and schedule SQLite metadata and profiler workflows from the OpenMetad
 - [Lineage](#lineage)
 - [dbt Integration](#dbt-integration)
 
+{% partial file="/v1.1.0/connectors/external-ingestion-deployment.md" /%}
+
 ## Requirements
 
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}

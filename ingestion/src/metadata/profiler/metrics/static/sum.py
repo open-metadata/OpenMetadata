@@ -42,7 +42,7 @@ class Sum(StaticMetric):
             return SumFn(column(self.col.name))
 
         if is_concatenable(self.col.type):
-            return SumFn(LenFn(column(self.col.name)))
+            return SumFn(LenFn(column(self.col.name, self.col.type)))
 
         return None
 

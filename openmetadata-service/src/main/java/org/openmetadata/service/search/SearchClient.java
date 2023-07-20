@@ -56,7 +56,7 @@ public interface SearchClient {
 
   Response search(ElasticSearchRequest request) throws IOException;
 
-  Response aggregate(String index, String fieldName) throws IOException;
+  Response aggregate(String index, String fieldName, String after) throws IOException;
 
   Response suggest(ElasticSearchRequest request) throws IOException;
 

@@ -37,6 +37,8 @@ Configure and schedule Clickhouse metadata and profiler workflows from the OpenM
 - [Lineage](#lineage)
 - [dbt Integration](#dbt-integration)
 
+{% partial file="/v1.1.0/connectors/external-ingestion-deployment.md" /%}
+
 ## Requirements
 
 

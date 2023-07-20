@@ -10,9 +10,6 @@ import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
 
 public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
-  private static final String UPDATE_FIELDS = "owner";
-  private static final String PATCH_FIELDS = "owner";
-
   public TestDefinitionRepository(CollectionDAO dao) {
     super(
         TestDefinitionResource.COLLECTION_PATH,
@@ -20,8 +17,8 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
         TestDefinition.class,
         dao.testDefinitionDAO(),
         dao,
-        PATCH_FIELDS,
-        UPDATE_FIELDS);
+        "",
+        "");
   }
 
   @Override

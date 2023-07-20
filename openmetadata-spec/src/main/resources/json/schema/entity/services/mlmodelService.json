@@ -98,7 +98,7 @@
     },
     "pipelines": {
       "description": "References to pipelines deployed for this pipeline service to extract metadata",
-      "$ref": "../../type/entityReferenceList.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "connection": {
       "$ref": "#/definitions/mlModelConnection"

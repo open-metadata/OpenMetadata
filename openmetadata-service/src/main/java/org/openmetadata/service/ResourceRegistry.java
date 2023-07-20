@@ -57,7 +57,7 @@ public class ResourceRegistry {
   private ResourceRegistry() {}
 
   public static void addResource(
-      String resourceName, List<MetadataOperation> entitySpecificOperations, List<String> entityFields) {
+      String resourceName, List<MetadataOperation> entitySpecificOperations, Set<String> entityFields) {
     // If resourceName already exists, then no need to add the resource again
     if (RESOURCE_DESCRIPTORS.stream().anyMatch(d -> d.getName().equals(resourceName))) {
       return;
@@ -65,7 +65,7 @@ public class ResourceRegistry {
     ResourceDescriptor resourceDescriptor =
         new ResourceDescriptor()
             .withName(resourceName)
-            .withOperations(getOperations(resourceName, entitySpecificOperations, entityFields));
+            .withOperations(getOperations(resourceName, entitySpecificOperations, new ArrayList<>(entityFields)));
     RESOURCE_DESCRIPTORS.sort(Comparator.comparing(ResourceDescriptor::getName));
     RESOURCE_DESCRIPTORS.add(resourceDescriptor);
   }

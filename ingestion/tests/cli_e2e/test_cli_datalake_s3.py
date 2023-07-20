@@ -18,14 +18,11 @@ from typing import List
 
 import pytest
 
-from metadata.ingestion.api.sink import SinkStatus
-from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.api.workflow import Workflow
 
 from .base.e2e_types import E2EType
 from .base.test_cli import PATH_TO_RESOURCES
 from .common.test_cli_db import CliCommonDB
-from .common_e2e_sqa_mixins import SQACommonMethods
 
 
 class DatalakeCliTest(CliCommonDB.TestSuite):

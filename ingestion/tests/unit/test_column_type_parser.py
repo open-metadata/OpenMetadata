@@ -16,8 +16,6 @@ import logging
 import os
 from unittest import TestCase
 
-import pytest
-
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource

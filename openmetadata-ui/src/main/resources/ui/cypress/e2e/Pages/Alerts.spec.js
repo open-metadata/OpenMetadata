@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+// eslint-disable-next-line spaced-comment
+/// <reference types="cypress" />
+
 import {
   descriptionBox,
   interceptURL,
@@ -38,7 +41,19 @@ const deleteAlertSteps = (name) => {
   verifyResponseStatusCode('@deleteAlert', 200);
 
   toastNotification('Subscription deleted successfully!');
-  cy.get('[data-testid="add-placeholder-button"]').should('be.visible');
+};
+
+const visitAddAlertPage = () => {
+  cy.wait('@alertsPage').then(({ response }) => {
+    const data = response.body.data?.find((alert) => alert.provider === 'user');
+
+    if (Cypress._.isUndefined(data)) {
+      // Click on create placeholder button for alerts
+      cy.get('[data-testid="add-placeholder-button"]').click();
+    } else {
+      cy.get('[data-testid="create-alert"]').click();
+    }
+  });
 };
 
 describe('Alerts page should work properly', () => {
@@ -54,37 +69,26 @@ describe('Alerts page should work properly', () => {
     cy.get('[data-testid="global-setting-left-panel"]')
       .contains('Alerts')
       .scrollIntoView()
-      .should('be.visible')
-      .and('exist')
       .click();
-    verifyResponseStatusCode('@alertsPage', 200);
   });
 
   it('Create new alert for all data assets', () => {
-    // Click on create placeholder button for alerts
-    cy.get('[data-testid="add-placeholder-button"]')
-      .should('be.visible')
-      .click();
+    visitAddAlertPage();
     // Enter alert name
     cy.get('#name').should('be.visible').type(alertForAllAssets);
     // Enter description
-    cy.get(descriptionBox)
-      .should('be.visible')
-      .click()
-      .clear()
-      .type(description);
+    cy.get(descriptionBox).clear().type(description);
     // Click on all data assets
     cy.get('[data-testid="triggerConfig-type"]')
       .contains('All')
       .should('be.visible');
 
     // Select filters
-    cy.get('[data-testid="add-filters"]').should('exist').click();
+    cy.get('[data-testid="add-filters"]').click();
     cy.get('#filteringRules_rules_0_name').invoke('show').click();
     // Select owner
-    cy.get('[title="Owner"]').should('be.visible').click();
+    cy.get('[title="Owner"]').click();
     cy.get('[data-testid="matchAnyOwnerName-select"]')
-      .should('be.visible')
       .click()
       .type(teamSearchTerm);
     verifyResponseStatusCode('@getSearchResult', 200);
@@ -131,12 +135,7 @@ describe('Alerts page should work properly', () => {
   });
 
   it('Create new alert for all data assets and multiple filters', () => {
-    interceptURL('GET', '/api/v1/events/subscriptions/*', 'createAlert');
-    // Click on create placeholder button for alerts
-    cy.get('[data-testid="add-placeholder-button"]')
-      .should('be.visible')
-      .click();
-    verifyResponseStatusCode('@createAlert', 200);
+    visitAddAlertPage();
     // Enter alert name
     cy.get('#name').should('be.visible').type(alertForAllAssets);
     // Enter description
@@ -193,12 +192,8 @@ describe('Alerts page should work properly', () => {
   });
 
   it('Create new alert for Test case data asset', () => {
-    interceptURL('GET', '/api/v1/events/subscriptions/*', 'createAlert');
-    // Click on create placeholder button for alerts
-    cy.get('[data-testid="add-placeholder-button"]')
-      .should('be.visible')
-      .click();
-    verifyResponseStatusCode('@createAlert', 200);
+    visitAddAlertPage();
+
     // Enter alert name
     cy.get('#name').should('be.visible').type(TEST_CASE.testCaseAlert);
     // Enter description
@@ -271,10 +266,7 @@ describe('Alerts page should work properly', () => {
 
   Object.values(DESTINATION).forEach((destination) => {
     it(`Create alert for ${destination.locator}`, () => {
-      // Click on create placeholder button for alerts
-      cy.get('[data-testid="add-placeholder-button"]')
-        .should('be.visible')
-        .click();
+      visitAddAlertPage();
       // Enter alert name
       cy.get('#name').should('be.visible').type(destination.name);
       // Enter description

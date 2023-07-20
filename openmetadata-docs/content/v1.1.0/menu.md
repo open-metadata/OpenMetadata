@@ -18,6 +18,8 @@ site_menu:
     icon: overview
   - category: Releases / Latest Release
     url: /releases/latest-release
+  - category: Releases / Supported Releases
+    url: /releases/supported
   - category: Releases / Roadmap
     url: /releases/roadmap
   - category: Releases / All Releases
@@ -1438,6 +1440,12 @@ site_menu:
     url: /developers/contribute/ux-style-guide
   - category: Developers / Webhooks
     url: /developers/webhooks
+  - category: Developers / APIs
+    url: /developers/apis
+  - category: Developers / APIs / Implementation Notes
+    url: /developers/apis/implementation-notes
+  - category: Developers / APIs / API Organization
+    url: /developers/apis/api-organization
 
   - category: SDK
     url: /sdk
