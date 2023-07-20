@@ -12,7 +12,6 @@
  */
 
 import { Card, Space, Typography } from 'antd';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import Chip from 'components/common/Chip/Chip.component';
 import InlineEdit from 'components/InlineEdit/InlineEdit.component';
 import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
@@ -31,15 +30,9 @@ const UserProfileTeams = ({
 }: UserProfileTeamsProps) => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
 
   const [isTeamsEdit, setIsTeamsEdit] = useState(false);
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
-
-  const hasPermission = useMemo(
-    () => !isAdminUser && !isAuthDisabled,
-    [isAdminUser, isAuthDisabled]
-  );
 
   const handleTeamsSave = () => {
     updateUserDetails({
@@ -74,7 +67,7 @@ const UserProfileTeams = ({
             {t('label.team-plural')}
           </Typography.Text>
 
-          {!isTeamsEdit && !hasPermission && (
+          {!isTeamsEdit && isAdminUser && (
             <EditIcon
               className="cursor-pointer"
               color={DE_ACTIVE_COLOR}
@@ -86,7 +79,7 @@ const UserProfileTeams = ({
         </Space>
       }>
       <div className="m-b-md">
-        {isTeamsEdit && !hasPermission ? (
+        {isTeamsEdit && isAdminUser ? (
           <InlineEdit
             direction="vertical"
             onCancel={() => setIsTeamsEdit(false)}

@@ -59,13 +59,13 @@ const Chip = ({
 
   return (
     <Space wrap data-testid="chip-container" size={4}>
-      {data.slice(0, USER_DATA_SIZE).map((item) => getChipElement(item))}
+      {data.slice(0, USER_DATA_SIZE).map(getChipElement)}
       {hasMoreElement && (
         <Popover
           className="cursor-pointer"
           content={
             <Space wrap size={6}>
-              {data.slice(USER_DATA_SIZE).map((item) => getChipElement(item))}
+              {data.slice(USER_DATA_SIZE).map(getChipElement)}
             </Space>
           }
           overlayClassName="w-56"

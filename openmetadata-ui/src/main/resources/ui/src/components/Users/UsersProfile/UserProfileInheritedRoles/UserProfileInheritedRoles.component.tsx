@@ -26,6 +26,7 @@ const UserProfileInheritedRoles = ({
   return (
     <Card
       className="ant-card-feed relative card-body-border-none card-padding-y-0"
+      data-testid="user-profile-inherited-roles"
       key="inherited-roles-card-component"
       title={
         <Typography.Text

@@ -32,7 +32,11 @@ import Loader from '../Loader/Loader';
 import { Props, UserPageTabs } from './Users.interface';
 import './Users.style.less';
 import { userPageFilterList } from './Users.util';
-import UserProfile from './UsersProfile/UserProfile.component';
+import UserProfileDetails from './UsersProfile/UserProfileDetails/UserProfileDetails.component';
+import UserProfileImage from './UsersProfile/UserProfileImage/UserProfileImage.component';
+import UserProfileInheritedRoles from './UsersProfile/UserProfileInheritedRoles/UserProfileInheritedRoles.component';
+import UserProfileRoles from './UsersProfile/UserProfileRoles/UserProfileRoles.component';
+import UserProfileTeams from './UsersProfile/UserProfileTeams/UserProfileTeams.component';
 
 const Users = ({
   userData,
@@ -173,10 +177,47 @@ const Users = ({
   return (
     <PageLayoutV1 className="user-layout h-full" pageTitle={t('label.user')}>
       <div data-testid="table-container">
-        <UserProfile
-          updateUserDetails={updateUserDetails}
-          userData={userData}
-        />
+        <Row className="user-profile-container" data-testid="user-profile">
+          <Col className="flex-center border-right" span={4}>
+            <UserProfileImage
+              userData={{
+                id: userData.id,
+                name: userData.name,
+                displayName: userData.displayName,
+                images: userData.profile?.images,
+              }}
+            />
+          </Col>
+          <Col className="p-x-sm border-right" span={5}>
+            <UserProfileDetails
+              updateUserDetails={updateUserDetails}
+              userData={{
+                email: userData.email,
+                name: userData.name,
+                displayName: userData.displayName,
+                description: userData.description,
+              }}
+            />
+          </Col>
+          <Col className="p-x-sm border-right" span={5}>
+            <UserProfileTeams
+              teams={userData.teams}
+              updateUserDetails={updateUserDetails}
+            />
+          </Col>
+          <Col className="p-x-sm border-right" span={5}>
+            <UserProfileRoles
+              isUserAdmin={userData.isAdmin}
+              updateUserDetails={updateUserDetails}
+              userRoles={userData.roles}
+            />
+          </Col>
+          <Col className="p-x-sm" span={5}>
+            <UserProfileInheritedRoles
+              inheritedRoles={userData.inheritedRoles}
+            />
+          </Col>
+        </Row>
         <Tabs
           activeKey={tab ?? UserPageTabs.ACTIVITY}
           className="user-page-tabs"

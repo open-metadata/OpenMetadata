@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { findByTestId, queryByTestId, render } from '@testing-library/react';
+import {
+  findByTestId,
+  findByText,
+  queryByTestId,
+  render,
+} from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { FeedFilter } from '../../enums/mydata.enum';
@@ -40,6 +45,32 @@ jest.mock('rest/rolesAPIV1', () => ({
 
 jest.mock('../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
+});
+
+jest.mock(
+  './UsersProfile/UserProfileDetails/UserProfileDetails.component',
+  () => {
+    return jest.fn().mockReturnValue(<div>UserProfileDetails</div>);
+  }
+);
+
+jest.mock('./UsersProfile/UserProfileImage/UserProfileImage.component', () => {
+  return jest.fn().mockReturnValue(<div>UserProfileImage</div>);
+});
+
+jest.mock(
+  './UsersProfile/UserProfileInheritedRoles/UserProfileInheritedRoles.component',
+  () => {
+    return jest.fn().mockReturnValue(<div>UserProfileInheritedRoles</div>);
+  }
+);
+
+jest.mock('./UsersProfile/UserProfileRoles/UserProfileRoles.component', () => {
+  return jest.fn().mockReturnValue(<div>UserProfileRoles</div>);
+});
+
+jest.mock('./UsersProfile/UserProfileTeams/UserProfileTeams.component', () => {
+  return jest.fn().mockReturnValue(<div>UserProfileTeams</div>);
 });
 
 jest.mock('components/searched-data/SearchedData', () => {
@@ -94,14 +125,6 @@ jest.mock('../containers/PageLayoutV1', () =>
       )
     )
 );
-
-jest.mock('./UsersProfile/UserProfile.component', () => {
-  return jest
-    .fn()
-    .mockReturnValue(
-      <div data-testid="user-profile-container">UserProfile</div>
-    );
-});
 
 jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
@@ -168,12 +191,24 @@ describe('Test User Component', () => {
       }
     );
 
-    const userProfileContainer = await findByTestId(
+    const UserProfileDetails = await findByText(
       container,
-      'user-profile-container'
+      'UserProfileDetails'
     );
+    const UserProfileImage = await findByText(container, 'UserProfileImage');
+    const UserProfileInheritedRoles = await findByText(
+      container,
+      'UserProfileInheritedRoles'
+    );
+    const UserProfileRoles = await findByText(container, 'UserProfileRoles');
 
-    expect(userProfileContainer).toBeInTheDocument();
+    const UserProfileTeams = await findByText(container, 'UserProfileTeams');
+
+    expect(UserProfileDetails).toBeInTheDocument();
+    expect(UserProfileImage).toBeInTheDocument();
+    expect(UserProfileRoles).toBeInTheDocument();
+    expect(UserProfileTeams).toBeInTheDocument();
+    expect(UserProfileInheritedRoles).toBeInTheDocument();
   });
 
   it('Tab should not visible to normal user', async () => {
@@ -185,13 +220,8 @@ describe('Test User Component', () => {
     );
 
     const tabs = queryByTestId(container, 'tab');
-    const userProfileContainer = await findByTestId(
-      container,
-      'user-profile-container'
-    );
 
     expect(tabs).not.toBeInTheDocument();
-    expect(userProfileContainer).toBeInTheDocument();
   });
 
   it('Should check if cards are rendered', async () => {

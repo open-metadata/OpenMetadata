@@ -29,25 +29,43 @@
   }
 }
 
-.user-page-layout {
-  .user-layout-scroll {
-    height: @users-page-tabs-height;
-    overflow-y: scroll;
-  }
-
-  .user-page-layout-right-panel {
-    padding-right: 0 !important;
-    background-color: @white;
-    border: 1px solid @border-color;
-    border-radius: 0;
-    padding-left: 0 !important;
-    border-top: 0;
-  }
-}
-
 .user-layout {
   .ant-col {
     padding-top: 0;
+  }
+
+  .user-profile-container {
+    padding: 30px 0;
+    height: 270px;
+    background: @user-profile-background;
+
+    .profile-image-container {
+      width: 190px;
+      height: 190px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 3px solid @white;
+    }
+
+    .ant-card {
+      background: none;
+    }
+  }
+
+  .user-page-layout {
+    .user-layout-scroll {
+      height: @users-page-tabs-height;
+      overflow-y: scroll;
+    }
+
+    .user-page-layout-right-panel {
+      padding-right: 0 !important;
+      background-color: @white;
+      border: 1px solid @border-color;
+      border-radius: 0;
+      padding-left: 0 !important;
+      border-top: 0;
+    }
   }
 
   .activity-feed-tab {

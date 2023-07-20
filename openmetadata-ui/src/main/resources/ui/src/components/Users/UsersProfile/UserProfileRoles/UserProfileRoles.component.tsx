@@ -13,7 +13,6 @@
 
 import { Card, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import Chip from 'components/common/Chip/Chip.component';
 import InlineEdit from 'components/InlineEdit/InlineEdit.component';
 import {
@@ -42,17 +41,11 @@ const UserProfileRoles = ({
   const { t } = useTranslation();
 
   const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
 
   const [isRolesEdit, setIsRolesEdit] = useState(false);
   const [isRolesLoading, setIsRolesLoading] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
-
-  const hasPermission = useMemo(
-    () => !isAdminUser && !isAuthDisabled,
-    [isAdminUser, isAuthDisabled]
-  );
 
   const useRolesOption = useMemo(() => {
     const options = roles?.map((role) => ({
@@ -150,13 +143,14 @@ const UserProfileRoles = ({
   return (
     <Card
       className="ant-card-feed relative card-body-border-none card-padding-y-0"
+      data-testid="user-profile-roles"
       key="roles-card"
       title={
         <Space align="center">
           <Typography.Text className="right-panel-label">
             {t('label.role-plural')}
           </Typography.Text>
-          {!isRolesEdit && !hasPermission && (
+          {!isRolesEdit && isAdminUser && (
             <EditIcon
               className="cursor-pointer"
               color={DE_ACTIVE_COLOR}
@@ -168,7 +162,7 @@ const UserProfileRoles = ({
         </Space>
       }>
       <div className="m-b-md">
-        {isRolesEdit && !hasPermission ? (
+        {isRolesEdit && isAdminUser ? (
           <InlineEdit
             direction="vertical"
             onCancel={() => setIsRolesEdit(false)}

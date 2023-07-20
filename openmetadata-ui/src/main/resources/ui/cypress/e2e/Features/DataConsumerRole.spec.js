@@ -165,14 +165,13 @@ describe('DataConsumer Edit policy should work properly', () => {
       .should('be.visible')
       .click({ force: true });
     verifyResponseStatusCode('@getUserPage', 200);
-    cy.get('[data-testid="left-panel"]').should(
-      'contain',
-      `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`
-    );
+    cy.get(
+      '[data-testid="user-profile"] [data-testid="user-profile-details"]'
+    ).should('contain', `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`);
 
-    cy.get('[data-testid="left-panel"]')
-      .should('be.visible')
-      .should('contain', policy);
+    cy.get(
+      '[data-testid="user-profile"] [data-testid="user-profile-inherited-roles"]'
+    ).should('contain', policy);
   });
 
   it('Check if the new user has only edit access on description and tags', () => {

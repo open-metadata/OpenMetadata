@@ -11,18 +11,16 @@
  *  limitations under the License.
  */
 
-import { Button, Input, Space, Typography } from 'antd';
-import InlineEdit from 'components/InlineEdit/InlineEdit.component';
-import React, { useMemo, useState } from 'react';
-import { UserProfileDetailsProps } from './UserProfileDetails.interface';
-
+import { Button, Col, Input, Row, Space, Typography } from 'antd';
 import AppState from 'AppState';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
-import Description from 'components/common/description/Description';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
+import InlineEdit from 'components/InlineEdit/InlineEdit.component';
 import ChangePasswordForm from 'components/Users/ChangePasswordForm';
 import { DE_ACTIVE_COLOR, ICON_DIMENSION } from 'constants/constants';
+import { EntityType } from 'enums/entity.enum';
 import { AuthTypes } from 'enums/signin.enum';
 import {
   ChangePasswordRequest,
@@ -30,11 +28,13 @@ import {
 } from 'generated/auth/changePasswordRequest';
 import { EntityReference } from 'generated/entity/type';
 import { useAuth } from 'hooks/authHooks';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { changePassword } from 'rest/auth-API';
 import { getEntityName } from 'utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+import { UserProfileDetailsProps } from './UserProfileDetails.interface';
 
 const UserProfileDetails = ({
   userData,
@@ -44,7 +44,7 @@ const UserProfileDetails = ({
   const { username } = useParams<{ [key: string]: string }>();
 
   const { isAdminUser } = useAuth();
-  const { authConfig, isAuthDisabled } = useAuthContext();
+  const { authConfig } = useAuthContext();
 
   const [isLoading, setIsLoading] = useState(false);
   const [isChangePassword, setIsChangePassword] = useState<boolean>(false);
@@ -65,8 +65,8 @@ const UserProfileDetails = ({
   );
 
   const hasEditPermission = useMemo(
-    () => isAdminUser || isLoggedInUser || isAuthDisabled,
-    [isAdminUser, isLoggedInUser, isAuthDisabled]
+    () => isAdminUser || isLoggedInUser,
+    [isAdminUser, isLoggedInUser]
   );
 
   const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,24 +105,29 @@ const UserProfileDetails = ({
           />
         </InlineEdit>
       ) : (
-        <Space align="center">
-          <Typography.Text className="text-lg font-medium">
-            {hasEditPermission
-              ? userData.displayName ??
-                t('label.add-entity', { entity: t('label.display-name') })
-              : getEntityName(userData)}
-          </Typography.Text>
-
-          {hasEditPermission && (
-            <EditIcon
-              className="cursor-pointer"
-              color={DE_ACTIVE_COLOR}
-              data-testid="edit-displayName"
-              {...ICON_DIMENSION}
-              onClick={() => setIsDisplayNameEdit(true)}
-            />
-          )}
-        </Space>
+        <Row align="middle" wrap={false}>
+          <Col flex="auto">
+            <Typography.Text
+              className="text-lg font-medium"
+              ellipsis={{ tooltip: true }}>
+              {hasEditPermission
+                ? userData.displayName ??
+                  t('label.add-entity', { entity: t('label.display-name') })
+                : getEntityName(userData)}
+            </Typography.Text>
+          </Col>
+          <Col className="d-flex justify-end" flex="25px">
+            {hasEditPermission && (
+              <EditIcon
+                className="cursor-pointer"
+                color={DE_ACTIVE_COLOR}
+                data-testid="edit-displayName"
+                {...ICON_DIMENSION}
+                onClick={() => setIsDisplayNameEdit(true)}
+              />
+            )}
+          </Col>
+        </Row>
       ),
     [
       userData,
@@ -137,12 +142,14 @@ const UserProfileDetails = ({
   const descriptionRenderComponent = useMemo(
     () =>
       hasEditPermission ? (
-        <Description
+        <DescriptionV1
           reduceDescription
           description={userData.description ?? ''}
           entityName={getEntityName(userData as unknown as EntityReference)}
+          entityType={EntityType.USER}
           hasEditAccess={isAdminUser}
           isEdit={isDescriptionEdit}
+          showCommentsIcon={false}
           onCancel={() => setIsDescriptionEdit(false)}
           onDescriptionEdit={() => setIsDescriptionEdit(true)}
           onDescriptionUpdate={handleDescriptionChange}
@@ -208,8 +215,12 @@ const UserProfileDetails = ({
   };
 
   return (
-    <Space className="p-sm w-full" direction="vertical" size="middle">
-      <Space direction="vertical" size={2}>
+    <Space
+      className="p-sm w-full"
+      data-testid="user-profile-details"
+      direction="vertical"
+      size="middle">
+      <Space className="w-full" direction="vertical" size={2}>
         {displayNameRenderComponent}
         <Typography.Paragraph
           className="m-b-0 text-grey-muted"
