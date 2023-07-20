@@ -26,12 +26,12 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('../../../utils/TagsUtils', () => ({
-  getTagDisplay: jest.fn().mockRejectedValue('tags'),
-  getTagTooltip: jest.fn().mockRejectedValue(<p>ToolTip Data</p>),
+  getTagDisplay: jest.fn().mockReturnValue('tags'),
+  getTagTooltip: jest.fn().mockReturnValue(<p>ToolTip Data</p>),
 }));
 
 jest.mock('../../../utils/CommonUtils', () => ({
-  reduceColorOpacity: jest.fn().mockRejectedValue('#00000'),
+  reduceColorOpacity: jest.fn().mockReturnValue('#00000'),
 }));
 
 describe('Test tags Component', () => {
