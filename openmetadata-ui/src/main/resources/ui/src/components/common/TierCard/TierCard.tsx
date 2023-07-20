@@ -112,10 +112,7 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
               accordion
               className="collapse-container"
               defaultActiveKey={currentTier}
-              expandIconPosition="end"
-              size="large"
-              //   onChange={(key) => handleCardSelection(key as string)}>
-            >
+              expandIconPosition="end">
               {tierData.map((card) => (
                 <Panel
                   className={classNames('collapse-tier-panel', {
