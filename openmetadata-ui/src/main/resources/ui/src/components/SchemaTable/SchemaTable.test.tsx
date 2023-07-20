@@ -13,7 +13,6 @@
 
 import { render, screen } from '@testing-library/react';
 import { Column } from 'generated/entity/data/container';
-import { TagOption } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Table } from '../../generated/entity/data/table';
@@ -107,18 +106,6 @@ jest.mock(
     return jest.fn().mockReturnValue(<p>FilterTablePlaceHolder</p>);
   }
 );
-
-jest.mock('components/Tag/TagsContainer/tags-container', () => {
-  return jest.fn().mockImplementation(({ tagList }) => {
-    return (
-      <>
-        {tagList.map((tag: TagOption, idx: number) => (
-          <p key={idx}>{tag.fqn}</p>
-        ))}
-      </>
-    );
-  });
-});
 
 jest.mock('components/Tag/TagsViewer/tags-viewer', () => {
   return jest.fn().mockReturnValue(<p>TagViewer</p>);

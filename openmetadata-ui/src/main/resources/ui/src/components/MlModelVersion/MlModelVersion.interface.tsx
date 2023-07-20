@@ -25,7 +25,6 @@ export interface MlModelVersionProp {
   owner: Mlmodel['owner'];
   tier: TagLabel;
   slashedMlModelName: TitleBreadcrumbProps['titleLinks'];
-  topicFQN: string;
   versionList: EntityHistory;
   deleted?: boolean;
   backHandler: () => void;

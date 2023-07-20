@@ -27,8 +27,8 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('components/DatasetVersion/DatasetVersion.component', () => {
-  return jest.fn().mockReturnValue(<div>DatasetVersion component</div>);
+jest.mock('components/TableVersion/TableVersion.component', () => {
+  return jest.fn().mockReturnValue(<div>TableVersion component</div>);
 });
 jest.mock('components/DashboardVersion/DashboardVersion.component', () => {
   return jest.fn().mockReturnValue(<div>DashboardVersion component</div>);
@@ -98,16 +98,14 @@ jest.mock('rest/dataModelsAPI', () => ({
 }));
 
 describe('Test EntityVersionPage component', () => {
-  it('Checks if the DatasetVersion component renderst if respective data pass', async () => {
+  it('Checks if the TableVersion component renderst if respective data pass', async () => {
     await act(async () => {
       render(<EntityVersionPage />, {
         wrapper: MemoryRouter,
       });
-      const datasetVersion = await screen.findByText(
-        /DatasetVersion component/i
-      );
+      const tableVersion = await screen.findByText(/TableVersion component/i);
 
-      expect(datasetVersion).toBeInTheDocument();
+      expect(tableVersion).toBeInTheDocument();
     });
   });
 

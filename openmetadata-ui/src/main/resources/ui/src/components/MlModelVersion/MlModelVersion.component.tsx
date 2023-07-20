@@ -38,7 +38,7 @@ import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { MlFeature, Mlmodel } from 'generated/entity/data/mlmodel';
 import { TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, isEqual } from 'lodash';
-import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
@@ -222,130 +222,128 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                 <Col span={24}>
                   {(currentVersionData as Mlmodel).mlFeatures &&
                   (currentVersionData as Mlmodel).mlFeatures?.length ? (
-                    <Fragment>
-                      <Row data-testid="feature-list">
-                        <Col span={24}>
-                          <Divider className="m-y-md" />
-                        </Col>
-                        <Col span={24}>
-                          <Typography.Title level={5}>
-                            {t('label.feature-plural-used')}
-                          </Typography.Title>
-                        </Col>
+                    <Row data-testid="feature-list">
+                      <Col span={24}>
+                        <Divider className="m-y-md" />
+                      </Col>
+                      <Col span={24}>
+                        <Typography.Title level={5}>
+                          {t('label.feature-plural-used')}
+                        </Typography.Title>
+                      </Col>
 
-                        {mlFeaturesData?.map((feature: MlFeature) => (
-                          <Col key={feature.fullyQualifiedName} span={24}>
-                            <Card
-                              bordered
-                              className="m-b-xlg"
-                              data-testid="feature-card"
-                              key={feature.fullyQualifiedName}>
-                              <Row>
-                                <Col className="m-b-xs" span={24}>
-                                  <Typography.Text className="font-semibold">
-                                    {feature.name}
-                                  </Typography.Text>
-                                </Col>
-                                <Col className="m-b-xs" span={24}>
-                                  <Space align="start">
-                                    <Space>
-                                      <Typography.Text className="text-grey-muted">
-                                        {`${t('label.type')}:`}
-                                      </Typography.Text>{' '}
-                                      <Typography.Text>
-                                        {feature.dataType || '--'}
-                                      </Typography.Text>
-                                    </Space>
-                                    <Divider
-                                      className="border-gray"
-                                      type="vertical"
-                                    />
-                                    <Space>
-                                      <Typography.Text className="text-grey-muted">
-                                        {`${t('label.algorithm')}:`}
-                                      </Typography.Text>{' '}
-                                      <Typography.Text>
-                                        {feature.featureAlgorithm || '--'}
-                                      </Typography.Text>
-                                    </Space>
+                      {mlFeaturesData?.map((feature: MlFeature) => (
+                        <Col key={feature.fullyQualifiedName} span={24}>
+                          <Card
+                            bordered
+                            className="m-b-xlg"
+                            data-testid="feature-card"
+                            key={feature.fullyQualifiedName}>
+                            <Row>
+                              <Col className="m-b-xs" span={24}>
+                                <Typography.Text className="font-semibold">
+                                  {feature.name}
+                                </Typography.Text>
+                              </Col>
+                              <Col className="m-b-xs" span={24}>
+                                <Space align="start">
+                                  <Space>
+                                    <Typography.Text className="text-grey-muted">
+                                      {`${t('label.type')}:`}
+                                    </Typography.Text>{' '}
+                                    <Typography.Text>
+                                      {feature.dataType || '--'}
+                                    </Typography.Text>
                                   </Space>
-                                </Col>
-                                <Col className="m-b-xs" span={24}>
-                                  <Row gutter={8} wrap={false}>
-                                    <Col flex="130px">
-                                      <Typography.Text className="text-grey-muted">
-                                        {`${t('label.glossary-term-plural')} :`}
-                                      </Typography.Text>
-                                    </Col>
+                                  <Divider
+                                    className="border-gray"
+                                    type="vertical"
+                                  />
+                                  <Space>
+                                    <Typography.Text className="text-grey-muted">
+                                      {`${t('label.algorithm')}:`}
+                                    </Typography.Text>{' '}
+                                    <Typography.Text>
+                                      {feature.featureAlgorithm || '--'}
+                                    </Typography.Text>
+                                  </Space>
+                                </Space>
+                              </Col>
+                              <Col className="m-b-xs" span={24}>
+                                <Row gutter={8} wrap={false}>
+                                  <Col flex="130px">
+                                    <Typography.Text className="text-grey-muted">
+                                      {`${t('label.glossary-term-plural')} :`}
+                                    </Typography.Text>
+                                  </Col>
 
-                                    <Col flex="auto">
-                                      <TagsViewer
-                                        sizeCap={-1}
-                                        tags={
-                                          getFilterTags(feature.tags ?? [])
-                                            .Glossary
-                                        }
-                                        type="border"
-                                      />
-                                    </Col>
-                                  </Row>
-                                </Col>
+                                  <Col flex="auto">
+                                    <TagsViewer
+                                      sizeCap={-1}
+                                      tags={
+                                        getFilterTags(feature.tags ?? [])
+                                          .Glossary
+                                      }
+                                      type="border"
+                                    />
+                                  </Col>
+                                </Row>
+                              </Col>
 
-                                <Col className="m-b-xs" span={24}>
-                                  <Row gutter={8} wrap={false}>
-                                    <Col flex="130px">
-                                      <Typography.Text className="text-grey-muted">
-                                        {`${t('label.tag-plural')} :`}
-                                      </Typography.Text>
-                                    </Col>
-                                    <Col flex="auto">
-                                      <TagsViewer
-                                        sizeCap={-1}
-                                        tags={
-                                          getFilterTags(feature.tags ?? [])
-                                            .Classification
-                                        }
-                                        type="border"
-                                      />
-                                    </Col>
-                                  </Row>
-                                </Col>
+                              <Col className="m-b-xs" span={24}>
+                                <Row gutter={8} wrap={false}>
+                                  <Col flex="130px">
+                                    <Typography.Text className="text-grey-muted">
+                                      {`${t('label.tag-plural')} :`}
+                                    </Typography.Text>
+                                  </Col>
+                                  <Col flex="auto">
+                                    <TagsViewer
+                                      sizeCap={-1}
+                                      tags={
+                                        getFilterTags(feature.tags ?? [])
+                                          .Classification
+                                      }
+                                      type="border"
+                                    />
+                                  </Col>
+                                </Row>
+                              </Col>
 
-                                <Col className="m-b-xs" span={24}>
-                                  <Row gutter={8} wrap={false}>
-                                    <Col flex="120px">
-                                      <Typography.Text className="text-grey-muted">
-                                        {`${t('label.description')} :`}
-                                      </Typography.Text>
-                                    </Col>
-                                    <Col flex="auto">
-                                      <Space align="start">
-                                        {feature.description ? (
-                                          <RichTextEditorPreviewer
-                                            enableSeeMoreVariant={false}
-                                            markdown={feature.description}
-                                          />
-                                        ) : (
-                                          <Typography.Text className="text-grey-muted">
-                                            {t('label.no-entity', {
-                                              entity: t('label.description'),
-                                            })}
-                                          </Typography.Text>
-                                        )}
-                                      </Space>
-                                    </Col>
-                                  </Row>
-                                </Col>
+                              <Col className="m-b-xs" span={24}>
+                                <Row gutter={8} wrap={false}>
+                                  <Col flex="120px">
+                                    <Typography.Text className="text-grey-muted">
+                                      {`${t('label.description')} :`}
+                                    </Typography.Text>
+                                  </Col>
+                                  <Col flex="auto">
+                                    <Space align="start">
+                                      {feature.description ? (
+                                        <RichTextEditorPreviewer
+                                          enableSeeMoreVariant={false}
+                                          markdown={feature.description}
+                                        />
+                                      ) : (
+                                        <Typography.Text className="text-grey-muted">
+                                          {t('label.no-entity', {
+                                            entity: t('label.description'),
+                                          })}
+                                        </Typography.Text>
+                                      )}
+                                    </Space>
+                                  </Col>
+                                </Row>
+                              </Col>
 
-                                <Col span={24}>
-                                  <SourceList feature={feature} />
-                                </Col>
-                              </Row>
-                            </Card>
-                          </Col>
-                        ))}
-                      </Row>
-                    </Fragment>
+                              <Col span={24}>
+                                <SourceList feature={feature} />
+                              </Col>
+                            </Row>
+                          </Card>
+                        </Col>
+                      ))}
+                    </Row>
                   ) : (
                     <ErrorPlaceHolder />
                   )}
