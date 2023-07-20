@@ -180,6 +180,7 @@ const CustomEntityDetailV1 = () => {
             {isEmpty(selectedEntityTypeDetail.customProperties) ? (
               <ErrorPlaceHolder
                 className="mt-24"
+                buttonId="add-field-button"
                 doc={CUSTOM_PROPERTIES_DOCS}
                 heading={t('label.property')}
                 permission={editPermission}
