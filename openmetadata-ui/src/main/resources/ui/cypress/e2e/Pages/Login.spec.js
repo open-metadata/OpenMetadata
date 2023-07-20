@@ -87,10 +87,9 @@ describe('Login flow should work properly', () => {
     cy.wait('@getUser').then((response) => {
       CREDENTIALS.id = response.response.body.id;
     });
-    cy.get('[data-testid="left-panel"]').should(
-      'contain',
-      `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`
-    );
+    cy.get(
+      '[data-testid="user-profile"] [data-testid="user-profile-details"]'
+    ).should('contain', `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`);
   });
 
   it('Signin using invalid credentials', () => {
