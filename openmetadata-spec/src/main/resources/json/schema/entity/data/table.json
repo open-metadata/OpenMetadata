@@ -148,7 +148,9 @@
         "SPATIAL",
         "TABLE",
         "NTEXT",
-        "IMAGE"
+        "IMAGE",
+        "IPV4",
+        "IPV6"
       ]
     },
     "constraint": {

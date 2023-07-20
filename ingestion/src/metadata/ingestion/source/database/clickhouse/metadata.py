@@ -48,6 +48,9 @@ Map = create_sqlalchemy_type("Map")
 Array = create_sqlalchemy_type("Array")
 Enum = create_sqlalchemy_type("Enum")
 Tuple = create_sqlalchemy_type("Tuple")
+BIGINT = create_sqlalchemy_type("BIGINT")
+SMALLINT = create_sqlalchemy_type("SMALLINT")
+INTEGER = create_sqlalchemy_type("INTEGER")
 
 ischema_names.update(
     {
@@ -58,18 +61,20 @@ ischema_names.update(
         "Enum": Enum,
         "Date32": Date,
         "SimpleAggregateFunction": create_sqlalchemy_type("SimpleAggregateFunction"),
-        "Int256": create_sqlalchemy_type("BIGINT"),
-        "Int128": create_sqlalchemy_type("BIGINT"),
-        "Int64": create_sqlalchemy_type("BIGINT"),
-        "Int32": create_sqlalchemy_type("INTEGER"),
-        "Int16": create_sqlalchemy_type("SMALLINT"),
-        "Int8": create_sqlalchemy_type("SMALLINT"),
-        "UInt256": create_sqlalchemy_type("BIGINT"),
-        "UInt128": create_sqlalchemy_type("BIGINT"),
-        "UInt64": create_sqlalchemy_type("BIGINT"),
-        "UInt32": create_sqlalchemy_type("INTEGER"),
-        "UInt16": create_sqlalchemy_type("SMALLINT"),
-        "UInt8": create_sqlalchemy_type("SMALLINT"),
+        "Int256": BIGINT,
+        "Int128": BIGINT,
+        "Int64": BIGINT,
+        "Int32": INTEGER,
+        "Int16": SMALLINT,
+        "Int8": SMALLINT,
+        "UInt256": BIGINT,
+        "UInt128": BIGINT,
+        "UInt64": BIGINT,
+        "UInt32": INTEGER,
+        "UInt16": SMALLINT,
+        "UInt8": SMALLINT,
+        "IPv4": create_sqlalchemy_type("IPv4"),
+        "IPv6": create_sqlalchemy_type("IPv6"),
     }
 )
 
@@ -108,9 +113,6 @@ def _get_column_type(
 
     if spec.startswith("DateTime"):
         return self.ischema_names["DateTime"]
-
-    if spec.startswith("IP"):
-        return self.ischema_names["String"]
 
     if spec.lower().startswith("decimal"):
         coltype = self.ischema_names["Decimal"]
