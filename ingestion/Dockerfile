@@ -76,7 +76,7 @@ USER airflow
 ARG INGESTION_DEPENDENCY="all"
 RUN pip install --upgrade pip
 
-RUN pip install "openmetadata-managed-apis~=1.1.0.3" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
+RUN pip install "openmetadata-managed-apis~=1.1.0.4" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=1.2.0.0.dev0"
 
 
