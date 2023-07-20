@@ -18,7 +18,7 @@ import { EntityReference } from 'generated/type/entityReference';
 import { Include } from 'generated/type/include';
 import { Paging } from 'generated/type/paging';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
-import { ServicePageData } from 'pages/service';
+import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getURLWithQueryFields } from 'utils/APIUtils';
 import APIClient from './index';
 

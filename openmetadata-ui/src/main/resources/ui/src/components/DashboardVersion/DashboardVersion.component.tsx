@@ -19,7 +19,10 @@ import { CustomPropertyTable } from 'components/common/CustomPropertyTable/Custo
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import EntityVersionTimeLine from 'components/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from 'components/Loader/Loader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { getVersionPathWithTab } from 'constants/constants';
@@ -41,9 +44,6 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
-import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from '../Loader/Loader';
 import { DashboardVersionProp } from './DashboardVersion.interface';
 
 const DashboardVersion: FC<DashboardVersionProp> = ({
@@ -240,47 +240,43 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
 
   return (
     <>
-      <div data-testid="dashboard-version-container">
-        {isVersionLoading ? (
-          <Loader />
-        ) : (
-          <div
-            className={classNames('version-data')}
-            data-testid="version-data">
-            <Row gutter={[0, 12]}>
-              <Col span={24}>
-                <DataAssetsVersionHeader
-                  breadcrumbLinks={slashedDashboardName}
-                  currentVersionData={currentVersionData}
-                  deleted={deleted}
-                  displayName={displayName}
-                  ownerDisplayName={ownerDisplayName}
-                  ownerRef={ownerRef}
-                  tierDisplayName={tierDisplayName}
-                  version={version}
-                  onVersionClick={backHandler}
-                />
-              </Col>
-              <Col span={24}>
-                <Tabs
-                  data-testid="tabs"
-                  defaultActiveKey={tab ?? EntityTabs.DETAILS}
-                  items={tabItems}
-                  onChange={handleTabChange}
-                />
-              </Col>
-            </Row>
-          </div>
-        )}
+      {isVersionLoading ? (
+        <Loader />
+      ) : (
+        <div className={classNames('version-data')} data-testid="version-data">
+          <Row gutter={[0, 12]}>
+            <Col span={24}>
+              <DataAssetsVersionHeader
+                breadcrumbLinks={slashedDashboardName}
+                currentVersionData={currentVersionData}
+                deleted={deleted}
+                displayName={displayName}
+                ownerDisplayName={ownerDisplayName}
+                ownerRef={ownerRef}
+                tierDisplayName={tierDisplayName}
+                version={version}
+                onVersionClick={backHandler}
+              />
+            </Col>
+            <Col span={24}>
+              <Tabs
+                data-testid="tabs"
+                defaultActiveKey={tab ?? EntityTabs.DETAILS}
+                items={tabItems}
+                onChange={handleTabChange}
+              />
+            </Col>
+          </Row>
+        </div>
+      )}
 
-        <EntityVersionTimeLine
-          show
-          currentVersion={version}
-          versionHandler={versionHandler}
-          versionList={versionList}
-          onBack={backHandler}
-        />
-      </div>
+      <EntityVersionTimeLine
+        show
+        currentVersion={version}
+        versionHandler={versionHandler}
+        versionList={versionList}
+        onBack={backHandler}
+      />
     </>
   );
 };

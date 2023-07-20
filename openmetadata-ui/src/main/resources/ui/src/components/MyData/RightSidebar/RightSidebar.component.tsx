@@ -125,7 +125,7 @@ const RightSidebar = ({
           headerTextLabel={t('label.following')}
           loading={isLoadingOwnedData}
           noDataPlaceholder={t('message.not-followed-anything')}
-          testIDText="Following data"
+          testIDText="following"
         />
       </div>
       <div className="p-md" data-testid="recently-viewed-container">
