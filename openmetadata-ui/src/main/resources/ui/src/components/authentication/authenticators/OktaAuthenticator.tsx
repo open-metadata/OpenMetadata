@@ -64,11 +64,11 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
         logout();
       },
       async renewIdToken() {
-        await oktaAuth.token.renewTokens();
-        const idToken = oktaAuth.getIdToken() || '';
-        localState.setOidcToken(idToken);
+        const { idToken } = await oktaAuth.token.renewTokens();
+        const newToken = idToken?.idToken ?? oktaAuth.getIdToken() ?? '';
+        localState.setOidcToken(newToken);
 
-        return Promise.resolve(idToken);
+        return Promise.resolve(newToken);
       },
     }));
 
