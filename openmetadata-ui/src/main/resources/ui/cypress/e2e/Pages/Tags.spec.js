@@ -264,7 +264,7 @@ describe('Tags page should work', () => {
     verifyResponseStatusCode('@databaseSchemasPage', 200);
     verifyResponseStatusCode('@permissions', 200);
 
-    cy.get('[data-testid="tags"] [data-testid="add-tag"]')
+    cy.get('[data-testid="tags-container"] [data-testid="add-tag"]')
       .should('be.visible')
       .click();
 
@@ -281,12 +281,14 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@addTags', 200);
-    cy.get('[data-testid="tag-container"]')
+    cy.get('[data-testid="tags-container"]')
       .scrollIntoView()
       .should('be.visible')
       .contains(tag);
 
-    cy.get('[data-testid="edit-button"]').should('exist').click();
+    cy.get('[data-testid="tags-container"] [data-testid="edit-button"]')
+      .should('exist')
+      .click();
 
     // Remove all added tags
     cy.get('[data-testid="remove-tags"]').eq(0).should('be.visible').click();
@@ -295,7 +297,9 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@removeTags', 200);
 
-    cy.get('[data-testid="tags"] [data-testid="add-tag"]').should('be.visible');
+    cy.get('[data-testid="tags-container"] [data-testid="add-tag"]').should(
+      'be.visible'
+    );
   });
 
   it('Add tag at DatabaseSchema level with task & suggestions', () => {
@@ -356,7 +360,7 @@ describe('Tags page should work', () => {
     verifyResponseStatusCode('@taskResolve', 200);
     verifyResponseStatusCode('@databaseSchemasPage', 200);
 
-    cy.get('[data-testid="entity-tags"]').scrollIntoView().contains(tag);
+    cy.get('[data-testid="tags-container"]').scrollIntoView().contains(tag);
 
     cy.get('[data-testid="edit-button"]').click();
 

@@ -90,7 +90,7 @@ def get_columns(
     )
 
     pk_columns = [x[0] for x in connection.execute(spk)]
-    columns = []
+    columns = {}
     for row in connection.execute(sql_query):
         name = row.column_name
         dtype = row.data_type.lower()
@@ -108,8 +108,9 @@ def get_columns(
             comment,
         )
         column_info.update({"primary_key": primary_key})
-        columns.append(column_info)
-    return columns
+        if columns.get(name) is None or comment:
+            columns[name] = column_info
+    return columns.values()
 
 
 def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-many-statements

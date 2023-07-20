@@ -49,7 +49,7 @@ class MaxLength(StaticMetric):
     def fn(self):
         """sqlalchemy function"""
         if self._is_concatenable():
-            return func.max(LenFn(column(self.col.name)))
+            return func.max(LenFn(column(self.col.name, self.col.type)))
 
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing MAX_LENGTH"

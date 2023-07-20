@@ -17,7 +17,7 @@ from unittest import TestCase, mock
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import TEXT, Column, Integer, String, func
+from sqlalchemy import TEXT, Column, Integer, String
 from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn

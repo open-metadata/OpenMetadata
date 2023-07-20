@@ -15,7 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { Include } from 'generated/type/include';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
-import { ServicePageData } from 'pages/service';
+import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Topic } from '../generated/entity/data/topic';
 import { EntityHistory } from '../generated/type/entityHistory';
