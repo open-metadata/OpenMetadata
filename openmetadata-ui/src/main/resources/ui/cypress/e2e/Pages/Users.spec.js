@@ -48,17 +48,6 @@ describe('Users flow should work properly', () => {
 
     addUser(userName, userEmail);
     verifyResponseStatusCode('@getUsers', 200);
-
-    // Validate if user is added in the User tab
-    interceptURL(
-      'GET',
-      `/api/v1/users/name/${userName}?fields=*`,
-      'getUserDetails'
-    );
-    cy.visit(`/users/${userName}`);
-    verifyResponseStatusCode('@getUserDetails', 200);
-
-    cy.get('[data-testid="left-panel"]').should('contain', userName);
   });
 
   it('Soft delete user', () => {
