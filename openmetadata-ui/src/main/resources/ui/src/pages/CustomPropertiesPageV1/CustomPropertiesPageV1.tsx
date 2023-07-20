@@ -179,8 +179,8 @@ const CustomEntityDetailV1 = () => {
           <div data-testid="entity-custom-fields">
             {isEmpty(selectedEntityTypeDetail.customProperties) ? (
               <ErrorPlaceHolder
-                className="mt-24"
                 buttonId="add-field-button"
+                className="mt-24"
                 doc={CUSTOM_PROPERTIES_DOCS}
                 heading={t('label.property')}
                 permission={editPermission}
