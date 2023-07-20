@@ -282,11 +282,23 @@ export const getAdvancedFieldOptions = (
   });
 };
 
-export const getAdvancedFieldDefaultOptions = (
+/**
+ * Retrieves the aggregate field options based on the provided parameters.
+ *
+ * @param {SearchIndex | SearchIndex[]} index - The search index or array of search indexes.
+ * @param {string} field - The field to aggregate on. Example owner.displayName.keyword
+ * @param {string} value - The value to filter the aggregation on.
+ * @param {string} q - The search query.
+ * @return {Promise<SearchResponse<ExploreSearchIndex>>} A promise that resolves to the search response
+ * containing the aggregate field options.
+ */
+export const getAggregateFieldOptions = (
   index: SearchIndex | SearchIndex[],
-  field: string
+  field: string,
+  value: string,
+  q: string
 ) => {
-  const params = { index, field };
+  const params = { index, field, value, q };
 
   return APIClient.get<SearchResponse<ExploreSearchIndex>>(
     `/search/aggregate`,
