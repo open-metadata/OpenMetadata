@@ -13,7 +13,7 @@
 /* eslint-disable max-len */
 
 import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
-import { DashboardVersionProp } from './DashboardVersion.interface';
+import { DashboardVersionProp } from '../components/DashboardVersion/DashboardVersion.interface';
 
 export const dashboardVersionProps = {
   version: '0.3',

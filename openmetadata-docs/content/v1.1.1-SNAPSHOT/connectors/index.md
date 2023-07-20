@@ -69,6 +69,8 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 - [Superset](/connectors/dashboard/superset)
 - [Tableau](/connectors/dashboard/tableau)
 - [Domo Dashboard](/connectors/dashboard/domo-dashboard)
+- [Qlik Sense](/connectors/dashboard/qliksense)
+- [QuickSight](/connectors/dashboard/quicksight)
 
 ## Messaging Services
 

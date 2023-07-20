@@ -18,7 +18,7 @@ import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
-export interface DatasetVersionProp {
+export interface TableVersionProp {
   version: string;
   currentVersionData: VersionData;
   isVersionLoading: boolean;

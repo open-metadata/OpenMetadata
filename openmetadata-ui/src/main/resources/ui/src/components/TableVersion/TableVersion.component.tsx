@@ -18,8 +18,11 @@ import { CustomPropertyProps } from 'components/common/CustomPropertyTable/Custo
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import EntityVersionTimeLine from 'components/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from 'components/Loader/Loader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
+import VersionTable from 'components/VersionTable/VersionTable.component';
 import { getVersionPathWithTab } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
@@ -44,12 +47,9 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
-import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from '../Loader/Loader';
-import VersionTable from '../VersionTable/VersionTable.component';
-import { DatasetVersionProp } from './DatasetVersion.interface';
+import { TableVersionProp } from './TableVersion.interface';
 
-const DatasetVersion: React.FC<DatasetVersionProp> = ({
+const TableVersion: React.FC<TableVersionProp> = ({
   version,
   currentVersionData,
   isVersionLoading,
@@ -62,7 +62,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
   backHandler,
   versionHandler,
   entityPermissions,
-}: DatasetVersionProp) => {
+}: TableVersionProp) => {
   const { t } = useTranslation();
   const history = useHistory();
   const { tab } = useParams<{ tab: EntityTabs }>();
@@ -265,4 +265,4 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
   );
 };
 
-export default DatasetVersion;
+export default TableVersion;
