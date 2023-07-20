@@ -20,7 +20,6 @@ import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfi
 import { SearchIndex } from '../enums/search.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { PipelineServiceClientConfiguration } from '../generated/configuration/pipelineServiceClientConfiguration';
-import { EntitiesCount } from '../generated/entity/utils/entitiesCount';
 import { Paging } from '../generated/type/paging';
 import {
   RawSuggestResponse,
@@ -298,7 +297,8 @@ export const getAggregateFieldOptions = (
   value: string,
   q: string
 ) => {
-  const params = { index, field, value, q };
+  const withWildCardValue = value ? `.*${value}.*` : '.*';
+  const params = { index, field, value: withWildCardValue, q };
 
   return APIClient.get<SearchResponse<ExploreSearchIndex>>(
     `/search/aggregate`,
@@ -315,12 +315,6 @@ export const getEntityCount = async (
   const params = { database, limit: 0 };
 
   const response = await APIClient.get(`/${path}`, { params });
-
-  return response.data;
-};
-
-export const getAllEntityCount = async () => {
-  const response = await APIClient.get<EntitiesCount>('/system/entities/count');
 
   return response.data;
 };

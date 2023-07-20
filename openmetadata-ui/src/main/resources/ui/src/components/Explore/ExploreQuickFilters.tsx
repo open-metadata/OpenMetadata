@@ -26,7 +26,6 @@ import { getCombinedQueryFilterObject } from 'utils/ExplorePage/ExplorePageUtils
 import {
   MISC_FIELDS,
   OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY,
-  SUFFIX_WILDCARD,
 } from '../../constants/AdvancedSearch.constants';
 import { getOptionsFromAggregationBucket } from '../../utils/AdvancedSearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -89,7 +88,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         getAggregateFieldOptions(
           index,
           key,
-          SUFFIX_WILDCARD,
+          '',
           JSON.stringify(combinedQueryFilter)
         ),
         key === 'tier.tagFQN'
@@ -153,7 +152,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         const res = await getAggregateFieldOptions(
           index,
           key,
-          value + SUFFIX_WILDCARD,
+          value,
           JSON.stringify(combinedQueryFilter)
         );
 

@@ -31,6 +31,7 @@ export const MYDATA_SUMMARY_OPTIONS = {
   testSuite: 'test-suite',
   containers: 'containers',
   glossaryTerms: 'glossary-terms',
+  tags: 'tags',
 };
 
 export const SEARCH_INDEX = {

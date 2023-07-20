@@ -214,7 +214,7 @@ export const autocomplete: (args: {
       return getAggregateFieldOptions(
         entitySearchIndex,
         entityField,
-        SUFFIX_WILDCARD,
+        '',
         JSON.stringify(getCombinedQueryFilterObject())
       ).then((response) => {
         const buckets =
