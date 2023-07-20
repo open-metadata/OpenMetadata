@@ -116,7 +116,7 @@ class ColumnTypeParser:
         "GEOGRAPHY": "GEOGRAPHY",
         "GEOMETRY": "GEOMETRY",
         "HYPERLOGLOG": "BINARY",
-        "IMAGE": "BINARY",
+        "IMAGE": "IMAGE",
         "INT": "INT",
         "INT2": "SMALLINT",
         "INT4": "INT",
@@ -150,7 +150,7 @@ class ColumnTypeParser:
         "MEDIUMTEXT": "MEDIUMTEXT",
         "MONEY": "NUMBER",
         "NCHAR": "CHAR",
-        "NTEXT": "TEXT",
+        "NTEXT": "NTEXT",
         "NULL": "NULL",
         "NUMBER": "NUMBER",
         "NUMERIC": "NUMERIC",
@@ -290,18 +290,14 @@ class ColumnTypeParser:
 
     @staticmethod
     def get_column_type(column_type: Any) -> str:
-        column_type_result = ColumnTypeParser.get_column_type_mapping(column_type)
-        if column_type_result:
-            return column_type_result
-        column_type_result = ColumnTypeParser.get_source_type_mapping(column_type)
-        if column_type_result:
-            return column_type_result
-        column_type_result = ColumnTypeParser.get_source_type_containes_brackets(
-            column_type
-        )
-        if column_type_result:
-            return column_type_result
-
+        for func in [
+            ColumnTypeParser.get_column_type_mapping,
+            ColumnTypeParser.get_source_type_mapping,
+            ColumnTypeParser.get_source_type_containes_brackets,
+        ]:
+            column_type_result = func(column_type)
+            if column_type_result:
+                return column_type_result
         return ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get("UNKNOWN")
 
     @staticmethod

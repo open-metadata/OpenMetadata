@@ -277,7 +277,6 @@ def test_suite_validation_datalake(
     request,
 ):
     """Generic test runner for test validations"""
-    import pandas as pd
 
     test_case = request.getfixturevalue(test_case_name)
     type_, val_1, val_2, status = expected

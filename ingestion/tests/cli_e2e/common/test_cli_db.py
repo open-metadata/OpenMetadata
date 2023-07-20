@@ -19,7 +19,6 @@ from typing import Optional
 
 from sqlalchemy.engine import Engine
 
-from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.api.workflow import Workflow
