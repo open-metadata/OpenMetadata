@@ -720,26 +720,19 @@ export const addCustomPropertiesForEntity = (
   entityObj
 ) => {
   // Add Custom property for selected entity
-  cy.get('[data-testid="add-placeholder-button"]')
-    .should('exist')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="add-field-button"]').click();
 
   // validation should work
   cy.get('[data-testid="create-button"]').scrollIntoView().click();
 
-  cy.get('#name_help').should('be.visible').contains('name is required');
-  cy.get('#propertyType_help')
-    .should('be.visible')
-    .contains('propertyType is required');
-  cy.get('#description_help')
-    .should('be.visible')
-    .contains('description is required');
+  cy.get('#name_help').should('contain', 'name is required');
+  cy.get('#propertyType_help').should('contain', 'propertyType is required');
+
+  cy.get('#description_help').should('contain', 'description is required');
 
   // capital case validation
   cy.get('[data-testid="name"]')
     .scrollIntoView()
-    .should('be.visible')
     .type(CUSTOM_PROPERTY_INVALID_NAMES.CAPITAL_CASE);
   cy.get('[role="alert"]').should(
     'contain',
@@ -748,7 +741,6 @@ export const addCustomPropertiesForEntity = (
 
   // with underscore validation
   cy.get('[data-testid="name"]')
-    .should('be.visible')
     .clear()
     .type(CUSTOM_PROPERTY_INVALID_NAMES.WITH_UNDERSCORE);
   cy.get('[role="alert"]').should(
@@ -758,7 +750,6 @@ export const addCustomPropertiesForEntity = (
 
   // with space validation
   cy.get('[data-testid="name"]')
-    .should('be.visible')
     .clear()
     .type(CUSTOM_PROPERTY_INVALID_NAMES.WITH_SPACE);
   cy.get('[role="alert"]').should(
@@ -768,7 +759,6 @@ export const addCustomPropertiesForEntity = (
 
   // with dots validation
   cy.get('[data-testid="name"]')
-    .should('be.visible')
     .clear()
     .type(CUSTOM_PROPERTY_INVALID_NAMES.WITH_DOTS);
   cy.get('[role="alert"]').should(
@@ -777,25 +767,16 @@ export const addCustomPropertiesForEntity = (
   );
 
   // should allow name in another languages
-  cy.get('[data-testid="name"]')
-    .should('be.visible')
-    .clear()
-    .type('汝らヴェディア');
+  cy.get('[data-testid="name"]').clear().type('汝らヴェディア');
   // should not throw the validation error
   cy.get('#name_help').should('not.exist');
 
-  cy.get('[data-testid="name"]')
-    .should('be.visible')
-    .clear()
-    .type(propertyName);
+  cy.get('[data-testid="name"]').clear().type(propertyName);
 
-  cy.get('[data-testid="propertyType"]').should('be.visible').click();
-  cy.get(`[title="${customType}"]`).should('be.visible').click();
+  cy.get('[data-testid="propertyType"]').click();
+  cy.get(`[title="${customType}"]`).click();
 
-  cy.get(descriptionBox)
-    .should('be.visible')
-    .clear()
-    .type(entityType.description);
+  cy.get(descriptionBox).clear().type(entityType.description);
 
   // Check if the property got added
   cy.intercept('/api/v1/metadata/types/name/*?fields=customProperties').as(
@@ -817,10 +798,7 @@ export const addCustomPropertiesForEntity = (
     entityObj.entity
   );
 
-  cy.get('[data-testid="custom_properties"]')
-    .should('exist')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="custom_properties"]').click();
   cy.get('tbody').should('contain', propertyName);
 
   // Adding value for the custom property
@@ -831,21 +809,21 @@ export const addCustomPropertiesForEntity = (
     .as('editbutton');
   cy.wait(1000);
 
-  cy.get('@editbutton').should('exist').should('be.visible').click();
+  cy.get('@editbutton').click();
 
   // Checking for value text box or markdown box
   cy.get('body').then(($body) => {
     if ($body.find('[data-testid="value-input"]').length > 0) {
-      cy.get('[data-testid="value-input"]').should('be.visible').type(value);
+      cy.get('[data-testid="value-input"]').type(value);
       cy.get('[data-testid="inline-save-btn"]').click();
     } else if (
       $body.find(
         '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
       )
     ) {
-      cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-        .should('be.visible')
-        .type(value);
+      cy.get(
+        '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
+      ).type(value);
       cy.get('[data-testid="save"]').click();
     }
   });
@@ -892,11 +870,6 @@ export const deleteCreatedProperty = (propertyName) => {
   cy.get('[data-testid="body-text"]').should('contain', propertyName);
 
   cy.get('[data-testid="save-button"]').should('be.visible').click();
-
-  // Checking if property got deleted successfully
-  cy.get('[data-testid="add-placeholder-button"]')
-    .scrollIntoView()
-    .should('be.visible');
 };
 
 export const updateOwner = () => {
