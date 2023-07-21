@@ -64,8 +64,10 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
         logout();
       },
       async renewIdToken() {
-        const { idToken } = await oktaAuth.token.renewTokens();
-        const newToken = idToken?.idToken ?? oktaAuth.getIdToken() ?? '';
+        const renewToken = await oktaAuth.token.renewTokens();
+        oktaAuth.tokenManager.setTokens(renewToken);
+        const newToken =
+          renewToken?.idToken?.idToken ?? oktaAuth.getIdToken() ?? '';
         localState.setOidcToken(newToken);
 
         return Promise.resolve(newToken);
