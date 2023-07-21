@@ -65,6 +65,8 @@ class CommonMapTypes:
         DataType.BYTEA: CustomTypes.BYTEA.value,
         DataType.NTEXT: sqlalchemy.NVARCHAR,
         DataType.IMAGE: CustomTypes.IMAGE.value,
+        DataType.IPV4: CustomTypes.IP.value,
+        DataType.IPV6: CustomTypes.IP.value,
     }
 
     def map_types(self, col: Column, table_service_type):

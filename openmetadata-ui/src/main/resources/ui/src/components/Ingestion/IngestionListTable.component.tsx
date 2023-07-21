@@ -36,7 +36,7 @@ function IngestionListTable({
   paging,
   handleEnableDisableIngestion,
   onIngestionWorkflowsUpdate,
-  servicePermission,
+  ingestionPipelinesPermission,
   serviceCategory,
   serviceName,
   handleDeleteSelection,
@@ -112,11 +112,11 @@ function IngestionListTable({
         handleDeleteSelection={handleDeleteSelection}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
         handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
+        ingestionPipelinesPermission={ingestionPipelinesPermission}
         isRequiredDetailsAvailable={isRequiredDetailsAvailable}
         record={record}
         serviceCategory={serviceCategory}
         serviceName={serviceName}
-        servicePermission={servicePermission}
         triggerIngestion={triggerIngestion}
         onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
       />
@@ -166,7 +166,7 @@ function IngestionListTable({
       triggerIngestion,
       isRequiredDetailsAvailable,
       handleEnableDisableIngestion,
-      servicePermission,
+      ingestionPipelinesPermission,
       serviceName,
       deleteSelection,
       handleDeleteSelection,
