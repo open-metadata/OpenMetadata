@@ -142,7 +142,7 @@ export const TaskTab = ({
   const isTaskTags = isTagsTask(taskDetails?.type as TaskType);
 
   const getTaskLinkElement = entityCheck && (
-    <Typography.Text className="font-medium text-md">
+    <Typography.Text className="font-medium text-md" data-testid="task-title">
       <span>{`#${taskDetails?.id} `}</span>
 
       <Typography.Text>{taskDetails?.type}</Typography.Text>
@@ -428,7 +428,7 @@ export const TaskTab = ({
                   profileWidth="24"
                   showUserName={false}
                 />
-                {isCreator || hasTaskUpdateAccess() ? (
+                {(isCreator || hasTaskUpdateAccess()) && !isTaskClosed ? (
                   <Button
                     className="flex-center p-0"
                     data-testid="edit-assignees"
