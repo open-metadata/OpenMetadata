@@ -13,108 +13,51 @@
 
 @import url('../../../styles/variables.less');
 
-.tier-card-container {
+.ant-popover-inner-content {
   padding: 0;
-  .ant-popover-inner {
-    border-radius: 10px;
-    .ant-popover-inner-content {
-      border-radius: 10px;
-      padding: 0;
-      .tier-card {
-        border-radius: 10px;
-        padding: 0px;
-        width: 655px;
-        .ant-card-head {
-          padding: 8px 16px !important;
-          .ant-row {
-            .ant-col {
-              display: flex;
-              align-items: center;
+  .tier-card {
+    width: 655px;
+    .ant-card-body {
+      padding: 18px 20px !important;
+      .ant-collapse-item {
+        .ant-collapse-header {
+          padding: 8px 20px 8px 12px;
+          .ant-collapse-arrow {
+            position: absolute;
+            top: 18px;
+          }
+          .ant-radio {
+            .ant-radio-inner {
+              width: 14px;
+              height: 14px;
+              border: 1.5px solid @primary-color;
+              box-shadow: none !important;
+            }
 
-              &.ant-col-22 {
-                h5 {
-                  font-weight: 500;
-                }
-              }
+            &:hover .ant-radio-inner {
+              background-color: @primary-color-hover;
+            }
 
-              &.ant-col-2 {
-                justify-content: flex-end;
-                .clear-tier-selection {
-                  cursor: pointer;
-                  color: @blue-3;
-                  font-weight: 400;
-                }
-              }
+            &.ant-radio-checked .ant-radio-inner::after {
+              box-shadow: none !important;
+              transform: scale(0.35);
             }
           }
         }
-        .ant-card-body {
-          padding: 1px 18px 20px !important;
-          .collapse-container {
-            background-color: @white;
+        .ant-collapse-content {
+          &.ant-collapse-content-active {
             border: none;
-            .ant-collapse-item {
-              .ant-collapse-header {
-                padding: 8px 20px 8px 12px;
-                .ant-collapse-arrow {
-                  position: absolute;
-                  top: 18px;
-                }
-                .ant-collapse-header-text {
-                  .ant-space {
-                    gap: 0px !important;
-                    align-items: flex-start;
-                    .collapse-title {
-                      color: @text-color-secondary;
-                    }
-                    .collapse-description {
-                      font-size: 12px;
-                      color: @grey-4;
-                    }
-                  }
-
-                  .ant-radio {
-                    .ant-radio-inner {
-                      width: 14px;
-                      height: 14px;
-                      border: 1.5px solid @blue-4;
-                      box-shadow: none !important;
-                      position: relative;
-                    }
-
-                    &:hover .ant-radio-inner {
-                      background-color: @blue-5!important;
-                    }
-
-                    &.ant-radio-checked {
-                      .ant-radio-inner {
-                        &::after {
-                          box-shadow: none !important;
-                          transform: scale(0.35);
-                          border: none !important;
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-              .ant-collapse-content {
-                &.ant-collapse-content-active {
-                  border: none !important;
-                }
-                .ant-collapse-content-box {
-                  padding: 0 12px;
-                  .toastui-editor-contents ul {
-                    padding-left: 18px !important;
-                    font-size: 12px;
-                    font-weight: 400;
-                    color: @text-color-secondary;
-                    margin: 2px 0 8px;
-                    li {
-                      margin: 0;
-                    }
-                  }
-                }
+          }
+          .ant-collapse-content-box {
+            padding: 0 12px;
+            .toastui-editor-contents ul {
+              padding-left: 18px !important;
+              font-size: 12px;
+              font-weight: 400;
+              color: @text-color-secondary;
+              margin: 2px 0 8px;
+              li {
+                margin: 0;
               }
             }
           }

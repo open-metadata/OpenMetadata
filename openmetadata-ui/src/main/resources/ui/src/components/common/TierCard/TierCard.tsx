@@ -13,16 +13,13 @@
 
 import {
   Card,
-  Col,
   Collapse,
   Popover,
   Radio,
   RadioChangeEvent,
-  Row,
   Space,
   Typography,
 } from 'antd';
-import classNames from 'classnames';
 import Loader from 'components/Loader/Loader';
 import { t } from 'i18next';
 import React, { useState } from 'react';
@@ -89,45 +86,39 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
           className="tier-card"
           data-testid="cards"
           title={
-            <Row>
-              <Col span={22}>
-                <Typography.Title className="m-b-0" level={5}>
-                  {t('label.edit-entity', { entity: t('label.tier') })}
-                </Typography.Title>
-              </Col>
-              <Col span={2}>
-                <Typography.Text
-                  className="m-b-0 clear-tier-selection"
-                  onClick={clearTierSelection}>
-                  {t('label.clear')}
-                </Typography.Text>
-              </Col>
-            </Row>
+            <Space className="w-full p-xs justify-between">
+              <Typography.Text className="m-b-0 font-medium text-md">
+                {t('label.edit-entity', { entity: t('label.tier') })}
+              </Typography.Text>
+              <Typography.Text
+                className="m-b-0 font-normal text-primary cursor-pointer"
+                onClick={clearTierSelection}>
+                {t('label.clear')}
+              </Typography.Text>
+            </Space>
           }>
           <Radio.Group value={currentTier} onChange={handleTierSelection}>
             <Collapse
               accordion
-              className="collapse-container"
+              className="bg-white border-none"
               defaultActiveKey={currentTier}
-              expandIconPosition="end">
+              expandIconPosition="end"
+              size="small">
               {tierData.map((card) => (
                 <Panel
-                  className={classNames('collapse-tier-panel', {
-                    selected: currentTier === card.id,
-                  })}
                   data-testid="card-list"
                   header={
-                    <Space direction="horizontal">
+                    <div className="flex self-start">
                       <Radio data-testid="radio-btn" value={card.id} />
                       <Space direction="vertical" size={0}>
-                        <Typography.Paragraph className="m-b-0 font-regular collapse-title">
+                        <Typography.Paragraph className="m-b-0 font-regular text-grey-body">
                           {card.title}
                         </Typography.Paragraph>
-                        <Typography.Paragraph className="m-b-0 font-regular collapse-description">
+                        <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-muted">
                           {card.description.replace(/\*/g, '')}
                         </Typography.Paragraph>
                       </Space>
-                    </Space>
+                    </div>
                   }
                   key={card.id}>
                   <RichTextEditorPreviewer
@@ -141,7 +132,6 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
           {isLoadingTierData && <Loader />}
         </Card>
       }
-      overlayClassName="tier-card-container"
       placement="bottomRight"
       showArrow={false}
       trigger="click"
