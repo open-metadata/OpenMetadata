@@ -89,19 +89,18 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
           className="tier-card"
           data-testid="cards"
           title={
-            <Row style={{ padding: '10px 8px' }}>
-              <Col span={21}>
+            <Row>
+              <Col span={22}>
                 <Typography.Title className="m-b-0" level={5}>
                   {t('label.edit-entity', { entity: t('label.tier') })}
                 </Typography.Title>
               </Col>
               <Col span={2}>
-                <Typography.Title
+                <Typography.Text
                   className="m-b-0 clear-tier-selection"
-                  level={5}
                   onClick={clearTierSelection}>
-                  {t('Clear')}
-                </Typography.Title>
+                  {t('label.clear')}
+                </Typography.Text>
               </Col>
             </Row>
           }>
@@ -121,10 +120,10 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
                     <Space direction="horizontal">
                       <Radio data-testid="radio-btn" value={card.id} />
                       <Space direction="vertical" size={0}>
-                        <Typography.Paragraph className="m-b-0 text-color-inherit font-semibold">
+                        <Typography.Paragraph className="m-b-0 font-regular collapse-title">
                           {card.title}
                         </Typography.Paragraph>
-                        <Typography.Paragraph className="m-b-0 font-small">
+                        <Typography.Paragraph className="m-b-0 font-regular collapse-description">
                           {card.description.replace(/\*/g, '')}
                         </Typography.Paragraph>
                       </Space>
