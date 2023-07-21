@@ -23,7 +23,7 @@ FROM alpine:3.15
 
 EXPOSE 8585
 
-RUN apk add --update --no-cache bash openjdk11-jre curl
+RUN apk add --update --no-cache bash openjdk11-jre
 
 COPY --from=build /opt/openmetadata /opt/openmetadata
 COPY docker/openmetadata-start.sh /

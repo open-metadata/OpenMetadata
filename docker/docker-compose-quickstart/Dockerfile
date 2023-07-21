@@ -34,7 +34,7 @@ LABEL org.open-metadata.commit-id=$COMMIT_ID
 EXPOSE 8585 8586
 COPY docker/openmetadata-start.sh ./
 COPY --from=build /opt/openmetadata /opt/openmetadata
-RUN apk add --update --no-cache bash openjdk11-jre curl && \
+RUN apk add --update --no-cache bash openjdk11-jre && \
     chmod 777 openmetadata-start.sh
 WORKDIR /opt/openmetadata
 ENTRYPOINT [ "/bin/bash" ]
