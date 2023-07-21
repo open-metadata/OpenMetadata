@@ -62,7 +62,7 @@ describe('Restore entity functionality should work properly', () => {
       'api/v1/tables/*?hardDelete=false&recursive=false',
       'softDeleteTable'
     );
-    cy.get('[data-testid="confirm-button"]').should('not.be.disabled').click();
+    cy.get('[data-testid="confirm-button"]').should('not.be.disabled');
     cy.get('[data-testid="confirm-button"]').click();
     verifyResponseStatusCode('@softDeleteTable', 200);
 
