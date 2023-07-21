@@ -691,6 +691,7 @@ const DatabaseDetails: FunctionComponent = () => {
               entityType={EntityType.DATABASE}
               fqn={database?.fullyQualifiedName ?? ''}
               onFeedUpdate={getEntityFeedCount}
+              onUpdateEntityDetails={getDetailsByFQN}
             />
           </ActivityFeedProvider>
         ),
