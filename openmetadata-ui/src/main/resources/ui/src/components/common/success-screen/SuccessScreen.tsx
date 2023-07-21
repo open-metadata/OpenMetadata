@@ -119,14 +119,20 @@ const SuccessScreen = ({
           </Typography.Paragraph>
         </Space>
       </Card>
-      {!isAirflowAvailable && (
-        <>
-          <AirflowMessageBanner className="m-t-sm" />
-          <Card className="m-t-sm">
-            {isFetchingStatus ? <Loader /> : <>{messageElement}</>}
-          </Card>
-        </>
-      )}
+      <div className="m-t-sm">
+        {isFetchingStatus ? (
+          <Loader size="small" />
+        ) : (
+          <>
+            {!isAirflowAvailable && (
+              <>
+                <AirflowMessageBanner />
+                <Card className="m-t-sm">{messageElement}</Card>
+              </>
+            )}
+          </>
+        )}
+      </div>
 
       <div className="mt-7 text-center">
         <Button

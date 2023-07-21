@@ -338,6 +338,7 @@ export const getIngestionName = (
     [
       IngestionPipelineType.Profiler,
       IngestionPipelineType.Metadata,
+      IngestionPipelineType.Lineage,
       IngestionPipelineType.Dbt,
     ].includes(type)
   ) {
