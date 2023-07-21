@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Popover, Space, Tag, Typography } from 'antd';
+import { Popover, Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { TAG_START_WITH } from 'constants/Tag.constants';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
@@ -60,7 +60,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   }
 
   return (
-    <Space wrap size={4}>
+    <div>
       {sizeCap > -1 ? (
         <>
           {sortedTagsBySource.slice(0, sizeCap).map(getTagsElement)}
@@ -90,7 +90,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
       ) : (
         sortedTagsBySource.map(getTagsElement)
       )}
-    </Space>
+    </div>
   );
 };
 

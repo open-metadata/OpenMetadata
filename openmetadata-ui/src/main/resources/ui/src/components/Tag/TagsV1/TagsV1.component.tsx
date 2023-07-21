@@ -93,9 +93,9 @@ const TagsV1 = ({
 
   const tagContent = useMemo(
     () => (
-      <div className="d-flex">
+      <div className="d-flex w-full">
         {tagColorBar}
-        <span className="d-flex items-center p-x-xs">
+        <span className="d-flex items-center p-x-xs w-full">
           <span className="m-r-xss">{startIcon}</span>
           <Typography.Paragraph
             ellipsis

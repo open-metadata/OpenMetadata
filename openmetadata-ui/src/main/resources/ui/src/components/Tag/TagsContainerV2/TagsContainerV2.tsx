@@ -155,20 +155,22 @@ const TagsContainerV2 = ({
   const addTagButton = useMemo(
     () =>
       showAddTagButton ? (
-        <span onClick={handleAddClick}>
+        <Col onClick={handleAddClick}>
           <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
-        </span>
+        </Col>
       ) : null,
     [showAddTagButton]
   );
 
   const renderTags = useMemo(
     () => (
-      <TagsViewer
-        showNoDataPlaceholder={showNoDataPlaceholder}
-        tags={tags?.[tagType] ?? []}
-        type="border"
-      />
+      <Col>
+        <TagsViewer
+          showNoDataPlaceholder={showNoDataPlaceholder}
+          tags={tags?.[tagType] ?? []}
+          type="border"
+        />
+      </Col>
     ),
     [showNoDataPlaceholder, tags?.[tagType]]
   );
@@ -329,11 +331,11 @@ const TagsContainerV2 = ({
       {header}
 
       {!isEditTags && (
-        <Space wrap data-testid="entity-tags" size={4}>
+        <Row data-testid="entity-tags">
           {addTagButton}
           {renderTags}
-          {showInlineEditButton && editTagButton}
-        </Space>
+          {showInlineEditButton && <Col>{editTagButton}</Col>}
+        </Row>
       )}
       {isEditTags && tagsSelectContainer}
 

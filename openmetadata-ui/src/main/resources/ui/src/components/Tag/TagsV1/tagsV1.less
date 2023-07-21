@@ -14,6 +14,8 @@
 @import url('../../../styles/variables.less');
 
 .tag-chip {
+  width: 100%;
+  max-width: 100%;
   display: flex;
   gap: 4px;
   align-items: center;
@@ -26,6 +28,7 @@
 }
 
 .tag-chip-content {
+  width: max-content;
   margin: 0 5px 4px 0;
   border: none;
   padding: 0;
@@ -49,7 +52,6 @@
 
 .tags-label {
   display: inline-block;
-  max-width: 200px;
   font-size: 12px;
   font-weight: 500;
   line-height: 30px;
