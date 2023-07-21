@@ -167,7 +167,7 @@ class Histogram(HybridMetric):
         if is_concatenable(self.col.type):
             col = LenFn(column(self.col.name, self.col.type))
         else:
-            col = column(self.col.name)  # type: ignore
+            col = column(self.col.name, self.col.type)  # type: ignore
 
         case_stmts = []
         for bin_num in range(num_bins):
