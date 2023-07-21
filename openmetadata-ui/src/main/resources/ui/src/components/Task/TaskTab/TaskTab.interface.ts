@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TaskFilter } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { EntityType } from 'enums/entity.enum';
 import { Column } from 'generated/entity/data/table';
 import { Thread } from 'generated/entity/feed/thread';
@@ -20,8 +19,7 @@ export type TaskTabProps = {
   taskThread: Thread;
   owner?: EntityReference;
   onUpdateEntityDetails?: () => void;
-  onUpdateTaskFilter?: (filter: TaskFilter) => void;
-  onTaskFeedFetch?: (after?: string) => void;
+  onAfterClose?: () => void;
 } & (
   | TableTaskTabProps
   | { columns?: undefined; entityType: Exclude<EntityType, EntityType.TABLE> }

@@ -159,8 +159,7 @@ export const TaskTab = ({
     updateTask(TaskOperation.RESOLVE, taskDetails?.id + '', data)
       .then(() => {
         showSuccessToast(t('server.task-resolved-successfully'));
-        rest.onTaskFeedFetch?.();
-        rest.onUpdateTaskFilter?.('close');
+        rest.onAfterClose?.();
       })
       .catch((err: AxiosError) => showErrorToast(err));
   };
@@ -242,8 +241,7 @@ export const TaskTab = ({
       } as unknown as TaskDetails)
         .then(() => {
           showSuccessToast(t('server.task-closed-successfully'));
-          rest.onTaskFeedFetch?.();
-          rest.onUpdateTaskFilter?.('close');
+          rest.onAfterClose?.();
         })
         .catch((err: AxiosError) => showErrorToast(err));
     } else {

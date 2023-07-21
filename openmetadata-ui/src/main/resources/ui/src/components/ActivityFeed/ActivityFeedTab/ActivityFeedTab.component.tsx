@@ -281,6 +281,11 @@ export const ActivityFeedTab = ({
     setTaskFilter(filter);
   };
 
+  const handleAfterTaskClose = () => {
+    handleFeedFetchFromFeedList();
+    handleUpdateTaskFilter('close');
+  };
+
   return (
     <div className="activity-feed-tab">
       <Menu
@@ -424,18 +429,16 @@ export const ActivityFeedTab = ({
                   entityType={EntityType.TABLE}
                   owner={owner}
                   taskThread={selectedThread}
-                  onTaskFeedFetch={handleFeedFetchFromFeedList}
+                  onAfterClose={handleAfterTaskClose}
                   onUpdateEntityDetails={onUpdateEntityDetails}
-                  onUpdateTaskFilter={handleUpdateTaskFilter}
                 />
               ) : (
                 <TaskTab
                   entityType={isUserEntity ? entityTypeTask : entityType}
                   owner={owner}
                   taskThread={selectedThread}
-                  onTaskFeedFetch={handleFeedFetchFromFeedList}
+                  onAfterClose={handleAfterTaskClose}
                   onUpdateEntityDetails={onUpdateEntityDetails}
-                  onUpdateTaskFilter={handleUpdateTaskFilter}
                 />
               )}
             </div>
