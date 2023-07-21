@@ -244,12 +244,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
         // Error
       } finally {
         setIsLoading(false);
-        if (!airflowEndpoint) {
-          await getAirflowEndpoint();
-        }
       }
     },
-    [serviceFQN, paging, airflowEndpoint, getAirflowEndpoint]
+    [serviceFQN, paging]
   );
 
   const updateCurrentSelectedIngestion = useCallback(
@@ -342,6 +339,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIngestionPipelines((pipelines) =>
           pipelines.filter((ing) => ing.id !== id)
         );
+        /**
+         * update the paging total count to reflect on tab count
+         */
+        setIngestionPaging((prevData) => ({
+          ...prevData,
+          total: prevData.total > 0 ? prevData.total - 1 : 0,
+        }));
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -875,6 +879,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   useEffect(() => {
     if (isAirflowAvailable && !isOpenMetadataService) {
       getAllIngestionWorkflows();
+      getAirflowEndpoint();
     }
   }, [isAirflowAvailable]);
 

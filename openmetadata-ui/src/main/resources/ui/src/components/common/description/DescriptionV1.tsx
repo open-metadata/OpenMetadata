@@ -55,6 +55,7 @@ interface Props {
   wrapInCard?: boolean;
   isVersionView?: boolean;
   showCommentsIcon?: boolean;
+  reduceDescription?: boolean;
 }
 const DescriptionV1 = ({
   hasEditAccess,
@@ -73,6 +74,7 @@ const DescriptionV1 = ({
   wrapInCard = false,
   isVersionView,
   showCommentsIcon = true,
+  reduceDescription,
 }: Props) => {
   const descriptionThread = entityFieldThreads?.[0];
   const history = useHistory();
@@ -176,6 +178,7 @@ const DescriptionV1 = ({
         <div>
           {description?.trim() ? (
             <RichTextEditorPreviewer
+              className={reduceDescription ? 'max-two-lines' : ''}
               enableSeeMoreVariant={!removeBlur}
               markdown={description}
             />
