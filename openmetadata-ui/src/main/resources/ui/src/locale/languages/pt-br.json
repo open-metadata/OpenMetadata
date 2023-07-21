@@ -1474,6 +1474,7 @@
     "fetch-re-index-data-error": "Error while fetching re index data!",
     "fetch-table-profiler-config-error": "Error while fetching table profiler config!",
     "fetch-updated-conversation-error": "Erro ao buscar conversa atualizada!",
+    "filtering-condition": "Filtering Condition",
     "forgot-password-email-error": "Há algum problema ao enviar o e-mail. Entre em contato com seu Administrador.",
     "ingestion-workflow-operation-error": "Erro ao {{operation}} do fluxo de trabalho de ingestão {{displayName}}",
     "invalid-username-or-password": "Você inseriu um nome de usuário ou senha inválidos.",
@@ -1485,6 +1486,7 @@
     "no-query-available": "Nenhuma consulta disponível.",
     "no-task-available": "Não há dados de tarefa disponíveis.",
     "no-task-creation-without-assignee": "Não é possível criar uma tarefa sem destinatário",
+    "parsing-timeout-limit": "Query Parsing Timeout Limit",
     "please-add-description": "Descrição vazia não é aceita. Por favor, adicione uma descrição.",
     "please-add-tags": "Uma lista de tags vazia não é aceita. Por favor, adicione uma tag.",
     "re-indexing-error": "Error while re indexing!",
@@ -1501,6 +1503,7 @@
     "unexpected-error": "Ocorreu um erro inesperado.",
     "unexpected-response": "Resposta inesperada do servidor.",
     "update-entity-success": "{{entity}} atualizado com sucesso.",
+    "view-parsing-timeout-limit": "View Definition Parsing Timeout Limit",
     "you-have-not-action-anything-yet": "Você ainda não {{action}} nada."
   }
 }

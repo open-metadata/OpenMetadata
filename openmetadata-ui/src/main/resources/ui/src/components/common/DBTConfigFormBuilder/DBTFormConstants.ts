@@ -91,3 +91,5 @@ export const rulesDBTGCSCredsFields: Record<
   email: ['clientEmail'],
   url: ['authUri', 'tokenUri', 'authProviderX509CertUrl', 'clientX509CertUrl'],
 };
+
+export const dbtParsingTimeoutLimit = 300;

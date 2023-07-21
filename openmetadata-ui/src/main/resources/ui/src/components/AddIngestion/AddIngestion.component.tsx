@@ -24,6 +24,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import {
   DBT_CLASSIFICATION_DEFAULT_VALUE,
+  DEFAULT_PARSING_TIMEOUT_LIMIT,
   INITIAL_FILTER_PATTERN,
   STEPS_FOR_ADD_INGESTION,
 } from '../../constants/Ingestions.constant';
@@ -251,6 +252,11 @@ const AddIngestion = ({
       confidence: sourceConfig?.confidence,
       dbtClassificationName:
         sourceConfig?.dbtClassificationName ?? DBT_CLASSIFICATION_DEFAULT_VALUE, // default value from Json Schema
+      parsingTimeoutLimit:
+        sourceConfig?.parsingTimeoutLimit ?? DEFAULT_PARSING_TIMEOUT_LIMIT,
+      viewParsingTimeoutLimit:
+        sourceConfig?.viewParsingTimeoutLimit ?? DEFAULT_PARSING_TIMEOUT_LIMIT,
+      filterCondition: sourceConfig?.filterCondition ?? '',
     }),
     []
   );
