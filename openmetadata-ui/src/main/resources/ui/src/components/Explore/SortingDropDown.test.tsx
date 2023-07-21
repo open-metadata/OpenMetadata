@@ -33,7 +33,7 @@ describe('Test Sorting DropDown Component', () => {
         <SortingDropDown {...mockPorps} />
       );
 
-      const dropdownLabel = await findByTestId('dropdown-label');
+      const dropdownLabel = await findByTestId('sorting-dropdown-label');
 
       expect(dropdownLabel).toBeInTheDocument();
 
@@ -55,7 +55,7 @@ describe('Test Sorting DropDown Component', () => {
         <SortingDropDown {...mockPorps} />
       );
 
-      const dropdownLabel = await findByTestId('dropdown-label');
+      const dropdownLabel = await findByTestId('sorting-dropdown-label');
 
       expect(dropdownLabel).toBeInTheDocument();
 

@@ -278,7 +278,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   }
 
   return (
-    <div className="explore-page bg-white">
+    <div className="explore-page bg-white" data-testid="explore-page">
       <div className="w-full h-full">
         {tabItems.length > 0 && (
           <>
@@ -347,6 +347,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                             />
                             <Button
                               className="p-0"
+                              data-testid="sort-order-button"
                               size="small"
                               type="text"
                               onClick={() =>

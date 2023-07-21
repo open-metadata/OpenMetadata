@@ -31,6 +31,7 @@ export const MYDATA_SUMMARY_OPTIONS = {
   testSuite: 'test-suite',
   containers: 'containers',
   glossaryTerms: 'glossary-terms',
+  tags: 'tags',
 };
 
 export const SEARCH_INDEX = {
@@ -132,6 +133,7 @@ export const SEARCH_ENTITY_MLMODEL = {
     term: 'eta_predictions',
     entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
     serviceName: 'mlflow_svc',
+    displayName: 'ETA Predictions',
   },
 };
 

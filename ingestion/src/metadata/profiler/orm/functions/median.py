@@ -58,7 +58,7 @@ def _(elements, compiler, **kwargs):
 def _(elements, compiler, **kwargs):
     col = compiler.process(elements.clauses.clauses[0])
     percentile = elements.clauses.clauses[2].value
-    return 'approx_percentile("%s", %.2f)' % (col, percentile)
+    return "approx_percentile(%s, %.2f)" % (col, percentile)
 
 
 @compiles(MedianFn, Dialects.MSSQL)

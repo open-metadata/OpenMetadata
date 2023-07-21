@@ -378,6 +378,12 @@ site_menu:
     url: /connectors/dashboard/quicksight
   - category: Connectors / Dashboard / QuickSight / Run Externally
     url: /connectors/dashboard/quicksight/yaml
+  - category: Connectors / Dashboard / Qlik Sense
+    url: /connectors/dashboard/qliksense
+  - category: Connectors / Dashboard / Qlik Sense / Run Externally
+    url: /connectors/dashboard/qliksense/yaml
+  - category: Connectors / Dashboard / Qlik Sense / Export Certificates
+    url: /connectors/dashboard/qliksense/certificates
   - category: Connectors / Dashboard / Redash
     url: /connectors/dashboard/redash
   - category: Connectors / Dashboard / Redash / Run Externally
