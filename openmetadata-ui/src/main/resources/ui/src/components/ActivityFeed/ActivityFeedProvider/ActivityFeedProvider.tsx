@@ -116,7 +116,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
         const { data, paging } = await getAllFeeds(
           entityType !== EntityType.USER_NAME
-            ? getEntityFeedLink(entityType, fqn)
+            ? getEntityFeedLink(entityType, encodeURIComponent(fqn ?? ''))
             : undefined,
           after,
           type,
