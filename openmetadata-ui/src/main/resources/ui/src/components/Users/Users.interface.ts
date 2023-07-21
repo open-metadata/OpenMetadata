@@ -26,9 +26,6 @@ export interface Props {
   };
   username: string;
   isUserEntitiesLoading: boolean;
-  isAdminUser: boolean;
-  isLoggedinUser: boolean;
-  isAuthDisabled: boolean;
   handlePaginate: (page: string | number) => void;
   updateUserDetails: (data: Partial<User>) => Promise<void>;
 }
