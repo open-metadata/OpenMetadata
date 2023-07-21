@@ -149,10 +149,6 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     TABLE_RESOURCE_TEST = new TableResourceTest();
     TABLE_RESOURCE_TEST.setup(test); // Initialize TableResourceTest for using helper methods
 
-    USER = TableResourceTest.USER1;
-    USER_LINK = String.format("<#E::user::%s>", USER.getName());
-    USER_AUTH_HEADERS = authHeaders(USER.getName());
-
     UserResourceTest userResourceTest = new UserResourceTest();
     USER2 = userResourceTest.createEntity(userResourceTest.createRequest(test, 4), ADMIN_AUTH_HEADERS);
     USER2_AUTH_HEADERS = authHeaders(USER2.getName());
@@ -182,6 +178,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     USER = TableResourceTest.USER1;
     USER_LINK = String.format("<#E::user::%s>", USER.getFullyQualifiedName());
+    USER_AUTH_HEADERS = authHeaders(USER.getName());
 
     TEAM = TableResourceTest.TEAM1;
     TEAM_LINK = String.format("<#E::team::%s>", TEAM.getFullyQualifiedName());
@@ -333,7 +330,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // User creates task1 assigned to User2 on TABLE
     String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
     Thread taskThread =
-        createTaskThread(USER.getName(), about, USER2, "old", "new", RequestDescription, USER_AUTH_HEADERS);
+        createTaskThread(
+            USER.getName(), about, USER2.getEntityReference(), "old", "new", RequestDescription, USER_AUTH_HEADERS);
     TaskDetails task1 = taskThread.getTask();
 
     // List task and validate
@@ -347,7 +345,9 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     // User2 creates a task2 assigned to User on TABLE2
     about = String.format("<#E::%s::%s::columns::%s::description>", Entity.TABLE, TABLE2.getFullyQualifiedName(), C1);
-    taskThread = createTaskThread(USER2.getName(), about, USER, "old", "new2", RequestDescription, USER2_AUTH_HEADERS);
+    taskThread =
+        createTaskThread(
+            USER2.getName(), about, USER.getEntityReference(), "old", "new2", RequestDescription, USER2_AUTH_HEADERS);
     TaskDetails task2 = taskThread.getTask();
     tasks = listTasks(null, null, null, null, null, USER2_AUTH_HEADERS);
     validateTaskList(USER.getId(), "new2", TaskStatus.Open, totalTaskCount + 2, tasks);
@@ -529,12 +529,13 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void put_resolveTask_description_200() throws IOException {
+  void put_resolveTaskByUser_description_200() throws IOException {
     // Create a task from User to User2
     String about =
         String.format("<#E::%s::%s::columns::%s::description>", Entity.TABLE, TABLE.getFullyQualifiedName(), C1);
     Thread taskThread =
-        createTaskThread(USER.getName(), about, USER2, "old", "new", RequestDescription, USER_AUTH_HEADERS);
+        createTaskThread(
+            USER.getName(), about, USER2.getEntityReference(), "old", "new", RequestDescription, USER_AUTH_HEADERS);
 
     assertNotNull(taskThread.getTask().getId());
     int taskId = taskThread.getTask().getId();
@@ -547,7 +548,37 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         FORBIDDEN,
         CatalogExceptionMessage.taskOperationNotAllowed(USER.getName(), "resolveTask"));
 
-    // User2 who created the task can resolve the task
+    // User2 who is assigned the task can resolve the task
+    resolveTask(taskId, resolveTask, USER2_AUTH_HEADERS);
+    Table table = TABLE_RESOURCE_TEST.getEntity(TABLE.getId(), null, USER_AUTH_HEADERS);
+    assertEquals("accepted", EntityUtil.getColumn(table, (C1)).getDescription());
+
+    taskThread = getTask(taskId, USER_AUTH_HEADERS);
+    assertEquals(taskId, taskThread.getTask().getId());
+    assertEquals("accepted", taskThread.getTask().getNewValue());
+    assertEquals(TaskStatus.Closed, taskThread.getTask().getStatus());
+    assertEquals(1, taskThread.getPostsCount());
+    assertEquals(1, taskThread.getPosts().size());
+    String diff = feedMessageFormatter.getPlaintextDiff("old", "accepted");
+    String expectedMessage = String.format("Resolved the Task with Description - %s", diff);
+    assertEquals(expectedMessage, taskThread.getPosts().get(0).getMessage());
+  }
+
+  @Test
+  void put_resolveTaskByTeamMember_description_200() throws IOException {
+    // Create a task from User to Team2
+    String about =
+        String.format("<#E::%s::%s::columns::%s::description>", Entity.TABLE, TABLE.getFullyQualifiedName(), C1);
+    Thread taskThread =
+        createTaskThread(
+            USER.getName(), about, TEAM2.getEntityReference(), "old", "new", RequestDescription, USER_AUTH_HEADERS);
+
+    assertNotNull(taskThread.getTask().getId());
+    int taskId = taskThread.getTask().getId();
+
+    ResolveTask resolveTask = new ResolveTask().withNewValue("accepted");
+
+    // User2 to who is part of Team 2 to which the task is assigned to can resolve the task
     resolveTask(taskId, resolveTask, USER2_AUTH_HEADERS);
     Table table = TABLE_RESOURCE_TEST.getEntity(TABLE.getId(), null, USER_AUTH_HEADERS);
     assertEquals("accepted", EntityUtil.getColumn(table, (C1)).getDescription());
@@ -570,7 +601,13 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         String.format("<#E::%s::%s::columns::%s::description>", Entity.TABLE, TABLE.getFullyQualifiedName(), C1);
     Thread threadTask =
         createTaskThread(
-            USER.getName(), about, USER2, "old description", "new description", RequestDescription, USER_AUTH_HEADERS);
+            USER.getName(),
+            about,
+            USER2.getEntityReference(),
+            "old description",
+            "new description",
+            RequestDescription,
+            USER_AUTH_HEADERS);
     assertNotNull(threadTask.getTask().getId());
     int taskId = threadTask.getTask().getId();
 
@@ -598,7 +635,9 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     String about = String.format("<#E::%s::%s::columns::%s::tags>", Entity.TABLE, TABLE.getFullyQualifiedName(), C1);
     String newValue = "[" + JsonUtils.pojoToJson(USER_ADDRESS_TAG_LABEL) + "]";
 
-    Thread taskThread = createTaskThread(TEST_USER_NAME, about, USER2, null, newValue, RequestTag, TEST_AUTH_HEADERS);
+    Thread taskThread =
+        createTaskThread(
+            TEST_USER_NAME, about, USER2.getEntityReference(), null, newValue, RequestTag, TEST_AUTH_HEADERS);
     int taskId = taskThread.getTask().getId();
 
     ResolveTask resolveTask = new ResolveTask().withNewValue(newValue);
@@ -1537,7 +1576,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   private Thread createTaskThread(
       String fromUser,
       String about,
-      User assignee,
+      EntityReference assignee,
       String oldValue,
       String newValue,
       TaskType taskType,
@@ -1546,7 +1585,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     CreateTaskDetails taskDetails =
         new CreateTaskDetails()
             .withOldValue(oldValue)
-            .withAssignees(List.of(assignee.getEntityReference()))
+            .withAssignees(List.of(assignee))
             .withType(taskType)
             .withSuggestion(newValue);
     CreateThread create =
