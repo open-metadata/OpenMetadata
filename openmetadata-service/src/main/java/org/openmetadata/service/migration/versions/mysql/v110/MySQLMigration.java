@@ -58,7 +58,12 @@ public class MySQLMigration implements MigrationStep {
   @Override
   public void runDataMigration() {
     // FQN Hashing Migrations
-    dataMigrationFQNHashing(handle, collectionDAO);
+    String envVariableValue = System.getenv("MIGRATION_LIMIT_PARAM");
+    if (envVariableValue != null) {
+      dataMigrationFQNHashing(handle, collectionDAO, Integer.parseInt(envVariableValue));
+    } else {
+      dataMigrationFQNHashing(handle, collectionDAO, 1000);
+    }
   }
 
   @Override

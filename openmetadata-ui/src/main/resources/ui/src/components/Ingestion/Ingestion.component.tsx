@@ -80,10 +80,10 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   const [ingestionData, setIngestionData] =
     useState<Array<IngestionPipeline>>(ingestionList);
-  const [servicePermission, setServicePermission] =
+  const [ingestionPipelinesPermission, setIngestionPipelinesPermission] =
     useState<IngestionServicePermission>();
 
-  const fetchServicePermission = async () => {
+  const fetchIngestionPipelinesPermission = async () => {
     try {
       const promises = ingestionList.map((item) =>
         getEntityPermissionByFqn(ResourceEntity.INGESTION_PIPELINE, item.name)
@@ -98,7 +98,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         };
       }, {});
 
-      setServicePermission(permissionData);
+      setIngestionPipelinesPermission(permissionData);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -154,8 +154,8 @@ const Ingestion: React.FC<IngestionProps> = ({
   }, [searchText, ingestionList]);
 
   useEffect(() => {
-    fetchServicePermission();
-  }, []);
+    fetchIngestionPipelinesPermission();
+  }, [ingestionList]);
 
   const getIngestionTab = () => {
     return (
@@ -207,6 +207,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           handleEnableDisableIngestion={handleEnableDisableIngestion}
           handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
           ingestionData={ingestionData}
+          ingestionPipelinesPermission={ingestionPipelinesPermission}
           isRequiredDetailsAvailable={isRequiredDetailsAvailable}
           paging={paging}
           permissions={permissions}
@@ -214,7 +215,6 @@ const Ingestion: React.FC<IngestionProps> = ({
           pipelineType={pipelineType}
           serviceCategory={serviceCategory}
           serviceName={serviceName}
-          servicePermission={servicePermission}
           triggerIngestion={triggerIngestion}
           onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
         />

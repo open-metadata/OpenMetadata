@@ -146,7 +146,11 @@
         "POLYGON",
         "TUPLE",
         "SPATIAL",
-        "TABLE"
+        "TABLE",
+        "NTEXT",
+        "IMAGE",
+        "IPV4",
+        "IPV6"
       ]
     },
     "constraint": {
