@@ -299,7 +299,14 @@ export const AuthProvider = ({
     const { isExpired, timeoutExpiry } = extractDetailsFromToken();
     const refreshToken = localState.getRefreshToken();
 
-    if (!isExpired && isNumber(timeoutExpiry) && refreshToken) {
+    // Basic & LDAP renewToken depends on RefreshToken hence adding a check here for the same
+    const shouldStartExpiry =
+      refreshToken ||
+      [AuthTypes.BASIC, AuthTypes.LDAP].indexOf(
+        authConfig?.provider as AuthTypes
+      ) === -1;
+
+    if (!isExpired && isNumber(timeoutExpiry) && shouldStartExpiry) {
       // Have 5m buffer before start trying for silent signIn
       // If token is about to expire then start silentSignIn
       // else just set timer to try for silentSignIn before token expires

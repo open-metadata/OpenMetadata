@@ -202,6 +202,7 @@ DB_USER='<OPENMETADATA__USER_NAME>'
 OM_DATABASE='<OPENMETADATA_DATABASE_NAME>'
 DB_PORT='<DB_PORT>'
 # ElasticSearch Environment Variables
+SEARCH_TYPE = 'opensearch'
 ELASTICSEARCH_SOCKET_TIMEOUT_SECS='60'
 ELASTICSEARCH_USER='<ELASTICSEARCH_USERNAME>'
 ELASTICSEARCH_CONNECTION_TIMEOUT_SECS='5'
@@ -229,6 +230,10 @@ We support
 - Amazon OpenSearch (ElasticSearch) engine version upto 7.10 or Amazon OpenSearch engine version upto 1.3
 - Amazon RDS (PostgreSQL) engine version between 12 and 14.6
 
+Note:-
+    When using AWS Services the SearchType Configuration for elastic search should be `opensearch`, for both cases ElasticSearch and OpenSearch,
+as you can see in the ElasticSearch configuration example.
+
 For Production Systems, we recommend Amazon RDS to be in Multiple Availibility Zones. For Amazon OpenSearch (or ElasticSearch) Service, we recommend Multiple Availibility Zones with minimum 3 Master Nodes.
 
 Once you have the RDS and OpenSearch Services Setup, you can update the environment variables below for OpenMetadata Docker Compose backed systems to connect with Database and ElasticSearch.
@@ -244,6 +249,7 @@ DB_USER='<DATABASE_USER_NAME>'
 OM_DATABASE='<DATABASE_NAME>'
 DB_PORT='<DATABASE_PORT>'
 # ElasticSearch Environment Variables
+SEARCH_TYPE = 'opensearch'
 ELASTICSEARCH_SOCKET_TIMEOUT_SECS='60'
 ELASTICSEARCH_USER='<ELASTICSEARCH_USERNAME>'
 ELASTICSEARCH_CONNECTION_TIMEOUT_SECS='5'

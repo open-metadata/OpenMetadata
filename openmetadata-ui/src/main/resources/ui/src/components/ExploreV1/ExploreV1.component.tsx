@@ -414,7 +414,11 @@ const ExploreV1: React.FC<ExploreProps> = ({
                       handleSummaryPanelDisplay={handleSummaryPanelDisplay}
                       isSummaryPanelVisible={showSummaryPanel}
                       selectedEntityId={entityDetails?.id || ''}
-                      totalValue={searchResults?.hits.total.value ?? 0}
+                      totalValue={
+                        tabCounts?.[searchIndex] ??
+                        searchResults?.hits.total.value ??
+                        0
+                      }
                       onPaginationChange={onChangePage}
                     />
                   ) : (
