@@ -132,18 +132,22 @@ export const DataAssetsHeader = ({
   );
   const [copyTooltip, setCopyTooltip] = useState<string>();
 
-  const excludeEntityService = [
-    EntityType.DATABASE,
-    EntityType.DATABASE_SCHEMA,
-    EntityType.DATABASE_SERVICE,
-    EntityType.DASHBOARD_SERVICE,
-    EntityType.MESSAGING_SERVICE,
-    EntityType.PIPELINE_SERVICE,
-    EntityType.MLMODEL_SERVICE,
-    EntityType.METADATA_SERVICE,
-    EntityType.STORAGE_SERVICE,
-    ...SERVICE_CATEGORIES,
-  ].includes(entityType);
+  const excludeEntityService = useMemo(
+    () =>
+      [
+        EntityType.DATABASE,
+        EntityType.DATABASE_SCHEMA,
+        EntityType.DATABASE_SERVICE,
+        EntityType.DASHBOARD_SERVICE,
+        EntityType.MESSAGING_SERVICE,
+        EntityType.PIPELINE_SERVICE,
+        EntityType.MLMODEL_SERVICE,
+        EntityType.METADATA_SERVICE,
+        EntityType.STORAGE_SERVICE,
+        ...SERVICE_CATEGORIES,
+      ].includes(entityType),
+    [entityType]
+  );
   const hasFollowers = 'followers' in dataAsset;
 
   const { entityName, tier, isFollowing, version, followers } = useMemo(
@@ -228,7 +232,7 @@ export const DataAssetsHeader = ({
   };
 
   useEffect(() => {
-    if (dataAsset.fullyQualifiedName && !isTourPage) {
+    if (dataAsset.fullyQualifiedName && !isTourPage && !excludeEntityService) {
       fetchActiveAnnouncement();
       fetchTaskCount();
     }
@@ -236,7 +240,7 @@ export const DataAssetsHeader = ({
       const asset = dataAsset as Container;
       fetchContainerParent(asset.parent?.fullyQualifiedName ?? '');
     }
-  }, [dataAsset]);
+  }, [dataAsset, excludeEntityService, isTourPage]);
 
   const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(
     () =>

@@ -32,7 +32,7 @@ export interface IngestionListTableProps {
   pipelineNameColWidth?: number;
   serviceCategory: ServiceCategory;
   serviceName: string;
-  servicePermission?: IngestionServicePermission;
+  ingestionPipelinesPermission?: IngestionServicePermission;
   deployIngestion: (id: string) => Promise<void>;
   handleDeleteSelection: (row: SelectedRowDetails) => void;
   handleEnableDisableIngestion: (id: string) => void;
