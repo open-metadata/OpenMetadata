@@ -1255,7 +1255,12 @@ public interface CollectionDAO {
         @Bind("relation") int relation);
 
     @Deprecated
-    @SqlQuery("SELECT count(DISTINCT fromFQN, toFQN) FROM field_relationship")
+    @ConnectionAwareSqlQuery(
+        value = "SELECT count(DISTINCT fromFQN, toFQN) FROM field_relationship",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT COUNT(*) FROM ( SELECT DISTINCT fromFQN, toFQN FROM field_relationship) AS subquery",
+        connectionType = POSTGRES)
     int listDistinctCount();
 
     @Deprecated
