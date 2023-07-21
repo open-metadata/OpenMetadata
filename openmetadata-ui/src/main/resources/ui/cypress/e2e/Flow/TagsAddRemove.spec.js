@@ -37,7 +37,7 @@ const checkTags = (tag, checkForParentEntity) => {
       .contains(tag);
   } else {
     cy.get(
-      '[data-testid="Classification-tags-0"]  [data-testid="tags-container"] [data-testid="entity-tags"] '
+      '[data-testid="classification-tags-0"]  [data-testid="tags-container"] [data-testid="entity-tags"] '
     )
       .scrollIntoView()
       .contains(tag);
@@ -60,7 +60,7 @@ const removeTags = (checkForParentEntity) => {
       .should('be.visible')
       .click();
   } else {
-    cy.get('[data-testid="Classification-tags-0"] [data-testid="edit-button"]')
+    cy.get('[data-testid="classification-tags-0"] [data-testid="edit-button"]')
       .scrollIntoView()
       .trigger('mouseover')
       .click();
@@ -110,13 +110,13 @@ describe('Check if tags addition and removal flow working properly from tables',
 
       if (entityDetails.entity === 'mlmodels') {
         cy.get(
-          `[data-testid="feature-card-${entityDetails.fieldName}"] [data-testid="Classification-tags-0"] [data-testid="add-tag"]`
+          `[data-testid="feature-card-${entityDetails.fieldName}"] [data-testid="classification-tags-0"] [data-testid="add-tag"]`
         )
           .should('be.visible')
           .click();
       } else {
         cy.get(
-          `.ant-table-tbody [data-testid="Classification-tags-0"] [data-testid="tags-container"] [data-testid="entity-tags"]`
+          `.ant-table-tbody [data-testid="classification-tags-0"] [data-testid="tags-container"] [data-testid="entity-tags"] [data-testid="add-tag"]`
         )
           .scrollIntoView()
           .should('be.visible')
