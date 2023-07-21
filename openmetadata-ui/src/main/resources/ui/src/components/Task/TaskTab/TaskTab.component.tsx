@@ -242,6 +242,8 @@ export const TaskTab = ({
       } as unknown as TaskDetails)
         .then(() => {
           showSuccessToast(t('server.task-closed-successfully'));
+          rest.onTaskFeedFetch?.();
+          rest.onUpdateTaskFilter?.('close');
         })
         .catch((err: AxiosError) => showErrorToast(err));
     } else {
