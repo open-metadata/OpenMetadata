@@ -157,7 +157,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
                       {searchResultCards}
                       <Pagination
                         hideOnSinglePage
-                        className="text-center"
+                        className="text-center m-b-sm"
                         current={isNumber(Number(page)) ? Number(page) : 1}
                         pageSize={
                           size && isNumber(Number(size))
