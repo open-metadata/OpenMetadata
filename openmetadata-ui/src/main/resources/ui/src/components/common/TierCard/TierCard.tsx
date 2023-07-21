@@ -22,7 +22,6 @@ import {
   Space,
   Typography,
 } from 'antd';
-import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import Loader from 'components/Loader/Loader';
 import { t } from 'i18next';
@@ -39,41 +38,40 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
   const [tierData, setTierData] = useState<Array<CardWithListItems>>([]);
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
 
-  const getTierData = () => {
+  const getTierData = async () => {
     setIsLoadingTierData(true);
-    getTags({
-      parent: 'Tier',
-    })
-      .then(({ data }) => {
-        if (data) {
-          const tierData: CardWithListItems[] =
-            data.map((tier: { name: string; description: string }) => ({
-              id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
-              title: tier.name,
-              description: tier.description.substring(
-                0,
-                tier.description.indexOf('\n\n')
-              ),
-              data: tier.description.substring(
-                tier.description.indexOf('\n\n') + 1
-              ),
-            })) ?? [];
-          setTierData(tierData);
-        } else {
-          setTierData([]);
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.entity-fetch-error', {
-            entity: t('label.tier-plural-lowercase'),
-          })
-        );
-      })
-      .finally(() => {
-        setIsLoadingTierData(false);
+    try {
+      const { data } = await getTags({
+        parent: 'Tier',
       });
+
+      if (data) {
+        const tierData: CardWithListItems[] =
+          data.map((tier: { name: string; description: string }) => ({
+            id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
+            title: tier.name,
+            description: tier.description.substring(
+              0,
+              tier.description.indexOf('\n\n')
+            ),
+            data: tier.description.substring(
+              tier.description.indexOf('\n\n') + 1
+            ),
+          })) ?? [];
+        setTierData(tierData);
+      } else {
+        setTierData([]);
+      }
+    } catch (err) {
+      showErrorToast(
+        err,
+        t('server.entity-fetch-error', {
+          entity: t('label.tier-plural-lowercase'),
+        })
+      );
+    } finally {
+      setIsLoadingTierData(false);
+    }
   };
 
   const handleTierSelection = ({ target: { value } }: RadioChangeEvent) => {
@@ -121,7 +119,7 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
                   data-testid="card-list"
                   header={
                     <Space direction="horizontal">
-                      <Radio value={card.id} />
+                      <Radio data-testid="radio-btn" value={card.id} />
                       <Space direction="vertical" size={0}>
                         <Typography.Paragraph className="m-b-0 text-color-inherit font-semibold">
                           {card.title}
@@ -144,7 +142,6 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
           {isLoadingTierData && <Loader />}
         </Card>
       }
-      data-testid="tier-card-container"
       overlayClassName="tier-card-container"
       placement="bottomRight"
       showArrow={false}
