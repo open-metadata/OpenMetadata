@@ -57,7 +57,7 @@ class Max(StaticMetric):
             return MaxFn(LenFn(column(self.col.name, self.col.type)))
         if (not is_quantifiable(self.col.type)) and (not is_date_time(self.col.type)):
             return None
-        return MaxFn(column(self.col.name))
+        return MaxFn(column(self.col.name, self.col.type))
 
     def df_fn(self, dfs=None):
         """pandas function"""

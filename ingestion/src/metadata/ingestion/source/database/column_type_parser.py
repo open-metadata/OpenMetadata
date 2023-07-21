@@ -228,6 +228,8 @@ class ColumnTypeParser:
         "LOWCARDINALITY": "LOWCARDINALITY",
         "DATETIME64": "DATETIME",
         "SimpleAggregateFunction()": "AGGREGATEFUNCTION",
+        "IPV4": "IPV4",
+        "IPV6": "IPV6",
         # Databricks
         "VOID": "NULL",
         # mysql
@@ -293,7 +295,7 @@ class ColumnTypeParser:
         for func in [
             ColumnTypeParser.get_column_type_mapping,
             ColumnTypeParser.get_source_type_mapping,
-            ColumnTypeParser.get_source_type_containes_brackets,
+            ColumnTypeParser.get_source_type_contains_brackets,
         ]:
             column_type_result = func(column_type)
             if column_type_result:
@@ -309,7 +311,7 @@ class ColumnTypeParser:
         return ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get(str(column_type), None)
 
     @staticmethod
-    def get_source_type_containes_brackets(column_type: Any) -> str:
+    def get_source_type_contains_brackets(column_type: Any) -> str:
         return ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get(
             str(column_type).split("(", maxsplit=1)[0].split("<")[0].upper(), None
         )
