@@ -95,7 +95,7 @@ const TagsV1 = ({
     () => (
       <div className="d-flex w-full">
         {tagColorBar}
-        <span className="d-flex items-center p-x-xs w-full">
+        <div className="d-flex items-center p-x-xs w-full">
           <span className="m-r-xss">{startIcon}</span>
           <Typography.Paragraph
             ellipsis
@@ -103,7 +103,7 @@ const TagsV1 = ({
             data-testid={`tag-${tag.tagFQN}`}>
             {getTagDisplay(tagName)}
           </Typography.Paragraph>
-        </span>
+        </div>
       </div>
     ),
     [startIcon, tagName, tag.tagFQN, tagColorBar]
