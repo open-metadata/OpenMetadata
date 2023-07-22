@@ -88,6 +88,7 @@ def _(element, compiler, **kw):
     proc = compiler.process(element.clauses, **kw).replace("?", "CAST(? AS INT)")
     return f"SUM(CAST({proc} AS BIGINT))"
 
+
 @compiles(SumFn, Dialects.ClickHouse)
 def _(element, compiler, **kw):
     """Handle case where column type is INTEGER but SUM returns a NUMBER"""
