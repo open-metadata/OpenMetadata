@@ -254,9 +254,6 @@ class SqlColumnHandlerMixin:
                     precision = ColumnTypeParser.check_col_precision(
                         col_type, column["type"]
                     )
-                    # Clickhouse nullable if true, data type as Null
-                    if column.get("nullable"):
-                        col_type = DataType.NULL.name
                     if col_type is None:
                         col_type = DataType.UNKNOWN.name
                         data_type_display = col_type.lower()
