@@ -541,7 +541,7 @@ export const addNewTagToEntity = (entityObj, term) => {
   );
   cy.wait(500);
   cy.get(
-    '[data-testid="Classification-tags-0"] [data-testid="entity-tags"] [data-testid="add-tag"]'
+    '[data-testid="classification-tags-0"] [data-testid="entity-tags"] [data-testid="add-tag"]'
   )
     .eq(0)
     .should('be.visible')
@@ -559,7 +559,7 @@ export const addNewTagToEntity = (entityObj, term) => {
     .scrollIntoView()
     .should('be.visible')
     .click();
-  cy.get('[data-testid="Classification-tags-0"] [data-testid="tags-container"]')
+  cy.get('[data-testid="classification-tags-0"] [data-testid="tags-container"]')
     .scrollIntoView()
     .contains(name)
     .should('exist');
