@@ -49,7 +49,7 @@ describe('Task flow should work', () => {
 
     cy.clickOutside();
 
-    cy.get('[data-testid="inline-save-btn"]').should('be.visible').click();
+    cy.get('[data-testid="inline-save-btn"]').click();
 
     verifyResponseStatusCode('@editAssignee', 200);
 
@@ -67,7 +67,9 @@ describe('Task flow should work', () => {
         expect(matches).to.not.be.null;
       });
 
-    cy.get('[data-testid="owner-link"]').should('be.visible').contains('admin');
+    cy.get('[data-testid="owner-link"]')
+      .should('be.visible')
+      .contains(assignee);
 
     cy.get(`[data-testid="assignee-${assignee}"]`).should('be.visible');
   };
@@ -100,7 +102,7 @@ describe('Task flow should work', () => {
       .clear()
       .type('Updated description');
 
-    cy.get('button[type="submit"]').should('be.visible').click();
+    cy.get('button[type="submit"]').click();
     verifyResponseStatusCode('@createTask', 201);
     toastNotification('Task created successfully.');
 
@@ -128,7 +130,9 @@ describe('Task flow should work', () => {
     interceptURL('PUT', '/api/v1/feed/tasks/*/resolve', 'taskResolve');
 
     visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+
     cy.get('[data-testid="request-description"]').should('be.visible').click();
+
     verifyResponseStatusCode('@getEntityDetails', 200);
 
     createDescriptionTask(value);
