@@ -163,7 +163,7 @@ services:
     networks:
       - app_net
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8586/healthcheck" ]
+      test: [ "CMD", "wget", "-q", "--spider",  "http://localhost:8586/healthcheck" ]
 
 networks:
   app_net:
