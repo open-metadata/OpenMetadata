@@ -25,10 +25,20 @@ import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
 describe('Task flow should work', () => {
   beforeEach(() => {
     cy.login();
+    interceptURL('GET', '/api/v1/permissions/*/name/*', 'entityPermission');
+    interceptURL('GET', '/api/v1/feed/count?entityLink=*', 'entityFeed');
+    interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
+    interceptURL('PUT', '/api/v1/feed/tasks/*/resolve', 'taskResolve');
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?q=*%20AND%20disabled%3Afalse&index=tag_search_index*`,
+      'suggestTag'
+    );
   });
 
   const assignee = 'admin';
   const secondAssignee = 'aaron_johnson0';
+  const tag = 'Personal';
 
   const editAssignee = () => {
     interceptURL('PATCH', 'api/v1/feed/*', 'editAssignee');
@@ -55,12 +65,11 @@ describe('Task flow should work', () => {
     cy.get(`[data-testid="assignee-${assignee}"]`).should('be.visible');
   };
 
-  const verifyTaskDetails = () => {
+  const verifyTaskDetails = (regexPattern) => {
     cy.get('#task-panel').should('be.visible');
     cy.get('[data-testid="task-title"]')
       .invoke('text')
       .then((textContent) => {
-        const regexPattern = /#(\d+) UpdateDescriptionfordescription/;
         const matches = textContent.match(regexPattern);
 
         expect(matches).to.not.be.null;
@@ -74,7 +83,6 @@ describe('Task flow should work', () => {
   };
 
   const createDescriptionTask = (value) => {
-    // create description task
     interceptURL('POST', 'api/v1/feed', 'createTask');
 
     cy.get('#title')
@@ -105,7 +113,7 @@ describe('Task flow should work', () => {
     toastNotification('Task created successfully.');
 
     // verify the task details
-    verifyTaskDetails();
+    verifyTaskDetails(/#(\d+) UpdateDescriptionfordescription/);
 
     // edit task assignees
     editAssignee();
@@ -118,14 +126,66 @@ describe('Task flow should work', () => {
     toastNotification('Task resolved successfully');
 
     verifyResponseStatusCode('@entityFeed', 200);
+
+    cy.get('.toastui-editor-contents > p').contains(
+      'Resolved the Task with Description - Updated description'
+    );
   };
 
-  const createTask = (value) => {
-    interceptURL('GET', '/api/v1/permissions/*/name/*', 'entityPermission');
-    interceptURL('GET', '/api/v1/feed/count?entityLink=*', 'entityFeed');
+  const createTagTask = (value) => {
+    interceptURL('POST', 'api/v1/feed', 'createTask');
+
+    cy.get('#title')
+      .should('be.visible')
+      .should('have.value', `Request tags for table ${value.term}`);
+
+    cy.get('[data-testid="select-assignee"] > .ant-select-selector')
+      .should('be.visible')
+      .type(assignee);
+    // select value from dropdown
+    verifyResponseStatusCode('@suggestApi', 200);
+
+    cy.get(`[data-testid="assignee-option-${assignee}"]`)
+      .should('be.visible')
+      .trigger('mouseover')
+      .trigger('click');
+
+    cy.clickOutside();
+
+    cy.get('[data-testid="tag-selector"]').click().type(tag);
+
+    verifyResponseStatusCode('@suggestTag', 200);
+    cy.get('[data-testid="tag-PersonalData.Personal"]').click();
+
+    cy.get('[data-testid="tags-label"]').click();
+
+    cy.get('button[type="submit"]').click();
+    verifyResponseStatusCode('@createTask', 201);
+    toastNotification('Task created successfully.');
+
+    // verify the task details
+    verifyTaskDetails(/#(\d+) RequestTagfortags/);
+
+    // edit task assignees
+    editAssignee();
+
+    // Accept the description suggestion which is created
+    cy.get('.ant-btn-compact-first-item').contains('Accept Suggestion').click();
+
+    verifyResponseStatusCode('@taskResolve', 200);
+
+    toastNotification('Task resolved successfully');
+
+    verifyResponseStatusCode('@entityFeed', 200);
+
+    cy.get('.toastui-editor-contents > p').contains(
+      'Resolved the Task with Tag(s) - PersonalData.Personal'
+    );
+  };
+
+  it('Task flow for table description', () => {
+    const value = SEARCH_ENTITY_TABLE.table_1;
     interceptURL('GET', `/api/v1/${value.entity}/name/*`, 'getEntityDetails');
-    interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
-    interceptURL('PUT', '/api/v1/feed/tasks/*/resolve', 'taskResolve');
 
     visitEntityDetailsPage(value.term, value.serviceName, value.entity);
 
@@ -133,10 +193,21 @@ describe('Task flow should work', () => {
 
     verifyResponseStatusCode('@getEntityDetails', 200);
 
+    // create description task
     createDescriptionTask(value);
-  };
+  });
 
-  it('Task flow for table description', () => {
-    createTask(SEARCH_ENTITY_TABLE.table_1);
+  it('Task flow for table tags', () => {
+    const value = SEARCH_ENTITY_TABLE.table_1;
+    interceptURL('GET', `/api/v1/${value.entity}/name/*`, 'getEntityDetails');
+
+    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+
+    cy.get('[data-testid="request-entity-tags"]').click();
+
+    verifyResponseStatusCode('@getEntityDetails', 200);
+
+    // create tag task
+    createTagTask(value);
   });
 });
