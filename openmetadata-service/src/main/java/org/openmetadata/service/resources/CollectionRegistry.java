@@ -40,6 +40,8 @@ import org.openmetadata.schema.type.CollectionDescriptor;
 import org.openmetadata.schema.type.CollectionInfo;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityDAO;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.reflections.Reflections;
@@ -158,16 +160,18 @@ public final class CollectionRegistry {
   /** Register resources from CollectionRegistry */
   public void registerResources(
       Jdbi jdbi,
+      JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider,
       Environment environment,
       OpenMetadataApplicationConfig config,
       Authorizer authorizer,
       AuthenticatorHandler authenticatorHandler) {
     // Build list of ResourceDescriptors
+    EntityDAO entityDAO = (EntityDAO) jdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass(EntityDAO.class);
+    CollectionDAO daoObject = (CollectionDAO) jdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass(CollectionDAO.class);
     for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
       CollectionDetails details = e.getValue();
       String resourceClass = details.resourceClass;
       try {
-        CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
         Objects.requireNonNull(daoObject, "CollectionDAO must not be null");
         Object resource = createResource(daoObject, resourceClass, config, authorizer, authenticatorHandler);
         details.setResource(resource);

@@ -21,36 +21,16 @@ class NonHttpGetRequestJdbiUnitOfWorkEventListener implements RequestEventListen
 
     LOG.debug("Handling {} Request Event {} {}", httpMethod, type, Thread.currentThread().getId());
     boolean isTransactional = isTransactional(event);
-
-    if (type == RequestEvent.Type.RESOURCE_METHOD_START) {
-      initialise(isTransactional);
-
-    } else if (type == RequestEvent.Type.RESP_FILTERS_START) {
-      commit(isTransactional);
-
-    } else if (type == RequestEvent.Type.ON_EXCEPTION) {
-      rollback(isTransactional);
-
-    } else if (type == RequestEvent.Type.FINISHED) {
-      transactionAspect.terminateHandle();
-    }
-  }
-
-  private void commit(boolean isTransactional) {
     if (isTransactional) {
-      transactionAspect.commit();
-    }
-  }
-
-  private void rollback(boolean isTransactional) {
-    if (isTransactional) {
-      transactionAspect.rollback();
-    }
-  }
-
-  private void initialise(boolean isTransactional) {
-    if (isTransactional) {
-      transactionAspect.begin();
+      if (type == RequestEvent.Type.RESOURCE_METHOD_START) {
+        transactionAspect.begin();
+      } else if (type == RequestEvent.Type.RESP_FILTERS_START) {
+        transactionAspect.commit();
+      } else if (type == RequestEvent.Type.ON_EXCEPTION) {
+        transactionAspect.rollback();
+      } else if (type == RequestEvent.Type.FINISHED) {
+        transactionAspect.terminateHandle();
+      }
     }
   }
 

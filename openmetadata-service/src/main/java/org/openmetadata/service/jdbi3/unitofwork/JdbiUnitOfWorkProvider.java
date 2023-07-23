@@ -2,8 +2,10 @@ package org.openmetadata.service.jdbi3.unitofwork;
 
 import com.google.common.reflect.Reflection;
 import java.lang.reflect.Method;
+import java.util.*;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.CreateSqlObject;
 import org.jdbi.v3.sqlobject.statement.SqlBatch;
 import org.jdbi.v3.sqlobject.statement.SqlCall;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
@@ -57,6 +59,8 @@ public class JdbiUnitOfWorkProvider {
         atLeastOneJdbiMethod = atLeastOneJdbiMethod || method.getAnnotation(SqlCall.class) != null;
         atLeastOneJdbiMethod = atLeastOneJdbiMethod || method.getAnnotation(ConnectionAwareSqlQuery.class) != null;
         atLeastOneJdbiMethod = atLeastOneJdbiMethod || method.getAnnotation(ConnectionAwareSqlUpdate.class) != null;
+        atLeastOneJdbiMethod = atLeastOneJdbiMethod || method.getAnnotation(CreateSqlObject.class) != null;
+        if (atLeastOneJdbiMethod) break;
       }
     }
     if (!atLeastOneJdbiMethod) {

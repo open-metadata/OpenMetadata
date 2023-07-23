@@ -141,8 +141,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
-    JdbiUnitOfWorkProvider provider = JdbiUnitOfWorkProvider.withLinked(jdbi);
-    environment.jersey().register(new JdbiUnitOfWorkApplicationEventListener(provider, new HashSet<>()));
+    JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider = JdbiUnitOfWorkProvider.withDefault(jdbi);
+    environment.jersey().register(new JdbiUnitOfWorkApplicationEventListener(jdbiUnitOfWorkProvider, new HashSet<>()));
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
@@ -192,7 +192,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // start event hub before registering publishers
     EventPubSub.start();
 
-    registerResources(catalogConfig, environment, jdbi);
+    registerResources(catalogConfig, environment, jdbi, jdbiUnitOfWorkProvider);
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment, jdbi);
@@ -436,11 +436,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  private void registerResources(OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi) {
+  private void registerResources(
+      OpenMetadataApplicationConfig config,
+      Environment environment,
+      Jdbi jdbi,
+      JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider) {
     List<String> extensionResources =
         config.getExtensionConfiguration() != null ? config.getExtensionConfiguration().getResourcePackage() : null;
     CollectionRegistry.initialize(extensionResources);
-    CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer, authenticatorHandler);
+    CollectionRegistry.getInstance()
+        .registerResources(jdbi, jdbiUnitOfWorkProvider, environment, config, authorizer, authenticatorHandler);
     environment.jersey().register(new JsonPatchProvider());
     OMErrorPageHandler eph = new OMErrorPageHandler(config.getWebConfiguration());
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");

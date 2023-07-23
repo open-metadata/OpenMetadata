@@ -20,7 +20,6 @@
     <expiring.map.version>0.5.10</expiring.map.version>
     <java.saml>2.9.0</java.saml>
     <quartz.version>2.3.2</quartz.version>
-    <org.reflections.version>0.10.2</org.reflections.version>
   </properties>
 
   <dependencyManagement>
@@ -76,6 +75,11 @@
     <dependency>
       <groupId>io.swagger.core.v3</groupId>
       <artifactId>swagger-annotations</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>ru.vyarus.guicey</groupId>
+      <artifactId>guicey-jdbi3</artifactId>
+      <version>5.9.1</version>
     </dependency>
     <dependency>
       <groupId>com.smoketurner</groupId>
@@ -478,6 +482,12 @@
       <groupId>com.fasterxml.woodstox</groupId>
       <artifactId>woodstox-core</artifactId>
       <version>${woodstox.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>32.0.1-jre</version>
+      <scope>compile</scope>
     </dependency>
   </dependencies>
 
