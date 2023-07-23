@@ -31,6 +31,7 @@ export const MYDATA_SUMMARY_OPTIONS = {
   testSuite: 'test-suite',
   containers: 'containers',
   glossaryTerms: 'glossary-terms',
+  tags: 'tags',
 };
 
 export const SEARCH_INDEX = {
@@ -132,6 +133,7 @@ export const SEARCH_ENTITY_MLMODEL = {
     term: 'eta_predictions',
     entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
     serviceName: 'mlflow_svc',
+    displayName: 'ETA Predictions',
   },
 };
 
@@ -240,8 +242,8 @@ export const NEW_GLOSSARY = {
   tag: 'PII.None',
 };
 export const NEW_GLOSSARY_1 = {
-  name: 'Product Glossary',
-  description: 'This is the Product glossary',
+  name: 'Product%Glossary',
+  description: 'This is the Product glossary with percentage',
   reviewer: 'Brandy Miller',
   tag: 'PII.None',
 };
@@ -273,16 +275,16 @@ export const GLOSSARY_TERM_WITH_DETAILS = {
 
 export const NEW_GLOSSARY_1_TERMS = {
   term_1: {
-    name: 'Features',
+    name: 'Features%Term',
     description: 'This is the Features',
     synonyms: 'data,collect,time',
-    fullyQualifiedName: 'Product Glossary.Features',
+    fullyQualifiedName: 'Product%Glossary.Features%Term',
   },
   term_2: {
     name: 'Uses',
     description: 'This is the Uses',
     synonyms: 'home,business,adventure',
-    fullyQualifiedName: 'Product Glossary.Uses',
+    fullyQualifiedName: 'Product%Glossary.Uses',
   },
 };
 

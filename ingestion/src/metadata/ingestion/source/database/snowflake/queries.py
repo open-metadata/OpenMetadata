@@ -55,6 +55,7 @@ select TABLE_NAME from information_schema.tables
 where TABLE_SCHEMA = '{}' AND TABLE_TYPE = 'EXTERNAL TABLE'
 """
 
+
 SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES = """
 select TABLE_NAME from information_schema.tables 
 where TABLE_SCHEMA = '{}' 

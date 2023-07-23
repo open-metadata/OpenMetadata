@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
 import { useAdvanceSearch } from 'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { findActiveSearchIndex } from 'components/Explore/Explore.utils';
 
@@ -26,7 +25,7 @@ import { withAdvanceSearch } from 'components/router/withAdvanceSearch';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { mockSearchData } from 'constants/mockTourData.constants';
 import { SORT_ORDER } from 'enums/common.enum';
-import { get, isEmpty, isNil, isString, isUndefined } from 'lodash';
+import { get, isEmpty, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
   FunctionComponent,
@@ -37,10 +36,7 @@ import React, {
 } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchQuery } from 'rest/searchAPI';
-import {
-  getCombinedQueryFilterObject,
-  getUpdatedAggregateFieldValue,
-} from 'utils/ExplorePage/ExplorePageUtils';
+import { getCombinedQueryFilterObject } from 'utils/ExplorePage/ExplorePageUtils';
 import AppState from '../../AppState';
 import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
@@ -66,12 +62,6 @@ const ExplorePageV1: FunctionComponent = () => {
 
   const [searchResults, setSearchResults] =
     useState<SearchResponse<ExploreSearchIndex>>();
-
-  const [withoutFilterAggregations, setWithoutFilterAggregations] =
-    useState<Aggregations>();
-
-  const [withFilterAggregations, setWithFilterAggregations] =
-    useState<Aggregations>();
 
   const [updatedAggregations, setUpdatedAggregations] =
     useState<Aggregations>();
@@ -234,26 +224,6 @@ const ExplorePageV1: FunctionComponent = () => {
     return showDeletedParam === 'true';
   }, [parsedSearch.showDeleted]);
 
-  // Function to fetch aggregations without any filters
-  const fetchFilterAggregationsWithoutFilters = async () => {
-    try {
-      const res = await searchQuery({
-        searchIndex,
-        pageNumber: 0,
-        pageSize: 0,
-        includeDeleted: showDeleted,
-      });
-      setUpdatedAggregations(res.aggregations);
-      setWithoutFilterAggregations(res.aggregations);
-
-      return res.aggregations;
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-
-      return undefined;
-    }
-  };
-
   const getAdvancedSearchQuickFilters = useCallback(() => {
     if (!isString(parsedSearch.quickFilter)) {
       setAdvancedSearchQuickFilters(undefined);
@@ -272,10 +242,6 @@ const ExplorePageV1: FunctionComponent = () => {
       }
     }
   }, [parsedSearch]);
-
-  useEffect(() => {
-    fetchFilterAggregationsWithoutFilters();
-  }, [searchIndex]);
 
   useEffect(() => {
     const updatedQuickFilters = getAdvancedSearchQuickFilters();
@@ -306,7 +272,7 @@ const ExplorePageV1: FunctionComponent = () => {
         .then((res) => res)
         .then((res) => {
           setSearchResults(res);
-          setWithFilterAggregations(res.aggregations);
+          setUpdatedAggregations(res.aggregations);
         }),
       Promise.all(
         [
@@ -383,34 +349,6 @@ const ExplorePageV1: FunctionComponent = () => {
   useEffect(() => {
     AppState.updateExplorePageTab(tab);
   }, [tab]);
-
-  useEffect(() => {
-    try {
-      const newAggregates: Aggregations = {};
-
-      if (
-        !isEmpty(withFilterAggregations) &&
-        !isEmpty(withoutFilterAggregations) &&
-        !isUndefined(withoutFilterAggregations) &&
-        !isUndefined(withFilterAggregations)
-      ) {
-        Object.keys(withoutFilterAggregations).forEach((filterKey) => {
-          const aggregateFieldValue = getUpdatedAggregateFieldValue(
-            withFilterAggregations,
-            withoutFilterAggregations,
-            filterKey
-          );
-
-          if (aggregateFieldValue) {
-            newAggregates[filterKey] = aggregateFieldValue;
-          }
-        });
-        setUpdatedAggregations(newAggregates);
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }, [withoutFilterAggregations, withFilterAggregations]);
 
   return (
     <ExploreV1

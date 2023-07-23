@@ -18,21 +18,58 @@ import { Container } from 'generated/entity/data/container';
 import { Dashboard } from 'generated/entity/data/dashboard';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Database } from 'generated/entity/data/database';
+import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
 import { Table } from 'generated/entity/data/table';
 import { Topic } from 'generated/entity/data/topic';
+import { DashboardService } from 'generated/entity/services/dashboardService';
+import { DatabaseService } from 'generated/entity/services/databaseService';
+import { MessagingService } from 'generated/entity/services/messagingService';
+import { MetadataService } from 'generated/entity/services/metadataService';
+import { MlmodelService } from 'generated/entity/services/mlmodelService';
+import { PipelineService } from 'generated/entity/services/pipelineService';
+import { StorageService } from 'generated/entity/services/storageService';
 import { EntityReference } from 'generated/entity/type';
+import { ServicesType } from 'interface/service.interface';
 import { ReactNode } from 'react';
 
-export type DataAssetType =
+export type DataAssetsType =
   | Table
   | Topic
   | Dashboard
   | Pipeline
   | Mlmodel
   | Container
-  | DashboardDataModel;
+  | Database
+  | DashboardDataModel
+  | DatabaseSchema
+  | DatabaseService
+  | MessagingService
+  | PipelineService
+  | DashboardService
+  | MlmodelService
+  | MetadataService
+  | StorageService;
+
+export type DataAssetsWithoutServiceField =
+  | DatabaseService
+  | MessagingService
+  | PipelineService
+  | DashboardService
+  | MlmodelService
+  | MetadataService
+  | StorageService;
+
+export type DataAssetsWithFollowersField = Exclude<
+  DataAssetsType,
+  DataAssetsWithoutServiceField | Database | DatabaseSchema
+>;
+
+export type DataAssetsWithServiceField = Exclude<
+  DataAssetsType,
+  DataAssetsWithoutServiceField
+>;
 
 export type DataAssetsHeaderProps = {
   permissions: OperationPermission;
@@ -53,6 +90,14 @@ export type DataAssetsHeaderProps = {
   | DataAssetContainer
   | DataAssetDashboardDataModel
   | DataAssetDatabase
+  | DataAssetDatabaseSchema
+  | DataAssetDatabaseService
+  | DataAssetMessagingService
+  | DataAssetPipelineService
+  | DataAssetDashboardService
+  | DataAssetMlModelService
+  | DataAssetMetadataService
+  | DataAssetStorageService
 );
 
 export interface DataAssetTable {
@@ -92,6 +137,38 @@ export interface DataAssetDashboardDataModel {
 export interface DataAssetDatabase {
   dataAsset: Database;
   entityType: EntityType.DATABASE;
+}
+export interface DataAssetDatabaseSchema {
+  dataAsset: DatabaseSchema;
+  entityType: EntityType.DATABASE_SCHEMA;
+}
+export interface DataAssetDatabaseService {
+  dataAsset: ServicesType;
+  entityType: EntityType.DATABASE_SERVICE;
+}
+export interface DataAssetMessagingService {
+  dataAsset: ServicesType;
+  entityType: EntityType.MESSAGING_SERVICE;
+}
+export interface DataAssetPipelineService {
+  dataAsset: ServicesType;
+  entityType: EntityType.PIPELINE_SERVICE;
+}
+export interface DataAssetDashboardService {
+  dataAsset: ServicesType;
+  entityType: EntityType.DASHBOARD_SERVICE;
+}
+export interface DataAssetMlModelService {
+  dataAsset: ServicesType;
+  entityType: EntityType.MLMODEL_SERVICE;
+}
+export interface DataAssetMetadataService {
+  dataAsset: ServicesType;
+  entityType: EntityType.METADATA_SERVICE;
+}
+export interface DataAssetStorageService {
+  dataAsset: ServicesType;
+  entityType: EntityType.STORAGE_SERVICE;
 }
 
 export interface DataAssetHeaderInfo {

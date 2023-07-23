@@ -631,7 +631,7 @@ describe('Glossary page should work properly', () => {
     updateDescription('Updated description', false);
   });
 
-  it.skip('Assets Tab should work properly', () => {
+  it('Assets Tab should work properly', () => {
     selectActiveGlossary(NEW_GLOSSARY.name);
     const glossary = NEW_GLOSSARY.name;
     const term1 = NEW_GLOSSARY_TERMS.term_1.name;
@@ -658,126 +658,79 @@ describe('Glossary page should work properly', () => {
     );
     visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
 
-    // Add tag to breadcrumb
+    // Add glossary tag to entity for mutually exclusive
     cy.get(
-      '[data-testid="glossary-tags-0"] [data-testid="tag-container"] [data-testid="add-tag"]'
-    )
-      .eq(0)
-      .should('be.visible')
-      .click();
-    cy.get('[data-testid="tag-selector"]')
-      .should('be.visible')
-      .click()
-      .type(`${glossary}.${term1}`);
-    cy.get('.ant-select-item-option-content')
-      .contains(term1)
-      .should('be.visible')
-      .click();
-    cy.get(
-      '[data-testid="tags-wrapper"] [data-testid="tag-container"]'
-    ).contains(term1);
-
-    cy.get('[data-testid="tag-selector"]')
-      .should('be.visible')
-      .click()
-      .type(`${glossary}.${term2}`);
-    cy.get('.ant-select-item-option-content')
-      .contains(term2)
-      .should('be.visible')
-      .click();
-    cy.get(
-      '[data-testid="tags-wrapper"] [data-testid="tag-container"]'
-    ).contains(term2);
+      '[data-testid="entity-right-panel"] [data-testid="glossary-container"] > [data-testid="entity-tags"]'
+    ).click();
+    // Select 1st term
+    cy.get('[data-testid="tag-selector"]').click().type(term1);
+    cy.get(`[data-testid="tag-${glossary}.${term1}"]`).click();
+    cy.get('[data-testid="tag-selector"]').should('contain', term1);
+    // Select 2nd term
+    cy.get('[data-testid="tag-selector"]').click().type(term2);
+    cy.get(`[data-testid="tag-${glossary}.${term2}"]`).click();
+    cy.get('[data-testid="tag-selector"]').should('contain', term2);
 
     interceptURL('GET', '/api/v1/feed/count*', 'countTag');
     interceptURL('GET', '/api/v1/tags', 'tags');
     interceptURL('PATCH', '/api/v1/tables/*', 'saveTag');
 
-    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
+    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView();
+    cy.get('[data-testid="saveAssociatedTag"]').click();
     verifyResponseStatusCode('@saveTag', 400);
     toastNotification(
       `Tag labels ${glossary}.${term2} and ${glossary}.${term1} are mutually exclusive and can't be assigned together`
     );
 
     // Add non mutually exclusive tags
-    cy.get('[data-testid="entity-tags"] [data-testid="add-tag"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-
-    cy.get('[data-testid="tag-selector"]')
-      .should('be.visible')
-      .click()
-      .type(`${glossary1}.${term3}`);
-    cy.get('.ant-select-item-option-content')
-      .contains(term3)
-      .should('be.visible')
-      .click();
     cy.get(
-      '[data-testid="tags-wrapper"] [data-testid="tag-container"]'
-    ).contains(term3);
+      '[data-testid="entity-right-panel"] [data-testid="glossary-container"] > [data-testid="entity-tags"]'
+    ).click();
 
-    cy.get('[data-testid="tag-selector"]')
-      .should('be.visible')
-      .click()
-      .type(`${glossary1}.${term4}`);
-    cy.get('.ant-select-item-option-content')
-      .contains(term4)
-      .should('be.visible')
-      .click();
-    cy.get(
-      '[data-testid="tags-wrapper"] [data-testid="tag-container"]'
-    ).contains(term4);
+    // Select 1st term
+    cy.get('[data-testid="tag-selector"]').click().type(term3);
 
+    cy.get(`[data-testid="tag-${glossary1}.${term3}"]`).click();
+    cy.get('[data-testid="tag-selector"]').should('contain', term3);
+    // Select 2nd term
+    cy.get('[data-testid="tag-selector"]').click().type(term4);
+    cy.get(`[data-testid="tag-${glossary1}.${term4}"]`).click();
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@saveTag', 200);
     verifyResponseStatusCode('@countTag', 200);
-    cy.get('[data-testid="entity-tags"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .contains(term3);
-
-    // Add tag to schema table
     cy.get(
-      `[data-testid="glossary-tags-0"] [data-testid="tags-wrapper"]
-      [data-testid="tag-container"] [data-testid="tags"]`
+      '[data-testid="entity-right-panel"] [data-testid="glossary-container"]'
     )
       .scrollIntoView()
-      .should('be.visible')
-      .click();
+      .should('contain', term3)
+      .should('contain', term4);
 
-    cy.get('[data-testid="tag-selector"]')
-      .should('be.visible')
-      .click()
-      .type(`${glossary1}.${term3}`);
-    cy.get('.ant-select-item-option-content')
-      .contains(term3)
-      .should('be.visible')
-      .click();
+    // Add tag to schema table
+    const firstColumn =
+      '[data-testid="Glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] > [data-testid="entity-tags"]';
+    cy.get(firstColumn).scrollIntoView();
+    cy.get(firstColumn).click();
+
+    cy.get('[data-testid="tag-selector"]').click().type(term3);
+    cy.get(
+      `.ant-select-dropdown [data-testid="tag-${glossary1}.${term3}"]`
+    ).click();
 
     cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(
       term3
     );
-    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@countTag', 200);
-    cy.get(`[data-testid="tag-${glossary1}.${term3}"]`)
+    cy.get(
+      '[data-testid="Glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"]'
+    )
       .scrollIntoView()
-      .should('be.visible')
-      .contains(term3);
+      .should('contain', term3);
 
-    cy.get('[data-testid="governance"]')
-      .should('exist')
-      .and('be.visible')
-      .click();
-    cy.get('[data-testid="appbar-item-glossary"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="governance"]').click();
+    cy.get('[data-testid="appbar-item-glossary"]').click();
 
-    cy.get('.ant-menu-item')
-      .contains(NEW_GLOSSARY_1.name)
-      .should('be.visible')
-      .click();
+    cy.get('.ant-menu-item').contains(NEW_GLOSSARY_1.name).click();
 
     goToAssetsTab(
       NEW_GLOSSARY_1_TERMS.term_1.name,
@@ -790,7 +743,7 @@ describe('Glossary page should work properly', () => {
       .should('be.visible');
   });
 
-  it.skip('Remove Glossary term from entity should work properly', () => {
+  it('Remove Glossary term from entity should work properly', () => {
     const glossaryName = NEW_GLOSSARY_1.name;
     const { name, fullyQualifiedName } = NEW_GLOSSARY_1_TERMS.term_1;
     const entity = SEARCH_ENTITY_TABLE.table_3;
@@ -806,16 +759,13 @@ describe('Glossary page should work properly', () => {
 
     cy.get('[data-testid="entity-header-display-name"]')
       .contains(entity.term)
-      .should('be.visible')
       .click();
     verifyResponseStatusCode('@entityDetails', 200);
-    // redirect to entity detail page
-    cy.get('[data-testid="entity-tags"]')
-      .find('[data-testid="edit-button"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-    // Remove all added tags from breadcrumb
+
+    // Remove all added tags
+    cy.get(
+      '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="edit-button"]'
+    ).click();
     cy.get('[data-testid="remove-tags"]')
       .should('be.visible')
       .click({ multiple: true });
@@ -824,39 +774,33 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@removeTags', 200);
 
-    cy.get('[data-testid="entity-tags"]')
-      .should('not.contain', name)
-      .and('not.contain', 'Personal');
     // Remove the added column tag from entity
     interceptURL('PATCH', '/api/v1/tables/*', 'removeSchemaTags');
 
-    cy.get('[data-testid="glossary-tags-0"] [data-testid="edit-button"]')
+    cy.get(
+      '[data-testid="Glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"]'
+    )
       .scrollIntoView()
       .trigger('mouseover')
+      .find('[data-testid="edit-button"]')
       .click();
 
     cy.get(
       `[data-testid="selected-tag-${glossaryName}.${name}"] [data-testid="remove-tags"`
-    )
-      .should('be.visible')
-      .click();
+    ).click();
 
-    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@removeSchemaTags', 200);
 
-    cy.get('[data-testid="glossary-tags-0"]')
+    cy.get(
+      '[data-testid="Glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"]'
+    )
       .scrollIntoView()
       .should('not.contain', name)
       .and('not.contain', 'Personal');
 
-    cy.get('[data-testid="governance"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
-    cy.get('[data-testid="appbar-item-glossary"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="governance"]').click();
+    cy.get('[data-testid="appbar-item-glossary"]').click();
 
     selectActiveGlossary(NEW_GLOSSARY_1.name);
 

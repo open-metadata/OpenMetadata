@@ -26,7 +26,7 @@ import { PipelineActionsProps } from './PipelineActions.interface';
 
 function PipelineActions({
   record,
-  servicePermission,
+  ingestionPipelinesPermission,
   triggerIngestion,
   deployIngestion,
   deleteSelection,
@@ -47,7 +47,7 @@ function PipelineActions({
   const [selectedPipeline, setSelectedPipeline] = useState<IngestionPipeline>();
 
   const getEditPermission = (service: string): boolean =>
-    !servicePermission?.[service]?.EditAll;
+    !ingestionPipelinesPermission?.[service]?.EditAll;
 
   const handleTriggerIngestion = async (id: string, displayName: string) => {
     try {
@@ -89,7 +89,7 @@ function PipelineActions({
     );
   };
 
-  const ConfirmDelete = (id: string, name: string) => {
+  const handleConfirmDelete = (id: string, name: string) => {
     handleDeleteSelection({
       id,
       name,
@@ -192,9 +192,9 @@ function PipelineActions({
         <Button
           className="p-x-xss"
           data-testid="delete"
-          disabled={!servicePermission?.[record.name]?.Delete}
+          disabled={!ingestionPipelinesPermission?.[record.name]?.Delete}
           type="link"
-          onClick={() => ConfirmDelete(record.id as string, record.name)}>
+          onClick={() => handleConfirmDelete(record.id as string, record.name)}>
           {getDeleteButton()}
         </Button>
         <Divider className="border-gray" type="vertical" />

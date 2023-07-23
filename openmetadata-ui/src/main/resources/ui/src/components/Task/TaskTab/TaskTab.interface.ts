@@ -19,6 +19,7 @@ export type TaskTabProps = {
   taskThread: Thread;
   owner?: EntityReference;
   onUpdateEntityDetails?: () => void;
+  onAfterClose?: () => void;
 } & (
   | TableTaskTabProps
   | { columns?: undefined; entityType: Exclude<EntityType, EntityType.TABLE> }

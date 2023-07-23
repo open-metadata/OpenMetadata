@@ -341,7 +341,9 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     String csv = createCsv(GlossaryCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(glossaryName, csv, false);
     assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
-    String[] expectedRows = {resultsHeader, getFailedRecord(record, "[name must match \"\"^(?U)[\\w'\\- .&()]+$\"\"]")};
+    String[] expectedRows = {
+      resultsHeader, getFailedRecord(record, "[name must match \"\"^(?U)[\\w'\\- .&()%]+$\"\"]")
+    };
     assertRows(result, expectedRows);
 
     // Create glossaryTerm with invalid parent

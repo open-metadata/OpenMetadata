@@ -27,7 +27,6 @@ from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import is_concatenable, is_quantifiable
 from metadata.utils.helpers import format_large_string_numbers
 from metadata.utils.logger import profiler_logger
-from metadata.utils.sqa_utils import handle_array
 
 logger = profiler_logger()
 
@@ -166,9 +165,9 @@ class Histogram(HybridMetric):
         ending_bin_bound = res_min + bin_width
 
         if is_concatenable(self.col.type):
-            col = LenFn(column(self.col.name))
+            col = LenFn(column(self.col.name, self.col.type))
         else:
-            col = column(self.col.name)  # type: ignore
+            col = column(self.col.name, self.col.type)  # type: ignore
 
         case_stmts = []
         for bin_num in range(num_bins):

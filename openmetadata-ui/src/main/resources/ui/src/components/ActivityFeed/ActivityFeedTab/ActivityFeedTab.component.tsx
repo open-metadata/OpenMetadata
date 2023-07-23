@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Menu, Typography } from 'antd';
+import { Menu, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import Loader from 'components/Loader/Loader';
 import { TaskTab } from 'components/Task/TaskTab/TaskTab.component';
@@ -49,9 +49,15 @@ import './activity-feed-tab.less';
 import {
   ActivityFeedTabProps,
   ActivityFeedTabs,
+  TaskFilter,
 } from './ActivityFeedTab.interface';
 import { ReactComponent as CheckIcon } from '/assets/svg/ic-check.svg';
 import { ReactComponent as TaskIcon } from '/assets/svg/ic-task.svg';
+
+import { ICON_DIMENSION } from 'constants/constants';
+import { ReactComponent as AllActivityIcon } from '/assets/svg/all-activity-v2.svg';
+import { ReactComponent as MentionIcon } from '/assets/svg/ic-mentions.svg';
+import { ReactComponent as TaskListIcon } from '/assets/svg/task-ic.svg';
 
 export const ActivityFeedTab = ({
   fqn,
@@ -65,7 +71,7 @@ export const ActivityFeedTab = ({
   const [elementRef, isInView] = useElementInView(observerOptions);
   const { subTab: activeTab = 'all' } =
     useParams<{ subTab: ActivityFeedTabs }>();
-  const [taskFilter, setTaskFilter] = useState<'open' | 'close'>('open');
+  const [taskFilter, setTaskFilter] = useState<TaskFilter>('open');
   const [allCount, setAllCount] = useState(0);
   const [tasksCount, setTasksCount] = useState(0);
 
@@ -171,8 +177,10 @@ export const ActivityFeedTab = ({
   };
 
   useEffect(() => {
-    fetchFeedsCount();
-  }, []);
+    if (fqn) {
+      fetchFeedsCount();
+    }
+  }, [fqn]);
 
   const { feedFilter, threadType } = useMemo(() => {
     return {
@@ -191,12 +199,14 @@ export const ActivityFeedTab = ({
     (after?: string) => {
       getFeedData(feedFilter, after, threadType, entityType, fqn);
     },
-    [threadType, feedFilter]
+    [threadType, feedFilter, entityType, fqn]
   );
 
   useEffect(() => {
-    getFeedData(feedFilter, undefined, threadType, entityType, fqn);
-  }, [feedFilter, threadType]);
+    if (fqn) {
+      getFeedData(feedFilter, undefined, threadType, entityType, fqn);
+    }
+  }, [feedFilter, threadType, fqn]);
 
   const handleFeedClick = useCallback(
     (feed: Thread) => {
@@ -216,8 +226,10 @@ export const ActivityFeedTab = ({
   };
 
   useEffect(() => {
-    fetchMoreThread(isInView, entityPaging, loading);
-  }, [entityPaging, loading, isInView]);
+    if (fqn) {
+      fetchMoreThread(isInView, entityPaging, loading);
+    }
+  }, [entityPaging, loading, isInView, fqn]);
 
   const loader = useMemo(() => (loading ? <Loader /> : null), [loading]);
 
@@ -265,6 +277,15 @@ export const ActivityFeedTab = ({
     return [0, 0];
   }, [entityThread, activeTab]);
 
+  const handleUpdateTaskFilter = (filter: TaskFilter) => {
+    setTaskFilter(filter);
+  };
+
+  const handleAfterTaskClose = () => {
+    handleFeedFetchFromFeedList();
+    handleUpdateTaskFilter('close');
+  };
+
   return (
     <div className="activity-feed-tab">
       <Menu
@@ -274,7 +295,11 @@ export const ActivityFeedTab = ({
           {
             label: (
               <div className="d-flex justify-between">
-                <span>{t('label.all')}</span>
+                <Space align="center" size="small">
+                  <AllActivityIcon {...ICON_DIMENSION} />
+                  <span>{t('label.all')}</span>
+                </Space>
+
                 <span>
                   {getCountBadge(
                     allCount,
@@ -288,16 +313,20 @@ export const ActivityFeedTab = ({
           },
           {
             label: (
-              <div className="d-flex justify-between">
+              <Space align="center" size="small">
+                <MentionIcon {...ICON_DIMENSION} />
                 <span>{t('label.mention-plural')}</span>
-              </div>
+              </Space>
             ),
             key: 'mentions',
           },
           {
             label: (
               <div className="d-flex justify-between">
-                <span>{t('label.task-plural')}</span>
+                <Space align="center" size="small">
+                  <TaskListIcon {...ICON_DIMENSION} />
+                  <span>{t('label.task-plural')}</span>
+                </Space>
                 <span>
                   {getCountBadge(
                     tasksCount,
@@ -327,7 +356,7 @@ export const ActivityFeedTab = ({
                 }
               )}
               onClick={() => {
-                setTaskFilter('open');
+                handleUpdateTaskFilter('open');
                 setActiveThread();
               }}>
               {' '}
@@ -339,7 +368,7 @@ export const ActivityFeedTab = ({
                 'font-medium': taskFilter === 'close',
               })}
               onClick={() => {
-                setTaskFilter('close');
+                handleUpdateTaskFilter('close');
                 setActiveThread();
               }}>
               {' '}
@@ -400,6 +429,7 @@ export const ActivityFeedTab = ({
                   entityType={EntityType.TABLE}
                   owner={owner}
                   taskThread={selectedThread}
+                  onAfterClose={handleAfterTaskClose}
                   onUpdateEntityDetails={onUpdateEntityDetails}
                 />
               ) : (
@@ -407,6 +437,7 @@ export const ActivityFeedTab = ({
                   entityType={isUserEntity ? entityTypeTask : entityType}
                   owner={owner}
                   taskThread={selectedThread}
+                  onAfterClose={handleAfterTaskClose}
                   onUpdateEntityDetails={onUpdateEntityDetails}
                 />
               )}

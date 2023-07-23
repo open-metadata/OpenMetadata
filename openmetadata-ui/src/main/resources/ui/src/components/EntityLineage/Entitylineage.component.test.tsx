@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MOCK_CHILD_MAP, MOCK_LINEAGE_DATA } from 'mocks/Lineage.mock';
 import React from 'react';
 import { act } from 'react-dom/test-utils';
@@ -107,6 +107,15 @@ jest.mock('../EntityInfoDrawer/EntityInfoDrawer.component', () => {
   return jest.fn().mockReturnValue(<p>EntityInfoDrawerComponent</p>);
 });
 
+const mockPush = jest.fn();
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useHistory: () => ({
+    push: mockPush,
+  }),
+}));
+
 describe('Test EntityLineage Component', () => {
   it('Check if EntityLineage is rendering all the nodes', async () => {
     act(() => {
@@ -140,5 +149,53 @@ describe('Test EntityLineage Component', () => {
     expect(reactFlowElement).not.toBeInTheDocument();
 
     expect(lineageContainer).not.toBeInTheDocument();
+  });
+
+  it('should add fullscreen true in url on fullscreen button click', async () => {
+    render(<EntityLineage {...mockEntityLineageProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const lineageContainer = await screen.findByTestId('lineage-container');
+    const reactFlowElement = await screen.findByTestId('rf__wrapper');
+    const fullscreenButton = await screen.getByTestId('full-screen');
+
+    expect(lineageContainer).toBeInTheDocument();
+    expect(reactFlowElement).toBeInTheDocument();
+
+    act(() => {
+      fireEvent.click(fullscreenButton);
+    });
+
+    expect(mockPush).toHaveBeenCalledTimes(1);
+    expect(mockPush).toHaveBeenCalledWith({
+      search: 'fullscreen=true',
+    });
+  });
+
+  it('should show breadcrumbs when URL has fullscreen=true', async () => {
+    act(() => {
+      render(
+        <MemoryRouter
+          initialEntries={[
+            '/table/sample_data.ecommerce_db.shopify.raw_customer/lineage?fullscreen=true',
+          ]}>
+          <EntityLineage {...mockEntityLineageProp} />
+        </MemoryRouter>
+      );
+    });
+    const lineageContainer = await screen.findByTestId('lineage-container');
+    const reactFlowElement = await screen.findByTestId('rf__wrapper');
+
+    expect(lineageContainer).toBeInTheDocument();
+    expect(reactFlowElement).toBeInTheDocument();
+
+    const breadcrumbs = await screen.getByTestId('breadcrumb');
+
+    expect(breadcrumbs).toBeInTheDocument();
+
+    const mainRootElement = await screen.getByTestId('lineage-details');
+
+    expect(mainRootElement).toHaveClass('full-screen-lineage');
   });
 });

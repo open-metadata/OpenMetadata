@@ -39,10 +39,10 @@ class Sum(StaticMetric):
     def fn(self):
         """sqlalchemy function"""
         if is_quantifiable(self.col.type):
-            return SumFn(column(self.col.name))
+            return SumFn(column(self.col.name, self.col.type))
 
         if is_concatenable(self.col.type):
-            return SumFn(LenFn(column(self.col.name)))
+            return SumFn(LenFn(column(self.col.name, self.col.type)))
 
         return None
 

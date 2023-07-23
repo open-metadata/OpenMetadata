@@ -37,9 +37,6 @@ from metadata.ingestion.source.database.postgres.metadata import (
     POLYGON,
     PostgresSource,
 )
-from metadata.ingestion.source.database.postgres.query_parser import (
-    PostgresQueryParserSource,
-)
 from metadata.ingestion.source.database.postgres.usage import PostgresUsageSource
 
 mock_postgres_config = {

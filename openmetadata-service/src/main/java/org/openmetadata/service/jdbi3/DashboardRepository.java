@@ -14,7 +14,10 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 
@@ -39,7 +42,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class DashboardRepository extends EntityRepository<Dashboard> {
   private static final String DASHBOARD_UPDATE_FIELDS = "charts,dataModels";
   private static final String DASHBOARD_PATCH_FIELDS = "charts,dataModels";
-
   private static final String DASHBOARD_URL = "sourceUrl";
 
   public DashboardRepository(CollectionDAO dao) {
@@ -157,6 +159,15 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
             dashboard.getId(), dataModel.getId(), Entity.DASHBOARD, Entity.DASHBOARD_DATA_MODEL, Relationship.HAS);
       }
     }
+  }
+
+  @Override
+  public Dashboard setInheritedFields(Dashboard dashboard, Fields fields) throws IOException {
+    if (fields.contains(FIELD_DOMAIN) && nullOrEmpty(dashboard.getDomain())) {
+      DashboardService dashboardService = Entity.getEntity(dashboard.getService(), "domain", ALL);
+      dashboard.setDomain(dashboardService.getDomain());
+    }
+    return dashboard;
   }
 
   @Override

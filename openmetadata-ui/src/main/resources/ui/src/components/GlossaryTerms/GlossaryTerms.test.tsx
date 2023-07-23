@@ -75,10 +75,6 @@ jest.mock('rest/miscAPI', () => ({
     .mockImplementation(() => Promise.resolve(MOCK_ASSETS_DATA)),
 }));
 
-jest.mock('components/Tag/TagsContainer/tags-container', () => {
-  return jest.fn().mockReturnValue(<>Tags-container component</>);
-});
-
 jest.mock('../common/description/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<>Description component</>);
 });

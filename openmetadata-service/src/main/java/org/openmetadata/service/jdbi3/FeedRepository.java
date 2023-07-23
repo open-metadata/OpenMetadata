@@ -392,7 +392,7 @@ public class FeedRepository {
   }
 
   @Transaction
-  public ThreadCount getThreadsCount(FeedFilter filter, String link) throws IOException {
+  public ThreadCount getThreadsCount(FeedFilter filter, String link) {
     List<List<String>> result;
     if (link == null) {
       // Get thread count of all entities
@@ -654,7 +654,7 @@ public class FeedRepository {
     List<EntityReference> teams = user.getTeams();
     List<String> teamNames = teams.stream().map(EntityReference::getName).collect(Collectors.toList());
     if (assignees.stream().anyMatch(assignee -> teamNames.contains(assignee.getName()))
-        && teamNames.contains(owner.getName())) {
+        || teamNames.contains(owner.getName())) {
       return;
     }
 

@@ -30,6 +30,7 @@ from metadata.generated.schema.type.tableUsageCount import TableUsageCount
 from metadata.ingestion.api.stage import Stage
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
+from metadata.utils.helpers import init_staging_dir
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -60,9 +61,7 @@ class TableUsageStage(Stage[QueryParserData]):
         self.metadata = OpenMetadata(self.metadata_config)
         self.table_usage = {}
         self.table_queries = {}
-
-        self.init_location()
-
+        init_staging_dir(self.config.filename)
         self.wrote_something = False
 
     @classmethod

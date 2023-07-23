@@ -13,7 +13,7 @@
 
 @import url('../../styles/variables.less');
 
-@sidebar-width: 100px;
+@lineage-sidebar-width: 100px;
 
 .custom-react-flow {
   .react-flow__node-input.selectable.selected {
@@ -87,7 +87,7 @@
   height: 32px;
 }
 .ant-select.custom-control-search-box-edit-mode {
-  margin-left: @sidebar-width;
+  margin-left: @lineage-sidebar-width;
 }
 .custom-control-basic-button {
   padding-left: 4px;
@@ -134,6 +134,9 @@
   display: block !important;
   border: 1px solid @border-color;
   background-color: @body-bg-color;
+  &.active {
+    background-color: @primary-color;
+  }
 }
 
 .custom-lineage-heading {
@@ -160,7 +163,7 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: @sidebar-width;
+  width: @lineage-sidebar-width;
   z-index: 200;
   overflow-y: auto;
   padding: 8px;
@@ -173,4 +176,12 @@
 .entity-lineage.sidebar.open {
   transform: translateX(0);
   display: block;
+}
+
+.lineage-card.full-screen-lineage {
+  top: @navbar-height;
+  left: @sidebar-width;
+  position: fixed !important;
+  width: calc(100vw - @sidebar-width);
+  height: calc(100vh - @navbar-height);
 }
