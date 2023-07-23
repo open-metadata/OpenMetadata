@@ -38,6 +38,7 @@ import {
   GLOSSARY_DROPDOWN_ITEMS,
   PIPELINE_DROPDOWN_ITEMS,
   TABLE_DROPDOWN_ITEMS,
+  TAG_DROPDOWN_ITEMS,
   TOPIC_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 import { AdvancedFields } from '../enums/AdvancedSearch.enum';
@@ -67,6 +68,8 @@ export const getDropDownItems = (index: string) => {
       return [...COMMON_DROPDOWN_ITEMS, ...CONTAINER_DROPDOWN_ITEMS];
     case SearchIndex.GLOSSARY:
       return [...GLOSSARY_DROPDOWN_ITEMS];
+    case SearchIndex.TAG:
+      return [...TAG_DROPDOWN_ITEMS];
 
     default:
       return [];

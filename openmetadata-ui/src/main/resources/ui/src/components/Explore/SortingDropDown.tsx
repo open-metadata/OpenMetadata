@@ -48,7 +48,7 @@ const SortingDropDown: React.FC<SortingDropdownProps> = ({
         items,
       }}
       trigger={['click']}>
-      <Space align="center" data-testid="dropdown-label" size={4}>
+      <Space align="center" data-testid="sorting-dropdown-label" size={4}>
         <Typography.Text className="text-grey-muted">{label}</Typography.Text>
         <DropDownIcon className="text-grey-muted" height={16} width={16} />
       </Space>
