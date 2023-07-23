@@ -71,7 +71,7 @@ const Assignees: FC<Props> = ({
         options: groupByType.user.map((user) => ({
           ...user,
           label: (
-            <div data-testid="assignee-option">
+            <div data-testid={`assignee-option-${user.label}`}>
               <UserTag id={user.value} name={user.label} />
             </div>
           ),

@@ -41,8 +41,7 @@ describe('Task flow should work', () => {
     // select value from dropdown
     verifyResponseStatusCode('@suggestApi', 200);
 
-    cy.get('[data-testid="assignee-option"]')
-      .eq(0)
+    cy.get(`[data-testid="assignee-option-${secondAssignee}"]`)
       .should('be.visible')
       .trigger('mouseover')
       .trigger('click');
@@ -88,8 +87,7 @@ describe('Task flow should work', () => {
     // select value from dropdown
     verifyResponseStatusCode('@suggestApi', 200);
 
-    cy.get('[data-testid="assignee-option"]')
-      .eq(0)
+    cy.get(`[data-testid="assignee-option-${assignee}"]`)
       .should('be.visible')
       .trigger('mouseover')
       .trigger('click');
