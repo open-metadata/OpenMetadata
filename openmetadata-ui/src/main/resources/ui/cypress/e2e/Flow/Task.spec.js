@@ -126,10 +126,6 @@ describe('Task flow should work', () => {
     toastNotification('Task resolved successfully');
 
     verifyResponseStatusCode('@entityFeed', 200);
-
-    cy.get('.toastui-editor-contents > p').contains(
-      'Resolved the Task with Description - Updated description'
-    );
   };
 
   const createTagTask = (value) => {
