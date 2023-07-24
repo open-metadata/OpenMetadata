@@ -174,6 +174,45 @@ export const getSearchLabel = (itemLabel: string, searchKey: string) => {
   }
 };
 
+export const generateSearchDropdownLabel = (
+  option: SearchDropdownOption,
+  checked: boolean,
+  searchKey: string,
+  showProfilePicture: boolean
+) => {
+  return (
+    <div className="d-flex justify-between">
+      <Space
+        align="center"
+        className="m-x-sm"
+        data-testid={option.key}
+        size={8}>
+        <Checkbox checked={checked} data-testid={`${option.key}-checkbox`} />
+        {showProfilePicture && (
+          <ProfilePicture
+            displayName={option.label}
+            id={option.key || ''}
+            name={option.label || ''}
+            textClass="text-xs"
+            width="18"
+          />
+        )}
+        <Typography.Text
+          ellipsis
+          className="dropdown-option-label"
+          title={option.label}>
+          <span
+            dangerouslySetInnerHTML={{
+              __html: getSearchLabel(option.label, searchKey),
+            }}
+          />
+        </Typography.Text>
+      </Space>
+      {getCountBadge(option.count, 'm-r-sm', false)}
+    </div>
+  );
+};
+
 export const getSearchDropdownLabels = (
   optionsArray: SearchDropdownOption[],
   checked: boolean,
@@ -187,39 +226,11 @@ export const getSearchDropdownLabels = (
 
     return sortedOptions.map((option) => ({
       key: option.key,
-      label: (
-        <div className="d-flex justify-between">
-          <Space
-            align="center"
-            className="m-x-sm"
-            data-testid={option.key}
-            size={8}>
-            <Checkbox
-              checked={checked}
-              data-testid={`${option.key}-checkbox`}
-            />
-            {showProfilePicture && (
-              <ProfilePicture
-                displayName={option.label}
-                id={option.key || ''}
-                name={option.label || ''}
-                textClass="text-xs"
-                width="18"
-              />
-            )}
-            <Typography.Text
-              ellipsis
-              className="dropdown-option-label"
-              title={option.label}>
-              <span
-                dangerouslySetInnerHTML={{
-                  __html: getSearchLabel(option.label, searchKey),
-                }}
-              />
-            </Typography.Text>
-          </Space>
-          {getCountBadge(option.count, 'm-r-sm', false)}
-        </div>
+      label: generateSearchDropdownLabel(
+        option,
+        checked,
+        searchKey,
+        showProfilePicture
       ),
     }));
   } else {
