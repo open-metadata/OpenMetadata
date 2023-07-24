@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { TagLabel } from 'generated/type/tagLabel';
 import { ChartType } from 'pages/DashboardDetailsPage/DashboardDetailsPage.component';
@@ -185,7 +185,6 @@ function DashboardSummary({
                     tags={(entityDetails.tags || []).map((tag) =>
                       getTagValue(tag)
                     )}
-                    type="border"
                   />
                 ) : (
                   <Typography.Text className="text-grey-body">

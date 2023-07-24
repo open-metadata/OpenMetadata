@@ -34,7 +34,7 @@ import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg'
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
 import TagSelectForm from '../TagsSelectForm/TagsSelectForm.component';
 import TagsV1 from '../TagsV1/TagsV1.component';
-import TagsViewer from '../TagsViewer/tags-viewer';
+import TagsViewer from '../TagsViewer/TagsViewer';
 import { TagsContainerV2Props } from './TagsContainerV2.interface';
 
 const TagsContainerV2 = ({
@@ -45,6 +45,7 @@ const TagsContainerV2 = ({
   entityThreadLink,
   entityFqn,
   tagType,
+  displayType,
   showHeader = true,
   showBottomEditButton,
   showInlineEditButton,
@@ -166,13 +167,13 @@ const TagsContainerV2 = ({
     () => (
       <Col>
         <TagsViewer
+          displayType={displayType}
           showNoDataPlaceholder={showNoDataPlaceholder}
           tags={tags?.[tagType] ?? []}
-          type="border"
         />
       </Col>
     ),
-    [showNoDataPlaceholder, tags?.[tagType]]
+    [displayType, showNoDataPlaceholder, tags?.[tagType]]
   );
 
   const tagsSelectContainer = useMemo(() => {

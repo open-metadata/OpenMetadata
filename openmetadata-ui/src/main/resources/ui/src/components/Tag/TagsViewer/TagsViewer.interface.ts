@@ -14,8 +14,13 @@
 import { EntityTags } from 'Models';
 
 export interface TagsViewerProps {
-  tags: Array<EntityTags>;
+  tags: EntityTags[];
   sizeCap?: number;
-  type?: 'label' | 'contained' | 'outlined' | 'border';
+  displayType?: DisplayType;
   showNoDataPlaceholder?: boolean;
+}
+
+export enum DisplayType {
+  READ_MORE = 'read-more',
+  POPOVER = 'popover',
 }

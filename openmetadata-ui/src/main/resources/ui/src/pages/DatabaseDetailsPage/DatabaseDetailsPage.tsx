@@ -34,6 +34,7 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { LabelType } from 'generated/entity/data/table';
@@ -651,6 +652,7 @@ const DatabaseDetails: FunctionComponent = () => {
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
                 <TagsContainerV2
+                  displayType={DisplayType.READ_MORE}
                   entityFqn={databaseFQN}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.DATABASE}
@@ -661,6 +663,7 @@ const DatabaseDetails: FunctionComponent = () => {
                   onThreadLinkSelect={onThreadLinkSelect}
                 />
                 <TagsContainerV2
+                  displayType={DisplayType.READ_MORE}
                   entityFqn={databaseFQN}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.DATABASE}
