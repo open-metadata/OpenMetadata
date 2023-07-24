@@ -14,6 +14,7 @@
 import {
   findByTestId,
   getAllByTestId,
+  getByTestId,
   getByText,
   render,
   waitForElementToBeRemoved,
@@ -113,7 +114,7 @@ describe('Test TierCard Component', () => {
 
     await waitForElementToBeRemoved(() => getByText(container, 'Loader'));
 
-    const clearTier = getByText(container, 'Clear');
+    const clearTier = getByTestId(container, 'clear-tier');
 
     expect(clearTier).toBeInTheDocument();
 

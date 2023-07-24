@@ -81,6 +81,7 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
 
   return (
     <Popover
+      className="p-0 tier-card-popover"
       content={
         <Card
           className="tier-card"
@@ -92,6 +93,7 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
               </Typography.Text>
               <Typography.Text
                 className="m-b-0 font-normal text-primary cursor-pointer"
+                data-testid="clear-tier"
                 onClick={clearTierSelection}>
                 {t('label.clear')}
               </Typography.Text>
@@ -102,14 +104,17 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
               accordion
               className="bg-white border-none"
               defaultActiveKey={currentTier}
-              expandIconPosition="end"
-              size="small">
+              expandIconPosition="end">
               {tierData.map((card) => (
                 <Panel
                   data-testid="card-list"
                   header={
                     <div className="flex self-start">
-                      <Radio data-testid="radio-btn" value={card.id} />
+                      <Radio
+                        className="radio-input"
+                        data-testid="radio-btn"
+                        value={card.id}
+                      />
                       <Space direction="vertical" size={0}>
                         <Typography.Paragraph className="m-b-0 font-regular text-grey-body">
                           {card.title}
@@ -122,6 +127,7 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
                   }
                   key={card.id}>
                   <RichTextEditorPreviewer
+                    className="tier-card-description"
                     enableSeeMoreVariant={false}
                     markdown={card.data}
                   />
