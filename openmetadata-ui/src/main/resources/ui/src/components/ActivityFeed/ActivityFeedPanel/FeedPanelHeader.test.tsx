@@ -96,7 +96,7 @@ describe('Test FeedPanelHeader Component', () => {
     const entityAttribute = await findByTestId(container, 'entity-attribute');
 
     expect(entityAttribute).toHaveTextContent(
-      'sample_data.ecommerce_db.shopify.dim_address.address_id.unique_column_test'
+      'ecommerce_db.shopify.dim_address'
     );
   });
 
