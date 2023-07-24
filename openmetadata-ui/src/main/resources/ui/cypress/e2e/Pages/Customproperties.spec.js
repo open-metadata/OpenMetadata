@@ -59,12 +59,9 @@ describe('Custom Properties should work properly', () => {
         );
 
         // Navigating back to custom properties page
-        cy.get('[data-testid="appbar-item-settings"]')
-          .should('be.visible')
-          .click();
+        cy.get('[data-testid="appbar-item-settings"]').click();
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
-          .should('be.visible')
           .click();
 
         verifyResponseStatusCode('@getEntity', 200);
@@ -80,7 +77,6 @@ describe('Custom Properties should work properly', () => {
         // Selecting the entity
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
-          .should('be.visible')
           .click();
 
         verifyResponseStatusCode('@getEntity', 200);

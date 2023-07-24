@@ -11,32 +11,6 @@
  *  limitations under the License.
  */
 
-@import url('../../../styles/variables.less');
+import { TabSpecificField } from 'enums/entity.enum';
 
-.tags-component-container {
-  .tag-container-style {
-    display: flex;
-    gap: 4px;
-    align-items: center;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    justify-content: center;
-    padding: 1px 8px;
-    margin: 0 4px 1px 0;
-  }
-
-  .label {
-    border: none;
-    background-color: transparent;
-    padding: 0px;
-  }
-
-  .outlined {
-    border: none;
-    background-color: transparent;
-  }
-}
-.plus-more-tag.ant-tag {
-  color: @link-color;
-}
+export const DatabaseFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}`;
