@@ -76,7 +76,9 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
           <Link
             className="link-hover"
             data-testid="policy-name"
-            to={getPolicyWithFqnPath(record.fullyQualifiedName || '')}>
+            to={getPolicyWithFqnPath(
+              encodeURIComponent(record.fullyQualifiedName || '')
+            )}>
             {getEntityName(record)}
           </Link>
         ),
