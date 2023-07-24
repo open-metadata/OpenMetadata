@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+// eslint-disable-next-line spaced-comment
+/// <reference types="cypress" />
+
 import {
   interceptURL,
   verifyResponseStatusCode,
@@ -24,7 +27,7 @@ const addTags = (tag) => {
   cy.get('[data-testid="tag-selector"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="tag-selector"]').click().type(tagName);
 
-  cy.get(`[data-testid='tag-${tag}']`).click();
+  cy.get(`.ant-select-dropdown [data-testid='tag-${tag}']`).click();
   cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
 };
 
@@ -53,7 +56,9 @@ const removeTags = (checkForParentEntity) => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="remove-tags"]').should('be.visible').click();
+    cy.get('[data-testid="remove-tags"]')
+      .should('be.visible')
+      .click({ multiple: true });
 
     cy.get('[data-testid="saveAssociatedTag"]')
       .scrollIntoView()
@@ -81,21 +86,36 @@ describe('Check if tags addition and removal flow working properly from tables',
 
   TAGS_ADD_REMOVE_ENTITIES.map((entityDetails) =>
     it(`Adding and removing tags to the ${entityDetails.entity} entity should work properly`, () => {
+      interceptURL(
+        'GET',
+        `/api/v1/${entityDetails.entity}/name/*?fields=*`,
+        'getEntityDetail'
+      );
+      interceptURL('PATCH', `/api/v1/${entityDetails.entity}/*`, 'tagsChange');
+      interceptURL(
+        'PATCH',
+        `/api/v1/${entityDetails.insideEntity ?? entityDetails.entity}/*`,
+        'tagsChange'
+      );
       visitEntityDetailsPage(
         entityDetails.term,
         entityDetails.serviceName,
         entityDetails.entity
       );
+      verifyResponseStatusCode('@getEntityDetail', 200);
 
       cy.get(
-        '[data-testid="entity-right-panel"] [data-testid="tags-container"]  [data-testid="add-tag"]'
-      )
-        .should('be.visible')
-        .click();
+        '[data-testid="entity-right-panel"] [data-testid="tags-container"]'
+      ).then(($container) => {
+        if ($container.find('[data-testid="add-tag"]').length === 0) {
+          removeTags(true);
+        }
+        cy.get(
+          '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="add-tag"]'
+        ).click();
+      });
 
       addTags(entityDetails.tags[0]);
-
-      interceptURL('PATCH', `/api/v1/${entityDetails.entity}/*`, 'tagsChange');
 
       cy.get('[data-testid="saveAssociatedTag"]')
         .scrollIntoView()
@@ -110,26 +130,30 @@ describe('Check if tags addition and removal flow working properly from tables',
 
       if (entityDetails.entity === 'mlmodels') {
         cy.get(
-          `[data-testid="feature-card-${entityDetails.fieldName}"] [data-testid="Classification-tags-0"] [data-testid="add-tag"]`
-        )
-          .should('be.visible')
-          .click();
+          `[data-testid="feature-card-${entityDetails.fieldName}"] [data-testid="Classification-tags-0"]`
+        ).then(($container) => {
+          if ($container.find('[data-testid="add-tag"]').length === 0) {
+            removeTags(false);
+          }
+          cy.get(
+            `[data-testid="feature-card-${entityDetails.fieldName}"] [data-testid="Classification-tags-0"] [data-testid="add-tag"]`
+          ).click();
+        });
       } else {
         cy.get(
-          `.ant-table-tbody [data-testid="Classification-tags-0"] [data-testid="tags-container"] [data-testid="entity-tags"]`
-        )
-          .scrollIntoView()
-          .should('be.visible')
-          .click();
+          '.ant-table-tbody [data-testid="Classification-tags-0"] [data-testid="tags-container"]'
+        ).then(($container) => {
+          if ($container.find('[data-testid="add-tag"]').length === 0) {
+            removeTags(false);
+          }
+          cy.get(
+            '.ant-table-tbody [data-testid="Classification-tags-0"] [data-testid="tags-container"] [data-testid="add-tag"]'
+          ).click();
+        });
       }
 
       entityDetails.tags.map((tag) => addTags(tag));
       cy.clickOutside();
-      interceptURL(
-        'PATCH',
-        `/api/v1/${entityDetails.insideEntity ?? entityDetails.entity}/*`,
-        'tagsChange'
-      );
 
       cy.get('[data-testid="saveAssociatedTag"]')
         .scrollIntoView()
