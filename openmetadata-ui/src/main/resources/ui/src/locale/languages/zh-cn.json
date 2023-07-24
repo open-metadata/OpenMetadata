@@ -374,6 +374,7 @@
     "filter": "过滤",
     "filter-pattern": "过滤条件",
     "filter-plural": "过滤",
+    "filtering-condition": "Filtering Condition",
     "first": "第一",
     "first-lowercase": "第一",
     "first-quartile": "第一四分位数",
@@ -638,6 +639,7 @@
     "page-views-by-data-asset-plural": "数据资产页面浏览量",
     "parameter": "参数",
     "parent": "父级",
+    "parsing-timeout-limit": "Query Parsing Timeout Limit",
     "partition-lowercase-plural": "分区",
     "partition-plural": "分区",
     "partitioned": "已分区",
@@ -1014,6 +1016,7 @@
     "view-entity": "查看{{entity}}",
     "view-more": "查看更多",
     "view-new-count": "查看{{count}}个新的",
+    "view-parsing-timeout-limit": "View Definition Parsing Timeout Limit",
     "view-plural": "查看",
     "volume-change": "Volume Change",
     "warning": "警告",
@@ -1474,7 +1477,6 @@
     "fetch-re-index-data-error": "获取重新索引时发生错误！",
     "fetch-table-profiler-config-error": "获取数据表分析器配置时发生错误！",
     "fetch-updated-conversation-error": "获取更新后对话时发生错误！",
-    "filtering-condition": "Filtering Condition",
     "forgot-password-email-error": "发送邮件时出现问题，请联系您的管理员。",
     "ingestion-workflow-operation-error": "{{operation}}提取工作流{{displayName}}信息时发生错误",
     "invalid-username-or-password": "您输入的用户名或密码无效。",
@@ -1486,7 +1488,6 @@
     "no-query-available": "没有可用的查询",
     "no-task-available": "没有任务数据可用",
     "no-task-creation-without-assignee": "无法创建没有受派人的任务",
-    "parsing-timeout-limit": "Query Parsing Timeout Limit",
     "please-add-description": "不接受空描述，请添加描述信息",
     "please-add-tags": "不接受空标签列表，请添加标签信息",
     "re-indexing-error": "在重新索引时发生错误！",
@@ -1503,7 +1504,6 @@
     "unexpected-error": "发生意外错误",
     "unexpected-response": "服务器返回意外响应！",
     "update-entity-success": "{{entity}}已成功更新",
-    "view-parsing-timeout-limit": "View Definition Parsing Timeout Limit",
     "you-have-not-action-anything-yet": "您还没有{{action}}任何内容"
   }
 }

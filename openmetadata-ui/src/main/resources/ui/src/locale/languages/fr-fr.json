@@ -374,6 +374,7 @@
     "filter": "Filtre",
     "filter-pattern": "Configuration du Filtre",
     "filter-plural": "Filtres",
+    "filtering-condition": "Filtering Condition",
     "first": "Premier",
     "first-lowercase": "premier",
     "first-quartile": "Premier Quartile",
@@ -638,6 +639,7 @@
     "page-views-by-data-asset-plural": "Page vues par actif de données",
     "parameter": "Paramètre",
     "parent": "Parent",
+    "parsing-timeout-limit": "Query Parsing Timeout Limit",
     "partition-lowercase-plural": "partitions",
     "partition-plural": "Partitions",
     "partitioned": "Partitionné",
@@ -1014,6 +1016,7 @@
     "view-entity": "Voir {{entity}}",
     "view-more": "Voir plus",
     "view-new-count": "Voir {{count}} nouveau",
+    "view-parsing-timeout-limit": "View Definition Parsing Timeout Limit",
     "view-plural": "Voir",
     "volume-change": "Volume Change",
     "warning": "Attention",
@@ -1474,7 +1477,6 @@
     "fetch-re-index-data-error": "Erreur lors de la récupération des données de réindexation !",
     "fetch-table-profiler-config-error": "Erreur lors de la récupération de la configuration du profileur de table !",
     "fetch-updated-conversation-error": "Erreur lors de la récupération de la conversation mise à jour !",
-    "filtering-condition": "Filtering Condition",
     "forgot-password-email-error": "Il y a un problème lors de l'envoi de l'e-mail. Veuillez contacter votre administrateur.",
     "ingestion-workflow-operation-error": "Erreur lors de l'opération {{operation}} dans le flux d'ingestion {{displayName}}",
     "invalid-username-or-password": "Vous avez saisi un nom d'utilisateur ou un mot de passe invalide.",
@@ -1486,7 +1488,6 @@
     "no-query-available": "Aucune requête disponible",
     "no-task-available": "Aucune donnée n'est disponible pour les tâches",
     "no-task-creation-without-assignee": "Impossible de créer une tâche sans destinataire",
-    "parsing-timeout-limit": "Query Parsing Timeout Limit",
     "please-add-description": "La description vide n'est pas acceptée. Veuillez ajouter une description.",
     "please-add-tags": "Impossible d'accepter une liste de tags vide. Veuillez ajouter un tag.",
     "re-indexing-error": "Erreur lors du réindexage !",
@@ -1503,7 +1504,6 @@
     "unexpected-error": "Une erreur inattendue est survenue.",
     "unexpected-response": "Réponse inattendue du serveur !",
     "update-entity-success": "{{entity}} mis à jour avec succès.",
-    "view-parsing-timeout-limit": "View Definition Parsing Timeout Limit",
     "you-have-not-action-anything-yet": "Vous n'avez encore rien {{action}}."
   }
 }

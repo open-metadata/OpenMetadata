@@ -287,6 +287,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             },
             ingestionName: value?.name,
             enableDebugLog: value?.loggerLevel,
+            parsingTimeoutLimit: value?.parsingTimeoutLimit,
           });
           onSubmit();
         }
@@ -307,6 +308,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             },
             ingestionName: value?.name,
             enableDebugLog: value?.loggerLevel,
+            parsingTimeoutLimit: value?.parsingTimeoutLimit,
           });
           onSubmit();
         }
@@ -328,6 +330,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             },
             ingestionName: value?.name,
             enableDebugLog: value?.loggerLevel,
+            parsingTimeoutLimit: value?.parsingTimeoutLimit,
           });
           onSubmit();
         }
@@ -359,6 +362,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             },
             ingestionName: value?.name,
             enableDebugLog: value?.loggerLevel,
+            parsingTimeoutLimit: value?.parsingTimeoutLimit,
           });
           onSubmit();
         }
@@ -396,6 +400,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             },
             ingestionName: value?.name,
             enableDebugLog: value?.loggerLevel,
+            parsingTimeoutLimit: value?.parsingTimeoutLimit,
           });
           onSubmit();
         }

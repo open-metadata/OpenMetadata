@@ -374,6 +374,7 @@
     "filter": "Filter",
     "filter-pattern": "フィルターのパターン",
     "filter-plural": "フィルター",
+    "filtering-condition": "Filtering Condition",
     "first": "最初",
     "first-lowercase": "最初",
     "first-quartile": "第1四分位数",
@@ -638,6 +639,7 @@
     "page-views-by-data-asset-plural": "データアセットごとのページビュー",
     "parameter": "パラメータ",
     "parent": "親",
+    "parsing-timeout-limit": "Query Parsing Timeout Limit",
     "partition-lowercase-plural": "パーティション",
     "partition-plural": "パーティション",
     "partitioned": "Partitioned",
@@ -1014,6 +1016,7 @@
     "view-entity": "{{entity}}を見る",
     "view-more": "もっと見る",
     "view-new-count": "View {{count}} new",
+    "view-parsing-timeout-limit": "View Definition Parsing Timeout Limit",
     "view-plural": "Views",
     "volume-change": "Volume Change",
     "warning": "Warning",
@@ -1474,7 +1477,6 @@
     "fetch-re-index-data-error": "Error while fetching re index data!",
     "fetch-table-profiler-config-error": "Error while fetching table profiler config!",
     "fetch-updated-conversation-error": "更新された会話を取得中にエラーが発生しました！",
-    "filtering-condition": "Filtering Condition",
     "forgot-password-email-error": "メールの送信中に何らかの問題が発生しました。管理者にご連絡ください。",
     "ingestion-workflow-operation-error": "Error while {{operation}} ingestion workflow {{displayName}}",
     "invalid-username-or-password": "無効なユーザ名かパスワードが入力されました。",
@@ -1486,7 +1488,6 @@
     "no-query-available": "利用可能なクエリはありません。",
     "no-task-available": "タスク情報はありません。",
     "no-task-creation-without-assignee": "担当者のいないタスクは作成できません",
-    "parsing-timeout-limit": "Query Parsing Timeout Limit",
     "please-add-description": "空の説明は受け付けられません。説明を追加してください。",
     "please-add-tags": "空のタグリストは受け付けられません。タグを追加してください。",
     "re-indexing-error": "Error while re indexing!",
@@ -1503,7 +1504,6 @@
     "unexpected-error": "予期しないエラーが発生しました。",
     "unexpected-response": "サーバから予期しない応答が返りました。",
     "update-entity-success": "{{entity}}は正常に更新されました。",
-    "view-parsing-timeout-limit": "View Definition Parsing Timeout Limit",
     "you-have-not-action-anything-yet": "あなたが{{action}}のデータはありません。"
   }
 }

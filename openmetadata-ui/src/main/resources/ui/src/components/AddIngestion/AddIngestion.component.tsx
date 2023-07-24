@@ -401,6 +401,7 @@ const AddIngestion = ({
       topicFilterPattern,
       useFqnFilter,
       includeOwners,
+      viewParsingTimeoutLimit,
     } = state;
 
     switch (serviceCategory) {
@@ -424,6 +425,7 @@ const AddIngestion = ({
           markDeletedTables: markDeletedTables,
           markAllDeletedTables: markAllDeletedTables,
           type: ConfigType.DatabaseMetadata,
+          viewParsingTimeoutLimit: viewParsingTimeoutLimit,
         };
       }
       case ServiceCategory.MESSAGING_SERVICES: {
@@ -519,6 +521,8 @@ const AddIngestion = ({
       timeoutSeconds,
       processPii,
       confidence,
+      filterCondition,
+      parsingTimeoutLimit,
     } = state;
     switch (type) {
       case PipelineType.Usage: {
@@ -527,6 +531,7 @@ const AddIngestion = ({
           resultLimit: resultLimit,
           stageFileLocation: stageFileLocation,
           type: usageIngestionType,
+          filterCondition: filterCondition,
         };
       }
       case PipelineType.Lineage: {
@@ -534,6 +539,8 @@ const AddIngestion = ({
           queryLogDuration: queryLogDuration,
           resultLimit: resultLimit,
           type: lineageIngestionType,
+          filterCondition: filterCondition,
+          parsingTimeoutLimit: parsingTimeoutLimit,
         };
       }
       case PipelineType.Profiler: {
@@ -578,6 +585,7 @@ const AddIngestion = ({
           databaseFilterPattern: databaseFilterPattern,
           schemaFilterPattern: schemaFilterPattern,
           tableFilterPattern: tableFilterPattern,
+          parsingTimeoutLimit: parsingTimeoutLimit,
         };
       }
 
