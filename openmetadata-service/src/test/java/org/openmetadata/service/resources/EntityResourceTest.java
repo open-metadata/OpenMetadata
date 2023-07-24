@@ -198,6 +198,7 @@ import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.RoleResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
+import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -1685,8 +1686,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       // create entity
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
       EntityReference entityReference = getEntityReference(entity);
-      String indexName = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
-      Awaitility.await().wait(2000L);
+      String indexName = IndexUtil.getIndexMappingByEntityType(entityReference.getType()).indexName;
+      Thread.sleep(2000);
       SearchResponse response = getResponseFormSearch(indexName);
       List<String> entityIds = new ArrayList<>();
       SearchHit[] hits = response.getHits().getHits();
@@ -1705,8 +1706,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       // create entity
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
       EntityReference entityReference = getEntityReference(entity);
-      String indexName = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
-      Awaitility.await().wait(2000L);
+      String indexName = IndexUtil.getIndexMappingByEntityType(entityReference.getType()).indexName;
+      Thread.sleep(2000);
       SearchResponse response = getResponseFormSearch(indexName);
       List<String> entityIds = new ArrayList<>();
       SearchHit[] hits = response.getHits().getHits();
@@ -1721,7 +1722,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       WebTarget target = getResource(entity.getId());
       TestUtils.delete(target, entityClass, ADMIN_AUTH_HEADERS);
       // search again in search after deleting
-      Awaitility.await().wait(2000L);
+      Thread.sleep(2000);
       response = getResponseFormSearch(indexName);
       hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
@@ -1738,12 +1739,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
       EntityReference entityReference = getEntityReference(entity);
-      String indexName = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
+      String indexName = IndexUtil.getIndexMappingByEntityType(entityReference.getType()).indexName;
       String desc = "";
       String original = JsonUtils.pojoToJson(entity);
       entity.setDescription("update description");
       entity = patchEntity(entity.getId(), original, entity, ADMIN_AUTH_HEADERS);
-      Awaitility.await().wait(2000L);
+      Thread.sleep(2000);
       SearchResponse response = getResponseFormSearch(indexName);
       SearchHit[] hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
@@ -1765,7 +1766,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       // create an entity
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
       EntityReference entityReference = getEntityReference(entity);
-      String indexName = ElasticSearchIndexDefinition.getIndexMappingByEntityType(entityReference.getType()).indexName;
+      String indexName = IndexUtil.getIndexMappingByEntityType(entityReference.getType()).indexName;
       String origJson = JsonUtils.pojoToJson(entity);
       TagResourceTest tagResourceTest = new TagResourceTest();
       Tag tag = tagResourceTest.createEntity(tagResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
@@ -1775,7 +1776,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       List<String> fqnList = new ArrayList<>();
       // add tags to entity
       entity = patchEntity(entity.getId(), origJson, entity, ADMIN_AUTH_HEADERS);
-      Awaitility.await().wait(2000L);
+      Thread.sleep(2000);
       SearchResponse response = getResponseFormSearch(indexName);
       SearchHit[] hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
@@ -1792,7 +1793,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       fqnList.clear();
       // delete the tag
       tagResourceTest.deleteEntity(tag.getId(), false, true, ADMIN_AUTH_HEADERS);
-      Awaitility.await().wait(2000L);
+      Thread.sleep(2000);
       response = getResponseFormSearch(indexName);
       hits = response.getHits().getHits();
       for (SearchHit hit : hits) {

@@ -1,8 +1,9 @@
 package org.openmetadata.service.search;
 
-import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.getIndexMapping;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.security.KeyStoreException;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -111,6 +112,8 @@ public class IndexUtil {
       return ElasticSearchIndexDefinition.ElasticSearchIndexType.CONTAINER_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.QUERY)) {
       return ElasticSearchIndexDefinition.ElasticSearchIndexType.QUERY_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.TEST_SUITE) || type.equalsIgnoreCase(Entity.TEST_CASE)) {
+      return ElasticSearchIndexDefinition.ElasticSearchIndexType.TEST_CASE_SEARCH_INDEX;
     }
     throw new EventPublisherException("Failed to find index doc for type " + type);
   }
@@ -124,6 +127,16 @@ public class IndexUtil {
       fields = INDEX_TO_MAPPING_FIELDS_MAP.get(getIndexMappingByEntityType(entityType));
     }
     return fields;
+  }
+
+  public static String getIndexMapping(
+      ElasticSearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType, String lang) throws IOException {
+    try (InputStream in =
+        ElasticSearchIndexDefinition.class.getResourceAsStream(
+            String.format(elasticSearchIndexType.indexMappingFile, lang.toLowerCase()))) {
+      assert in != null;
+      return new String(in.readAllBytes());
+    }
   }
 
   public static String getContext(String type, String info) {
