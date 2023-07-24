@@ -17,6 +17,7 @@ import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlac
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
+import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from 'components/TableProfiler/Component/ProfilerProgressWidget';
@@ -37,7 +38,7 @@ import { isString } from 'lodash';
 import { PagingResponse } from 'Models';
 import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import QueryString from 'qs';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import {
@@ -48,9 +49,8 @@ import {
 import { getEntityName } from 'utils/EntityUtils';
 import { getTestSuitePath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
-import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
 
-export const TestSuites = () => {
+export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const { t } = useTranslation();
   const { tab = DataQualityPageTabs.TABLES } =
     useParams<{ tab: DataQualityPageTabs }>();
@@ -192,16 +192,14 @@ export const TestSuites = () => {
         </Row>
       </Col>
 
-      <Col span={24}>
-        <SummaryPanel />
-      </Col>
+      <Col span={24}>{summaryPanel}</Col>
       <Col span={24}>
         <Table
           bordered
           columns={columns}
           data-testid="test-suite-table"
           dataSource={testSuites.data}
-          loading={isLoading}
+          loading={{ spinning: isLoading, indicator: <Loader /> }}
           locale={{
             emptyText: <FilterTablePlaceHolder />,
           }}
