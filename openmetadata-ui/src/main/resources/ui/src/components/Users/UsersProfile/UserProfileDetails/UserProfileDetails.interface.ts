@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,15 +11,14 @@
  *  limitations under the License.
  */
 
-import { TAG_START_WITH } from 'constants/Tag.constants';
-import { TagLabel } from '../../../generated/type/tagLabel';
+import { User } from 'generated/entity/teams/user';
 
-export type TagProps = {
-  className?: string;
-  editable?: boolean;
-  type?: 'contained' | 'outlined' | 'label' | 'border';
-  startWith?: TAG_START_WITH;
-  tag: TagLabel;
-  showOnlyName?: boolean;
-  style?: React.CSSProperties;
-};
+export interface UserProfileDetailsProps {
+  userData: {
+    email: string;
+    name: string;
+    displayName?: string;
+    description?: string;
+  };
+  updateUserDetails: (data: Partial<User>) => Promise<void>;
+}

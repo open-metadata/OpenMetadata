@@ -12,11 +12,10 @@
  */
 
 import {
-  act,
   findByTestId,
+  findByText,
   queryByTestId,
   render,
-  screen,
 } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -46,6 +45,32 @@ jest.mock('rest/rolesAPIV1', () => ({
 
 jest.mock('../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
+});
+
+jest.mock(
+  './UsersProfile/UserProfileDetails/UserProfileDetails.component',
+  () => {
+    return jest.fn().mockReturnValue(<div>UserProfileDetails</div>);
+  }
+);
+
+jest.mock('./UsersProfile/UserProfileImage/UserProfileImage.component', () => {
+  return jest.fn().mockReturnValue(<div>UserProfileImage</div>);
+});
+
+jest.mock(
+  './UsersProfile/UserProfileInheritedRoles/UserProfileInheritedRoles.component',
+  () => {
+    return jest.fn().mockReturnValue(<div>UserProfileInheritedRoles</div>);
+  }
+);
+
+jest.mock('./UsersProfile/UserProfileRoles/UserProfileRoles.component', () => {
+  return jest.fn().mockReturnValue(<div>UserProfileRoles</div>);
+});
+
+jest.mock('./UsersProfile/UserProfileTeams/UserProfileTeams.component', () => {
+  return jest.fn().mockReturnValue(<div>UserProfileTeams</div>);
 });
 
 jest.mock('components/searched-data/SearchedData', () => {
@@ -132,7 +157,7 @@ const mockProp = {
   paging: mockPaging,
   postFeedHandler: postFeed,
   isAdminUser: false,
-  isLoggedinUser: false,
+  isLoggedInUser: false,
   isAuthDisabled: true,
   isUserEntitiesLoading: false,
   updateUserDetails,
@@ -166,28 +191,24 @@ describe('Test User Component', () => {
       }
     );
 
-    const leftPanel = await findByTestId(container, 'left-panel');
-
-    expect(leftPanel).toBeInTheDocument();
-  });
-
-  it('Only admin can able to see tab for bot page', async () => {
-    const { container } = render(
-      <Users
-        userData={{ ...mockUserData, isBot: true }}
-        {...mockProp}
-        isAdminUser
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
+    const UserProfileDetails = await findByText(
+      container,
+      'UserProfileDetails'
     );
+    const UserProfileImage = await findByText(container, 'UserProfileImage');
+    const UserProfileInheritedRoles = await findByText(
+      container,
+      'UserProfileInheritedRoles'
+    );
+    const UserProfileRoles = await findByText(container, 'UserProfileRoles');
 
-    const tabs = await findByTestId(container, 'tabs');
-    const leftPanel = await findByTestId(container, 'left-panel');
+    const UserProfileTeams = await findByText(container, 'UserProfileTeams');
 
-    expect(tabs).toBeInTheDocument();
-    expect(leftPanel).toBeInTheDocument();
+    expect(UserProfileDetails).toBeInTheDocument();
+    expect(UserProfileImage).toBeInTheDocument();
+    expect(UserProfileRoles).toBeInTheDocument();
+    expect(UserProfileTeams).toBeInTheDocument();
+    expect(UserProfileInheritedRoles).toBeInTheDocument();
   });
 
   it('Tab should not visible to normal user', async () => {
@@ -199,36 +220,8 @@ describe('Test User Component', () => {
     );
 
     const tabs = queryByTestId(container, 'tab');
-    const leftPanel = await findByTestId(container, 'left-panel');
 
     expect(tabs).not.toBeInTheDocument();
-    expect(leftPanel).toBeInTheDocument();
-  });
-
-  it('Should render non deleted teams', async () => {
-    const { container } = render(
-      <Users userData={mockUserData} {...mockProp} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const teamFinance = await findByTestId(container, 'Finance');
-    const teamDataPlatform = await findByTestId(container, 'Data_Platform');
-
-    expect(teamFinance).toBeInTheDocument();
-    expect(teamDataPlatform).toBeInTheDocument();
-  });
-
-  it('Should not render deleted teams', async () => {
-    await act(async () => {
-      render(<Users userData={mockUserData} {...mockProp} />, {
-        wrapper: MemoryRouter,
-      });
-    });
-    const deletedTeam = screen.queryByTestId('Customer_Support');
-
-    expect(deletedTeam).not.toBeInTheDocument();
   });
 
   it('Should check if cards are rendered', async () => {
@@ -243,19 +236,6 @@ describe('Test User Component', () => {
     const datasetContainer = await findByTestId(container, 'table-container');
 
     expect(datasetContainer).toBeInTheDocument();
-  });
-
-  it('Should render inherited roles', async () => {
-    mockParams.tab = UserPageTabs.FOLLOWING;
-    const { container } = render(
-      <Users userData={mockUserData} {...mockProp} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-    const inheritedRoles = await findByTestId(container, 'inherited-roles');
-
-    expect(inheritedRoles).toBeInTheDocument();
   });
 
   it('MyData tab should show loader if the data is loading', async () => {
