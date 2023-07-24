@@ -27,6 +27,12 @@
       "description": "Validate if the Owner information is retrieved for Workbooks",
       "errorMessage": "Failed to fetch Workbook Owners, please validate if user has access to fetch Owners",
       "mandatory": false
+    },
+    {
+      "name": "GetDataModels",
+      "description": "Validate if the Data Sources(Data Models) information is retrieved for Workbooks",
+      "errorMessage": "Failed to fetch Workbook Data Sources, please validate if user has access to fetch Data Sources and Metadata API is enabled for tableau server",
+      "mandatory": false
     }
   ]
 }
