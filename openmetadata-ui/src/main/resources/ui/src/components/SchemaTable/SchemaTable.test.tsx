@@ -107,14 +107,6 @@ jest.mock(
   }
 );
 
-jest.mock('components/Tag/TagsViewer/tags-viewer', () => {
-  return jest.fn().mockReturnValue(<p>TagViewer</p>);
-});
-
-jest.mock('components/Tag/Tags/tags', () => {
-  return jest.fn().mockReturnValue(<p>Tag</p>);
-});
-
 jest.mock('../../utils/TagsUtils', () => ({
   getAllTagsList: jest.fn(() => Promise.resolve([])),
   getTagsHierarchy: jest.fn().mockReturnValue([]),

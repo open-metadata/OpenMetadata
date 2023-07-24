@@ -28,6 +28,7 @@ const CreateErrorPlaceHolder = ({
   onClick,
   heading,
   doc,
+  buttonId,
 }: CreatePlaceholderProps) => {
   const { t } = useTranslation();
 
@@ -74,7 +75,7 @@ const CreateErrorPlaceHolder = ({
             <Button
               ghost
               className="p-x-lg"
-              data-testid="add-placeholder-button"
+              data-testid={buttonId ?? 'add-placeholder-button'}
               icon={<PlusOutlined />}
               type="primary"
               onClick={onClick}>

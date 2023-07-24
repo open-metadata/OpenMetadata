@@ -32,12 +32,14 @@ const ErrorPlaceHolder = ({
   size = SIZE.LARGE,
   button,
   permission,
+  buttonId,
 }: ErrorPlaceholderProps) => {
   const getErrorPlaceHolder = () => {
     switch (type) {
       case ERROR_PLACEHOLDER_TYPE.CREATE:
         return (
           <CreateErrorPlaceHolder
+            buttonId={buttonId}
             className={className}
             doc={doc}
             heading={heading}
