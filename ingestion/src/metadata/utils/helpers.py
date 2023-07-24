@@ -31,6 +31,9 @@ from sqlparse.sql import Statement
 
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.utils.constants import DEFAULT_DATABASE
@@ -448,6 +451,8 @@ def get_database_name_for_lineage(
     if db_service_entity.connection is None or hasattr(
         db_service_entity.connection.config, "supportsDatabase"
     ):
+        if isinstance(db_service_entity.connection.config, BigQueryConnection):
+            return None
         return default_db_name
 
     # otherwise if it is an single db source then use "databaseName"
