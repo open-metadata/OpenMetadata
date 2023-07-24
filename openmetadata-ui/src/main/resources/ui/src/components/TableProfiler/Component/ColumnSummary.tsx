@@ -12,7 +12,7 @@
  */
 import { Space, Typography } from 'antd';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
 import { Column } from 'generated/entity/data/container';
 import { isEmpty } from 'lodash';
 import React, { FC } from 'react';

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 
 export type UIPermission = {
@@ -24,6 +25,10 @@ export type OperationPermission = {
 export type IngestionServicePermission = {
   [key: string]: OperationPermission;
 };
+
+export interface PermissionProviderProps {
+  children: ReactNode;
+}
 
 export enum ResourceEntity {
   ALL = 'all',

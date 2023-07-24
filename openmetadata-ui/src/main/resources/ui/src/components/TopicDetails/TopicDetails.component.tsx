@@ -27,6 +27,7 @@ import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.in
 import SampleDataTopic from 'components/SampleDataTopic/SampleDataTopic';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { getTopicDetailsPath } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { TagLabel } from 'generated/type/schema';
@@ -315,6 +316,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
                 <TagsContainerV2
+                  displayType={DisplayType.READ_MORE}
                   entityFqn={topicDetails.fullyQualifiedName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.TOPIC}
@@ -329,6 +331,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 />
 
                 <TagsContainerV2
+                  displayType={DisplayType.READ_MORE}
                   entityFqn={topicDetails.fullyQualifiedName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.TOPIC}
