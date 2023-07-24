@@ -68,13 +68,6 @@ jest.mock('react-router-dom', () => {
     useLocation: jest.fn().mockImplementation(() => mockLocation),
   };
 });
-jest.mock('../SummaryPannel/SummaryPanel.component', () => {
-  return {
-    SummaryPanel: jest
-      .fn()
-      .mockImplementation(() => <div>SummaryPanel.component</div>),
-  };
-});
 jest.mock('components/common/next-previous/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
@@ -96,9 +89,13 @@ jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
     ));
 });
 
+const mockProps = {
+  summaryPanel: <div>SummaryPanel.component</div>,
+};
+
 describe('TestCases component', () => {
   it('component should render', async () => {
-    render(<TestCases />);
+    render(<TestCases {...mockProps} />);
 
     expect(
       await screen.findByTestId('test-case-container')
@@ -115,7 +112,7 @@ describe('TestCases component', () => {
   it('on page load getListTestCase API should call', async () => {
     const mockGetListTestCase = getListTestCase as jest.Mock;
 
-    render(<TestCases />);
+    render(<TestCases {...mockProps} />);
 
     expect(mockGetListTestCase).toHaveBeenCalledWith({
       fields: 'testDefinition,testCaseResult,testSuite',
@@ -126,7 +123,7 @@ describe('TestCases component', () => {
     const mockSearchQuery = searchQuery as jest.Mock;
     mockLocation.search = '?searchValue=sale';
 
-    render(<TestCases />);
+    render(<TestCases {...mockProps} />);
 
     expect(mockSearchQuery).toHaveBeenCalledWith({
       fetchSource: false,
