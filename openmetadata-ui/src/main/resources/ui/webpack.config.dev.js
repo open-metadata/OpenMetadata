@@ -257,7 +257,7 @@ module.exports = {
     proxy: [
       {
         context: '/api',
-        target: 'https://sandbox.open-metadata.org/',
+        target: 'http://localhost:8585/',
         changeOrigin: true,
       },
     ],
