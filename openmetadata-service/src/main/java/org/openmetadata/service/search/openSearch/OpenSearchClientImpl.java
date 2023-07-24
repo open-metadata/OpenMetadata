@@ -9,6 +9,8 @@ import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ENTITY_TO_MAPPING_SCHEMA_MAP;
+import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.DESCRIPTION;
 import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME;
 import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
@@ -20,6 +22,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_N
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
 import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.QUERY_NGRAM;
@@ -169,7 +172,7 @@ public class OpenSearchClientImpl implements SearchClient {
     this.dao = dao;
   }
 
-  private static NamedXContentRegistry xContentRegistry;
+  private static final NamedXContentRegistry xContentRegistry;
 
   static {
     SearchModule searchModule = new SearchModule(Settings.EMPTY, false, List.of());
@@ -558,7 +561,7 @@ public class OpenSearchClientImpl implements SearchClient {
             .field(NAME_KEYWORD, 25.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
             .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
-            .field("columns.name.keyword", 10.0f)
+            .field(COLUMNS_NAME_KEYWORD, 10.0f)
             .field("columns.name", 2.0f)
             .field("columns.name.ngram")
             .field("columns.displayName", 2.0f)
@@ -599,7 +602,7 @@ public class OpenSearchClientImpl implements SearchClient {
     searchSourceBuilder.aggregation(AggregationBuilders.terms("database.name.keyword").field("database.name.keyword"));
     searchSourceBuilder
         .aggregation(AggregationBuilders.terms("databaseSchema.name.keyword").field("databaseSchema.name.keyword"))
-        .aggregation(AggregationBuilders.terms("columns.name.keyword").field("columns.name.keyword"));
+        .aggregation(AggregationBuilders.terms(COLUMNS_NAME_KEYWORD).field(COLUMNS_NAME_KEYWORD));
 
     return addAggregation(searchSourceBuilder);
   }
@@ -657,8 +660,7 @@ public class OpenSearchClientImpl implements SearchClient {
     searchSourceBuilder
         .aggregation(AggregationBuilders.terms(ES_TAG_FQN_FIELD).field(ES_TAG_FQN_FIELD).size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("glossary.name.keyword").field("glossary.name.keyword"))
-        .aggregation(AggregationBuilders.terms("owner.name.keyword").field("owner.name.keyword"));
-    ;
+        .aggregation(AggregationBuilders.terms(OWNER_DISPLAY_NAME_KEYWORD).field(OWNER_DISPLAY_NAME_KEYWORD));
     return searchSourceBuilder;
   }
 
@@ -699,7 +701,7 @@ public class OpenSearchClientImpl implements SearchClient {
             .field(DISPLAY_NAME_KEYWORD, 25.0f)
             .field(NAME_KEYWORD, 25.0f)
             .field("dataModel.columns.name", 2.0f)
-            .field("dataModel.columns.name.keyword", 10.0f)
+            .field(DATA_MODEL_COLUMNS_NAME_KEYWORD, 10.0f)
             .field("dataModel.columns.name.ngram")
             .field("dataModel.columns.displayName", 2.0f)
             .field("dataModel.columns.displayName.ngram")
@@ -728,7 +730,7 @@ public class OpenSearchClientImpl implements SearchClient {
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("dataModel.columns.name.keyword").field("dataModel.columns.name.keyword"));
+        AggregationBuilders.terms(DATA_MODEL_COLUMNS_NAME_KEYWORD).field(DATA_MODEL_COLUMNS_NAME_KEYWORD));
     return addAggregation(searchSourceBuilder);
   }
 
@@ -800,16 +802,18 @@ public class OpenSearchClientImpl implements SearchClient {
 
   private static SearchSourceBuilder addAggregation(SearchSourceBuilder builder) {
     builder
-        .aggregation(AggregationBuilders.terms("serviceType").field("serviceType").size(MAX_AGGREGATE_SIZE))
+        .aggregation(
+            AggregationBuilders.terms("serviceType.keyword").field("serviceType.keyword").size(MAX_AGGREGATE_SIZE))
         .aggregation(
             AggregationBuilders.terms("service.name.keyword").field("service.name.keyword").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("entityType").field("entityType").size(MAX_AGGREGATE_SIZE))
+        .aggregation(
+            AggregationBuilders.terms("entityType.keyword").field("entityType.keyword").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"))
         .aggregation(
-            AggregationBuilders.terms("owner.displayName.keyword")
-                .field("owner.displayName.keyword")
+            AggregationBuilders.terms(OWNER_DISPLAY_NAME_KEYWORD)
+                .field(OWNER_DISPLAY_NAME_KEYWORD)
                 .size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("tags.tagFQN").field("tags.tagFQN"));
+        .aggregation(AggregationBuilders.terms(ES_TAG_FQN_FIELD).field(ES_TAG_FQN_FIELD));
     return builder;
   }
 
@@ -1046,7 +1050,7 @@ public class OpenSearchClientImpl implements SearchClient {
 
         do {
           searchRequest =
-              searchRequest(indexes, "tags.tagFQN", event.getEntityFullyQualifiedName(), batchSize, currentHits);
+              searchRequest(indexes, ES_TAG_FQN_FIELD, event.getEntityFullyQualifiedName(), batchSize, currentHits);
           response = client.search(searchRequest, RequestOptions.DEFAULT);
           totalHits = (int) response.getHits().getTotalHits().value;
           for (SearchHit hit : response.getHits()) {
