@@ -97,6 +97,7 @@ const FeedsWidget = () => {
   return (
     <div className="feeds-widget-container" data-testid="activity-feed-widget">
       <Tabs
+        destroyInactiveTabPane
         items={[
           {
             label: t('label.all'),
