@@ -64,7 +64,7 @@ jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () =>
   jest.fn().mockImplementation(() => <div>TagsContainerV2</div>)
 );
 
-jest.mock('components/Tag/TagsViewer/tags-viewer', () =>
+jest.mock('components/Tag/TagsViewer/TagsViewer', () =>
   jest.fn().mockImplementation(() => <div>TagsViewer</div>)
 );
 
