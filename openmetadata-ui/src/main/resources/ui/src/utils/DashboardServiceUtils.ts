@@ -19,6 +19,7 @@ import {
 } from '../generated/entity/services/dashboardService';
 import customDashboardConnection from '../jsons/connectionSchemas/connections/dashboard/customDashboardConnection.json';
 import domoDashboardConnection from '../jsons/connectionSchemas/connections/dashboard/domoDashboardConnection.json';
+import lightdashConnection from '../jsons/connectionSchemas/connections/dashboard/lightdashConnection.json';
 import lookerConnection from '../jsons/connectionSchemas/connections/dashboard/lookerConnection.json';
 import metabaseConnection from '../jsons/connectionSchemas/connections/dashboard/metabaseConnection.json';
 import modeConnection from '../jsons/connectionSchemas/connections/dashboard/modeConnection.json';
@@ -86,6 +87,12 @@ export const getDashboardConfig = (type: DashboardServiceType) => {
 
     case DashboardServiceType.QuickSight: {
       schema = quicksightConnection;
+
+      break;
+    }
+
+    case DashboardServiceType.Lightdash: {
+      schema = lightdashConnection;
 
       break;
     }
