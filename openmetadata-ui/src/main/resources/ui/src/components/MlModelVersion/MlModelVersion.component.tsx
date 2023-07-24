@@ -298,6 +298,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                                   </Col>
                                   <Col flex="auto">
                                     <TagsViewer
+                                      sizeCap={-1}
                                       tags={
                                         getFilterTags(feature.tags ?? [])
                                           .Classification
