@@ -78,7 +78,7 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
             className="link-hover"
             data-testid="role-name"
             to={getRoleWithFqnPath(
-              encodeURIComponent(record.fullyQualifiedName || '')
+              encodeURIComponent(record.fullyQualifiedName ?? '')
             )}>
             {getEntityName(record)}
           </Link>
