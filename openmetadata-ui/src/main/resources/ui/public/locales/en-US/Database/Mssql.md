@@ -82,7 +82,7 @@ If your database service and Open Metadata are both running via docker locally, 
 $$
 
 $$section
-### Database $(id="database")   
+### Database $(id="database")
 
 Initial Mssql database to connect to. If you want to ingest all databases, set `ingestAllDatabases` to true.
 $$
