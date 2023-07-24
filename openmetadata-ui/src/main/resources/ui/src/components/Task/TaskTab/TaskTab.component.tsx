@@ -211,9 +211,8 @@ export const TaskTab = ({
    *
    * @returns True if has access otherwise false
    */
-  const hasEditAccess = () => isAdminUser || isAssignee || isOwner;
-
-  const hasTaskUpdateAccess = () => hasEditAccess() || isPartOfAssigneeTeam;
+  const hasEditAccess =
+    isAdminUser || isAssignee || isOwner || Boolean(isPartOfAssigneeTeam);
 
   const onSave = (message: string) => {
     postFeed(message, taskThread?.id ?? '').catch(() => {
@@ -266,10 +265,10 @@ export const TaskTab = ({
         className="m-t-sm items-end w-full"
         data-testid="task-cta-buttons"
         size="small">
-        {(isCreator || hasTaskUpdateAccess()) && (
+        {(isCreator || hasEditAccess) && (
           <Button onClick={onTaskReject}>{t('label.close')}</Button>
         )}
-        {hasTaskUpdateAccess() ? (
+        {hasEditAccess ? (
           <>
             {['RequestDescription', 'RequestTag'].includes(
               taskDetails?.type ?? ''
@@ -428,7 +427,7 @@ export const TaskTab = ({
                   profileWidth="24"
                   showUserName={false}
                 />
-                {(isCreator || hasTaskUpdateAccess()) && !isTaskClosed ? (
+                {(isCreator || hasEditAccess) && !isTaskClosed ? (
                   <Button
                     className="flex-center p-0"
                     data-testid="edit-assignees"
@@ -457,7 +456,7 @@ export const TaskTab = ({
       <Col span={24}>
         {isTaskDescription && (
           <DescriptionTask
-            hasEditAccess={hasEditAccess()}
+            hasEditAccess={hasEditAccess}
             isTaskActionEdit={false}
             taskThread={taskThread}
             onChange={(value) => form.setFieldValue('description', value)}
@@ -466,7 +465,7 @@ export const TaskTab = ({
 
         {isTaskTags && (
           <TagsTask
-            hasEditAccess={hasEditAccess()}
+            hasEditAccess={hasEditAccess}
             isTaskActionEdit={false}
             task={taskDetails}
             onChange={(value) => form.setFieldValue('updatedTags', value)}
@@ -522,7 +521,7 @@ export const TaskTab = ({
               trigger="onChange">
               <TagsTask
                 isTaskActionEdit
-                hasEditAccess={hasEditAccess()}
+                hasEditAccess={hasEditAccess}
                 task={taskDetails}
                 onChange={(value) => form.setFieldValue('updatedTags', value)}
               />
@@ -543,7 +542,7 @@ export const TaskTab = ({
               trigger="onTextChange">
               <DescriptionTask
                 isTaskActionEdit
-                hasEditAccess={hasEditAccess()}
+                hasEditAccess={hasEditAccess}
                 taskThread={taskThread}
                 onChange={(value) => form.setFieldValue('description', value)}
               />
