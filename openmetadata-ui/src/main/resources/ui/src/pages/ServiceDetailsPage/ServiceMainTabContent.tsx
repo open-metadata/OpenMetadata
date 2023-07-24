@@ -341,6 +341,7 @@ function ServiceMainTabContent({
             entityType={entityType}
             permission={editTagsPermission}
             selectedTags={tags}
+            showTaskHandler={false}
             tagType={TagSource.Classification}
             onSelectionChange={handleTagSelection}
           />
@@ -349,6 +350,7 @@ function ServiceMainTabContent({
             entityType={entityType}
             permission={editTagsPermission}
             selectedTags={tags}
+            showTaskHandler={false}
             tagType={TagSource.Glossary}
             onSelectionChange={handleTagSelection}
           />
