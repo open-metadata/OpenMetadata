@@ -49,6 +49,7 @@ import './activity-feed-tab.less';
 import {
   ActivityFeedTabProps,
   ActivityFeedTabs,
+  TaskFilter,
 } from './ActivityFeedTab.interface';
 import { ReactComponent as CheckIcon } from '/assets/svg/ic-check.svg';
 import { ReactComponent as TaskIcon } from '/assets/svg/ic-task.svg';
@@ -70,7 +71,7 @@ export const ActivityFeedTab = ({
   const [elementRef, isInView] = useElementInView(observerOptions);
   const { subTab: activeTab = 'all' } =
     useParams<{ subTab: ActivityFeedTabs }>();
-  const [taskFilter, setTaskFilter] = useState<'open' | 'close'>('open');
+  const [taskFilter, setTaskFilter] = useState<TaskFilter>('open');
   const [allCount, setAllCount] = useState(0);
   const [tasksCount, setTasksCount] = useState(0);
 
@@ -277,6 +278,15 @@ export const ActivityFeedTab = ({
     return [0, 0];
   }, [entityThread, activeTab]);
 
+  const handleUpdateTaskFilter = (filter: TaskFilter) => {
+    setTaskFilter(filter);
+  };
+
+  const handleAfterTaskClose = () => {
+    handleFeedFetchFromFeedList();
+    handleUpdateTaskFilter('close');
+  };
+
   return (
     <div className="activity-feed-tab">
       <Menu
@@ -347,7 +357,7 @@ export const ActivityFeedTab = ({
                 }
               )}
               onClick={() => {
-                setTaskFilter('open');
+                handleUpdateTaskFilter('open');
                 setActiveThread();
               }}>
               {' '}
@@ -359,7 +369,7 @@ export const ActivityFeedTab = ({
                 'font-medium': taskFilter === 'close',
               })}
               onClick={() => {
-                setTaskFilter('close');
+                handleUpdateTaskFilter('close');
                 setActiveThread();
               }}>
               {' '}
@@ -420,6 +430,7 @@ export const ActivityFeedTab = ({
                   entityType={EntityType.TABLE}
                   owner={owner}
                   taskThread={selectedThread}
+                  onAfterClose={handleAfterTaskClose}
                   onUpdateEntityDetails={onUpdateEntityDetails}
                 />
               ) : (
@@ -427,6 +438,7 @@ export const ActivityFeedTab = ({
                   entityType={isUserEntity ? entityTypeTask : entityType}
                   owner={owner}
                   taskThread={selectedThread}
+                  onAfterClose={handleAfterTaskClose}
                   onUpdateEntityDetails={onUpdateEntityDetails}
                 />
               )}
