@@ -38,7 +38,6 @@ import { useHistory, useParams } from 'react-router-dom';
 import { getAllFeeds, getFeedCount } from 'rest/feedsAPI';
 import { getCountBadge, getEntityDetailLink } from 'utils/CommonUtils';
 import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from 'utils/EntityUtils';
-import { getEntityField } from 'utils/FeedUtils';
 import '../../Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component';
@@ -241,10 +240,6 @@ export const ActivityFeedTab = ({
     });
   };
 
-  const entityField = selectedThread
-    ? getEntityField(selectedThread.about)
-    : '';
-
   const threads = useMemo(() => {
     if (activeTab === ActivityFeedTabs.TASKS) {
       return entityThread.filter(
@@ -407,8 +402,7 @@ export const ActivityFeedTab = ({
                 <FeedPanelHeader
                   hideCloseIcon
                   className="p-x-md"
-                  entityFQN={fqn}
-                  entityField={entityField as string}
+                  entityLink={selectedThread.about}
                   threadType={selectedThread?.type ?? ThreadType.Conversation}
                   onCancel={noop}
                 />

@@ -18,7 +18,6 @@ import { ThreadType } from 'generated/api/feed/createThread';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Thread } from '../../../generated/entity/feed/thread';
-import { getEntityField, getEntityFQN } from '../../../utils/FeedUtils';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
@@ -41,10 +40,6 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
     postFeed,
     selectedThread,
   } = useActivityFeedProvider();
-  const entityField = selectedThread
-    ? getEntityField(selectedThread.about)
-    : '';
-  const entityFQN = selectedThread ? getEntityFQN(selectedThread.about) : '';
 
   const onSave = (message: string) => {
     postFeed(message, selectedThread?.id ?? '').catch(() => {
@@ -64,8 +59,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
         ) : (
           <FeedPanelHeader
             className="p-x-md"
-            entityFQN={entityFQN}
-            entityField={entityField as string}
+            entityLink={selectedThread?.about ?? ''}
             threadType={selectedThread?.type ?? ThreadType.Conversation}
             onCancel={hideDrawer}
           />
