@@ -672,7 +672,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
         setServiceDetails(response);
       } catch (err) {
-        // Error
+        showErrorToast(err as AxiosError);
       }
     },
     [serviceDetails, serviceCategory]

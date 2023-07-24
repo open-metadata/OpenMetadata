@@ -667,7 +667,7 @@ describe('Glossary page should work properly', () => {
 
     // Add glossary tag to entity for mutually exclusive
     cy.get(
-      '[data-testid="entity-right-panel"] [data-testid="glossary-container"] > [data-testid="entity-tags"]'
+      '[data-testid="entity-right-panel"] [data-testid="glossary-container"] > [data-testid="entity-tags"] [data-testid="add-tag"]'
     ).click();
     // Select 1st term
     cy.get('[data-testid="tag-selector"]').click().type(term1);
@@ -691,7 +691,7 @@ describe('Glossary page should work properly', () => {
 
     // Add non mutually exclusive tags
     cy.get(
-      '[data-testid="entity-right-panel"] [data-testid="glossary-container"] > [data-testid="entity-tags"]'
+      '[data-testid="entity-right-panel"] [data-testid="glossary-container"] > [data-testid="entity-tags"] [data-testid="add-tag"]'
     ).click();
 
     // Select 1st term
@@ -714,7 +714,7 @@ describe('Glossary page should work properly', () => {
 
     // Add tag to schema table
     const firstColumn =
-      '[data-testid="Glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] > [data-testid="entity-tags"]';
+      '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] > [data-testid="entity-tags"] [data-testid="add-tag"]';
     cy.get(firstColumn).scrollIntoView();
     cy.get(firstColumn).click();
 
@@ -729,7 +729,7 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@countTag', 200);
     cy.get(
-      '[data-testid="Glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"]'
+      '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"]'
     )
       .scrollIntoView()
       .should('contain', term3);
@@ -785,7 +785,7 @@ describe('Glossary page should work properly', () => {
     interceptURL('PATCH', '/api/v1/tables/*', 'removeSchemaTags');
 
     cy.get(
-      '[data-testid="Glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"]'
+      '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"]'
     )
       .scrollIntoView()
       .trigger('mouseover')
@@ -800,7 +800,7 @@ describe('Glossary page should work properly', () => {
     verifyResponseStatusCode('@removeSchemaTags', 200);
 
     cy.get(
-      '[data-testid="Glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"]'
+      '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"]'
     )
       .scrollIntoView()
       .should('not.contain', name)
