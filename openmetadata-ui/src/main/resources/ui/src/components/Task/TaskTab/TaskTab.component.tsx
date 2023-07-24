@@ -52,12 +52,10 @@ import {
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
 import { updateTask, updateThread } from 'rest/feedsAPI';
 import EntityLink from 'utils/EntityLink';
 import { getEntityName } from 'utils/EntityUtils';
 import { getEntityFQN } from 'utils/FeedUtils';
-import { getEntityLink } from 'utils/TableUtils';
 import {
   fetchOptions,
   isDescriptionTask,
@@ -84,7 +82,6 @@ export const TaskTab = ({
   const entityCheck = !isUndefined(entityFQN) && !isUndefined(entityType);
   const { t } = useTranslation();
   const [form] = Form.useForm();
-  const history = useHistory();
   const { isAdminUser } = useAuth();
   const { postFeed, setActiveThread } = useActivityFeedProvider();
   const [taskAction, setTaskAction] = useState<TaskAction>(TASK_ACTION_LIST[0]);
@@ -162,8 +159,7 @@ export const TaskTab = ({
     updateTask(TaskOperation.RESOLVE, taskDetails?.id + '', data)
       .then(() => {
         showSuccessToast(t('server.task-resolved-successfully'));
-        rest.onUpdateEntityDetails?.();
-        history.push(getEntityLink(entityType ?? '', entityFQN ?? ''));
+        rest.onAfterClose?.();
       })
       .catch((err: AxiosError) => showErrorToast(err));
   };
@@ -245,6 +241,7 @@ export const TaskTab = ({
       } as unknown as TaskDetails)
         .then(() => {
           showSuccessToast(t('server.task-closed-successfully'));
+          rest.onAfterClose?.();
         })
         .catch((err: AxiosError) => showErrorToast(err));
     } else {
