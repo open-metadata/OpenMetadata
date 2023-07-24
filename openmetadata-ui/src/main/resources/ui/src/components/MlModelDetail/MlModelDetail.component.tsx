@@ -25,6 +25,7 @@ import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAss
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { TagLabel, TagSource } from 'generated/type/schema';
 import { EntityFieldThreadCount } from 'interface/feed.interface';
@@ -425,6 +426,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
                 <TagsContainerV2
+                  displayType={DisplayType.READ_MORE}
                   entityFqn={mlModelDetail.fullyQualifiedName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.MLMODEL}
@@ -440,6 +442,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                 />
 
                 <TagsContainerV2
+                  displayType={DisplayType.READ_MORE}
                   entityFqn={mlModelDetail.fullyQualifiedName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.MLMODEL}
