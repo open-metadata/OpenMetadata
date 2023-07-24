@@ -188,7 +188,7 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
           </Typography.Text>
         </Col>
       </Row>
-      {kpiList.length > 0 && (
+      {kpiList.length > 0 ? (
         <Row>
           {graphData.length ? (
             <>
@@ -233,6 +233,8 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
             </Col>
           )}
         </Row>
+      ) : (
+        <EmptyPlaceholder />
       )}
     </Card>
   );

@@ -176,6 +176,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       {fields.map((field) => (
         <SearchDropdown
           highlight
+          fixedOrderOptions={field.key === 'tier.tagFQN'}
           isSuggestionsLoading={isOptionsLoading}
           key={field.key}
           label={field.label}
