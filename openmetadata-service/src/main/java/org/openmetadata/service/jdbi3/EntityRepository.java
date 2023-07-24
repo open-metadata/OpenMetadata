@@ -1030,7 +1030,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.entityExtensionTimeSeriesDao().deleteBeforeTimestamp(fqnHash, extension, timestamp);
   }
 
-  private void validateExtension(T entity) {
+  public void validateExtension(T entity) {
     if (entity.getExtension() == null) {
       return;
     }
@@ -1088,7 +1088,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.entityExtensionDAO().delete(entity.getId().toString(), fieldFQN);
   }
 
-  public ObjectNode getExtension(T entity) throws JsonProcessingException {
+  public Object getExtension(T entity) throws JsonProcessingException {
     String fieldFQNPrefix = TypeRegistry.getCustomPropertyFQNPrefix(entityType);
     List<ExtensionRecord> records =
         daoCollection.entityExtensionDAO().getExtensions(entity.getId().toString(), fieldFQNPrefix);
@@ -1705,7 +1705,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       applyTags(updatedTags, fqn);
     }
 
-    private void updateExtension() throws JsonProcessingException {
+    protected void updateExtension() throws JsonProcessingException {
       if (original.getExtension() == updated.getExtension()) {
         return;
       }

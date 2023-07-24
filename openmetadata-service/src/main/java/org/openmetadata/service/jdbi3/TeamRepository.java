@@ -42,9 +42,11 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.invalid
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParentCount;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -52,13 +54,19 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
+import org.openmetadata.schema.entity.data.knowledge.KnowledgeResource;
+import org.openmetadata.schema.entity.data.knowledge.KnowledgeResourceType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
 import org.openmetadata.schema.type.EntityReference;
@@ -76,14 +84,19 @@ import org.openmetadata.service.resources.teams.TeamResource;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class TeamRepository extends EntityRepository<Team> {
+  static final String KNOWLEDGE_EXTENSION = "%s.%s.%s";
+  static final String KNOWLEDGE_SCHEMA = "knowledgeResource";
   static final String PARENTS_FIELD = "parents";
-  static final String TEAM_UPDATE_FIELDS = "profile,users,defaultRoles,parents,children,policies,teamType,email";
-  static final String TEAM_PATCH_FIELDS = "profile,users,defaultRoles,parents,children,policies,teamType,email";
+  static final String TEAM_UPDATE_FIELDS =
+      "profile,users,defaultRoles,parents,children,policies,teamType,email,extension";
+  static final String TEAM_PATCH_FIELDS =
+      "profile,users,defaultRoles,parents,children,policies,teamType,email,extension";
   private static final String DEFAULT_ROLES = "defaultRoles";
   private Team organization = null;
 
@@ -142,6 +155,10 @@ public class TeamRepository extends EntityRepository<Team> {
     // Don't store users, defaultRoles, href as JSON. Build it on the fly based on relationships
     team.withUsers(null).withDefaultRoles(null).withInheritedRoles(null);
 
+    // Don't Store Knowledge Extension on entity
+    List<KnowledgeResource> knowledgeExtension = JsonUtils.convertValue(team.getExtension(), new TypeReference<>() {});
+    team.withExtension(null);
+
     store(team, update);
     if (update) {
       SubjectCache.getInstance().invalidateTeam(team.getId());
@@ -152,7 +169,8 @@ public class TeamRepository extends EntityRepository<Team> {
         .withDefaultRoles(defaultRoles)
         .withParents(parents)
         .withChildren(children)
-        .withPolicies(policies);
+        .withPolicies(policies)
+        .withExtension(knowledgeExtension);
   }
 
   @Override
@@ -230,6 +248,135 @@ public class TeamRepository extends EntityRepository<Team> {
     Team team = getByName(null, name, Fields.EMPTY_FIELDS); // Validate team name
     TeamCsv teamCsv = new TeamCsv(team, user);
     return teamCsv.importCsv(csv, dryRun);
+  }
+
+  @Override
+  public void storeExtension(EntityInterface entity) throws JsonProcessingException {
+    List<KnowledgeResource> knowledgeResources =
+        JsonUtils.convertValue(entity.getExtension(), new TypeReference<>() {});
+
+    for (KnowledgeResource knowledgeExt : knowledgeResources) {
+      daoCollection
+          .entityExtensionDAO()
+          .insert(
+              entity.getId().toString(),
+              String.format(
+                  KNOWLEDGE_EXTENSION,
+                  entityType,
+                  knowledgeExt.getKnowledgeResourceType().value(),
+                  FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(knowledgeExt.getName()))),
+              KNOWLEDGE_SCHEMA,
+              JsonUtils.pojoToJson(knowledgeExt));
+    }
+  }
+
+  public Response getKnowledgeExtension(UriInfo uriInfo, String teamName, String assetName) throws IOException {
+    Team storedTeam = getByName(uriInfo, teamName, new EntityUtil.Fields(Set.of("id")));
+    List<CollectionDAO.ExtensionRecord> records =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensionsByExtensionMatch(
+                storedTeam.getId().toString(),
+                String.format("%%.%%.%s", FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(assetName))));
+    List<KnowledgeResource> docs = new ArrayList<>();
+    if (records.size() == 1) {
+      docs.add(JsonUtils.readValue(records.get(0).getExtensionJson(), KnowledgeResource.class));
+      return Response.status(Response.Status.OK).entity(docs).build();
+    }
+    throw new EntityNotFoundException("Knowledge Asset With Given Name not Found.");
+  }
+
+  public Response listKnowledgeExtension(UriInfo uriInfo, KnowledgeResourceType type, String team) throws IOException {
+    Team storedTeam = getByName(uriInfo, team, new EntityUtil.Fields(Set.of("id")));
+    List<CollectionDAO.ExtensionRecord> records =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensionsByExtensionMatch(
+                storedTeam.getId().toString(), (type == null ? "team.%.%" : String.format("%%.%s.%%", type.value())));
+    List<KnowledgeResource> docs = new ArrayList<>();
+    if (records.isEmpty()) {
+      return null;
+    }
+    for (CollectionDAO.ExtensionRecord extensionRecord : records) {
+      docs.add(JsonUtils.readValue(extensionRecord.getExtensionJson(), KnowledgeResource.class));
+    }
+    docs.sort(Comparator.comparing(KnowledgeResource::getName));
+    return Response.status(Response.Status.OK).entity(docs).build();
+  }
+
+  public Response createKnowledgeExtension(UriInfo uriInfo, KnowledgeResource knowledgeExt, String team)
+      throws IOException {
+    Team storedTeam = getByName(uriInfo, team, new EntityUtil.Fields(Set.of("id")));
+    String knowledgeExtension = getKnowledgeExtension(knowledgeExt.getKnowledgeResourceType(), knowledgeExt.getName());
+    List<CollectionDAO.ExtensionRecord> records = daoCollection.entityExtensionDAO().getExtensions(knowledgeExtension);
+    if (records.isEmpty()) {
+      daoCollection
+          .entityExtensionDAO()
+          .insert(
+              storedTeam.getId().toString(), knowledgeExtension, KNOWLEDGE_SCHEMA, JsonUtils.pojoToJson(knowledgeExt));
+    } else {
+      throw new BadRequestException(
+          String.format("Knowledge Asset with Name: %s already exists.", knowledgeExt.getName()));
+    }
+    return Response.status(Response.Status.CREATED).entity(knowledgeExt).build();
+  }
+
+  public Response createOrUpdateKnowledgeExtension(UriInfo uriInfo, KnowledgeResource knowledgeExt, String team)
+      throws IOException {
+    Team storedTeam = getByName(uriInfo, team, new EntityUtil.Fields(Set.of("id")));
+    String knowledgeExtension = getKnowledgeExtension(knowledgeExt.getKnowledgeResourceType(), knowledgeExt.getName());
+    List<CollectionDAO.ExtensionRecord> records = daoCollection.entityExtensionDAO().getExtensions(knowledgeExtension);
+    Response.Status status = Response.Status.CREATED;
+    if (!records.isEmpty()) {
+      status = Response.Status.OK;
+    }
+    daoCollection
+        .entityExtensionDAO()
+        .insert(
+            storedTeam.getId().toString(), knowledgeExtension, KNOWLEDGE_SCHEMA, JsonUtils.pojoToJson(knowledgeExt));
+    return Response.status(status).entity(knowledgeExt).build();
+  }
+
+  @Override
+  public void removeExtension(EntityInterface entity) {
+    List<KnowledgeResource> knowledgeResources =
+        JsonUtils.convertValue(entity.getExtension(), new TypeReference<>() {});
+    for (KnowledgeResource knowledgeExt : knowledgeResources) {
+      daoCollection
+          .entityExtensionDAO()
+          .delete(
+              entity.getId().toString(),
+              getKnowledgeExtension(knowledgeExt.getKnowledgeResourceType(), knowledgeExt.getName()));
+    }
+  }
+
+  private String getKnowledgeExtension(KnowledgeResourceType knowledgeResourceType, String name) {
+    return String.format(
+        KNOWLEDGE_EXTENSION,
+        entityType,
+        knowledgeResourceType.value(),
+        FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(name)));
+  }
+
+  @Override
+  public void validateExtension(Team entity) {
+    // Nothing to validate here for Team's Extension
+  }
+
+  @Override
+  @SneakyThrows
+  public Object getExtension(Team entity) throws JsonProcessingException {
+    List<CollectionDAO.ExtensionRecord> records =
+        daoCollection.entityExtensionDAO().getKnowledgeAssetById(entity.getId().toString());
+    List<KnowledgeResource> docs = new ArrayList<>();
+    if (records.isEmpty()) {
+      return null;
+    }
+    for (CollectionDAO.ExtensionRecord extensionRecord : records) {
+      docs.add(JsonUtils.readValue(extensionRecord.getExtensionJson(), KnowledgeResource.class));
+    }
+    docs.sort(Comparator.comparing(KnowledgeResource::getName));
+    return docs;
   }
 
   private List<EntityReference> getInheritedRoles(Team team) throws IOException {

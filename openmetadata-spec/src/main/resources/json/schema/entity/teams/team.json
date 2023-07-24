@@ -124,6 +124,10 @@
       "description": "Policies that is attached to this team.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
     "domain" : {
       "description": "Domain the Team belongs to.",
       "$ref": "../../type/entityReference.json"

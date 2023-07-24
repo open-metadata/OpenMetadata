@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_GROUP;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_ORGANIZATION;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import io.dropwizard.jersey.PATCH;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -53,6 +54,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
+import org.openmetadata.schema.entity.data.knowledge.KnowledgeResource;
+import org.openmetadata.schema.entity.data.knowledge.KnowledgeResourceType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
 import org.openmetadata.schema.type.EntityHistory;
@@ -510,6 +513,100 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return importCsvInternal(securityContext, name, csv, dryRun);
   }
 
+  @GET
+  @Path("/name/{teamName}/knowledge")
+  @Valid
+  @Operation(
+      operationId = "listKnowledgeAssets",
+      summary = "List Knowledge Assets",
+      description = "Get a list of knowledge Assets",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of teams",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = KnowledgeResource.class)))
+      })
+  public Response listKnowledgeAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Filter Team Knowledge Assets Based on type", schema = @Schema(type = "string"))
+          @PathParam("teamName")
+          String teamName,
+      @QueryParam("type") KnowledgeResourceType type)
+      throws IOException {
+    return repository.listKnowledgeExtension(uriInfo, type, teamName);
+  }
+
+  @GET
+  @Path("/name/{teamName}/knowledge/{assetName}")
+  @Valid
+  @Operation(
+      operationId = "listKnowledgeAssets",
+      summary = "List Knowledge Assets",
+      description = "Get a list of knowledge Assets",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of teams",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = KnowledgeResource.class)))
+      })
+  public Response getKnowledgeAssetByBame(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("teamName") String teamName,
+      @PathParam("assetName") String assetName)
+      throws IOException {
+    return repository.getKnowledgeExtension(uriInfo, teamName, assetName);
+  }
+
+  @POST
+  @Path("/name/{teamName}/knowledge")
+  @Operation(
+      operationId = "createKnowledgeExtension",
+      summary = "Create a team Knowledge Extension",
+      description = "Create a new team Knowledge Extension.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The team",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createKnowledgeExtension(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("teamName") String teamName,
+      @Valid KnowledgeResource knowledgeExt)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext);
+    return repository.createKnowledgeExtension(uriInfo, knowledgeExt, teamName);
+  }
+
+  @PUT
+  @Path("/name/{teamName}/knowledge")
+  @Operation(
+      operationId = "createOrUpdateKnowledgeExtension",
+      summary = "Create or Update a team Knowledge Extension",
+      description = "Create or Update a new team Knowledge Extension.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The team",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createOrUpdateKnowledgeExtension(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("teamName") String teamName,
+      @Valid KnowledgeResource knowledgeExt)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext);
+    return repository.createOrUpdateKnowledgeExtension(uriInfo, knowledgeExt, teamName);
+  }
+
   private Team getTeam(CreateTeam ct, String user) throws IOException {
     if (ct.getTeamType().equals(TeamType.ORGANIZATION)) {
       throw new IllegalArgumentException(CREATE_ORGANIZATION);
@@ -517,6 +614,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     if (ct.getTeamType().equals(TeamType.GROUP) && ct.getChildren() != null) {
       throw new IllegalArgumentException(CREATE_GROUP);
     }
+    List<KnowledgeResource> knowledgeExtensions = JsonUtils.convertValue(ct.getExtension(), new TypeReference<>() {});
     return copy(new Team(), ct, user)
         .withProfile(ct.getProfile())
         .withIsJoinable(ct.getIsJoinable())
@@ -526,7 +624,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         .withParents(EntityUtil.toEntityReferences(ct.getParents(), Entity.TEAM))
         .withChildren(EntityUtil.toEntityReferences(ct.getChildren(), Entity.TEAM))
         .withPolicies(EntityUtil.toEntityReferences(ct.getPolicies(), Entity.POLICY))
-        .withEmail(ct.getEmail());
+        .withEmail(ct.getEmail())
+        .withExtension(knowledgeExtensions);
   }
 
   @Override

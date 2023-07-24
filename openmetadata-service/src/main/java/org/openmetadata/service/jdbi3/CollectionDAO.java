@@ -559,6 +559,27 @@ public interface CollectionDAO {
             + "ORDER BY extension")
     List<ExtensionRecord> getExtensions(@Bind("id") String id, @Bind("extensionPrefix") String extensionPrefix);
 
+    @RegisterRowMapper(ExtensionMapper.class)
+    @SqlQuery("SELECT extension, json FROM entity_extension WHERE id = :id AND extension LIKE :extension")
+    List<ExtensionRecord> getExtensionsByExtensionMatch(@Bind("id") String id, @Bind("extension") String extension);
+
+    @RegisterRowMapper(ExtensionMapper.class)
+    @SqlQuery("SELECT extension, json FROM entity_extension WHERE extension = :extension")
+    List<ExtensionRecord> getExtensions(@Bind("extension") String extension);
+
+    @RegisterRowMapper(ExtensionMapper.class)
+    @SqlQuery("SELECT extension, json FROM entity_extension WHERE id = :id")
+    List<ExtensionRecord> getKnowledgeAssetById(@Bind("id") String id);
+
+    @RegisterRowMapper(ExtensionMapper.class)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT extension, json FROM entity_extension where JSON_EXTRACT(json, '$.name') = :name",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT extension, json FROM entity_extension WHERE json->>'name' = :name",
+        connectionType = POSTGRES)
+    ExtensionRecord getKnowledgeAssetByName(@Bind("name") String name);
+
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id AND extension = :extension")
     void delete(@Bind("id") String id, @Bind("extension") String extension);
 

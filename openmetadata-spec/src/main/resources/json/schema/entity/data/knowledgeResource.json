@@ -1,0 +1,81 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/knowledgeResource.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "KnowledgeResource",
+  "description": "This schema defines the type of Knowledge Resource.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.knowledge.KnowledgeResource",
+  "definitions": {
+    "knowledgeResourceType": {
+      "javaType": "org.openmetadata.schema.entity.data.knowledge.KnowledgeResourceType",
+      "description": "Type of the Knowledge Resource.",
+      "type": "string",
+      "enum": ["Article", "QuickLink"]
+    },
+    "quickLink": {
+      "javaType": "org.openmetadata.schema.entity.data.knowledge.QuickLink",
+      "description": "Quick Link Knowledge Resource Store.",
+      "type": "object",
+      "properties": {
+        "url": {
+          "description": "The URL or destination of the Quick Link.",
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": ["url"],
+      "additionalProperties": false
+    },
+    "article": {
+      "javaType": "org.openmetadata.schema.entity.data.knowledge.Article",
+      "description": "Article Knowledge Resource",
+      "type": "object",
+      "properties": {
+        "authors": {
+          "description": "The author(s) of the article.",
+          "$ref": "../../type/entityReferenceList.json"
+        },
+        "publicationDate": {
+          "description": "The publication date of the article.",
+          "type": "string",
+          "format": "date"
+        },
+        "relatedArticles": {
+          "description": "An array of related articles.",
+          "$ref": "../../type/entityReferenceList.json"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "name": {
+      "description": "Name of a the Knowledge Resource.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this Knowledge Resource. It could be title or label.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of a Knowledge Resource.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "knowledgeResourceType" : {
+      "$ref": "#/definitions/knowledgeResourceType"
+    },
+    "knowledgeResource" : {
+      "description": "Knowledge Resource Schema",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/quickLink"
+        },
+        {
+          "$ref": "#/definitions/article"
+        }
+      ]
+    }
+  },
+  "required": ["name", "knowledgeResourceType", "knowledgeResource"],
+  "additionalProperties": false
+}
