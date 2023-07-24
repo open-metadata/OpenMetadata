@@ -43,11 +43,11 @@ describe('Task flow should work', () => {
   const editAssignee = () => {
     interceptURL('PATCH', 'api/v1/feed/*', 'editAssignee');
 
-    cy.get('[data-testid="edit-assignees"]').should('be.visible').click();
+    cy.get('[data-testid="edit-assignees"]').click();
 
-    cy.get('[data-testid="select-assignee"] > .ant-select-selector')
-      .should('be.visible')
-      .type(secondAssignee);
+    cy.get('[data-testid="select-assignee"] > .ant-select-selector').type(
+      secondAssignee
+    );
     // select value from dropdown
     verifyResponseStatusCode('@suggestApi', 200);
 
@@ -75,9 +75,7 @@ describe('Task flow should work', () => {
         expect(matches).to.not.be.null;
       });
 
-    cy.get('[data-testid="owner-link"]')
-      .should('be.visible')
-      .contains(assignee);
+    cy.get('[data-testid="owner-link"]').contains(assignee);
 
     cy.get(`[data-testid="assignee-${assignee}"]`).should('be.visible');
   };
@@ -85,13 +83,14 @@ describe('Task flow should work', () => {
   const createDescriptionTask = (value) => {
     interceptURL('POST', 'api/v1/feed', 'createTask');
 
-    cy.get('#title')
-      .should('be.visible')
-      .should('have.value', `Update description for table ${value.term}`);
+    cy.get('#title').should(
+      'have.value',
+      `Update description for table ${value.term}`
+    );
 
-    cy.get('[data-testid="select-assignee"] > .ant-select-selector')
-      .should('be.visible')
-      .type(assignee);
+    cy.get('[data-testid="select-assignee"] > .ant-select-selector').type(
+      assignee
+    );
     // select value from dropdown
     verifyResponseStatusCode('@suggestApi', 200);
 
@@ -102,11 +101,7 @@ describe('Task flow should work', () => {
 
     cy.clickOutside();
 
-    cy.get(descriptionBox)
-      .scrollIntoView()
-      .should('be.visible')
-      .clear()
-      .type('Updated description');
+    cy.get(descriptionBox).scrollIntoView().clear().type('Updated description');
 
     cy.get('button[type="submit"]').click();
     verifyResponseStatusCode('@createTask', 201);
@@ -131,13 +126,14 @@ describe('Task flow should work', () => {
   const createTagTask = (value) => {
     interceptURL('POST', 'api/v1/feed', 'createTask');
 
-    cy.get('#title')
-      .should('be.visible')
-      .should('have.value', `Request tags for table ${value.term}`);
+    cy.get('#title').should(
+      'have.value',
+      `Request tags for table ${value.term}`
+    );
 
-    cy.get('[data-testid="select-assignee"] > .ant-select-selector')
-      .should('be.visible')
-      .type(assignee);
+    cy.get('[data-testid="select-assignee"] > .ant-select-selector').type(
+      assignee
+    );
     // select value from dropdown
     verifyResponseStatusCode('@suggestApi', 200);
 
@@ -185,7 +181,7 @@ describe('Task flow should work', () => {
 
     visitEntityDetailsPage(value.term, value.serviceName, value.entity);
 
-    cy.get('[data-testid="request-description"]').should('be.visible').click();
+    cy.get('[data-testid="request-description"]').click();
 
     verifyResponseStatusCode('@getEntityDetails', 200);
 
