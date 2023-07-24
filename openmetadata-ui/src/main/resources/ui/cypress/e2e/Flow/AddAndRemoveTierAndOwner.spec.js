@@ -243,12 +243,10 @@ describe('Add and Remove Owner and Tier', () => {
     interceptURL('GET', '/api/v1/permissions/glossary/*', 'glossaryPermission');
     interceptURL('GET', '/api/v1/glossaries?*', 'getGlossaries');
     cy.get('[data-testid="governance"]').should('be.visible').click();
-    cy.get('[data-testid="appbar-item-glossary"]')
-      .should('be.visible')
-      .click({ waitForAnimations: true });
-    cy.get('[data-testid="add-placeholder-button"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="appbar-item-glossary"]').click({
+      waitForAnimations: true,
+    });
+    cy.get('[data-testid="add-glossary"]').click();
     cy.get('[data-testid="name"]').should('be.visible').type(glossary);
     cy.get(descriptionBox).scrollIntoView().should('be.visible').type(glossary);
     cy.get('[data-testid="save-glossary"]')
@@ -308,6 +306,9 @@ describe('Add and Remove Owner and Tier', () => {
       .click({ waitForAnimations: true });
     verifyResponseStatusCode('@getGlossaries', 200);
     verifyResponseStatusCode('@glossaryPermission', 200);
+    interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');
+    cy.get('.ant-menu-item').contains(glossary).should('be.visible').click();
+    verifyResponseStatusCode('@getGlossaryTerms', 200);
     cy.get('[data-testid="add-new-tag-button-header"]')
       .should('be.visible')
       .click();
@@ -365,6 +366,9 @@ describe('Add and Remove Owner and Tier', () => {
       .click({ waitForAnimations: true });
     verifyResponseStatusCode('@getGlossaries', 200);
     verifyResponseStatusCode('@glossaryPermission', 200);
+    interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');
+    cy.get('.ant-menu-item').contains(glossary).should('be.visible').click();
+    verifyResponseStatusCode('@getGlossaryTerms', 200);
     cy.get('[data-testid="manage-button"]').should('be.visible').click();
     cy.get('[data-testid="delete-button"]')
       .scrollIntoView()

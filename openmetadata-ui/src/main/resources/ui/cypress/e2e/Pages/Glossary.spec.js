@@ -372,10 +372,7 @@ describe('Glossary page should work properly', () => {
       'fetchTags'
     );
 
-    // check for no data placeholder
-    cy.get('[data-testid="add-placeholder-button"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="add-glossary"]').click();
 
     // Redirecting to add glossary page
     cy.get('[data-testid="form-heading"]')
@@ -499,6 +496,11 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Verify and Remove Tags from Glossary', () => {
+    cy.get('[data-testid="glossary-left-panel"]')
+      .contains(NEW_GLOSSARY.name)
+      .click();
+
+    checkDisplayName(NEW_GLOSSARY.name);
     // Verify Tags which is added at the time of creating glossary
     cy.get('[data-testid="tags-container"]')
       .contains('Personal')
@@ -519,7 +521,7 @@ describe('Glossary page should work properly', () => {
   it('Verify added glossary details', () => {
     cy.get('[data-testid="glossary-left-panel"]')
       .contains(NEW_GLOSSARY.name)
-      .should('be.visible');
+      .click();
 
     checkDisplayName(NEW_GLOSSARY.name);
 
@@ -569,6 +571,11 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Updating data of glossary should work properly', () => {
+    cy.get('[data-testid="glossary-left-panel"]')
+      .contains(NEW_GLOSSARY.name)
+      .click();
+
+    checkDisplayName(NEW_GLOSSARY.name);
     // updating tags
     updateTags(false);
 

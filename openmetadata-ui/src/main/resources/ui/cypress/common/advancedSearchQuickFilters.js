@@ -11,55 +11,33 @@
  *  limitations under the License.
  */
 
-import { COMMON_DROPDOWN_ITEMS } from '../constants/advancedSearchQuickFilters.constants';
 import { interceptURL, verifyResponseStatusCode } from './common';
 
-export const openFilterDropdown = (asset, filter) => {
-  let aggregateAPIURL =
-    filter.key === COMMON_DROPDOWN_ITEMS[0].key
-      ? `/api/v1/search/aggregate?index=${filter.filterSearchIndex}&field=${filter.aggregateKey}`
-      : `/api/v1/search/aggregate?index=${asset.searchIndex}&field=${filter.key}`;
-
-  interceptURL('GET', aggregateAPIURL, 'aggregateAPI');
-
-  // Click on desired dropdown
-  cy.get(`[data-testid="search-dropdown-${filter.label}"]`)
-    .should('exist')
-    .and('be.visible')
-    .click();
-
-  verifyResponseStatusCode('@aggregateAPI', 200);
-
-  cy.get('[data-testid="drop-down-menu"]').should('exist').and('be.visible');
-};
-
-export const searchAndClickOnOption = (
-  optionName,
-  optionTestId,
-  checkedAfterClick
-) => {
+export const searchAndClickOnOption = (asset, filter, checkedAfterClick) => {
   // Search for filter
-
   interceptURL(
     'GET',
-    `/api/v1/search/suggest?*q=${encodeURI(optionName)}*`,
-    'suggestAPI'
+    `/api/v1/search/aggregate?index=${asset.searchIndex}&field=${filter.key}**`,
+    'aggregateAPI'
   );
 
   cy.get('[data-testid="search-input"]')
     .should('exist')
     .and('be.visible')
     .clear()
-    .type(optionName);
+    .type(filter.selectOption1);
 
-  verifyResponseStatusCode('@suggestAPI', 200);
+  verifyResponseStatusCode('@aggregateAPI', 200);
 
-  cy.get(`[data-testid="${optionTestId}"]`)
+  cy.get(`[data-testid="${filter.selectOptionTestId1}"]`)
     .should('exist')
     .and('be.visible')
     .click();
 
-  checkCheckboxStatus(`${optionTestId}-checkbox`, checkedAfterClick);
+  checkCheckboxStatus(
+    `${filter.selectOptionTestId1}-checkbox`,
+    checkedAfterClick
+  );
 };
 
 export const checkCheckboxStatus = (boxId, isChecked) => {
