@@ -15,6 +15,7 @@ import { Column } from 'generated/entity/data/table';
 import { EntityReference } from 'generated/entity/type';
 
 export type FeedKeys = 'all' | 'mentions' | 'tasks';
+export type TaskFilter = 'open' | 'close';
 
 export enum ActivityFeedTabs {
   ALL = 'all',
