@@ -10,22 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityType } from 'enums/entity.enum';
-import { Column } from 'generated/entity/data/table';
-import { Thread } from 'generated/entity/feed/thread';
-import { EntityReference } from 'generated/entity/type';
 
-export type TaskTabProps = {
-  taskThread: Thread;
-  owner?: EntityReference;
-  onUpdateEntityDetails?: () => void;
-  onAfterClose?: () => void;
-} & (
-  | TableTaskTabProps
-  | { columns?: undefined; entityType: Exclude<EntityType, EntityType.TABLE> }
-);
+import { TabSpecificField } from 'enums/entity.enum';
 
-export interface TableTaskTabProps {
-  columns?: Column[];
-  entityType: EntityType.TABLE;
-}
+export const DatabaseFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}`;

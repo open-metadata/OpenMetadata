@@ -35,6 +35,9 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
     redirectUri,
     scopes,
     pkce,
+    tokenManager: {
+      autoRenew: false,
+    },
   });
 
   const triggerLogin = async () => {

@@ -87,3 +87,10 @@ def _(element, compiler, **kw):
     """Handle the case for DB2 where it requires to type cast the variables"""
     proc = compiler.process(element.clauses, **kw).replace("?", "CAST(? AS INT)")
     return f"SUM(CAST({proc} AS BIGINT))"
+
+
+@compiles(SumFn, Dialects.ClickHouse)
+def _(element, compiler, **kw):
+    """Handle case where column type is INTEGER but SUM returns a NUMBER"""
+    proc = compiler.process(element.clauses, **kw)
+    return f"SUM(accurateCastOrNull({proc},'BIGINT'))"
