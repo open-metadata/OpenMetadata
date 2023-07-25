@@ -135,7 +135,12 @@ def test_connection(
             func = connection.client.list_buckets
 
     if isinstance(config, AzureConfig):
-        func = partial(connection.client.list_containers, name_starts_with="")
+
+        def my_func(connection, name_starts_with=""):  # pylint: disable=W0613
+            conn = connection.client.list_containers(name_starts_with="")
+            list(conn)
+
+        func = partial(my_func, connection, name_starts_with="")
 
     test_fn = {
         "ListBuckets": func,
