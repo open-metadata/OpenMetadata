@@ -62,16 +62,13 @@ const addRemoveOwner = () => {
 const addRemoveTier = () => {
   cy.get('[data-testid="edit-tier"]').click();
   cy.get('[data-testid="card-list"]').first().should('be.visible').as('tier1');
-  cy.get('@tier1')
-    .find('[data-testid="icon"] > [data-testid="select-tier-button"]')
-    .click();
+  cy.get('@tier1').find('[data-testid="radio-btn"]').click();
   verifyResponseStatusCode('@patchOwner', 200);
   cy.clickOutside();
   cy.get('[data-testid="Tier"]').should('contain', TIER);
 
   cy.get('[data-testid="edit-tier"]').click();
-  cy.get('[data-testid="card-list"]').first().should('be.visible').as('tier1');
-  cy.get('@tier1').find('[data-testid="remove-tier"]').click();
+  cy.get('[data-testid="clear-tier"]').should('be.visible').click();
 
   verifyResponseStatusCode('@patchOwner', 200);
   cy.get('[data-testid="Tier"]').should('contain', 'No Tier');

@@ -396,7 +396,7 @@ export const getTableTabPath = (
     path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
   }
   path = path
-    .replace(PLACEHOLDER_ROUTE_TABLE_FQN, getEncodedFqn(tableFQN))
+    .replace(PLACEHOLDER_ROUTE_TABLE_FQN, tableFQN)
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;

@@ -28,12 +28,12 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
+import { SummaryCardProps } from 'components/common/SummaryCard/SummaryCard.interface';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
-import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
-import { SummaryCardProps } from 'components/common/SummaryCard/SummaryCard.interface';
 import { mockDatasetData } from 'constants/mockTourData.constants';
 import { Column } from 'generated/entity/data/container';
 import {
@@ -58,18 +58,18 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import { getLatestTableProfileByFqn } from 'rest/tableAPI';
-import { ListTestCaseParams, getListTestCase } from 'rest/testAPI';
+import { getListTestCase, ListTestCaseParams } from 'rest/testAPI';
 import { ReactComponent as ColumnProfileIcon } from '../../assets/svg/column-profile.svg';
 import { ReactComponent as DataQualityIcon } from '../../assets/svg/data-quality.svg';
 import { ReactComponent as SettingIcon } from '../../assets/svg/ic-settings-primery.svg';
 import { ReactComponent as NoDataIcon } from '../../assets/svg/no-data-icon.svg';
 import { ReactComponent as TableProfileIcon } from '../../assets/svg/table-profile.svg';
-import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
+import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import {
+  allowedServiceForOperationGraph,
   DEFAULT_RANGE_DATA,
   INITIAL_TEST_RESULT_SUMMARY,
-  allowedServiceForOperationGraph,
 } from '../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { ProfileSampleType, Table } from '../../generated/entity/data/table';
@@ -79,8 +79,8 @@ import { updateTestResults } from '../../utils/DataQualityAndProfilerUtils';
 import { getAddDataQualityTableTestPath } from '../../utils/RouterUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import PageHeader from '../header/PageHeader.component';
+import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnPickerMenu from './Component/ColumnPickerMenu';
 import ColumnProfileTable from './Component/ColumnProfileTable';
 import ColumnSummary from './Component/ColumnSummary';
@@ -462,10 +462,17 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   }, [activeColumnFqn, columnTests]);
 
   useEffect(() => {
-    if (!isUndefined(table) && viewTest && !isTourOpen) {
+    const fetchTest =
+      !isUndefined(table) &&
+      viewTest &&
+      !isTourOpen &&
+      !isTableProfile &&
+      isEmpty(allTests.current);
+
+    if (fetchTest) {
       fetchAllTests();
     }
-  }, [table, viewTest, isTourOpen]);
+  }, [table, viewTest, isTourOpen, isTableProfile, allTests]);
 
   useEffect(() => {
     if (!isTableDeleted && datasetFQN && !isTourOpen) {

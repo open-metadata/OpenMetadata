@@ -56,7 +56,7 @@ describe('PermissionProvider', () => {
     expect(getEntityPermissionByFqn).not.toHaveBeenCalled();
     expect(getResourcePermission).not.toHaveBeenCalled();
 
-    expect(screen.getByTestId('children')).toBeInTheDocument();
+    expect(await screen.findByTestId('children')).toBeInTheDocument();
 
     getUserDetailsSpy.mockRestore();
   });

@@ -705,23 +705,6 @@ body .list-option.rdw-option-active {
   box-shadow: none;
 }
 
-/* Diff style */
-
-.diff-added {
-  background: rgba(0, 131, 118, 0.2);
-  color: #008376;
-  width: fit-content;
-}
-.diff-removed {
-  color: #008376;
-  color: grey;
-  text-decoration: line-through;
-  width: fit-content;
-}
-.diff-description {
-  color: #008376;
-}
-
 /* react-slick */
 
 .slick-dots {

@@ -359,7 +359,7 @@ describe('Tags page should work', () => {
 
     verifyResponseStatusCode('@taskResolve', 200);
     verifyResponseStatusCode('@databaseSchemasPage', 200);
-    cy.get('[data-testid="table"]').should('be.visible').click();
+    cy.get('[data-testid="table"]').click();
 
     cy.reload();
     verifyResponseStatusCode('@databaseSchemasPage', 200);

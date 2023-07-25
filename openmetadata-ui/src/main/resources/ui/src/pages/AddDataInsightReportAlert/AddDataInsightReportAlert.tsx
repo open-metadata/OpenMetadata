@@ -97,7 +97,7 @@ const AddDataInsightReportAlert = () => {
       });
       showSuccessToast(
         t(`server.${isEditMode ? 'update' : 'create'}-entity-success`, {
-          entity: t('label.alert-plural'),
+          entity: t('label.data-insight-report-alert'),
         })
       );
       history.push(
@@ -113,7 +113,7 @@ const AddDataInsightReportAlert = () => {
             isEditMode ? 'entity-updating-error' : 'entity-creation-error'
           }`,
           {
-            entity: t('label.alert-plural'),
+            entity: t('label.data-insight-report-alert'),
           }
         )
       );

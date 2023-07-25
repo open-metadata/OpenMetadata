@@ -22,7 +22,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
 import { mockTablePermission } from 'constants/mockTourData.constants';
 import { ClientErrors } from 'enums/axios.enum';
 import { ExplorePageTabs } from 'enums/Explore.enum';
@@ -364,7 +364,6 @@ function TableSummary({
                     tags={(entityDetails.tags || []).map((tag) =>
                       getTagValue(tag)
                     )}
-                    type="border"
                   />
                 ) : (
                   <Typography.Text className="text-grey-body">

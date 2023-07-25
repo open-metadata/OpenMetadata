@@ -21,7 +21,8 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import Loader from 'components/Loader/Loader';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
+import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { NO_DATA_PLACEHOLDER, PAGE_SIZE } from 'constants/constants';
 import { ServiceCategory } from 'enums/service.enum';
 import { Database } from 'generated/entity/data/database';
@@ -224,7 +225,7 @@ function ServiceMainTabContent({
         width: 200,
         key: 'tags',
         render: (_, record: ServicePageData) => (
-          <TagsViewer sizeCap={-1} tags={record.tags ?? []} type="border" />
+          <TagsViewer tags={record.tags ?? []} />
         ),
       },
       ...(ServiceCategory.DATABASE_SERVICES === serviceCategory
@@ -337,6 +338,7 @@ function ServiceMainTabContent({
         flex="320px">
         <Space className="w-full" direction="vertical" size="large">
           <TagsContainerV2
+            displayType={DisplayType.READ_MORE}
             entityFqn={serviceFQN}
             entityType={entityType}
             permission={editTagsPermission}
@@ -346,6 +348,7 @@ function ServiceMainTabContent({
             onSelectionChange={handleTagSelection}
           />
           <TagsContainerV2
+            displayType={DisplayType.READ_MORE}
             entityFqn={serviceFQN}
             entityType={entityType}
             permission={editTagsPermission}

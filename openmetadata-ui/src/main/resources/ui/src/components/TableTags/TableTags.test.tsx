@@ -106,7 +106,7 @@ describe('Test EntityTableTags Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const tagContainer = await screen.findByTestId('Classification-tags-0');
+    const tagContainer = await screen.findByTestId('classification-tags-0');
 
     expect(tagContainer).toBeInTheDocument();
   });
@@ -127,7 +127,7 @@ describe('Test EntityTableTags Component', () => {
       }
     );
 
-    const tagContainer = await screen.findByTestId('Classification-tags-0');
+    const tagContainer = await screen.findByTestId('classification-tags-0');
 
     expect(tagContainer).toBeInTheDocument();
   });
@@ -147,7 +147,7 @@ describe('Test EntityTableTags Component', () => {
       }
     );
 
-    const tagContainer = await screen.findByTestId('Classification-tags-0');
+    const tagContainer = await screen.findByTestId('classification-tags-0');
     const tagPersonal = await screen.findByTestId('tag-PersonalData.Personal');
 
     expect(tagContainer).toBeInTheDocument();
@@ -170,7 +170,7 @@ describe('Test EntityTableTags Component', () => {
       }
     );
 
-    const tagContainer = await screen.findByTestId('Classification-tags-0');
+    const tagContainer = await screen.findByTestId('classification-tags-0');
     const entityTasks = screen.queryByText('EntityTasks');
 
     expect(tagContainer).toBeInTheDocument();
@@ -193,7 +193,7 @@ describe('Test EntityTableTags Component', () => {
       }
     );
 
-    const tagContainer = await screen.findByTestId('Classification-tags-0');
+    const tagContainer = await screen.findByTestId('classification-tags-0');
     const entityTasks = screen.queryByText('EntityTasks');
 
     expect(tagContainer).toBeInTheDocument();
