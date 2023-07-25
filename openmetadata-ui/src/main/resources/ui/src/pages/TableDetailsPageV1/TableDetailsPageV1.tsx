@@ -40,6 +40,7 @@ import TableProfilerV1 from 'components/TableProfiler/TableProfilerV1';
 import TableQueries from 'components/TableQueries/TableQueries';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getTableTabPath, getVersionPath } from 'constants/constants';
@@ -488,6 +489,7 @@ const TableDetailsPageV1 = () => {
 
           <Space className="w-full" direction="vertical" size="large">
             <TagsContainerV2
+              displayType={DisplayType.READ_MORE}
               entityFqn={datasetFQN}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.TABLE}
@@ -502,6 +504,7 @@ const TableDetailsPageV1 = () => {
             />
 
             <TagsContainerV2
+              displayType={DisplayType.READ_MORE}
               entityFqn={datasetFQN}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.TABLE}

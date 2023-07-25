@@ -15,23 +15,31 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Button, Tooltip } from 'antd';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { getEntityLink } from 'utils/TableUtils';
 import {
+  entityDisplayName,
+  getEntityField,
   getEntityFieldDisplay,
+  getEntityFQN,
+  getEntityType,
   getFeedPanelHeaderText,
 } from '../../../utils/FeedUtils';
 import { FeedPanelHeaderProp } from './ActivityFeedPanel.interface';
 
 const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
-  onCancel,
-  entityField,
   className,
+  entityLink,
   noun,
   onShowNewConversation,
   threadType,
-  entityFQN = '',
+  onCancel,
   hideCloseIcon = false,
 }) => {
   const { t } = useTranslation();
+  const entityType = getEntityType(entityLink);
+  const entityFQN = getEntityFQN(entityLink);
+  const entityField = getEntityField(entityLink);
 
   return (
     <header className={className}>
@@ -42,7 +50,16 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
             {t('label.on-lowercase')}{' '}
           </span>
           <span className="tw-heading" data-testid="entity-attribute">
-            {entityField ? getEntityFieldDisplay(entityField) : entityFQN}
+            {entityField ? (
+              getEntityFieldDisplay(entityField)
+            ) : (
+              <Link
+                className="break-all"
+                data-testid="entitylink"
+                to={getEntityLink(entityType, entityFQN)}>
+                <span>{entityDisplayName(entityType, entityFQN)}</span>
+              </Link>
+            )}
           </span>
         </p>
         <div className="d-flex">

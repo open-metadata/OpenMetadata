@@ -277,19 +277,10 @@ const EntityVersionPage: FunctionComponent = () => {
     try {
       switch (entityType) {
         case EntityType.TABLE: {
-          const response = await getTableDetailsByFQN(
-            getPartialNameFromTableFQN(
-              entityFQN,
-              [
-                FqnPart.Service,
-                FqnPart.Database,
-                FqnPart.Schema,
-                FqnPart.Table,
-              ],
-              FQN_SEPARATOR_CHAR
-            ),
-            ['owner', 'tags']
-          );
+          const response = await getTableDetailsByFQN(entityFQN, [
+            'owner',
+            'tags',
+          ]);
 
           const { id, owner, tags = [] } = response;
 

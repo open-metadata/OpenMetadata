@@ -30,10 +30,7 @@ import { getTestSuiteByName } from 'rest/testAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestSuite } from '../../generated/tests/testSuite';
-import {
-  getDataQualityPagePath,
-  getTestSuitePath,
-} from '../../utils/RouterUtils';
+import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const TestSuiteIngestionPage = () => {
@@ -111,7 +108,7 @@ const TestSuiteIngestionPage = () => {
   };
 
   const handleCancelBtn = () => {
-    history.push(getTestSuitePath(testSuiteFQN || ''));
+    history.goBack();
   };
 
   useEffect(() => {

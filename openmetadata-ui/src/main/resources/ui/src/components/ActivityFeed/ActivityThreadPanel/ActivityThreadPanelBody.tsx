@@ -31,7 +31,6 @@ import {
 } from '../../../generated/entity/feed/thread';
 import { Paging } from '../../../generated/type/paging';
 import { useElementInView } from '../../../hooks/useElementInView';
-import { getEntityField } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
@@ -139,8 +138,6 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     setConfirmationState(data);
   };
 
-  const entityField = getEntityField(threadLink);
-
   const onShowNewConversation = (value: boolean) => {
     setShowNewConversation(value);
   };
@@ -239,7 +236,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
         {showHeader && isConversationType && (
           <FeedPanelHeader
             className="tw-px-4 tw-shadow-sm"
-            entityField={entityField as string}
+            entityLink={selectedThread?.about ?? ''}
             noun={
               isConversationType
                 ? t('label.conversation-plural')
