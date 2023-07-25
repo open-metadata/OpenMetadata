@@ -15,7 +15,7 @@ import { Col, Divider, Row, Typography } from 'antd';
 import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import classNames from 'classnames';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
 import { SummaryEntityType } from 'enums/EntitySummary.enum';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { Container } from 'generated/entity/data/container';
@@ -118,7 +118,6 @@ function ContainerSummary({
               <TagsViewer
                 sizeCap={2}
                 tags={(entityDetails.tags || []).map((tag) => getTagValue(tag))}
-                type="border"
               />
             ) : (
               <Typography.Text className="text-grey-body">

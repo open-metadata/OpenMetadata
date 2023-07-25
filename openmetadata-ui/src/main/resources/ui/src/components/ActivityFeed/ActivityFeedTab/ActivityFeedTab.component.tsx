@@ -38,7 +38,6 @@ import { useHistory, useParams } from 'react-router-dom';
 import { getAllFeeds, getFeedCount } from 'rest/feedsAPI';
 import { getCountBadge, getEntityDetailLink } from 'utils/CommonUtils';
 import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from 'utils/EntityUtils';
-import { getEntityField } from 'utils/FeedUtils';
 import '../../Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component';
@@ -49,6 +48,7 @@ import './activity-feed-tab.less';
 import {
   ActivityFeedTabProps,
   ActivityFeedTabs,
+  TaskFilter,
 } from './ActivityFeedTab.interface';
 import { ReactComponent as CheckIcon } from '/assets/svg/ic-check.svg';
 import { ReactComponent as TaskIcon } from '/assets/svg/ic-task.svg';
@@ -70,7 +70,7 @@ export const ActivityFeedTab = ({
   const [elementRef, isInView] = useElementInView(observerOptions);
   const { subTab: activeTab = 'all' } =
     useParams<{ subTab: ActivityFeedTabs }>();
-  const [taskFilter, setTaskFilter] = useState<'open' | 'close'>('open');
+  const [taskFilter, setTaskFilter] = useState<TaskFilter>('open');
   const [allCount, setAllCount] = useState(0);
   const [tasksCount, setTasksCount] = useState(0);
 
@@ -120,7 +120,7 @@ export const ActivityFeedTab = ({
     if (!isUserEntity) {
       // To get conversation count
       getFeedCount(
-        getEntityFeedLink(entityType, fqn),
+        getEntityFeedLink(entityType, encodeURIComponent(fqn)),
         ThreadType.Conversation
       ).then((res) => {
         if (res) {
@@ -131,15 +131,16 @@ export const ActivityFeedTab = ({
       });
 
       // To get open tasks count
-      getFeedCount(getEntityFeedLink(entityType, fqn), ThreadType.Task).then(
-        (res) => {
-          if (res) {
-            setTasksCount(res.totalCount);
-          } else {
-            throw t('server.entity-feed-fetch-error');
-          }
+      getFeedCount(
+        getEntityFeedLink(entityType, encodeURIComponent(fqn)),
+        ThreadType.Task
+      ).then((res) => {
+        if (res) {
+          setTasksCount(res.totalCount);
+        } else {
+          throw t('server.entity-feed-fetch-error');
         }
-      );
+      });
     } else {
       // count for task on userProfile page
       getAllFeeds(
@@ -239,10 +240,6 @@ export const ActivityFeedTab = ({
     });
   };
 
-  const entityField = selectedThread
-    ? getEntityField(selectedThread.about)
-    : '';
-
   const threads = useMemo(() => {
     if (activeTab === ActivityFeedTabs.TASKS) {
       return entityThread.filter(
@@ -275,6 +272,15 @@ export const ActivityFeedTab = ({
 
     return [0, 0];
   }, [entityThread, activeTab]);
+
+  const handleUpdateTaskFilter = (filter: TaskFilter) => {
+    setTaskFilter(filter);
+  };
+
+  const handleAfterTaskClose = () => {
+    handleFeedFetchFromFeedList();
+    handleUpdateTaskFilter('close');
+  };
 
   return (
     <div className="activity-feed-tab">
@@ -346,7 +352,7 @@ export const ActivityFeedTab = ({
                 }
               )}
               onClick={() => {
-                setTaskFilter('open');
+                handleUpdateTaskFilter('open');
                 setActiveThread();
               }}>
               {' '}
@@ -358,7 +364,7 @@ export const ActivityFeedTab = ({
                 'font-medium': taskFilter === 'close',
               })}
               onClick={() => {
-                setTaskFilter('close');
+                handleUpdateTaskFilter('close');
                 setActiveThread();
               }}>
               {' '}
@@ -396,8 +402,7 @@ export const ActivityFeedTab = ({
                 <FeedPanelHeader
                   hideCloseIcon
                   className="p-x-md"
-                  entityFQN={fqn}
-                  entityField={entityField as string}
+                  entityLink={selectedThread.about}
                   threadType={selectedThread?.type ?? ThreadType.Conversation}
                   onCancel={noop}
                 />
@@ -419,6 +424,7 @@ export const ActivityFeedTab = ({
                   entityType={EntityType.TABLE}
                   owner={owner}
                   taskThread={selectedThread}
+                  onAfterClose={handleAfterTaskClose}
                   onUpdateEntityDetails={onUpdateEntityDetails}
                 />
               ) : (
@@ -426,6 +432,7 @@ export const ActivityFeedTab = ({
                   entityType={isUserEntity ? entityTypeTask : entityType}
                   owner={owner}
                   taskThread={selectedThread}
+                  onAfterClose={handleAfterTaskClose}
                   onUpdateEntityDetails={onUpdateEntityDetails}
                 />
               )}

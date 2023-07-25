@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 
-import { TAG_START_WITH } from 'constants/Tag.constants';
-import { TagLabel } from '../../../generated/type/tagLabel';
+import { EntityTags } from 'Models';
 
-export type TagProps = {
-  className?: string;
-  editable?: boolean;
-  type?: 'contained' | 'outlined' | 'label' | 'border';
-  startWith?: TAG_START_WITH;
-  tag: TagLabel;
-  showOnlyName?: boolean;
-  style?: React.CSSProperties;
-};
+export interface TagsViewerProps {
+  tags: EntityTags[];
+  sizeCap?: number;
+  displayType?: DisplayType;
+  showNoDataPlaceholder?: boolean;
+}
+
+export enum DisplayType {
+  READ_MORE = 'read-more',
+  POPOVER = 'popover',
+}

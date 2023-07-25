@@ -75,6 +75,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/tables")
@@ -653,7 +654,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             description = "Table with profile and column profile",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
       })
-  public Table getLatestTableProfile(
+  public Response getLatestTableProfile(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "FQN of the table or column", schema = @Schema(type = "String")) @PathParam("fqn")
@@ -664,7 +665,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
 
-    return repository.getLatestTableProfile(fqn, authorizePII);
+    return Response.status(Response.Status.OK)
+        .entity(JsonUtils.pojoToJson(repository.getLatestTableProfile(fqn, authorizePII)))
+        .build();
   }
 
   @GET
@@ -683,7 +686,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = TableProfileList.class)))
       })
-  public ResultList<TableProfile> listTableProfiles(
+  public Response listTableProfiles(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "FQN of the table or column", schema = @Schema(type = "String")) @PathParam("fqn")
@@ -701,7 +704,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return repository.getTableProfiles(fqn, startTs, endTs);
+    return Response.status(Response.Status.OK)
+        .entity(JsonUtils.pojoToJson(repository.getTableProfiles(fqn, startTs, endTs)))
+        .build();
   }
 
   @GET
