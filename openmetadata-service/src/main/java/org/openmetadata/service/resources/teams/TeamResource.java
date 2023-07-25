@@ -523,7 +523,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of teams",
+            description = "List of Users Knowledge Assets",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = KnowledgeResource.class)))
       })
@@ -548,7 +548,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of teams",
+            description = "List of Knowledge Assets",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = KnowledgeResource.class)))
       })
@@ -567,17 +567,17 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Path("/name/{teamName}/knowledge/{assetName}")
   @Valid
   @Operation(
-      operationId = "listKnowledgeAssets",
-      summary = "List Knowledge Assets",
-      description = "Get a list of knowledge Assets",
+      operationId = "getKnowledgeAssetByName",
+      summary = "Get Knowledge Asset By Name and team",
+      description = "Get a  knowledge Assets By Name and Team",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of teams",
+            description = "Knowledge Asset by Name",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = KnowledgeResource.class)))
       })
-  public Response getKnowledgeAssetByBame(
+  public Response getKnowledgeAssetByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("teamName") String teamName,
