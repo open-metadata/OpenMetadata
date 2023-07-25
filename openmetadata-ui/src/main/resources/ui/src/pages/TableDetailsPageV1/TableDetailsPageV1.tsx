@@ -890,6 +890,8 @@ const TableDetailsPageV1 = () => {
         {/* Entity Heading */}
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
+            isDataAsset
+            afterDeleteAction={refreshPage}
             dataAsset={tableDetails}
             entityType={EntityType.TABLE}
             permissions={tablePermissions}

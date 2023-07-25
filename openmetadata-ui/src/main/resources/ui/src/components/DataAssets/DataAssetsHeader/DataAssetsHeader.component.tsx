@@ -104,6 +104,8 @@ export const ExtraInfoLink = ({
 
 export const DataAssetsHeader = ({
   allowSoftDelete = true,
+  afterDeleteAction,
+  isDataAsset,
   dataAsset,
   onOwnerUpdate,
   onTierUpdate,
@@ -403,6 +405,7 @@ export const DataAssetsHeader = ({
                   />
                 </Tooltip>
                 <ManageButton
+                  afterDeleteAction={afterDeleteAction}
                   allowSoftDelete={!dataAsset.deleted && allowSoftDelete}
                   canDelete={permissions.Delete}
                   deleted={dataAsset.deleted}
@@ -414,6 +417,7 @@ export const DataAssetsHeader = ({
                   entityId={dataAsset.id}
                   entityName={entityName}
                   entityType={entityType}
+                  isDataAsset={isDataAsset}
                   isRecursiveDelete={isRecursiveDelete}
                   onAnnouncementClick={
                     permissions?.EditAll

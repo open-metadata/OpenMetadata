@@ -693,6 +693,8 @@ const ContainerPage = () => {
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isDataAsset
+            afterDeleteAction={refreshPage}
             dataAsset={containerData}
             entityType={EntityType.CONTAINER}
             permissions={containerPermissions}

@@ -558,6 +558,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isDataAsset
+            afterDeleteAction={refreshPage}
             dataAsset={mlModelDetail}
             entityType={EntityType.MLMODEL}
             permissions={mlModelPermissions}

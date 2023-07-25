@@ -36,6 +36,7 @@ import { DeleteType, DeleteWidgetModalProps } from './DeleteWidget.interface';
 
 const DeleteWidgetModal = ({
   allowSoftDelete = true,
+  isDataAsset,
   visible,
   deleteMessage,
   softDeleteMessagePostFix = '',
@@ -150,7 +151,18 @@ const DeleteWidgetModal = ({
               })
             );
 
-            if (afterDeleteAction) {
+            const shouldRunActionForDataAsset =
+              isDataAsset && entityDeleteState.softDelete;
+
+            // Execute the afterDeleteAction if passed
+            // 1. While soft deleting on the data asset details pages
+            // 2. For other pages where hard deleting does not require to go to other pages
+            //    Example: We can still show the users list after deleting one user from the table in the UsersList page
+            // Else redirect to the landing page.
+            if (
+              afterDeleteAction &&
+              (shouldRunActionForDataAsset || !isDataAsset)
+            ) {
               afterDeleteAction();
             } else {
               setTimeout(() => {

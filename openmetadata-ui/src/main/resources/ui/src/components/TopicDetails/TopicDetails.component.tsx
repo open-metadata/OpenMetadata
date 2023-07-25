@@ -453,6 +453,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isDataAsset
+            afterDeleteAction={refreshPage}
             dataAsset={topicDetails}
             entityType={EntityType.TOPIC}
             permissions={topicPermissions}

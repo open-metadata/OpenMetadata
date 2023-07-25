@@ -75,6 +75,8 @@ export type DataAssetsHeaderProps = {
   permissions: OperationPermission;
   allowSoftDelete?: boolean;
   isRecursiveDelete?: boolean;
+  isDataAsset?: boolean;
+  afterDeleteAction?: () => void;
   onTierUpdate: (tier?: string) => Promise<void>;
   onOwnerUpdate: (owner?: EntityReference) => Promise<void>;
   onVersionClick?: () => void;

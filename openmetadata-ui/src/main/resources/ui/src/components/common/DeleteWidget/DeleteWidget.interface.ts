@@ -12,6 +12,7 @@
  */
 
 export interface DeleteWidgetModalProps {
+  isDataAsset?: boolean;
   visible: boolean;
   onCancel: () => void;
   allowSoftDelete?: boolean;

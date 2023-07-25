@@ -55,6 +55,7 @@ import {
 } from 'rest/databaseAPI';
 import { getFeedCount, postThread } from 'rest/feedsAPI';
 import { getTableList, TableListParams } from 'rest/tableAPI';
+import { refreshPage } from 'utils/CommonUtils';
 import { default as appState } from '../../AppState';
 import { getDatabaseSchemaDetailsPath } from '../../constants/constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -557,8 +558,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             />
           ) : (
             <DataAssetsHeader
-              allowSoftDelete
+              isDataAsset
               isRecursiveDelete
+              afterDeleteAction={refreshPage}
               dataAsset={databaseSchema}
               entityType={EntityType.DATABASE_SCHEMA}
               permissions={databaseSchemaPermission}

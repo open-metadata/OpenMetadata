@@ -749,6 +749,8 @@ const PipelineDetails = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isDataAsset
+            afterDeleteAction={refreshPage}
             dataAsset={pipelineDetails}
             entityType={EntityType.PIPELINE}
             permissions={pipelinePermissions}
