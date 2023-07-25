@@ -180,13 +180,20 @@ describe('Recently viwed data assets', () => {
 
     cy.get('[data-testid="closeDrawer"]').click();
 
+    let feedText1 = '';
+    cy.get(
+      '[data-testid="activity-feed-widget"] [data-testid="message-container"]:first-child'
+    )
+      .invoke('text')
+      .then((text) => (feedText1 = text));
+
     cy.get('[data-testid="activity-feed-widget"]')
       .contains('@Mentions')
       .click();
 
-    cy.get('[data-testid="message-container"] > .activity-feed-card').should(
-      'have.length',
-      1
-    );
+    // Verify mentioned thread should be there int he mentioned tab
+    cy.get('[data-testid="message-container"] > .activity-feed-card')
+      .invoke('text')
+      .then((text) => expect(text).to.contain(feedText1));
   });
 });
