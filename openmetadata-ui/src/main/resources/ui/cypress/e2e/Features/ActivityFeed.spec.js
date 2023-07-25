@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { interceptURL, verifyResponseStatusCode } from '../../common/common';
+import {
+  interceptURL,
+  verifyResponseStatusCode,
+  visitEntityDetailsPage,
+} from '../../common/common';
+import { createDescriptionTask } from '../../common/TaskUtils';
+import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
 
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
@@ -182,7 +188,7 @@ describe('Recently viwed data assets', () => {
 
     let feedText1 = '';
     cy.get(
-      '[data-testid="activity-feed-widget"] [data-testid="message-container"]:first-child'
+      '[data-testid="activity-feed-widget"] [data-testid="message-container"]:first-child [data-testid="viewer-container"]'
     )
       .invoke('text')
       .then((text) => (feedText1 = text));
@@ -192,8 +198,57 @@ describe('Recently viwed data assets', () => {
       .click();
 
     // Verify mentioned thread should be there int he mentioned tab
-    cy.get('[data-testid="message-container"] > .activity-feed-card')
+    cy.get(
+      '[data-testid="message-container"] > .activity-feed-card [data-testid="viewer-container"]'
+    )
       .invoke('text')
       .then((text) => expect(text).to.contain(feedText1));
+  });
+
+  it('Assigned task should appear to task tab', () => {
+    cy.get('[data-testid="activity-feed-widget"]')
+      .contains('Tasks')
+      .should('contain', 0);
+
+    cy.get('[data-testid="activity-feed-widget"]').contains('Tasks').click();
+
+    cy.get(
+      '[data-testid="activity-feed-widget"] [data-testid="no-data-placeholder"]'
+    ).should('be.visible');
+
+    const value = SEARCH_ENTITY_TABLE.table_1;
+    interceptURL('GET', `/api/v1/${value.entity}/name/*`, 'getEntityDetails');
+
+    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+
+    cy.get('[data-testid="request-description"]').click();
+
+    verifyResponseStatusCode('@getEntityDetails', 200);
+
+    interceptURL('GET', '/api/v1/search/suggest?q=*', 'suggestApi');
+
+    // create description task
+    createDescriptionTask(value);
+
+    cy.clickOnLogo();
+
+    cy.get('[data-testid="activity-feed-widget"]')
+      .contains('Tasks')
+      .should('contain', 1)
+      .click();
+
+    cy.get(
+      '[data-testid="activity-feed-widget"] [data-testid="no-data-placeholder"]'
+    ).should('not.exist');
+
+    cy.get('[data-testid="message-container"]')
+      .invoke('text')
+      .then((textContent) => {
+        const matches = textContent.match(/#(\d+) UpdateDescriptionfortable/);
+
+        expect(matches).to.not.be.null;
+      });
+
+    cy.get(`[data-testid="assignee-admin"]`).should('be.visible');
   });
 });
