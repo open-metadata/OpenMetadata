@@ -12,7 +12,7 @@
  */
 import { Typography } from 'antd';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { EntityTags } from 'Models';
 import React from 'react';
@@ -68,7 +68,7 @@ const TagsInput: React.FC<Props> = ({
               {t('label.tag-plural')}
             </Typography.Text>
           </div>
-          <TagsViewer sizeCap={-1} tags={tags} type="border" />
+          <TagsViewer sizeCap={-1} tags={tags} />
         </>
       ) : (
         <TagsContainerV2
