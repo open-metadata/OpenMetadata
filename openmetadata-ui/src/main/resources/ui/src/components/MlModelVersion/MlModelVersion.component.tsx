@@ -31,7 +31,7 @@ import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHead
 import SourceList from 'components/MlModelDetail/SourceList.component';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
 import { getVersionPathWithTab } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
@@ -284,7 +284,6 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                                         getFilterTags(feature.tags ?? [])
                                           .Glossary
                                       }
-                                      type="border"
                                     />
                                   </Col>
                                 </Row>
@@ -304,7 +303,6 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                                         getFilterTags(feature.tags ?? [])
                                           .Classification
                                       }
-                                      type="border"
                                     />
                                   </Col>
                                 </Row>

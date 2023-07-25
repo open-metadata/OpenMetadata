@@ -475,10 +475,17 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   }, [activeColumnFqn, columnTests]);
 
   useEffect(() => {
-    if (!isUndefined(table) && viewTest && !isTourOpen) {
+    const fetchTest =
+      !isUndefined(table) &&
+      viewTest &&
+      !isTourOpen &&
+      !isTableProfile &&
+      isEmpty(allTests.current);
+
+    if (fetchTest) {
       fetchAllTests();
     }
-  }, [table, viewTest, isTourOpen]);
+  }, [table, viewTest, isTourOpen, isTableProfile, allTests]);
 
   useEffect(() => {
     if (!isTableDeleted && datasetFQN && !isTourOpen) {
