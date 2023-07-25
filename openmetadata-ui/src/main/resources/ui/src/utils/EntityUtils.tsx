@@ -1021,7 +1021,7 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
 export const getBreadcrumbForContainer = (data: {
   entity: Container;
   includeCurrent?: boolean;
-  parents?: Container[];
+  parents?: Container[] | EntityReference[];
 }) => {
   const { entity, includeCurrent = false, parents = [] } = data;
   const { service } = entity;
@@ -1229,11 +1229,19 @@ export const getEntityBreadcrumbs = (
         },
       ];
 
+    case EntityType.CONTAINER: {
+      const data = entity as Container;
+
+      return getBreadcrumbForContainer({
+        entity: data,
+        includeCurrent: true,
+        parents: isUndefined(data.parent) ? [] : [data.parent],
+      });
+    }
     case EntityType.TOPIC:
     case EntityType.DASHBOARD:
     case EntityType.PIPELINE:
     case EntityType.MLMODEL:
-    case EntityType.CONTAINER:
     case EntityType.DASHBOARD_DATA_MODEL:
     default:
       return getBreadcrumbForEntitiesWithServiceOnly(
