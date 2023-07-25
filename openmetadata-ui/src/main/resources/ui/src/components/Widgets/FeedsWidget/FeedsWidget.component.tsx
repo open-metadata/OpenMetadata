@@ -71,6 +71,8 @@ const FeedsWidget = () => {
     return getCountBadge(taskCount, '', activeTab === 'tasks');
   }, [taskCount, activeTab]);
 
+  const onTabChange = (key: string) => setActiveTab(key as ActivityFeedTabs);
+
   useEffect(() => {
     getFeedsWithFilter(
       currentUser?.id,
@@ -149,7 +151,7 @@ const FeedsWidget = () => {
             ),
           },
         ]}
-        onChange={(key) => setActiveTab(key as ActivityFeedTabs)}
+        onChange={onTabChange}
       />
     </div>
   );

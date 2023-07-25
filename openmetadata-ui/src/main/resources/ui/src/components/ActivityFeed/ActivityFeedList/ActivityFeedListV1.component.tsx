@@ -68,7 +68,7 @@ const ActivityFeedListV1 = ({
   }
 
   return (
-    <div className="feed-list-container p-y-md m-b-sm" id="feedData">
+    <div className="feed-list-container p-y-md m-b-sm h-full" id="feedData">
       {entityThread.length === 0 && (
         <div
           className="h-full p-x-md"
@@ -84,9 +84,9 @@ const ActivityFeedListV1 = ({
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
             <Typography.Paragraph style={{ marginBottom: '0' }}>
               {isTaskTab && (
-                <span className="font-bold">
+                <Typography.Text strong>
                   {t('message.no-open-issues')} <br />
-                </span>
+                </Typography.Text>
               )}
               {emptyPlaceholderText}
             </Typography.Paragraph>
