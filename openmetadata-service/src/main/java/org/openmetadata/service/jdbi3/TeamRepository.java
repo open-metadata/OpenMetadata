@@ -392,8 +392,14 @@ public class TeamRepository extends EntityRepository<Team> {
   @Override
   @SneakyThrows
   public Object getExtension(Team entity) throws JsonProcessingException {
-    List<CollectionDAO.ExtensionRecord> records =
-        daoCollection.entityExtensionDAO().getKnowledgeAssetById(entity.getId().toString());
+    List<CollectionDAO.ExtensionRecord> records = new ArrayList<>();
+    records.addAll(
+        daoCollection.entityExtensionDAO().getExtensionsByExtensionMatch(entity.getId().toString(), "team.Article.%"));
+    records.addAll(
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensionsByExtensionMatch(entity.getId().toString(), "team.QuickLink.%"));
+
     List<KnowledgeResource> docs = new ArrayList<>();
     if (records.isEmpty()) {
       return null;
