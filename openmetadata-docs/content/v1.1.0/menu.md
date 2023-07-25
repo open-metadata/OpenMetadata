@@ -8,7 +8,9 @@ site_menu:
     color: violet-70
     icon: quickstart
   - category: Quickstart / Try OpenMetadata in Docker
-    url: /quick-start/local-deployment
+    url: /quick-start/local-docker-deployment
+  - category: Quickstart / Try OpenMetadata in Kubernetes
+    url: /quick-start/local-kubernetes-deployment
   - category: Quickstart / Try the OpenMetadata Sandbox
     url: /quick-start/sandbox
 

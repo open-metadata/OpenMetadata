@@ -1,6 +1,6 @@
 ---
 title: Try OpenMetadata in Docker
-slug: /quick-start/local-deployment
+slug: /quick-start/local-docker-deployment
 ---
 
 # Local Docker Deployment

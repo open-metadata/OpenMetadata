@@ -6,14 +6,51 @@ slug: /deployment/kubernetes
 # Kubernetes Deployment
 
 OpenMetadata supports the Installation and Running of Application on kubernetes through Helm Charts.
-
-## Introduction
-
-[openmetadata-helm-charts](https://github.com/open-metadata/openmetadata-helm-charts) houses Kubernetes Helm charts 
-for deploying OpenMetadata and its dependencies (Elasticsearch, MySQL and Airflow) on a Kubernetes cluster.
-
 ## Kubernetes Deployment Architecture
-{% image src="/images/v1.1.0/deployment/kubernetes/k8_architecture.png" alt="Kubernetes Deployment Architecture" /%}
+
+Below is the expected Kubernetes Deployment Architecture for OpenMetadata Application in Production.
+
+{% image src="/images/v1.1.0/deployment/kubernetes/kubernetes-architecture-prod.png" alt="Kubernetes Deployment Architecture" /%}
+
+## Deployments
+
+{% inlineCalloutContainer %}
+  {% inlineCallout
+    color="violet-70"
+    icon="cloud"
+    bold="Helm Values"
+    href="/deployment/kubernetes/values" %}
+    Deploy OpenMetadata in AWS Kubernetes
+  {% /inlineCallout %}
+  {% inlineCallout
+    color="violet-70"
+    icon="cloud"
+    bold="Deploy in AWS EKS"
+    href="/deployment/kubernetes" %}
+    Deploy OpenMetadata in AWS Kubernetes
+  {% /inlineCallout %}
+  {% inlineCallout
+    color="violet-70"
+    icon="cloud"
+    bold="Deploy in GCP GKE"
+    href="/deployment/kubernetes" %}
+    Deploy OpenMetadata in GCP Kubernetes
+  {% /inlineCallout %}
+  {% inlineCallout
+    color="violet-70"
+    icon="cloud"
+    bold="Deploy in OnPremises Kubernetes"
+    href="/deployment/kubernetes" %}
+    Deploy OpenMetadata in On Premises Kubernetes
+  {% /inlineCallout %}
+  {% inlineCallout
+    color="violet-70"
+    icon="cloud"
+    bold="Deploy in Azure AKS (Coming Soon)"
+    href="/deployment/kubernetes" %}
+    Deploy OpenMetadata in Azure Kubernetes
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}
 
 ## Prerequisites
 

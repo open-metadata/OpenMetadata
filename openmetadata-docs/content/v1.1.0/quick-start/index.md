@@ -17,8 +17,15 @@ We have two approaches to start exploring:
 {% inlineCallout
     icon="celebration"
     bold="Try OpenMetadata in Docker"
-    href="/quick-start/local-deployment" %}
-Get OpenMetadata up and running in under 5 minutes!
+    href="/quick-start/local-docker-deployment" %}
+Get OpenMetadata up and running with docker in under 5 minutes!
+{% /inlineCallout %}
+
+{% inlineCallout
+    icon="celebration"
+    bold="Try OpenMetadata in Kubernetes"
+    href="/quick-start/local-kubernetes-deployment" %}
+Get OpenMetadata up and running with kubernetes in under 5 minutes!
 {% /inlineCallout %}
 
 {% inlineCallout
