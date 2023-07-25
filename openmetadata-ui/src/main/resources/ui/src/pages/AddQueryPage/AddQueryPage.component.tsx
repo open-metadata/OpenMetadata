@@ -34,6 +34,7 @@ import { OwnerType } from 'enums/user.enum';
 import { CreateQuery } from 'generated/api/data/createQuery';
 import { Table } from 'generated/entity/data/table';
 import { filter, isEmpty } from 'lodash';
+import NodeSQLParser from 'node-sql-parser';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
@@ -182,6 +183,22 @@ const AddQueryPage = () => {
     }
   };
 
+  const sqlValidator = async (_: Record<string, any>, value: string) => {
+    if (!value) {
+      return;
+    }
+
+    return new Promise((resolve, reject) => {
+      try {
+        const parser = new NodeSQLParser.Parser();
+        parser.astify(value);
+        resolve('OK');
+      } catch (error) {
+        reject('Error');
+      }
+    });
+  };
+
   return (
     <ResizablePanels
       firstPanel={{
@@ -202,6 +219,7 @@ const AddQueryPage = () => {
                   queryUsedIn: table ? [table.id] : undefined,
                 }}
                 layout="vertical"
+                validateTrigger="onSubmit"
                 onFinish={handleSubmit}>
                 <Form.Item
                   data-testid="sql-editor-container"
@@ -212,6 +230,12 @@ const AddQueryPage = () => {
                       required: true,
                       message: t('label.field-required', {
                         field: t('label.sql-uppercase-query'),
+                      }),
+                    },
+                    {
+                      validator: sqlValidator,
+                      message: t('message.field-text-is-invalid', {
+                        fieldText: t('label.sql-uppercase-query'),
                       }),
                     },
                   ]}>
