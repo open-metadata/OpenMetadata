@@ -69,6 +69,7 @@ import org.openmetadata.schema.entity.data.knowledge.KnowledgeResource;
 import org.openmetadata.schema.entity.data.knowledge.KnowledgeResourceType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -288,6 +289,25 @@ public class TeamRepository extends EntityRepository<Team> {
     throw new EntityNotFoundException("Knowledge Asset With Given Name not Found.");
   }
 
+  public Response listKnowledgeExtensionForUser(KnowledgeResourceType type, String userName) throws IOException {
+    User user = SubjectCache.getInstance().getUser(userName);
+    List<EntityReference> userTeams = user.getTeams();
+    List<KnowledgeResource> docs = new ArrayList<>();
+    for (EntityReference teamRef : userTeams) {
+      List<CollectionDAO.ExtensionRecord> records =
+          daoCollection
+              .entityExtensionDAO()
+              .getExtensionsByExtensionMatch(
+                  teamRef.getId().toString(), (type == null ? "team.%.%" : String.format("%%.%s.%%", type.value())));
+      for (CollectionDAO.ExtensionRecord extensionRecord : records) {
+        docs.add(JsonUtils.readValue(extensionRecord.getExtensionJson(), KnowledgeResource.class));
+      }
+    }
+
+    docs.sort(Comparator.comparing(KnowledgeResource::getName));
+    return Response.status(Response.Status.OK).entity(docs).build();
+  }
+
   public Response listKnowledgeExtension(UriInfo uriInfo, KnowledgeResourceType type, String team) throws IOException {
     Team storedTeam = getByName(uriInfo, team, new EntityUtil.Fields(Set.of("id")));
     List<CollectionDAO.ExtensionRecord> records =
@@ -310,8 +330,9 @@ public class TeamRepository extends EntityRepository<Team> {
       throws IOException {
     Team storedTeam = getByName(uriInfo, team, new EntityUtil.Fields(Set.of("id")));
     String knowledgeExtension = getKnowledgeExtension(knowledgeExt.getKnowledgeResourceType(), knowledgeExt.getName());
-    List<CollectionDAO.ExtensionRecord> records = daoCollection.entityExtensionDAO().getExtensions(knowledgeExtension);
-    if (records.isEmpty()) {
+    String storedKnowledgeAsset =
+        daoCollection.entityExtensionDAO().getExtension(storedTeam.getId().toString(), knowledgeExtension);
+    if (storedKnowledgeAsset == null) {
       daoCollection
           .entityExtensionDAO()
           .insert(
@@ -327,9 +348,10 @@ public class TeamRepository extends EntityRepository<Team> {
       throws IOException {
     Team storedTeam = getByName(uriInfo, team, new EntityUtil.Fields(Set.of("id")));
     String knowledgeExtension = getKnowledgeExtension(knowledgeExt.getKnowledgeResourceType(), knowledgeExt.getName());
-    List<CollectionDAO.ExtensionRecord> records = daoCollection.entityExtensionDAO().getExtensions(knowledgeExtension);
+    String storedKnowledgeAsset =
+        daoCollection.entityExtensionDAO().getExtension(storedTeam.getId().toString(), knowledgeExtension);
     Response.Status status = Response.Status.CREATED;
-    if (!records.isEmpty()) {
+    if (storedKnowledgeAsset != null) {
       status = Response.Status.OK;
     }
     daoCollection
@@ -341,14 +363,16 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   public void removeExtension(EntityInterface entity) {
-    List<KnowledgeResource> knowledgeResources =
-        JsonUtils.convertValue(entity.getExtension(), new TypeReference<>() {});
-    for (KnowledgeResource knowledgeExt : knowledgeResources) {
-      daoCollection
-          .entityExtensionDAO()
-          .delete(
-              entity.getId().toString(),
-              getKnowledgeExtension(knowledgeExt.getKnowledgeResourceType(), knowledgeExt.getName()));
+    if (entity.getExtension() != null) {
+      List<KnowledgeResource> knowledgeResources =
+          JsonUtils.convertValue(entity.getExtension(), new TypeReference<>() {});
+      for (KnowledgeResource knowledgeExt : knowledgeResources) {
+        daoCollection
+            .entityExtensionDAO()
+            .delete(
+                entity.getId().toString(),
+                getKnowledgeExtension(knowledgeExt.getKnowledgeResourceType(), knowledgeExt.getName()));
+      }
     }
   }
 

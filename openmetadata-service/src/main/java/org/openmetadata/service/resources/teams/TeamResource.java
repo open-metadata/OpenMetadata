@@ -514,6 +514,31 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   }
 
   @GET
+  @Path("/user/knowledge")
+  @Valid
+  @Operation(
+      operationId = "getKnowledgeAssetsForUser",
+      summary = "Get Knowledge Assets for Logged In User",
+      description = "Get a list of knowledge Assets for Logged In User",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of teams",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = KnowledgeResource.class)))
+      })
+  public Response getKnowledgeAssetsForUser(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Filter Team Knowledge Assets Based on type", schema = @Schema(type = "string"))
+          @PathParam("teamName")
+          String teamName,
+      @QueryParam("type") KnowledgeResourceType type)
+      throws IOException {
+    return repository.listKnowledgeExtensionForUser(type, securityContext.getUserPrincipal().getName());
+  }
+
+  @GET
   @Path("/name/{teamName}/knowledge")
   @Valid
   @Operation(
