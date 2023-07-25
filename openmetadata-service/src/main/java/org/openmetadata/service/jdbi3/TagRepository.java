@@ -184,7 +184,7 @@ public class TagRepository extends EntityRepository<Tag> {
                     policy.setRules(rules);
                     PolicyRepository policyRepository = new PolicyRepository(daoCollection);
                     try {
-                      policyRepository.createOrUpdateInternal(null, policy);
+                      policyRepository.createOrUpdateInternal(uriInfo, policy);
                     } catch (IOException e) {
                       throw new RuntimeException(e);
                     }
