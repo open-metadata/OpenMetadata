@@ -58,7 +58,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -466,41 +465,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public ResultList<T> listAfterWithSkipFailure(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) throws IOException {
-    Map<UUID, String> errors = new LinkedHashMap<>();
-    Map<UUID, T> entities = new LinkedHashMap<>();
+    List<String> errors = new ArrayList<>();
+    List<T> entities = new ArrayList<>();
+    int beforeOffset = Integer.parseInt(RestUtil.decodeCursor(after));
+    int currentOffset = beforeOffset;
     int total = dao.listCount(filter);
     if (limitParam > 0) {
       // forward scrolling, if after == null then first page is being asked
-      List<String> jsons = dao.listAfter(filter, limitParam + 1, after == null ? "" : RestUtil.decodeCursor(after));
+      List<String> jsons = dao.listAfterWithOffset(limitParam, currentOffset);
 
       for (String json : jsons) {
         try {
           T entity = withHref(uriInfo, setFieldsInternal(JsonUtils.readValue(json, entityClass), fields));
-          entities.put(entity.getId(), entity);
+          entities.add(entity);
         } catch (Exception e) {
           LOG.error("Failed in Set Fields for Entity with Json : {}", json);
-          errors.put(JsonUtils.readValue(json, entityClass).getId(), json);
+          errors.add(json);
         }
       }
-
-      String beforeCursor;
-      String afterCursor = null;
-      beforeCursor = after == null ? null : JsonUtils.readValue(jsons.get(0), entityClass).getName();
-      if (jsons.size() > limitParam) {
-        T lastReadEntity = JsonUtils.readValue(jsons.get(limitParam), entityClass);
-        entities.remove(lastReadEntity.getId());
-        afterCursor = JsonUtils.readValue(jsons.get(limitParam - 1), entityClass).getName();
-        errors.forEach((key, value) -> entities.remove(key));
-        // Remove the Last Json Entry if present in error, since the read was actually just till limitParam , and if
-        // error
-        // is there it will come in next read
-        errors.remove(lastReadEntity.getId());
-      }
-      return getResultList(
-          new ArrayList<>(entities.values()), new ArrayList<>(errors.values()), beforeCursor, afterCursor, total);
+      currentOffset = currentOffset + limitParam;
+      String newAfter = currentOffset > total ? null : String.valueOf(currentOffset);
+      return getResultList(entities, errors, String.valueOf(beforeOffset), newAfter, total);
     } else {
       // limit == 0 , return total count of entity.
-      return getResultList(new ArrayList<>(entities.values()), new ArrayList<>(errors.values()), null, null, total);
+      return getResultList(entities, errors, null, null, total);
     }
   }
 
