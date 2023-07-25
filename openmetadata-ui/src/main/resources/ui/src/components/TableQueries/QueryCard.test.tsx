@@ -26,7 +26,7 @@ import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import QueryCard from './QueryCard';
 import { QueryCardProp } from './TableQueries.interface';
 
-const mockQueryData = {
+const mockQueryData1 = {
   query: `SELECT
 order_month,
 order_day,
@@ -63,11 +63,17 @@ ORDER BY order_day ASC;`,
   checksum: '0232b0368458aadb29230ccc531462c9',
 } as Query;
 
+const mockQueryData2 = { ...mockQueryData1, query: 'not valid query entered' };
+
 jest.mock('../schema-editor/SchemaEditor', () => {
   return jest.fn().mockReturnValue(<p>SchemaEditor</p>);
 });
 jest.mock('./QueryCardExtraOption/QueryCardExtraOption.component', () => {
-  return jest.fn().mockReturnValue(<>QueryCardExtraOption</>);
+  return jest
+    .fn()
+    .mockImplementation(({ onEditClick }) => (
+      <div onClick={onEditClick}>QueryCardExtraOption</div>
+    ));
 });
 jest.mock('./QueryUsedByOtherTable/QueryUsedByOtherTable.component', () => {
   return jest.fn().mockReturnValue(<>QueryUsedByOtherTable</>);
@@ -80,8 +86,8 @@ jest.mock('hooks/useClipBoard', () => ({
     .mockImplementation(() => ({ onCopyToClipBoard: mockOnCopyToClipBoard })),
 }));
 
-const mockProps: QueryCardProp = {
-  query: mockQueryData,
+const mockProps1: QueryCardProp = {
+  query: mockQueryData1,
   tableId: 'id',
   permission: DEFAULT_ENTITY_PERMISSION,
   onQuerySelection: jest.fn(),
@@ -91,9 +97,14 @@ const mockProps: QueryCardProp = {
   afterDeleteAction: jest.fn(),
 };
 
+const mockProps2: QueryCardProp = {
+  ...mockProps1,
+  query: mockQueryData2,
+};
+
 describe('Test QueryCard Component', () => {
   it('Check if QueryCard has all child elements', async () => {
-    const { container } = render(<QueryCard {...mockProps} />, {
+    const { container } = render(<QueryCard {...mockProps1} />, {
       wrapper: MemoryRouter,
     });
 
@@ -119,7 +130,7 @@ describe('Test QueryCard Component', () => {
   });
 
   it('Copy button should work', async () => {
-    render(<QueryCard {...mockProps} />, {
+    render(<QueryCard {...mockProps1} />, {
       wrapper: MemoryRouter,
     });
 
@@ -130,5 +141,21 @@ describe('Test QueryCard Component', () => {
     });
 
     expect(mockOnCopyToClipBoard).toHaveBeenCalled();
+  });
+
+  it('should show the error message on form submit, if sql query is invalid', async () => {
+    render(<QueryCard {...mockProps2} />, {
+      wrapper: MemoryRouter,
+    });
+
+    fireEvent.click(screen.getByText('QueryCardExtraOption'));
+
+    const saveBtn = screen.getByTestId('save-query-btn');
+
+    fireEvent.click(saveBtn);
+
+    expect(
+      screen.getByText('message.field-text-is-invalid')
+    ).toBeInTheDocument();
   });
 });
