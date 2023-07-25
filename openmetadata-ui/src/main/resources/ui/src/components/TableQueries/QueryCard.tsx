@@ -18,6 +18,7 @@ import { QUERY_DATE_FORMAT, QUERY_LINE_HEIGHT } from 'constants/Query.constant';
 import { useClipboard } from 'hooks/useClipBoard';
 import { isUndefined, split } from 'lodash';
 import { Duration } from 'luxon';
+import NodeSQLParser from 'node-sql-parser';
 import Qs from 'qs';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -64,6 +65,7 @@ const QueryCard: FC<QueryCardProp> = ({
     query: query.query,
     isLoading: false,
   });
+  const [isSqlInvalid, setIsSqlInvalid] = useState<boolean>(false);
 
   const { isAllowExpand, queryDate } = useMemo(() => {
     const queryArr = split(query.query, '\n');
@@ -97,7 +99,24 @@ const QueryCard: FC<QueryCardProp> = ({
     return duration.toFormat(`'${t('label.runs-for')}' ${formatString}`);
   }, [query]);
 
+  const validateSQL = (value: string) => {
+    try {
+      const parser = new NodeSQLParser.Parser();
+      parser.astify(value);
+
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
   const updateSqlQuery = async () => {
+    if (!validateSQL(sqlQuery.query)) {
+      setIsSqlInvalid(true);
+
+      return;
+    }
+
     setSqlQuery((pre) => ({ ...pre, isLoading: true }));
     if (query.query !== sqlQuery.query) {
       const updatedData = {
@@ -111,6 +130,9 @@ const QueryCard: FC<QueryCardProp> = ({
   };
 
   const handleQueryChange = (value: string) => {
+    if (isSqlInvalid) {
+      setIsSqlInvalid(false);
+    }
     setSqlQuery((pre) => ({ ...pre, query: value }));
   };
 
@@ -215,6 +237,13 @@ const QueryCard: FC<QueryCardProp> = ({
               onChange={handleQueryChange}
             />
           </div>
+          {isSqlInvalid && (
+            <p className="ml-8 p-l-md error-text">
+              {t('message.field-text-is-invalid', {
+                fieldText: t('label.sql-uppercase-query'),
+              })}
+            </p>
+          )}
           <Row align="middle" className="p-y-xs border-top">
             <Col className="p-y-0.5 p-l-md" span={16}>
               <QueryUsedByOtherTable query={query} tableId={tableId} />
