@@ -186,11 +186,11 @@
       "type": "boolean",
       "default": false
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the Dashboard service belongs to.",
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["id", "name", "serviceType"],
+  "required": ["id", "name", "serviceType", "fullyQualifiedName"],
   "additionalProperties": false
 }

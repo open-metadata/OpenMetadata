@@ -265,12 +265,11 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the MLModel belongs to. When not set, the MLModel inherits the domain from the ML Model Service it belongs to.",
       "$ref": "../../type/entityReference.json"
     }
-
   },
-  "required": ["id", "name", "algorithm", "service"],
+  "required": ["id", "name", "algorithm", "service", "fullyQualifiedName"],
   "additionalProperties": false
 }

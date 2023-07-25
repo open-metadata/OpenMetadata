@@ -13,9 +13,7 @@
     "pipelineServiceType": {
       "description": "Type of pipeline service - Airflow or Prefect.",
       "type": "string",
-      "javaInterfaces": [
-        "org.openmetadata.schema.EnumInterface"
-      ],
+      "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
       "enum": [
         "Airflow",
         "GluePipeline",
@@ -181,15 +179,11 @@
       "type": "boolean",
       "default": false
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the Pipeline service belongs to.",
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": [
-    "id",
-    "name",
-    "serviceType"
-  ],
+  "required": ["id", "name", "serviceType", "fullyQualifiedName"],
   "additionalProperties": false
 }

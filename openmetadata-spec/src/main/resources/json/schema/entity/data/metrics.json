@@ -73,11 +73,11 @@
       "type": "boolean",
       "default": false
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the Metrics belongs to.",
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["id", "name", "service"],
+  "required": ["id", "name", "service", "fullyQualifiedName"],
   "additionalProperties": false
 }

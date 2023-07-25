@@ -132,10 +132,10 @@
       "type": "boolean",
       "default": false
     },
-    "provider" : {
+    "provider": {
       "$ref": "../../type/basic.json#/definitions/providerType"
     }
   },
-  "required": ["id", "name", "serviceType"],
+  "required": ["id", "name", "serviceType", "fullyQualifiedName"],
   "additionalProperties": false
 }

@@ -68,8 +68,18 @@ describe('Glossary Utils', () => {
 
   it('formatRelatedTermOptions - should format related term options correctly', () => {
     const data = [
-      { id: 'term1', displayName: 'Term One', type: 'glossaryTerm' },
-      { id: 'term2', name: 'Term Two', type: 'glossaryTerm' },
+      {
+        id: 'term1',
+        displayName: 'Term One',
+        type: 'glossaryTerm',
+        fullyQualifiedName: 'term1',
+      },
+      {
+        id: 'term2',
+        name: 'Term Two',
+        type: 'glossaryTerm',
+        fullyQualifiedName: 'term2',
+      },
     ];
     const expectedOutput = [
       {

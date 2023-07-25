@@ -11,7 +11,16 @@
       "description": "Type of Pipeline - metadata, usage",
       "type": "string",
       "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType",
-      "enum": ["metadata", "usage", "lineage", "profiler", "TestSuite", "dataInsight", "elasticSearchReindex", "dbt"]
+      "enum": [
+        "metadata",
+        "usage",
+        "lineage",
+        "profiler",
+        "TestSuite",
+        "dataInsight",
+        "elasticSearchReindex",
+        "dbt"
+      ]
     },
     "pipelineStatus": {
       "type": "object",
@@ -26,7 +35,7 @@
           "description": "Pipeline status denotes if its failed or succeeded.",
           "type": "string",
           "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType",
-          "enum": ["queued","success","failed","running","partialSuccess"]
+          "enum": ["queued", "success", "failed", "running", "partialSuccess"]
         },
         "startDate": {
           "description": "startDate of the pipeline run for this particular execution.",
@@ -203,7 +212,7 @@
       "type": "boolean",
       "default": false
     },
-    "provider" : {
+    "provider": {
       "$ref": "../../../type/basic.json#/definitions/providerType"
     }
   },
@@ -211,7 +220,8 @@
     "name",
     "pipelineType",
     "sourceConfig",
-    "airflowConfig"
+    "airflowConfig",
+    "fullyQualifiedName"
   ],
   "additionalProperties": false
 }

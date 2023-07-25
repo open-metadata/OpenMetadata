@@ -46,6 +46,7 @@ const mockTags = [
 const nestedColumn = {
   name: 'Order',
   displayName: 'Order',
+  fullyQualifiedName: 'Order',
   dataType: DataType.Record,
   description: 'All the order events on our online store',
   children: [
@@ -73,6 +74,7 @@ const singleColumn = {
 const updatedNestedColumn: Column = {
   name: 'Order',
   displayName: 'Order',
+  fullyQualifiedName: 'Order',
   dataType: DataType.Record,
   description: 'All the order events on our online store',
   children: [
@@ -101,6 +103,7 @@ const updatedSingleColumn = {
 const nestedColumnWithTags = {
   name: 'Order',
   displayName: 'Order',
+  fullyQualifiedName: 'Order',
   dataType: DataType.Record,
   description: 'All the order events on our online store',
   children: [
@@ -124,6 +127,7 @@ const nestedColumnWithTags = {
 const updatedNestedColumnWithTags: Column = {
   name: 'Order',
   displayName: 'Order',
+  fullyQualifiedName: 'Order',
   dataType: DataType.Record,
   description: 'All the order events on our online store',
   children: [

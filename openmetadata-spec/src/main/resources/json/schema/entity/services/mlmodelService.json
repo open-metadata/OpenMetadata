@@ -132,11 +132,11 @@
       "type": "boolean",
       "default": false
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the MLModel service belongs to.",
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["id", "name", "serviceType"],
+  "required": ["id", "name", "serviceType", "fullyQualifiedName"],
   "additionalProperties": false
 }

@@ -108,6 +108,6 @@
       "$ref": "../type/entityHistory.json#/definitions/changeDescription"
     }
   },
-  "required": ["name", "description"],
+  "required": ["name", "description", "fullyQualifiedName"],
   "additionalProperties": false
 }

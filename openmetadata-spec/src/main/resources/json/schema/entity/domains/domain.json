@@ -7,14 +7,10 @@
   "javaType": "org.openmetadata.schema.entity.domains.Domain",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
-    "domainType" : {
-      "description" : "Type of a domain",
-      "type" : "string",
-      "enum": [
-        "Source-aligned",
-        "Consumer-aligned",
-        "Aggregate"
-      ]
+    "domainType": {
+      "description": "Type of a domain",
+      "type": "string",
+      "enum": ["Source-aligned", "Consumer-aligned", "Aggregate"]
     }
   },
   "properties": {
@@ -58,12 +54,12 @@
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "parent" : {
-      "description" : "Parent domains. When 'null' or not set, indicates that this is the top level domain.",
-      "$ref" : "../../type/entityReference.json"
+    "parent": {
+      "description": "Parent domains. When 'null' or not set, indicates that this is the top level domain.",
+      "$ref": "../../type/entityReference.json"
     },
-    "children" : {
-      "description" : "Children domains or sub-domains.",
+    "children": {
+      "description": "Children domains or sub-domains.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "owner": {
@@ -73,13 +69,13 @@
     "experts": {
       "description": "List of of users who are experts in this Domain.",
       "$ref": "../../type/entityReferenceList.json",
-      "default" : null
+      "default": null
     },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     }
   },
-  "required": ["id", "name", "description", "domainType"],
+  "required": ["id", "name", "description", "domainType", "fullyQualifiedName"],
   "additionalProperties": false
 }

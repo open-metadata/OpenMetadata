@@ -13,10 +13,7 @@
       "description": "This schema defines the type used for describing different types of dashboards.",
       "type": "string",
       "default": "Dashboard",
-      "enum": [
-        "Dashboard",
-        "Report"
-      ],
+      "enum": ["Dashboard", "Report"],
       "javaEnums": [
         {
           "name": "Dashboard"
@@ -127,15 +124,15 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the Dashboard belongs to. When not set, the Dashboard inherits the domain from the dashboard service it belongs to.",
       "$ref": "../../type/entityReference.json"
     },
-    "dataProducts" : {
+    "dataProducts": {
       "description": "List of of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json"
     }
   },
-  "required": ["id", "name", "service"],
+  "required": ["id", "name", "service", "fullyQualifiedName"],
   "additionalProperties": false
 }

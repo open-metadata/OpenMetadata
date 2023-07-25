@@ -68,7 +68,7 @@
       "description": "Followers of this Query.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "votes" : {
+    "votes": {
       "$ref": "../../type/votes.json"
     },
     "query": {
@@ -101,6 +101,6 @@
       "default": false
     }
   },
-  "required": ["name","query"],
+  "required": ["name", "query", "fullyQualifiedName"],
   "additionalProperties": false
 }

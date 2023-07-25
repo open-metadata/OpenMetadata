@@ -42,6 +42,7 @@ const mockTags = [
 const nestedField = {
   name: 'Order',
   displayName: 'Order',
+  fullyQualifiedName: 'Order',
   dataType: DataTypeTopic.Record,
   description: 'All the order events on our online store',
   children: [
@@ -69,6 +70,7 @@ const singleField = {
 const updatedNestedField: Field = {
   name: 'Order',
   displayName: 'Order',
+  fullyQualifiedName: 'Order',
   dataType: DataTypeTopic.Record,
   description: 'All the order events on our online store',
   children: [
@@ -97,6 +99,7 @@ const updatedSingleField = {
 const nestedFieldWithTags = {
   name: 'Order',
   displayName: 'Order',
+  fullyQualifiedName: 'Order',
   dataType: DataTypeTopic.Record,
   description: 'All the order events on our online store',
   children: [
@@ -120,6 +123,7 @@ const nestedFieldWithTags = {
 const updatedNestedFieldWithTags: Field = {
   name: 'Order',
   displayName: 'Order',
+  fullyQualifiedName: 'Order',
   dataType: DataTypeTopic.Record,
   description: 'All the order events on our online store',
   children: [

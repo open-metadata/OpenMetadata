@@ -122,6 +122,6 @@
       "default": false
     }
   },
-  "required": ["name"],
+  "required": ["name", "fullyQualifiedName"],
   "additionalProperties": false
 }

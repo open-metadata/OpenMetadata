@@ -108,6 +108,7 @@ describe('API functions should work properly', () => {
     const mockUpdateData = {
       name: 'testCategory',
       description: 'newDescription',
+      fullyQualifiedName: 'testCategory',
     };
     const result = await updateClassification(mockUpdateData);
 
@@ -121,6 +122,7 @@ describe('API functions should work properly', () => {
     const mockUpdateData = {
       name: 'tagName',
       description: 'newDescription',
+      fullyQualifiedName: 'tagName',
     };
     const result = await updateTag(mockUpdateData);
 

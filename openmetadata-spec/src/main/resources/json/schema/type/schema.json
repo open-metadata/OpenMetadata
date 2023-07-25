@@ -10,13 +10,7 @@
     "schemaType": {
       "description": "Schema type used for the message.",
       "javaType": "org.openmetadata.schema.type.SchemaType",
-      "enum": [
-        "Avro",
-        "Protobuf",
-        "JSON",
-        "Other",
-        "None"
-      ],
+      "enum": ["Avro", "Protobuf", "JSON", "Other", "None"],
       "javaEnums": [
         {
           "name": "Avro"
@@ -112,10 +106,7 @@
           "default": null
         }
       },
-      "required": [
-        "name",
-        "dataType"
-      ],
+      "required": ["name", "dataType", "fullyQualifiedName"],
       "additionalProperties": false
     }
   },

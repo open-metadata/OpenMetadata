@@ -14,38 +14,41 @@
       "description": "FullyQualifiedName in the form `policyName.ruleName`.",
       "$ref": "../../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
-    "description" : {
+    "description": {
       "description": "Description of the rule.",
       "$ref": "../../../type/basic.json#/definitions/markdown"
     },
-    "effect" : {
-      "type" : "string",
-      "enum" : [
-        "allow",
-        "deny"
-      ]
+    "effect": {
+      "type": "string",
+      "enum": ["allow", "deny"]
     },
-    "operations" : {
+    "operations": {
       "description": "List of operation names related to the `resources`. Use `*` to include all the operations.",
-      "type" : "array",
-      "items" : {
+      "type": "array",
+      "items": {
         "$ref": "resourceDescriptor.json#/definitions/operation"
       },
-      "default" : null
+      "default": null
     },
     "resources": {
       "description": "Resources/objects related to this rule. Resources are typically `entityTypes` such as `table`, `database`, etc. It also includes `non-entityType` resources such as `lineage`. Use `*` to include all the resources.",
       "type": "array",
       "items": {
-        "type" : "string"
+        "type": "string"
       },
-      "default" : null
+      "default": null
     },
-    "condition" : {
+    "condition": {
       "description": "Expression in SpEL used for matching of a `Rule` based on entity, resource, and environmental attributes.",
-      "$ref" : "../../../type/basic.json#/definitions/expression"
+      "$ref": "../../../type/basic.json#/definitions/expression"
     }
   },
-  "required": ["name", "effect", "operations", "resources"],
+  "required": [
+    "name",
+    "effect",
+    "operations",
+    "resources",
+    "fullyQualifiedName"
+  ],
   "additionalProperties": false
 }

@@ -7,9 +7,9 @@
   "javaType": "org.openmetadata.schema.entity.teams.Team",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
-    "teamType" : {
-      "description" : "Organization is the highest level entity. An Organization has one of more Business Units, Division, Departments, Group, or Users. A Business Unit has one or more Divisions, Departments, Group, or Users. A Division has one or more Divisions, Departments, Group, or Users. A Department has one or more Departments, Group, or Users. A Group has a only Users",
-      "type" : "string",
+    "teamType": {
+      "description": "Organization is the highest level entity. An Organization has one of more Business Units, Division, Departments, Group, or Users. A Business Unit has one or more Divisions, Departments, Group, or Users. A Division has one or more Divisions, Departments, Group, or Users. A Department has one or more Departments, Group, or Users. A Group has a only Users",
+      "type": "string",
       "enum": [
         "Group",
         "Department",
@@ -68,13 +68,13 @@
       "description": "Team profile information.",
       "$ref": "../../type/profile.json"
     },
-    "parents" : {
-      "description" : "Parent teams. For an `Organization` the `parent` is always null. A `BusinessUnit` always has only one parent of type `BusinessUnit` or an `Organization`. A `Division` can have multiple parents of type `BusinessUnit` or `Division`. A `Department` can have multiple parents of type `Division` or `Department`.",
-      "$ref" : "../../type/entityReferenceList.json"
+    "parents": {
+      "description": "Parent teams. For an `Organization` the `parent` is always null. A `BusinessUnit` always has only one parent of type `BusinessUnit` or an `Organization`. A `Division` can have multiple parents of type `BusinessUnit` or `Division`. A `Department` can have multiple parents of type `Division` or `Department`.",
+      "$ref": "../../type/entityReferenceList.json"
     },
-    "children" : {
-      "description" : "Children teams. An `Organization` can have `BusinessUnit`, `Division` or `Department` as children. A `BusinessUnit` can have `BusinessUnit`, `Division`, or `Department` as children. A `Division` can have `Division` or `Department` as children. A `Department` can have can have `Department` as children.",
-      "$ref" : "../../type/entityReferenceList.json"
+    "children": {
+      "description": "Children teams. An `Organization` can have `BusinessUnit`, `Division` or `Department` as children. A `BusinessUnit` can have `BusinessUnit`, `Division`, or `Department` as children. A `Division` can have `Division` or `Department` as children. A `Department` can have can have `Department` as children.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "users": {
       "description": "Users that are part of the team.",
@@ -82,7 +82,7 @@
       "default": null
     },
     "childrenCount": {
-      "description" : "Total count of Children teams.",
+      "description": "Total count of Children teams.",
       "type": "integer"
     },
     "userCount": {
@@ -124,11 +124,11 @@
       "description": "Policies that is attached to this team.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the Team belongs to.",
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["id", "name"],
+  "required": ["id", "name", "fullyQualifiedName"],
   "additionalProperties": false
 }

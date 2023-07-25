@@ -101,6 +101,7 @@ export const mockMlModelEntityDetails: Mlmodel = {
   dashboard: {
     name: 'DashboardName',
     id: '4352345234534538992643452345',
+    fullyQualifiedName: 'DashboardName',
     type: '',
   },
   target: 'ETA_time',
@@ -111,6 +112,7 @@ export const mockMlModelEntityDetails: Mlmodel = {
   service: {
     name: 'MLFlow',
     id: '43523452345345325423452345',
+    fullyQualifiedName: 'MLFlow',
     type: '',
   },
   server: 'http://my-server.ai',
@@ -137,6 +139,7 @@ export const mockMlModelEntityDetails1: Mlmodel = {
   service: {
     name: 'MLFlow',
     id: '43523452345345325423452345',
+    fullyQualifiedName: 'MLFlow',
     type: '',
   },
   tags: [],

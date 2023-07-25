@@ -67,6 +67,6 @@
       "default": true
     }
   },
-  "required": ["eventType", "name"],
+  "required": ["eventType", "name", "fullyQualifiedName"],
   "additionalProperties": false
 }

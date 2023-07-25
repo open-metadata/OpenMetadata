@@ -11,9 +11,7 @@
       "javaType": "org.openmetadata.schema.entity.automations.WorkflowType",
       "description": "This enum defines the type for which this workflow applies to.",
       "type": "string",
-      "enum": [
-        "TEST_CONNECTION"
-      ]
+      "enum": ["TEST_CONNECTION"]
     },
     "workflowStatus": {
       "javaType": "org.openmetadata.schema.entity.automations.WorkflowStatus",
@@ -103,5 +101,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["id", "name", "workflowType", "request"]
+  "required": ["id", "name", "workflowType", "request", "fullyQualifiedName"]
 }

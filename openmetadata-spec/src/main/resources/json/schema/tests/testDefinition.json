@@ -45,10 +45,7 @@
       "javaType": "org.openmetadata.schema.type.TestDefinitionEntityType",
       "description": "This enum defines the type for which this test definition applies to.",
       "type": "string",
-      "enum": [
-        "TABLE",
-        "COLUMN"
-      ]
+      "enum": ["TABLE", "COLUMN"]
     },
     "testCaseParameterDefinition": {
       "type": "object",
@@ -157,6 +154,6 @@
       "default": false
     }
   },
-  "required": ["name", "description", "testPlatforms"],
+  "required": ["name", "description", "testPlatforms", "fullyQualifiedName"],
   "additionalProperties": false
 }

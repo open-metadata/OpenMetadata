@@ -76,7 +76,7 @@
       "$ref": "../services/messagingService.json#/definitions/messagingServiceType"
     },
     "messageSchema": {
-        "$ref": "../../type/schema.json"
+      "$ref": "../../type/schema.json"
     },
     "partitions": {
       "description": "Number of partitions into which the topic is divided.",
@@ -153,15 +153,15 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the Topic belongs to. When not set, the Topic inherits the domain from the messaging service it belongs to.",
       "$ref": "../../type/entityReference.json"
     },
-    "dataProducts" : {
+    "dataProducts": {
       "description": "List of of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json"
     }
   },
-  "required": ["id", "name", "partitions", "service"],
+  "required": ["id", "name", "partitions", "service", "fullyQualifiedName"],
   "additionalProperties": false
 }

@@ -102,6 +102,12 @@
       "default": false
     }
   },
-  "required": ["name", "testDefinition", "entityLink", "testSuite"],
+  "required": [
+    "name",
+    "testDefinition",
+    "entityLink",
+    "testSuite",
+    "fullyQualifiedName"
+  ],
   "additionalProperties": false
 }

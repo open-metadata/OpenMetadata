@@ -27,11 +27,11 @@
       "description": "Description of the bot.",
       "$ref": "../type/basic.json#/definitions/markdown"
     },
-    "botUser" : {
+    "botUser": {
       "description": "Bot user created for this bot on behalf of which the bot performs all the operations, such as updating description, responding on the conversation threads, etc.",
-      "$ref" : "../type/entityReference.json"
+      "$ref": "../type/entityReference.json"
     },
-    "provider" : {
+    "provider": {
       "$ref": "../type/basic.json#/definitions/providerType"
     },
     "version": {
@@ -60,6 +60,6 @@
       "default": false
     }
   },
-  "required": ["id", "name", "botUser"],
+  "required": ["id", "name", "botUser", "fullyQualifiedName"],
   "additionalProperties": false
 }

@@ -70,11 +70,11 @@
       "description": "Set of rules that the policy contains.",
       "$ref": "#/definitions/rules"
     },
-    "teams" : {
+    "teams": {
       "description": "Teams that use this policy directly and not through roles.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "roles" : {
+    "roles": {
       "description": "Roles that use this policy.",
       "$ref": "../../type/entityReferenceList.json"
     },
@@ -83,27 +83,27 @@
       "$ref": "../../type/entityReference.json",
       "default": null
     },
-    "allowDelete" : {
+    "allowDelete": {
       "description": "Some system policies can't be deleted",
-      "type" : "boolean"
+      "type": "boolean"
     },
-    "allowEdit" : {
+    "allowEdit": {
       "description": "Some system roles can't be edited",
-      "type" : "boolean"
+      "type": "boolean"
     },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
     },
-    "provider" : {
+    "provider": {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },
-    "disabled" : {
+    "disabled": {
       "description": "System policy can't be deleted. Use this flag to disable them.",
       "type": "boolean"
     }
   },
-  "required": ["id", "name", "rules"],
+  "required": ["id", "name", "rules", "fullyQualifiedName"],
   "additionalProperties": false
 }

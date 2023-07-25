@@ -51,13 +51,13 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "allowDelete" : {
+    "allowDelete": {
       "description": "Some system roles can't be deleted",
-      "type" : "boolean"
+      "type": "boolean"
     },
-    "allowEdit" : {
+    "allowEdit": {
       "description": "Some system roles can't be edited",
-      "type" : "boolean"
+      "type": "boolean"
     },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
@@ -76,14 +76,14 @@
       "description": "Teams that have this role assigned to them.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "provider" : {
+    "provider": {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },
-    "disabled" : {
+    "disabled": {
       "description": "System policy can't be deleted. Use this flag to disable them.",
       "type": "boolean"
     }
   },
-  "required": ["id", "name"],
+  "required": ["id", "name", "fullyQualifiedName"],
   "additionalProperties": false
 }

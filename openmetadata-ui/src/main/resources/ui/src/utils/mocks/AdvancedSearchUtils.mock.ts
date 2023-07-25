@@ -238,12 +238,14 @@ export const mockGetSchemaFieldOptionsData: SuggestOption<
     service: {
       id: '2',
       type: '',
+      fullyQualifiedName: '2',
     },
     messageSchema: {
       schemaFields: [
         {
           name: 'AddressBook',
           displayName: 'AddressBook display',
+          fullyQualifiedName: 'AddressBook',
           dataType: DataTypeTopic.Array,
         },
       ],
@@ -267,11 +269,13 @@ export const mockGetSchemaFieldOptionsDataWithoutDN: SuggestOption<
     service: {
       id: '2',
       type: '',
+      fullyQualifiedName: '2',
     },
     messageSchema: {
       schemaFields: [
         {
           name: 'AddressBook',
+          fullyQualifiedName: 'AddressBook',
           dataType: DataTypeTopic.Array,
         },
       ],
@@ -295,6 +299,7 @@ export const mockGetTasksOptionsData: SuggestOption<
     service: {
       id: '2',
       type: '',
+      fullyQualifiedName: '2',
     },
     tasks: [
       {
@@ -321,6 +326,7 @@ export const mockGetTasksOptionsDataWithoutDN: SuggestOption<
     service: {
       id: '2',
       type: '',
+      fullyQualifiedName: '2',
     },
     tasks: [
       {
@@ -343,14 +349,17 @@ export const mockGetChartsOptionsData: SuggestOption<
     entityType: '',
     id: '',
     name: '',
+    fullyQualifiedName: '',
     service: {
       id: '2',
       type: '',
+      fullyQualifiedName: '2',
     },
     charts: [
       {
         id: '3',
         name: 'chart name',
+        fullyQualifiedName: 'chart name',
         displayName: 'chart display',
         type: '',
       },
@@ -374,11 +383,13 @@ export const mockGetChartsOptionsDataWithoutDN: SuggestOption<
     service: {
       id: '2',
       type: '',
+      fullyQualifiedName: '2',
     },
     charts: [
       {
         id: '3',
         name: 'chart name',
+        fullyQualifiedName: 'chart name',
         type: '',
       },
     ],
@@ -401,11 +412,13 @@ export const mockGetChartsOptionsDataWithoutNameDN: SuggestOption<
     service: {
       id: '2',
       type: '',
+      fullyQualifiedName: '2',
     },
     charts: [
       {
         id: '3',
         type: '',
+        fullyQualifiedName: '3',
       },
     ],
   },
