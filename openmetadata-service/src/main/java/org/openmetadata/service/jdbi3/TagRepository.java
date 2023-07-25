@@ -23,12 +23,22 @@ import static org.openmetadata.service.util.EntityUtil.getId;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import javax.json.JsonArray;
+import javax.json.JsonObject;
+import javax.json.JsonPatch;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
@@ -36,11 +46,12 @@ import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.tags.TagResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class TagRepository extends EntityRepository<Tag> {
@@ -125,6 +136,66 @@ public class TagRepository extends EntityRepository<Tag> {
     tag.withClassification(getClassification(tag)).withParent(getParent(tag));
     tag.setChildren(fields.contains("children") ? getChildren(tag) : null);
     return tag.withUsageCount(fields.contains("usageCount") ? getUsageCount(tag) : null);
+  }
+
+  @Override
+  public RestUtil.PatchResponse<Tag> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) throws IOException {
+    // Get all the fields in the original entity that can be updated during PATCH operation
+    Tag original = setFieldsInternal(dao.findEntityById(id), patchFields);
+    setInheritedFields(original, patchFields);
+    JsonArray jsonArray = patch.toJsonArray();
+    // Apply JSON patch to the original entity to get the updated entity
+    Tag updated = JsonUtils.applyPatch(original, patch, Tag.class);
+    updated.setUpdatedBy(user);
+    updated.setUpdatedAt(System.currentTimeMillis());
+
+    prepareInternal(updated);
+    populateOwner(updated.getOwner());
+    restorePatchAttributes(original, updated);
+
+    // Update the attributes and relationships of an entity
+    EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
+    entityUpdater.update();
+    jsonArray.forEach(
+        entry -> {
+          JsonObject jsonObject = entry.asJsonObject();
+          if (jsonObject.getString("path").equals("/name")) {
+            List<String> policyData = daoCollection.policyDAO().listPoliciesWithMatchTagCondition();
+            for (String json : policyData) {
+              Policy policy;
+              try {
+                policy = JsonUtils.readValue(json, Policy.class);
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+              List<Rule> rules = policy.getRules();
+              for (Rule rule : rules) {
+                if (rule.getCondition() != null) {
+                  List<String> tags = new ArrayList<>();
+                  Pattern pattern = Pattern.compile("'([^']+)'");
+                  Matcher matcher = pattern.matcher(rule.getCondition());
+                  while (matcher.find()) {
+                    String tagValue = matcher.group(1);
+                    tags.add(tagValue);
+                  }
+                  if (tags.contains(original.getFullyQualifiedName())) {
+                    rule.setCondition(
+                        rule.getCondition().replace(original.getFullyQualifiedName(), updated.getFullyQualifiedName()));
+                    policy.setRules(rules);
+                    PolicyRepository policyRepository = new PolicyRepository(daoCollection);
+                    try {
+                      policyRepository.createOrUpdateInternal(null, policy);
+                    } catch (IOException e) {
+                      throw new RuntimeException(e);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        });
+    String change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
+    return new RestUtil.PatchResponse<>(Response.Status.OK, withHref(uriInfo, updated), change);
   }
 
   private Integer getUsageCount(Tag tag) {

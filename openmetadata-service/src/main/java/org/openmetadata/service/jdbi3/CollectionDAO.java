@@ -1689,6 +1689,26 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json\n"
+                + "FROM policy_entity\n"
+                + "WHERE JSON_EXTRACT(json, '$.rules[*].condition') LIKE '%matchAllTags%'\n"
+                + "   OR JSON_EXTRACT(json, '$.rules[*].condition') LIKE '%matchAnyTag%'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json\n"
+                + "FROM policy_entity\n"
+                + "WHERE EXISTS (\n"
+                + "  SELECT *\n"
+                + "  FROM jsonb_array_elements(json->'rules') AS rule\n"
+                + "  WHERE rule->>'condition' LIKE '%matchAllTags%'\n"
+                + "     OR rule->>'condition' LIKE '%matchAnyTag%'\n"
+                + ");",
+        connectionType = POSTGRES)
+    List<String> listPoliciesWithMatchTagCondition();
   }
 
   interface ReportDAO extends EntityDAO<Report> {

@@ -172,7 +172,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final boolean supportsDataProducts;
 
   /** Fields that can be updated during PATCH operation */
-  @Getter private final Fields patchFields;
+  @Getter public final Fields patchFields;
 
   /** Fields that can be updated during PUT operation */
   @Getter protected final Fields putFields;
@@ -652,7 +652,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) throws IOException {
+  public PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) throws IOException {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFieldsInternal(dao.findEntityById(id), patchFields);
     setInheritedFields(original, patchFields);
