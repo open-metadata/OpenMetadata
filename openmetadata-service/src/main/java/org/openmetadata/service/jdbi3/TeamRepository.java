@@ -252,21 +252,23 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   public void storeExtension(EntityInterface entity) throws JsonProcessingException {
-    List<KnowledgeResource> knowledgeResources =
-        JsonUtils.convertValue(entity.getExtension(), new TypeReference<>() {});
+    if (entity.getExtension() != null) {
+      List<KnowledgeResource> knowledgeResources =
+          JsonUtils.convertValue(entity.getExtension(), new TypeReference<>() {});
 
-    for (KnowledgeResource knowledgeExt : knowledgeResources) {
-      daoCollection
-          .entityExtensionDAO()
-          .insert(
-              entity.getId().toString(),
-              String.format(
-                  KNOWLEDGE_EXTENSION,
-                  entityType,
-                  knowledgeExt.getKnowledgeResourceType().value(),
-                  FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(knowledgeExt.getName()))),
-              KNOWLEDGE_SCHEMA,
-              JsonUtils.pojoToJson(knowledgeExt));
+      for (KnowledgeResource knowledgeExt : knowledgeResources) {
+        daoCollection
+            .entityExtensionDAO()
+            .insert(
+                entity.getId().toString(),
+                String.format(
+                    KNOWLEDGE_EXTENSION,
+                    entityType,
+                    knowledgeExt.getKnowledgeResourceType().value(),
+                    FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(knowledgeExt.getName()))),
+                KNOWLEDGE_SCHEMA,
+                JsonUtils.pojoToJson(knowledgeExt));
+      }
     }
   }
 
