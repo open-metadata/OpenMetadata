@@ -18,8 +18,8 @@ import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 
 const reactOnFeed = (feedSelector, reaction) => {
   cy.get(feedSelector).within(() => {
-    cy.get('.feed-actions').invoke('show');
-    cy.get('.feed-actions').within(() => {
+    cy.get('[data-testid="feed-actions"]').invoke('show');
+    cy.get('[data-testid="feed-actions"]').within(() => {
       cy.get('[data-testid="add-reactions"]').click();
     });
   });
@@ -37,10 +37,10 @@ describe('Recently viwed data assets', () => {
   it('Feed widget should be visible', () => {
     cy.get('[data-testid="activity-feed-widget"]').as('feedWidget');
     cy.get('@feedWidget').should('be.visible');
-    cy.get('@feedWidget').contains('All');
-    cy.get('@feedWidget').contains('@Mentions');
-    cy.get('@feedWidget').contains('Tasks');
-    cy.get('@feedWidget').contains('0');
+    cy.get('@feedWidget').should('contain', 'All');
+    cy.get('@feedWidget').should('contain', '@Mentions');
+    cy.get('@feedWidget').should('contain', 'Tasks');
+    cy.get('@feedWidget').should('contain', '0');
   });
 
   it('Feed widget should have some feeds', () => {
@@ -84,8 +84,8 @@ describe('Recently viwed data assets', () => {
     cy.get(
       '[data-testid="activity-feed-widget"] [data-testid="message-container"]:first-child'
     ).within(() => {
-      cy.get('.feed-actions').invoke('show');
-      cy.get('.feed-actions').within(() => {
+      cy.get('[data-testid="feed-actions"]').invoke('show');
+      cy.get('[data-testid="feed-actions"]').within(() => {
         cy.get('[data-testid="add-reply"]').click();
       });
     });
@@ -139,7 +139,7 @@ describe('Recently viwed data assets', () => {
     cy.get(
       '[data-testid="activity-feed-widget"] [data-testid="message-container"]:first-child'
     ).within(() => {
-      cy.get('.thread-count').should('contain', 1);
+      cy.get('[data-testid="thread-count"]').should('contain', 1);
     });
   });
 
@@ -148,8 +148,8 @@ describe('Recently viwed data assets', () => {
     cy.get(
       '[data-testid="activity-feed-widget"] [data-testid="message-container"]:first-child'
     ).within(() => {
-      cy.get('.feed-actions').invoke('show');
-      cy.get('.feed-actions').within(() => {
+      cy.get('[data-testid="feed-actions"]').invoke('show');
+      cy.get('[data-testid="feed-actions"]').within(() => {
         cy.get('[data-testid="add-reply"]').click();
       });
     });
