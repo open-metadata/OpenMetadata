@@ -111,6 +111,7 @@ def set_google_credentials(gcp_credentials: GCPCredentials) -> None:
     """
     if isinstance(gcp_credentials.gcpConfig, GcpCredentialsPath):
         os.environ[GOOGLE_CREDENTIALS] = str(gcp_credentials.gcpConfig.__root__)
+        os.environ["LOGIN_TYPE"] = "PATH"
         return
 
     if gcp_credentials.gcpConfig.projectId is None:
@@ -131,6 +132,7 @@ def set_google_credentials(gcp_credentials: GCPCredentials) -> None:
 
         credentials_dict = build_google_credentials_dict(gcp_credentials.gcpConfig)
         tmp_credentials_file = create_credential_tmp_file(credentials=credentials_dict)
+        os.environ["LOGIN_TYPE"] = "CREDENTAIL"
         os.environ[GOOGLE_CREDENTIALS] = tmp_credentials_file
         return
 
