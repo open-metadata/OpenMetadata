@@ -73,6 +73,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.csv.EntityCsvTest;
@@ -81,6 +83,8 @@ import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.data.knowledge.KnowledgeResource;
+import org.openmetadata.schema.entity.data.knowledge.KnowledgeResourceType;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.policies.accessControl.Rule.Effect;
@@ -237,6 +241,21 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Ensure that the role is not deleted
     Role role = roleResourceTest.getEntity(role1.getId(), "", ADMIN_AUTH_HEADERS);
     assertNotNull(role);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  @Override
+  protected void put_addEntityCustomAttributes(TestInfo test) throws IOException {
+    KnowledgeResource knowledgeResourceExt =
+        new KnowledgeResource()
+            .withName("Test")
+            .withKnowledgeResourceType(KnowledgeResourceType.QUICK_LINK)
+            .withDisplayName("test");
+    CreateTeam create = createRequest(test).withExtension(List.of(knowledgeResourceExt));
+    Team entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    Team getEntity = getEntityByName(create.getName(), "extension", ADMIN_AUTH_HEADERS);
+    assertEquals(getEntity.getExtension(), entity.getExtension());
   }
 
   @Test

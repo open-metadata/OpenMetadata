@@ -1453,7 +1453,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void put_addEntityCustomAttributes(TestInfo test) throws IOException {
+  protected void put_addEntityCustomAttributes(TestInfo test) throws IOException {
     if (!supportsCustomExtension) {
       return;
     }
