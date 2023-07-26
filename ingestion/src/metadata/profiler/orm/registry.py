@@ -21,8 +21,8 @@ from metadata.generated.schema.entity.data.table import DataType
 from metadata.ingestion.source import sqa_types
 from metadata.profiler.orm.types.bytea_to_string import ByteaToHex
 from metadata.profiler.orm.types.custom_array import CustomArray
-from metadata.profiler.orm.types.custom_hex_byte_string import HexByteString
 from metadata.profiler.orm.types.custom_datetimerange import CustomDateTimeRange
+from metadata.profiler.orm.types.custom_hex_byte_string import HexByteString
 from metadata.profiler.orm.types.custom_image import CustomImage
 from metadata.profiler.orm.types.custom_ip import CustomIP
 from metadata.profiler.orm.types.custom_timestamp import CustomTimestamp
