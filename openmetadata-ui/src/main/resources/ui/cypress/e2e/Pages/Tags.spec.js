@@ -60,10 +60,10 @@ const validateForm = () => {
   submitForm();
 
   // error messages
-  cy.get('#tags_name_help').should('be.visible').contains('name is required');
+  cy.get('#tags_name_help').should('be.visible').contains('Name is required');
   cy.get('#tags_description_help')
     .should('be.visible')
-    .contains('description is required');
+    .contains('Description is required');
 
   // validation should work for invalid names
 
