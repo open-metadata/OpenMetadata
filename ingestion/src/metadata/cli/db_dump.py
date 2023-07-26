@@ -218,16 +218,14 @@ def dump(engine: Engine, output: Path, schema: str = None) -> None:
         inspector.get_table_names(schema) if schema else inspector.get_table_names()
     )
     lower_tables = get_lower_table_names(tables)
-    lower_tables_dump_all = get_lower_table_names(TABLES_DUMP_ALL)
-    lower_not_migrate = get_lower_table_names(NOT_MIGRATE)
-    lower_custom_tables = get_lower_table_names(CUSTOM_TABLES)
+    all_non_json_tables = (
+        get_lower_table_names(TABLES_DUMP_ALL)
+        + get_lower_table_names(NOT_MIGRATE)
+        + get_lower_table_names(CUSTOM_TABLES)
+    )
 
     dump_json_tables = [
-        table
-        for table in lower_tables
-        if table not in lower_tables_dump_all
-        and table not in lower_not_migrate
-        and table not in lower_custom_tables
+        table for table in lower_tables if table not in all_non_json_tables
     ]
 
     dump_all(tables=list(TABLES_DUMP_ALL), engine=engine, output=output)
