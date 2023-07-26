@@ -130,7 +130,7 @@ wget -O https://github.com/open-metadata/OpenMetadata/releases/download/1.1.0-re
 wget -O https://github.com/open-metadata/OpenMetadata/releases/download/1.1.0-release/docker-compose-postgres.yml
 ```
 
-### 3. Start the Docker Compose services
+### 3. Start the Docker Compose Services
 
 Run the below command to deploy the OpenMetadata
 
@@ -146,7 +146,7 @@ For OpenMetadata with PostgreSQL Database -
 docker compose -f docker-compose-postgres.yml up --detach
 ```
 
-These command will pull the docker images of Openmetadata for MySQL / PostgreSQL, OpenMetadata-Server, OpenMetadata-Ingestion and Elasticsearch.
+These commands will pull the docker images of Openmetadata for MySQL / PostgreSQL, OpenMetadata-Server, OpenMetadata-Ingestion and Elasticsearch.
 
 Upon running this command you should see output similar to the following.
 ```commandline
