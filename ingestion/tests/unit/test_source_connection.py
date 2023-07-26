@@ -1006,13 +1006,13 @@ class SourceConnectionTest(TestCase):
         )
 
         # Passing @ in username and password
-        expected_url = "mssql+pytds://sa%40123:password%40444@localhost:1433"
+        expected_url = "mssql+pytds://sa%40123:password%40444@localhost:1433/master"
         mssql_conn_obj = MssqlConnection(
             username="sa@123",
             password="password@444",
             hostPort="localhost:1433",
             scheme=MssqlScheme.mssql_pytds,
-            database=None,
+            database="master",
         )
 
         assert expected_url == get_connection_url(mssql_conn_obj)
