@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,32 +11,16 @@
  *  limitations under the License.
  */
 
-@import url('../../../styles/variables.less');
+import { EntityTags } from 'Models';
 
-.tags-component-container {
-  .tag-container-style {
-    display: flex;
-    gap: 4px;
-    align-items: center;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    justify-content: center;
-    padding: 1px 8px;
-    margin: 0 4px 1px 0;
-  }
-
-  .label {
-    border: none;
-    background-color: transparent;
-    padding: 0px;
-  }
-
-  .outlined {
-    border: none;
-    background-color: transparent;
-  }
+export interface TagsViewerProps {
+  tags: EntityTags[];
+  sizeCap?: number;
+  displayType?: DisplayType;
+  showNoDataPlaceholder?: boolean;
 }
-.plus-more-tag.ant-tag {
-  color: @link-color;
+
+export enum DisplayType {
+  READ_MORE = 'read-more',
+  POPOVER = 'popover',
 }

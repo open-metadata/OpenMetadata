@@ -40,7 +40,7 @@ const checkTags = (tag, checkForParentEntity) => {
       .contains(tag);
   } else {
     cy.get(
-      '[data-testid="Classification-tags-0"]  [data-testid="tags-container"] [data-testid="entity-tags"] '
+      '[data-testid="classification-tags-0"]  [data-testid="tags-container"] [data-testid="entity-tags"] '
     )
       .scrollIntoView()
       .contains(tag);
@@ -65,7 +65,7 @@ const removeTags = (checkForParentEntity) => {
       .should('be.visible')
       .click();
   } else {
-    cy.get('[data-testid="Classification-tags-0"] [data-testid="edit-button"]')
+    cy.get('[data-testid="classification-tags-0"] [data-testid="edit-button"]')
       .scrollIntoView()
       .trigger('mouseover')
       .click();
@@ -130,24 +130,24 @@ describe('Check if tags addition and removal flow working properly from tables',
 
       if (entityDetails.entity === 'mlmodels') {
         cy.get(
-          `[data-testid="feature-card-${entityDetails.fieldName}"] [data-testid="Classification-tags-0"]`
+          `[data-testid="feature-card-${entityDetails.fieldName}"] [data-testid="classification-tags-0"]`
         ).then(($container) => {
           if ($container.find('[data-testid="add-tag"]').length === 0) {
             removeTags(false);
           }
           cy.get(
-            `[data-testid="feature-card-${entityDetails.fieldName}"] [data-testid="Classification-tags-0"] [data-testid="add-tag"]`
+            `[data-testid="feature-card-${entityDetails.fieldName}"] [data-testid="classification-tags-0"] [data-testid="add-tag"]`
           ).click();
         });
       } else {
         cy.get(
-          '.ant-table-tbody [data-testid="Classification-tags-0"] [data-testid="tags-container"]'
+          '.ant-table-tbody [data-testid="classification-tags-0"] [data-testid="tags-container"]'
         ).then(($container) => {
           if ($container.find('[data-testid="add-tag"]').length === 0) {
             removeTags(false);
           }
           cy.get(
-            '.ant-table-tbody [data-testid="Classification-tags-0"] [data-testid="tags-container"] [data-testid="add-tag"]'
+            '.ant-table-tbody [data-testid="classification-tags-0"] [data-testid="tags-container"] [data-testid="add-tag"]'
           ).click();
         });
       }

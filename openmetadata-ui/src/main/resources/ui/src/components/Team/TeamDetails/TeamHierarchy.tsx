@@ -59,7 +59,9 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         render: (_, record) => (
           <Link
             className="hover:tw-underline tw-cursor-pointer"
-            to={getTeamsWithFqnPath(record.fullyQualifiedName || record.name)}>
+            to={getTeamsWithFqnPath(
+              encodeURIComponent(record.fullyQualifiedName || record.name)
+            )}>
             {getEntityName(record)}
           </Link>
         ),

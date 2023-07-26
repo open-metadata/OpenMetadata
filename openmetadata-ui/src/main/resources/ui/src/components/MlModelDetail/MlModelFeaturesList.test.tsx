@@ -140,10 +140,6 @@ jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
     .mockReturnValue(<p> ModalWithMarkdownEditor</p>),
 }));
 
-jest.mock('components/Tag/Tags/tags', () => {
-  return jest.fn().mockImplementation(({ tag }) => <span>{tag.tagFQN}</span>);
-});
-
 jest.mock('utils/TableUtils', () => ({
   getAllTagsList: jest.fn().mockImplementation(() => Promise.resolve([])),
   getTagsHierarchy: jest.fn().mockReturnValue([]),
