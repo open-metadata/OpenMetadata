@@ -12,7 +12,7 @@
  */
 
 import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Popover, Row, Space, Table, Tooltip } from 'antd';
+import { Button, Popover, Row, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as ExternalLinkIcon } from 'assets/svg/external-links.svg';
 import { AxiosError } from 'axios';
@@ -24,7 +24,6 @@ import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteM
 import KillIngestionModal from 'components/Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import TestCaseCommonTabContainer from 'components/TestCaseCommonTabContainer/TestCaseCommonTabContainer.component';
 import cronstrue from 'cronstrue';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
@@ -605,41 +604,29 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
   }
 
   return (
-    <TestCaseCommonTabContainer
-      buttonName={t('label.add-entity', {
-        entity: t('label.ingestion'),
-      })}
-      hasAccess={createPermission}
-      showButton={testSuitePipelines.length === 0}
-      onButtonClick={() => {
-        history.push(getTestSuiteIngestionPath(testSuiteFQN));
-      }}>
-      <Col span={24}>
-        <Table
-          bordered
-          columns={pipelineColumns}
-          dataSource={testSuitePipelines.map((test) => ({
-            ...test,
-            key: test.name,
-          }))}
-          locale={{ emptyText: errorPlaceholder }}
-          pagination={false}
-          rowKey="name"
-          scroll={{ x: 1200 }}
-          size="small"
-        />
-        <EntityDeleteModal
-          entityName={deleteSelection.name}
-          entityType={t('label.ingestion-lowercase')}
-          loadingState={deleteSelection.state}
-          visible={isConfirmationModalOpen}
-          onCancel={handleCancelConfirmationModal}
-          onConfirm={() =>
-            handleDelete(deleteSelection.id, deleteSelection.name)
-          }
-        />
-      </Col>
-    </TestCaseCommonTabContainer>
+    <div className="m-t-md">
+      <Table
+        bordered
+        columns={pipelineColumns}
+        dataSource={testSuitePipelines.map((test) => ({
+          ...test,
+          key: test.name,
+        }))}
+        locale={{ emptyText: errorPlaceholder }}
+        pagination={false}
+        rowKey="name"
+        scroll={{ x: 1200 }}
+        size="small"
+      />
+      <EntityDeleteModal
+        entityName={deleteSelection.name}
+        entityType={t('label.ingestion-lowercase')}
+        loadingState={deleteSelection.state}
+        visible={isConfirmationModalOpen}
+        onCancel={handleCancelConfirmationModal}
+        onConfirm={() => handleDelete(deleteSelection.id, deleteSelection.name)}
+      />
+    </div>
   );
 };
 

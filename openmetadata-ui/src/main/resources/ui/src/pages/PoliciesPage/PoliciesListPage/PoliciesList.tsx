@@ -76,7 +76,13 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
           <Link
             className="link-hover"
             data-testid="policy-name"
-            to={getPolicyWithFqnPath(record.fullyQualifiedName || '')}>
+            to={
+              record.fullyQualifiedName
+                ? getPolicyWithFqnPath(
+                    encodeURIComponent(record.fullyQualifiedName)
+                  )
+                : ''
+            }>
             {getEntityName(record)}
           </Link>
         ),
@@ -86,7 +92,7 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
         dataIndex: 'description',
         key: 'description',
         render: (_, record) => (
-          <RichTextEditorPreviewer markdown={record?.description || ''} />
+          <RichTextEditorPreviewer markdown={record?.description ?? ''} />
         ),
       },
       {
@@ -104,7 +110,7 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
                 viewRolePermission ? (
                   <Link
                     key={uniqueId()}
-                    to={getRoleWithFqnPath(role.fullyQualifiedName || '')}>
+                    to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
                     {getEntityName(role)}
                   </Link>
                 ) : (

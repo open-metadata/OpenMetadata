@@ -11,9 +11,8 @@
 """
 MSSQL SQLAlchemy Helper Methods
 """
-import traceback
 
-from sqlalchemy import sql
+from sqlalchemy import Column, Integer, MetaData, String, Table, alias, sql
 from sqlalchemy import types as sqltypes
 from sqlalchemy import util
 from sqlalchemy.dialects.mssql import information_schema as ischema
@@ -35,7 +34,6 @@ from sqlalchemy.util import compat
 
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_ALL_VIEW_DEFINITIONS,
-    MSSQL_GET_COLUMN_COMMENTS,
     MSSQL_GET_TABLE_COMMENTS,
 )
 from metadata.utils.logger import ingestion_logger
@@ -84,6 +82,26 @@ def get_columns(
 
     computed_cols = ischema.computed_columns
     identity_cols = ischema.identity_columns
+    sqlalchemy_metadata = MetaData()
+    extended_properties = Table(
+        "extended_properties",
+        sqlalchemy_metadata,
+        Column("major_id", Integer, primary_key=True),
+        Column("minor_id", Integer, primary_key=True),
+        Column("name", String, primary_key=True),
+        Column("value", String),
+        schema="sys",
+    )
+    sys_columns = alias(
+        Table(
+            "columns",
+            sqlalchemy_metadata,
+            Column("object_id", Integer, primary_key=True),
+            Column("name", String, primary_key=True),
+            Column("column_id", Integer, primary_key=True),
+            schema="sys",
+        )
+    )
     if owner:
         whereclause = sql.and_(
             columns.c.table_name == tablename,
@@ -94,20 +112,44 @@ def get_columns(
         whereclause = columns.c.table_name == tablename
         full_name = columns.c.table_name
 
-    join = columns.join(
-        computed_cols,
-        onclause=sql.and_(
-            computed_cols.c.object_id == func.object_id(full_name),
-            computed_cols.c.name == columns.c.column_name.collate("DATABASE_DEFAULT"),
-        ),
-        isouter=True,
-    ).join(
-        identity_cols,
-        onclause=sql.and_(
-            identity_cols.c.object_id == func.object_id(full_name),
-            identity_cols.c.name == columns.c.column_name.collate("DATABASE_DEFAULT"),
-        ),
-        isouter=True,
+    # adding the condition for fetching column comments
+    whereclause.and_(extended_properties.c.name == "MS_Description")
+
+    join = (
+        columns.join(
+            computed_cols,
+            onclause=sql.and_(
+                computed_cols.c.object_id == func.object_id(full_name),
+                computed_cols.c.name
+                == columns.c.column_name.collate("DATABASE_DEFAULT"),
+            ),
+            isouter=True,
+        )
+        .join(
+            identity_cols,
+            onclause=sql.and_(
+                identity_cols.c.object_id == func.object_id(full_name),
+                identity_cols.c.name
+                == columns.c.column_name.collate("DATABASE_DEFAULT"),
+            ),
+            isouter=True,
+        )
+        .join(
+            sys_columns,
+            onclause=sql.and_(
+                sys_columns.c.object_id == func.object_id(full_name),
+                sys_columns.c.name == columns.c.column_name.collate("DATABASE_DEFAULT"),
+            ),
+            isouter=True,
+        )
+        .join(
+            extended_properties,
+            onclause=sql.and_(
+                extended_properties.c.major_id == sys_columns.c.object_id,
+                extended_properties.c.minor_id == sys_columns.c.column_id,
+            ),
+            isouter=True,
+        )
     )
 
     if self._supports_nvarchar_max:  # pylint: disable=protected-access
@@ -124,6 +166,7 @@ def get_columns(
             identity_cols.c.is_identity,
             identity_cols.c.seed_value,
             identity_cols.c.increment_value,
+            extended_properties.c.value,
         )
         .where(whereclause)
         .select_from(join)
@@ -149,9 +192,10 @@ def get_columns(
         is_identity = row[identity_cols.c.is_identity]
         identity_start = row[identity_cols.c.seed_value]
         identity_increment = row[identity_cols.c.increment_value]
+        comment = row[extended_properties.c.value]
 
         coltype = self.ischema_names.get(type_, None)
-        comment = None
+
         kwargs = {}
         if coltype in (
             MSString,
@@ -225,15 +269,6 @@ def get_columns(
                 }
 
         cols.append(cdict)
-    cursor = connection.execute(
-        MSSQL_GET_COLUMN_COMMENTS.format(schema_name=schema, table_name=tablename)
-    )
-    try:
-        for index, result in enumerate(cursor):
-            if result[2]:
-                cols[index]["comment"] = result[2]
-    except Exception:
-        logger.debug(traceback.format_exc())
     return cols
 
 

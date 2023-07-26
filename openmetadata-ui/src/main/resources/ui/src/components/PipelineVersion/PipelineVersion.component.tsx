@@ -25,7 +25,7 @@ import EntityVersionTimeLine from 'components/EntityVersionTimeLine/EntityVersio
 import Loader from 'components/Loader/Loader';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
 import { getVersionPathWithTab } from 'constants/constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
@@ -299,7 +299,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           <TagsViewer
             sizeCap={-1}
             tags={getFilterTags(tags || []).Classification}
-            type="border"
           />
         ),
       },
@@ -310,11 +309,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         accessor: 'tags',
         width: 272,
         render: (tags) => (
-          <TagsViewer
-            sizeCap={-1}
-            tags={getFilterTags(tags || []).Glossary}
-            type="border"
-          />
+          <TagsViewer sizeCap={-1} tags={getFilterTags(tags || []).Glossary} />
         ),
       },
     ],

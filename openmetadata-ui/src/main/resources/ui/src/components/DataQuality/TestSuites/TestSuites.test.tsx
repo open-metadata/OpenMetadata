@@ -53,13 +53,6 @@ jest.mock('react-router-dom', () => {
     useParams: jest.fn().mockImplementation(() => mockUseParam),
   };
 });
-jest.mock('../SummaryPannel/SummaryPanel.component', () => {
-  return {
-    SummaryPanel: jest
-      .fn()
-      .mockImplementation(() => <div>SummaryPanel.component</div>),
-  };
-});
 jest.mock('components/common/next-previous/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
@@ -73,9 +66,13 @@ jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
     ));
 });
 
+const mockProps = {
+  summaryPanel: <div>SummaryPanel.component</div>,
+};
+
 describe('TestSuites component', () => {
   it('component should render', async () => {
-    render(<TestSuites />);
+    render(<TestSuites {...mockProps} />);
     const tableHeader = await screen.findAllByRole('columnheader');
     const labels = tableHeader.map((header) => header.textContent);
 
@@ -95,7 +92,7 @@ describe('TestSuites component', () => {
   it('should send testSuiteType executable in api, if active tab is tables', async () => {
     const mockGetListTestSuites = getListTestSuites as jest.Mock;
 
-    render(<TestSuites />);
+    render(<TestSuites {...mockProps} />);
 
     expect(
       await screen.findByTestId('test-suite-container')
@@ -111,7 +108,7 @@ describe('TestSuites component', () => {
       Promise.resolve({ data: [], paging: { total: 15 } })
     );
 
-    render(<TestSuites />);
+    render(<TestSuites {...mockProps} />);
 
     expect(
       await screen.findByText('NextPrevious.component')
@@ -121,7 +118,7 @@ describe('TestSuites component', () => {
   // TestSuite type test
   it('add test suite button should be visible, if type is testSuite', async () => {
     mockUseParam.tab = DataQualityPageTabs.TEST_SUITES;
-    render(<TestSuites />, { wrapper: MemoryRouter });
+    render(<TestSuites {...mockProps} />, { wrapper: MemoryRouter });
 
     expect(await screen.findByTestId('add-test-suite-btn')).toBeInTheDocument();
   });
@@ -130,7 +127,7 @@ describe('TestSuites component', () => {
     mockUseParam.tab = DataQualityPageTabs.TEST_SUITES;
     const mockGetListTestSuites = getListTestSuites as jest.Mock;
 
-    render(<TestSuites />, { wrapper: MemoryRouter });
+    render(<TestSuites {...mockProps} />, { wrapper: MemoryRouter });
 
     expect(
       await screen.findByTestId('test-suite-container')
@@ -144,7 +141,7 @@ describe('TestSuites component', () => {
   it('should render no data placeholder, if there is no permission', async () => {
     mockUseParam.tab = DataQualityPageTabs.TEST_SUITES;
     testSuitePermission.ViewAll = false;
-    render(<TestSuites />, { wrapper: MemoryRouter });
+    render(<TestSuites {...mockProps} />, { wrapper: MemoryRouter });
 
     expect(
       await screen.findByTestId('error-placeholder-type-PERMISSION')

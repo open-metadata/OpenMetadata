@@ -31,7 +31,10 @@ import {
   TaskActionMode,
 } from 'pages/TasksPage/TasksPage.interface';
 import { getDashboardByFqn } from 'rest/dashboardAPI';
-import { getDatabaseSchemaDetailsByFQN } from 'rest/databaseAPI';
+import {
+  getDatabaseDetailsByFQN,
+  getDatabaseSchemaDetailsByFQN,
+} from 'rest/databaseAPI';
 import { getDataModelDetailsByFQN } from 'rest/dataModelsAPI';
 import { getUserSuggestions } from 'rest/miscAPI';
 import { getMlModelByFQN } from 'rest/mlModelAPI';
@@ -62,6 +65,7 @@ import {
   defaultFields as DashboardFields,
   fetchCharts,
 } from './DashboardDetailsUtils';
+import { DatabaseFields } from './Database/DatabaseDetails.utils';
 import { defaultFields as DatabaseSchemaFields } from './DatabaseSchemaDetailsUtils';
 import { defaultFields as DataModelFields } from './DataModelsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';
@@ -400,6 +404,15 @@ export const fetchEntityDetail = (
       break;
     case EntityType.MLMODEL:
       getMlModelByFQN(entityFQN, MlModelFields)
+        .then((res) => {
+          setEntityData(res);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+
+    case EntityType.DATABASE:
+      getDatabaseDetailsByFQN(entityFQN, DatabaseFields)
         .then((res) => {
           setEntityData(res);
         })

@@ -15,7 +15,7 @@ import { Col, Divider, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
 import { getTeamAndUserDetailsPath } from 'constants/constants';
 import { ClientErrors } from 'enums/axios.enum';
 import { isArray, isEmpty } from 'lodash';
@@ -195,7 +195,6 @@ function TopicSummary({
                     tags={(entityDetails.tags || []).map((tag) =>
                       getTagValue(tag)
                     )}
-                    type="border"
                   />
                 ) : (
                   <Typography.Text className="text-grey-body">

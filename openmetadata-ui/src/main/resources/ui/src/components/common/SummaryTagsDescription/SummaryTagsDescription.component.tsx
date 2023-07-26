@@ -12,7 +12,7 @@
  */
 import { Col, Divider, Row, Typography } from 'antd';
 import { EntityUnion } from 'components/Explore/explore.interface';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
 import { TagLabel } from 'generated/type/tagLabel';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
