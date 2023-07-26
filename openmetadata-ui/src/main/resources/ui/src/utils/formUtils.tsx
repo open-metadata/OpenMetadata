@@ -64,7 +64,10 @@ export const getField = (field: FieldProp) => {
   if (required) {
     fieldRules = [
       ...fieldRules,
-      { required, message: i18n.t('label.field-required', { field: name }) },
+      {
+        required,
+        message: i18n.t('label.field-required', { field: startCase(name) }),
+      },
     ];
   }
 
