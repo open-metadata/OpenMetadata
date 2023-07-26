@@ -36,7 +36,7 @@ import { ReactComponent as ExitFullScreen } from '/assets/svg/exit-full-screen.s
 import { ReactComponent as FullScreen } from '/assets/svg/full-screen.svg';
 import { ReactComponent as CopyIcon } from '/assets/svg/icon-copy.svg';
 
-const { Text } = Typography;
+const { Text, Paragraph } = Typography;
 
 const QueryCard: FC<QueryCardProp> = ({
   isExpanded = false,
@@ -99,19 +99,11 @@ const QueryCard: FC<QueryCardProp> = ({
     return duration.toFormat(`'${t('label.runs-for')}' ${formatString}`);
   }, [query]);
 
-  const validateSQL = (value: string) => {
+  const updateSqlQuery = async () => {
     try {
       const parser = new NodeSQLParser.Parser();
-      parser.astify(value);
-
-      return true;
+      parser.astify(sqlQuery.query);
     } catch (error) {
-      return false;
-    }
-  };
-
-  const updateSqlQuery = async () => {
-    if (!validateSQL(sqlQuery.query)) {
       setIsSqlInvalid(true);
 
       return;
@@ -238,11 +230,11 @@ const QueryCard: FC<QueryCardProp> = ({
             />
           </div>
           {isSqlInvalid && (
-            <p className="ml-8 p-l-md error-text">
+            <Paragraph className="ml-8 p-l-md error-text">
               {t('message.field-text-is-invalid', {
                 fieldText: t('label.sql-uppercase-query'),
               })}
-            </p>
+            </Paragraph>
           )}
           <Row align="middle" className="p-y-xs border-top">
             <Col className="p-y-0.5 p-l-md" span={16}>

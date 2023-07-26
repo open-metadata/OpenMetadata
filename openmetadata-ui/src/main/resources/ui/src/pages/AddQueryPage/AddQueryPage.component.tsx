@@ -185,18 +185,17 @@ const AddQueryPage = () => {
 
   const sqlValidator = async (_: Record<string, any>, value: string) => {
     if (!value) {
-      return;
+      return Promise.resolve('OK');
     }
 
-    return new Promise((resolve, reject) => {
-      try {
-        const parser = new NodeSQLParser.Parser();
-        parser.astify(value);
-        resolve('OK');
-      } catch (error) {
-        reject('Error');
-      }
-    });
+    try {
+      const parser = new NodeSQLParser.Parser();
+      parser.astify(value);
+
+      return Promise.resolve('OK');
+    } catch (error) {
+      return Promise.reject('Error');
+    }
   };
 
   return (
