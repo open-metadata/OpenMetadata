@@ -50,61 +50,114 @@ describe('Entity Announcement', () => {
     interceptURL('GET', '/api/v1/permissions/*/name/*', 'entityPermission');
     interceptURL('GET', '/api/v1/feed/count?entityLink=*', 'entityFeed');
     interceptURL('GET', `/api/v1/${value.entity}/name/*`, 'getEntityDetails');
-    const startDate = getCurrentLocaleDate();
-    const endDate = getFutureLocaleDateFromCurrentDate(5);
-    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
-
-    cy.get('[data-testid="manage-button"]').should('be.visible').click();
-    cy.get('[data-testid="announcement-button"]').should('be.visible').click();
-    cy.get('[data-testid="announcement-error"]')
-      .should('be.visible')
-      .contains('No Announcements, Click on add announcement to add one.');
-
     interceptURL('POST', '/api/v1/feed', 'waitForAnnouncement');
-    // Create Active Announcement
-    createAnnouncement(
-      'Announcement Title',
-      startDate,
-      endDate,
-      'Announcement Description'
+    interceptURL(
+      'GET',
+      '/api/v1/feed?entityLink=*type=Announcement',
+      'announcementFeed'
     );
 
-    // wait time for success toast message
-    verifyResponseStatusCode('@waitForAnnouncement', 201);
-    cy.get('.Toastify__close-button >').should('be.visible').click();
-    // Create InActive Announcement
-    const InActiveStartDate = getFutureLocaleDateFromCurrentDate(6);
-    const InActiveEndDate = getFutureLocaleDateFromCurrentDate(11);
+    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+    cy.get('[data-testid="manage-button"]').click();
+    cy.get('[data-testid="announcement-button"]').click();
 
-    createAnnouncement(
-      'InActive Announcement Title',
-      InActiveStartDate,
-      InActiveEndDate,
-      'InActive Announcement Description'
-    );
+    cy.wait('@announcementFeed').then((res) => {
+      const data = res.response.body.data;
 
-    // wait time for success toast message
-    verifyResponseStatusCode('@waitForAnnouncement', 201);
-    cy.get('.Toastify__close-button >').should('be.visible').click();
-    // check for inActive-announcement
-    cy.get('[data-testid="inActive-announcements"]').should('be.visible');
+      if (data.length > 0) {
+        const token = localStorage.getItem('oidcIdToken');
+        data.map((feed) => {
+          cy.request({
+            method: 'DELETE',
+            url: `/api/v1/feed/${feed.id}`,
+            headers: { Authorization: `Bearer ${token}` },
+          }).then((response) => {
+            expect(response.status).to.eq(200);
+          });
+        });
+        cy.reload();
+        cy.get('[data-testid="manage-button"]').click();
+        cy.get('[data-testid="announcement-button"]').click();
+      }
+      const startDate = getCurrentLocaleDate();
+      const endDate = getFutureLocaleDateFromCurrentDate(5);
 
-    // close announcement drawer
-    cy.get('[data-testid="title"] .anticon-close').should('be.visible').click();
+      cy.get('[data-testid="announcement-error"]')
+        .should('be.visible')
+        .contains('No Announcements, Click on add announcement to add one.');
 
-    // reload page to get the active announcement card
-    cy.reload();
-    verifyResponseStatusCode('@entityPermission', 200);
-    verifyResponseStatusCode('@getEntityDetails', 200);
-    verifyResponseStatusCode('@entityFeed', 200);
+      // Create Active Announcement
+      createAnnouncement(
+        'Announcement Title',
+        startDate,
+        endDate,
+        'Announcement Description'
+      );
 
-    // check for announcement card on entity page
-    cy.get('[data-testid="announcement-card"]').should('be.visible');
+      // wait time for success toast message
+      verifyResponseStatusCode('@waitForAnnouncement', 201);
+      cy.get('.Toastify__close-button >').should('be.visible').click();
+      // Create InActive Announcement
+      const InActiveStartDate = getFutureLocaleDateFromCurrentDate(6);
+      const InActiveEndDate = getFutureLocaleDateFromCurrentDate(11);
+
+      createAnnouncement(
+        'InActive Announcement Title',
+        InActiveStartDate,
+        InActiveEndDate,
+        'InActive Announcement Description'
+      );
+
+      // wait time for success toast message
+      verifyResponseStatusCode('@waitForAnnouncement', 201);
+      cy.get('.Toastify__close-button >').should('be.visible').click();
+      // check for inActive-announcement
+      cy.get('[data-testid="inActive-announcements"]').should('be.visible');
+
+      // close announcement drawer
+      cy.get('[data-testid="title"] .anticon-close')
+        .should('be.visible')
+        .click();
+
+      // reload page to get the active announcement card
+      cy.reload();
+      verifyResponseStatusCode('@entityPermission', 200);
+      verifyResponseStatusCode('@getEntityDetails', 200);
+      verifyResponseStatusCode('@entityFeed', 200);
+
+      // check for announcement card on entity page
+      cy.get('[data-testid="announcement-card"]').should('be.visible');
+    });
   };
 
   ANNOUNCEMENT_ENTITIES.forEach((entity) => {
     it(`Add announcement and verify the active announcement for ${entity.entity}`, () => {
       addAnnouncement(entity);
+    });
+  });
+  ANNOUNCEMENT_ENTITIES.forEach((value) => {
+    it(`Delete announcement ${value.entity}`, () => {
+      interceptURL(
+        'GET',
+        '/api/v1/feed?entityLink=*type=Announcement',
+        'announcementFeed'
+      );
+      interceptURL('DELETE', '/api/v1/feed/*', 'deleteFeed');
+      visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+      cy.get('[data-testid="manage-button"]').click();
+      cy.get('[data-testid="announcement-button"]').click();
+
+      verifyResponseStatusCode('@announcementFeed', 200);
+      cy.get('[data-testid="main-message"]').each(($message) => {
+        cy.wrap($message).trigger('mouseover');
+        cy.get('[data-testid="delete-message"]').click();
+        cy.get('.ant-modal-body').should(
+          'contain',
+          'Are you sure you want to permanently delete this message?'
+        );
+        cy.get('[data-testid="save-button"]').click();
+        verifyResponseStatusCode('@deleteFeed', 200);
+      });
     });
   });
 });

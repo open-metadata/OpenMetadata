@@ -104,7 +104,7 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
   });
 
   return (
-    <div className="d-flex items-center">
+    <div className="d-flex items-center" data-testid="feed-reaction-container">
       {emojis}
       <Popover
         align={{ targetOffset: [0, -10] }}

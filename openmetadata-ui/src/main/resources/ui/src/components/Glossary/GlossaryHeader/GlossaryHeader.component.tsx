@@ -14,10 +14,10 @@ import Icon, { DownOutlined } from '@ant-design/icons';
 import { Button, Col, Dropdown, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { ReactComponent as IconTerm } from 'assets/svg/book.svg';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
 import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
-import { ReactComponent as IconFlatDoc } from 'assets/svg/ic-flat-doc.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
@@ -376,7 +376,7 @@ const GlossaryHeader = ({
                   width={32}
                 />
               ) : (
-                <IconFlatDoc
+                <IconTerm
                   color={DE_ACTIVE_COLOR}
                   height={36}
                   name="doc"

@@ -12,6 +12,7 @@
  */
 
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
+import { ReactElement } from 'react';
 
 export interface ErrorPlaceholderProps {
   children?: React.ReactNode;
@@ -22,6 +23,7 @@ export interface ErrorPlaceholderProps {
   button?: React.ReactNode;
   className?: string;
   size?: SIZE;
+  icon?: ReactElement;
   onClick?: () => void;
   permission?: boolean;
 }
@@ -30,6 +32,7 @@ export interface NoDataPlaceholderProps {
   size?: SIZE;
   className?: string;
   children?: React.ReactNode;
+  icon?: ReactElement;
 }
 
 export interface CreatePlaceholderProps {
