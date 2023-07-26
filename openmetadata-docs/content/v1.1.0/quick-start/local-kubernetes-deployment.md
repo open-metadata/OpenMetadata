@@ -10,6 +10,8 @@ This installation doc will help you start a OpenMetadata standalone instance on 
 [openmetadata-helm-charts](https://github.com/open-metadata/openmetadata-helm-charts) houses Kubernetes Helm charts 
 for deploying OpenMetadata and its dependencies (Elasticsearch, MySQL and Airflow) on a Kubernetes cluster.
 
+
+
 ## Requirements
 
 - A local [Kubernetes](https://kubernetes.io/) cluster with installation of [Docker Desktop](https://www.docker.com/products/docker-desktop/) or [MiniKube](https://minikube.sigs.k8s.io/docs/start/)
@@ -49,11 +51,8 @@ If you are using minikube to start a local kubernetes instance on Mac OS with M1
 Create kubernetes secrets that contains MySQL and Airflow passwords as secrets.
 
 ```commandline
-# Credentials for OpenMetadata Application to connect to MySQL Database
 kubectl create secret generic mysql-secrets --from-literal=openmetadata-mysql-password=openmetadata_password
-# Credentials for OpenMetadata Application to connect to Airflow APIs
 kubectl create secret generic airflow-secrets --from-literal=openmetadata-airflow-password=admin
-# Credentials for Airflow to connect to MySQL Database
 kubectl create secret generic airflow-mysql-secrets --from-literal=airflow-mysql-password=airflow_pass
 ```
 
@@ -74,6 +73,8 @@ open-metadata	https://helm.open-metadata.org/
 ```
 
 ### 4. Install OpenMetadata Dependencies Helm Chart
+
+We created a separate [chart](https://github.com/open-metadata/openmetadata-helm-charts/tree/main/charts/deps) to configure and install the OpenMetadata Application Dependencies with example configurations.
 
 Deploy the dependencies by running the following command -
 
@@ -147,6 +148,42 @@ helm uninstall openmetadata-dependencies
 
 MySQL and ElasticSearch OpenMetadata Dependencies are deployed as StatefulSets and have persistent volumes (pv) and
 persistent volume claims (`pvc`). These will need to be manually cleaned after helm uninstall. You can use `kubectl delete persistentvolumeclaims mysql-0 elasticsearch-0` CLI command for the same.
+
+## Troubleshooting
+
+### Pods fail to start due to `ErrImagePull` issue
+
+Sometimes, kubernetes timeout pulling the docker images. In such cases, you will receive `ErrImagePull` issue. In order to resolve this, you can manually pull the required docker images in your kubernetes environment. 
+
+You can find the docker image name of the failing pods using the the command below -
+
+```
+kubectl get pods -n <namespace_name> <pod_name> -o jsonpath="{..image}"
+```
+
+The command `docker pull <docker_image_name>` will make sure to get the image available for kubernetes and resolve the issue.
+
+### View openmetadata kubeernetes pod logs
+
+Run the below command to list openmetadata kubernetes pods deployed in a namespace:
+
+```commandline
+kubectl get pods --namespace <NAMESPACE_NAME> -l='app.kubernetes.io/managed-by=Helm,app.kubernetes.io/instance=<RELEASE_NAME>'
+```
+
+For example, list pods deployed by helm release name `openmetadata` in the namespace `ometa-dev`:
+
+```commandline
+kubectl get pods --namespace ometa-dev -l='app.kubernetes.io/managed-by=Helm,app.kubernetes.io/instance=openmetadata'
+```
+
+Next, view the logs of pod by running the below command,
+
+```commandline
+kubectl logs <POD_NAME> --namespace <NAMESPACE_NAME>
+```
+
+For more information, visit the kubectl logs command line reference documentation [here](https://kubernetes.io/docs/tasks/debug-application-cluster/debug-running-pod/).
 
 ## Next Steps
 
