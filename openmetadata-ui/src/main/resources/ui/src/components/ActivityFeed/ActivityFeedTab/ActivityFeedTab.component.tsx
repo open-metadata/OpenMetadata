@@ -68,7 +68,7 @@ export const ActivityFeedTab = ({
   const history = useHistory();
   const { t } = useTranslation();
   const [elementRef, isInView] = useElementInView(observerOptions);
-  const { subTab: activeTab = 'all' } =
+  const { subTab: activeTab = ActivityFeedTabs.ALL } =
     useParams<{ subTab: ActivityFeedTabs }>();
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('open');
   const [allCount, setAllCount] = useState(0);
@@ -97,6 +97,11 @@ export const ActivityFeedTab = ({
         EntityType.TABLE
       >,
     [selectedThread]
+  );
+
+  const isTaskActiveTab = useMemo(
+    () => activeTab === ActivityFeedTabs.TASKS,
+    [activeTab]
   );
 
   const handleTabChange = (subTab: string) => {
@@ -241,7 +246,7 @@ export const ActivityFeedTab = ({
   };
 
   const threads = useMemo(() => {
-    if (activeTab === ActivityFeedTabs.TASKS) {
+    if (isTaskActiveTab) {
       return entityThread.filter(
         (thread) =>
           taskFilter === 'open'
@@ -255,7 +260,7 @@ export const ActivityFeedTab = ({
   }, [activeTab, entityThread, taskFilter]);
 
   const [openTasks, closedTasks] = useMemo(() => {
-    if (activeTab === ActivityFeedTabs.TASKS) {
+    if (isTaskActiveTab) {
       return entityThread.reduce(
         (acc, curr) => {
           if (curr.task?.status === ThreadTaskStatus.Open) {
@@ -323,13 +328,7 @@ export const ActivityFeedTab = ({
                   <TaskListIcon {...ICON_DIMENSION} />
                   <span>{t('label.task-plural')}</span>
                 </Space>
-                <span>
-                  {getCountBadge(
-                    tasksCount,
-                    '',
-                    activeTab === ActivityFeedTabs.TASKS
-                  )}
-                </span>
+                <span>{getCountBadge(tasksCount, '', isTaskActiveTab)}</span>
               </div>
             ),
             key: 'tasks',
@@ -342,7 +341,7 @@ export const ActivityFeedTab = ({
       />
 
       <div className=" center-container">
-        {activeTab === ActivityFeedTabs.TASKS && (
+        {isTaskActiveTab && (
           <div className="d-flex gap-4 p-sm p-x-lg activity-feed-task">
             <Typography.Text
               className={classNames(
@@ -381,6 +380,7 @@ export const ActivityFeedTab = ({
           feedList={threads}
           isLoading={false}
           showThread={false}
+          tab={activeTab}
           onFeedClick={handleFeedClick}
         />
         {loader}
