@@ -150,7 +150,8 @@
         "NTEXT",
         "IMAGE",
         "IPV4",
-        "IPV6"
+        "IPV6",
+        "DATETIMERANGE"
       ]
     },
     "constraint": {
