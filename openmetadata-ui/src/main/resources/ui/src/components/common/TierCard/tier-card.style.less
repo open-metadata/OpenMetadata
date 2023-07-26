@@ -13,61 +13,63 @@
 
 @import url('../../../styles/variables.less');
 
-.ant-popover-inner {
-  box-shadow: none;
-  .ant-popover-inner-content {
-    padding: 0;
-    .tier-card {
-      width: 655px;
-      .ant-card-body {
-        .ant-collapse-item {
-          .ant-collapse-header {
-            .ant-collapse-arrow {
-              position: absolute;
-              top: 20px;
+.tier-card-popover {
+  .ant-popover-inner {
+    box-shadow: none;
+    .ant-popover-inner-content {
+      padding: 0;
+      .tier-card {
+        width: 655px;
+        .ant-card-body {
+          .ant-collapse-item {
+            .ant-collapse-header {
+              .ant-collapse-arrow {
+                position: absolute;
+                top: 20px;
+              }
             }
-          }
-          .ant-collapse-content {
-            &.ant-collapse-content-active {
-              border: none;
-            }
-            .ant-collapse-content-box {
-              padding: 0 12px;
+            .ant-collapse-content {
+              &.ant-collapse-content-active {
+                border: none;
+              }
+              .ant-collapse-content-box {
+                padding: 0 12px;
+              }
             }
           }
         }
       }
     }
-  }
 
-  .tier-card-description {
-    .toastui-editor-contents ul {
-      padding-left: 18px;
-      font-size: 12px;
-      font-weight: 400;
-      color: @text-color-secondary;
-      margin: 4px;
-      li {
-        margin: 0;
+    .tier-card-description {
+      .toastui-editor-contents ul {
+        padding-left: 18px;
+        font-size: 12px;
+        font-weight: 400;
+        color: @text-color-secondary;
+        margin: 4px;
+        li {
+          margin: 0;
+        }
       }
     }
-  }
 
-  .radio-input .ant-radio {
-    .ant-radio-inner {
-      width: 14px;
-      height: 14px;
-      border: 1.5px solid @primary-color;
-      box-shadow: none !important;
-    }
+    .radio-input .ant-radio {
+      .ant-radio-inner {
+        width: 14px;
+        height: 14px;
+        border: 1.5px solid @primary-color;
+        box-shadow: none !important;
+      }
 
-    &:hover .ant-radio-inner {
-      background-color: @primary-color-hover;
-    }
+      &:hover .ant-radio-inner {
+        background-color: @primary-color-hover;
+      }
 
-    &.ant-radio-checked .ant-radio-inner::after {
-      box-shadow: none !important;
-      transform: scale(0.35);
+      &.ant-radio-checked .ant-radio-inner::after {
+        box-shadow: none !important;
+        transform: scale(0.35);
+      }
     }
   }
 }
