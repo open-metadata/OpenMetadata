@@ -1,6 +1,6 @@
 ---
 title: Kubernetes On Premises Deployment
-slug: /deployment/kubernetes/onprem
+slug: /deployment/kubernetes/on-prem
 ---
 
 # On Premises Kubernetes Deployment

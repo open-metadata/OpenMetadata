@@ -14,19 +14,6 @@ site_menu:
   - category: Quickstart / Try the OpenMetadata Sandbox
     url: /quick-start/sandbox
 
-  - category: Releases
-    url: /releases
-    color: violet-70
-    icon: overview
-  - category: Releases / Latest Release
-    url: /releases/latest-release
-  - category: Releases / Supported Releases
-    url: /releases/supported
-  - category: Releases / Roadmap
-    url: /releases/roadmap
-  - category: Releases / All Releases
-    url: /releases/all-releases
-
   - category: Deployment
     url: /deployment
     color: violet-70
@@ -59,6 +46,8 @@ site_menu:
     url: /deployment/kubernetes/helm-values
   - category: Deployment / Kubernetes Deployment / GKE Troubleshooting
     url: /deployment/kubernetes/gke-troubleshooting
+  - category: Deployment / Kubernetes Deployment / FAQs
+    url: /deployment/kubernetes/faqs
 
   - category: Deployment / Ingestion
     url: /deployment/ingestion
@@ -205,6 +194,19 @@ site_menu:
 
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
+  
+  - category: Releases
+    url: /releases
+    color: violet-70
+    icon: overview
+  - category: Releases / Latest Release
+    url: /releases/latest-release
+  - category: Releases / Supported Releases
+    url: /releases/supported
+  - category: Releases / Roadmap
+    url: /releases/roadmap
+  - category: Releases / All Releases
+    url: /releases/all-releases
 
   - category: Connectors
     url: /connectors

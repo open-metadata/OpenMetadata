@@ -11,9 +11,16 @@ Are you exploring or doing a PoC? It won't get easier than following our Quickst
 
 {% inlineCallout
 icon="celebration"
-bold="Quickstart OpenMetadata"
-href="/quick-start/local-deployment" %}
-Get OpenMetadata up and running in under 5 minutes!
+bold="Quickstart OpenMetadata in Docker"
+href="/quick-start/local-docker-deployment" %}
+Get OpenMetadata up and running using Docker in under 5 minutes!
+{% /inlineCallout %}
+
+{% inlineCallout
+icon="celebration"
+bold="Quickstart OpenMetadata in Kubernetes"
+href="/quick-start/local-kubernetes-deployment" %}
+Get OpenMetadata up and running using local Kubernetes in under 5 minutes!
 {% /inlineCallout %}
 
 {% inlineCallout
@@ -25,17 +32,39 @@ Interact with a sample installation with 0 setup to explore our Discovery, Gover
 
 {% /inlineCalloutContainer %}
 
+# Components Of OpenMetadata Application
+
+OpenMetadata Application consists on one component which houses both APIs and UI. This component is powered by 3 external dependencies -
+
+1. Relational Database (MySQL, PostgreSQL)
+2. Search Engine (ElasticSearch, OpenSearch)
+3. Workflow Orchestration Tool (Airflow)
+
+The Dependencies must be deployed before installing OpenMetadata Application. With Docker and Kubernetes deployment, we package these together as part of quickstart. 
+
+For production deployment, we recommend you to bring up these dependencies as external and do not rely on quickstart packages.
+
+{%note%}
+
+**Note on Airflow as workflow orchestration tool dependency -**
+
+If you are looking for setting up the connectors in OpenMetadata Application from UI, Airflow is a required dependency. OpenMetadata Application dynamically generates the workflows from UI to be triggered and scheduled by Airflow orchestration tool.
+
+You can also use OpenMetadata SDKs and run the connectors externally which will be an alternative to Airflow as one of the dependencies component from the above list.
+
+{%/note%}
+
 # Architecture and Deployment
 
-We support different kinds of deployment:
+We support different kinds of deployment which is meant for production deployments:
 
 {%inlineCalloutContainer%}
   {%inlineCallout
     color="violet-70"
     icon="celebration"
-    bold="Local Docker Deployment"
+    bold="Deploy on Docker"
     href="/quick-start/local-deployment"%}
-    Get OpenMetadata up and running locally in under 7 minutes!
+    Deploy OpenMetadata with Docker
   {%/inlineCallout%}
   {%inlineCallout
     color="violet-70"
