@@ -147,13 +147,14 @@ public class MigrationUtil {
       Handle handle, String updateSql, Class<T> clazz, EntityDAO<T> dao, boolean withName, int limitParam)
       throws IOException {
     LOG.debug("Starting Migration for table : {}", dao.getTableName());
-    int offset = 0;
-    int totalCount = dao.listTotalCount();
-    while (offset < totalCount) {
+    while (true) {
       PreparedBatch upsertBatch = handle.prepareBatch(updateSql);
       // Read from Database
-      List<String> jsons = dao.listAfterWithOffset(limitParam, offset);
-      offset = offset + limitParam;
+      List<String> jsons = dao.migrationListAfterWithOffset(limitParam);
+      LOG.debug("[{}]Read a Batch of Size: {}", dao.getTableName(), jsons.size());
+      if (jsons.isEmpty()) {
+        break;
+      }
       // Process Update
       for (String json : jsons) {
         // Update the Statements to Database
@@ -168,6 +169,7 @@ public class MigrationUtil {
           LOG.error("Failed in creating FQN Hash for Entity Name : {}", entity.getFullyQualifiedName(), ex);
         }
       }
+      LOG.debug("[{}]Committing a Batch of Size: {}", dao.getTableName(), jsons.size());
       upsertBatch.execute();
     }
     LOG.debug("End Migration for table : {}", dao.getTableName());
@@ -276,37 +278,31 @@ public class MigrationUtil {
   private static void updateFQNHashForFieldRelationship(
       Handle handle, String updateSql, CollectionDAO collectionDAO, int limitParam) {
     LOG.debug("Starting Migration for Field Relationship");
-    int offset = 0;
-    int totalCount;
-    try {
-      // This might result into exceptions if the column entityFQN is dropped once
-      totalCount = collectionDAO.fieldRelationshipDAO().listDistinctCount();
-    } catch (Exception ex) {
-      return;
-    }
-    if (totalCount > 0) {
-      while (offset < totalCount) {
-        PreparedBatch upsertBatch = handle.prepareBatch(updateSql);
-        List<Pair<String, String>> entityFQNPairList =
-            collectionDAO.fieldRelationshipDAO().listDistinctWithOffset(limitParam, offset);
-        for (Pair<String, String> entityFQNPair : entityFQNPairList) {
-          try {
-            String fromFQNHash = FullyQualifiedName.buildHash(entityFQNPair.getLeft());
-            String toFQNHash = FullyQualifiedName.buildHash(entityFQNPair.getRight());
-            upsertBatch
-                .bind("fromFQNHash", fromFQNHash)
-                .bind("toFQNHash", toFQNHash)
-                .bind("fromFQN", entityFQNPair.getLeft())
-                .bind("toFQN", entityFQNPair.getRight())
-                .add();
-          } catch (Exception ex) {
-            LOG.error(
-                "Failed in creating fromFQN : {} , toFQN : {}", entityFQNPair.getLeft(), entityFQNPair.getRight(), ex);
-          }
-        }
-        upsertBatch.execute();
-        offset = offset + limitParam;
+    while (true) {
+      PreparedBatch upsertBatch = handle.prepareBatch(updateSql);
+      List<Pair<String, String>> entityFQNPairList =
+          collectionDAO.fieldRelationshipDAO().migrationListDistinctWithOffset(limitParam);
+      LOG.debug("[FieldRelationship] Read a Batch of Size: {}", entityFQNPairList.size());
+      if (entityFQNPairList.isEmpty()) {
+        break;
       }
+      for (Pair<String, String> entityFQNPair : entityFQNPairList) {
+        try {
+          String fromFQNHash = FullyQualifiedName.buildHash(entityFQNPair.getLeft());
+          String toFQNHash = FullyQualifiedName.buildHash(entityFQNPair.getRight());
+          upsertBatch
+              .bind("fromFQNHash", fromFQNHash)
+              .bind("toFQNHash", toFQNHash)
+              .bind("fromFQN", entityFQNPair.getLeft())
+              .bind("toFQN", entityFQNPair.getRight())
+              .add();
+        } catch (Exception ex) {
+          LOG.error(
+              "Failed in creating fromFQN : {} , toFQN : {}", entityFQNPair.getLeft(), entityFQNPair.getRight(), ex);
+        }
+      }
+      LOG.debug("[FieldRelationship] Committing a Batch of Size: {}", entityFQNPairList.size());
+      upsertBatch.execute();
     }
     LOG.debug("End Migration for Field Relationship");
   }
@@ -314,32 +310,23 @@ public class MigrationUtil {
   private static void updateFQNHashEntityExtensionTimeSeries(
       Handle handle, String updateSql, CollectionDAO collectionDAO, int limitParam) {
     LOG.debug("Starting Migration for Entity Extension Time Series");
-    int offset = 0;
-    int totalCount;
-    try {
-      // This might result into exceptions if the column entityFQN is dropped once
-      totalCount = collectionDAO.entityExtensionTimeSeriesDao().listDistinctCount();
-    } catch (Exception ex) {
-      return;
-    }
-    if (totalCount > 0) {
-      while (offset < totalCount) {
-        PreparedBatch upsertBatch = handle.prepareBatch(updateSql);
-        List<String> entityFQNLists =
-            collectionDAO.entityExtensionTimeSeriesDao().listDistinctWithOffset(limitParam, offset);
-        for (String entityFQN : entityFQNLists) {
-          try {
-            upsertBatch
-                .bind("entityFQNHash", FullyQualifiedName.buildHash(entityFQN))
-                .bind("entityFQN", entityFQN)
-                .add();
-          } catch (Exception ex) {
-            LOG.error("Failed in creating EntityFQN : {}", entityFQN, ex);
-          }
-        }
-        upsertBatch.execute();
-        offset = offset + limitParam;
+    while (true) {
+      PreparedBatch upsertBatch = handle.prepareBatch(updateSql);
+      List<String> entityFQNLists =
+          collectionDAO.entityExtensionTimeSeriesDao().migrationListDistinctWithOffset(limitParam);
+      LOG.debug("[TimeSeries] Read a Batch of Size: {}", entityFQNLists.size());
+      if (entityFQNLists.isEmpty()) {
+        break;
       }
+      for (String entityFQN : entityFQNLists) {
+        try {
+          upsertBatch.bind("entityFQNHash", FullyQualifiedName.buildHash(entityFQN)).bind("entityFQN", entityFQN).add();
+        } catch (Exception ex) {
+          LOG.error("Failed in creating EntityFQN : {}", entityFQN, ex);
+        }
+      }
+      LOG.debug("[TimeSeries] Committing a Batch of Size: {}", entityFQNLists.size());
+      upsertBatch.execute();
     }
     LOG.debug("Ended Migration for Entity Extension Time Series");
   }

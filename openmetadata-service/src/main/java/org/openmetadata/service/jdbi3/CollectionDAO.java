@@ -1264,9 +1264,10 @@ public interface CollectionDAO {
     int listDistinctCount();
 
     @Deprecated
-    @SqlQuery("SELECT DISTINCT fromFQN, toFQN FROM field_relationship LIMIT :limit OFFSET :offset")
+    @SqlQuery(
+        "SELECT DISTINCT fromFQN, toFQN FROM field_relationship WHERE fromFQNHash = '' or fromFQNHash is null or toFQNHash = '' or toFQNHash is null LIMIT :limit")
     @RegisterRowMapper(FieldRelationShipMapper.class)
-    List<Pair<String, String>> listDistinctWithOffset(@Bind("limit") int limit, @Bind("offset") int offset);
+    List<Pair<String, String>> migrationListDistinctWithOffset(@Bind("limit") int limit);
 
     @SqlQuery(
         "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
@@ -3404,9 +3405,10 @@ public interface CollectionDAO {
       }
     }
 
-    @SqlQuery("SELECT DISTINCT entityFQN FROM entity_extension_time_series LIMIT :limit OFFSET :offset")
+    @SqlQuery(
+        "SELECT DISTINCT entityFQN FROM entity_extension_time_series WHERE entityFQNHash = '' or entityFQNHash is null LIMIT :limit")
     @Deprecated
-    List<String> listDistinctWithOffset(@Bind("limit") int limit, @Bind("offset") int offset);
+    List<String> migrationListDistinctWithOffset(@Bind("limit") int limit);
   }
 
   class EntitiesCountRowMapper implements RowMapper<EntitiesCount> {
