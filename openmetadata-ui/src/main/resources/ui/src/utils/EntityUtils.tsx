@@ -1251,6 +1251,20 @@ export const getEntityBreadcrumbs = (
   }
 };
 
+export const getBreadcrumbsFromFqn = (fqn: string, includeCurrent = false) => {
+  const fqnList = Fqn.split(fqn);
+  if (!includeCurrent) {
+    fqnList.pop();
+  }
+
+  return [
+    ...fqnList.map((fqn) => ({
+      name: fqn,
+      url: '',
+    })),
+  ];
+};
+
 export const getEntityThreadLink = (
   entityFieldThreadCount: EntityFieldThreadCount[]
 ) => {

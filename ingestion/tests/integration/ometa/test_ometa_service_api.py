@@ -120,6 +120,7 @@ class OMetaServiceTest(TestCase):
                     "username": "openmetadata_user",
                     "password": "openmetadata_password",
                     "hostPort": "random:1433",
+                    "database": "master",
                 }
             },
             "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
