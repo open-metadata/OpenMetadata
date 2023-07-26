@@ -158,7 +158,7 @@ Sometimes, kubernetes timeout pulling the docker images. In such cases, you will
 You can find the docker image name of the failing pods using the the command below -
 
 ```
-kubectl get pods -n <namespace_name> <pod_name> -o jsonpath="{..image}"
+kubectl get pods -n <NAMESPACE_NAME> <POD_NAME> -o jsonpath="{..image}"
 ```
 
 The command `docker pull <docker_image_name>` will make sure to get the image available for kubernetes and resolve the issue.
