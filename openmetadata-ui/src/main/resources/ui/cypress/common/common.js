@@ -220,7 +220,7 @@ export const testServiceCreationAndIngestion = ({
   // validation should work
   cy.get('[data-testid="next-button"]').should('exist').click();
 
-  cy.get('#name_help').should('be.visible').contains('name is required');
+  cy.get('#name_help').should('be.visible').contains('Name is required');
 
   // invalid name validation should work
   cy.get('[data-testid="service-name"]').should('exist').type('!@#$%^&*()');
@@ -725,10 +725,10 @@ export const addCustomPropertiesForEntity = (
   // validation should work
   cy.get('[data-testid="create-button"]').scrollIntoView().click();
 
-  cy.get('#name_help').should('contain', 'name is required');
-  cy.get('#propertyType_help').should('contain', 'propertyType is required');
+  cy.get('#name_help').should('contain', 'Name is required');
+  cy.get('#propertyType_help').should('contain', 'Property Type is required');
 
-  cy.get('#description_help').should('contain', 'description is required');
+  cy.get('#description_help').should('contain', 'Description is required');
 
   // capital case validation
   cy.get('[data-testid="name"]')
