@@ -430,9 +430,9 @@ class BigquerySource(CommonDbSourceService):
         if self.temp_credentials:
             os.unlink(self.temp_credentials)
         os.environ.pop("GOOGLE_CLOUD_PROJECT", "")
-        if ("GOOGLE_APPLICATION_CREDENTIALS" in os.environ) and os.environ[
-            "LOGIN_TYPE"
-        ] == "CREDENTAIL":
+        if isinstance(
+            self.service_connection.credentials.gcpConfig, GcpCredentialsValues
+        ) and ("GOOGLE_APPLICATION_CREDENTIALS" in os.environ):
             tmp_credentials_file = os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
             os.remove(tmp_credentials_file)
             del os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
