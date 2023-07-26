@@ -130,6 +130,13 @@ This is a sample config for MSSQL:
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=7 %}
+
+**ingestAllDatabases**: Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
+
+{% /codeInfo %}
+
+
 
 #### Source Configuration - Source Config
 
