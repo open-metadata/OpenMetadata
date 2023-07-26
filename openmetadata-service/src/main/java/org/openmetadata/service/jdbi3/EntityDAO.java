@@ -227,6 +227,10 @@ public interface EntityDAO<T extends EntityInterface> {
   @SqlQuery("SELECT json FROM <table> LIMIT :limit OFFSET :offset")
   List<String> listAfterWithOffset(@Define("table") String table, @Bind("limit") int limit, @Bind("offset") int offset);
 
+  @SqlQuery("SELECT json FROM <table> WHERE <nameHashColumn> = '' or <nameHashColumn> is null LIMIT :limit")
+  List<String> migrationListAfterWithOffset(
+      @Define("table") String table, @Define("nameHashColumn") String nameHashColumnName, @Bind("limit") int limit);
+
   @SqlQuery("SELECT json FROM <table> <cond> AND " + "ORDER BY <nameColumn> " + "LIMIT :limit " + "OFFSET :offset")
   List<String> listAfter(
       @Define("table") String table,
@@ -349,6 +353,11 @@ public interface EntityDAO<T extends EntityInterface> {
   default List<String> listAfterWithOffset(int limit, int offset) {
     // No ordering
     return listAfterWithOffset(getTableName(), limit, offset);
+  }
+
+  default List<String> migrationListAfterWithOffset(int limit) {
+    // No ordering
+    return migrationListAfterWithOffset(getTableName(), getNameHashColumn(), limit);
   }
 
   default List<String> listAfter(ListFilter filter, int limit, int offset) {
