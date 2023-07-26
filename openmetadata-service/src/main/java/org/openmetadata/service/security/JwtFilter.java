@@ -45,8 +45,8 @@ import org.apache.commons.lang.StringUtils;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.LogoutRequest;
-import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.auth.ServiceTokenType;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
@@ -62,7 +62,7 @@ public class JwtFilter implements ContainerRequestFilter {
   private JwkProvider jwkProvider;
   private String principalDomain;
   private boolean enforcePrincipalDomain;
-  private String providerType;
+  private AuthProvider providerType;
   public static final List<String> EXCLUDED_ENDPOINTS =
       List.of(
           "v1/system/config",
@@ -120,8 +120,7 @@ public class JwtFilter implements ContainerRequestFilter {
     LOG.debug("Token from header:{}", tokenFromHeader);
 
     // the case where OMD generated the Token for the Client
-    if (SSOAuthMechanism.SsoServiceType.BASIC.toString().equals(providerType)
-        || SSOAuthMechanism.SsoServiceType.SAML.toString().equals(providerType)) {
+    if (AuthProvider.BASIC.equals(providerType) || AuthProvider.SAML.toString().equals(providerType)) {
       validateTokenIsNotUsedAfterLogout(tokenFromHeader);
     }
 
