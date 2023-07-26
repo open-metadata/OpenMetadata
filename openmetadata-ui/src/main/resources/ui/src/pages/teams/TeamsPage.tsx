@@ -20,13 +20,14 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { TeamsPageTab } from 'components/Team/TeamDetails/team.interface';
 import TeamDetailsV1 from 'components/Team/TeamDetails/TeamDetailsV1';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { AssetsDataType } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
@@ -89,6 +90,25 @@ const TeamsPage = () => {
 
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const isGroupType = useMemo(
+    () => selectedTeam.teamType === TeamType.Group,
+    [selectedTeam]
+  );
+
+  const activeTab = useMemo(() => {
+    const param = new URLSearchParams(location.search);
+
+    return param.get('activeTab');
+  }, [location.search]);
+
+  const currentTab = useMemo(() => {
+    if (activeTab) {
+      return activeTab;
+    }
+
+    return isGroupType ? TeamsPageTab.USERS : TeamsPageTab.TEAMS;
+  }, [activeTab, isGroupType]);
 
   const fetchPermissions = async (entityFqn: string) => {
     setIsPageLoading(true);
@@ -217,7 +237,6 @@ const TeamsPage = () => {
         name,
         [
           'users',
-          'owns',
           'defaultRoles',
           'policies',
           'owner',
@@ -228,7 +247,6 @@ const TeamsPage = () => {
       );
 
       if (data) {
-        getCurrentTeamUsers(data.name, {}, loadPage);
         setSelectedTeam(data);
         if (!isEmpty(data.parents) && data.parents?.[0].name) {
           await getParentTeam(data.parents[0].name, true, loadPage);
@@ -501,41 +519,43 @@ const TeamsPage = () => {
   };
 
   const fetchAssets = () => {
-    searchData(
-      ``,
-      assets.currPage,
-      LIST_SIZE,
-      `owner.id:${selectedTeam.id}`,
-      '',
-      '',
-      myDataSearchIndex
-    )
-      .then((res) => {
-        const hits = res?.data?.hits?.hits as SearchEntityHits;
-        if (hits?.length > 0) {
-          const total = res.data.hits.total.value;
-          setAssets({
-            data: hits,
-            total,
-            currPage: assets.currPage,
-          });
-        } else {
-          const total = 0;
-          setAssets({
-            data: [],
-            total,
-            currPage: assets.currPage,
-          });
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.entity-fetch-error', {
-            entity: t('label.team-asset-plural'),
-          })
-        );
-      });
+    if (selectedTeam.id) {
+      searchData(
+        ``,
+        assets.currPage,
+        LIST_SIZE,
+        `owner.id:${selectedTeam.id}`,
+        '',
+        '',
+        myDataSearchIndex
+      )
+        .then((res) => {
+          const hits = res?.data?.hits?.hits as SearchEntityHits;
+          if (hits?.length > 0) {
+            const total = res.data.hits.total.value;
+            setAssets({
+              data: hits,
+              total,
+              currPage: assets.currPage,
+            });
+          } else {
+            const total = 0;
+            setAssets({
+              data: [],
+              total,
+              currPage: assets.currPage,
+            });
+          }
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(
+            err,
+            t('server.entity-fetch-error', {
+              entity: t('label.team-asset-plural'),
+            })
+          );
+        });
+    }
   };
 
   const handleAssetsPaginate = (page: string | number) => {
@@ -569,6 +589,14 @@ const TeamsPage = () => {
     fetchPermissions(fqn);
   }, [fqn]);
 
+  useEffect(() => {
+    if (currentTab === TeamsPageTab.USERS) {
+      getCurrentTeamUsers(selectedTeam.name, {}, false);
+    } else {
+      setUserPaging(pagingObject);
+    }
+  }, [selectedTeam, currentTab]);
+
   if (isPageLoading) {
     return <Loader />;
   }
@@ -586,6 +614,7 @@ const TeamsPage = () => {
           currentTeamUserPage={currentUserPage}
           currentTeamUsers={users}
           descriptionHandler={descriptionHandler}
+          entityPermissions={entityPermissions}
           handleAddTeam={handleAddTeam}
           handleAddUser={addUsersToTeam}
           handleCurrentUserPage={handleCurrentUserPage}
@@ -598,8 +627,8 @@ const TeamsPage = () => {
           parentTeams={parentTeams}
           removeUserFromTeam={removeUserFromTeam}
           showDeletedTeam={showDeletedTeam}
-          teamUserPagin={userPaging}
-          teamUserPaginHandler={userPagingHandler}
+          teamUserPaging={userPaging}
+          teamUserPagingHandler={userPagingHandler}
           teamUsersSearchText={userSearchValue}
           updateTeamHandler={updateTeamHandler}
           onAssetsPaginate={handleAssetsPaginate}

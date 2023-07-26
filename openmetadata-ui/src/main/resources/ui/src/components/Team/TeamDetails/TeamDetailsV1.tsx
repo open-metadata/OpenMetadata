@@ -90,10 +90,7 @@ import {
 } from '../../../interface/teamsAndUsers.interface';
 import { getCountBadge, hasEditAccess } from '../../../utils/CommonUtils';
 import { filterEntityAssets, getEntityName } from '../../../utils/EntityUtils';
-import {
-  checkPermission,
-  DEFAULT_ENTITY_PERMISSION,
-} from '../../../utils/PermissionsUtils';
+import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getSettingsPathWithFqn,
   getTeamsWithFqnPath,
@@ -114,10 +111,7 @@ import { TitleBreadcrumbProps } from '../../common/title-breadcrumb/title-breadc
 import Loader from '../../Loader/Loader';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.interface';
 import ListEntities from './RolesAndPoliciesList';
 import { TeamsPageTab } from './team.interface';
 import { getTabs } from './TeamDetailsV1.utils';
@@ -130,7 +124,7 @@ const TeamDetailsV1 = ({
   hasAccess,
   currentTeam,
   currentTeamUsers,
-  teamUserPagin,
+  teamUserPaging,
   currentTeamUserPage,
   teamUsersSearchText,
   isDescriptionEditable,
@@ -145,7 +139,7 @@ const TeamDetailsV1 = ({
   onShowDeletedTeamChange,
   handleTeamUsersSearchAction,
   handleCurrentUserPage,
-  teamUserPaginHandler,
+  teamUserPagingHandler,
   handleJoinTeamClick,
   handleLeaveTeamClick,
   handleAddUser,
@@ -153,6 +147,7 @@ const TeamDetailsV1 = ({
   afterDeleteAction,
   onAssetsPaginate,
   parentTeams,
+  entityPermissions,
 }: TeamDetailsProp) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -173,7 +168,7 @@ const TeamDetailsV1 = ({
     state: false,
     leave: false,
   };
-  const { permissions, getEntityPermission } = usePermissionProvider();
+  const { permissions } = usePermissionProvider();
   const currentTab = useMemo(() => {
     if (activeTab) {
       return activeTab;
@@ -197,13 +192,10 @@ const TeamDetailsV1 = ({
     TitleBreadcrumbProps['titleLinks']
   >([]);
   const [addAttribute, setAddAttribute] = useState<AddAttribute>();
-  const [loading, setLoading] = useState<boolean>(false);
   const [selectedEntity, setEntity] = useState<{
     attribute: 'defaultRoles' | 'policies';
     record: EntityReference;
   }>();
-  const [entityPermissions, setEntityPermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
   const { showModal } = useEntityExportModalProvider();
@@ -232,7 +224,6 @@ const TeamDetailsV1 = ({
   const tabs = useMemo(() => {
     const allTabs = getTabs(
       currentTeam,
-      teamUserPagin,
       isGroupType,
       isOrganization,
       teamCount
@@ -251,7 +242,7 @@ const TeamDetailsV1 = ({
     }));
 
     return allTabs;
-  }, [currentTeam, teamUserPagin, searchTerm, teamCount, currentTab]);
+  }, [currentTeam, teamUserPaging, searchTerm, teamCount, currentTab]);
 
   const createTeamPermission = useMemo(
     () =>
@@ -544,30 +535,6 @@ const TeamDetailsV1 = ({
       setIsEmailEdit(false);
     }
   };
-
-  const fetchPermissions = async () => {
-    setLoading(true);
-    try {
-      const perms = await getEntityPermission(
-        ResourceEntity.TEAM,
-        currentTeam.id
-      );
-      setEntityPermissions(perms);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.user-permission-plural'),
-        })
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    !isEmpty(currentTeam) && fetchPermissions();
-  }, [currentTeam]);
 
   useEffect(() => {
     if (currentTeam) {
@@ -963,7 +930,7 @@ const TeamDetailsV1 = ({
   const viewPermission =
     entityPermissions.ViewAll || entityPermissions.ViewBasic;
 
-  if (loading || isTeamMemberLoading > 0) {
+  if (isTeamMemberLoading > 0) {
     return <Loader />;
   }
 
@@ -1140,12 +1107,12 @@ const TeamDetailsV1 = ({
                   currentPage={currentTeamUserPage}
                   currentTeam={currentTeam}
                   isLoading={isTeamMemberLoading}
-                  paging={teamUserPagin}
+                  paging={teamUserPaging}
                   permission={entityPermissions}
                   searchText={teamUsersSearchText}
                   users={currentTeamUsers}
                   onAddUser={handleAddUser}
-                  onChangePaging={teamUserPaginHandler}
+                  onChangePaging={teamUserPagingHandler}
                   onRemoveUser={removeUserFromTeam}
                   onSearchUsers={handleTeamUsersSearchAction}
                 />
