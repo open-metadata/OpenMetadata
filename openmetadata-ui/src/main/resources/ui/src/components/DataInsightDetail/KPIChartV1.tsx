@@ -23,7 +23,6 @@ import {
   Line,
   LineChart,
   ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
@@ -37,7 +36,7 @@ import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
 import { KPI_WIDGET_GRAPH_COLORS } from '../../constants/DataInsight.constants';
 import { Kpi, KpiResult } from '../../generated/dataInsight/kpi/kpi';
 import { UIKpiResult } from '../../interface/data-insight.interface';
-import { CustomTooltip, getKpiGraphData } from '../../utils/DataInsightUtils';
+import { getKpiGraphData } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import KPILatestResultsV1 from './KPILatestResultsV1';
 
@@ -85,7 +84,7 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
   const [kpiResults, setKpiResults] = useState<KpiResult[]>([]);
   const [kpiLatestResults, setKpiLatestResults] =
     useState<Record<string, UIKpiResult>>();
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const fetchKpiResults = useCallback(async () => {
     setIsLoading(true);
@@ -156,12 +155,8 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
     }
   };
 
-  const { kpis, graphData, kpiTooltipRecord } = useMemo(() => {
-    const kpiTooltipRecord = kpiList.reduce((previous, curr) => {
-      return { ...previous, [curr.name]: curr.metricType };
-    }, {});
-
-    return { ...getKpiGraphData(kpiResults, kpiList), kpiTooltipRecord };
+  const { kpis, graphData } = useMemo(() => {
+    return { ...getKpiGraphData(kpiResults, kpiList) };
   }, [kpiResults, kpiList]);
 
   useEffect(() => {
@@ -193,7 +188,7 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
           </Typography.Text>
         </Col>
       </Row>
-      {kpiList.length ? (
+      {kpiList.length > 0 ? (
         <Row>
           {graphData.length ? (
             <>
@@ -213,11 +208,6 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
                     />
                     <XAxis dataKey="timestamp" />
                     <YAxis />
-                    <Tooltip
-                      content={
-                        <CustomTooltip kpiTooltipRecord={kpiTooltipRecord} />
-                      }
-                    />
                     {kpis.map((kpi, i) => (
                       <Line
                         dataKey={kpi}

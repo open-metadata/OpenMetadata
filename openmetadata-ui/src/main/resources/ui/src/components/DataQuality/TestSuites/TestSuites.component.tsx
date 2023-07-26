@@ -77,7 +77,9 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
             <Link
               to={{
                 pathname: getTableTabPath(
-                  record.executableEntityReference?.fullyQualifiedName ?? '',
+                  encodeURIComponent(
+                    record.executableEntityReference?.fullyQualifiedName ?? ''
+                  ),
                   EntityTabs.PROFILER
                 ),
                 search: QueryString.stringify({
@@ -89,7 +91,9 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
             </Link>
           ) : (
             <Link
-              to={getTestSuitePath(record.fullyQualifiedName ?? record.name)}>
+              to={getTestSuitePath(
+                encodeURIComponent(record.fullyQualifiedName ?? record.name)
+              )}>
               {getEntityName(record)}
             </Link>
           );
