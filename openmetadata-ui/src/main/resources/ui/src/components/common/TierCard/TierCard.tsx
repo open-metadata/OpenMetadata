@@ -81,7 +81,7 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
 
   return (
     <Popover
-      className="p-0 tier-card-popover"
+      className="p-0"
       content={
         <Card
           className="tier-card"
@@ -138,6 +138,7 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
           {isLoadingTierData && <Loader />}
         </Card>
       }
+      overlayClassName="tier-card-popover"
       placement="bottomRight"
       showArrow={false}
       trigger="click"
