@@ -37,6 +37,7 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
         # Equivalent to SHOW DATABASES
         return [row[0] for row in connection.execute('select "NAME" from "DBS";')]
 
+    # pylint: disable=arguments-differ
     def get_view_names(self, connection, schema=None, **kw):
         # Hive does not provide functionality to query tableType
         # This allows reflection to not crash at the cost of being inaccurate
@@ -58,7 +59,7 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
                 and tbsl."TBL_NAME" = '{table_name}'
         """
         if schema:
-            query += f""" join "DBS" db on tbsl."DB_ID" = db."DB_ID" 
+            query += f""" join "DBS" db on tbsl."DB_ID" = db."DB_ID"
             and db."NAME" = '{schema}'"""
 
         return connection.execute(query).fetchall()
@@ -66,7 +67,7 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
     def _get_table_names_base_query(self, schema=None):
         query = 'SELECT "TBL_NAME" from "TBLS" tbl'
         if schema:
-            query += f""" JOIN "DBS" db on tbl."DB_ID" = db."DB_ID" 
+            query += f""" JOIN "DBS" db on tbl."DB_ID" = db."DB_ID"
             and db."NAME" = '{schema}'"""
         return query
 
@@ -77,7 +78,7 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
 
     @reflection.cache
     def get_view_definition(self, connection, view_name, schema=None, **kw):
-        query = f"""
+        query = """
             SELECT 
                 dbs."NAME" "schema", 
                 tbls."TBL_NAME" view_name, 
@@ -98,7 +99,7 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
 
     @reflection.cache
     def get_table_comment(self, connection, table_name, schema=None, **kw):
-        query = f"""
+        query = """
             SELECT 
                 "DBS"."NAME" AS "schema", 
                 "TBLS"."TBL_NAME" AS table_name, 
@@ -118,5 +119,6 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
             query=query,
         )
 
+    # pylint: disable=arguments-renamed
     def get_dialect_cls(self):
         return HivePostgresMetaStoreDialect

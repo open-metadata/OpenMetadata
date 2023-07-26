@@ -66,7 +66,7 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
     def _get_table_names_base_query(self, schema=None):
         query = "SELECT TBL_NAME from TBLS tbl"
         if schema:
-            query += f""" JOIN DBS db on tbl.DB_ID = db.DB_ID 
+            query += f""" JOIN DBS db on tbl.DB_ID = db.DB_ID
             and db.NAME = '{schema}'"""
         return query
 
@@ -76,8 +76,8 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
         return [row[0] for row in connection.execute(query)]
 
     @reflection.cache
-    def get_view_definition(self, connection, table_name, schema=None, **kw):
-        query = f"""
+    def get_view_definition(self, connection, view_name, schema=None, **kw):
+        query = """
             SELECT 
                 dbs.NAME `schema`, 
                 tbls.TBL_NAME view_name, 
@@ -91,14 +91,14 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
         return get_view_definition_wrapper(
             self,
             connection,
-            table_name=table_name,
+            table_name=view_name,
             schema=schema,
             query=query,
         )
 
     @reflection.cache
     def get_table_comment(self, connection, table_name, schema=None, **kw):
-        query = f"""
+        query = """
             SELECT 
                 DBS.NAME AS `schema`, 
                 TBLS.TBL_NAME AS table_name, 
