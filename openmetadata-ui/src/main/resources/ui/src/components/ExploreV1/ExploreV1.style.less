@@ -15,7 +15,7 @@
 
 .explore-page-layout {
   .page-layout-v1-vertical-scroll {
-    height: calc(100vh - 176px);
+    height: @explore-page-height;
   }
   .page-layout-rightpanel {
     padding-right: 0 !important;
@@ -42,10 +42,12 @@
   .explore-page-tabs {
     .ant-tabs-nav {
       margin: 0 !important;
-      padding: 16px 20px 0;
+      width: 100%;
+      height: @page-height;
     }
   }
   .summary-panel-container {
+    height: @explore-page-height;
     .ant-drawer-header {
       border-bottom: none;
     }
@@ -57,4 +59,9 @@
 
 .explore-page {
   overflow-x: hidden;
+  .custom-menu.ant-menu-root.ant-menu-inline {
+    .ant-menu-item {
+      height: 40px;
+    }
+  }
 }

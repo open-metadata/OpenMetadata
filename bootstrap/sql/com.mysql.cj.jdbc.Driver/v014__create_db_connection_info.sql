@@ -41,3 +41,22 @@ WHERE JSON_EXTRACT(json, '$.connection.config.scheme') IN ('impala', 'impala4');
 -- remove the dataModel references from Data Models
 UPDATE dashboard_data_model_entity
 SET json = JSON_REMOVE(json, '$.dataModels');
+
+-- migrate ingestAllDatabases in mssql
+UPDATE dbservice_entity de2 
+SET json = JSON_REPLACE(
+    JSON_INSERT(json, 
+      '$.connection.config.database', 
+      (select JSON_EXTRACT(json, '$.name') 
+        from database_entity de 
+        where id = (select er.toId 
+            from entity_relationship er 
+            where er.fromId = de2.id 
+              and er.toEntity = 'database' 
+            LIMIT 1
+          ))
+    ), '$.connection.config.ingestAllDatabases', 
+    true
+  ) 
+where de2.serviceType = 'Mssql' 
+  and JSON_EXTRACT(json, '$.connection.config.database') is NULL;
