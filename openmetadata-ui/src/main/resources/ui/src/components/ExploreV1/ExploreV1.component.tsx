@@ -320,10 +320,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
             <Content>
               <Row className="filters-row">
                 <Col className="searched-data-container w-full">
-                  <Row gutter={[16, 16]}>
-                    <Col
-                      className="d-flex items-center justify-between"
-                      span={24}>
+                  <Row gutter={[0, 8]}>
+                    <Col>
                       <ExploreQuickFilters
                         aggregations={aggregations}
                         fields={selectedQuickFilters}
@@ -333,70 +331,68 @@ const ExploreV1: React.FC<ExploreProps> = ({
                         onChangeShowDeleted={onChangeShowDeleted}
                         onFieldValueSelect={handleQuickFiltersValueSelect}
                       />
-
-                      <div className="d-flex items-center gap-4 m-l-auto m-r-xs">
-                        <span className="flex-center">
-                          <Switch
-                            checked={showDeleted}
-                            data-testid="show-deleted"
-                            onChange={onChangeShowDeleted}
-                          />
-                          <Typography.Text className="p-l-xs text-grey-muted">
-                            {t('label.deleted')}
-                          </Typography.Text>
-                        </span>
-                        {(quickFilters || sqlQuery) && (
-                          <Typography.Text
-                            className="text-primary self-center cursor-pointer"
-                            onClick={() => clearFilters()}>
-                            {t('label.clear-entity', {
-                              entity: '',
-                            })}
-                          </Typography.Text>
-                        )}
-
+                    </Col>
+                    <Col
+                      className="d-flex items-center justify-end gap-4"
+                      flex={410}>
+                      <span className="flex-center">
+                        <Switch
+                          checked={showDeleted}
+                          data-testid="show-deleted"
+                          onChange={onChangeShowDeleted}
+                        />
+                        <Typography.Text className="p-l-xs text-grey-muted">
+                          {t('label.deleted')}
+                        </Typography.Text>
+                      </span>
+                      {(quickFilters || sqlQuery) && (
                         <Typography.Text
                           className="text-primary self-center cursor-pointer"
-                          data-testid="advance-search-button"
-                          onClick={() => toggleModal(true)}>
-                          {t('label.advanced-entity', {
+                          onClick={() => clearFilters()}>
+                          {t('label.clear-entity', {
                             entity: '',
                           })}
                         </Typography.Text>
-                        <span className="sorting-dropdown-container">
-                          <SortingDropDown
-                            fieldList={tabsInfo[searchIndex].sortingFields}
-                            handleFieldDropDown={onChangeSortValue}
-                            sortField={sortValue}
-                          />
-                          <Button
-                            className="p-0"
-                            data-testid="sort-order-button"
-                            size="small"
-                            type="text"
-                            onClick={() =>
-                              onChangeSortOder(
-                                isAscSortOrder
-                                  ? SORT_ORDER.DESC
-                                  : SORT_ORDER.ASC
-                              )
-                            }>
-                            {isAscSortOrder ? (
-                              <SortAscendingOutlined
-                                style={{ fontSize: '14px' }}
-                                {...sortProps}
-                              />
-                            ) : (
-                              <SortDescendingOutlined
-                                style={{ fontSize: '14px' }}
-                                {...sortProps}
-                              />
-                            )}
-                          </Button>
-                        </span>
-                      </div>
-                    </Col>
+                      )}
 
+                      <Typography.Text
+                        className="text-primary self-center cursor-pointer"
+                        data-testid="advance-search-button"
+                        onClick={() => toggleModal(true)}>
+                        {t('label.advanced-entity', {
+                          entity: '',
+                        })}
+                      </Typography.Text>
+                      <span className="sorting-dropdown-container">
+                        <SortingDropDown
+                          fieldList={tabsInfo[searchIndex].sortingFields}
+                          handleFieldDropDown={onChangeSortValue}
+                          sortField={sortValue}
+                        />
+                        <Button
+                          className="p-0"
+                          data-testid="sort-order-button"
+                          size="small"
+                          type="text"
+                          onClick={() =>
+                            onChangeSortOder(
+                              isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
+                            )
+                          }>
+                          {isAscSortOrder ? (
+                            <SortAscendingOutlined
+                              style={{ fontSize: '14px' }}
+                              {...sortProps}
+                            />
+                          ) : (
+                            <SortDescendingOutlined
+                              style={{ fontSize: '14px' }}
+                              {...sortProps}
+                            />
+                          )}
+                        </Button>
+                      </span>
+                    </Col>
                     {sqlQuery && (
                       <Col span={24}>
                         <AppliedFilterText
