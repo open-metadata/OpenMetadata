@@ -163,7 +163,10 @@ const DeleteWidgetModal = ({
               afterDeleteAction &&
               (shouldRunActionForDataAsset || !isDataAsset)
             ) {
-              afterDeleteAction();
+              // Setting timeout for a window to show the success toast
+              setTimeout(() => {
+                afterDeleteAction();
+              }, 1000);
             } else {
               setTimeout(() => {
                 history.push('/');
