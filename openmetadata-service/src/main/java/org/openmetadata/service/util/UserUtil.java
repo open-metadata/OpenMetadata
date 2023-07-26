@@ -26,7 +26,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -72,14 +71,15 @@ public final class UserUtil {
       fieldList.add("authenticationMechanism");
 
       // Fetch Original User, is available
-      User originalUser = userRepository.getByName(null, EntityInterfaceUtil.quoteName(username), new Fields(fieldList));
+      User originalUser =
+          userRepository.getByName(null, EntityInterfaceUtil.quoteName(username), new Fields(fieldList));
       if (!originalUser.getIsBot() && !originalUser.getIsAdmin()) {
         updatedUser = originalUser;
 
         // Update Auth Mechanism if not present, and send mail to the user
         if (authProvider.equals(AuthProvider.BASIC)) {
           if (originalUser.getAuthenticationMechanism() == null
-                  || originalUser.getAuthenticationMechanism().equals(new AuthenticationMechanism())) {
+              || originalUser.getAuthenticationMechanism().equals(new AuthenticationMechanism())) {
             updateUserWithHashedPwd(updatedUser, getPassword());
             EmailUtil.sendInviteMailToAdmin(updatedUser, ADMIN_USER_NAME);
           }
@@ -93,7 +93,10 @@ public final class UserUtil {
         // user email
         updatedUser.setEmail(String.format("%s@%s", username, domain));
       } else {
-        LOG.error(String.format("You configured bot user %s in initialAdmins config. Bot user cannot be promoted to be an admin.", originalUser.getName()));
+        LOG.error(
+            String.format(
+                "You configured bot user %s in initialAdmins config. Bot user cannot be promoted to be an admin.",
+                originalUser.getName()));
       }
     } catch (EntityNotFoundException e) {
       updatedUser = user(username, domain, username).withIsAdmin(isAdmin).withIsEmailVerified(true);
@@ -108,7 +111,6 @@ public final class UserUtil {
     if (updatedUser != null) {
       addOrUpdateUser(updatedUser);
     }
-
   }
 
   private static String getPassword() {
