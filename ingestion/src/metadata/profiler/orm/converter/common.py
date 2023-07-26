@@ -67,6 +67,7 @@ class CommonMapTypes:
         DataType.IMAGE: CustomTypes.IMAGE.value,
         DataType.IPV4: CustomTypes.IP.value,
         DataType.IPV6: CustomTypes.IP.value,
+        DataType.DATETIMERANGE: CustomTypes.SQADATETIMERANGE.value,
     }
 
     def map_types(self, col: Column, table_service_type):
