@@ -163,7 +163,7 @@ kubectl get pods -n <namespace_name> <pod_name> -o jsonpath="{..image}"
 
 The command `docker pull <docker_image_name>` will make sure to get the image available for kubernetes and resolve the issue.
 
-### View openmetadata kubeernetes pod logs
+### View openmetadata kubernetes pod logs
 
 Run the below command to list openmetadata kubernetes pods deployed in a namespace:
 
