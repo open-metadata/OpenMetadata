@@ -74,6 +74,7 @@ export const getLogBreadCrumbs = (
     },
     {
       name: i18n.t('label.log-plural'),
+      url: '',
     },
   ];
 };
