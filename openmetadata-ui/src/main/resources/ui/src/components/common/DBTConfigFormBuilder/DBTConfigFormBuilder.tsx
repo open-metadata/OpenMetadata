@@ -69,6 +69,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         dbtClassificationName: data.dbtClassificationName,
         dbtUpdateDescriptions: data.dbtUpdateDescriptions,
         includeTags: data.includeTags,
+        parsingTimeoutLimit: data.parsingTimeoutLimit,
       },
       databaseFilterPattern: data.databaseFilterPattern,
       schemaFilterPattern: data.schemaFilterPattern,
@@ -107,6 +108,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             dbtUpdateDescriptions={dbtConfigSource?.dbtUpdateDescriptions}
             enableDebugLog={data.enableDebugLog}
             includeTags={dbtConfigSource?.includeTags}
+            parsingTimeoutLimit={dbtConfigSource?.parsingTimeoutLimit}
           />
         );
       }
@@ -120,6 +122,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             dbtUpdateDescriptions={dbtConfigSource?.dbtUpdateDescriptions}
             enableDebugLog={data.enableDebugLog}
             includeTags={dbtConfigSource?.includeTags}
+            parsingTimeoutLimit={dbtConfigSource?.parsingTimeoutLimit}
           />
         );
       }
@@ -133,6 +136,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             dbtUpdateDescriptions={dbtConfigSource?.dbtUpdateDescriptions}
             enableDebugLog={data.enableDebugLog}
             includeTags={dbtConfigSource?.includeTags}
+            parsingTimeoutLimit={dbtConfigSource?.parsingTimeoutLimit}
           />
         );
       }
@@ -145,6 +149,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             dbtUpdateDescriptions={dbtConfigSource?.dbtUpdateDescriptions}
             enableDebugLog={data.enableDebugLog}
             includeTags={dbtConfigSource?.includeTags}
+            parsingTimeoutLimit={dbtConfigSource?.parsingTimeoutLimit}
           />
         );
       }
@@ -158,6 +163,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             enableDebugLog={data.enableDebugLog}
             gcsType={gcsConfigType}
             includeTags={dbtConfigSource?.includeTags}
+            parsingTimeoutLimit={dbtConfigSource?.parsingTimeoutLimit}
           />
         );
       }
@@ -170,6 +176,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             dbtUpdateDescriptions={dbtConfigSource?.dbtUpdateDescriptions}
             enableDebugLog={data.enableDebugLog}
             includeTags={dbtConfigSource?.includeTags}
+            parsingTimeoutLimit={dbtConfigSource?.parsingTimeoutLimit}
           />
         );
       }
@@ -295,6 +302,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             },
             ingestionName: value?.name,
             enableDebugLog: value?.loggerLevel,
+            parsingTimeoutLimit: value?.parsingTimeoutLimit,
           });
           onSubmit();
         }
@@ -315,6 +323,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             },
             ingestionName: value?.name,
             enableDebugLog: value?.loggerLevel,
+            parsingTimeoutLimit: value?.parsingTimeoutLimit,
           });
           onSubmit();
         }
@@ -336,6 +345,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             },
             ingestionName: value?.name,
             enableDebugLog: value?.loggerLevel,
+            parsingTimeoutLimit: value?.parsingTimeoutLimit,
           });
           onSubmit();
         }
@@ -367,6 +377,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             },
             ingestionName: value?.name,
             enableDebugLog: value?.loggerLevel,
+            parsingTimeoutLimit: value?.parsingTimeoutLimit,
           });
           onSubmit();
         }
@@ -430,6 +441,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             },
             ingestionName: value?.name,
             enableDebugLog: value?.loggerLevel,
+            parsingTimeoutLimit: value?.parsingTimeoutLimit,
           });
           onSubmit();
         }

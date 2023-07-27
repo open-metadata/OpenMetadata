@@ -20,6 +20,7 @@ import { DbtConfigHttp } from './DBTConfigForm.interface';
 
 interface Props extends DbtConfigHttp {
   enableDebugLog: boolean;
+  parsingTimeoutLimit: number;
 }
 
 export const DBTHttpConfig: FunctionComponent<Props> = ({
@@ -30,6 +31,7 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
   includeTags = true,
   dbtClassificationName,
   enableDebugLog,
+  parsingTimeoutLimit,
 }: Props) => {
   const { t } = useTranslation();
 
@@ -85,6 +87,7 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
         descriptionId="http-update-description"
         enableDebugLog={enableDebugLog}
         includeTags={includeTags}
+        parsingTimeoutLimit={parsingTimeoutLimit}
       />
     </Fragment>
   );
