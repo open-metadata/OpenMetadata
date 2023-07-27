@@ -72,7 +72,7 @@ import org.openmetadata.schema.api.configuration.extension.Extension;
 import org.openmetadata.schema.api.configuration.extension.ExtensionConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
-import org.openmetadata.schema.auth.SSOAuthMechanism;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.elasticsearch.ElasticSearchEventPublisher;
 import org.openmetadata.service.events.EventFilter;
 import org.openmetadata.service.events.EventPubSub;
@@ -249,10 +249,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private void registerSamlHandlers(OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
     if (catalogConfig.getAuthenticationConfiguration() != null
-        && catalogConfig
-            .getAuthenticationConfiguration()
-            .getProvider()
-            .equals(SSOAuthMechanism.SsoServiceType.SAML.toString())) {
+        && catalogConfig.getAuthenticationConfiguration().getProvider().equals(AuthProvider.SAML)) {
       SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
       ServletRegistration.Dynamic samlRedirectServlet =
           environment.servlets().addServlet("saml_login", new SamlLoginServlet());
@@ -390,10 +387,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private void registerAuthenticator(OpenMetadataApplicationConfig catalogConfig) {
     AuthenticationConfiguration authenticationConfiguration = catalogConfig.getAuthenticationConfiguration();
     switch (authenticationConfiguration.getProvider()) {
-      case "basic":
+      case BASIC:
         authenticatorHandler = new BasicAuthenticator();
         break;
-      case "ldap":
+      case LDAP:
         authenticatorHandler = new LdapAuthenticator();
         break;
       default:

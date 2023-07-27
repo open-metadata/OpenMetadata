@@ -14,6 +14,7 @@ Sample Data source ingestion
 # pylint: disable=too-many-lines,too-many-statements
 import json
 import random
+import string
 import traceback
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
@@ -106,6 +107,7 @@ from metadata.parsers.schema_parsers import (
 )
 from metadata.utils import fqn
 from metadata.utils.constants import UTF_8
+from metadata.utils.fqn import FQN_SEPARATOR
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
@@ -1029,6 +1031,39 @@ class SampleDataSource(
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error ingesting Container [{container}]: {exc}")
+
+        # Create a very nested container structure:
+        try:
+            long_base_name = (
+                "".join(random.choice(string.ascii_letters) for _ in range(100))
+                + "{suffix}"
+            )
+            for base_name in ("deep_nested_container_{suffix}", long_base_name):
+                parent_container_fqns = []
+                # We cannot go deeper than this
+                for i in range(1, 6):
+                    parent_container: Container = (
+                        self.metadata.get_by_name(
+                            entity=Container,
+                            fqn=self.storage_service.fullyQualifiedName.__root__
+                            + FQN_SEPARATOR
+                            + FQN_SEPARATOR.join(parent_container_fqns),
+                        )
+                        if parent_container_fqns
+                        else None
+                    )
+                    name = base_name.format(suffix=i)
+                    parent_container_fqns.append(name)
+                    yield CreateContainerRequest(
+                        name=name,
+                        parent=EntityReference(id=parent_container.id, type="container")
+                        if parent_container
+                        else None,
+                        service=self.storage_service.fullyQualifiedName,
+                    )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error ingesting nested containers: {exc}")
 
     def ingest_users(self) -> Iterable[OMetaUserProfile]:
         """
