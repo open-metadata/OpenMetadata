@@ -127,8 +127,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         setEntityThread((prev) => (after ? [...prev, ...data] : [...data]));
         setEntityPaging(paging);
 
-        setLoading(false);
-
         return data;
       } catch (err) {
         showErrorToast(
