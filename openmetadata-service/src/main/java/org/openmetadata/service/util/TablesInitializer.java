@@ -64,11 +64,11 @@ public final class TablesInitializer {
   private static final String DEBUG_MODE_ENABLED = "debug_mode";
   private static final String OPTION_SCRIPT_ROOT_PATH = "script-root";
   private static final String OPTION_CONFIG_FILE_PATH = "config";
-  private static final String OPTION_IGNORE_SERVER_FILE_CHECKSUM = "ignoreCheckSum";
+  private static final String OPTION_FORCE_MIGRATIONS = "force";
   private static final String DISABLE_VALIDATE_ON_MIGRATE = "disable-validate-on-migrate";
   private static final Options OPTIONS;
   private static boolean debugMode = false;
-  private static boolean ignoreServerFileChecksum = false;
+  private static boolean forceMigrations = false;
 
   static {
     OPTIONS = new Options();
@@ -76,10 +76,10 @@ public final class TablesInitializer {
     OPTIONS.addOption("s", OPTION_SCRIPT_ROOT_PATH, true, "Root directory of script path");
     OPTIONS.addOption("c", OPTION_CONFIG_FILE_PATH, true, "Config file path");
     OPTIONS.addOption(
-        "ignoreCheckSum",
-        OPTION_IGNORE_SERVER_FILE_CHECKSUM,
+        OPTION_FORCE_MIGRATIONS,
+        OPTION_FORCE_MIGRATIONS,
         true,
-        "Ignore the server checksum and rerun same file in migrate");
+        "Ignore the server checksum and force migrations to be run again");
     OPTIONS.addOption(null, SchemaMigrationOption.CREATE.toString(), false, "Run sql migrations from scratch");
     OPTIONS.addOption(null, SchemaMigrationOption.DROP.toString(), false, "Drop all the tables in the target database");
     OPTIONS.addOption(
@@ -126,8 +126,8 @@ public final class TablesInitializer {
     if (commandLine.hasOption(DEBUG_MODE_ENABLED)) {
       debugMode = true;
     }
-    if (commandLine.hasOption(OPTION_IGNORE_SERVER_FILE_CHECKSUM)) {
-      ignoreServerFileChecksum = Boolean.parseBoolean(commandLine.getOptionValue(OPTION_IGNORE_SERVER_FILE_CHECKSUM));
+    if (commandLine.hasOption(OPTION_FORCE_MIGRATIONS)) {
+      forceMigrations = Boolean.parseBoolean(commandLine.getOptionValue(OPTION_FORCE_MIGRATIONS));
     }
     boolean isSchemaMigrationOptionSpecified = false;
     SchemaMigrationOption schemaMigrationOptionSpecified = null;
@@ -275,13 +275,13 @@ public final class TablesInitializer {
         }
         flyway.migrate();
         validateAndRunSystemDataMigrations(
-            jdbi, ConnectionType.from(config.getDataSourceFactory().getDriverClass()), ignoreServerFileChecksum);
+            jdbi, ConnectionType.from(config.getDataSourceFactory().getDriverClass()), forceMigrations);
         break;
       case MIGRATE:
         flyway.migrate();
         // Validate and Run System Data Migrations
         validateAndRunSystemDataMigrations(
-            jdbi, ConnectionType.from(config.getDataSourceFactory().getDriverClass()), ignoreServerFileChecksum);
+            jdbi, ConnectionType.from(config.getDataSourceFactory().getDriverClass()), forceMigrations);
         break;
       case INFO:
         printToConsoleMandatory(dumpToAsciiTable(flyway.info().all()));
@@ -331,11 +331,10 @@ public final class TablesInitializer {
     }
   }
 
-  public static void validateAndRunSystemDataMigrations(
-      Jdbi jdbi, ConnectionType connType, boolean ignoreFileChecksum) {
+  public static void validateAndRunSystemDataMigrations(Jdbi jdbi, ConnectionType connType, boolean forceMigrations) {
     DatasourceConfig.initialize(connType.label);
     List<MigrationStep> loadedMigrationFiles = getServerMigrationFiles(connType);
-    MigrationWorkflow workflow = new MigrationWorkflow(jdbi, loadedMigrationFiles, ignoreFileChecksum);
+    MigrationWorkflow workflow = new MigrationWorkflow(jdbi, loadedMigrationFiles, forceMigrations);
     workflow.runMigrationWorkflows();
   }
 

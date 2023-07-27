@@ -110,14 +110,13 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        width: '50%',
+        width: 200,
         render: (_, record) => getEntityName(record),
       },
       {
         title: t('label.value'),
         dataIndex: 'value',
         key: 'value',
-        width: '50%',
         render: (_, record) => (
           <PropertyValue
             extension={extensionObject.extensionObject}
