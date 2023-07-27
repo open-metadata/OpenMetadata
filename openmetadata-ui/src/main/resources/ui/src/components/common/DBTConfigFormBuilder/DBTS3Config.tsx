@@ -20,6 +20,7 @@ import { DbtConfigS3GCS } from './DBTConfigForm.interface';
 
 interface Props extends DbtConfigS3GCS {
   enableDebugLog: boolean;
+  parsingTimeoutLimit: number;
 }
 
 export const DBTS3Config: FunctionComponent<Props> = ({
@@ -29,6 +30,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
   includeTags = true,
   dbtClassificationName,
   enableDebugLog,
+  parsingTimeoutLimit,
 }: Props) => {
   const s3ConfigFields: FieldProp[] = [
     {
@@ -187,6 +189,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
         descriptionId="s3-update-description"
         enableDebugLog={enableDebugLog}
         includeTags={includeTags}
+        parsingTimeoutLimit={parsingTimeoutLimit}
       />
     </Fragment>
   );

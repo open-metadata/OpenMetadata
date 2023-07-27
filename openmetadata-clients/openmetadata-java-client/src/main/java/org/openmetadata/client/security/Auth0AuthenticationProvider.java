@@ -24,6 +24,7 @@ import org.openmetadata.client.model.AccessTokenResponse;
 import org.openmetadata.client.security.interfaces.Auth0AccessTokenApi;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 import org.openmetadata.schema.security.client.Auth0SSOClientConfig;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 
 @Slf4j
@@ -33,7 +34,7 @@ public class Auth0AuthenticationProvider implements AuthenticationProvider {
   private final Auth0AccessTokenApi auth0SSOClient;
 
   public Auth0AuthenticationProvider(OpenMetadataConnection iConfig) {
-    if (!iConfig.getAuthProvider().equals(OpenMetadataConnection.AuthProvider.AUTH_0)) {
+    if (!iConfig.getAuthProvider().equals(AuthProvider.AUTH_0)) {
       LOG.error("Required type to invoke is Auth0 for Auth0Authentication Provider");
       throw new RuntimeException("Required type to invoke is Auth0 for Auth0Authentication Provider");
     }

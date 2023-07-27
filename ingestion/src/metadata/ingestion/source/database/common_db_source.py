@@ -436,6 +436,7 @@ class CommonDbSourceService(
                 metadata=self.metadata,
                 service_name=self.context.database_service.name.__root__,
                 connection_type=self.service_connection.type.value,
+                timeout_seconds=self.source_config.viewParsingTimeoutLimit,
             )
 
     def _get_foreign_constraints(
