@@ -636,7 +636,7 @@
           <parallel>classes</parallel>
           <threadCount>1</threadCount>
           <forkCount>2C</forkCount>
-          <argLine>-Xmx2048m</argLine>
+          <argLine>-Xmx6144m</argLine>
         </configuration>
         <executions>
           <execution>
