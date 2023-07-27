@@ -61,6 +61,7 @@ from metadata.ingestion.source.database.bigquery.queries import (
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
+from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import is_complex_type
@@ -317,6 +318,7 @@ class BigquerySource(CommonDbSourceService):
             self.service_connection.credentials.gcpConfig.projectId = SingleProjectId(
                 __root__=database_name
             )
+        self.close()  # Closing credential file created during test connection flow
         self.engine = get_connection(self.service_connection)
         self.inspector = inspect(self.engine)
 
@@ -432,10 +434,10 @@ class BigquerySource(CommonDbSourceService):
         os.environ.pop("GOOGLE_CLOUD_PROJECT", "")
         if isinstance(
             self.service_connection.credentials.gcpConfig, GcpCredentialsValues
-        ) and ("GOOGLE_APPLICATION_CREDENTIALS" in os.environ):
-            tmp_credentials_file = os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
+        ) and (GOOGLE_CREDENTIALS in os.environ):
+            tmp_credentials_file = os.environ[GOOGLE_CREDENTIALS]
             os.remove(tmp_credentials_file)
-            del os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
+            del os.environ[GOOGLE_CREDENTIALS]
 
     def get_source_url(
         self,
