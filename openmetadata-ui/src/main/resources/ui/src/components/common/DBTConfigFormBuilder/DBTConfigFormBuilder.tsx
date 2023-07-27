@@ -176,6 +176,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
             dbtUpdateDescriptions={dbtConfigSource?.dbtUpdateDescriptions}
             enableDebugLog={data.enableDebugLog}
             includeTags={dbtConfigSource?.includeTags}
+            parsingTimeoutLimit={dbtConfigSource?.parsingTimeoutLimit}
           />
         );
       }
