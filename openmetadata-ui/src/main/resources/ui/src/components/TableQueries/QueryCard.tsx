@@ -18,12 +18,11 @@ import { QUERY_DATE_FORMAT, QUERY_LINE_HEIGHT } from 'constants/Query.constant';
 import { useClipboard } from 'hooks/useClipBoard';
 import { isUndefined, split } from 'lodash';
 import { Duration } from 'luxon';
-import NodeSQLParser from 'node-sql-parser';
 import Qs from 'qs';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
-import { parseSearchParams } from 'utils/Query/QueryUtils';
+import { parseSearchParams, sqlQueryValidator } from 'utils/Query/QueryUtils';
 import { getQueryPath } from 'utils/RouterUtils';
 import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
 import { CSMode } from '../../enums/codemirror.enum';
@@ -101,24 +100,23 @@ const QueryCard: FC<QueryCardProp> = ({
 
   const updateSqlQuery = async () => {
     try {
-      const parser = new NodeSQLParser.Parser();
-      parser.astify(sqlQuery.query);
+      await sqlQueryValidator(sqlQuery.query);
+
+      setSqlQuery((pre) => ({ ...pre, isLoading: true }));
+      if (query.query !== sqlQuery.query) {
+        const updatedData = {
+          ...query,
+          query: sqlQuery.query,
+        };
+        await onQueryUpdate(updatedData, 'query');
+      }
+      setSqlQuery((pre) => ({ ...pre, isLoading: false }));
+      setIsEditMode(false);
     } catch (error) {
-      setIsSqlInvalid(true);
-
-      return;
+      if (error === 'SQL Invalid') {
+        setIsSqlInvalid(true);
+      }
     }
-
-    setSqlQuery((pre) => ({ ...pre, isLoading: true }));
-    if (query.query !== sqlQuery.query) {
-      const updatedData = {
-        ...query,
-        query: sqlQuery.query,
-      };
-      await onQueryUpdate(updatedData, 'query');
-    }
-    setSqlQuery((pre) => ({ ...pre, isLoading: false }));
-    setIsEditMode(false);
   };
 
   const handleQueryChange = (value: string) => {

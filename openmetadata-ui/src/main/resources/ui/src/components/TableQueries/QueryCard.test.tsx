@@ -155,7 +155,7 @@ describe('Test QueryCard Component', () => {
     fireEvent.click(saveBtn);
 
     expect(
-      screen.getByText('message.field-text-is-invalid')
+      await screen.findByText('message.field-text-is-invalid')
     ).toBeInTheDocument();
   });
 });

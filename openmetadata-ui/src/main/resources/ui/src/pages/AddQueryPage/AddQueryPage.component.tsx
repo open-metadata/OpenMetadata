@@ -34,7 +34,6 @@ import { OwnerType } from 'enums/user.enum';
 import { CreateQuery } from 'generated/api/data/createQuery';
 import { Table } from 'generated/entity/data/table';
 import { filter, isEmpty } from 'lodash';
-import NodeSQLParser from 'node-sql-parser';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
@@ -43,6 +42,7 @@ import { postQuery } from 'rest/queryAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getCurrentUserId } from 'utils/CommonUtils';
 import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
+import { sqlQueryValidator } from 'utils/Query/QueryUtils';
 import { getCurrentDateTimeStamp } from 'utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
@@ -183,21 +183,6 @@ const AddQueryPage = () => {
     }
   };
 
-  const sqlValidator = async (_: Record<string, any>, value: string) => {
-    if (!value) {
-      return Promise.resolve('OK');
-    }
-
-    try {
-      const parser = new NodeSQLParser.Parser();
-      parser.astify(value);
-
-      return Promise.resolve('OK');
-    } catch (error) {
-      return Promise.reject('Error');
-    }
-  };
-
   return (
     <ResizablePanels
       firstPanel={{
@@ -232,7 +217,13 @@ const AddQueryPage = () => {
                       }),
                     },
                     {
-                      validator: sqlValidator,
+                      validator: (_: Record<string, any>, value: string) => {
+                        if (!value) {
+                          return Promise.resolve('OK');
+                        }
+
+                        return sqlQueryValidator(value);
+                      },
                       message: t('message.field-text-is-invalid', {
                         fieldText: t('label.sql-uppercase-query'),
                       }),

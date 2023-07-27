@@ -16,6 +16,7 @@ import {
   QuerySearchFilterType,
   QuerySearchParams,
 } from 'components/TableQueries/TableQueries.interface';
+import NodeSQLParser from 'node-sql-parser';
 import Qs from 'qs';
 
 export const createQueryFilter = (
@@ -50,4 +51,15 @@ export const parseSearchParams = (param: string) => {
 };
 export const stringifySearchParams = (param: QuerySearchParams) => {
   return Qs.stringify(param);
+};
+
+export const sqlQueryValidator = async (value: string) => {
+  try {
+    const parser = new NodeSQLParser.Parser();
+    parser.astify(value);
+
+    return Promise.resolve('OK');
+  } catch (error) {
+    return Promise.reject('SQL Invalid');
+  }
 };
