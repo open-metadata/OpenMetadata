@@ -727,7 +727,8 @@ describe('Glossary page should work properly', () => {
     interceptURL('PATCH', '/api/v1/tables/*', 'saveTag');
 
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView();
-    cy.get('[data-testid="saveAssociatedTag"]').click({ force: true });
+    cy.clickOutside();
+    cy.get('[data-testid="saveAssociatedTag"]').click();
     verifyResponseStatusCode('@saveTag', 400);
     toastNotification(
       `Tag labels ${glossary}.${term2} and ${glossary}.${term1} are mutually exclusive and can't be assigned together`
@@ -746,9 +747,8 @@ describe('Glossary page should work properly', () => {
     // Select 2nd term
     cy.get('[data-testid="tag-selector"]').click().type(term4);
     cy.get(`[data-testid="tag-${glossary1}.${term4}"]`).click();
-    cy.get('[data-testid="saveAssociatedTag"]')
-      .scrollIntoView()
-      .click({ force: true });
+    cy.clickOutside();
+    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@saveTag', 200);
     verifyResponseStatusCode('@countTag', 200);
     cy.get(
@@ -772,9 +772,8 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(
       term3
     );
-    cy.get('[data-testid="saveAssociatedTag"]')
-      .scrollIntoView()
-      .click({ force: true });
+    cy.clickOutside();
+    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@countTag', 200);
     cy.get(
       '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"]'
@@ -826,9 +825,8 @@ describe('Glossary page should work properly', () => {
       .click({ multiple: true });
 
     interceptURL('PATCH', '/api/v1/tables/*', 'removeTags');
-    cy.get('[data-testid="saveAssociatedTag"]')
-      .scrollIntoView()
-      .click({ force: true });
+    cy.clickOutside();
+    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@removeTags', 200);
 
     // Remove the added column tag from entity

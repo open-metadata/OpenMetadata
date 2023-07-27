@@ -32,7 +32,6 @@ export const visitServiceDetailsPage = (service, verifyHeader = true) => {
 
   cy.wait('@getServices').then((interception) => {
     const responseBody = interception.response.body;
-    cy.log(responseBody);
     // check if service name is received on the first page otherwise, click on Next button
     const item = responseBody.data.find((item) => item.name === service.name);
     if (!item && responseBody.paging.after) {

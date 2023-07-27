@@ -242,7 +242,7 @@ export const NEW_GLOSSARY = {
   tag: 'PII.None',
 };
 export const NEW_GLOSSARY_1 = {
-  name: 'Cypress%Glossary',
+  name: 'Cypress Product%Glossary',
   description: 'This is the Product glossary with percentage',
   reviewer: 'Brandy Miller',
   tag: 'PII.None',
@@ -278,13 +278,13 @@ export const NEW_GLOSSARY_1_TERMS = {
     name: 'Features%Term',
     description: 'This is the Features',
     synonyms: 'data,collect,time',
-    fullyQualifiedName: 'Cypress%Glossary.Features%Term',
+    fullyQualifiedName: 'Cypress Product%Glossary.Features%Term',
   },
   term_2: {
     name: 'Uses',
     description: 'This is the Uses',
     synonyms: 'home,business,adventure',
-    fullyQualifiedName: 'Cypress%Glossary.Uses',
+    fullyQualifiedName: 'Cypress Product%Glossary.Uses',
   },
 };
 
