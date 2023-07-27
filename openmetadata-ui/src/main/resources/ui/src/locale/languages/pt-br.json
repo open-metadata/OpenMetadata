@@ -1234,6 +1234,7 @@
     "lineage-data-is-not-available-for-deleted-entities": "Os dados de linhagem não estão disponíveis para entidades excluídas.",
     "lineage-ingestion-description": "A ingestão de linhagem pode ser configurada e implantada após a configuração da ingestão de metadados. O fluxo de trabalho de ingestão de linhagem obtém o histórico de consultas, analisa as consultas CREATE, INSERT, MERGE ... e prepara a linhagem entre as entidades envolvidas. A ingestão de linhagem pode ter apenas um pipeline para um serviço de banco de dados. Defina a Duração do Log de Consulta (em dias) e o Limite de Resultado para iniciar.",
     "list-of-strings-regex-patterns-csv": "Digite uma lista de padrões de strings/regex como um valor separado por vírgula",
+    "logout-confirmation": "Are you sure you want to logout?",
     "made-announcement-for-entity": "fez um anúncio para {{entity}}",
     "make-an-announcement": "Faça um anúncio!",
     "manage-airflow-api": "APIs do Airflow Gerenciado do OpenMetadata",

@@ -1234,6 +1234,7 @@
     "lineage-data-is-not-available-for-deleted-entities": "Los datos de linaje no están disponibles para las entidades eliminadas.",
     "lineage-ingestion-description": "La ingesta de linaje se puede configurar y implementar después de que se haya establecido una ingesta de metadatos. El workflow de ingesta de linaje obtiene el historial de consultas, analiza las consultas CREATE, INSERT, MERGE, etc. y prepara el linaje entre las entidades involucradas. La ingesta de linaje solo puede tener un workflow para un servicio de base de datos. Defina la duración del registro de consultas (en días) y el límite de resultados para comenzar.",
     "list-of-strings-regex-patterns-csv": "Ingrese una lista de cadenas/patrones regex como un valor separado por comas",
+    "logout-confirmation": "Are you sure you want to logout?",
     "made-announcement-for-entity": "hizo un anuncio para {{entity}}",
     "make-an-announcement": "¡Haz un anuncio!",
     "manage-airflow-api": "OpenMetadata - APIs de Airflow",

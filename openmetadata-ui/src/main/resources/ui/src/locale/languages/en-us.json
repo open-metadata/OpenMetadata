@@ -1234,6 +1234,7 @@
     "lineage-data-is-not-available-for-deleted-entities": "Lineage data is not available for deleted entities.",
     "lineage-ingestion-description": "Lineage ingestion can be configured and deployed after a metadata ingestion has been set up. The lineage ingestion workflow obtains the query history, parses CREATE, INSERT, MERGE... queries and prepares the lineage between the involved entities. The lineage ingestion can have only one pipeline for a database service. Define the Query Log Duration (in days) and Result Limit to start.",
     "list-of-strings-regex-patterns-csv": "Enter a list of strings/regex patterns as a comma separated value",
+    "logout-confirmation": "Are you sure you want to logout?",
     "made-announcement-for-entity": "made an announcement for {{entity}}",
     "make-an-announcement": "Make an announcement!",
     "manage-airflow-api": "OpenMetadata - Managed Airflow APIs",
