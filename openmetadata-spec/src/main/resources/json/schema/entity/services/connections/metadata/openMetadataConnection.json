@@ -30,6 +30,7 @@
         "google",
         "okta",
         "auth0",
+        "aws-incognito",
         "custom-oidc",
         "ldap",
         "saml",
