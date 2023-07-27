@@ -73,6 +73,7 @@ import {
   removeFollower,
   restoreTable,
 } from 'rest/tableAPI';
+import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import {
   addToRecentViewed,
   getCurrentUserId,
@@ -890,8 +891,7 @@ const TableDetailsPageV1 = () => {
         {/* Entity Heading */}
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
-            isDataAsset
-            afterDeleteAction={refreshPage}
+            afterDeleteAction={handleDataAssetAfterDeleteAction}
             dataAsset={tableDetails}
             entityType={EntityType.TABLE}
             permissions={tablePermissions}

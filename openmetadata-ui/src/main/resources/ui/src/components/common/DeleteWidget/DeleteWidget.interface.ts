@@ -12,7 +12,6 @@
  */
 
 export interface DeleteWidgetModalProps {
-  isDataAsset?: boolean;
   visible: boolean;
   onCancel: () => void;
   allowSoftDelete?: boolean;
@@ -25,7 +24,7 @@ export interface DeleteWidgetModalProps {
   entityId?: string;
   prepareType?: boolean;
   isRecursiveDelete?: boolean;
-  afterDeleteAction?: () => void;
+  afterDeleteAction?: (isSoftDelete?: boolean) => void;
 }
 
 export interface DeleteSectionProps {

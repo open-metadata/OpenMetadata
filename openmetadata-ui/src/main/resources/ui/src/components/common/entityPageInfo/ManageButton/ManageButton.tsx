@@ -33,8 +33,7 @@ import './ManageButton.less';
 
 interface Props {
   allowSoftDelete?: boolean;
-  isDataAsset?: boolean;
-  afterDeleteAction?: () => void;
+  afterDeleteAction?: (isSoftDelete?: boolean) => void;
   buttonClassName?: string;
   entityName: string;
   entityId?: string;
@@ -57,7 +56,6 @@ interface Props {
 
 const ManageButton: FC<Props> = ({
   allowSoftDelete,
-  isDataAsset,
   afterDeleteAction,
   buttonClassName,
   deleteMessage,
@@ -245,7 +243,6 @@ const ManageButton: FC<Props> = ({
           entityName={entityName || ''}
           entityType={entityType || ''}
           hardDeleteMessagePostFix={hardDeleteMessagePostFix}
-          isDataAsset={isDataAsset}
           isRecursiveDelete={isRecursiveDelete}
           softDeleteMessagePostFix={softDeleteMessagePostFix}
           visible={isDelete}

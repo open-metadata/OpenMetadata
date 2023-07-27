@@ -22,6 +22,7 @@ import { getPipelineByFqn, patchPipelineDetails } from 'rest/pipelineAPI';
 import { getContainerByName, patchContainerDetails } from 'rest/storageAPI';
 import { getTableDetailsByFQN, patchTableDetails } from 'rest/tableAPI';
 import { getTopicByFqn, patchTopicDetails } from 'rest/topicsAPI';
+import { refreshPage } from 'utils/CommonUtils';
 
 export const getAPIfromSource = (
   source: AssetsUnion
@@ -64,5 +65,16 @@ export const getEntityAPIfromSource = (
       return getTopicByFqn;
     case EntityType.CONTAINER:
       return getContainerByName;
+  }
+};
+
+export const handleDataAssetAfterDeleteAction = (isSoftDelete?: boolean) => {
+  if (isSoftDelete) {
+    setTimeout(() => {
+      refreshPage();
+    }, 1000);
+  } else {
+    window.history.pushState({}, '', '/');
+    refreshPage();
   }
 };

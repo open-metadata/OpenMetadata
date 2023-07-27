@@ -40,6 +40,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { restoreDataModel } from 'rest/dataModelsAPI';
+import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { getFeedCounts, refreshPage } from 'utils/CommonUtils';
 import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
 import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
@@ -361,8 +362,7 @@ const DataModelDetails = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
-            isDataAsset
-            afterDeleteAction={refreshPage}
+            afterDeleteAction={handleDataAssetAfterDeleteAction}
             dataAsset={dataModelData}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             permissions={dataModelPermissions}

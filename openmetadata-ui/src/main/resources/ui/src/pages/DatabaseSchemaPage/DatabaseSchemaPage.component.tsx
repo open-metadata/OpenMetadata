@@ -55,7 +55,7 @@ import {
 } from 'rest/databaseAPI';
 import { getFeedCount, postThread } from 'rest/feedsAPI';
 import { getTableList, TableListParams } from 'rest/tableAPI';
-import { refreshPage } from 'utils/CommonUtils';
+import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { default as appState } from '../../AppState';
 import { getDatabaseSchemaDetailsPath } from '../../constants/constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -558,9 +558,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             />
           ) : (
             <DataAssetsHeader
-              isDataAsset
               isRecursiveDelete
-              afterDeleteAction={refreshPage}
+              afterDeleteAction={handleDataAssetAfterDeleteAction}
               dataAsset={databaseSchema}
               entityType={EntityType.DATABASE_SCHEMA}
               permissions={databaseSchemaPermission}
