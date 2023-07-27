@@ -45,8 +45,8 @@
       "default": "noop"
     },
     "authProvider": {
-      "description": "Auth Provider like no-auth, azure , google, okta, auth0, customOidc, openmetadata",
-      "type": "string"
+      "description": "Auth Provider with which OpenMetadata service configured with.",
+      "$ref": "../entity/services/connections/metadata/openMetadataConnection.json#/definitions/authProvider"
     },
     "authConfig": {
       "description": "Auth Provider Configuration.",

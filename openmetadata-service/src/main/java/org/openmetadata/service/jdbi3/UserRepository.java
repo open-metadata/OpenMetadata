@@ -40,6 +40,7 @@ import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -243,17 +244,17 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public void initializeUsers(OpenMetadataApplicationConfig config) {
-    String providerType = config.getAuthenticationConfiguration().getProvider();
+    AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
     // Create Admins
     Set<String> adminUsers = new HashSet<>(config.getAuthorizerConfiguration().getAdminPrincipals());
     LOG.debug("Checking user entries for admin users {}", adminUsers);
     String domain = SecurityUtil.getDomain(config);
-    UserUtil.addUsers(providerType, adminUsers, domain, true);
+    UserUtil.addUsers(authProvider, adminUsers, domain, true);
 
     // Create Test Users
     LOG.debug("Checking user entries for test users");
     Set<String> testUsers = new HashSet<>(config.getAuthorizerConfiguration().getTestPrincipals());
-    UserUtil.addUsers(providerType, testUsers, domain, null);
+    UserUtil.addUsers(authProvider, testUsers, domain, null);
   }
 
   private List<EntityReference> getOwns(User user) throws IOException {

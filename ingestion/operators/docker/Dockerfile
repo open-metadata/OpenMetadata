@@ -80,8 +80,8 @@ RUN pip install --upgrade pip
 
 ARG INGESTION_DEPENDENCY="all"
 RUN pip install --upgrade pip
-RUN pip install "openmetadata-ingestion[airflow]~=1.2.0.0.dev0"
-RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=1.2.0.0.dev0"
+RUN pip install "openmetadata-ingestion[airflow]~=1.1.0.4"
+RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=1.1.0.4"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN echo "Image built for $(uname -m)"

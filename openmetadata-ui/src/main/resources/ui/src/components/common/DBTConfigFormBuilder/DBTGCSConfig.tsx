@@ -24,6 +24,7 @@ import { GCS_CONFIG } from './DBTFormEnum';
 interface Props extends DbtConfigS3GCS {
   gcsType?: GCS_CONFIG;
   enableDebugLog: boolean;
+  parsingTimeoutLimit: number;
 }
 
 export const DBTGCSConfig: FunctionComponent<Props> = ({
@@ -34,6 +35,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   includeTags = true,
   dbtClassificationName,
   enableDebugLog,
+  parsingTimeoutLimit,
 }: Props) => {
   const dbtPrefixConfigFields: FieldProp[] = [
     {
@@ -252,6 +254,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         descriptionId="gcs-update-description"
         enableDebugLog={enableDebugLog}
         includeTags={includeTags}
+        parsingTimeoutLimit={parsingTimeoutLimit}
       />
     </Fragment>
   );

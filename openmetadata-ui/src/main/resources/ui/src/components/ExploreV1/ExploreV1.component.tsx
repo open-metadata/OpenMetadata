@@ -15,7 +15,18 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import { Button, Col, Row, Space, Switch, Tabs, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Layout,
+  Menu,
+  Row,
+  Space,
+  Switch,
+  Typography,
+} from 'antd';
+import { Content } from 'antd/lib/layout/layout';
+import Sider from 'antd/lib/layout/Sider';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { useAdvanceSearch } from 'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import AppliedFilterText from 'components/Explore/AppliedFilterText/AppliedFilterText';
@@ -126,16 +137,23 @@ const ExploreV1: React.FC<ExploreProps> = ({
         key: tabSearchIndex,
         label: (
           <div data-testid={`${lowerCase(tabDetail.label)}-tab`}>
-            {tabDetail.label}
-            <span className="p-l-xs ">
-              {!isNil(tabCounts)
-                ? getCountBadge(
-                    tabCounts[tabSearchIndex as ExploreSearchIndex],
-                    '',
-                    tabSearchIndex === searchIndex
-                  )
-                : getCountBadge()}
-            </span>
+            <Space className="w-full justify-between">
+              <Typography.Text
+                className={
+                  tabSearchIndex === searchIndex ? 'text-primary' : ''
+                }>
+                {tabDetail.label}
+              </Typography.Text>
+              <span>
+                {!isNil(tabCounts)
+                  ? getCountBadge(
+                      tabCounts[tabSearchIndex as ExploreSearchIndex],
+                      '',
+                      tabSearchIndex === searchIndex
+                    )
+                  : getCountBadge()}
+              </span>
+            </Space>
           </div>
         ),
         count: tabCounts ? tabCounts[tabSearchIndex as ExploreSearchIndex] : 0,
@@ -281,148 +299,151 @@ const ExploreV1: React.FC<ExploreProps> = ({
     <div className="explore-page bg-white" data-testid="explore-page">
       <div className="w-full h-full">
         {tabItems.length > 0 && (
-          <>
-            <Row gutter={[8, 0]} wrap={false}>
-              <Col span={24}>
-                <Tabs
-                  activeKey={activeTabKey}
-                  className="explore-page-tabs"
-                  defaultActiveKey={defaultActiveTab}
-                  items={tabItems}
-                  onChange={(tab) => {
-                    tab && onChangeSearchIndex(tab as ExploreSearchIndex);
-                    setShowSummaryPanel(false);
-                  }}
-                />
-                <Row className="filters-row">
-                  <Col className="searched-data-container w-full">
-                    <Row gutter={[16, 16]}>
-                      <Col
-                        className="d-flex items-center justify-between"
-                        span={24}>
-                        <ExploreQuickFilters
-                          aggregations={aggregations}
-                          fields={selectedQuickFilters}
-                          index={activeTabKey}
-                          showDeleted={showDeleted}
-                          onAdvanceSearch={() => toggleModal(true)}
-                          onChangeShowDeleted={onChangeShowDeleted}
-                          onFieldValueSelect={handleQuickFiltersValueSelect}
+          <Layout hasSider className="bg-white">
+            <Sider className="bg-white border-right" width={230}>
+              <Typography.Title className="p-md p-b-0" level={5}>
+                {t('label.data-asset-plural')}
+              </Typography.Title>
+              <Menu
+                className="custom-menu"
+                data-testid="explore-left-panel"
+                items={tabItems}
+                mode="inline"
+                rootClassName="left-container"
+                selectedKeys={[defaultActiveTab]}
+                onClick={(info) => {
+                  info && onChangeSearchIndex(info.key as ExploreSearchIndex);
+                  setShowSummaryPanel(false);
+                }}
+              />
+            </Sider>
+            <Content>
+              <Row className="filters-row">
+                <Col className="searched-data-container w-full">
+                  <Row gutter={[0, 8]}>
+                    <Col>
+                      <ExploreQuickFilters
+                        aggregations={aggregations}
+                        fields={selectedQuickFilters}
+                        index={activeTabKey}
+                        showDeleted={showDeleted}
+                        onAdvanceSearch={() => toggleModal(true)}
+                        onChangeShowDeleted={onChangeShowDeleted}
+                        onFieldValueSelect={handleQuickFiltersValueSelect}
+                      />
+                    </Col>
+                    <Col
+                      className="d-flex items-center justify-end gap-4"
+                      flex={410}>
+                      <span className="flex-center">
+                        <Switch
+                          checked={showDeleted}
+                          data-testid="show-deleted"
+                          onChange={onChangeShowDeleted}
                         />
-
-                        <div className="d-flex items-center gap-4 m-l-auto m-r-xs">
-                          <span className="flex-center">
-                            <Switch
-                              checked={showDeleted}
-                              data-testid="show-deleted"
-                              onChange={onChangeShowDeleted}
-                            />
-                            <Typography.Text className="p-l-xs text-grey-muted">
-                              {t('label.deleted')}
-                            </Typography.Text>
-                          </span>
-                          {(quickFilters || sqlQuery) && (
-                            <Typography.Text
-                              className="text-primary self-center cursor-pointer"
-                              onClick={() => clearFilters()}>
-                              {t('label.clear-entity', {
-                                entity: '',
-                              })}
-                            </Typography.Text>
-                          )}
-
-                          <Typography.Text
-                            className="text-primary self-center cursor-pointer"
-                            data-testid="advance-search-button"
-                            onClick={() => toggleModal(true)}>
-                            {t('label.advanced-entity', {
-                              entity: '',
-                            })}
-                          </Typography.Text>
-                          <span className="sorting-dropdown-container">
-                            <SortingDropDown
-                              fieldList={tabsInfo[searchIndex].sortingFields}
-                              handleFieldDropDown={onChangeSortValue}
-                              sortField={sortValue}
-                            />
-                            <Button
-                              className="p-0"
-                              data-testid="sort-order-button"
-                              size="small"
-                              type="text"
-                              onClick={() =>
-                                onChangeSortOder(
-                                  isAscSortOrder
-                                    ? SORT_ORDER.DESC
-                                    : SORT_ORDER.ASC
-                                )
-                              }>
-                              {isAscSortOrder ? (
-                                <SortAscendingOutlined
-                                  style={{ fontSize: '14px' }}
-                                  {...sortProps}
-                                />
-                              ) : (
-                                <SortDescendingOutlined
-                                  style={{ fontSize: '14px' }}
-                                  {...sortProps}
-                                />
-                              )}
-                            </Button>
-                          </span>
-                        </div>
-                      </Col>
-
-                      {sqlQuery && (
-                        <Col span={24}>
-                          <AppliedFilterText
-                            filterText={sqlQuery}
-                            onEdit={() => toggleModal(true)}
-                          />
-                        </Col>
+                        <Typography.Text className="p-l-xs text-grey-muted">
+                          {t('label.deleted')}
+                        </Typography.Text>
+                      </span>
+                      {(quickFilters || sqlQuery) && (
+                        <Typography.Text
+                          className="text-primary self-center cursor-pointer"
+                          onClick={() => clearFilters()}>
+                          {t('label.clear-entity', {
+                            entity: '',
+                          })}
+                        </Typography.Text>
                       )}
-                    </Row>
-                  </Col>
-                </Row>
-              </Col>
-            </Row>
-            <PageLayoutV1
-              className="p-0 explore-page-layout"
-              pageTitle={t('label.explore')}
-              rightPanel={
-                showSummaryPanel &&
-                entityDetails && (
-                  <EntitySummaryPanel
-                    entityDetails={{ details: entityDetails }}
-                    handleClosePanel={handleClosePanel}
-                  />
-                )
-              }
-              rightPanelWidth={400}>
-              <Row className="p-t-xs">
-                <Col lg={{ offset: 3, span: 18 }} md={{ offset: 0, span: 24 }}>
-                  {!loading ? (
-                    <SearchedData
-                      isFilterSelected
-                      data={searchResults?.hits.hits ?? []}
-                      filter={parsedSearch}
-                      handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-                      isSummaryPanelVisible={showSummaryPanel}
-                      selectedEntityId={entityDetails?.id || ''}
-                      totalValue={
-                        tabCounts?.[searchIndex] ??
-                        searchResults?.hits.total.value ??
-                        0
-                      }
-                      onPaginationChange={onChangePage}
-                    />
-                  ) : (
-                    <Loader />
-                  )}
+
+                      <Typography.Text
+                        className="text-primary self-center cursor-pointer"
+                        data-testid="advance-search-button"
+                        onClick={() => toggleModal(true)}>
+                        {t('label.advanced-entity', {
+                          entity: '',
+                        })}
+                      </Typography.Text>
+                      <span className="sorting-dropdown-container">
+                        <SortingDropDown
+                          fieldList={tabsInfo[searchIndex].sortingFields}
+                          handleFieldDropDown={onChangeSortValue}
+                          sortField={sortValue}
+                        />
+                        <Button
+                          className="p-0"
+                          data-testid="sort-order-button"
+                          size="small"
+                          type="text"
+                          onClick={() =>
+                            onChangeSortOder(
+                              isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
+                            )
+                          }>
+                          {isAscSortOrder ? (
+                            <SortAscendingOutlined
+                              style={{ fontSize: '14px' }}
+                              {...sortProps}
+                            />
+                          ) : (
+                            <SortDescendingOutlined
+                              style={{ fontSize: '14px' }}
+                              {...sortProps}
+                            />
+                          )}
+                        </Button>
+                      </span>
+                    </Col>
+                    {sqlQuery && (
+                      <Col span={24}>
+                        <AppliedFilterText
+                          filterText={sqlQuery}
+                          onEdit={() => toggleModal(true)}
+                        />
+                      </Col>
+                    )}
+                  </Row>
                 </Col>
               </Row>
-            </PageLayoutV1>
-          </>
+              <PageLayoutV1
+                className="p-0 explore-page-layout"
+                pageTitle={t('label.explore')}
+                rightPanel={
+                  showSummaryPanel &&
+                  entityDetails && (
+                    <EntitySummaryPanel
+                      entityDetails={{ details: entityDetails }}
+                      handleClosePanel={handleClosePanel}
+                    />
+                  )
+                }
+                rightPanelWidth={400}>
+                <Row className="p-t-xs">
+                  <Col
+                    lg={{ offset: 2, span: 19 }}
+                    md={{ offset: 0, span: 24 }}>
+                    {!loading ? (
+                      <SearchedData
+                        isFilterSelected
+                        data={searchResults?.hits.hits ?? []}
+                        filter={parsedSearch}
+                        handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+                        isSummaryPanelVisible={showSummaryPanel}
+                        selectedEntityId={entityDetails?.id || ''}
+                        totalValue={
+                          tabCounts?.[searchIndex] ??
+                          searchResults?.hits.total.value ??
+                          0
+                        }
+                        onPaginationChange={onChangePage}
+                      />
+                    ) : (
+                      <Loader />
+                    )}
+                  </Col>
+                </Row>
+              </PageLayoutV1>
+            </Content>
+          </Layout>
         )}
       </div>
 
