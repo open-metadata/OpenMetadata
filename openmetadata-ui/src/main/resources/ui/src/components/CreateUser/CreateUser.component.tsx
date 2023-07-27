@@ -29,7 +29,8 @@ import { checkEmailInUse, generateRandomPwd } from 'rest/auth-API';
 import { getEntityName } from 'utils/EntityUtils';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import { EMAIL_REG_EX, passwordRegex } from '../../constants/regex.constants';
-import { AuthTypes } from '../../enums/signin.enum';
+
+import { AuthProvider } from 'generated/settings/settings';
 import { CreatePasswordGenerator } from '../../enums/user.enum';
 import {
   CreatePasswordType,
@@ -89,8 +90,8 @@ const CreateUser = ({
 
   const isAuthProviderBasic = useMemo(
     () =>
-      authConfig?.provider === AuthTypes.BASIC ||
-      authConfig?.provider === AuthTypes.LDAP,
+      authConfig?.provider === AuthProvider.Basic ||
+      authConfig?.provider === AuthProvider.LDAP,
     [authConfig]
   );
 
