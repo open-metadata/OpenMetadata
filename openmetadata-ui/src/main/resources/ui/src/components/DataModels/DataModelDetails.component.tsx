@@ -12,9 +12,7 @@
  */
 
 import { Card, Col, Row, Space, Tabs } from 'antd';
-import ActivityFeedProvider, {
-  useActivityFeedProvider,
-} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
@@ -22,6 +20,7 @@ import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
+import { withActivityFeed } from 'components/router/withActivityFeed';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
@@ -270,14 +269,12 @@ const DataModelDetails = ({
         ),
         key: EntityTabs.ACTIVITY_FEED,
         children: (
-          <ActivityFeedProvider>
-            <ActivityFeedTab
-              entityType={EntityType.DASHBOARD_DATA_MODEL}
-              fqn={dataModelData?.fullyQualifiedName ?? ''}
-              onFeedUpdate={getEntityFeedCount}
-              onUpdateEntityDetails={fetchDataModel}
-            />
-          </ActivityFeedProvider>
+          <ActivityFeedTab
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
+            fqn={dataModelData?.fullyQualifiedName ?? ''}
+            onFeedUpdate={getEntityFeedCount}
+            onUpdateEntityDetails={fetchDataModel}
+          />
         ),
       },
       ...(dataModelData?.sql
@@ -377,4 +374,4 @@ const DataModelDetails = ({
   );
 };
 
-export default DataModelDetails;
+export default withActivityFeed<DataModelDetailsProps>(DataModelDetails);
