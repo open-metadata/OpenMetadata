@@ -377,7 +377,7 @@ export const ActivityFeedTab = ({
         />
         {loader}
         <div
-          className={classNames('w-full', { 'd-none': loading })}
+          className="w-full"
           data-testid="observer-element"
           id="observer-element"
           ref={elementRef as RefObject<HTMLDivElement>}
