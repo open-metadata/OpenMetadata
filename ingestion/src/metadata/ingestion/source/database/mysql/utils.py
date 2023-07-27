@@ -15,6 +15,7 @@ MySQL SQLAlchemy Helper Methods
 # pylint: disable=protected-access,too-many-branches,too-many-statements,too-many-locals
 from sqlalchemy import util
 from sqlalchemy.dialects.mysql.enumerated import ENUM, SET
+from sqlalchemy.dialects.mysql.json import JSON
 from sqlalchemy.dialects.mysql.reflection import _strip_values
 from sqlalchemy.dialects.mysql.types import DATETIME, TIME, TIMESTAMP
 from sqlalchemy.sql import sqltypes
@@ -65,7 +66,7 @@ def parse_column(self, line, state):
     name, type_, args = spec["name"], spec["coltype"], spec["arg"]
 
     try:
-        col_type = self.dialect.ischema_names[type_]
+        col_type = self.dialect.ischema_names[type_.lower()]
     except KeyError:
         util.warn(f"Did not recognize type '{type_}' of column '{name}'")
         col_type = sqltypes.NullType
@@ -96,6 +97,9 @@ def parse_column(self, line, state):
 
         if issubclass(col_type, SET) and "" in type_args:
             type_kw["retrieve_as_bitwise"] = True
+
+    if issubclass(col_type, (JSON)):
+        type_kw.pop("collate")
 
     type_instance = col_type(*type_args, **type_kw)
 
