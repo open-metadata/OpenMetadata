@@ -8,7 +8,7 @@ slug: /deployment/kubernetes/eks
 OpenMetadata supports the Installation and Running of Application on Elastic Kubernetes Services (EKS) through Helm Charts.
 However, there are some additional configurations which needs to be done as prerequisites for the same.
 
-{%note%}
+{%note noteType="Warning"%}
 
 All the code snippets in this section assume the `default` namespace for kubernetes.
 This guide presumes you have AWS EKS Cluster already available.

@@ -8,7 +8,7 @@ slug: /deployment/kubernetes/on-prem
 OpenMetadata supports the Installation and Running of application on OnPremises Kubernetes through Helm Charts.
 However, there are some additional configurations which needs to be done as prerequisites for the same.
 
-{%note%}
+{%note noteType="Warning"%}
 
 This guide presumes you have an on premises Kubernetes cluster setup and you are installing OpenMetadata in `default` namespace.
 

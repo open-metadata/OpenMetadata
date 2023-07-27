@@ -15,7 +15,7 @@ The reason being that ElasticSearch Pods require Elevated permissions to run ini
 
 {%/note%}
 
-{%note%}
+{%note noteType="Warning"%}
 
 All the code snippets in this section assume the `default` namespace for kubernetes.
 
