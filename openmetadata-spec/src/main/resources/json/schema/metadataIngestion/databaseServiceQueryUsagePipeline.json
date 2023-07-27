@@ -27,6 +27,10 @@
       "type": "string",
       "default": "/tmp/query_log"
     },
+    "filterCondition": {
+      "description": "Configuration the condition to filter the query history.",
+      "type": "string"
+    },
     "resultLimit": {
       "description": "Configuration to set the limit for query logs",
       "type": "integer",

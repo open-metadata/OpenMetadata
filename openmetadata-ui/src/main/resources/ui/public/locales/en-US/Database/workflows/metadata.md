@@ -120,3 +120,10 @@ Here are some examples of scenarios where tables will get soft deleted if this f
 - If you already have `SchemaA` & `SchemaB` ingested in OpenMetadata ,then later you apply a `Schema Filter Pattern` to exclude `SchemaB`, ALL tables from `SchemaB` will be deleted due to this ingestion pipeline. This might be useful if you want to remove a full schema from OpenMetadata that you missed to filter out the first time.
 
 $$
+
+
+$$section
+### View Definition Parsing Timeout Limit $(id="viewParsingTimeoutLimit")
+
+Specify the timeout limit for parsing the view definition sql queries to perform the lineage analysis.
+$$

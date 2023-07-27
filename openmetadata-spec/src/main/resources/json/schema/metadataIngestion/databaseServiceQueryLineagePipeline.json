@@ -31,6 +31,15 @@
       "type": "integer",
       "default": "1000"
     },
+    "parsingTimeoutLimit": {
+      "description": "Configuration to set the timeout for parsing the query in seconds.",
+      "type": "integer",
+      "default": "300"
+    },
+    "filterCondition": {
+      "description": "Configuration the condition to filter the query history.",
+      "type": "string"
+    },
     "schemaFilterPattern": {
       "description": "Regex to only fetch tables or databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern"

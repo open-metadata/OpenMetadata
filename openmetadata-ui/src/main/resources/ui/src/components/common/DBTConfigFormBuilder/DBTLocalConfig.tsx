@@ -20,6 +20,7 @@ import { DbtConfigLocal } from './DBTConfigForm.interface';
 
 interface Props extends DbtConfigLocal {
   enableDebugLog: boolean;
+  parsingTimeoutLimit: number;
 }
 
 export const DBTLocalConfig: FunctionComponent<Props> = ({
@@ -30,6 +31,7 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
   includeTags = true,
   dbtClassificationName,
   enableDebugLog,
+  parsingTimeoutLimit,
 }: Props) => {
   const localConfigFields: FieldProp[] = [
     {
@@ -85,6 +87,7 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
         descriptionId="local-update-description"
         enableDebugLog={enableDebugLog}
         includeTags={includeTags}
+        parsingTimeoutLimit={parsingTimeoutLimit}
       />
     </Fragment>
   );
