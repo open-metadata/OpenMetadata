@@ -15,12 +15,12 @@ public class MigrationWorkflow {
   private final List<MigrationStep> migrations;
   private final MigrationDAO migrationDAO;
   private final Jdbi jdbi;
-  private boolean ignoreFileChecksum = false;
+  private final boolean forceMigrations;
 
-  public MigrationWorkflow(Jdbi jdbi, List<MigrationStep> migrationSteps, boolean ignoreFileChecksum) {
+  public MigrationWorkflow(Jdbi jdbi, List<MigrationStep> migrationSteps, boolean forceMigrations) {
     this.jdbi = jdbi;
     this.migrationDAO = jdbi.onDemand(MigrationDAO.class);
-    this.ignoreFileChecksum = ignoreFileChecksum;
+    this.forceMigrations = forceMigrations;
     // Sort Migration on the basis of version
     migrationSteps.sort(Comparator.comparing(MigrationStep::getMigrationVersion));
 
@@ -62,7 +62,7 @@ public class MigrationWorkflow {
         if (maxMigration.compareTo(step.getMigrationVersion()) < 0) {
           // This a new Step file
           result.add(step);
-        } else if (ignoreFileChecksum || !checksum.equals(step.getFileUuid())) {
+        } else if (forceMigrations || !checksum.equals(step.getFileUuid())) {
           // This migration step was ran already, if checksum is equal this step can be ignored
           LOG.warn(
               "[Migration Workflow] You are changing an older Migration File. This is not advised. Add your changes to latest Migrations.");

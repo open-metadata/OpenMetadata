@@ -308,7 +308,12 @@ const GlossaryPage = () => {
   }
 
   if (!(viewBasicGlossaryPermission || viewAllGlossaryPermission)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="mt-0-important"
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (glossaries.length === 0 && !isLoading) {

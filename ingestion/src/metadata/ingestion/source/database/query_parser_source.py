@@ -103,9 +103,14 @@ class QueryParserSource(Source[Union[TableQuery, AddLineageRequest]], ABC):
         return self.sql_stmt.format(
             start_time=start_time,
             end_time=end_time,
-            filters=self.filters,
+            filters=self.get_filters(),
             result_limit=self.source_config.resultLimit,
         )
+
+    def get_filters(self) -> str:
+        if self.source_config.filterCondition:
+            return f"{self.filters} AND {self.source_config.filterCondition}"
+        return self.filters
 
     def close(self):
         """

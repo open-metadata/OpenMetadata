@@ -28,6 +28,12 @@ class SQAStruct(types.String):
     """
 
 
+class SQADateTimeRange(types.String):
+    """
+    Custom DateTimeRange type definition
+    """
+
+
 class SQAUnion(types.String):
     """
     Custom Struct type definition

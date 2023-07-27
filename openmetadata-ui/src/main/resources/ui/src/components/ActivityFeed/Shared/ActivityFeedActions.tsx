@@ -139,7 +139,7 @@ const ActivityFeedActions = ({
 
   return (
     <>
-      <Space className="feed-actions" size={6}>
+      <Space className="feed-actions" data-testid="feed-actions" size={6}>
         {feed.type !== ThreadType.Task && !isPost && (
           <Popover
             destroyTooltipOnHide
