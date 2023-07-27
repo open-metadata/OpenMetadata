@@ -23,6 +23,7 @@ import { getContainerByName, patchContainerDetails } from 'rest/storageAPI';
 import { getTableDetailsByFQN, patchTableDetails } from 'rest/tableAPI';
 import { getTopicByFqn, patchTopicDetails } from 'rest/topicsAPI';
 import { refreshPage } from 'utils/CommonUtils';
+import { history } from 'utils/HistoryUtils';
 
 export const getAPIfromSource = (
   source: AssetsUnion
@@ -74,7 +75,7 @@ export const handleDataAssetAfterDeleteAction = (isSoftDelete?: boolean) => {
       refreshPage();
     }, 1000);
   } else {
-    window.history.pushState({}, '', '/');
-    refreshPage();
+    history.push('/');
+    history.go(0);
   }
 };
