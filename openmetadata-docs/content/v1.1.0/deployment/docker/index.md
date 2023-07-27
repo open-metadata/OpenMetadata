@@ -4,22 +4,25 @@ slug: /deployment/docker
 ---
 
 # Docker Deployment
-Deploying OpenMetadata in Docker is a great start! 
+
+This guide will help you setup the OpenMetadata Application using Docker Deployment.
 Before starting with the deployment make sure you follow all the below Prerequisites.
 
 ## Docker Deployment Architecture
 {% image src="/images/v1.1.0/deployment/docker/om_docker_architecture.png" alt="Docker Deployment Architecture" /%}
 
-High-level overview:
-
-- Deploying with MySQL 3306 /PostgreSQL 5432 : Download docker-compose.yml / docker-compose-postgres.yml from the link: https://github.com/open-metadata/OpenMetadata/releases
-/OpenMetadata/releases.
-- We are shipping the Elasticsearch service and Ul at 9200.
-- We are shipping the OpenMetadata server and Ul at 8585.
-- We are shipping the ingestion container (Airflow) at 8080.
-- You can change the port number's according to your requirement.
-
 ## Prerequisites
+
+### Configure OpenMetadata to use External Database and Search Engine
+
+For Production Deployment using Docker, we recommend to bring your own Databases and ElasticSearch Engine.
+
+### Configure External Ingestion Service
+
+OpenMetadata requires connectors to be scheduled to periodically fetch the metadata or you can use the OpenMetadata APIs to push the metadata as well
+1. OpenMetadata Ingestion Framework is flexible to run on any orchestrator. However we built an ability to deploy and manage connectors as pipelines from the UI. This requires the Airflow container we ship. However, it is recommended to 
+2. If your team prefers to run on any other orchestrator such as prefect, dagster or even github workflows. Please refer to our recent webinar on [How Ingestion Framework works](https://www.youtube.com/watch?v=i7DhG_gZMmE&list=PLa1l-WDhLreslIS_96s_DT_KdcDyU_Itv&index=10)
+
 ### Docker (version 20.10.0 or greater)
 [Docker](https://docs.docker.com/get-started/overview/) is an open-source platform for developing, shipping, and running applications. It enables you to separate your applications from your infrastructure, so you can deliver software quickly using OS-level virtualization. It helps deliver software in packages called Containers.
 
@@ -48,7 +51,7 @@ Upon running this command you should see output similar to the following.
 Docker Compose version v2.2.3
 ```
 
-### Install Docker Compose Version 2 on Linux
+#### Install Docker Compose Version 2 on Linux
 
 Follow the instructions [here](https://docs.docker.com/compose/cli-command/#install-on-linux) to install docker compose version 2
 
@@ -74,35 +77,88 @@ Follow the instructions [here](https://docs.docker.com/compose/cli-command/#inst
     > Docker Compose version v2.2.3
     ```
 
+## Minimum Sizing Requirements
+
+We recommend you to allocate openmetadata-server with minimum of 2vCPUs and 6 GiB Memory.
+
+For External Services that openmetadata depends on -
+- For the database, minimum 2 vCPUs and 2 GiB RAM (per instance) with 30 GiB of Storage Volume Attached (dynamic expansion up to 100 GiB)
+- For Elasticsearch, minimum 2 vCPUs and 2 GiB RAM (per instance) with 30 GiB of Storage volume attached
+
 ## Steps for Deploying OpenMetadata using Docker 
 
-- First download the docker-compose.yml file from the release page [here](https://github.com/open-metadata/OpenMetadata/releases/latest). The latest version is at the top of the page
-  - Deploying with MySQL:  Download `docker-compose.yml` file from the above link.
-  - Deploying with PostgreSQL: Download `docker-compose-postgres.yml` file from the above link.
+### 1. Create a directory for OpenMetadata
 
-- Create the directory for host volumes 
+Create a new directory for OpenMetadata and navigate into that directory.
+
 ```commandline
-mkdir -p $PWD/docker-volume/db-data
+mkdir openmetadata-docker && cd openmetadata-docker
 ```
 
-- Run the below command to deploy the OpenMetadata
+### 2. Download Docker Compose File from Github Release Branch
+
+Download the Docker Compose files from Release Branch. Head over to `docker` > `docker-compose-openmetadata` directory and download or copy contents of Docker compose files available there.
+
+For example, if we want to download Docker Compose file for Release version `1.1.0` -
+- Will navigate to [Github Repository](https://github.com/open-metadata/OpenMetadata)
+- Switch Branch to release version which will be `1.1.0`
+- Browse to `docker` > `docker-compose-openmetadata` directory
+- Download the Docker Compose and env files available in the directory
+
+To do this via terminal, just run the below commands -
 
 ```commandline
-docker compose up -d 
+wget https://github.com/open-metadata/OpenMetadata/blob/1.1.0/docker/docker-compose-openmetadata/docker-compose-openmetadata.yml
+wget https://github.com/open-metadata/OpenMetadata/blob/1.1.0/docker/docker-compose-openmetadata/env-mysql
 ```
-This command will pull the docker images of Openmetadata for MySQL, OpenMetadat-Server, OpenMetadata-Ingestion and Elasticsearch.
 
-Upon running this command you should see output similar to the following.
+If you are looking for Docker compose file with PostgreSQL, the command to download relevant files will be
+
 ```commandline
-+] Running 7/8
- ⠿ Network metadata_app_net                        Created                                                                                               0.2s
- ⠿ Volume "metadata_ingestion-volume-dag-airflow"  Created                                                                                               0.0s
- ⠿ Volume "metadata_ingestion-volume-dags"         Created                                                                                               0.0s
- ⠿ Volume "metadata_ingestion-volume-tmp"          Created                                                                                               0.0s
- ⠿ Container openmetadata_elasticsearch            Started                                                                                               5.9s
- ⠿ Container openmetadata_mysql                    Started                                                                                              38.3s
- ⠿ Container openmetadata_server                   Started                                                                                             124.8s
- ⠿ Container openmetadata_ingestion                Started                                                                                               0.3s
+wget https://github.com/open-metadata/OpenMetadata/blob/1.1.0/docker/docker-compose-openmetadata/docker-compose-openmetadata-postgres.yml
+wget https://github.com/open-metadata/OpenMetadata/blob/1.1.0/docker/docker-compose-openmetadata/env-postgres
+```
+
+### 3. Update Environment Variables required for OpenMetadata
+
+In the previous [step](#2-download-docker-compose-file-from-github-release-branch), we download two files, one is `docker-compose` and another is `environment file` required for docker compose.
+
+Identify and update the environment variables in the file to prepare openmetadata configurations.
+
+For example, we want to configure external database and search engine configurations. In that case, you will update the below section of environment variable file -
+
+```bash
+...
+# Database configuration for MySQL
+DB_DRIVER_CLASS="com.mysql.cj.jdbc.Driver"
+DB_SCHEME="mysql"
+DB_USE_SSL="true"
+DB_USER="<SQL_DATABASE_USERNAME>"
+DB_USER_PASSWORD="<SQL_DATABASE_PASSWORD>"
+DB_HOST="<SQL_DATABASE_ENDPOINT>"
+DB_PORT="<SQL_DATABASE_PORT>"
+OM_DATABASE="<SQL_DATABASE_NAME>"
+# ElasticSearch Configurations
+ELASTICSEARCH_HOST= "<ELASTICSEARCH_ENDPOINT>"
+ELASTICSEARCH_PORT="<ELASTICSEARCH_ENDPOINT_PORT>"
+ELASTICSEARCH_SCHEME="<ELASTICSEARCH_ENDPOINT_SCHEME>"
+ELASTICSEARCH_USER="<ELASTICSEARCH_USERNAME>"
+ELASTICSEARCH_PASSWORD="<ELASTICSEARCH_PASSWORD>"
+...
+```
+
+{% note noteType="Warning" %}
+
+- When setting up environment file if your custom password includes any special characters then make sure to follow the steps [here](https://github.com/open-metadata/OpenMetadata/issues/12110#issuecomment-1611341650).
+
+{% /note %}
+
+### 4. Start the Docker Compose Services
+
+Run the below command to deploy the OpenMetadata -
+
+```bash
+docker compose --env-file ./env-mysql up --detach
 ```
 
 You can validate that all containers are up by running with command `docker ps`.
@@ -111,115 +167,68 @@ You can validate that all containers are up by running with command `docker ps`.
 ❯ docker ps
 CONTAINER ID   IMAGE                                                  COMMAND                  CREATED          STATUS                    PORTS                                                            NAMES
 470cc8149826   openmetadata/server:1.0.0                             "./openmetadata-star…"   45 seconds ago   Up 43 seconds             3306/tcp, 9200/tcp, 9300/tcp, 0.0.0.0:8585-8586->8585-8586/tcp   openmetadata_server
-63578aacbff5   openmetadata/ingestion:1.0.0                           "./ingestion_depende…"   45 seconds ago   Up 43 seconds             0.0.0.0:8080->8080/tcp                                           openmetadata_ingestion
-9f5ee8334f4b   docker.elastic.co/elasticsearch/elasticsearch:7.10.2   "/tini -- /usr/local…"   45 seconds ago   Up 44 seconds             0.0.0.0:9200->9200/tcp, 0.0.0.0:9300->9300/tcp                   openmetadata_elasticsearch
-08947ab3424b   openmetadata/db:1.0.0                                  "/entrypoint.sh mysq…"   45 seconds ago   Up 44 seconds (healthy)   3306/tcp, 33060-33061/tcp                                        openmetadata_mysql
 ```
 
 In a few seconds, you should be able to access the OpenMetadata UI at [http://localhost:8585](http://localhost:8585)
+
 ## Port Mapping / Port Forwarding 
 
-### For OpenMetadata-Server 
-We are shipping the OpenMetadata server and UI at `8585`, and the ingestion container (Airflow) at `8080`. You can
-change the port number's according to your requirement. As an example, You could
-update the ports to serve OpenMetadata Server and UI  at port `80`
+We are shipping the OpenMetadata server and UI at container port and host port `8585`. You can change the host port number according to your requirement. 
+As an example, You could update the ports to serve OpenMetadata Server and UI  at port `80`
 
-To achieve this 
+To achieve this -
 - You just have to update the ports mapping of the openmetadata-server in the `docker-compose.yml` file under `openmetadata-server` docker service section.
 
 ```yaml
+...
 ports:
   - "80:8585"
+...
 ```
-- Once the port is updated if there are any containers running remove them first using `docker compose down` command and then  recreate the containers once again by below command 
+
+- Once the port is updated if there are any containers running remove them first using `docker compose down` command and then recreate the containers once again by below command 
+
 ```commandline
-docker compose up --build -d 
-```
-### For Ingestion-Server
-We are shipping the OpenMetadata server and UI at `8585`, and the ingestion container (Airflow) at `8080`. You can
-change the port number's according to your requirement. As an example, You could
-update the ports to serve Ingestion  Server and UI  at port `80`
-
-To achieve this 
-- You just have to update the ports mapping of the openmetadata-server in the `docker-compose.yml` file under `ingestion-server` docker service section.
-
-```yaml
-ports:
-  - "80:8080"
-```
-- Also update the Airflow environment variable in openmetadata-server section 
- ```commandline
- AIRFLOW_HOST: '<AIRFLOW_HOST:-<AIRFLOW_HOST:80>'
- ```
-
-- Once the port is updated if there are any containers running remove them first using `docker compose down` command and then  recreate the containers once again by below command 
-```commandline
-docker compose up --build -d 
-```
-## PROD Deployment of OpenMetadata Using Docker
-If you are planning on going to PROD, we recommend to validate below points:
-- MySQL and OpenSearch (ElasticSearch) are available.
-- OpenMetadata-Server require the minimum configuration of 2vCPU and 6Memory (GiB)
-- OpenMetadata-Ingestion require the minimum configuration of 2vCPU and 8Memory (GiB)
-- We also recommend to bind Docker Volumes for data persistence. Minimum disk space required would be 128 Gib. Learn how to do so [here](/deployment/docker/volumes).
-
-{% note noteType="Warning" %}
-
-- When setting up environment file if your custom password includes any special characters then make sure to follow the steps [here](https://github.com/open-metadata/OpenMetadata/issues/12110#issuecomment-1611341650).
-
-{% /note %}
-
-
-### Steps for Deploying Ingestion 
-- Download the docker-compose.yml file from the release page [here](https://github.com/open-metadata/OpenMetadata/releases).
-- Update the environment variables below for OpenMetadata-Ingestion Docker Compose backed systems to connect with Database. 
-```
-# MySQL Environment Variables for ingestion service
-AIRFLOW_DB_HOST='<DB_HOST_NAME>'
-AIRFLOW_DB_PORT='<DB_PORT>'
-AIRFLOW_DB='<AIRFLOW_DATABASE>'
-AIRFLOW_DB_SCHEME='<AIRFLOW_DB_SCHEME>'
-DB_USER='<AIRFLOW_DB_USER>'
-DB_PASSWORD='<AIRFLOW_DB_PASSWORD>'
-```
-Once the environment variables values with the RDS are updated then provide this environment variable file as part of docker compose command.
-
-```
-docker compose --env-file ./config/.env.prod up -d openmetadata_ingestion
+docker compose up --detach
 ```
 
-### Steps for Deploying OpenMetadata-Server
-- Download the docker-compose.yml file from the release page [here](https://github.com/open-metadata/OpenMetadata/releases).
-- Update the environment variables below for OpenMetadata-Ingestion Docker Compose backed systems to connect with Database and ElasticSearch and Ingestion.
-```
-# MySQL Environment Variables
-DB_DRIVER_CLASS='com.mysql.cj.jdbc.Driver'
-DB_SCHEME='mysql'
-DB_USE_SSL='true'
-DB_USER_PASSWORD='<OPENMETADATA_DB_USER_PASSWORD>'
-DB_HOST='<DB_HOST>'
-DB_USER='<OPENMETADATA__USER_NAME>'
-OM_DATABASE='<OPENMETADATA_DATABASE_NAME>'
-DB_PORT='<DB_PORT>'
-# ElasticSearch Environment Variables
-SEARCH_TYPE = 'opensearch'
-ELASTICSEARCH_SOCKET_TIMEOUT_SECS='60'
-ELASTICSEARCH_USER='<ELASTICSEARCH_USERNAME>'
-ELASTICSEARCH_CONNECTION_TIMEOUT_SECS='5'
-ELASTICSEARCH_PORT='443'
-ELASTICSEARCH_SCHEME='https'
-ELASTICSEARCH_BATCH_SIZE='10'
-ELASTICSEARCH_HOST='<ELASTICSEARCH_HOST_URL>'
-ELASTICSEARCH_PASSWORD='<ELASTICSEARCH_PASSWORD>'
-# Ingestion or Airflow Environment Variables
-AIRFLOW_HOST: '<AIRFLOW_HOST_URL>'
-SERVER_HOST_API_URL: '<OPENMETADATA_HOST_URL_WITH_SCHEME/api>'
-```
-Once the environment variables values with the RDS are updated then provide this environment variable file as part of docker compose command.
+## Run OpenMetadata with a load balancer
+
+You may put one or more OpenMetadata instances behind a load balancer for reverse proxying. To do this you will need to add one or more entries to the configuration file for your reverse proxy.
+
+### Apache mod_proxy
+
+To use the Apache mod_proxy module as a reverse proxy for load balancing, update the VirtualHost tag in your Apache config file to resemble the following.
 
 ```
-docker compose --env-file ./config/.env.prod up -d openmetadata_server
+<VirtualHost *:80>
+    <Proxy balancer://mycluster>
+        BalancerMember http://127.0.0.1:8585 <!-- First OpenMetadata server -->
+        BalancerMember http://127.0.0.2:8686 <!-- Second OpenMetadata server -->
+    </Proxy>
+
+    ProxyPreserveHost On
+
+    ProxyPass / balancer://mycluster/
+    ProxyPassReverse / balancer://mycluster/
+</VirtualHost>
 ```
+
+### Nginx
+
+To use OpenMetadata behind an Nginx reverse proxy, add an entry resembling the following the http context of your Nginx configuration file for each OpenMetadata instance.
+
+```
+server {
+    access_log /var/log/nginx/stage-reverse-access.log;
+    error_log /var/log/nginx/stage-reverse-error.log;
+    server_name stage.open-metadata.org;
+    location / {
+        proxy_pass http://127.0.0.1:8585;
+    }
+}
+```
+
 ## Run OpenMetadata with AWS Services
 
 If you are running OpenMetadata in AWS, it is recommended to use [Amazon RDS](https://docs.aws.amazon.com/rds/index.html) and [Amazon OpenSearch Service](https://docs.aws.amazon.com/opensearch-service/?id=docs_gateway).
@@ -262,8 +271,8 @@ ELASTICSEARCH_PASSWORD='<ELASTICSEARCH_PASSWORD>'
 
 Replace the environment variables values with the RDS and OpenSearch Service ones and then provide this environment variable file as part of docker compose command.
 
-```
-docker compose --env-file ./config/.env.prod up -d openmetadata_server
+```bash
+docker compose --env-file ./env-mysql up --detach
 ```
 
 ## Troubleshooting
@@ -289,26 +298,20 @@ OPENMETADATA_HEAP_OPTS="-Xmx2G -Xms2G"
 
 The flag `Xmx` specifies the maximum memory allocation pool for a Java virtual machine (JVM), while `Xms` specifies the initial memory allocation pool.
 
-Restart the OpenMetadata Docker Compose Application using `docker compose --env-file my-env-file -f docker-compose.yml up -d` which will recreate the containers with new environment variable values you have provided.
+Restart the OpenMetadata Docker Compose Application using `docker compose --env-file <my-env-file> -f docker-compose.yml up --detach` which will recreate the containers with new environment variable values you have provided.
 
-# Production Deployment
+## Security
 
-If you are planning on going to PROD, we also recommend taking a look at the following
-other deployment  strategies:
+Please follow our [Enable Security Guide](/deployment/docker/security) to configure security for your OpenMetadata
+installation.
 
-{%inlineCalloutContainer%}
-  {%inlineCallout
-    color="violet-70"
-    icon="storage"
-    bold="Deploy on Bare Metal"
-    href="/deployment/bare-metal"%}
-    Deploy OpenMetadata directly using the binaries.
-  {%/inlineCallout%}
-  {%inlineCallout
-    color="violet-70"
-    icon="fit_screen"
-    bold="Deploy on Kubernetes"
-    href="/deployment/kubernetes"%}
-    Deploy and scale with Kubernetes
-  {%/inlineCallout%}
-{%/inlineCalloutContainer%}
+## Advanced
+
+If you want to persist your data, prepare [Named Volumes](/deployment/docker/volumes) for the containers.
+
+## Next Steps
+
+1. Visit the [Features](/releases/features) overview page and explore the OpenMetadata UI.
+2. Visit the [Connectors](/connectors) documentation to see what services you can integrate with
+   OpenMetadata.
+3. Visit the [API](/swagger.html) documentation and explore the rich set of OpenMetadata APIs.
