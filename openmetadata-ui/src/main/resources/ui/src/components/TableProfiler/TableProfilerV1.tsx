@@ -46,6 +46,7 @@ import {
   map,
   toLower,
 } from 'lodash';
+import { DateTime } from 'luxon';
 import Qs from 'qs';
 import React, {
   FC,
@@ -59,6 +60,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import { getLatestTableProfileByFqn } from 'rest/tableAPI';
 import { getListTestCase, ListTestCaseParams } from 'rest/testAPI';
+import { bytesToSize } from 'utils/StringsUtils';
 import { ReactComponent as ColumnProfileIcon } from '../../assets/svg/column-profile.svg';
 import { ReactComponent as DataQualityIcon } from '../../assets/svg/data-quality.svg';
 import { ReactComponent as SettingIcon } from '../../assets/svg/ic-settings-primery.svg';
@@ -251,6 +253,18 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
       {
         title: `${t('label.profile-sample-type', { type: '' })}`,
         value: getProfileSampleValue(),
+      },
+      {
+        title: t('label.size'),
+        value: bytesToSize(profile?.sizeInByte ?? 0),
+      },
+      {
+        title: t('label.created-date'),
+        value: profile?.createDateTime
+          ? DateTime.fromJSDate(new Date(profile?.createDateTime))
+              .toUTC()
+              .toFormat('MMM dd, yyyy HH:mm')
+          : '--',
       },
     ];
   }, [profile, tableTests]);
@@ -604,11 +618,14 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
             )}
             {!isDataQuality && (
               <Col span={selectedColumn ? 14 : 24}>
-                <Row wrap gutter={[16, 16]}>
+                <Row
+                  wrap
+                  className={classNames(
+                    activeColumnFqn ? 'justify-start' : 'justify-between'
+                  )}
+                  gutter={[16, 16]}>
                   {overallSummery.map((summery) => (
-                    <Col
-                      key={summery.title}
-                      span={selectedColumn ? undefined : 8}>
+                    <Col key={summery.title}>
                       <SummaryCard
                         className={classNames(summery.className, 'h-full')}
                         showProgressBar={false}

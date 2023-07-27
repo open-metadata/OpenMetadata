@@ -15,9 +15,13 @@ import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlac
 import Loader from 'components/Loader/Loader';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
 import { Thread } from 'generated/entity/feed/thread';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getFeedListWithRelativeDays } from 'utils/FeedUtils';
+import { ReactComponent as ActivityFeedIcon } from '../../../assets/svg/activity-feed.svg';
+import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task.svg';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
+import { ActivityFeedTabs } from '../ActivityFeedTab/ActivityFeedTab.interface';
 import './activity-feed-list.less';
 
 interface ActivityFeedListV1Props {
@@ -29,6 +33,7 @@ interface ActivityFeedListV1Props {
   hidePopover: boolean;
   isForFeedTab?: boolean;
   emptyPlaceholderText: string;
+  tab: ActivityFeedTabs;
 }
 
 const ActivityFeedListV1 = ({
@@ -40,8 +45,12 @@ const ActivityFeedListV1 = ({
   hidePopover = false,
   isForFeedTab = false,
   emptyPlaceholderText,
+  tab,
 }: ActivityFeedListV1Props) => {
+  const { t } = useTranslation();
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
+
+  const isTaskTab = useMemo(() => tab === ActivityFeedTabs.TASKS, [tab]);
 
   useEffect(() => {
     const { updatedFeedList } = getFeedListWithRelativeDays(feedList);
@@ -59,15 +68,26 @@ const ActivityFeedListV1 = ({
   }
 
   return (
-    <div className="feed-list-container p-y-md m-b-sm" id="feedData">
+    <div className="feed-list-container p-y-md m-b-sm h-full" id="feedData">
       {entityThread.length === 0 && (
         <div
           className="h-full p-x-md"
           data-testid="no-data-placeholder-container">
           <ErrorPlaceHolder
-            size={SIZE.MEDIUM}
+            icon={
+              isTaskTab ? (
+                <TaskIcon height={24} width={24} />
+              ) : (
+                <ActivityFeedIcon height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
+              )
+            }
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
             <Typography.Paragraph style={{ marginBottom: '0' }}>
+              {isTaskTab && (
+                <Typography.Text strong>
+                  {t('message.no-open-issues')} <br />
+                </Typography.Text>
+              )}
               {emptyPlaceholderText}
             </Typography.Paragraph>
           </ErrorPlaceHolder>
