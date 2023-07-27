@@ -76,7 +76,7 @@ USER airflow
 ARG INGESTION_DEPENDENCY="all"
 RUN pip install --upgrade pip
 RUN pip install "openmetadata-managed-apis~=1.1.0.4" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.6.3/constraints-3.9.txt"
-RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=1.2.0.0.dev0"
+RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=1.1.0.4"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN echo "Image built for $(uname -m)"
