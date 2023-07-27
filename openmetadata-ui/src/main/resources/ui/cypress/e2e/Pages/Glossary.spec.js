@@ -76,10 +76,10 @@ const validateForm = () => {
   cy.get('#name_help')
     .scrollIntoView()
     .should('be.visible')
-    .contains('name is required');
+    .contains('Name is required');
   cy.get('#description_help')
     .should('be.visible')
-    .contains('description is required');
+    .contains('Description is required');
 
   // max length validation
   cy.get('[data-testid="name"]')
