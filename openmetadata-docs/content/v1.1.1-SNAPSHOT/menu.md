@@ -513,10 +513,14 @@ site_menu:
     url: /connectors/ingestion/workflows/usage
   - category: Connectors / Ingestion / Workflows / Usage / Usage Workflow Through Query Logs
     url: /connectors/ingestion/workflows/usage/usage-workflow-query-logs
+  - category: Connectors / Ingestion / Workflows / Usage / Usage Query Filtering
+    url: /connectors/ingestion/workflows/usage/filter-query-set
   - category: Connectors / Ingestion / Workflows / Lineage
     url: /connectors/ingestion/workflows/lineage
   - category: Connectors / Ingestion / Workflows / Lineage / Lineage Workflow Through Query Logs
     url: /connectors/ingestion/workflows/lineage/lineage-workflow-query-logs
+  - category: Connectors / Ingestion / Workflows / Lineage / Lineage Query Filtering
+    url: /connectors/ingestion/workflows/lineage/filter-query-set
   - category: Connectors / Ingestion / Workflows / dbt
     url: /connectors/ingestion/workflows/dbt
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt UI

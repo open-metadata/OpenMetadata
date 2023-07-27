@@ -17,6 +17,7 @@ import {
   DBTBucketDetails,
 } from 'generated/metadataIngestion/dbtPipeline';
 import React from 'react';
+import { dbtParsingTimeoutLimit } from './DBTFormConstants';
 import { GCS_CONFIG } from './DBTFormEnum';
 import { DBTGCSConfig } from './DBTGCSConfig';
 
@@ -27,6 +28,7 @@ const mockProps = {
   dbtClassificationName: '',
   dbtSecurityConfig: {} as Credentials,
   dbtPrefixConfig: {} as DBTBucketDetails,
+  parsingTimeoutLimit: dbtParsingTimeoutLimit,
 };
 
 jest.mock('./DBTCommonFields.component', () =>
