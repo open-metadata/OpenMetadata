@@ -18,6 +18,7 @@ import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth
 import BrandImage from 'components/common/BrandImage/BrandImage';
 import Loader from 'components/Loader/Loader';
 import LoginButton from 'components/LoginButton/LoginButton';
+import { AuthProvider } from 'generated/settings/settings';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -25,7 +26,6 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
-import { AuthTypes } from '../../enums/signin.enum';
 import localState from '../../utils/LocalStorageUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import './login.style.less';
@@ -49,14 +49,14 @@ const SigninPage = () => {
   const { isAuthProviderBasic } = useMemo(() => {
     return {
       isAuthProviderBasic:
-        authConfig?.provider === AuthTypes.BASIC ||
-        authConfig?.provider === AuthTypes.LDAP,
+        authConfig?.provider === AuthProvider.Basic ||
+        authConfig?.provider === AuthProvider.LDAP,
     };
   }, [authConfig]);
 
   const { isAuthProviderLDAP } = useMemo(() => {
     return {
-      isAuthProviderLDAP: authConfig?.provider === AuthTypes.LDAP,
+      isAuthProviderLDAP: authConfig?.provider === AuthProvider.LDAP,
     };
   }, [authConfig]);
 
@@ -93,45 +93,45 @@ const SigninPage = () => {
     let ssoBrandLogo;
     let ssoBrandName;
     switch (authConfig?.provider) {
-      case AuthTypes.GOOGLE: {
+      case AuthProvider.Google: {
         ssoBrandLogo = Icons.GOOGLE_ICON;
         ssoBrandName = 'Google';
 
         break;
       }
-      case AuthTypes.CUSTOM_OIDC: {
+      case AuthProvider.CustomOidc: {
         ssoBrandName = authConfig?.providerName
           ? authConfig?.providerName
           : 'SSO';
 
         break;
       }
-      case AuthTypes.SAML: {
+      case AuthProvider.Saml: {
         ssoBrandName = authConfig?.providerName
           ? authConfig?.providerName
           : 'SAML SSO';
 
         break;
       }
-      case AuthTypes.OKTA: {
+      case AuthProvider.Okta: {
         ssoBrandLogo = Icons.OKTA_ICON;
         ssoBrandName = 'Okta';
 
         break;
       }
-      case AuthTypes.AWS_COGNITO: {
+      case AuthProvider.AwsCognito: {
         ssoBrandLogo = Icons.COGNITO_ICON;
         ssoBrandName = 'AWS Cognito';
 
         break;
       }
-      case AuthTypes.AZURE: {
+      case AuthProvider.Azure: {
         ssoBrandLogo = Icons.AZURE_ICON;
         ssoBrandName = 'Azure';
 
         break;
       }
-      case AuthTypes.AUTH0: {
+      case AuthProvider.Auth0: {
         ssoBrandLogo = Icons.AUTH0_ICON;
         ssoBrandName = 'Auth0';
 
