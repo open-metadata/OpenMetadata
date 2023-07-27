@@ -447,10 +447,7 @@ export const AuthProvider = ({
       if (isSecureMode) {
         const provider = authConfig?.provider;
         // show an error toast if provider is null or not supported
-        if (
-          provider &&
-          Object.values(AuthProviderEnum).includes(provider as AuthProviderEnum)
-        ) {
+        if (provider && Object.values(AuthProviderEnum).includes(provider)) {
           const configJson = getAuthConfig(authConfig);
           setJwtPrincipalClaims(authConfig.jwtPrincipalClaims);
           initializeAxiosInterceptors();
