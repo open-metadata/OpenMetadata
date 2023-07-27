@@ -14,12 +14,9 @@ Helper functions to handle OpenMetadata Entities' properties
 
 import re
 import string
-from functools import singledispatch
-from typing import Type, TypeVar, Union
+from typing import Any, Type, TypeVar, Union
 
 from pydantic import BaseModel
-
-from metadata.generated.schema.type import basic
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -61,19 +58,14 @@ def get_entity_type(
     return class_name
 
 
-@singledispatch
-def model_str(arg) -> str:
+def model_str(arg: Any) -> str:
     """
-    Default model stringifying method
+    Default model stringifying method.
+
+    Some elements such as FQN, EntityName, UUID
+    have the actual value under the pydantic base __root__
     """
+    if hasattr(arg, "__root__"):
+        return str(arg.__root__)
+
     return str(arg)
-
-
-@model_str.register(basic.Uuid)
-@model_str.register(basic.FullyQualifiedEntityName)
-@model_str.register(basic.EntityName)
-def _(arg) -> str:
-    """
-    Models with __root__
-    """
-    return str(arg.__root__)

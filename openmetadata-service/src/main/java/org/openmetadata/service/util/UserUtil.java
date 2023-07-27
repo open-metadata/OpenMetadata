@@ -15,13 +15,7 @@ package org.openmetadata.service.util;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.AUTH_0;
-import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.AZURE;
-import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.CUSTOM_OIDC;
-import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.GOOGLE;
-import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.OKTA;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
-import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.SSO;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
@@ -32,15 +26,14 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.api.configuration.airflow.AuthConfiguration;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
-import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -57,17 +50,17 @@ public final class UserUtil {
     // Private constructor for util class
   }
 
-  public static void addUsers(String providerType, Set<String> adminUsers, String domain, Boolean isAdmin) {
+  public static void addUsers(AuthProvider authProvider, Set<String> adminUsers, String domain, Boolean isAdmin) {
     try {
       for (String username : adminUsers) {
-        createOrUpdateUser(providerType, username, domain, isAdmin);
+        createOrUpdateUser(authProvider, username, domain, isAdmin);
       }
     } catch (Exception ex) {
       LOG.error("[BootstrapUser] Encountered Exception while bootstrapping admin user", ex);
     }
   }
 
-  private static void createOrUpdateUser(String providerType, String username, String domain, Boolean isAdmin)
+  private static void createOrUpdateUser(AuthProvider authProvider, String username, String domain, Boolean isAdmin)
       throws IOException {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     User updatedUser;
@@ -81,7 +74,7 @@ public final class UserUtil {
       updatedUser = originalUser;
 
       // Update Auth Mechanism if not present, and send mail to the user
-      if (providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.value())) {
+      if (authProvider.equals(AuthProvider.BASIC)) {
         if (originalUser.getAuthenticationMechanism() == null
             || originalUser.getAuthenticationMechanism().equals(new AuthenticationMechanism())) {
           updateUserWithHashedPwd(updatedUser, getPassword());
@@ -99,7 +92,7 @@ public final class UserUtil {
     } catch (EntityNotFoundException e) {
       updatedUser = user(username, domain, username).withIsAdmin(isAdmin).withIsEmailVerified(true);
       // Update Auth Mechanism if not present, and send mail to the user
-      if (providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.value())) {
+      if (authProvider.equals(AuthProvider.BASIC)) {
         updateUserWithHashedPwd(updatedUser, getPassword());
         EmailUtil.sendInviteMailToAdmin(updatedUser, ADMIN_USER_NAME);
       }
@@ -178,55 +171,13 @@ public final class UserUtil {
         openMetadataApplicationConfig.getPipelineServiceClientConfiguration();
     AuthenticationMechanism authMechanism = originalUser != null ? originalUser.getAuthenticationMechanism() : null;
     // the user did not have an auth mechanism and auth config is present
-    if (authConfigPresent(pipelineServiceClientConfiguration) && authMechanism == null) {
-      AuthConfiguration authConfig = pipelineServiceClientConfiguration.getAuthConfig();
-      String currentAuthProvider = openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider();
-      // if the auth provider is "openmetadata" in the configuration set JWT as auth mechanism
-      if ("openmetadata".equals(pipelineServiceClientConfiguration.getAuthProvider())
-          && !"basic".equals(currentAuthProvider)) {
-        OpenMetadataJWTClientConfig jwtClientConfig = authConfig.getOpenmetadata();
-        authMechanism = buildAuthMechanism(JWT, buildJWTAuthMechanism(jwtClientConfig, user));
-        // TODO: https://github.com/open-metadata/OpenMetadata/issues/7712
-      } else if (!"basic".equals(currentAuthProvider)) {
-        switch (currentAuthProvider) {
-          case "no-auth":
-            break;
-          case "azure":
-            authMechanism = buildAuthMechanism(SSO, buildAuthMechanismConfig(AZURE, authConfig.getAzure()));
-            break;
-          case "google":
-            authMechanism = buildAuthMechanism(SSO, buildAuthMechanismConfig(GOOGLE, authConfig.getGoogle()));
-            break;
-          case "okta":
-            authMechanism = buildAuthMechanism(SSO, buildAuthMechanismConfig(OKTA, authConfig.getOkta()));
-            break;
-          case "auth0":
-            authMechanism = buildAuthMechanism(SSO, buildAuthMechanismConfig(AUTH_0, authConfig.getAuth0()));
-            break;
-          case "custom-oidc":
-            authMechanism = buildAuthMechanism(SSO, buildAuthMechanismConfig(CUSTOM_OIDC, authConfig.getCustomOidc()));
-            break;
-          default:
-            throw new IllegalArgumentException(
-                String.format("Unexpected auth provider [%s] for bot [%s]", currentAuthProvider, user.getName()));
-        }
-      } else {
-        authMechanism = buildAuthMechanism(JWT, buildJWTAuthMechanism(null, user));
-      }
-    } else {
-      // if auth config not present in airflow configuration and the user did not have an auth mechanism
-      if (authMechanism == null) {
-        authMechanism = buildAuthMechanism(JWT, buildJWTAuthMechanism(null, user));
-      }
+    if (authMechanism == null) {
+      authMechanism = buildAuthMechanism(JWT, buildJWTAuthMechanism(null, user));
     }
     user.setAuthenticationMechanism(authMechanism);
     user.setDescription(user.getDescription());
     user.setDisplayName(user.getDisplayName());
     return addOrUpdateUser(user);
-  }
-
-  private static boolean authConfigPresent(PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
-    return pipelineServiceClientConfiguration != null && pipelineServiceClientConfiguration.getAuthConfig() != null;
   }
 
   private static JWTAuthMechanism buildJWTAuthMechanism(OpenMetadataJWTClientConfig jwtClientConfig, User user) {
@@ -235,11 +186,6 @@ public final class UserUtil {
         : new JWTAuthMechanism()
             .withJWTToken(jwtClientConfig.getJwtToken())
             .withJWTTokenExpiry(JWTTokenExpiry.Unlimited);
-  }
-
-  private static SSOAuthMechanism buildAuthMechanismConfig(
-      SSOAuthMechanism.SsoServiceType ssoServiceType, Object config) {
-    return new SSOAuthMechanism().withSsoServiceType(ssoServiceType).withAuthConfig(config);
   }
 
   private static AuthenticationMechanism buildAuthMechanism(AuthenticationMechanism.AuthType authType, Object config) {
