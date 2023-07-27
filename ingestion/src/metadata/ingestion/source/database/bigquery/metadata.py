@@ -54,7 +54,6 @@ from metadata.generated.schema.security.credentials.gcpValues import (
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_SCHEMA_DESCRIPTION,
 )
@@ -318,8 +317,6 @@ class BigquerySource(CommonDbSourceService):
             self.service_connection.credentials.gcpConfig.projectId = SingleProjectId(
                 __root__=database_name
             )
-        self.close()  # Closing credential file created during test connection flow
-        self.engine = get_connection(self.service_connection)
         self.inspector = inspect(self.engine)
 
     def get_database_names(self) -> Iterable[str]:
