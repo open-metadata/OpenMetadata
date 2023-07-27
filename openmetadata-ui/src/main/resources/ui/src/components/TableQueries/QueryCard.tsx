@@ -22,7 +22,11 @@ import Qs from 'qs';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
-import { parseSearchParams, sqlQueryValidator } from 'utils/Query/QueryUtils';
+import {
+  INVALID_SQL_ERROR,
+  parseSearchParams,
+  sqlQueryValidator,
+} from 'utils/Query/QueryUtils';
 import { getQueryPath } from 'utils/RouterUtils';
 import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
 import { CSMode } from '../../enums/codemirror.enum';
@@ -113,7 +117,7 @@ const QueryCard: FC<QueryCardProp> = ({
       setSqlQuery((pre) => ({ ...pre, isLoading: false }));
       setIsEditMode(false);
     } catch (error) {
-      if (error === 'SQL Invalid') {
+      if (error === INVALID_SQL_ERROR) {
         setIsSqlInvalid(true);
       }
     }

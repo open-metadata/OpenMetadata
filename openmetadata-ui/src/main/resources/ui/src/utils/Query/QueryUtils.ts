@@ -53,6 +53,8 @@ export const stringifySearchParams = (param: QuerySearchParams) => {
   return Qs.stringify(param);
 };
 
+export const INVALID_SQL_ERROR = 'SQL Invalid';
+
 export const sqlQueryValidator = async (value: string) => {
   try {
     const parser = new NodeSQLParser.Parser();
@@ -60,6 +62,6 @@ export const sqlQueryValidator = async (value: string) => {
 
     return Promise.resolve('OK');
   } catch (error) {
-    return Promise.reject('SQL Invalid');
+    return Promise.reject(INVALID_SQL_ERROR);
   }
 };
