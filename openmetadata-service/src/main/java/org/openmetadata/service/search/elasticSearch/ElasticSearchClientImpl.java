@@ -357,13 +357,22 @@ public class ElasticSearchClientImpl implements SearchClient {
     BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(filter);
     searchSourceBuilder
         .aggregation(
-            AggregationBuilders.terms(fieldName)
+            AggregationBuilders.terms(String.format("%s.%s", fieldName, "caseSensitive"))
                 .field(fieldName)
                 .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE)
                 .includeExclude(new IncludeExclude(value, null))
                 .order(BucketOrder.key(true)))
         .query(boolQueryBuilder)
         .size(0);
+    searchSourceBuilder
+            .aggregation(
+                    AggregationBuilders.terms(String.format("%s.%s", fieldName, "caseInsensitive"))
+                            .field(fieldName)
+                            .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE)
+                            .includeExclude(new IncludeExclude(value.toLowerCase(), null))
+                            .order(BucketOrder.key(true)))
+            .query(boolQueryBuilder)
+            .size(0);
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     String response =
         client.search(new SearchRequest(index).source(searchSourceBuilder), RequestOptions.DEFAULT).toString();
