@@ -3,60 +3,43 @@ title: Deployment
 slug: /deployment
 ---
 
-# From 0 to OpenMetadata in 5 minutes
+# Deploy OpenMetadata in Production
 
-Are you exploring or doing a PoC? It won't get easier than following our Quickstart guide!
+{%note%}
+Are you looking to do POC? It won't get easier than following our [Quickstart](/quickstart) guide!
+{%/note%}
 
-{% inlineCalloutContainer %}
 
-{% inlineCallout
-icon="celebration"
-bold="Quickstart OpenMetadata in Docker"
-href="/quick-start/local-docker-deployment" %}
-Get OpenMetadata up and running using Docker in under 5 minutes!
-{% /inlineCallout %}
+## OpenMetadata Deployment Architecture
 
-{% inlineCallout
-icon="celebration"
-bold="Quickstart OpenMetadata in Kubernetes"
-href="/quick-start/local-kubernetes-deployment" %}
-Get OpenMetadata up and running using local Kubernetes in under 5 minutes!
-{% /inlineCallout %}
+{% image
+    src="/images/v1.1.0/deployment/architecture.png"
+    alt="architecture" /%}
 
-{% inlineCallout
-icon="open_in_new"
-bold="Try the OpenMetadata Sandbox"
-href="/quick-start/sandbox" %}
-Interact with a sample installation with 0 setup to explore our Discovery, Governance and Collaboration features.
-{% /inlineCallout %}
+OpenMetadata requires 4 components
 
-{% /inlineCalloutContainer %}
-
-# Components Of OpenMetadata Application
-
-OpenMetadata Application consists on one component which houses both APIs and UI. This component is powered by 3 external dependencies -
-
-1. Relational Database (MySQL, PostgreSQL)
-2. Search Engine (ElasticSearch, OpenSearch)
-3. Workflow Orchestration Tool (Airflow)
+1. OpenMetadata Server, pick the latest release from our (github releases)[https://github.com/open-metadata/OpenMetadata/releases]
+2. OpenMetadata Server stores the metadata in a relational database. We support MySQL or Postgres. Any Cloud provider such as AWS or GCP's provided MySQL/Postgres services will work as well
+	1. 	MySQL Version 8.0.0 or Greater
+	2. Postgres Version 12.0 or Greater
+3. Search Engine (ElasticSearch, OpenSearch)
+	1. 	We support ElasticSearch 7.16 to 7.17
+	2. OpenSearch 1.3 
+4. Workflow Orchestration Tools
+	OpenMetadata requires connectors to be scheduled to periodically fetch the metadata or you can use the OpenMetadata APIs to push the metadata as well
+	1. OpenMetadata Ingestion Framework is flexible to run on any orchestrator. However we built an ability to deploy and manage connectors as pipelines from the UI. This requires the Airflow container we ship
+	2. If your team prefers to run on any other orchestrator such as prefect, dagster or even github workflows. Please refer to our recent webinar on (How Ingestion Fraemwork works)[https://www.youtube.com/watch?v=i7DhG_gZMmE&list=PLa1l-WDhLreslIS_96s_DT_KdcDyU_Itv&index=10]
 
 The Dependencies must be deployed before installing OpenMetadata Application. With Docker and Kubernetes deployment, we package these together as part of quickstart. 
 
-For production deployment, we recommend you to bring up these dependencies as external and do not rely on quickstart packages.
+{% note noteType="Warning" %}
+For production deployment, we recommend you to bring up MySQL/Postgres, Elastic/OpenSearch, Scheduler (like airflow) as an external service and do not rely on quickstart packages.
+{% /note %}
 
-{%note%}
 
-**Note on Airflow as workflow orchestration tool dependency -**
+## Deployment Options
 
-If you are looking for setting up the connectors in OpenMetadata Application from UI, Airflow is a required dependency. OpenMetadata Application dynamically generates the workflows from UI to be triggered and scheduled by Airflow orchestration tool.
-
-You can also use OpenMetadata SDKs and run the connectors externally which will be an alternative to Airflow as one of the dependencies component from the above list.
-
-{%/note%}
-
-# Architecture and Deployment
-
-We support different kinds of deployment which is meant for production deployments:
+We support following deployment options
 
 {%inlineCalloutContainer%}
   {%inlineCallout
@@ -82,9 +65,9 @@ We support different kinds of deployment which is meant for production deploymen
   {%/inlineCallout%}
 {%/inlineCalloutContainer%}
 
-# Security
+## Security
 
-Find further information on how to secure your OpenMetadata deployment:
+ how to secure your OpenMetadata deployment
 
 {%inlineCalloutContainer%}
   {%inlineCallout
@@ -96,7 +79,7 @@ Find further information on how to secure your OpenMetadata deployment:
   {%/inlineCallout%}
 {%/inlineCalloutContainer%}
 
-# Upgrade
+## Upgrade
 
 Learn how to move from version to version:
 
