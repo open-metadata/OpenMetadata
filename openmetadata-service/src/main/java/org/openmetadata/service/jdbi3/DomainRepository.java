@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.DOMAIN;
-import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -59,7 +58,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   private List<EntityReference> getChildren(Domain entity) throws IOException {
     List<EntityRelationshipRecord> ids = findTo(entity.getId(), DOMAIN, Relationship.CONTAINS, DOMAIN);
-    return EntityUtil.populateEntityReferences(ids, GLOSSARY_TERM);
+    return EntityUtil.populateEntityReferences(ids, DOMAIN);
   }
 
   private List<EntityReference> getExperts(Domain entity) throws IOException {
