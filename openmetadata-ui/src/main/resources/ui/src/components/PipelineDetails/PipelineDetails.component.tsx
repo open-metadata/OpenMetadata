@@ -14,9 +14,7 @@
 import { Card, Col, Radio, Row, Space, Tabs, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import ActivityFeedProvider, {
-  useActivityFeedProvider,
-} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
@@ -27,6 +25,7 @@ import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAss
 import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
 import ExecutionsTab from 'components/Execution/Execution.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
+import { withActivityFeed } from 'components/router/withActivityFeed';
 import TableDescription from 'components/TableDescription/TableDescription.component';
 import TableTags from 'components/TableTags/TableTags.component';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
@@ -648,14 +647,12 @@ const PipelineDetails = ({
         ),
         key: EntityTabs.ACTIVITY_FEED,
         children: (
-          <ActivityFeedProvider>
-            <ActivityFeedTab
-              entityType={EntityType.PIPELINE}
-              fqn={pipelineDetails?.fullyQualifiedName ?? ''}
-              onFeedUpdate={getEntityFeedCount}
-              onUpdateEntityDetails={fetchPipeline}
-            />
-          </ActivityFeedProvider>
+          <ActivityFeedTab
+            entityType={EntityType.PIPELINE}
+            fqn={pipelineDetails?.fullyQualifiedName ?? ''}
+            onFeedUpdate={getEntityFeedCount}
+            onUpdateEntityDetails={fetchPipeline}
+          />
         ),
       },
       {
@@ -803,4 +800,4 @@ const PipelineDetails = ({
   );
 };
 
-export default PipelineDetails;
+export default withActivityFeed<PipeLineDetailsProp>(PipelineDetails);

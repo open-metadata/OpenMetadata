@@ -111,7 +111,7 @@ const UserProfileDetails = ({
               className="text-lg font-medium"
               ellipsis={{ tooltip: true }}>
               {hasEditPermission
-                ? userData.displayName ??
+                ? userData.displayName ||
                   t('label.add-entity', { entity: t('label.display-name') })
                 : getEntityName(userData)}
             </Typography.Text>
