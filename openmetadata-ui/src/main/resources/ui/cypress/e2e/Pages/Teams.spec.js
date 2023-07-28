@@ -26,7 +26,7 @@ import {
 
 const updateddescription = 'This is updated description';
 
-const teamName = `team-ct-test-${uuid()}`;
+const teamName = 'team-group-test-430116' ?? `team-ct-test-${uuid()}`;
 const TEAM_DETAILS = {
   name: teamName,
   updatedname: `${teamName}-updated`,
@@ -70,7 +70,7 @@ describe('Teams flow should work properly', () => {
 
     // asserting the added values
     cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
-      .should('exist')
+      .scrollIntoView()
       .should('be.visible');
     cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`).should(
       'contain',
@@ -131,6 +131,9 @@ describe('Teams flow should work properly', () => {
       .scrollIntoView();
     cy.get('[data-testid="add-new-user"]').click();
     verifyResponseStatusCode('@getUsers', 200);
+    cy.get('[data-testid="selectable-list"] [data-testid="searchbar"]').type(
+      TEAM_DETAILS.username
+    );
     cy.get('[data-testid="selectable-list"]')
       .find(`[title="${TEAM_DETAILS.username}"]`)
       .click();

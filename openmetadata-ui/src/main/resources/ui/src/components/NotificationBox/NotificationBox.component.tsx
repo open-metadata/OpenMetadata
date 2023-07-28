@@ -15,7 +15,6 @@ import { Badge, Button, List, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { EntityTabs } from 'enums/entity.enum';
-import { UserProfileTab } from 'enums/user.enum';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -62,7 +61,7 @@ const NotificationBox = ({
   );
 
   const notificationDropDownList = useMemo(() => {
-    return notifications.slice(0, 5).map((feed, idx) => {
+    return notifications.slice(0, 5).map((feed) => {
       const mainFeed = {
         message: feed.message,
         postTs: feed.threadTs,
@@ -79,7 +78,7 @@ const NotificationBox = ({
           entityFQN={entityFQN as string}
           entityType={entityType as string}
           feedType={feed.type || ThreadType.Conversation}
-          key={`${mainFeed.from} ${idx}`}
+          key={`${mainFeed.from} ${mainFeed.id}`}
           task={feed}
           timestamp={mainFeed.postTs}
         />
@@ -117,11 +116,13 @@ const NotificationBox = ({
       getNotificationData(threadType, feedFilter);
 
       setViewAllPath(
-        `${getUserPath(currentUser?.name as string)}/${(threadType ===
-        ThreadType.Conversation
-          ? UserProfileTab.ACTIVITY
-          : threadType
-        ).toLowerCase()}?feedFilter=${feedFilter}`
+        getUserPath(
+          currentUser?.name as string,
+          EntityTabs.ACTIVITY_FEED,
+          key === NotificationTabsKey.TASK
+            ? ActivityFeedTabs.TASKS
+            : ActivityFeedTabs.MENTIONS
+        )
       );
 
       if (hasTaskNotification || hasMentionNotification) {
@@ -132,7 +133,7 @@ const NotificationBox = ({
         }, NOTIFICATION_READ_TIMER);
       }
     },
-    [currentUser, hasTaskNotification, hasMentionNotification]
+    [onTabChange, currentUser, hasTaskNotification, hasMentionNotification]
   );
 
   useEffect(() => {
@@ -187,7 +188,7 @@ const NotificationBox = ({
           size="small"
         />
       ),
-    [notifications]
+    [notifications, notificationDropDownList, viewAllPath]
   );
 
   return (

@@ -1,5 +1,3 @@
-import { TestSummary } from 'generated/tests/testSuite';
-
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +10,7 @@ import { TestSummary } from 'generated/tests/testSuite';
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export interface SummaryPanelProps {
-  testSummary: TestSummary;
-  isLoading?: boolean;
-}
+
+import { createBrowserHistory } from 'history';
+
+export const history = createBrowserHistory();
