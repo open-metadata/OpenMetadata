@@ -75,6 +75,5 @@ export const handleDataAssetAfterDeleteAction = (isSoftDelete?: boolean) => {
     }, 1000);
   } else {
     history.push('/');
-    history.go(0);
   }
 };
