@@ -22,7 +22,7 @@ import { getNameFromFQN } from './CommonUtils';
 import Fqn from './Fqn';
 import i18n from './i18next/LocalUtil';
 import { getSettingsPathFromPipelineType } from './IngestionUtils';
-import { getDataQualityPagePath } from './RouterUtils';
+import { getDataQualityPagePath, getLogEntityPath } from './RouterUtils';
 
 /**
  * It takes in a service type, an ingestion name, and an ingestion details object, and returns an array
@@ -58,23 +58,35 @@ export const getLogBreadCrumbs = (
     return [];
   }
 
-  return [
-    {
-      name: startCase(serviceType),
-      url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
-    },
-    {
-      name: ingestionDetails.name,
+  if (serviceType === 'testSuite') {
+    return [
+      {
+        name: startCase(serviceType),
+        url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+      },
+      {
+        name: ingestionDetails.name,
+        url:
+          getTableTabPath(
+            (ingestionDetails.sourceConfig.config as ConfigClass)
+              ?.entityFullyQualifiedName ?? '',
+            EntityTabs.PROFILER
+          ) + '?activeTab=Data%20Quality',
+      },
+      {
+        name: i18n.t('label.log-plural'),
+        url: '',
+      },
+    ];
+  }
+
+  const urlPath = [serviceType, ...updateIngestionName];
+
+  return urlPath.map((path, index) => {
+    return {
+      name: index === 0 ? startCase(path) : path,
       url:
-        getTableTabPath(
-          (ingestionDetails.sourceConfig.config as ConfigClass)
-            ?.entityFullyQualifiedName ?? '',
-          EntityTabs.PROFILER
-        ) + '?activeTab=Data%20Quality',
-    },
-    {
-      name: i18n.t('label.log-plural'),
-      url: '',
-    },
-  ];
+        index !== urlPath.length - 1 ? getLogEntityPath(path, serviceType) : '',
+    };
+  });
 };
