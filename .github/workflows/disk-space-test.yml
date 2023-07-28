@@ -14,20 +14,30 @@ jobs:
             echo "Checking Disk Space Before Build..."
             df -h
             echo "=============================================="
-      - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@main
+
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@master
         with:
-        # this might remove tools that are actually needed,
-        # if set to "true" but frees about 6 GB
-            tool-cache: false
-            # all of these default to true, but feel free to set to
-            # "false" if necessary for your workflow
-            android: true
-            dotnet: true
-            haskell: true
-            large-packages: true
-            docker-images: true
-            swap-storage: true
+            remove-codeql: 'true'
+            remove-haskell: 'true'
+            remove-android: 'true'
+            remove-dotnet: 'true'
+            remove-docker-images: 'true'
+            
+    #   - name: Free Disk Space (Ubuntu)
+    #     uses: jlumbroso/free-disk-space@main
+    #     with:
+    #     # this might remove tools that are actually needed,
+    #     # if set to "true" but frees about 6 GB
+    #         tool-cache: false
+    #         # all of these default to true, but feel free to set to
+    #         # "false" if necessary for your workflow
+    #         android: true
+    #         dotnet: true
+    #         haskell: true
+    #         large-packages: true
+    #         docker-images: true
+    #         swap-storage: true
       - name: Check Disk Space After Action Build
         run: |
             echo "=============================================="
@@ -61,11 +71,13 @@ jobs:
           python3 -m venv env
           source env/bin/activate
           make install_all install_apis
-          run: |
-          echo "=============================================="
-          echo "Running Maven Clean and Build..."
-          mvn clean install
-          echo "=============================================="
+
+      - name: Maven Clean and Build
+        run: |
+           echo "=============================================="
+           echo "Running Maven Clean and Build..."
+           mvn clean install
+           echo "=============================================="
       - name: Maven build
         id: maven-build
         continue-on-error: true
