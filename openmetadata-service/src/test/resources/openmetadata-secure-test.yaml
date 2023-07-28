@@ -181,21 +181,6 @@ jwtTokenConfiguration:
   jwtissuer: "open-metadata.org"
   keyId: "Gb389a-9f76-gdjs-a92j-0242bk94356"
 
-elasticsearch:
-  searchType: "elasticsearch"
-  host: "localhost"
-  port: 9200
-  scheme: "http"
-  username: ""
-  password: ""
-  truststorePath: ""
-  truststorePassword: ""
-  connectionTimeoutSecs: 5
-  socketTimeoutSecs: 60
-  keepAliveTimeoutSecs: 600
-  batchSize: 10
-  searchIndexMappingLanguage: "EN"
-
 eventMonitoringConfiguration:
   eventMonitor: "prometheus"
   batchSize: 10
