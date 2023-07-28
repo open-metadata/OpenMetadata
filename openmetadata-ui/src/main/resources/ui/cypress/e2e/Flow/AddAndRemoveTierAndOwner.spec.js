@@ -88,6 +88,8 @@ const addRemoveTier = () => {
 
   cy.wait(2000);
 
+  cy.get('[data-testid="radio-btn-Tier1"]').should('be.checked');
+
   verifyResponseStatusCode('@patchOwner', 200);
   cy.clickOutside();
   cy.get('[data-testid="Tier"]').should('contain', TIER);
@@ -99,7 +101,7 @@ const addRemoveTier = () => {
   cy.get('[data-testid="Tier"]').should('contain', 'No Tier');
 };
 
-describe('Add and Remove Owner and Tier', () => {
+describe('Add and Remove Owner', () => {
   beforeEach(() => {
     interceptURL('GET', '/api/v1/permissions/*/name/*', 'entityPermission');
     interceptURL('GET', '/api/v1/feed/count?entityLink=*', 'activityFeed');
@@ -113,7 +115,7 @@ describe('Add and Remove Owner and Tier', () => {
   });
 
   Object.entries(ENTITIES).map(([key, value]) => {
-    it.skip(`${key} details page`, () => {
+    it(`${key} details page`, () => {
       interceptURL('PATCH', `/api/v1/${value.entity}/*`, 'patchOwner');
 
       visitEntityDetailsPage(
@@ -130,7 +132,7 @@ describe('Add and Remove Owner and Tier', () => {
     });
   });
 
-  it.skip('databaseSchema details page', () => {
+  it('databaseSchema details page', () => {
     interceptURL('PATCH', '/api/v1/databaseSchemas/*', 'patchOwner');
     interceptURL('GET', '/api/v1/*/name/*', 'schemaDetails');
     const value = ENTITIES.table;
@@ -148,7 +150,7 @@ describe('Add and Remove Owner and Tier', () => {
     addRemoveOwner();
   });
 
-  it.skip('database details page', () => {
+  it('database details page', () => {
     interceptURL('PATCH', '/api/v1/databases/*', 'patchOwner');
     interceptURL('GET', '/api/v1/databases/name/*', 'databaseDetails');
     const value = ENTITIES.table;
@@ -166,7 +168,7 @@ describe('Add and Remove Owner and Tier', () => {
     addRemoveOwner();
   });
 
-  it.skip('service details page', () => {
+  it('service details page', () => {
     interceptURL('PATCH', '/api/v1/services/databaseServices/*', 'patchOwner');
     interceptURL(
       'GET',
@@ -196,7 +198,7 @@ describe('Add and Remove Owner and Tier', () => {
     addRemoveOwner();
   });
 
-  it.skip('Test suite details page', () => {
+  it('Test suite details page', () => {
     interceptURL('PATCH', '/api/v1/dataQuality/testSuites/*', 'patchOwner');
     interceptURL('GET', '/api/v1/dataQuality/testSuites?*', 'testSuites');
     interceptURL(
