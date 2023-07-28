@@ -125,7 +125,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
     try {
       repository.initSeedDataFromResources();
       EventsSubscriptionRegistry.initialize(listOrEmpty(EventSubscriptionResource.getDescriptors()));
-      ActivityFeedAlertCache.initialize("ActivityFeedAlert", repository);
+      ActivityFeedAlertCache.initialize("ActivityFeedAlert");
       searchClient = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), daoCollection);
       ReportsHandler.initialize(daoCollection, searchClient);
       initializeEventSubscriptions();

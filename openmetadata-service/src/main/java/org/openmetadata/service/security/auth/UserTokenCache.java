@@ -28,7 +28,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 @Slf4j
 public class UserTokenCache {
   private static final UserTokenCache instance = new UserTokenCache();
-  private static final LoadingCache<String, HashSet<String>> cache =
+  private static final LoadingCache<String, HashSet<String>> CACHE =
       CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(2, TimeUnit.MINUTES).build(new UserTokenLoader());
   private static volatile boolean initialized = false;
   private static TokenRepository tokenRepository;
@@ -49,7 +49,7 @@ public class UserTokenCache {
 
   public Set<String> getToken(String userName) {
     try {
-      return cache.get(userName);
+      return CACHE.get(userName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
       LOG.error("Token not found", ex);
       return null;
@@ -58,7 +58,7 @@ public class UserTokenCache {
 
   public void invalidateToken(String userName) {
     try {
-      cache.invalidate(userName);
+      CACHE.invalidate(userName);
     } catch (Exception ex) {
       LOG.error("Failed to invalidate User token cache for User {}", userName, ex);
     }

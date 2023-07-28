@@ -165,7 +165,6 @@ public final class EntityUtil {
     }
     List<EntityReference> refs = new ArrayList<>();
     for (EntityRelationshipRecord ref : list) {
-      System.out.println("XXX getting entityRef for " + ref.getType() + " " + ref.getId());
       refs.add(Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL));
     }
     refs.sort(compareEntityReference);
