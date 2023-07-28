@@ -47,6 +47,7 @@ const ConfirmationModal = ({
       destroyOnClose
       className={className}
       closable={false}
+      closeIcon={null}
       data-testid="confirmation-modal"
       footer={
         <div className={classNames('justify-end', footerClassName)}>
@@ -79,7 +80,8 @@ const ConfirmationModal = ({
           data-testid="modal-header">
           {header}
         </Typography.Text>
-      }>
+      }
+      onCancel={onCancel}>
       <div className={classNames('h-20', bodyClassName)}>
         <Typography.Text data-testid="body-text">{bodyText}</Typography.Text>
       </div>
