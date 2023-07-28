@@ -137,7 +137,7 @@
     <dropwizard-micrometer.version>2.0.9</dropwizard-micrometer.version>
     <json-schema-validator.version>1.0.85</json-schema-validator.version>
     <java-jwt.version>4.4.0</java-jwt.version>
-    <jwks-rsa.version>0.22.0</jwks-rsa.version>
+    <jwks-rsa.version>0.22.1</jwks-rsa.version>
     <jjwt.version>0.9.1</jjwt.version>
     <rerunner-jupiter.version>2.1.6</rerunner-jupiter.version>
     <freemarker.version>2.3.32</freemarker.version>
