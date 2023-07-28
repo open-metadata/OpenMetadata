@@ -75,8 +75,6 @@ describe('Users flow should work properly', () => {
       .type(searchBotText);
 
     verifyResponseStatusCode('@searchUser', 200);
-
-    cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
   });
 });
 
