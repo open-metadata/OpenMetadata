@@ -594,7 +594,7 @@ const TeamsPage = () => {
       entityPermissions.ViewAll || entityPermissions.ViewBasic;
     if (!isPageLoading && hasPermission && fqn) {
       fetchTeamAdvancedDetails(fqn);
-      fetchAllTeams(true, fqn);
+      fetchAllTeams(false, fqn);
     }
   }, [isPageLoading, entityPermissions, fqn]);
 
