@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import { getTableTabPath } from 'constants/constants';
 import { OPEN_METADATA } from 'constants/service-guide.constant';
 import { EntityTabs } from 'enums/entity.enum';
@@ -71,7 +72,7 @@ export const getLogBreadCrumbs = (
             (ingestionDetails.sourceConfig.config as ConfigClass)
               ?.entityFullyQualifiedName ?? '',
             EntityTabs.PROFILER
-          ) + '?activeTab=Data%20Quality',
+          ) + `?activeTab=${TableProfilerTab.DATA_QUALITY}`,
       },
       {
         name: i18n.t('label.log-plural'),
