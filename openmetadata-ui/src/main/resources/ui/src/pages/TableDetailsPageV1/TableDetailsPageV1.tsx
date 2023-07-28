@@ -86,6 +86,7 @@ import { defaultFields } from 'utils/DatasetDetailsUtils';
 import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
 import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { getDecodedFqn } from 'utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoinedTables.component';
@@ -287,7 +288,7 @@ const TableDetailsPageV1 = () => {
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       if (!isTourOpen) {
-        history.push(getTableTabPath(datasetFQN, activeKey));
+        history.push(getTableTabPath(getDecodedFqn(datasetFQN), activeKey));
       }
     }
   };

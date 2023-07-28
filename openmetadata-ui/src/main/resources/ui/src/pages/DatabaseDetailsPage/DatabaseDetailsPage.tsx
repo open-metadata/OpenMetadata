@@ -32,6 +32,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { withActivityFeed } from 'components/router/withActivityFeed';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
@@ -86,7 +87,7 @@ import {
 } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getErrorText } from '../../utils/StringsUtils';
+import { getDecodedFqn, getErrorText } from '../../utils/StringsUtils';
 import {
   getTagsWithoutTier,
   getTierTags,
@@ -300,7 +301,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const activeTabHandler = (key: string) => {
     if (key !== activeTab) {
       history.push({
-        pathname: getDatabaseDetailsPath(databaseFQN, key),
+        pathname: getDatabaseDetailsPath(getDecodedFqn(databaseFQN), key),
       });
     }
   };
@@ -435,12 +436,14 @@ const DatabaseDetails: FunctionComponent = () => {
         title: t('label.owner'),
         dataIndex: 'owner',
         key: 'owner',
+        width: 120,
         render: (text: EntityReference) => getEntityName(text) || '--',
       },
       {
         title: t('label.usage'),
         dataIndex: 'usageSummary',
         key: 'usageSummary',
+        width: 120,
         render: (text: UsageDetails) =>
           getUsagePercentile(text?.weeklyStats?.percentileRank ?? 0),
       },
@@ -786,4 +789,4 @@ const DatabaseDetails: FunctionComponent = () => {
   );
 };
 
-export default observer(DatabaseDetails);
+export default observer(withActivityFeed(DatabaseDetails));

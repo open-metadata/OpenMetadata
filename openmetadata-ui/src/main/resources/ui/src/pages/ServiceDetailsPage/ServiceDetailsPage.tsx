@@ -102,6 +102,7 @@ import {
   getResourceEntityFromServiceCategory,
   shouldTestConnection,
 } from 'utils/ServiceUtils';
+import { getDecodedFqn } from 'utils/StringsUtils';
 import { getTagsWithoutTier } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import ServiceMainTabContent from './ServiceMainTabContent';
@@ -207,7 +208,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
     (key: string) => {
       if (key !== activeTab) {
         history.push({
-          pathname: getServiceDetailsPath(serviceFQN, serviceCategory, key),
+          pathname: getServiceDetailsPath(
+            getDecodedFqn(serviceFQN),
+            serviceCategory,
+            key
+          ),
         });
       }
     },

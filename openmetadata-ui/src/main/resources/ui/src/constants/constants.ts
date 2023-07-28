@@ -396,7 +396,7 @@ export const getTableTabPath = (
     path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
   }
   path = path
-    .replace(PLACEHOLDER_ROUTE_TABLE_FQN, tableFQN)
+    .replace(PLACEHOLDER_ROUTE_TABLE_FQN, getEncodedFqn(tableFQN))
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;
@@ -410,7 +410,7 @@ export const getServiceDetailsPath = (
   let path = tab ? ROUTES.SERVICE_WITH_TAB : ROUTES.SERVICE;
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCat)
-    .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN);
+    .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, getEncodedFqn(serviceFQN));
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
@@ -659,7 +659,7 @@ export const getGlossaryTermDetailsPath = (
   tab?: string
 ) => {
   let path = tab ? ROUTES.GLOSSARY_DETAILS_WITH_TAB : ROUTES.GLOSSARY_DETAILS;
-  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryFQN);
+  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, getEncodedFqn(glossaryFQN));
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
