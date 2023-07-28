@@ -1302,7 +1302,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(User user) {
-    return repository.findFrom(user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
+    return repository.findFromRecords(user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
   }
 
   private boolean botHasRelationshipWithUser(EntityInterface bot, User user) {
@@ -1314,7 +1314,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(EntityInterface bot) {
-    return repository.findTo(bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.USER);
+    return repository.findToRecords(bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.USER);
   }
 
   // TODO remove this
