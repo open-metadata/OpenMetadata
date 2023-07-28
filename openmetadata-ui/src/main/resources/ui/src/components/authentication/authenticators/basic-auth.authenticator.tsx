@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { AuthProvider } from 'generated/settings/settings';
 import React, {
   forwardRef,
   Fragment,
@@ -19,7 +20,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AccessTokenResponse, getAccessTokenOnExpiry } from 'rest/auth-API';
-import { AuthTypes } from '../../../enums/signin.enum';
 import localState from '../../../utils/LocalStorageUtils';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import { useBasicAuth } from '../auth-provider/basic-auth.provider';
@@ -38,8 +38,8 @@ const BasicAuthenticator = forwardRef(
       const refreshToken = localState.getRefreshToken();
 
       if (
-        authConfig.provider !== AuthTypes.BASIC &&
-        authConfig.provider !== AuthTypes.LDAP
+        authConfig.provider !== AuthProvider.Basic &&
+        authConfig.provider !== AuthProvider.LDAP
       ) {
         Promise.reject(t('message.authProvider-is-not-basic'));
       }
