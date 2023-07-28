@@ -412,7 +412,7 @@ export const DataAssetsHeader = ({
                   }
                   entityFQN={dataAsset.fullyQualifiedName}
                   entityId={dataAsset.id}
-                  entityName={entityName}
+                  entityName={dataAsset.name}
                   entityType={entityType}
                   isRecursiveDelete={isRecursiveDelete}
                   onAnnouncementClick={
