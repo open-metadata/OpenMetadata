@@ -31,6 +31,7 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import javax.validation.constraints.NotNull;
 import javax.ws.rs.WebApplicationException;
 import lombok.Getter;
 import lombok.NonNull;
@@ -292,6 +293,16 @@ public final class EntityUtil {
       ids.add(ref.getId());
     }
     return ids;
+  }
+
+  public static <T> boolean isDescriptionRequired(Class<T> clz) {
+    // Returns true if description field in entity is required
+    try {
+      java.lang.reflect.Field description = clz.getDeclaredField(Entity.FIELD_DESCRIPTION);
+      return description.getAnnotation(NotNull.class) != null;
+    } catch (NoSuchFieldException e) {
+      return false;
+    }
   }
 
   public static class Fields {

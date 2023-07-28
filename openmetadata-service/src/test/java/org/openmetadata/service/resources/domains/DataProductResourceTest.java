@@ -22,8 +22,6 @@ import org.openmetadata.service.util.JsonUtils;
 public class DataProductResourceTest extends EntityResourceTest<DataProduct, CreateDataProduct> {
   public DataProductResourceTest() {
     super(Entity.DATA_PRODUCT, DataProduct.class, DataProductList.class, "dataProducts", DataProductResource.FIELDS);
-    supportsFieldsQueryParam = false; // TODO
-    supportsEmptyDescription = false;
   }
 
   public void setupDataProducts(TestInfo test) throws HttpResponseException {

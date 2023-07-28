@@ -37,7 +37,7 @@ where json#>>'{connection,config,scheme}' in ('impala', 'impala4');
 -- remove the dataModel references from Data Models
 UPDATE dashboard_data_model_entity SET json = json #- '{dataModels}';
 
--- migrate ingestAllDatabases in mssql 
+-- migrate ingestAllDatabases in mssql
 UPDATE dbservice_entity de2 
 SET json = JSONB_SET(
     json || JSONB_SET(json,'{connection,config}', json#>'{connection,config}'|| 
@@ -56,3 +56,7 @@ SET json = JSONB_SET(
 )
 WHERE de2.serviceType = 'Mssql' 
 AND json->>'{connection,config,database}' IS NULL;
+
+-- column deleted not needed for entities that don't support soft delete
+ALTER TABLE query_entity DROP COLUMN deleted;
+ALTER TABLE event_subscription_entity DROP COLUMN deleted;
