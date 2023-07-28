@@ -76,7 +76,7 @@ const ActivityFeedListV1 = ({
           <ErrorPlaceHolder
             icon={
               isTaskTab ? (
-                <TaskIcon height={24} width={24} />
+                <TaskIcon height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
               ) : (
                 <ActivityFeedIcon height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
               )
@@ -85,7 +85,7 @@ const ActivityFeedListV1 = ({
             <Typography.Paragraph style={{ marginBottom: '0' }}>
               {isTaskTab && (
                 <Typography.Text strong>
-                  {t('message.no-open-issues')} <br />
+                  {t('message.no-open-tasks')} <br />
                 </Typography.Text>
               )}
               {emptyPlaceholderText}
