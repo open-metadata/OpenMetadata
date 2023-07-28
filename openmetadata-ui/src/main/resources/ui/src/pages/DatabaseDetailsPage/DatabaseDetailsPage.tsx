@@ -313,9 +313,9 @@ const DatabaseDetails: FunctionComponent = () => {
     const pagingString = `&${cursorType}=${
       databaseSchemaPaging[cursorType as keyof typeof databaseSchemaPaging]
     }`;
-    setIsLoading(true);
+    setSchemaDataLoading(true);
     fetchDatabaseSchemas(pagingString).finally(() => {
-      setIsLoading(false);
+      setSchemaDataLoading(false);
     });
     setCurrentPage(activePage ?? 1);
   };
