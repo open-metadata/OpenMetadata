@@ -43,6 +43,7 @@ import KPILatestResultsV1 from './KPILatestResultsV1';
 interface Props {
   kpiList: Array<Kpi>;
   selectedDays: number;
+  isKPIListLoading: boolean;
 }
 
 const EmptyPlaceholder = () => {
@@ -78,13 +79,13 @@ const EmptyPlaceholder = () => {
   );
 };
 
-const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
+const KPIChartV1: FC<Props> = ({ isKPIListLoading, kpiList, selectedDays }) => {
   const { t } = useTranslation();
 
   const [kpiResults, setKpiResults] = useState<KpiResult[]>([]);
   const [kpiLatestResults, setKpiLatestResults] =
     useState<Record<string, UIKpiResult>>();
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const fetchKpiResults = useCallback(async () => {
     setIsLoading(true);
@@ -180,7 +181,7 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
       className="kpi-widget-card h-full"
       data-testid="kpi-card"
       id="kpi-charts"
-      loading={isLoading}>
+      loading={isKPIListLoading || isLoading}>
       <Row>
         <Col span={24}>
           <Typography.Text className="font-medium">

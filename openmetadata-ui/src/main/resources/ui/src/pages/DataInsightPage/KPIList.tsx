@@ -22,7 +22,7 @@ import { EmptyGraphPlaceholder } from 'components/DataInsightDetail/EmptyGraphPl
 import Loader from 'components/Loader/Loader';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { getListKPIs } from 'rest/KpiAPI';
@@ -184,6 +184,10 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
     fetchKpiList();
   }, []);
 
+  const handleAfterDeleteAction = useCallback(() => {
+    fetchKpiList();
+  }, [fetchKpiList]);
+
   const noDataPlaceHolder = useMemo(
     () =>
       viewKPIPermission ? (
@@ -225,7 +229,7 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
 
       {selectedKpi && (
         <DeleteWidgetModal
-          afterDeleteAction={fetchKpiList}
+          afterDeleteAction={handleAfterDeleteAction}
           allowSoftDelete={false}
           deleteMessage={`Are you sure you want to delete ${getEntityName(
             selectedKpi

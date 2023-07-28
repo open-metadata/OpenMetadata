@@ -46,6 +46,7 @@ import {
   getBreadcrumbForEntitiesWithServiceOnly,
   getBreadcrumbForTable,
   getEntityBreadcrumbs,
+  getEntityName,
 } from './EntityUtils';
 import { bytesToSize } from './StringsUtils';
 import { getUsagePercentile } from './TableUtils';
@@ -92,8 +93,8 @@ export const getDataAssetsHeaderInfo = (
           {dashboardDetails.sourceUrl && (
             <ExtraInfoLink
               href={dashboardDetails.sourceUrl}
-              label={entityName}
-              value={dashboardDetails.sourceUrl}
+              label=""
+              value={getEntityName(dashboardDetails)}
             />
           )}
           {dashboardDetails.dashboardType && (
@@ -126,7 +127,7 @@ export const getDataAssetsHeaderInfo = (
             <ExtraInfoLink
               href={pipelineDetails.sourceUrl}
               label=""
-              value={pipelineDetails.sourceUrl}
+              value={getEntityName(pipelineDetails)}
             />
           )}
         </>
