@@ -23,6 +23,8 @@ describe('Logout User', () => {
     interceptURL('POST', '/api/v1/users/logout', 'logoutUser');
     cy.get('[data-testid="appbar-item-logout"]').click();
 
+    cy.get('[data-testid="confirm-logout"]').click();
+
     // verify the logout request
     verifyResponseStatusCode('@logoutUser', 200);
 

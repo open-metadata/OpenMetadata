@@ -20,12 +20,13 @@ import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation } from 'react-router-dom';
+import { getTableExpandableConfig } from 'utils/TableUtils';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
   DEFAULT_TEST_VALUE,
   INITIAL_TEST_RESULT_SUMMARY,
 } from '../../../constants/profiler.constant';
-import { ColumnProfile } from '../../../generated/entity/data/table';
+import { Column, ColumnProfile } from '../../../generated/entity/data/table';
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
@@ -262,6 +263,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
             bordered
             columns={tableColumn}
             dataSource={data}
+            expandable={getTableExpandableConfig<Column>()}
             locale={{
               emptyText: <FilterTablePlaceHolder />,
             }}

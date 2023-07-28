@@ -1234,6 +1234,7 @@
     "lineage-data-is-not-available-for-deleted-entities": "已删除的实体的血缘数据不可用",
     "lineage-ingestion-description": "在设置元数据提取后，可以配置并部署血缘提取。血缘提取工作流获取查询历史记录，解析 CREATE、INSERT、MERGE... 查询，并整理相关实体之间的血缘。一个数据库服务只能定义一个血缘提取工作流。定义查询日志持续时间（天数）和结果限制即可开始。",
     "list-of-strings-regex-patterns-csv": "以逗号分隔的值的形式输入字符串/正则表达式列表",
+    "logout-confirmation": "Are you sure you want to logout?",
     "made-announcement-for-entity": "为{{entity}}发布了公告",
     "make-an-announcement": "发布公告",
     "manage-airflow-api": "OpenMetadata 管理的 Airflow APIs",
