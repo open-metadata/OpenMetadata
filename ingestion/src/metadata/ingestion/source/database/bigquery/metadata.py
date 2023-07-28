@@ -54,13 +54,13 @@ from metadata.generated.schema.security.credentials.gcpValues import (
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_SCHEMA_DESCRIPTION,
 )
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
+from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import is_complex_type
@@ -317,7 +317,6 @@ class BigquerySource(CommonDbSourceService):
             self.service_connection.credentials.gcpConfig.projectId = SingleProjectId(
                 __root__=database_name
             )
-        self.engine = get_connection(self.service_connection)
         self.inspector = inspect(self.engine)
 
     def get_database_names(self) -> Iterable[str]:
@@ -430,6 +429,12 @@ class BigquerySource(CommonDbSourceService):
         if self.temp_credentials:
             os.unlink(self.temp_credentials)
         os.environ.pop("GOOGLE_CLOUD_PROJECT", "")
+        if isinstance(
+            self.service_connection.credentials.gcpConfig, GcpCredentialsValues
+        ) and (GOOGLE_CREDENTIALS in os.environ):
+            tmp_credentials_file = os.environ[GOOGLE_CREDENTIALS]
+            os.remove(tmp_credentials_file)
+            del os.environ[GOOGLE_CREDENTIALS]
 
     def get_source_url(
         self,
