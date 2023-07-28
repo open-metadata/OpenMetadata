@@ -873,7 +873,7 @@ export const deleteCreatedProperty = (propertyName) => {
 };
 
 export const updateOwner = () => {
-  cy.get('[data-testid="avatar"]').should('be.visible').click();
+  cy.get('[data-testid="avatar"]').click();
   cy.get('[data-testid="user-name"]')
     .should('exist')
     .invoke('text')
@@ -881,10 +881,12 @@ export const updateOwner = () => {
       cy.get('[data-testid="hiden-layer"]').should('exist').click();
       interceptURL('GET', '/api/v1/users?limit=15', 'getUsers');
       // Clicking on edit owner button
-      cy.get('[data-testid="edit-owner"]').should('be.visible').click();
+      cy.get('[data-testid="edit-owner"]').click();
 
       cy.get('.user-team-select-popover').contains('Users').click();
-
+      cy.get(
+        '[id*="panel-users"] [data-testid="search-bar-container"] [data-testid="searchbar"]'
+      ).type(text);
       cy.get('[data-testid="selectable-list"]')
         .eq(1)
         .find(`[title="${text.trim()}"]`)

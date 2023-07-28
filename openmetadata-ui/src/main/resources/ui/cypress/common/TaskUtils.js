@@ -17,7 +17,8 @@ import {
   verifyResponseStatusCode,
 } from './common';
 
-const assignee = 'admin';
+const owner = 'admin';
+const assignee = 'adam_rodriguez9';
 const secondAssignee = 'aaron_johnson0';
 
 export const verifyTaskDetails = (regexPattern) => {
@@ -30,7 +31,7 @@ export const verifyTaskDetails = (regexPattern) => {
       expect(matches).to.not.be.null;
     });
 
-  cy.get('[data-testid="owner-link"]').contains(assignee);
+  cy.get('[data-testid="owner-link"]').should('contain', owner);
 
   cy.get(`[data-testid="assignee-${assignee}"]`).should('be.visible');
 };
