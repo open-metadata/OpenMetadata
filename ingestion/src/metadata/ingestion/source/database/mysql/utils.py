@@ -15,7 +15,6 @@ MySQL SQLAlchemy Helper Methods
 # pylint: disable=protected-access,too-many-branches,too-many-statements,too-many-locals
 from sqlalchemy import util
 from sqlalchemy.dialects.mysql.enumerated import ENUM, SET
-from sqlalchemy.dialects.mysql.json import JSON
 from sqlalchemy.dialects.mysql.reflection import _strip_values
 from sqlalchemy.dialects.mysql.types import DATETIME, TIME, TIMESTAMP
 from sqlalchemy.sql import sqltypes
@@ -89,17 +88,14 @@ def parse_column(self, line, state):
     for ikw in ("unsigned", "zerofill"):
         if spec.get(ikw, False):
             type_kw[ikw] = True
-    for ikw in ("charset", "collate"):
-        if spec.get(ikw, False):
-            type_kw[ikw] = spec[ikw]
+    if spec.get("charset", False):
+        type_kw["charset"] = spec["charset"]
+
     if issubclass(col_type, (ENUM, SET)):
         type_args = _strip_values(type_args)
 
         if issubclass(col_type, SET) and "" in type_args:
             type_kw["retrieve_as_bitwise"] = True
-
-    if issubclass(col_type, (JSON)):
-        type_kw.pop("collate")
 
     type_instance = col_type(*type_args, **type_kw)
 
