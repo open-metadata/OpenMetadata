@@ -640,6 +640,7 @@ class DbtSource(DbtServiceSource):
                 database_name=source_elements[1],
                 schema_name=source_elements[2],
                 dialect=dialect,
+                timeout_seconds=self.source_config.parsingTimeoutLimit,
             )
             for lineage_request in lineages or []:
                 yield lineage_request

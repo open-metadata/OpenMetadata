@@ -896,6 +896,9 @@ const CreateUser = ({
               <Select
                 data-testid="roles-dropdown"
                 disabled={isEmpty(roles)}
+                filterOption={(input, option) =>
+                  (option?.label ?? '').includes(input)
+                }
                 mode="multiple"
                 options={roleOptions}
                 placeholder={t('label.please-select-entity', {

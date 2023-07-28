@@ -42,6 +42,12 @@ export const getSourceTypeFromConfig = (
         gcsType = isString(data.dbtSecurityConfig.gcpConfig)
           ? GCS_CONFIG.GCSCredentialsPath
           : GCS_CONFIG.GCSValues;
+      }
+      if (
+        !isNil(data.dbtSecurityConfig.clientId) ||
+        !isNil(data.dbtSecurityConfig.tenantId)
+      ) {
+        sourceType = DBT_SOURCES.azure;
       } else {
         sourceType = DBT_SOURCES.s3;
       }
