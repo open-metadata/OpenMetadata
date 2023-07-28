@@ -178,19 +178,6 @@ def _(connection: MysqlConnection):
     )
 
 
-def get_connection_engine(
-    connection: HiveConnection,
-):
-    """
-    If the connection contains metastore details
-    then return the metastore engine
-    otherwise return hive server engine
-    """
-    if connection.metastoreConnection is None:
-        return get_connection(connection)
-    return get_metastore_connection(connection.metastoreConnection)
-
-
 def test_connection(
     metadata: OpenMetadata,
     engine: Engine,
@@ -201,7 +188,10 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
-    engine = get_connection_engine(service_connection)
+
+    if service_connection.metastoreConnection is not None:
+        engine = get_metastore_connection(service_connection)
+
     test_connection_db_schema_sources(
         metadata=metadata,
         engine=engine,
