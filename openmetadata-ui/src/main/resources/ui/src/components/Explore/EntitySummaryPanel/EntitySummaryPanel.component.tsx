@@ -13,6 +13,7 @@
 
 import { Drawer, Typography } from 'antd';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -51,18 +52,22 @@ export default function EntitySummaryPanel({
   const { tab } = useParams<{ tab: string }>();
 
   const { getEntityPermission } = usePermissionProvider();
-
+  const [isPermissionLoading, setIsPermissionLoading] =
+    useState<boolean>(false);
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const fetchResourcePermission = async (entityFqn: string) => {
     try {
+      setIsPermissionLoading(true);
       const type =
         get(entityDetails, 'details.entityType') ?? ResourceEntity.TABLE;
       const permissions = await getEntityPermission(type, entityFqn);
       setEntityPermissions(permissions);
     } catch (error) {
       // Error
+    } finally {
+      setIsPermissionLoading(false);
     }
   };
 
@@ -78,6 +83,9 @@ export default function EntitySummaryPanel({
   );
 
   const summaryComponent = useMemo(() => {
+    if (isPermissionLoading) {
+      return <Loader />;
+    }
     if (!viewPermission) {
       return (
         <ErrorPlaceHolder
@@ -117,7 +125,7 @@ export default function EntitySummaryPanel({
       default:
         return null;
     }
-  }, [tab, entityDetails, viewPermission]);
+  }, [tab, entityDetails, viewPermission, isPermissionLoading]);
 
   const entityLink = useMemo(
     () =>
