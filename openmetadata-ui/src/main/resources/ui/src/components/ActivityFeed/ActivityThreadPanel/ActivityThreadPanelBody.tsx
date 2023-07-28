@@ -236,7 +236,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
         {showHeader && isConversationType && (
           <FeedPanelHeader
             className="tw-px-4 tw-shadow-sm"
-            entityLink={selectedThread?.about ?? ''}
+            entityLink={selectedThread?.about ?? threadLink}
             noun={
               isConversationType
                 ? t('label.conversation-plural')
