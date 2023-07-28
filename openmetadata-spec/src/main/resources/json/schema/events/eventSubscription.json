@@ -241,11 +241,6 @@
     "statusDetails": {
       "$ref": "#/definitions/subscriptionStatus"
     },
-    "deleted": {
-      "description": "When `true` indicates the entity has been soft deleted.",
-      "type": "boolean",
-      "default": false
-    },
     "provider" : {
       "$ref": "../type/basic.json#/definitions/providerType"
     }
