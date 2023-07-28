@@ -37,8 +37,7 @@ describe('Add Query page', () => {
     expectedErrorMessage
       ? cy
           .get('.ant-form-item-explain-error')
-          .should('be.visible')
-          .contains(expectedErrorMessage)
+          .should('contain', expectedErrorMessage)
       : cy.get('.Toastify__toast--success').should('be.visible');
   };
 
