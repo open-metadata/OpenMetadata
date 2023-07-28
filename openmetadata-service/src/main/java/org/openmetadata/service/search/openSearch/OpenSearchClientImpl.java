@@ -353,14 +353,16 @@ public class OpenSearchClientImpl implements SearchClient {
             AggregationBuilders.terms(fieldName)
                 .field(fieldName)
                 .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE)
-                .includeExclude(new IncludeExclude(value, null))
-                .order(BucketOrder.key(true)))
+                .includeExclude(new IncludeExclude(value.toLowerCase(), null))
+                .script(new Script("_value.toLowerCase()"))
+                .order(BucketOrder.key(true))
+                .subAggregation(AggregationBuilders.terms("originalName").field(fieldName).size(1)))
         .query(boolQueryBuilder)
         .size(0);
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    String response =
-        client.search(new SearchRequest(index).source(searchSourceBuilder), RequestOptions.DEFAULT).toString();
-    return Response.status(OK).entity(response).build();
+    SearchResponse response =
+        client.search(new SearchRequest(index).source(searchSourceBuilder), RequestOptions.DEFAULT);
+    return Response.status(OK).entity(response.toString()).build();
   }
 
   @Override
