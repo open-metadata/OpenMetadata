@@ -13,20 +13,17 @@
 
 package org.openmetadata.service;
 
-import static java.lang.String.format;
-import static org.openmetadata.service.util.TablesInitializer.validateAndRunSystemDataMigrations;
-
 import io.dropwizard.jersey.jackson.JacksonFeature;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
-import java.util.HashSet;
-import java.util.Set;
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpHost;
+import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
+import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestClientBuilder;
+import org.elasticsearch.client.RestHighLevelClient;
 import org.flywaydb.core.Flyway;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.HttpUrlConnectorProvider;
@@ -49,6 +46,14 @@ import org.openmetadata.service.security.policyevaluator.RoleCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
+
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.WebTarget;
+import java.util.HashSet;
+import java.util.Set;
+
+import static java.lang.String.format;
+import static org.openmetadata.service.util.TablesInitializer.validateAndRunSystemDataMigrations;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -115,8 +120,20 @@ public abstract class OpenMetadataApplicationTest {
 
     ELASTIC_SEARCH_CONTAINER = new ElasticsearchContainer(elasticSearchContainerImage);
     if (RUN_ELASTIC_SEARCH_TESTCASES) {
-      ELASTIC_SEARCH_CONTAINER.start();
-      ELASTIC_SEARCH_CONTAINER.withReuse(true);
+      if (ELASTIC_SEARCH_CONTAINER == null) {
+        LOG.info("creating new ElasticsearchContainer");
+        ELASTIC_SEARCH_CONTAINER = new ElasticsearchContainer(elasticSearchContainerImage);
+      }
+      if (!ELASTIC_SEARCH_CONTAINER.isRunning()) {
+        LOG.info("ElasticsearchContainer started for first time");
+        ELASTIC_SEARCH_CONTAINER.start();
+        ELASTIC_SEARCH_CONTAINER.withReuse(true);
+      } else {
+        LOG.info("ElasticsearchContainer is already running");
+        RestHighLevelClient client = getRestHighLevelClient();
+        DeleteIndexRequest deleteIndexRequest = new DeleteIndexRequest("_all");
+        client.indices().delete(deleteIndexRequest, RequestOptions.DEFAULT);
+      }
       String[] parts = ELASTIC_SEARCH_CONTAINER.getHttpHostAddress().split(":");
       HOST = parts[0];
       PORT = parts[1];
@@ -167,7 +184,6 @@ public abstract class OpenMetadataApplicationTest {
     PolicyCache.cleanUp();
     RoleCache.cleanUp();
     TagLabelCache.cleanUp();
-    ELASTIC_SEARCH_CONTAINER.stop();
   }
 
   public static Client getClient() {
@@ -181,6 +197,13 @@ public abstract class OpenMetadataApplicationTest {
 
   public static RestClient getSearchClient() {
     return RestClient.builder(HttpHost.create(ELASTIC_SEARCH_CONTAINER.getHttpHostAddress())).build();
+  }
+
+  public static RestHighLevelClient getRestHighLevelClient() {
+    RestClientBuilder restClientBuilder = RestClient.builder(new HttpHost(HOST, Integer.parseInt(PORT), "http"));
+    restClientBuilder.setRequestConfigCallback(
+        requestConfigBuilder -> requestConfigBuilder.setConnectTimeout(5 * 1000).setSocketTimeout(60 * 1000));
+    return new RestHighLevelClient(restClientBuilder);
   }
 
   public static WebTarget getResource(String collection) {
