@@ -63,7 +63,7 @@ describe('Edit displayName for all the entities, services and verify breadcrumb'
 
   Object.entries(SERVICES).map(([serviceType, service]) => {
     it(`${service.type}`, () => {
-      visitServiceDetailsPage(service);
+      visitServiceDetailsPage(service, false);
       updateDisplayName(
         service.displayName,
         `/api/v1/services/${serviceType}/*`
@@ -85,7 +85,7 @@ describe('Edit displayName for all the entities, services and verify breadcrumb'
     visitServiceDetailsPage(
       {
         type: DASHBOARD_DATA_MODEL.service.type,
-        name: DASHBOARD_DATA_MODEL.service.displayName,
+        name: DASHBOARD_DATA_MODEL.service.name,
       },
       false
     );
@@ -111,6 +111,7 @@ describe('Edit displayName for all the entities, services and verify breadcrumb'
       SCHEMA_AND_DATABASE_DISPLAY_NAME.serviceName,
       SCHEMA_AND_DATABASE_DISPLAY_NAME.entity
     );
+    cy.log(SCHEMA_AND_DATABASE_DISPLAY_NAME.database);
     cy.get('[data-testid="breadcrumb"]')
       .contains(SCHEMA_AND_DATABASE_DISPLAY_NAME.database)
       .click();
@@ -223,7 +224,7 @@ describe('Cleanup', () => {
     visitServiceDetailsPage(
       {
         type: DASHBOARD_DATA_MODEL.service.type,
-        name: DASHBOARD_DATA_MODEL.service.displayName,
+        name: DASHBOARD_DATA_MODEL.service.name,
       },
       false
     );
@@ -244,7 +245,7 @@ describe('Cleanup', () => {
       visitServiceDetailsPage(
         {
           type: service.type,
-          name: service.displayName,
+          name: service.name,
         },
         false
       );

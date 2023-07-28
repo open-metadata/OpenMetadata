@@ -30,7 +30,16 @@ jobs:
       pull-requests: write
 
     steps:
-
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+            tool-cache: false
+            android: true
+            dotnet: true
+            haskell: true
+            large-packages: true
+            docker-images: true
+            swap-storage: true
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@0179dfc359f90a703c41240506f998ee1603f9ea  #v1.0.0
         if: ${{ github.event_name == 'pull_request_target' }}
