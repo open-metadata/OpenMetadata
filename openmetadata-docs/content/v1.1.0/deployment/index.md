@@ -20,10 +20,10 @@ OpenMetadata requires 4 components
 
 1. OpenMetadata Server, pick the latest release from our (github releases)[https://github.com/open-metadata/OpenMetadata/releases]
 2. OpenMetadata Server stores the metadata in a relational database. We support MySQL or Postgres. Any Cloud provider such as AWS or GCP's provided MySQL/Postgres services will work as well
-	1. 	MySQL Version 8.0.0 or Greater
+	1. MySQL Version 8.0.0 or Greater
 	2. Postgres Version 12.0 or Greater
 3. Search Engine (ElasticSearch, OpenSearch)
-	1. 	We support ElasticSearch 7.16 to 7.17
+	1. We support ElasticSearch 7.16 to 7.17
 	2. OpenSearch 1.3 
 4. Workflow Orchestration Tools
 	OpenMetadata requires connectors to be scheduled to periodically fetch the metadata or you can use the OpenMetadata APIs to push the metadata as well
@@ -67,7 +67,7 @@ We support following deployment options
 
 ## Security
 
- how to secure your OpenMetadata deployment
+Secure your OpenMetadata deployment
 
 {%inlineCalloutContainer%}
   {%inlineCallout

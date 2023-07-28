@@ -15,13 +15,10 @@ Before starting with the deployment make sure you follow all the below Prerequis
 
 ### Configure OpenMetadata to use External Database and Search Engine
 
-For Production Deployment using Docker, we recommend to bring your own Databases and ElasticSearch Engine.
+For Production Deployment using Docker, we recommend to bring your own Databases and ElasticSearch Engine and not rely on quickstart packages.
 
-### Configure External Ingestion Service
 
-OpenMetadata requires connectors to be scheduled to periodically fetch the metadata or you can use the OpenMetadata APIs to push the metadata as well
-1. OpenMetadata Ingestion Framework is flexible to run on any orchestrator. However we built an ability to deploy and manage connectors as pipelines from the UI. This requires the Airflow container we ship. However, it is recommended to 
-2. If your team prefers to run on any other orchestrator such as prefect, dagster or even github workflows. Please refer to our recent webinar on [How Ingestion Framework works](https://www.youtube.com/watch?v=i7DhG_gZMmE&list=PLa1l-WDhLreslIS_96s_DT_KdcDyU_Itv&index=10)
+{% partial file="/v1.1.0/deployment/configure-external-orchestrator-for-ingestion-service.md" /%}
 
 ### Docker (version 20.10.0 or greater)
 [Docker](https://docs.docker.com/get-started/overview/) is an open-source platform for developing, shipping, and running applications. It enables you to separate your applications from your infrastructure, so you can deliver software quickly using OS-level virtualization. It helps deliver software in packages called Containers.
@@ -77,13 +74,7 @@ Follow the instructions [here](https://docs.docker.com/compose/cli-command/#inst
     > Docker Compose version v2.2.3
     ```
 
-## Minimum Sizing Requirements
-
-We recommend you to allocate openmetadata-server with minimum of 2vCPUs and 6 GiB Memory.
-
-For External Services that openmetadata depends on -
-- For the database, minimum 2 vCPUs and 2 GiB RAM (per instance) with 30 GiB of Storage Volume Attached (dynamic expansion up to 100 GiB)
-- For Elasticsearch, minimum 2 vCPUs and 2 GiB RAM (per instance) with 30 GiB of Storage volume attached
+{% partial file="/v1.1.0/deployment/minimum-sizing-requirements.md" /%}
 
 ## Steps for Deploying OpenMetadata using Docker 
 
@@ -95,28 +86,18 @@ Create a new directory for OpenMetadata and navigate into that directory.
 mkdir openmetadata-docker && cd openmetadata-docker
 ```
 
-### 2. Download Docker Compose File from Github Release Branch
+### 2. Download Docker Compose Files from Github Releases
 
-Download the Docker Compose files from Release Branch. Head over to `docker` > `docker-compose-openmetadata` directory and download or copy contents of Docker compose files available there.
+Download the Docker Compose files from [Latest Github Releases](https://github.com/open-metadata/OpenMetadata/releases/latest). 
 
-For example, if we want to download Docker Compose file for Release version `1.1.0` -
-- Will navigate to [Github Repository](https://github.com/open-metadata/OpenMetadata)
-- Switch Branch to release version which will be `1.1.0`
-- Browse to `docker` > `docker-compose-openmetadata` directory
-- Download the Docker Compose and env files available in the directory
+The Docker compose file name will be `docker-compose-openmetadata-server.yml`.
 
-To do this via terminal, just run the below commands -
+This docker compose file contains only the docker compose services for OpenMetadata Server. Bring up the dependencies as mentioned in the [prerequisites](#configure-openmetadata-to-use-external-database-and-search-engine) section.
 
-```commandline
-wget https://github.com/open-metadata/OpenMetadata/blob/1.1.0/docker/docker-compose-openmetadata/docker-compose-openmetadata.yml
-wget https://github.com/open-metadata/OpenMetadata/blob/1.1.0/docker/docker-compose-openmetadata/env-mysql
-```
+You can also run the below command to fetch the docker compose file directly from the terminal -
 
-If you are looking for Docker compose file with PostgreSQL, the command to download relevant files will be
-
-```commandline
-wget https://github.com/open-metadata/OpenMetadata/blob/1.1.0/docker/docker-compose-openmetadata/docker-compose-openmetadata-postgres.yml
-wget https://github.com/open-metadata/OpenMetadata/blob/1.1.0/docker/docker-compose-openmetadata/env-postgres
+```bash
+wget https://github.com/open-metadata/OpenMetadata/releases/download/1.1.1-release/docker-compose-openmetadata-server.yml
 ```
 
 ### 3. Update Environment Variables required for OpenMetadata Dependencies
@@ -188,7 +169,7 @@ AIRFLOW_TRUST_STORE_PASSWORD=""
 
 {% note noteType="Warning" %}
 
-- When setting up environment file if your custom password includes any special characters then make sure to follow the steps [here](https://github.com/open-metadata/OpenMetadata/issues/12110#issuecomment-1611341650).
+When setting up environment file if your custom password includes any special characters then make sure to follow the steps [here](https://github.com/open-metadata/OpenMetadata/issues/12110#issuecomment-1611341650).
 
 {% /note %}
 
