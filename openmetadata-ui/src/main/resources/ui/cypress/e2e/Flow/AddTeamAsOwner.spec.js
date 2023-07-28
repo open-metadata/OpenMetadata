@@ -46,7 +46,7 @@ describe('Create a team and add that team as a owner of the entity', () => {
    * Only team of type group can own the entities
    */
   it('Add a group team type and assign it as a owner of the entity', () => {
-    interceptURL('GET', '/api/v1/users*', 'getTeams');
+    interceptURL('GET', '/api/v1/teams/name/*', 'getTeams');
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
