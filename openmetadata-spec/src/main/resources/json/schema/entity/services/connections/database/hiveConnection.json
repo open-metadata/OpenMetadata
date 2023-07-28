@@ -80,6 +80,10 @@
       "description": "Hive Metastore Connection Details",
       "oneOf": [
         {
+          "title": "None",
+          "type": "object"
+        },
+        {
           "$ref": "./postgresConnection.json"
         },
         {

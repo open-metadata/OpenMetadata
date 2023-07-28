@@ -189,8 +189,8 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    if service_connection.metastoreConnection is not None:
-        engine = get_metastore_connection(service_connection)
+    if service_connection.metastoreConnection:
+        engine = get_metastore_connection(service_connection.metastoreConnection)
 
     test_connection_db_schema_sources(
         metadata=metadata,

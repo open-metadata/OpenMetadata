@@ -78,7 +78,7 @@ class HiveSource(CommonDbSourceService):
         Fetching views in hive server with query "SHOW VIEWS" was possible
         only after hive 2.2.0 version
         """
-        if self.service_connection.metastoreConnection is None:
+        if not self.service_connection.metastoreConnection:
             result = dict(self.engine.execute("SELECT VERSION()").fetchone())
 
             version = result.get("_c0", "").split()
