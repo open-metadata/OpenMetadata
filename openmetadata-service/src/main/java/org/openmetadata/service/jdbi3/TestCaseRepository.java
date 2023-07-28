@@ -121,7 +121,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private EntityReference getTestSuite(TestCase test) throws IOException {
     // `testSuite` field returns the executable `testSuite` linked to that testCase
     List<CollectionDAO.EntityRelationshipRecord> records =
-        findFrom(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
+        findFromRecords(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
     ensureSingleRelationship(entityType, test.getId(), records, Relationship.CONTAINS.value(), true);
     for (CollectionDAO.EntityRelationshipRecord testSuiteId : records) {
       TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL);
@@ -135,7 +135,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private List<TestSuite> getTestSuites(TestCase test) {
     // `testSuites` field returns all the `testSuite` (executable and logical) linked to that testCase
     List<CollectionDAO.EntityRelationshipRecord> records =
-        findFrom(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
+        findFromRecords(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
     ensureSingleRelationship(entityType, test.getId(), records, Relationship.CONTAINS.value(), true);
     return records.stream()
         .map(
@@ -337,11 +337,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       List<TestCase> testCases = listAll(Fields.EMPTY_FIELDS, new ListFilter());
       testCaseFQNs = testCases.stream().map(TestCase::getFullyQualifiedName).collect(Collectors.toList());
     } else {
-      List<CollectionDAO.EntityRelationshipRecord> testCases =
-          findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
-      List<EntityReference> testCasesEntityReferences = EntityUtil.getEntityReferences(testCases);
-      testCaseFQNs =
-          testCasesEntityReferences.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.toList());
+      List<EntityReference> testCaseRefs = findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+      testCaseFQNs = testCaseRefs.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.toList());
     }
 
     return EntityUtil.getTestCaseExecutionSummary(

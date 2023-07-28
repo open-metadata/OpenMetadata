@@ -48,7 +48,6 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -135,19 +134,15 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private List<EntityReference> getChildren(GlossaryTerm entity) throws IOException {
-    List<EntityRelationshipRecord> ids = findTo(entity.getId(), GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
-    return EntityUtil.populateEntityReferences(ids, GLOSSARY_TERM);
+    return findTo(entity.getId(), GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
   }
 
   private List<EntityReference> getRelatedTerms(GlossaryTerm entity) throws IOException {
-    List<EntityRelationshipRecord> ids =
-        findBoth(entity.getId(), GLOSSARY_TERM, Relationship.RELATED_TO, GLOSSARY_TERM);
-    return EntityUtil.populateEntityReferences(ids, GLOSSARY_TERM);
+    return findBoth(entity.getId(), GLOSSARY_TERM, Relationship.RELATED_TO, GLOSSARY_TERM);
   }
 
   private List<EntityReference> getReviewers(GlossaryTerm entity) throws IOException {
-    List<EntityRelationshipRecord> ids = findFrom(entity.getId(), GLOSSARY_TERM, Relationship.REVIEWS, Entity.USER);
-    return EntityUtil.populateEntityReferences(ids, Entity.USER);
+    return findFrom(entity.getId(), GLOSSARY_TERM, Relationship.REVIEWS, Entity.USER);
   }
 
   @Override
