@@ -220,9 +220,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected final boolean supportsOwner;
   protected final boolean supportsTags;
   protected boolean supportsPatch = true;
-  protected boolean supportsSoftDelete;
+  protected final boolean supportsSoftDelete;
   protected boolean supportsFieldsQueryParam = true;
-  protected boolean supportsEmptyDescription = true;
+  protected final boolean supportsEmptyDescription;
 
   // Special characters supported in the entity name
   protected String supportedNameCharacters = "_'-.&()" + RANDOM_STRING_GENERATOR.generate(1);
@@ -382,6 +382,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     this.allFields = fields;
     ENTITY_RESOURCE_TEST_MAP.put(entityType, this);
     Set<String> allowedFields = Entity.getEntityFields(entityClass);
+    this.supportsEmptyDescription = !EntityUtil.isDescriptionRequired(entityClass);
     this.supportsFollowers = allowedFields.contains(FIELD_FOLLOWERS);
     this.supportsOwner = allowedFields.contains(FIELD_OWNER);
     this.supportsTags = allowedFields.contains(FIELD_TAGS);
@@ -566,6 +567,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     Random rand = new Random();
     int maxEntities = rand.nextInt(16) + 5;
 
+    System.out.println("XXX creating entities " + maxEntities);
     List<UUID> createdUUIDs = new ArrayList<>();
     for (int i = 0; i < maxEntities; i++) {
       createdUUIDs.add(createEntity(createRequest(test, i + 1), ADMIN_AUTH_HEADERS).getId());
@@ -578,6 +580,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Test listing entities that include deleted, non-deleted, and all the entities
     Random random = new Random();
     for (Include include : List.of(Include.NON_DELETED, Include.ALL, Include.DELETED)) {
+      System.out.println("XXX supportSoftDelete " + supportsSoftDelete);
+      System.out.println("XXX Include " + include);
       if (!supportsSoftDelete && include.equals(Include.DELETED)) {
         continue;
       }
@@ -588,6 +592,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       ResultList<T> allEntities = listEntities(queryParams, 1000000, null, null, ADMIN_AUTH_HEADERS);
       int totalRecords = allEntities.getData().size();
       printEntities(allEntities);
+      System.out.println("XXX totalRecords " + totalRecords);
 
       // List entity with "limit" set from 1 to maxEntities size with random jumps (to reduce the test time)
       // Each time compare the returned list with allTables list to make sure right results are returned
@@ -600,8 +605,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         ResultList<T> backwardPage;
         boolean foundDeleted = false;
         do { // For each limit (or page size) - forward scroll till the end
-          LOG.debug(
-              "Limit {} forward pageCount {} indexInAllTables {} totalRecords {} afterCursor {}",
+          LOG.info(
+              "XXX Limit {} forward pageCount {} indexInAllTables {} totalRecords {} afterCursor {}",
               limit,
               pageCount,
               indexInAllTables,
@@ -2489,8 +2494,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   private void printEntities(ResultList<T> list) {
-    list.getData().forEach(e -> LOG.debug("{} {}", entityClass, e.getFullyQualifiedName()));
-    LOG.debug("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
+    list.getData().forEach(e -> LOG.info("XXX {} {}", entityClass, e.getFullyQualifiedName()));
+    LOG.info("XXX before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
   }
 
   public void assertEntityDeleted(T entity, boolean hardDelete) {
