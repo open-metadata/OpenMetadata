@@ -41,29 +41,11 @@ const FeedsWidget = () => {
 
   useEffect(() => {
     if (activeTab === ActivityFeedTabs.ALL) {
-      getFeedData(FeedFilter.OWNER, undefined, ThreadType.Conversation).catch(
-        () => {
-          // ignore since error is displayed in toast in the parent promise.
-          // Added block for sonar code smell
-        }
-      );
+      getFeedData(FeedFilter.OWNER, undefined, ThreadType.Conversation);
     } else if (activeTab === ActivityFeedTabs.MENTIONS) {
-      getFeedData(FeedFilter.MENTIONS).catch(() => {
-        // ignore since error is displayed in toast in the parent promise.
-        // Added block for sonar code smell
-      });
+      getFeedData(FeedFilter.MENTIONS);
     } else if (activeTab === ActivityFeedTabs.TASKS) {
-      getFeedData(FeedFilter.OWNER, undefined, ThreadType.Task)
-        .then((data) => {
-          const openTasks = data.filter(
-            (item) => item.task?.status === ThreadTaskStatus.Open
-          );
-          setTaskCount(openTasks.length);
-        })
-        .catch(() => {
-          // ignore since error is displayed in toast in the parent promise.
-          // Added block for sonar code smell
-        });
+      getFeedData(FeedFilter.OWNER, undefined, ThreadType.Task);
     }
   }, [activeTab]);
 

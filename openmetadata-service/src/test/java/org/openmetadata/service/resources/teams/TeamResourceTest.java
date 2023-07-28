@@ -950,7 +950,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   private Team createWithParents(String teamName, TeamType teamType, Boolean isJoinable, EntityReference... parents)
       throws HttpResponseException {
     List<EntityReference> parentList = List.of(parents);
-    List<UUID> parentIds = EntityUtil.toIds(parentList);
+    List<UUID> parentIds = EntityUtil.refToIds(parentList);
     Team team =
         createEntity(
             createRequest(teamName).withParents(parentIds).withTeamType(teamType).withIsJoinable(isJoinable),
@@ -962,7 +962,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   private Team createWithChildren(String teamName, TeamType teamType, EntityReference... children)
       throws HttpResponseException {
     List<EntityReference> childrenList = List.of(children);
-    List<UUID> childIds = EntityUtil.toIds(childrenList);
+    List<UUID> childIds = EntityUtil.refToIds(childrenList);
     Team team = createEntity(createRequest(teamName).withChildren(childIds).withTeamType(teamType), ADMIN_AUTH_HEADERS);
     assertChildren(team, childrenList);
     return team;

@@ -111,6 +111,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
 
   @Override
   public void upgrade() throws IOException {
+    // Introduced in 0.13
     // OrganizationPolicy rule change
     Policy originalOrgPolicy = repository.getByName(null, Entity.ORGANIZATION_POLICY_NAME, repository.getPatchFields());
     Policy updatedOrgPolicy = JsonUtils.readValue(JsonUtils.pojoToJson(originalOrgPolicy), Policy.class);

@@ -68,7 +68,7 @@ const ActivityFeedListV1 = ({
   }
 
   return (
-    <div className="feed-list-container p-y-md m-b-sm h-full" id="feedData">
+    <div className="feed-list-container p-y-md" id="feedData">
       {entityThread.length === 0 && (
         <div
           className="h-full p-x-md"
@@ -85,7 +85,7 @@ const ActivityFeedListV1 = ({
             <Typography.Paragraph style={{ marginBottom: '0' }}>
               {isTaskTab && (
                 <Typography.Text strong>
-                  {t('message.no-open-issues')} <br />
+                  {t('message.no-open-tasks')} <br />
                 </Typography.Text>
               )}
               {emptyPlaceholderText}
