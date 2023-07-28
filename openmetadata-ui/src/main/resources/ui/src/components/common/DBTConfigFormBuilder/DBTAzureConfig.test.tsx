@@ -17,6 +17,7 @@ import { DBTAzureConfig } from './DBTAzureConfig.component';
 
 const mockProps = {
   enableDebugLog: false,
+  parsingTimeoutLimit: 0,
 };
 
 jest.mock('./DBTCommonFields.component', () =>
