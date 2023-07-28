@@ -94,11 +94,6 @@
     "queryUsedIn": {
       "description": "Entities that are using this query",
       "$ref": "../../type/entityReferenceList.json"
-    },
-    "deleted": {
-      "description": "When `true` indicates the entity has been soft deleted.",
-      "type": "boolean",
-      "default": false
     }
   },
   "required": ["name","query"],

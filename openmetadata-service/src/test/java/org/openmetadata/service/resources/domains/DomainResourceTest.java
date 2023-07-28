@@ -24,8 +24,6 @@ import org.openmetadata.service.util.JsonUtils;
 public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain> {
   public DomainResourceTest() {
     super(Entity.DOMAIN, Domain.class, DomainList.class, "domains", DomainResource.FIELDS);
-    supportsFieldsQueryParam = false; // TODO
-    supportsEmptyDescription = false;
   }
 
   public void setupDomains(TestInfo test) throws IOException {
