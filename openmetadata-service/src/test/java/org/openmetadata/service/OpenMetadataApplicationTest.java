@@ -180,7 +180,6 @@ public abstract class OpenMetadataApplicationTest {
     RoleCache.cleanUp();
     TagLabelCache.cleanUp();
     ELASTIC_SEARCH_CONTAINER.stop();
-    ELASTIC_SEARCH_CONTAINER = null;
   }
 
   public static Client getClient() {
