@@ -12,6 +12,7 @@
  */
 
 import { Card, Col, Row, Space, Tabs } from 'antd';
+import { AxiosError } from 'axios';
 import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -37,10 +38,13 @@ import { EntityTags } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getFeedCounts } from 'utils/CommonUtils';
+import { restoreDataModel } from 'rest/dataModelsAPI';
+import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
+import { getFeedCounts, refreshPage } from 'utils/CommonUtils';
 import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
 import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
 import { getTagsWithoutTier } from 'utils/TableUtils';
+import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import { DataModelDetailsProps } from './DataModelDetails.interface';
 import ModelTab from './ModelTab/ModelTab.component';
 
@@ -157,6 +161,26 @@ const DataModelDetails = ({
       state: State.Confirmed,
     }));
     handleUpdateTags(updatedTags);
+  };
+
+  const handleRestoreDataModel = async () => {
+    try {
+      await restoreDataModel(dataModelData.id ?? '');
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.data-model'),
+        }),
+        2000
+      );
+      refreshPage();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.data-model'),
+        })
+      );
+    }
   };
 
   const modelComponent = useMemo(() => {
@@ -335,13 +359,14 @@ const DataModelDetails = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            afterDeleteAction={handleDataAssetAfterDeleteAction}
             dataAsset={dataModelData}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             permissions={dataModelPermissions}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={handleFollowDataModel}
             onOwnerUpdate={handleUpdateOwner}
-            onRestoreDataAsset={() => Promise.resolve()}
+            onRestoreDataAsset={handleRestoreDataModel}
             onTierUpdate={handleUpdateTier}
             onVersionClick={versionHandler}
           />

@@ -59,9 +59,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   private List<EntityReference> getTestCases(TestSuite entity) throws IOException {
-    List<CollectionDAO.EntityRelationshipRecord> testCases =
-        findTo(entity.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
-    return EntityUtil.getEntityReferences(testCases);
+    return findTo(entity.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
   }
 
   @Override

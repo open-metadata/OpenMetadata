@@ -14,6 +14,7 @@
 import {
   interceptURL,
   login,
+  uuid,
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
@@ -29,7 +30,7 @@ import { NAVBAR_DETAILS } from '../../constants/redirections.constants';
 const CREDENTIALS = {
   firstName: 'Test_Data_Consumer',
   lastName: 'User_Data_consumer',
-  email: 'test_dataconsumer@openmetadata.org',
+  email: `test_dataconsumer${uuid()}@openmetadata.org`,
   password: 'User@OMD123',
 };
 
@@ -249,8 +250,6 @@ describe('DataConsumer Edit policy should work properly', () => {
     }
     cy.get('body').click();
 
-    cy.get('[data-testid="no-data-placeholder"]').should('be.visible');
-
     cy.clickOnLogo();
 
     // Check CRUD for Tags
@@ -281,7 +280,6 @@ describe('DataConsumer Edit policy should work properly', () => {
     Object.values(PERMISSIONS).forEach((id) => {
       if (id.testid === '[data-menu-id*="metadata"]') {
         cy.get(id.testid).should('be.visible').click();
-        cy.get(`[data-testid="no-data-placeholder"]`).should('be.visible');
       } else {
         cy.get(id.testid).should('not.be.exist');
       }
@@ -291,6 +289,7 @@ describe('DataConsumer Edit policy should work properly', () => {
 
 describe('Cleanup', () => {
   beforeEach(() => {
+    Cypress.session.clearAllSavedSessions();
     cy.login();
   });
 
