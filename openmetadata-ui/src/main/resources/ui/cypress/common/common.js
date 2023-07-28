@@ -706,10 +706,12 @@ export const deleteSoftDeletedUser = (username) => {
   cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
 };
 
-export const toastNotification = (msg) => {
+export const toastNotification = (msg, closeToast = true) => {
   cy.get('.Toastify__toast-body').should('be.visible').contains(msg);
   cy.wait(200);
-  cy.get('.Toastify__close-button').should('be.visible').click();
+  if (closeToast) {
+    cy.get('.Toastify__close-button').should('be.visible').click();
+  }
 };
 
 export const addCustomPropertiesForEntity = (

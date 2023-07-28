@@ -22,14 +22,18 @@ import './kpi-widget.less';
 
 const KPIWidget = () => {
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
+  const [isKPIListLoading, setIsKPIListLoading] = useState<boolean>(false);
 
   const fetchKpiList = async () => {
     try {
+      setIsKPIListLoading(true);
       const response = await getListKPIs({ fields: 'dataInsightChart' });
       setKpiList(response.data);
     } catch (_err) {
       setKpiList([]);
       showErrorToast(_err as AxiosError);
+    } finally {
+      setIsKPIListLoading(false);
     }
   };
 
@@ -41,7 +45,11 @@ const KPIWidget = () => {
 
   return (
     <div className="kpi-widget-container h-full">
-      <KPIChartV1 kpiList={kpiList} selectedDays={CHART_WIDGET_DAYS_DURATION} />
+      <KPIChartV1
+        isKPIListLoading={isKPIListLoading}
+        kpiList={kpiList}
+        selectedDays={CHART_WIDGET_DAYS_DURATION}
+      />
     </div>
   );
 };
