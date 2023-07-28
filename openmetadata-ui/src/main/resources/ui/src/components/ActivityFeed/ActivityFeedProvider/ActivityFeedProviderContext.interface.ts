@@ -51,7 +51,7 @@ export interface ActivityFeedProviderContextType {
     type?: ThreadType,
     entityType?: EntityType,
     fqn?: string
-  ) => Promise<Thread[]>;
+  ) => Promise<void>;
   showDrawer: (thread: Thread) => void;
   hideDrawer: () => void;
   updateEditorFocus: (isFocused: boolean) => void;

@@ -68,7 +68,7 @@ const ActivityFeedListV1 = ({
   }
 
   return (
-    <div className="feed-list-container p-y-md m-b-sm h-full" id="feedData">
+    <div className="feed-list-container p-y-md" id="feedData">
       {entityThread.length === 0 && (
         <div
           className="h-full p-x-md"
