@@ -70,8 +70,13 @@ const TableConstraints: FC<TableConstraintsProps> = ({ constraints }) => {
                 </Space>
 
                 <Space direction="vertical" size={16}>
-                  {columns?.map((column, index) => (
-                    <Typography.Text key={index}>{column}</Typography.Text>
+                  {columns?.map((column) => (
+                    <Typography.Text
+                      className="w-60"
+                      ellipsis={{ tooltip: true }}
+                      key={column}>
+                      {column}
+                    </Typography.Text>
                   ))}
                 </Space>
               </div>
