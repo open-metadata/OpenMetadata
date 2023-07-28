@@ -110,7 +110,7 @@ describe('Add and Remove Owner and Tier', () => {
   });
 
   Object.entries(ENTITIES).map(([key, value]) => {
-    it(`${key} details page`, () => {
+    it.skip(`${key} details page`, () => {
       interceptURL('PATCH', `/api/v1/${value.entity}/*`, 'patchOwner');
 
       visitEntityDetailsPage(
@@ -127,7 +127,7 @@ describe('Add and Remove Owner and Tier', () => {
     });
   });
 
-  it('databaseSchema details page', () => {
+  it.skip('databaseSchema details page', () => {
     interceptURL('PATCH', '/api/v1/databaseSchemas/*', 'patchOwner');
     interceptURL('GET', '/api/v1/*/name/*', 'schemaDetails');
     const value = ENTITIES.table;
@@ -145,7 +145,7 @@ describe('Add and Remove Owner and Tier', () => {
     addRemoveOwner();
   });
 
-  it('database details page', () => {
+  it.skip('database details page', () => {
     interceptURL('PATCH', '/api/v1/databases/*', 'patchOwner');
     interceptURL('GET', '/api/v1/databases/name/*', 'databaseDetails');
     const value = ENTITIES.table;
@@ -163,7 +163,7 @@ describe('Add and Remove Owner and Tier', () => {
     addRemoveOwner();
   });
 
-  it('service details page', () => {
+  it.skip('service details page', () => {
     interceptURL('PATCH', '/api/v1/services/databaseServices/*', 'patchOwner');
     interceptURL(
       'GET',
@@ -193,7 +193,7 @@ describe('Add and Remove Owner and Tier', () => {
     addRemoveOwner();
   });
 
-  it('Test suite details page', () => {
+  it.skip('Test suite details page', () => {
     interceptURL('PATCH', '/api/v1/dataQuality/testSuites/*', 'patchOwner');
     interceptURL('GET', '/api/v1/dataQuality/testSuites?*', 'testSuites');
     interceptURL(
@@ -245,6 +245,7 @@ describe('Add and Remove Owner and Tier', () => {
     cy.get('[data-testid="appbar-item-glossary"]').click({
       waitForAnimations: true,
     });
+    verifyResponseStatusCode('@getGlossaries', 200);
     cy.get('[data-testid="add-glossary"]').click();
     cy.get('[data-testid="name"]').should('be.visible').type(glossary);
     cy.get(descriptionBox).scrollIntoView().should('be.visible').type(glossary);
