@@ -76,7 +76,6 @@ jobs:
         run: |
            echo "=============================================="
            echo "Running Maven Clean and Build..."
-           mvn clean install
            echo "=============================================="
       - name: Maven build
         id: maven-build
