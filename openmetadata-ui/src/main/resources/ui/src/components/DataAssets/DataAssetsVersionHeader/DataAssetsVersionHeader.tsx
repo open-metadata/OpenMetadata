@@ -37,7 +37,7 @@ function DataAssetsVersionHeader({
 
   return (
     <Row className="p-x-lg" gutter={[8, 12]} justify="space-between">
-      <Col className="self-center">
+      <Col className="self-center" span={21}>
         <Row gutter={[16, 12]}>
           <Col span={24}>
             <TitleBreadcrumb titleLinks={breadcrumbLinks} />
@@ -83,14 +83,18 @@ function DataAssetsVersionHeader({
           </Col>
         </Row>
       </Col>
-      <Col>
-        <Button
-          className="w-16 p-0"
-          data-testid="version-button"
-          icon={<Icon component={VersionIcon} />}
-          onClick={onVersionClick}>
-          <Typography.Text>{version}</Typography.Text>
-        </Button>
+      <Col span={3}>
+        <Row justify="end">
+          <Col>
+            <Button
+              className="w-16 p-0"
+              data-testid="version-button"
+              icon={<Icon component={VersionIcon} />}
+              onClick={onVersionClick}>
+              <Typography.Text>{version}</Typography.Text>
+            </Button>
+          </Col>
+        </Row>
       </Col>
     </Row>
   );
