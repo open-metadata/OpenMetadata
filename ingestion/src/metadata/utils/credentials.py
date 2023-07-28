@@ -67,8 +67,15 @@ def create_credential_tmp_file(credentials: dict) -> str:
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         cred_json = json.dumps(credentials, indent=4, separators=(",", ": "))
         temp_file.write(cred_json.encode())
+        # Get the path of the temporary file
+        temp_file_path = temp_file.name
 
-        return temp_file.name
+        # The temporary file will be automatically closed when exiting the "with" block,
+        # but we can explicitly close it here to free up resources immediately.
+        temp_file.close()
+
+        # Return the path of the temporary file
+        return temp_file_path
 
 
 def build_google_credentials_dict(gcp_values: GcpCredentialsValues) -> Dict[str, str]:
@@ -121,6 +128,7 @@ def set_google_credentials(gcp_credentials: GCPCredentials) -> None:
                 "Overriding default projectid, using the current environment permissions authenticated via gcloud SDK."
             )
             return
+
         credentials_dict = build_google_credentials_dict(gcp_credentials.gcpConfig)
         tmp_credentials_file = create_credential_tmp_file(credentials=credentials_dict)
         os.environ[GOOGLE_CREDENTIALS] = tmp_credentials_file

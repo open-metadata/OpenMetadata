@@ -48,7 +48,6 @@ import org.openmetadata.service.util.TestUtils;
 public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   public KpiResourceTest() {
     super(Entity.KPI, Kpi.class, KpiResource.KpiList.class, "kpi", KpiResource.FIELDS);
-    supportsEmptyDescription = false;
     supportsPatch = false;
   }
 
