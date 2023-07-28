@@ -16,6 +16,7 @@ import { SearchIndex } from 'enums/search.enum';
 import {
   getChartsOptions,
   getColumnsOptions,
+  getOptionsFromAggregationBucket,
   getSchemaFieldOptions,
   getSearchDropdownLabels,
   getSearchLabel,
@@ -202,5 +203,48 @@ describe('AdvancedSearchUtils tests', () => {
     );
 
     expect(resultGetChartsOptions).toBe('chart text');
+  });
+
+  it('should return an array of options with correct properties', () => {
+    const buckets = [
+      {
+        key: 'key1',
+        doc_count: 10,
+        'sterms#originalName': {
+          buckets: [
+            {
+              key: 'Key1',
+              doc_count: 10,
+            },
+          ],
+        },
+      },
+      {
+        key: 'key2',
+        doc_count: 20,
+        'sterms#originalName': {
+          buckets: [
+            {
+              key: 'Key2',
+              doc_count: 20,
+            },
+          ],
+        },
+      },
+    ];
+    const result = getOptionsFromAggregationBucket(buckets);
+
+    expect(result).toEqual([
+      {
+        key: 'Key1',
+        label: 'Key1',
+        count: 10,
+      },
+      {
+        key: 'Key2',
+        label: 'Key2',
+        count: 20,
+      },
+    ]);
   });
 });
