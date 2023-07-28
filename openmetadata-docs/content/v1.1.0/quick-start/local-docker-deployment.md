@@ -174,6 +174,10 @@ CONTAINER ID   IMAGE                                                  COMMAND   
 
 In a few seconds, you should be able to access the OpenMetadata UI at [http://localhost:8585](http://localhost:8585)
 
+{%note noteType="Tip"%}
+By default, we ship Docker Compose with [host and docker named volume mapping](https://docs.docker.com/storage/) for MySQL, PostgreSQL, ElasticSearch and Ingestion Services with quickstart docker compose services. This will be available under `docker-volume` directory on host machine in the same path as docker compose files.
+{%/note%}
+
 ## Log in to OpenMetadata
 
 OpenMetadata provides a default admin account to login.
@@ -205,7 +209,7 @@ alt="tour" /%}
 
 ## Cleanup
 
-From the same directory as mentioned in [step 1](#1-create-a-directory-for-openmetadata), run the below command to stop the docker compose services.
+From the same directory as mentioned in [step 1](#1-create-a-directory-for-openmetadata), run the below command to stop the docker compose services and clean named volumes.
 
 ```
 docker compose down --volumes
@@ -247,10 +251,6 @@ You can connect Docker containers to communicate with Host Operating System Serv
 
 Please follow our [Enable Security Guide](/deployment/docker/security) to configure security for your OpenMetadata
 installation.
-
-## Advanced
-
-If you want to persist your data, prepare [Named Volumes](/deployment/docker/volumes) for the containers.
 
 ## Next Steps
 

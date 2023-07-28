@@ -119,13 +119,13 @@ wget https://github.com/open-metadata/OpenMetadata/blob/1.1.0/docker/docker-comp
 wget https://github.com/open-metadata/OpenMetadata/blob/1.1.0/docker/docker-compose-openmetadata/env-postgres
 ```
 
-### 3. Update Environment Variables required for OpenMetadata
+### 3. Update Environment Variables required for OpenMetadata Dependencies
 
 In the previous [step](#2-download-docker-compose-file-from-github-release-branch), we download two files, one is `docker-compose` and another is `environment file` required for docker compose.
 
 Identify and update the environment variables in the file to prepare openmetadata configurations.
 
-For example, we want to configure external database and search engine configurations. In that case, you will update the below section of environment variable file -
+For MySQL Configurations, update the below environment variables -
 
 ```bash
 ...
@@ -138,13 +138,52 @@ DB_USER_PASSWORD="<SQL_DATABASE_PASSWORD>"
 DB_HOST="<SQL_DATABASE_ENDPOINT>"
 DB_PORT="<SQL_DATABASE_PORT>"
 OM_DATABASE="<SQL_DATABASE_NAME>"
+...
+```
+
+For ElasticSearch Configurations, update the below environment variables -
+
+```bash
 # ElasticSearch Configurations
-ELASTICSEARCH_HOST= "<ELASTICSEARCH_ENDPOINT>"
+SEARCH_TYPE="elasticsearch"
+ELASTICSEARCH_HOST="<ELASTICSEARCH_ENDPOINT>"
 ELASTICSEARCH_PORT="<ELASTICSEARCH_ENDPOINT_PORT>"
 ELASTICSEARCH_SCHEME="<ELASTICSEARCH_ENDPOINT_SCHEME>"
 ELASTICSEARCH_USER="<ELASTICSEARCH_USERNAME>"
 ELASTICSEARCH_PASSWORD="<ELASTICSEARCH_PASSWORD>"
 ...
+```
+
+For OpenSearch Configurations, update the below environment variables -
+
+```bash
+# ElasticSearch Configurations
+SEARCH_TYPE="opensearch"
+ELASTICSEARCH_HOST="<OPENSEARCH_ENDPOINT>"
+ELASTICSEARCH_PORT="<OPENSEARCH_ENDPOINT_PORT>"
+ELASTICSEARCH_SCHEME="<OPENSEARCH_ENDPOINT_SCHEME>"
+ELASTICSEARCH_USER="<OPENSEARCH_USERNAME>"
+ELASTICSEARCH_PASSWORD="<OPENSEARCH_PASSWORD>"
+...
+```
+
+For Ingestion Configurations, update the below environment variables -
+
+```bash
+PIPELINE_SERVICE_CLIENT_ENDPOINT="<INGESTION_ENDPOINT_URL_WITH_SCHEME>"
+PIPELINE_SERVICE_CLIENT_HEALTH_CHECK_INTERVAL="300"
+SERVER_HOST_API_URL="<OPENMETADATA_ENDPOINT_URL_WITH_SCHEME>/api"
+PIPELINE_SERVICE_CLIENT_VERIFY_SSL="no-ssl"
+PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH=""
+PIPELINE_SERVICE_CLIENT_CLASS_NAME="org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"
+PIPELINE_SERVICE_IP_INFO_ENABLED="false"
+PIPELINE_SERVICE_CLIENT_HOST_IP=""
+PIPELINE_SERVICE_CLIENT_SECRETS_MANAGER_LOADER="noop"
+AIRFLOW_USERNAME="<AIRFLOW_UI_LOGIN_USERNAME>"
+AIRFLOW_PASSWORD="<AIRFLOW_UI_LOGIN_PASSWORD>"
+AIRFLOW_TIMEOUT="10"
+AIRFLOW_TRUST_STORE_PATH=""
+AIRFLOW_TRUST_STORE_PASSWORD=""
 ```
 
 {% note noteType="Warning" %}
@@ -257,6 +296,49 @@ Replace the environment variables values with the RDS and OpenSearch Service one
 docker compose --env-file ./env-mysql up --detach
 ```
 
+## Advanced
+
+### Add Docker Volumes for OpenMetadata Server Compose Service
+
+There are many scenarios where you would want to provide additional files to the OpenMetadata Server and serve while running the application. In such scenarios, it is recommended to provision docker volumes for OpenMetadata Application.
+
+{%note noteType="Tip"%}
+
+If you are not familiar with Docker Volumes with Docker Compose Services, Please refer to [official documentation](https://docs.docker.com/storage/volumes/#use-a-volume-with-docker-compose) for more information.
+
+{%/note%}
+
+For example, we would like to provide custom JWT Configuration Keys to be served to OpenMetadata Application. This requires the OpenMetadata Containers to have docker volumes sharing the private and public keys. Let's assume you have the keys available in `jwtkeys` directory in the same directory where your `docker-compose` file is available in the host machine.
+
+We add the volumes section to mount the keys onto the docker containers create with docker compose as follows -
+
+```yaml
+services:
+    openmetadata-server:
+        ...
+        volumes:
+            - ./jwtkeys:/etc/openmetadata/jwtkeys
+        ...
+```
+
+The above example uses [bind mounts](https://docs.docker.com/storage/bind-mounts/#use-a-bind-mount-with-compose) to share files and directories between host machine and openmetadata container.
+
+Next, in your environment file, update the jwt configurations to use the right path from inside the container.
+
+```bash
+...
+# JWT Configuration
+RSA_PUBLIC_KEY_FILE_PATH="/etc/openmetadata/jwtkeys/public_key.der"
+RSA_PRIVATE_KEY_FILE_PATH="/etc/openmetadata/jwtkeys/private_key.der"
+...
+```
+
+Once the changes are updated, if there are any containers running remove them first using `docker compose down` command and then recreate the containers once again by below command 
+
+```commandline
+docker compose up --detach
+```
+
 ## Troubleshooting
 
 ### Java Memory Heap Issue
@@ -286,10 +368,6 @@ Restart the OpenMetadata Docker Compose Application using `docker compose --env-
 
 Please follow our [Enable Security Guide](/deployment/docker/security) to configure security for your OpenMetadata
 installation.
-
-## Advanced
-
-If you want to persist your data, prepare [Named Volumes](/deployment/docker/volumes) for the containers.
 
 ## Next Steps
 
