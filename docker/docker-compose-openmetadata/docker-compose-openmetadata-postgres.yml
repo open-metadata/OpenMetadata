@@ -15,7 +15,6 @@ services:
     container_name: openmetadata_server
     restart: always
     image: docker.getcollate.io/openmetadata/server:1.2.0
-    command: "--sort_buffer_size=10M"
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}
