@@ -13,17 +13,10 @@
 
 package org.openmetadata.service;
 
-import static java.lang.String.format;
-import static org.openmetadata.service.util.TablesInitializer.validateAndRunSystemDataMigrations;
-
 import io.dropwizard.jersey.jackson.JacksonFeature;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
-import java.util.HashSet;
-import java.util.Set;
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpHost;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
@@ -53,6 +46,14 @@ import org.openmetadata.service.security.policyevaluator.RoleCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
+
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.WebTarget;
+import java.util.HashSet;
+import java.util.Set;
+
+import static java.lang.String.format;
+import static org.openmetadata.service.util.TablesInitializer.validateAndRunSystemDataMigrations;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
