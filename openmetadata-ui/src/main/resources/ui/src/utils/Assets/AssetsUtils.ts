@@ -22,7 +22,6 @@ import { getPipelineByFqn, patchPipelineDetails } from 'rest/pipelineAPI';
 import { getContainerByName, patchContainerDetails } from 'rest/storageAPI';
 import { getTableDetailsByFQN, patchTableDetails } from 'rest/tableAPI';
 import { getTopicByFqn, patchTopicDetails } from 'rest/topicsAPI';
-import { refreshPage } from 'utils/CommonUtils';
 import { history } from 'utils/HistoryUtils';
 
 export const getAPIfromSource = (
@@ -72,7 +71,7 @@ export const getEntityAPIfromSource = (
 export const handleDataAssetAfterDeleteAction = (isSoftDelete?: boolean) => {
   if (isSoftDelete) {
     setTimeout(() => {
-      refreshPage();
+      history.go(0);
     }, 1000);
   } else {
     history.push('/');
