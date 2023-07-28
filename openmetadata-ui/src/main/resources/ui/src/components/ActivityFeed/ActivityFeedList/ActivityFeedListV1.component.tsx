@@ -76,7 +76,7 @@ const ActivityFeedListV1 = ({
           <ErrorPlaceHolder
             icon={
               isTaskTab ? (
-                <TaskIcon height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
+                <TaskIcon height={24} width={24} />
               ) : (
                 <ActivityFeedIcon height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
               )
