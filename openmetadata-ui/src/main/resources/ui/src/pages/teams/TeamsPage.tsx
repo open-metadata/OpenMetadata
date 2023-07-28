@@ -90,6 +90,8 @@ const TeamsPage = () => {
 
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  const [isFetchingAdvancedDetails, setFetchingAdvancedDetails] =
+    useState<boolean>(false);
 
   const isGroupType = useMemo(
     () => selectedTeam.teamType === TeamType.Group,
@@ -230,34 +232,77 @@ const TeamsPage = () => {
     }
   };
 
-  const fetchTeamByFqn = async (name: string, loadPage = true) => {
+  const fetchAssets = () => {
+    if (selectedTeam.id) {
+      searchData(
+        ``,
+        assets.currPage,
+        LIST_SIZE,
+        `owner.id:${selectedTeam.id}`,
+        '',
+        '',
+        myDataSearchIndex
+      )
+        .then((res) => {
+          const hits = res?.data?.hits?.hits as SearchEntityHits;
+          if (hits?.length > 0) {
+            const total = res.data.hits.total.value;
+            setAssets({
+              data: hits,
+              total,
+              currPage: assets.currPage,
+            });
+          } else {
+            const total = 0;
+            setAssets({
+              data: [],
+              total,
+              currPage: assets.currPage,
+            });
+          }
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(
+            err,
+            t('server.entity-fetch-error', {
+              entity: t('label.team-asset-plural'),
+            })
+          );
+        });
+    }
+  };
+
+  const fetchTeamBasicDetails = async (name: string, loadPage = false) => {
     setIsPageLoading(loadPage);
     try {
-      const data = await getTeamByName(
-        name,
-        [
-          'users',
-          'defaultRoles',
-          'policies',
-          'owner',
-          'parents',
-          'childrenCount',
-        ],
-        'all'
-      );
+      const data = await getTeamByName(name, ['owner', 'parents'], 'all');
 
-      if (data) {
-        setSelectedTeam(data);
-        if (!isEmpty(data.parents) && data.parents?.[0].name) {
-          await getParentTeam(data.parents[0].name, true, loadPage);
-        }
-      } else {
-        throw t('server.unexpected-response');
+      setSelectedTeam(data);
+      if (!isEmpty(data.parents) && data.parents?.[0].name) {
+        await getParentTeam(data.parents[0].name, true, loadPage);
       }
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
     } finally {
       setIsPageLoading(false);
+    }
+  };
+
+  const fetchTeamAdvancedDetails = async (name: string) => {
+    setFetchingAdvancedDetails(true);
+    try {
+      const data = await getTeamByName(
+        name,
+        ['users', 'defaultRoles', 'policies', 'childrenCount'],
+        'all'
+      );
+
+      setSelectedTeam((prev) => ({ ...prev, ...data }));
+      fetchAssets();
+    } catch (error) {
+      showErrorToast(error as AxiosError, t('server.unexpected-response'));
+    } finally {
+      setFetchingAdvancedDetails(false);
     }
   };
 
@@ -280,7 +325,7 @@ const TeamsPage = () => {
       if (res) {
         const parent = fqn ? selectedTeam.fullyQualifiedName : undefined;
         fetchAllTeams(true, parent);
-        fetchTeamByFqn(selectedTeam.name);
+        fetchTeamBasicDetails(selectedTeam.name, true);
         handleAddTeam(false);
       }
     } catch (error) {
@@ -333,18 +378,14 @@ const TeamsPage = () => {
       .finally(() => setIsDataLoading((isDataLoading) => --isDataLoading));
   };
 
-  const updateTeamHandler = (updatedData: Team, fetchTeam = true) => {
+  const updateTeamHandler = (updatedData: Team) => {
     const jsonPatch = compare(selectedTeam, updatedData);
 
     return new Promise<void>((resolve, reject) => {
       patchTeamDetail(selectedTeam.id, jsonPatch)
         .then((res) => {
           if (res) {
-            if (fetchTeam) {
-              fetchTeamByFqn(selectedTeam.name, false);
-            } else {
-              setSelectedTeam((previous) => ({ ...previous, ...res }));
-            }
+            setSelectedTeam((previous) => ({ ...previous, ...res }));
             resolve();
           } else {
             throw t('server.unexpected-response');
@@ -382,7 +423,7 @@ const TeamsPage = () => {
       .then((res) => {
         if (res) {
           AppState.updateUserDetails(res);
-          fetchTeamByFqn(selectedTeam.name);
+          setSelectedTeam((prev) => ({ ...prev, ...res }));
           showSuccessToast(t('server.join-team-success'), 2000);
         } else {
           throw t('server.join-team-error');
@@ -399,7 +440,7 @@ const TeamsPage = () => {
         .then((res) => {
           if (res) {
             AppState.updateUserDetails(res);
-            fetchTeamByFqn(selectedTeam.name);
+            setSelectedTeam((prev) => ({ ...prev, ...res }));
             showSuccessToast(t('server.leave-team-success'), 2000);
             resolve();
           } else {
@@ -425,7 +466,7 @@ const TeamsPage = () => {
       const jsonPatch = compare(selectedTeam, updatedTeam);
       try {
         const res = await patchTeamDetail(selectedTeam.id, jsonPatch);
-        fetchTeamByFqn(res.name, false);
+        setSelectedTeam((prev) => ({ ...prev, ...res }));
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -456,7 +497,7 @@ const TeamsPage = () => {
       patchTeamDetail(selectedTeam.id, jsonPatch)
         .then((res) => {
           if (res) {
-            fetchTeamByFqn(res.name, false);
+            setSelectedTeam((prev) => ({ ...prev, ...res }));
           } else {
             throw t('server.unexpected-response');
           }
@@ -496,7 +537,7 @@ const TeamsPage = () => {
       try {
         const response = await patchTeamDetail(selectedTeam.id, jsonPatch);
         if (response) {
-          fetchTeamByFqn(response.name);
+          setSelectedTeam((prev) => ({ ...prev, ...response }));
         } else {
           throw t('server.unexpected-response');
         }
@@ -518,55 +559,9 @@ const TeamsPage = () => {
     setShowDeletedTeam((pre) => !pre);
   };
 
-  const fetchAssets = () => {
-    if (selectedTeam.id) {
-      searchData(
-        ``,
-        assets.currPage,
-        LIST_SIZE,
-        `owner.id:${selectedTeam.id}`,
-        '',
-        '',
-        myDataSearchIndex
-      )
-        .then((res) => {
-          const hits = res?.data?.hits?.hits as SearchEntityHits;
-          if (hits?.length > 0) {
-            const total = res.data.hits.total.value;
-            setAssets({
-              data: hits,
-              total,
-              currPage: assets.currPage,
-            });
-          } else {
-            const total = 0;
-            setAssets({
-              data: [],
-              total,
-              currPage: assets.currPage,
-            });
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            t('server.entity-fetch-error', {
-              entity: t('label.team-asset-plural'),
-            })
-          );
-        });
-    }
-  };
-
   const handleAssetsPaginate = (page: string | number) => {
     setAssets((pre) => ({ ...pre, currPage: page as number }));
   };
-
-  useEffect(() => {
-    if (!isEmpty(selectedTeam) && !isUndefined(selectedTeam)) {
-      fetchAssets();
-    }
-  }, [selectedTeam]);
 
   useEffect(() => {
     fetchAssets();
@@ -578,9 +573,8 @@ const TeamsPage = () => {
       currentFqn !== fqn
     ) {
       if (fqn) {
-        fetchTeamByFqn(fqn);
+        fetchTeamBasicDetails(fqn, true);
       }
-      fetchAllTeams(true, fqn);
       setCurrentFqn(fqn);
     }
   }, [entityPermissions, fqn]);
@@ -596,6 +590,15 @@ const TeamsPage = () => {
       setUserPaging(pagingObject);
     }
   }, [selectedTeam, currentTab]);
+
+  useEffect(() => {
+    const hasPermission =
+      entityPermissions.ViewAll || entityPermissions.ViewBasic;
+    if (!isPageLoading && hasPermission && fqn) {
+      fetchTeamAdvancedDetails(fqn);
+      fetchAllTeams(true, fqn);
+    }
+  }, [isPageLoading, entityPermissions, fqn]);
 
   if (isPageLoading) {
     return <Loader />;
@@ -623,6 +626,7 @@ const TeamsPage = () => {
           handleTeamUsersSearchAction={handleUsersSearchAction}
           hasAccess={isAuthDisabled || isAdminUser}
           isDescriptionEditable={isDescriptionEditable}
+          isFetchingAdvancedDetails={isFetchingAdvancedDetails}
           isTeamMemberLoading={isDataLoading}
           parentTeams={parentTeams}
           removeUserFromTeam={removeUserFromTeam}

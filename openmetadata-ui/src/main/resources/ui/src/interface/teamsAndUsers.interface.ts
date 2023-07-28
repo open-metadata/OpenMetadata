@@ -102,6 +102,7 @@ export interface TeamDetailsProp {
   isDescriptionEditable: boolean;
   isTeamMemberLoading: number;
   hasAccess: boolean;
+  isFetchingAdvancedDetails: boolean;
   entityPermissions: OperationPermission;
   handleAddTeam: (value: boolean) => void;
   descriptionHandler: (value: boolean) => void;
