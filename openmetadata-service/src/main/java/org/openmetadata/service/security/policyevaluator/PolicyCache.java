@@ -34,24 +34,10 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 /** Subject context used for Access Control Policies */
 @Slf4j
 public class PolicyCache {
-  private static final PolicyCache INSTANCE = new PolicyCache();
-  private static volatile boolean initialized = false;
-
   protected static final LoadingCache<UUID, List<CompiledRule>> CACHE =
       CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new PolicyLoader());
 
-  public static PolicyCache getInstance() {
-    return INSTANCE;
-  }
-
-  /** To be called during application startup by Default Authorizer */
-  public static void initialize() {
-    if (!initialized) {
-      initialized = true;
-    }
-  }
-
-  public List<CompiledRule> getPolicyRules(UUID policyId) {
+  public static List<CompiledRule> getPolicyRules(UUID policyId) {
     try {
       return CACHE.get(policyId);
     } catch (ExecutionException | UncheckedExecutionException ex) {
@@ -59,7 +45,7 @@ public class PolicyCache {
     }
   }
 
-  public void invalidatePolicy(UUID policyId) {
+  public static void invalidatePolicy(UUID policyId) {
     try {
       CACHE.invalidate(policyId);
     } catch (Exception ex) {
@@ -67,7 +53,7 @@ public class PolicyCache {
     }
   }
 
-  protected List<CompiledRule> getRules(Policy policy) {
+  protected static List<CompiledRule> getRules(Policy policy) {
     List<CompiledRule> rules = new ArrayList<>();
     for (Rule r : policy.getRules()) {
       rules.add(new CompiledRule(r));
@@ -77,7 +63,6 @@ public class PolicyCache {
 
   public static void cleanUp() {
     CACHE.cleanUp();
-    initialized = false;
   }
 
   static class PolicyLoader extends CacheLoader<UUID, List<CompiledRule>> {
@@ -85,7 +70,7 @@ public class PolicyCache {
     public List<CompiledRule> load(@CheckForNull UUID policyId) throws IOException {
       Policy policy = Entity.getEntity(Entity.POLICY, policyId, "rules", Include.NON_DELETED);
       LOG.info("Loaded policy {}:{}", policy.getName(), policy.getId());
-      return PolicyCache.getInstance().getRules(policy);
+      return PolicyCache.getRules(policy);
     }
   }
 }

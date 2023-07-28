@@ -70,14 +70,14 @@ public class AlertsRuleEvaluator {
     EntityReference ownerReference = entity.getOwner();
     if (ownerReference != null) {
       if (USER.equals(ownerReference.getType())) {
-        User user = SubjectCache.getInstance().getSubjectContext(ownerReference.getId()).getUser();
+        User user = SubjectCache.getSubjectContext(ownerReference.getId()).getUser();
         for (String name : ownerNameList) {
           if (user.getName().equals(name)) {
             return true;
           }
         }
       } else if (TEAM.equals(ownerReference.getType())) {
-        Team team = SubjectCache.getInstance().getTeam(ownerReference.getId());
+        Team team = SubjectCache.getTeam(ownerReference.getId());
         for (String name : ownerNameList) {
           if (team.getName().equals(name)) {
             return true;

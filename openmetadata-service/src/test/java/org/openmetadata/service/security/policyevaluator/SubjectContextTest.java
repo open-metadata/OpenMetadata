@@ -70,9 +70,6 @@ public class SubjectContextTest {
     Entity.registerEntity(Team.class, Entity.TEAM, mock(TeamRepository.class), null);
     Entity.registerEntity(Policy.class, Entity.POLICY, mock(PolicyRepository.class), null);
     Entity.registerEntity(Role.class, Entity.ROLE, mock(RoleRepository.class), null);
-    PolicyCache.initialize();
-    RoleCache.initialize();
-    SubjectCache.initialize();
 
     // Create team hierarchy:
     //                           team1
@@ -124,7 +121,7 @@ public class SubjectContextTest {
   @Test
   void testPolicyIterator() {
     // Check iteration order of the policies without resourceOwner
-    SubjectContext subjectContext = SubjectCache.getInstance().getSubjectContext(user.getName());
+    SubjectContext subjectContext = SubjectCache.getSubjectContext(user.getName());
     Iterator<PolicyContext> policyContextIterator = subjectContext.getPolicies(null);
     List<String> expectedUserPolicyOrder = new ArrayList<>();
     expectedUserPolicyOrder.addAll(getPolicyListFromRoles(userRoles)); // First polices associated with user roles
@@ -137,7 +134,7 @@ public class SubjectContextTest {
     assertPolicyIterator(expectedUserPolicyOrder, policyContextIterator);
 
     // Check iteration order of policies with team13 as the resource owner
-    subjectContext = SubjectCache.getInstance().getSubjectContext(user.getName());
+    subjectContext = SubjectCache.getSubjectContext(user.getName());
     policyContextIterator = subjectContext.getPolicies(team13.getEntityReference());
     List<String> expectedUserAndTeam13PolicyOrder = new ArrayList<>();
     expectedUserAndTeam13PolicyOrder.addAll(expectedUserPolicyOrder);
@@ -145,7 +142,7 @@ public class SubjectContextTest {
     assertPolicyIterator(expectedUserAndTeam13PolicyOrder, policyContextIterator);
 
     // Check iteration order of policies with team131 as the resource owner
-    subjectContext = SubjectCache.getInstance().getSubjectContext(user.getName());
+    subjectContext = SubjectCache.getSubjectContext(user.getName());
     policyContextIterator = subjectContext.getPolicies(team131.getEntityReference());
     // Roles & policies are inherited from resource owner team131
     List<String> expectedUserAndTeam131PolicyOrder = new ArrayList<>();
@@ -157,7 +154,7 @@ public class SubjectContextTest {
 
   @Test
   void testUserInHierarchy() {
-    SubjectContext subjectContext = SubjectCache.getInstance().getSubjectContext(user.getName());
+    SubjectContext subjectContext = SubjectCache.getSubjectContext(user.getName());
     //
     // Now test given user is part of team hierarchy
     //
@@ -171,7 +168,7 @@ public class SubjectContextTest {
 
   @Test
   void testResourceIsTeamAsset() {
-    SubjectContext subjectContext = SubjectCache.getInstance().getSubjectContext(user.getName());
+    SubjectContext subjectContext = SubjectCache.getSubjectContext(user.getName());
 
     //
     // Given entity owner "user", ensure isTeamAsset is true for teams 111, 11, 12, 1 and not for 13
@@ -193,7 +190,6 @@ public class SubjectContextTest {
     assertFalse(subjectContext.isTeamAsset("team13", teamOwner));
   }
 
-  @Test
   private static List<Role> getRoles(String prefix) {
     // Create roles with 3 policies each and each policy with 3 rules
     List<Role> roles = new ArrayList<>(3);
@@ -213,7 +209,7 @@ public class SubjectContextTest {
       String name = prefix + "_policy_" + i;
       Policy policy = new Policy().withName(name).withId(UUID.randomUUID()).withRules(getRules(name));
       policies.add(policy);
-      PolicyCache.CACHE.put(policy.getId(), PolicyCache.getInstance().getRules(policy));
+      PolicyCache.CACHE.put(policy.getId(), PolicyCache.getRules(policy));
     }
     return policies;
   }

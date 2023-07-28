@@ -27,7 +27,6 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class UserTokenCache {
-  private static final UserTokenCache instance = new UserTokenCache();
   private static final LoadingCache<String, HashSet<String>> CACHE =
       CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(2, TimeUnit.MINUTES).build(new UserTokenLoader());
   private static volatile boolean initialized = false;
@@ -47,7 +46,7 @@ public class UserTokenCache {
     }
   }
 
-  public Set<String> getToken(String userName) {
+  public static Set<String> getToken(String userName) {
     try {
       return CACHE.get(userName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
@@ -56,16 +55,12 @@ public class UserTokenCache {
     }
   }
 
-  public void invalidateToken(String userName) {
+  public static void invalidateToken(String userName) {
     try {
       CACHE.invalidate(userName);
     } catch (Exception ex) {
       LOG.error("Failed to invalidate User token cache for User {}", userName, ex);
     }
-  }
-
-  public static UserTokenCache getInstance() {
-    return instance;
   }
 
   static class UserTokenLoader extends CacheLoader<String, HashSet<String>> {

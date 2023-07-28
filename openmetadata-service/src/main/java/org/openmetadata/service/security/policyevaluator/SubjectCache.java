@@ -43,8 +43,6 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 /** Subject context used for Access Control Policies */
 @Slf4j
 public class SubjectCache {
-  private static SubjectCache instance;
-  private static volatile boolean initialized = false;
   protected static final LoadingCache<String, SubjectContext> USER_CACHE =
       CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new UserLoader());
   protected static final LoadingCache<UUID, SubjectContext> USER_CACHE_WITH_ID =
@@ -56,22 +54,11 @@ public class SubjectCache {
   private static final String USER_FIELDS = "roles,teams,isAdmin,profile";
   private static final String TEAM_FIELDS = "defaultRoles, policies, parents, profile";
 
-  // Expected to be called only once from the DefaultAuthorizer
-  public static void initialize() {
-    if (!initialized) {
-      instance = new SubjectCache();
-      initialized = true;
-      LOG.info("Subject cache is initialized");
-    } else {
-      LOG.info("Subject cache is already initialized");
-    }
+  private SubjectCache() {
+    // Private constructor for singleton
   }
 
-  public static SubjectCache getInstance() {
-    return instance;
-  }
-
-  public SubjectContext getSubjectContext(String userName) throws EntityNotFoundException {
+  public static SubjectContext getSubjectContext(String userName) throws EntityNotFoundException {
     try {
       return USER_CACHE.get(userName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
@@ -79,7 +66,7 @@ public class SubjectCache {
     }
   }
 
-  public SubjectContext getSubjectContext(UUID userId) throws EntityNotFoundException {
+  public static SubjectContext getSubjectContext(UUID userId) throws EntityNotFoundException {
     try {
       return USER_CACHE_WITH_ID.get(userId);
     } catch (ExecutionException | UncheckedExecutionException ex) {
@@ -87,7 +74,7 @@ public class SubjectCache {
     }
   }
 
-  public User getUser(String userName) throws EntityNotFoundException {
+  public static User getUser(String userName) throws EntityNotFoundException {
     try {
       return USER_CACHE.get(userName).getUser();
     } catch (ExecutionException | UncheckedExecutionException ex) {
@@ -95,11 +82,11 @@ public class SubjectCache {
     }
   }
 
-  public User getUserById(String userId) throws EntityNotFoundException {
+  public static User getUserById(String userId) throws EntityNotFoundException {
     return getUserById(UUID.fromString(userId));
   }
 
-  public User getUserById(UUID userId) throws EntityNotFoundException {
+  public static User getUserById(UUID userId) throws EntityNotFoundException {
     try {
       return USER_CACHE_WITH_ID.get(userId).getUser();
     } catch (ExecutionException | UncheckedExecutionException ex) {
@@ -107,7 +94,7 @@ public class SubjectCache {
     }
   }
 
-  public Team getTeam(UUID teamId) throws EntityNotFoundException {
+  public static Team getTeam(UUID teamId) throws EntityNotFoundException {
     try {
       return TEAM_CACHE_WITH_ID.get(teamId);
     } catch (ExecutionException | UncheckedExecutionException ex) {
@@ -115,7 +102,7 @@ public class SubjectCache {
     }
   }
 
-  public Team getTeamByName(String teamName) throws EntityNotFoundException {
+  public static Team getTeamByName(String teamName) throws EntityNotFoundException {
     try {
       return TEAM_CACHE.get(teamName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
@@ -124,7 +111,7 @@ public class SubjectCache {
   }
 
   /** Return true if given list of teams is part of the hierarchy of parentTeam */
-  public boolean isInTeam(String parentTeam, EntityReference team) {
+  public static boolean isInTeam(String parentTeam, EntityReference team) {
     Deque<EntityReference> stack = new ArrayDeque<>();
     stack.push(team); // Start with team and see if the parent matches
     while (!stack.isEmpty()) {
@@ -138,7 +125,7 @@ public class SubjectCache {
   }
 
   /** Return true if the given user has any roles the list of roles */
-  public boolean hasRole(User user, String role) {
+  public static boolean hasRole(User user, String role) {
     Deque<EntityReference> stack = new ArrayDeque<>();
     // If user has one of the roles directly assigned then return true
     if (hasRole(user.getRoles(), role)) {
@@ -163,10 +150,9 @@ public class SubjectCache {
     LOG.info("Subject cache is cleaned up");
     USER_CACHE.invalidateAll();
     TEAM_CACHE_WITH_ID.invalidateAll();
-    initialized = false;
   }
 
-  public void invalidateUser(String userName) {
+  public static void invalidateUser(String userName) {
     try {
       USER_CACHE.invalidate(userName);
     } catch (Exception ex) {
@@ -174,7 +160,7 @@ public class SubjectCache {
     }
   }
 
-  public void invalidateTeam(UUID teamId) {
+  public static void invalidateTeam(UUID teamId) {
     try {
       TEAM_CACHE_WITH_ID.invalidate(teamId);
     } catch (Exception ex) {
@@ -182,7 +168,7 @@ public class SubjectCache {
     }
   }
 
-  public List<EntityReference> getRolesForTeams(List<EntityReference> teams) {
+  public static List<EntityReference> getRolesForTeams(List<EntityReference> teams) {
     List<EntityReference> roles = new ArrayList<>();
     for (EntityReference teamRef : listOrEmpty(teams)) {
       Team team = getTeam(teamRef.getId());

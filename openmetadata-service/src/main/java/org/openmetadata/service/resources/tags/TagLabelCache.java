@@ -40,9 +40,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
  */
 @Slf4j
 public class TagLabelCache {
-  private static final TagLabelCache INSTANCE = new TagLabelCache();
-  private static volatile boolean initialized = false;
-
   // Tag fqn to Tag
   protected static final LoadingCache<String, Tag> TAG_CACHE =
       CacheBuilder.newBuilder().maximumSize(100).expireAfterWrite(2, TimeUnit.MINUTES).build(new TagLoader());
@@ -58,17 +55,8 @@ public class TagLabelCache {
   protected static final LoadingCache<String, Glossary> GLOSSARY_CACHE =
       CacheBuilder.newBuilder().maximumSize(25).expireAfterWrite(2, TimeUnit.MINUTES).build(new GlossaryLoader());
 
-  // Expected to be called only once from the TagResource during initialization
-  public static void initialize() {
-    if (!initialized) {
-      initialized = true;
-    } else {
-      LOG.info("Subject cache is already initialized");
-    }
-  }
-
-  public static TagLabelCache getInstance() {
-    return INSTANCE;
+  private TagLabelCache() {
+    // Private constructor for utility class
   }
 
   public static void cleanUp() {
@@ -76,10 +64,9 @@ public class TagLabelCache {
     TAG_CACHE.cleanUp();
     GLOSSARY_CACHE.cleanUp();
     GLOSSARY_TERM_CACHE.cleanUp();
-    initialized = false;
   }
 
-  public Classification getClassification(String classificationName) {
+  public static Classification getClassification(String classificationName) {
     try {
       return CLASSIFICATION_CACHE.get(classificationName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
@@ -88,7 +75,7 @@ public class TagLabelCache {
     }
   }
 
-  public Tag getTag(String tagFqn) {
+  public static Tag getTag(String tagFqn) {
     try {
       return TAG_CACHE.get(tagFqn);
     } catch (ExecutionException | UncheckedExecutionException ex) {
@@ -96,7 +83,7 @@ public class TagLabelCache {
     }
   }
 
-  public Glossary getGlossary(String glossaryName) {
+  public static Glossary getGlossary(String glossaryName) {
     try {
       return GLOSSARY_CACHE.get(glossaryName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
@@ -104,7 +91,7 @@ public class TagLabelCache {
     }
   }
 
-  public GlossaryTerm getGlossaryTerm(String glossaryTermFqn) {
+  public static GlossaryTerm getGlossaryTerm(String glossaryTermFqn) {
     try {
       return GLOSSARY_TERM_CACHE.get(glossaryTermFqn);
     } catch (ExecutionException | UncheckedExecutionException ex) {
@@ -113,7 +100,7 @@ public class TagLabelCache {
     }
   }
 
-  public String getDescription(TagLabel label) {
+  public static String getDescription(TagLabel label) {
     if (label.getSource() == TagSource.CLASSIFICATION) {
       return getTag(label.getTagFQN()).getDescription();
     } else if (label.getSource() == TagSource.GLOSSARY) {
@@ -124,7 +111,7 @@ public class TagLabelCache {
   }
 
   /** Returns true if the parent of the tag label is mutually exclusive */
-  public boolean mutuallyExclusive(TagLabel label) {
+  public static boolean mutuallyExclusive(TagLabel label) {
     String[] fqnParts = FullyQualifiedName.split(label.getTagFQN());
     String parentFqn = FullyQualifiedName.getParentFQN(fqnParts);
     boolean rootParent = fqnParts.length == 2;

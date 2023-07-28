@@ -67,7 +67,6 @@ import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
-import org.openmetadata.service.security.policyevaluator.PolicyCache;
 import org.openmetadata.service.security.policyevaluator.RuleEvaluator;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -106,7 +105,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load any existing rules from database, before loading seed data.
     repository.initSeedDataFromResources();
-    PolicyCache.initialize();
   }
 
   @Override

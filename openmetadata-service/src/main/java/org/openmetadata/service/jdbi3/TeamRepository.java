@@ -144,7 +144,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
     store(team, update);
     if (update) {
-      SubjectCache.getInstance().invalidateTeam(team.getId());
+      SubjectCache.invalidateTeam(team.getId());
     }
 
     // Restore the relationships
@@ -216,7 +216,7 @@ public class TeamRepository extends EntityRepository<Team> {
       }
     }
     super.cleanup(team);
-    SubjectCache.getInstance().invalidateTeam(team.getId());
+    SubjectCache.invalidateTeam(team.getId());
   }
 
   @Override
@@ -233,7 +233,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private List<EntityReference> getInheritedRoles(Team team) throws IOException {
-    return SubjectCache.getInstance().getRolesForTeams(getParentsForInheritedRoles(team));
+    return SubjectCache.getRolesForTeams(getParentsForInheritedRoles(team));
   }
 
   private TeamHierarchy getTeamHierarchy(Team team) {
@@ -619,7 +619,7 @@ public class TeamRepository extends EntityRepository<Team> {
           continue; // Parent is being created by CSV import
         }
         // Else the parent should already exist
-        if (!SubjectCache.getInstance().isInTeam(team.getName(), parentRef)) {
+        if (!SubjectCache.isInTeam(team.getName(), parentRef)) {
           importFailure(
               printer, invalidTeam(4, team.getName(), importedTeam.getName(), parentRef.getName()), csvRecord);
           processRecord = false;

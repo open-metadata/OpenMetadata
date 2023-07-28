@@ -16,29 +16,20 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 
 @Slf4j
 public class ActivityFeedAlertCache {
-  private static final ActivityFeedAlertCache INSTANCE = new ActivityFeedAlertCache();
-  private static volatile boolean initialized = false;
   protected static final LoadingCache<String, EventSubscription> EVENT_SUB_CACHE =
       CacheBuilder.newBuilder()
           .maximumSize(1000)
           .expireAfterWrite(3, TimeUnit.MINUTES)
           .build(new ActivityFeedAlertLoader());
-  private static String activityFeedAlertName;
+  private static final String ACTIVITY_FEED_ALERT = "ActivityFeedAlert";
 
-  public static void initialize(String alertName) {
-    if (!initialized) {
-      initialized = true;
-      activityFeedAlertName = alertName;
-    }
+  private ActivityFeedAlertCache() {
+    // Private constructor for singleton
   }
 
-  public static ActivityFeedAlertCache getInstance() {
-    return INSTANCE;
-  }
-
-  public EventSubscription getActivityFeedAlert() throws EntityNotFoundException {
+  public static EventSubscription getActivityFeedAlert() throws EntityNotFoundException {
     try {
-      return EVENT_SUB_CACHE.get(activityFeedAlertName);
+      return EVENT_SUB_CACHE.get(ACTIVITY_FEED_ALERT);
     } catch (ExecutionException | UncheckedExecutionException ex) {
       throw new EntityNotFoundException(ex.getMessage());
     }

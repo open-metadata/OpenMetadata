@@ -33,25 +33,16 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 /** Subject context used for Access Control Policies */
 @Slf4j
 public class RoleCache {
-  private static final RoleCache INSTANCE = new RoleCache();
-  private static volatile boolean initialized = false;
   protected static final LoadingCache<String, Role> CACHE =
       CacheBuilder.newBuilder().maximumSize(100).expireAfterWrite(3, TimeUnit.MINUTES).build(new RoleLoader());
   protected static final LoadingCache<UUID, Role> CACHE_WITH_ID =
       CacheBuilder.newBuilder().maximumSize(100).expireAfterWrite(3, TimeUnit.MINUTES).build(new RoleLoaderWithId());
 
-  public static RoleCache getInstance() {
-    return INSTANCE;
+  private RoleCache() {
+    // Private constructor for singleton
   }
 
-  /** To be called only once during the application start from DefaultAuthorizer */
-  public static void initialize() {
-    if (!initialized) {
-      initialized = true;
-    }
-  }
-
-  public Role getRole(String roleName) {
+  public static Role getRole(String roleName) {
     try {
       return CACHE.get(roleName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
@@ -59,7 +50,7 @@ public class RoleCache {
     }
   }
 
-  public Role getRoleById(UUID roleId) {
+  public static Role getRoleById(UUID roleId) {
     try {
       return CACHE_WITH_ID.get(roleId);
     } catch (ExecutionException | UncheckedExecutionException ex) {
@@ -67,7 +58,7 @@ public class RoleCache {
     }
   }
 
-  public void invalidateRole(UUID roleId) {
+  public static void invalidateRole(UUID roleId) {
     try {
       CACHE_WITH_ID.invalidate(roleId);
     } catch (Exception ex) {
@@ -95,6 +86,5 @@ public class RoleCache {
 
   public static void cleanUp() {
     CACHE_WITH_ID.cleanUp();
-    initialized = false;
   }
 }
