@@ -14,15 +14,14 @@
 import { Col, Row, Space, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import ActivityFeedProvider, {
-  useActivityFeedProvider,
-} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
+import { withActivityFeed } from 'components/router/withActivityFeed';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
@@ -472,14 +471,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         ),
         key: EntityTabs.ACTIVITY_FEED,
         children: (
-          <ActivityFeedProvider>
-            <ActivityFeedTab
-              entityType={EntityType.MLMODEL}
-              fqn={mlModelDetail?.fullyQualifiedName ?? ''}
-              onFeedUpdate={fetchEntityFeedCount}
-              onUpdateEntityDetails={fetchMlModel}
-            />
-          </ActivityFeedProvider>
+          <ActivityFeedTab
+            entityType={EntityType.MLMODEL}
+            fqn={mlModelDetail?.fullyQualifiedName ?? ''}
+            onFeedUpdate={fetchEntityFeedCount}
+            onUpdateEntityDetails={fetchMlModel}
+          />
         ),
       },
       {
@@ -596,4 +593,4 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   );
 };
 
-export default MlModelDetail;
+export default withActivityFeed<MlModelDetailProp>(MlModelDetail);
