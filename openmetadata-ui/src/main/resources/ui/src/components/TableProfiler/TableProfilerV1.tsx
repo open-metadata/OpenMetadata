@@ -384,7 +384,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
       const { data } = await getListTestCase({
         ...params,
         fields: 'testCaseResult,entityLink,testDefinition,testSuite',
-        entityLink: generateEntityLink(table?.fullyQualifiedName || ''),
+        entityLink: generateEntityLink(datasetFQN || ''),
         includeAllTests: true,
         limit: API_RES_MAX_SIZE,
       });
@@ -477,25 +477,26 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
   useEffect(() => {
     const fetchTest =
-      !isUndefined(table) &&
-      viewTest &&
-      !isTourOpen &&
-      !isTableProfile &&
-      isEmpty(allTests.current);
+      viewTest && !isTourOpen && !isTableProfile && isEmpty(allTests.current);
 
     if (fetchTest) {
       fetchAllTests();
     }
-  }, [table, viewTest, isTourOpen, isTableProfile, allTests]);
+  }, [viewTest, isTourOpen, isTableProfile, allTests]);
 
   useEffect(() => {
-    if (!isTableDeleted && datasetFQN && !isTourOpen) {
+    if (
+      !isTableDeleted &&
+      datasetFQN &&
+      !isTourOpen &&
+      (isTableProfile || isColumnProfile)
+    ) {
       fetchLatestProfilerData();
     }
     if (isTourOpen) {
       setTable(mockDatasetData.tableDetails as unknown as Table);
     }
-  }, [datasetFQN, isTourOpen]);
+  }, [datasetFQN, isTourOpen, isTableProfile]);
 
   return (
     <Row
