@@ -1712,21 +1712,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Check for updated and deleted fields
       for (Iterator<Entry<String, JsonNode>> it = origFields.fields(); it.hasNext(); ) {
         Entry<String, JsonNode> orig = it.next();
-        JsonNode updated = updatedFields.get(orig.getKey());
-        if (updated == null) {
+        JsonNode updatedField = updatedFields.get(orig.getKey());
+        if (updatedField == null) {
           deleted.add(JsonUtils.getObjectNode(orig.getKey(), orig.getValue()));
         } else {
           // TODO converting to a string is a hack for now because JsonNode equals issues
-          recordChange(getExtensionField(orig.getKey()), orig.getValue().toString(), updated.toString());
+          recordChange(getExtensionField(orig.getKey()), orig.getValue().toString(), updatedField.toString());
         }
       }
 
       // Check for added fields
       for (Iterator<Entry<String, JsonNode>> it = updatedFields.fields(); it.hasNext(); ) {
-        Entry<String, JsonNode> updated = it.next();
-        JsonNode orig = origFields.get(updated.getKey());
+        Entry<String, JsonNode> updatedField = it.next();
+        JsonNode orig = origFields.get(updatedField.getKey());
         if (orig == null) {
-          added.add(JsonUtils.getObjectNode(updated.getKey(), updated.getValue()));
+          added.add(JsonUtils.getObjectNode(updatedField.getKey(), updatedField.getValue()));
         }
       }
       if (!added.isEmpty()) {

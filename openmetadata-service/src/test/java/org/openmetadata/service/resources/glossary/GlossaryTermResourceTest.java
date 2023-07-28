@@ -95,7 +95,6 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         GlossaryTermResource.GlossaryTermList.class,
         "glossaryTerms",
         GlossaryTermResource.FIELDS);
-    supportsEmptyDescription = false;
   }
 
   @Order(0)
