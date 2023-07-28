@@ -31,7 +31,6 @@ import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FIELD_VOTES;
-import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
@@ -1169,8 +1168,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (!supportsFollower || entity == null) {
       return Collections.emptyList();
     }
-    List<EntityRelationshipRecord> records = findFrom(entity.getId(), entityType, Relationship.FOLLOWS, Entity.USER);
-    return EntityUtil.populateEntityReferences(records, USER);
+    return findFrom(entity.getId(), entityType, Relationship.FOLLOWS, Entity.USER);
   }
 
   protected Votes getVotes(T entity) throws IOException {
@@ -1179,7 +1177,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     List<EntityReference> upVoters = new ArrayList<>();
     List<EntityReference> downVoters = new ArrayList<>();
-    List<EntityRelationshipRecord> records = findFrom(entity.getId(), entityType, Relationship.VOTED, Entity.USER);
+    List<EntityRelationshipRecord> records =
+        findFromRecords(entity.getId(), entityType, Relationship.VOTED, Entity.USER);
     for (EntityRelationshipRecord entityRelationshipRecord : records) {
       VoteRequest.VoteType type = JsonUtils.readValue(entityRelationshipRecord.getJson(), VoteRequest.VoteType.class);
       if (type == VoteRequest.VoteType.VOTED_UP) {
@@ -1267,26 +1266,29 @@ public abstract class EntityRepository<T extends EntityInterface> {
         .bulkInsertToRelationship(fromId, toId, fromEntity, toEntity, relationship.ordinal());
   }
 
-  public List<EntityRelationshipRecord> findBoth(
-      UUID entity1, String entityType1, Relationship relationship, String entity2) {
+  public List<EntityReference> findBoth(UUID entity1, String entityType1, Relationship relationship, String entity2)
+      throws IOException {
     // Find bidirectional relationship
-    List<EntityRelationshipRecord> ids = new ArrayList<>();
+    List<EntityReference> ids = new ArrayList<>();
     ids.addAll(findFrom(entity1, entityType1, relationship, entity2));
     ids.addAll(findTo(entity1, entityType1, relationship, entity2));
     return ids;
   }
 
-  public List<EntityRelationshipRecord> findFrom(
+  public List<EntityReference> findFrom(
+      UUID toId, String toEntityType, Relationship relationship, String fromEntityType) throws IOException {
+    List<EntityRelationshipRecord> records = findFromRecords(toId, toEntityType, relationship, fromEntityType);
+    return EntityUtil.getEntityReferences(records);
+  }
+
+  public List<EntityRelationshipRecord> findFromRecords(
       UUID toId, String toEntityType, Relationship relationship, String fromEntityType) {
+    // When fromEntityType is null, all the relationships from any entity is returned
     return fromEntityType == null
         ? daoCollection.relationshipDAO().findFrom(toId.toString(), toEntityType, relationship.ordinal())
         : daoCollection
             .relationshipDAO()
             .findFrom(toId.toString(), toEntityType, relationship.ordinal(), fromEntityType);
-  }
-
-  public List<EntityRelationshipRecord> findFrom(String toId) {
-    return daoCollection.relationshipDAO().findFrom(toId);
   }
 
   public EntityReference getContainer(UUID toId) throws IOException {
@@ -1295,7 +1297,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public EntityReference getFromEntityRef(
       UUID toId, Relationship relationship, String fromEntityType, boolean mustHaveRelationship) throws IOException {
-    List<EntityRelationshipRecord> records = findFrom(toId, entityType, relationship, fromEntityType);
+    List<EntityRelationshipRecord> records = findFromRecords(toId, entityType, relationship, fromEntityType);
     ensureSingleRelationship(entityType, toId, records, relationship.value(), mustHaveRelationship);
     return !records.isEmpty()
         ? Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
@@ -1304,7 +1306,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public EntityReference getToEntityRef(
       UUID fromId, Relationship relationship, String toEntityType, boolean mustHaveRelationship) throws IOException {
-    List<EntityRelationshipRecord> records = findTo(fromId, entityType, relationship, toEntityType);
+    List<EntityRelationshipRecord> records = findToRecords(fromId, entityType, relationship, toEntityType);
     ensureSingleRelationship(entityType, fromId, records, relationship.value(), mustHaveRelationship);
     return !records.isEmpty()
         ? Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
@@ -1325,11 +1327,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public final List<EntityRelationshipRecord> findTo(
+  public final List<EntityReference> findTo(
+      UUID fromId, String fromEntityType, Relationship relationship, String toEntityType) throws IOException {
+    // When toEntityType is null, all the relationships to any entity is returned
+    List<EntityRelationshipRecord> records = findToRecords(fromId, fromEntityType, relationship, toEntityType);
+    return EntityUtil.getEntityReferences(records);
+  }
+
+  public final List<EntityRelationshipRecord> findToRecords(
       UUID fromId, String fromEntityType, Relationship relationship, String toEntityType) {
-    return daoCollection
-        .relationshipDAO()
-        .findTo(fromId.toString(), fromEntityType, relationship.ordinal(), toEntityType);
+    // When toEntityType is null, all the relationships to any entity is returned
+    return toEntityType == null
+        ? daoCollection.relationshipDAO().findTo(fromId.toString(), fromEntityType, relationship.ordinal())
+        : daoCollection
+            .relationshipDAO()
+            .findTo(fromId.toString(), fromEntityType, relationship.ordinal(), toEntityType);
   }
 
   public void deleteRelationship(
@@ -1393,8 +1405,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (!supportsDataProducts || entity == null) {
       return null;
     }
-    List<EntityRelationshipRecord> ids = findFrom(entity.getId(), entityType, Relationship.HAS, DATA_PRODUCT);
-    return EntityUtil.populateEntityReferences(ids, entityType);
+    return findFrom(entity.getId(), entityType, Relationship.HAS, DATA_PRODUCT);
   }
 
   public EntityReference getOwner(EntityReference ref) throws IOException {
@@ -1490,7 +1501,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected List<EntityReference> getIngestionPipelines(T service) throws IOException {
     List<EntityRelationshipRecord> records =
-        findTo(service.getId(), entityType, Relationship.CONTAINS, Entity.INGESTION_PIPELINE);
+        findToRecords(service.getId(), entityType, Relationship.CONTAINS, Entity.INGESTION_PIPELINE);
     List<EntityReference> ingestionPipelines = new ArrayList<>();
     for (EntityRelationshipRecord entityRelationshipRecord : records) {
       ingestionPipelines.add(
@@ -2110,7 +2121,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updatedColumn.setDescription(origColumn.getDescription());
         return;
       }
-      String columnField = getColumnField(original, origColumn, FIELD_DESCRIPTION);
+      String columnField = getColumnField(origColumn, FIELD_DESCRIPTION);
       recordChange(columnField, origColumn.getDescription(), updatedColumn.getDescription());
     }
 
@@ -2120,17 +2131,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updatedColumn.setDisplayName(origColumn.getDisplayName());
         return;
       }
-      String columnField = getColumnField(original, origColumn, FIELD_DISPLAY_NAME);
+      String columnField = getColumnField(origColumn, FIELD_DISPLAY_NAME);
       recordChange(columnField, origColumn.getDisplayName(), updatedColumn.getDisplayName());
     }
 
     private void updateColumnConstraint(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      String columnField = getColumnField(original, origColumn, "constraint");
+      String columnField = getColumnField(origColumn, "constraint");
       recordChange(columnField, origColumn.getConstraint(), updatedColumn.getConstraint());
     }
 
     protected void updateColumnDataLength(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      String columnField = getColumnField(original, origColumn, "dataLength");
+      String columnField = getColumnField(origColumn, "dataLength");
       boolean updated = recordChange(columnField, origColumn.getDataLength(), updatedColumn.getDataLength());
       if (updated
           && (origColumn.getDataLength() == null || updatedColumn.getDataLength() < origColumn.getDataLength())) {
@@ -2140,7 +2151,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateColumnPrecision(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      String columnField = getColumnField(original, origColumn, "precision");
+      String columnField = getColumnField(origColumn, "precision");
       boolean updated = recordChange(columnField, origColumn.getPrecision(), updatedColumn.getPrecision());
       if (origColumn.getPrecision() != null
           && updated
@@ -2151,7 +2162,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateColumnScale(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      String columnField = getColumnField(original, origColumn, "scale");
+      String columnField = getColumnField(origColumn, "scale");
       boolean updated = recordChange(columnField, origColumn.getScale(), updatedColumn.getScale());
       if (origColumn.getScale() != null
           && updated

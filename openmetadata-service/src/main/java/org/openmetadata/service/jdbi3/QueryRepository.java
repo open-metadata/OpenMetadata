@@ -53,20 +53,14 @@ public class QueryRepository extends EntityRepository<Query> {
     if (queryEntity == null) {
       return Collections.emptyList();
     }
-    // null means it will find all the relationships to Query from any entity type
-    List<CollectionDAO.EntityRelationshipRecord> records =
-        findFrom(queryEntity.getId(), Entity.QUERY, Relationship.MENTIONED_IN, null);
-
-    return EntityUtil.getEntityReferences(records);
+    return findFrom(queryEntity.getId(), Entity.QUERY, Relationship.MENTIONED_IN, null);
   }
 
   public List<EntityReference> getQueryUsers(Query queryEntity) throws IOException {
     if (queryEntity == null) {
       return Collections.emptyList();
     }
-    List<CollectionDAO.EntityRelationshipRecord> records =
-        findFrom(queryEntity.getId(), Entity.QUERY, Relationship.USES, USER);
-    return EntityUtil.populateEntityReferences(records, USER);
+    return findFrom(queryEntity.getId(), Entity.QUERY, Relationship.USES, USER);
   }
 
   @Override

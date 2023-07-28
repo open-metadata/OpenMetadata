@@ -273,17 +273,15 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   private List<EntityReference> getFollows(User user) throws IOException {
-    return EntityUtil.getEntityReferences(
-        daoCollection.relationshipDAO().findTo(user.getId().toString(), USER, Relationship.FOLLOWS.ordinal()));
+    return findTo(user.getId(), USER, Relationship.FOLLOWS, null);
   }
 
   private List<EntityReference> getTeamChildren(UUID teamId) throws IOException {
     if (teamId.equals(organization.getId())) { // For organization all the parentless teams are children
       List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(teamId.toString());
-      return EntityUtil.populateEntityReferencesById(EntityUtil.toIDs(children), Entity.TEAM);
+      return EntityUtil.populateEntityReferencesById(EntityUtil.strToIds(children), Entity.TEAM);
     }
-    List<EntityRelationshipRecord> children = findTo(teamId, TEAM, Relationship.PARENT_OF, TEAM);
-    return EntityUtil.populateEntityReferences(children, TEAM);
+    return findTo(teamId, TEAM, Relationship.PARENT_OF, TEAM);
   }
 
   public List<EntityReference> getGroupTeams(UriInfo uriInfo, String userName) throws IOException {
@@ -308,15 +306,14 @@ public class UserRepository extends EntityRepository<User> {
 
   /* Get all the roles that user has been assigned and inherited from the team to User entity */
   private List<EntityReference> getRoles(User user) throws IOException {
-    List<EntityRelationshipRecord> roleIds = findTo(user.getId(), USER, Relationship.HAS, Entity.ROLE);
-    return EntityUtil.populateEntityReferences(roleIds, Entity.ROLE);
+    return findTo(user.getId(), USER, Relationship.HAS, Entity.ROLE);
   }
 
   /* Get all the teams that user belongs to User entity */
   public List<EntityReference> getTeams(User user) throws IOException {
-    List<EntityRelationshipRecord> records = findFrom(user.getId(), USER, Relationship.HAS, Entity.TEAM);
-    List<EntityReference> teams = EntityUtil.populateEntityReferences(records, Entity.TEAM);
-    teams = teams.stream().filter(team -> !team.getDeleted()).collect(Collectors.toList()); // Filter deleted teams
+    List<EntityReference> teams = findFrom(user.getId(), USER, Relationship.HAS, Entity.TEAM);
+    // Filter deleted teams
+    teams = listOrEmpty(teams).stream().filter(team -> !team.getDeleted()).collect(Collectors.toList());
     // If there are no teams that a user belongs to then return organization as the default team
     if (listOrEmpty(teams).isEmpty()) {
       return new ArrayList<>(List.of(organization));
