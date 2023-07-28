@@ -196,24 +196,6 @@ docker compose up --detach
 
 You may put one or more OpenMetadata instances behind a load balancer for reverse proxying. To do this you will need to add one or more entries to the configuration file for your reverse proxy.
 
-### Apache mod_proxy
-
-To use the Apache mod_proxy module as a reverse proxy for load balancing, update the VirtualHost tag in your Apache config file to resemble the following.
-
-```
-<VirtualHost *:80>
-    <Proxy balancer://mycluster>
-        BalancerMember http://127.0.0.1:8585 <!-- First OpenMetadata server -->
-        BalancerMember http://127.0.0.2:8686 <!-- Second OpenMetadata server -->
-    </Proxy>
-
-    ProxyPreserveHost On
-
-    ProxyPass / balancer://mycluster/
-    ProxyPassReverse / balancer://mycluster/
-</VirtualHost>
-```
-
 ### Nginx
 
 To use OpenMetadata behind an Nginx reverse proxy, add an entry resembling the following the http context of your Nginx configuration file for each OpenMetadata instance.
