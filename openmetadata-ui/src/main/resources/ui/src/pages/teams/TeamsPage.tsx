@@ -233,7 +233,7 @@ const TeamsPage = () => {
   };
 
   const fetchAssets = () => {
-    if (selectedTeam.id) {
+    if (selectedTeam.id && isGroupType) {
       searchData(
         ``,
         assets.currPage,
@@ -323,8 +323,6 @@ const TeamsPage = () => {
       };
       const res = await createTeam(teamData);
       if (res) {
-        const parent = fqn ? selectedTeam.fullyQualifiedName : undefined;
-        fetchAllTeams(true, parent);
         fetchTeamBasicDetails(selectedTeam.name, true);
         handleAddTeam(false);
       }
