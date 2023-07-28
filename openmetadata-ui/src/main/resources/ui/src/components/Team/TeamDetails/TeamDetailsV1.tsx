@@ -149,6 +149,7 @@ const TeamDetailsV1 = ({
   parentTeams,
   entityPermissions,
   isFetchingAdvancedDetails,
+  isFetchingAllTeamAdvancedDetails,
 }: TeamDetailsProp) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -188,7 +189,7 @@ const TeamDetailsV1 = ({
     leave: boolean;
   }>(DELETE_USER_INITIAL_STATE);
   const [searchTerm, setSearchTerm] = useState('');
-  const [table, setTable] = useState<Team[]>([]);
+  const [childTeamList, setChildTeamList] = useState<Team[]>([]);
   const [slashedTeamName, setSlashedTeamName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -215,8 +216,8 @@ const TeamDetailsV1 = ({
     () =>
       isOrganization && currentTeam && currentTeam.childrenCount
         ? currentTeam.childrenCount + 1
-        : table.length,
-    [table, isOrganization, currentTeam.childrenCount]
+        : childTeamList.length,
+    [childTeamList, isOrganization, currentTeam.childrenCount]
   );
   const updateActiveTab = (key: string) => {
     history.push({ search: Qs.stringify({ activeTab: key }) });
@@ -320,9 +321,9 @@ const TeamDetailsV1 = ({
         (value) => value._source as Team
       );
 
-      setTable(data);
+      setChildTeamList(data);
     } catch (error) {
-      setTable([]);
+      setChildTeamList([]);
     }
   };
 
@@ -444,7 +445,7 @@ const TeamDetailsV1 = ({
     if (value) {
       searchTeams(value);
     } else {
-      setTable(filterChildTeams(childTeams ?? [], showDeletedTeam));
+      setChildTeamList(filterChildTeams(childTeams ?? [], showDeletedTeam));
     }
   };
 
@@ -561,7 +562,7 @@ const TeamDetailsV1 = ({
   }, [currentTeam, parentTeams, showDeletedTeam]);
 
   useEffect(() => {
-    setTable(filterChildTeams(childTeams ?? [], showDeletedTeam));
+    setChildTeamList(filterChildTeams(childTeams ?? [], showDeletedTeam));
     setSearchTerm('');
   }, [childTeams, showDeletedTeam]);
 
@@ -1098,7 +1099,10 @@ const TeamDetailsV1 = ({
                       <Col span={24}>
                         <TeamHierarchy
                           currentTeam={currentTeam}
-                          data={table as Team[]}
+                          data={childTeamList}
+                          isFetchingAllTeamAdvancedDetails={
+                            isFetchingAllTeamAdvancedDetails
+                          }
                           onTeamExpand={onTeamExpand}
                         />
                       </Col>

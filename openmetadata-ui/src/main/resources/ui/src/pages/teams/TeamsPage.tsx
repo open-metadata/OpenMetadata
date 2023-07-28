@@ -92,6 +92,8 @@ const TeamsPage = () => {
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isFetchingAdvancedDetails, setFetchingAdvancedDetails] =
     useState<boolean>(false);
+  const [isFetchAllTeamAdvancedDetails, setFetchAllTeamAdvancedDetails] =
+    useState<boolean>(false);
 
   const isGroupType = useMemo(
     () => selectedTeam.teamType === TeamType.Group,
@@ -151,7 +153,27 @@ const TeamsPage = () => {
     }
   };
 
-  const fetchAllTeams = async (
+  const fetchAllTeamsBasicDetails = async (parentTeam?: string) => {
+    try {
+      const { data } = await getTeams(undefined, {
+        parentTeam: decodeURIComponent(parentTeam ?? '') ?? 'organization',
+        include: 'all',
+      });
+
+      const modifiedTeams: Team[] = data.map((team) => ({
+        ...team,
+        key: team.fullyQualifiedName,
+        children: team.childrenCount && team.childrenCount > 0 ? [] : undefined,
+      }));
+
+      setAllTeam(modifiedTeams);
+      setFetchAllTeamAdvancedDetails(true);
+    } catch (error) {
+      showErrorToast(error as AxiosError, t('server.unexpected-response'));
+    }
+  };
+
+  const fetchAllTeamsAdvancedDetails = async (
     loading = true,
     parentTeam?: string,
     updateChildNode = false
@@ -160,7 +182,7 @@ const TeamsPage = () => {
 
     try {
       const { data } = await getTeams(
-        ['defaultRoles', 'userCount', 'childrenCount', 'owns', 'parents'],
+        ['userCount', 'childrenCount', 'owns', 'parents'],
         {
           parentTeam: decodeURIComponent(parentTeam ?? '') ?? 'organization',
           include: 'all',
@@ -182,6 +204,8 @@ const TeamsPage = () => {
       }
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
+    } finally {
+      setFetchAllTeamAdvancedDetails(false);
     }
     loading && setIsDataLoading((isDataLoading) => --isDataLoading);
   };
@@ -594,9 +618,15 @@ const TeamsPage = () => {
       entityPermissions.ViewAll || entityPermissions.ViewBasic;
     if (!isPageLoading && hasPermission && fqn) {
       fetchTeamAdvancedDetails(fqn);
-      fetchAllTeams(false, fqn);
+      fetchAllTeamsBasicDetails(fqn);
     }
   }, [isPageLoading, entityPermissions, fqn]);
+
+  useEffect(() => {
+    if (isFetchAllTeamAdvancedDetails && fqn) {
+      fetchAllTeamsAdvancedDetails(false, fqn);
+    }
+  }, [isFetchAllTeamAdvancedDetails, fqn]);
 
   if (isPageLoading) {
     return <Loader />;
@@ -625,6 +655,7 @@ const TeamsPage = () => {
           hasAccess={isAuthDisabled || isAdminUser}
           isDescriptionEditable={isDescriptionEditable}
           isFetchingAdvancedDetails={isFetchingAdvancedDetails}
+          isFetchingAllTeamAdvancedDetails={isFetchAllTeamAdvancedDetails}
           isTeamMemberLoading={isDataLoading}
           parentTeams={parentTeams}
           removeUserFromTeam={removeUserFromTeam}
@@ -636,7 +667,7 @@ const TeamsPage = () => {
           onAssetsPaginate={handleAssetsPaginate}
           onDescriptionUpdate={onDescriptionUpdate}
           onShowDeletedTeamChange={toggleShowDeletedTeam}
-          onTeamExpand={fetchAllTeams}
+          onTeamExpand={fetchAllTeamsAdvancedDetails}
         />
       )}
 
