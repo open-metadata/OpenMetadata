@@ -67,6 +67,7 @@ import {
 import { withActivityFeed } from 'components/router/withActivityFeed';
 import TableDescription from 'components/TableDescription/TableDescription.component';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
+import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 
 const DashboardDetails = ({
   charts,
@@ -723,6 +724,7 @@ const DashboardDetails = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            afterDeleteAction={handleDataAssetAfterDeleteAction}
             dataAsset={dashboardDetails}
             entityType={EntityType.DASHBOARD}
             permissions={dashboardPermissions}
