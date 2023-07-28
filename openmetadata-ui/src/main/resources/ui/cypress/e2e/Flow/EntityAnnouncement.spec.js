@@ -149,14 +149,17 @@ describe('Entity Announcement', () => {
 
       verifyResponseStatusCode('@announcementFeed', 200);
       cy.get('[data-testid="main-message"]').each(($message) => {
-        cy.wrap($message).trigger('mouseover');
-        cy.get('[data-testid="delete-message"]').click();
-        cy.get('.ant-modal-body').should(
-          'contain',
-          'Are you sure you want to permanently delete this message?'
-        );
-        cy.get('[data-testid="save-button"]').click();
-        verifyResponseStatusCode('@deleteFeed', 200);
+        cy.wrap($message)
+          .trigger('mouseover')
+          .then(() => {
+            cy.get('[data-testid="delete-message"]').click({ force: true });
+            cy.get('.ant-modal-body').should(
+              'contain',
+              'Are you sure you want to permanently delete this message?'
+            );
+            cy.get('[data-testid="save-button"]').click();
+            verifyResponseStatusCode('@deleteFeed', 200);
+          });
       });
     });
   });
