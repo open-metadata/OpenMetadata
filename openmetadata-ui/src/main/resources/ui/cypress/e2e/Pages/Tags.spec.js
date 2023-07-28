@@ -388,13 +388,14 @@ describe('Tags page should work', () => {
       .should('have.class', 'activeCategory');
 
     verifyResponseStatusCode('@permissions', 200);
-    cy.get('.ant-menu-item').then(($menuItems) => {
-      // Get the text of the first menu item
-      const firstMenuItemText = $menuItems.first().text().trim();
-      if (firstMenuItemText !== NEW_CLASSIFICATION.displayName) {
-        verifyResponseStatusCode('@getTags', 200);
-      }
-    });
+    cy.get('[data-testid="entity-header-display-name"]')
+      .invoke('text')
+      .then((text) => {
+        // Get the text of the first menu item
+        if (text !== NEW_CLASSIFICATION.displayName) {
+          verifyResponseStatusCode('@getTags', 200);
+        }
+      });
 
     cy.get('[data-testid="usage-count"]').should('be.visible').as('count');
     cy.get('@count')
