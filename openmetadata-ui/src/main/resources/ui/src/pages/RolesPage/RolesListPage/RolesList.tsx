@@ -18,7 +18,7 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
-import React, { FC, useMemo, useState } from 'react';
+import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
@@ -178,6 +178,10 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
     ];
   }, []);
 
+  const handleAfterDeleteAction = useCallback(() => {
+    fetchRoles();
+  }, [fetchRoles]);
+
   return (
     <>
       <Table
@@ -192,7 +196,7 @@ const RolesList: FC<RolesListProps> = ({ roles, fetchRoles }) => {
       />
       {selectedRole && (
         <DeleteWidgetModal
-          afterDeleteAction={fetchRoles}
+          afterDeleteAction={handleAfterDeleteAction}
           allowSoftDelete={false}
           deleteMessage={t('message.are-you-sure-delete-entity', {
             entity: getEntityName(selectedRole),
