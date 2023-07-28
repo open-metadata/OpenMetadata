@@ -257,6 +257,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     return (
       <div className="flex-center font-medium mt-24" data-testid="no-queries">
         <ErrorPlaceHolder
+          buttonId="add-query-btn"
           doc={USAGE_DOCS}
           heading={t('label.query-lowercase-plural')}
           permission={permissions?.query.Create}

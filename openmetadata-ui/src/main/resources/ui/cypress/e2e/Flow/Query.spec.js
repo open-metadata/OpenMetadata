@@ -17,22 +17,14 @@ describe('Add Query page', () => {
   const table = SEARCH_ENTITY_TABLE.table_1;
 
   const addQuery = ({ inputQuery, expectedErrorMessage }) => {
-    cy.get('[data-testid="add-placeholder-button"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="add-query-btn"]').click();
 
     cy.get('.ant-form-item-explain-error').should('not.exist');
 
     inputQuery &&
-      cy
-        .get('.custom-query-editor .CodeMirror-code')
-        .should('be.visible')
-        .type(inputQuery);
+      cy.get('.custom-query-editor .CodeMirror-code').type(inputQuery);
 
-    cy.get('[data-testid="save-btn"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="save-btn"]').scrollIntoView().click();
 
     expectedErrorMessage
       ? cy
@@ -42,36 +34,24 @@ describe('Add Query page', () => {
   };
 
   const deleteQuery = () => {
-    cy.get('[data-testid="queries-container"] .query-card-container')
-      .first()
-      .as('QueryContainer');
+    cy.get('[data-testid="query-card-container"]').first().as('QueryContainer');
 
-    cy.get('@QueryContainer')
-      .get('[data-testid="more-option-btn"]')
-      .should('be.visible')
-      .click();
+    cy.get('@QueryContainer').get('[data-testid="more-option-btn"]').click();
 
     cy.get('@QueryContainer')
       .get('.ant-dropdown-menu-title-content')
       .contains('Delete')
       .click();
 
-    cy.get('.ant-modal-content [data-testid="save-button"]')
-      .should('be.visible')
-      .click();
+    cy.get('.ant-modal-content [data-testid="save-button"]').click();
   };
 
   const editQuery = ({ inputQuery, expectedErrorMessage }) => {
     // Select Query card
-    cy.get('[data-testid="queries-container"] .query-card-container')
-      .first()
-      .as('QueryContainer');
+    cy.get('[data-testid="query-card-container"]').first().as('QueryContainer');
 
     // Click on more options icon
-    cy.get('@QueryContainer')
-      .get('[data-testid="more-option-btn"]')
-      .should('be.visible')
-      .click();
+    cy.get('@QueryContainer').get('[data-testid="more-option-btn"]').click();
 
     // Choose Edit option
     cy.get('@QueryContainer')
@@ -79,17 +59,12 @@ describe('Add Query page', () => {
       .contains('Edit')
       .click();
 
-    cy.get('.sql-editor-container')
-      .should('be.visible')
-      .type(`{command+a}${inputQuery}`);
+    cy.get('.sql-editor-container').type(`{command+a}${inputQuery}`);
 
-    cy.get('@QueryContainer')
-      .get('[data-testid="save-query-btn"]')
-      .should('be.visible')
-      .click();
+    cy.get('@QueryContainer').get('[data-testid="save-query-btn"]').click();
 
     expectedErrorMessage &&
-      cy.get('.error-text').should('be.visible').contains(expectedErrorMessage);
+      cy.get('.error-text').should('contain', expectedErrorMessage);
   };
 
   beforeEach(() => {
@@ -97,7 +72,7 @@ describe('Add Query page', () => {
 
     visitEntityDetailsPage(table.term, table.serviceName, table.entity);
 
-    cy.get('[data-testid="table_queries"]').should('be.visible').click();
+    cy.get('[data-testid="table_queries"]').click();
   });
 
   it('should show the error message on add query, if sql in empty', () => {

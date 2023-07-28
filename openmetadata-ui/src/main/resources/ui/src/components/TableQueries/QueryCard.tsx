@@ -158,6 +158,7 @@ const QueryCard: FC<QueryCardProp> = ({
             { selected: selectedId === query?.id },
             className
           )}
+          data-testid="query-card-container"
           extra={
             <QueryCardExtraOption
               afterDeleteAction={afterDeleteAction}
