@@ -403,9 +403,14 @@ export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
     return [];
   }
 
-  return buckets.map((option) => ({
-    key: option.key,
-    label: option.key,
-    count: option.doc_count ?? 0,
-  }));
+  return buckets.map((option) => {
+    const { key, doc_count, ['sterms#originalName']: originalName } = option;
+    const originalBucket = originalName?.buckets[0];
+
+    return {
+      key: originalBucket?.key ?? key,
+      label: originalBucket?.key ?? key,
+      count: originalBucket?.doc_count ?? doc_count ?? 0,
+    };
+  });
 };

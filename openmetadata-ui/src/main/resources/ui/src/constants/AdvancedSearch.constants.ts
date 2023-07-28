@@ -51,7 +51,7 @@ export const COMMON_DROPDOWN_ITEMS = [
   },
   {
     label: t('label.service-type'),
-    key: 'serviceType.keyword',
+    key: 'serviceType',
   },
 ];
 
@@ -221,10 +221,16 @@ export const autocomplete: (args: {
           response.data.aggregations[`sterms#${entityField}`].buckets;
 
         return {
-          values: buckets.map((bucket) => ({
-            value: bucket.key,
-            title: bucket.label ?? bucket.key,
-          })),
+          values: buckets.map((bucket) => {
+            const { key, ['sterms#originalName']: originalName } = bucket;
+            const originalBucket = originalName?.buckets[0];
+            const value = originalBucket?.key ?? key;
+
+            return {
+              value,
+              title: value,
+            };
+          }),
           hasMore: false,
         };
       });

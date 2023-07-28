@@ -237,10 +237,15 @@ export type AggregationType = {
   buckets: Bucket[];
 };
 
+export interface STermsOriginalName {
+  buckets: Bucket[];
+}
+
 export interface Bucket {
   key: string;
   doc_count: number;
   label?: string;
+  'sterms#originalName'?: STermsOriginalName;
 }
 
 export interface SuggestOption<SI extends SearchIndex, T> {
