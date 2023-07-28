@@ -57,7 +57,6 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
 
   public TypeResourceTest() {
     super(Entity.TYPE, Type.class, TypeList.class, "metadata/types", TypeResource.PROPERTIES);
-    supportsEmptyDescription = false;
     supportsFieldsQueryParam = false;
     supportedNameCharacters = "_" + RANDOM_STRING_GENERATOR.generate(1); // No other special characters allowed
   }
