@@ -21,12 +21,12 @@ import InlineEdit from 'components/InlineEdit/InlineEdit.component';
 import ChangePasswordForm from 'components/Users/ChangePasswordForm';
 import { DE_ACTIVE_COLOR, ICON_DIMENSION } from 'constants/constants';
 import { EntityType } from 'enums/entity.enum';
-import { AuthTypes } from 'enums/signin.enum';
 import {
   ChangePasswordRequest,
   RequestType,
 } from 'generated/auth/changePasswordRequest';
 import { EntityReference } from 'generated/entity/type';
+import { AuthProvider } from 'generated/settings/settings';
 import { useAuth } from 'hooks/authHooks';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -54,8 +54,8 @@ const UserProfileDetails = ({
 
   const isAuthProviderBasic = useMemo(
     () =>
-      authConfig?.provider === AuthTypes.BASIC ||
-      authConfig?.provider === AuthTypes.LDAP,
+      authConfig?.provider === AuthProvider.Basic ||
+      authConfig?.provider === AuthProvider.LDAP,
     [authConfig]
   );
 

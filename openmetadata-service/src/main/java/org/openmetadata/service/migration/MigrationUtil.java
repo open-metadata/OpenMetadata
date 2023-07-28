@@ -310,6 +310,11 @@ public class MigrationUtil {
   private static void updateFQNHashEntityExtensionTimeSeries(
       Handle handle, String updateSql, CollectionDAO collectionDAO, int limitParam) {
     LOG.debug("Starting Migration for Entity Extension Time Series");
+    try {
+      collectionDAO.entityExtensionTimeSeriesDao().listDistinctCount();
+    } catch (Exception ex) {
+      return;
+    }
     while (true) {
       PreparedBatch upsertBatch = handle.prepareBatch(updateSql);
       List<String> entityFQNLists =

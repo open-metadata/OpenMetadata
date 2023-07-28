@@ -84,9 +84,7 @@ import org.openmetadata.service.util.TestUtils.UpdateType;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlossary> {
   public GlossaryResourceTest() {
-    // TODO add system glossary
     super(Entity.GLOSSARY, Glossary.class, GlossaryResource.GlossaryList.class, "glossaries", GlossaryResource.FIELDS);
-    supportsEmptyDescription = false;
     supportsSearchIndex = true;
   }
 
