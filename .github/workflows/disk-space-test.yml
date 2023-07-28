@@ -7,7 +7,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@0179dfc359f90a703c41240506f998ee1603f9ea  #v1.0.0  
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 90
       - name: Check Disk Space Before Build
         run: |
             echo "=============================================="
@@ -45,7 +52,14 @@ jobs:
             df -h
             echo "=============================================="
 
-
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@1.31.1  
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 90
       - uses: actions/checkout@v3
       - name: Set up Python 3.9
         uses: actions/setup-python@v4
