@@ -13,6 +13,7 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { dbtParsingTimeoutLimit } from './DBTFormConstants';
 import { DBTLocalConfig } from './DBTLocalConfig';
 
 const mockProps = {
@@ -21,6 +22,7 @@ const mockProps = {
   dbtRunResultsFilePath: '',
   dbtUpdateDescriptions: false,
   enableDebugLog: false,
+  parsingTimeoutLimit: dbtParsingTimeoutLimit,
 };
 
 jest.mock('./DBTCommonFields.component', () =>

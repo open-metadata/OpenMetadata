@@ -38,7 +38,6 @@ import { useHistory, useParams } from 'react-router-dom';
 import { getAllFeeds, getFeedCount } from 'rest/feedsAPI';
 import { getCountBadge, getEntityDetailLink } from 'utils/CommonUtils';
 import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from 'utils/EntityUtils';
-import { getEntityField } from 'utils/FeedUtils';
 import '../../Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component';
@@ -69,7 +68,7 @@ export const ActivityFeedTab = ({
   const history = useHistory();
   const { t } = useTranslation();
   const [elementRef, isInView] = useElementInView(observerOptions);
-  const { subTab: activeTab = 'all' } =
+  const { subTab: activeTab = ActivityFeedTabs.ALL } =
     useParams<{ subTab: ActivityFeedTabs }>();
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('open');
   const [allCount, setAllCount] = useState(0);
@@ -100,6 +99,11 @@ export const ActivityFeedTab = ({
     [selectedThread]
   );
 
+  const isTaskActiveTab = useMemo(
+    () => activeTab === ActivityFeedTabs.TASKS,
+    [activeTab]
+  );
+
   const handleTabChange = (subTab: string) => {
     history.push(
       getEntityDetailLink(entityType, fqn, EntityTabs.ACTIVITY_FEED, subTab)
@@ -121,7 +125,7 @@ export const ActivityFeedTab = ({
     if (!isUserEntity) {
       // To get conversation count
       getFeedCount(
-        getEntityFeedLink(entityType, fqn),
+        getEntityFeedLink(entityType, encodeURIComponent(fqn)),
         ThreadType.Conversation
       ).then((res) => {
         if (res) {
@@ -132,15 +136,16 @@ export const ActivityFeedTab = ({
       });
 
       // To get open tasks count
-      getFeedCount(getEntityFeedLink(entityType, fqn), ThreadType.Task).then(
-        (res) => {
-          if (res) {
-            setTasksCount(res.totalCount);
-          } else {
-            throw t('server.entity-feed-fetch-error');
-          }
+      getFeedCount(
+        getEntityFeedLink(entityType, encodeURIComponent(fqn)),
+        ThreadType.Task
+      ).then((res) => {
+        if (res) {
+          setTasksCount(res.totalCount);
+        } else {
+          throw t('server.entity-feed-fetch-error');
         }
-      );
+      });
     } else {
       // count for task on userProfile page
       getAllFeeds(
@@ -240,12 +245,8 @@ export const ActivityFeedTab = ({
     });
   };
 
-  const entityField = selectedThread
-    ? getEntityField(selectedThread.about)
-    : '';
-
   const threads = useMemo(() => {
-    if (activeTab === ActivityFeedTabs.TASKS) {
+    if (isTaskActiveTab) {
       return entityThread.filter(
         (thread) =>
           taskFilter === 'open'
@@ -259,7 +260,7 @@ export const ActivityFeedTab = ({
   }, [activeTab, entityThread, taskFilter]);
 
   const [openTasks, closedTasks] = useMemo(() => {
-    if (activeTab === ActivityFeedTabs.TASKS) {
+    if (isTaskActiveTab) {
       return entityThread.reduce(
         (acc, curr) => {
           if (curr.task?.status === ThreadTaskStatus.Open) {
@@ -327,13 +328,7 @@ export const ActivityFeedTab = ({
                   <TaskListIcon {...ICON_DIMENSION} />
                   <span>{t('label.task-plural')}</span>
                 </Space>
-                <span>
-                  {getCountBadge(
-                    tasksCount,
-                    '',
-                    activeTab === ActivityFeedTabs.TASKS
-                  )}
-                </span>
+                <span>{getCountBadge(tasksCount, '', isTaskActiveTab)}</span>
               </div>
             ),
             key: 'tasks',
@@ -346,7 +341,7 @@ export const ActivityFeedTab = ({
       />
 
       <div className=" center-container">
-        {activeTab === ActivityFeedTabs.TASKS && (
+        {isTaskActiveTab && (
           <div className="d-flex gap-4 p-sm p-x-lg activity-feed-task">
             <Typography.Text
               className={classNames(
@@ -385,6 +380,7 @@ export const ActivityFeedTab = ({
           feedList={threads}
           isLoading={false}
           showThread={false}
+          tab={activeTab}
           onFeedClick={handleFeedClick}
         />
         {loader}
@@ -406,8 +402,7 @@ export const ActivityFeedTab = ({
                 <FeedPanelHeader
                   hideCloseIcon
                   className="p-x-md"
-                  entityFQN={fqn}
-                  entityField={entityField as string}
+                  entityLink={selectedThread.about}
                   threadType={selectedThread?.type ?? ThreadType.Conversation}
                   onCancel={noop}
                 />

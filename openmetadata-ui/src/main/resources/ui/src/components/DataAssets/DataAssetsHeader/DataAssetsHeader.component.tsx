@@ -71,7 +71,9 @@ export const ExtraInfoLabel = ({
   <>
     <Divider className="self-center m-x-sm" type="vertical" />
     <Typography.Text className="self-center text-xs whitespace-nowrap">
-      <span className="text-grey-muted">{`${label}: `}</span>
+      {!isEmpty(label) && (
+        <span className="text-grey-muted">{`${label}: `}</span>
+      )}
       <span className="font-medium">{value}</span>
     </Typography.Text>
   </>
@@ -173,7 +175,10 @@ export const DataAssetsHeader = ({
   const fetchActiveAnnouncement = async () => {
     try {
       const announcements = await getActiveAnnouncement(
-        getEntityFeedLink(entityType, dataAsset.fullyQualifiedName)
+        getEntityFeedLink(
+          entityType,
+          encodeURIComponent(dataAsset.fullyQualifiedName ?? '')
+        )
       );
 
       if (!isEmpty(announcements.data)) {
@@ -187,7 +192,10 @@ export const DataAssetsHeader = ({
   const fetchTaskCount = () => {
     // To get open tasks count
     getFeedCount(
-      getEntityFeedLink(entityType, dataAsset.fullyQualifiedName),
+      getEntityFeedLink(
+        entityType,
+        encodeURIComponent(dataAsset.fullyQualifiedName ?? '')
+      ),
       ThreadType.Task,
       ThreadTaskStatus.Open
     )
@@ -259,7 +267,7 @@ export const DataAssetsHeader = ({
     history.push(
       getEntityDetailLink(
         entityType,
-        dataAsset.fullyQualifiedName,
+        encodeURIComponent(dataAsset.fullyQualifiedName),
         EntityTabs.ACTIVITY_FEED,
         ActivityFeedTabs.TASKS
       )

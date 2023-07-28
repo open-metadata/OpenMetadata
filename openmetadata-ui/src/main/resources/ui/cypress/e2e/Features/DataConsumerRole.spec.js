@@ -164,7 +164,9 @@ describe('DataConsumer Edit policy should work properly', () => {
     cy.get('[data-testid="user-name"]')
       .should('be.visible')
       .click({ force: true });
-    verifyResponseStatusCode('@getUserPage', 200);
+    cy.wait('@getUserPage').then((response) => {
+      CREDENTIALS.id = response.response.body.id;
+    });
     cy.get(
       '[data-testid="user-profile"] [data-testid="user-profile-details"]'
     ).should('contain', `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`);
@@ -283,6 +285,24 @@ describe('DataConsumer Edit policy should work properly', () => {
       } else {
         cy.get(id.testid).should('not.be.exist');
       }
+    });
+  });
+});
+
+describe('Cleanup', () => {
+  beforeEach(() => {
+    cy.login();
+  });
+
+  it('delete user', () => {
+    const token = localStorage.getItem('oidcIdToken');
+
+    cy.request({
+      method: 'DELETE',
+      url: `/api/v1/users/${CREDENTIALS.id}?hardDelete=true&recursive=false`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      expect(response.status).to.eq(200);
     });
   });
 });

@@ -60,10 +60,10 @@ const validateForm = () => {
   submitForm();
 
   // error messages
-  cy.get('#tags_name_help').should('be.visible').contains('name is required');
+  cy.get('#tags_name_help').should('be.visible').contains('Name is required');
   cy.get('#tags_description_help')
     .should('be.visible')
-    .contains('description is required');
+    .contains('Description is required');
 
   // validation should work for invalid names
 
@@ -359,7 +359,7 @@ describe('Tags page should work', () => {
 
     verifyResponseStatusCode('@taskResolve', 200);
     verifyResponseStatusCode('@databaseSchemasPage', 200);
-    cy.get('[data-testid="table"]').should('be.visible').click();
+    cy.get('[data-testid="table"]').click();
 
     cy.reload();
     verifyResponseStatusCode('@databaseSchemasPage', 200);

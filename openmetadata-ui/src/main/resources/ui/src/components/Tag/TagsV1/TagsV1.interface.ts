@@ -18,4 +18,5 @@ export type TagsV1Props = {
   tag: TagLabel;
   startWith: TAG_START_WITH;
   showOnlyName?: boolean;
+  className?: string;
 };

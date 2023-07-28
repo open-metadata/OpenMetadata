@@ -67,6 +67,7 @@ import {
 } from './DashboardDetails.interface';
 
 import TableDescription from 'components/TableDescription/TableDescription.component';
+import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 
 const DashboardDetails = ({
   charts,
@@ -603,6 +604,7 @@ const DashboardDetails = ({
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
                 <TagsContainerV2
+                  displayType={DisplayType.READ_MORE}
                   entityFqn={dashboardDetails.fullyQualifiedName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.DASHBOARD}
@@ -618,6 +620,7 @@ const DashboardDetails = ({
                 />
 
                 <TagsContainerV2
+                  displayType={DisplayType.READ_MORE}
                   entityFqn={dashboardDetails.fullyQualifiedName}
                   entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.DASHBOARD}

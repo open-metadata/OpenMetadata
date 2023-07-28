@@ -82,6 +82,15 @@ export type DbtConfigS3GCS = Pick<
   | 'includeTags'
 >;
 
+export type DbtConfigAzure = Pick<
+  ModifiedDbtConfig,
+  | 'dbtSecurityConfig'
+  | 'dbtPrefixConfig'
+  | 'dbtUpdateDescriptions'
+  | 'dbtClassificationName'
+  | 'includeTags'
+>;
+
 export type DbtS3Creds = Pick<
   Credentials,
   | 'awsAccessKeyId'

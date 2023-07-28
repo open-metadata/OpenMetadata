@@ -20,6 +20,7 @@ import { DbtConfigCloud } from './DBTConfigForm.interface';
 
 interface Props extends DbtConfigCloud {
   enableDebugLog: boolean;
+  parsingTimeoutLimit: number;
 }
 
 export const DBTCloudConfig: FunctionComponent<Props> = ({
@@ -32,6 +33,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
   dbtCloudUrl = 'https://cloud.getdbt.com/',
   dbtClassificationName,
   enableDebugLog,
+  parsingTimeoutLimit,
 }: Props) => {
   const cloudConfigFields: FieldProp[] = [
     {
@@ -110,6 +112,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         descriptionId="cloud-update-description"
         enableDebugLog={enableDebugLog}
         includeTags={includeTags}
+        parsingTimeoutLimit={parsingTimeoutLimit}
       />
     </Fragment>
   );

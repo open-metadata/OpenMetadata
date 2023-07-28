@@ -119,6 +119,15 @@ export const getPartialNameFromFQN = (
   return arrPartialName.join(joinSeperator);
 };
 
+/**
+ * Retrieves a partial name from a fully qualified name (FQN) for tables.
+ *
+ * @param {string} fqn - The fully qualified name. It should be a decoded string.
+ * @param {Array<FqnPart>} fqnParts - The parts of the FQN to include in the partial name. Defaults to an empty array.
+ * @param {string} joinSeparator - The separator used to join the parts of the partial name. Defaults to '/'.
+ * @return {string} The partial name derived from the FQN.
+ */
+
 export const getPartialNameFromTableFQN = (
   fqn: string,
   fqnParts: Array<FqnPart> = [],

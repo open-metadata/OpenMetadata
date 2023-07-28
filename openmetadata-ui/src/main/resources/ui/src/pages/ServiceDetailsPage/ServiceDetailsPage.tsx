@@ -369,7 +369,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const fetchDatabases = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getDatabases(
-        serviceFQN,
+        decodeURIComponent(serviceFQN),
         'owner,tags,usageSummary',
         paging,
         include
@@ -672,7 +672,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
         setServiceDetails(response);
       } catch (err) {
-        // Error
+        showErrorToast(err as AxiosError);
       }
     },
     [serviceDetails, serviceCategory]

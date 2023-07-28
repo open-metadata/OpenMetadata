@@ -76,10 +76,10 @@ const validateForm = () => {
   cy.get('#name_help')
     .scrollIntoView()
     .should('be.visible')
-    .contains('name is required');
+    .contains('Name is required');
   cy.get('#description_help')
     .should('be.visible')
-    .contains('description is required');
+    .contains('Description is required');
 
   // max length validation
   cy.get('[data-testid="name"]')
@@ -372,10 +372,7 @@ describe('Glossary page should work properly', () => {
       'fetchTags'
     );
 
-    // check for no data placeholder
-    cy.get('[data-testid="add-placeholder-button"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="add-glossary"]').click();
 
     // Redirecting to add glossary page
     cy.get('[data-testid="form-heading"]')
@@ -499,6 +496,11 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Verify and Remove Tags from Glossary', () => {
+    cy.get('[data-testid="glossary-left-panel"]')
+      .contains(NEW_GLOSSARY.name)
+      .click();
+
+    checkDisplayName(NEW_GLOSSARY.name);
     // Verify Tags which is added at the time of creating glossary
     cy.get('[data-testid="tags-container"]')
       .contains('Personal')
@@ -519,7 +521,7 @@ describe('Glossary page should work properly', () => {
   it('Verify added glossary details', () => {
     cy.get('[data-testid="glossary-left-panel"]')
       .contains(NEW_GLOSSARY.name)
-      .should('be.visible');
+      .click();
 
     checkDisplayName(NEW_GLOSSARY.name);
 
@@ -569,6 +571,11 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Updating data of glossary should work properly', () => {
+    cy.get('[data-testid="glossary-left-panel"]')
+      .contains(NEW_GLOSSARY.name)
+      .click();
+
+    checkDisplayName(NEW_GLOSSARY.name);
     // updating tags
     updateTags(false);
 
@@ -660,7 +667,7 @@ describe('Glossary page should work properly', () => {
 
     // Add glossary tag to entity for mutually exclusive
     cy.get(
-      '[data-testid="entity-right-panel"] [data-testid="glossary-container"] > [data-testid="entity-tags"]'
+      '[data-testid="entity-right-panel"] [data-testid="glossary-container"] > [data-testid="entity-tags"] [data-testid="add-tag"]'
     ).click();
     // Select 1st term
     cy.get('[data-testid="tag-selector"]').click().type(term1);
@@ -684,7 +691,7 @@ describe('Glossary page should work properly', () => {
 
     // Add non mutually exclusive tags
     cy.get(
-      '[data-testid="entity-right-panel"] [data-testid="glossary-container"] > [data-testid="entity-tags"]'
+      '[data-testid="entity-right-panel"] [data-testid="glossary-container"] > [data-testid="entity-tags"] [data-testid="add-tag"]'
     ).click();
 
     // Select 1st term
@@ -707,7 +714,7 @@ describe('Glossary page should work properly', () => {
 
     // Add tag to schema table
     const firstColumn =
-      '[data-testid="Glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] > [data-testid="entity-tags"]';
+      '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] > [data-testid="entity-tags"] [data-testid="add-tag"]';
     cy.get(firstColumn).scrollIntoView();
     cy.get(firstColumn).click();
 
@@ -722,7 +729,7 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     verifyResponseStatusCode('@countTag', 200);
     cy.get(
-      '[data-testid="Glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"]'
+      '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"]'
     )
       .scrollIntoView()
       .should('contain', term3);
@@ -778,7 +785,7 @@ describe('Glossary page should work properly', () => {
     interceptURL('PATCH', '/api/v1/tables/*', 'removeSchemaTags');
 
     cy.get(
-      '[data-testid="Glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"]'
+      '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"]'
     )
       .scrollIntoView()
       .trigger('mouseover')
@@ -793,7 +800,7 @@ describe('Glossary page should work properly', () => {
     verifyResponseStatusCode('@removeSchemaTags', 200);
 
     cy.get(
-      '[data-testid="Glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"]'
+      '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"]'
     )
       .scrollIntoView()
       .should('not.contain', name)

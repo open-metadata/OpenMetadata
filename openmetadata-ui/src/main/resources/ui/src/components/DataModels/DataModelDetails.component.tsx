@@ -26,6 +26,7 @@ import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { getDataModelDetailsPath, getVersionPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { CSMode } from 'enums/codemirror.enum';
@@ -203,6 +204,7 @@ const DataModelDetails = ({
           flex="320px">
           <Space className="w-full" direction="vertical" size="large">
             <TagsContainerV2
+              displayType={DisplayType.READ_MORE}
               entityFqn={dashboardDataModelFQN}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
@@ -213,6 +215,7 @@ const DataModelDetails = ({
               onThreadLinkSelect={onThreadLinkSelect}
             />
             <TagsContainerV2
+              displayType={DisplayType.READ_MORE}
               entityFqn={dashboardDataModelFQN}
               entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
