@@ -84,7 +84,7 @@ const Searchbar = ({
       {label !== '' && <label>{label}</label>}
       <div className="flex relative">
         <Input
-          data-testid={searchBarDataTestId ? searchBarDataTestId : 'searchbar'}
+          data-testid={searchBarDataTestId ?? 'searchbar'}
           placeholder={placeholder}
           prefix={
             <SVGIcons

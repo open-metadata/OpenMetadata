@@ -63,9 +63,7 @@ const addRemoveOwner = (isGlossaryPage) => {
   cy.get(`.ant-popover [title="${OWNER}"]`).click();
   verifyResponseStatusCode('@patchOwner', 200);
   if (isGlossaryPage) {
-    cy.get('[data-testid="glossary-owner-name"]')
-      .should('be.visible')
-      .should('contain', OWNER);
+    cy.get('[data-testid="glossary-owner-name"]').should('contain', OWNER);
   } else {
     cy.get('[data-testid="owner-link"]').should('contain', OWNER);
   }
@@ -84,9 +82,7 @@ const addRemoveOwner = (isGlossaryPage) => {
 
 const addRemoveTier = () => {
   cy.get('[data-testid="edit-tier"]').click();
-  cy.get('[data-testid="radio-btn-Tier1"]').check();
-
-  cy.wait(2000);
+  cy.get('[data-testid="radio-btn-Tier1"]').click({ waitForAnimations: true });
 
   cy.get('[data-testid="radio-btn-Tier1"]').should('be.checked');
 

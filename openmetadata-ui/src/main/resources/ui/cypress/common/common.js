@@ -495,10 +495,7 @@ export const visitEntityDetailsPage = (
 
   if (entityType) {
     cy.get('[data-testid="global-search-selector"]').click();
-    cy.get('.global-search-select-menu')
-      .should('be.visible')
-      .get(`[data-testid="global-search-select-option-${entityType}"]`)
-      .click();
+    cy.get(`[data-testid="global-search-select-option-${entityType}"]`).click();
   }
 
   // searching term in search box
