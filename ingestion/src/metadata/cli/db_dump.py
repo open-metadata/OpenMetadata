@@ -114,10 +114,10 @@ def get_hash_column_name(engine: Engine, table_name: str) -> Optional[str]:
     inspector = inspect(engine)
     columns = inspector.get_columns(table_name)
     for column in columns:
-        if column["name"] == FQN_HASH_COLUMN:
-            return FQN_HASH_COLUMN
-        if column["name"] == NAME_HASH_COLUMN:
-            return NAME_HASH_COLUMN
+        if column["name"].lower() == FQN_HASH_COLUMN.lower():
+            return column["name"]
+        if column["name"].lower() == NAME_HASH_COLUMN.lower():
+            return column["name"]
     return None
 
 
@@ -204,6 +204,10 @@ def dump_entity_custom(engine: Engine, output: Path, inspector) -> None:
                 file.write(insert)
 
 
+def get_lower_table_names(tables):
+    return [table.lower() for table in tables]
+
+
 def dump(engine: Engine, output: Path, schema: str = None) -> None:
     """
     Get all tables from the database and dump
@@ -213,13 +217,15 @@ def dump(engine: Engine, output: Path, schema: str = None) -> None:
     tables = (
         inspector.get_table_names(schema) if schema else inspector.get_table_names()
     )
+    lower_tables = get_lower_table_names(tables)
+    all_non_json_tables = (
+        get_lower_table_names(TABLES_DUMP_ALL)
+        + get_lower_table_names(NOT_MIGRATE)
+        + get_lower_table_names(CUSTOM_TABLES)
+    )
 
     dump_json_tables = [
-        table
-        for table in tables
-        if table not in TABLES_DUMP_ALL
-        and table not in NOT_MIGRATE
-        and table not in CUSTOM_TABLES
+        table for table in lower_tables if table not in all_non_json_tables
     ]
 
     dump_all(tables=list(TABLES_DUMP_ALL), engine=engine, output=output)
