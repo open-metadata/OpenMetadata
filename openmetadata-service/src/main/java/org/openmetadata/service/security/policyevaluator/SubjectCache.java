@@ -215,9 +215,16 @@ public class SubjectCache {
   static class UserLoader extends CacheLoader<String, SubjectContext> {
     @Override
     public SubjectContext load(@CheckForNull String userName) throws IOException {
-      User user = userRepository.getByName(null, EntityInterfaceUtil.quoteName(userName), userFields);
-      LOG.info("Loaded user {}:{}", user.getName(), user.getId());
-      return new SubjectContext(user);
+      // XXX
+      try {
+        System.out.println("Loading user by name " + userName);
+        User user = userRepository.getByName(null, EntityInterfaceUtil.quoteName(userName), userFields);
+        LOG.info("Loaded user {}:{}", user.getName(), user.getId());
+        return new SubjectContext(user);
+      } catch (Exception ex) {
+        ex.printStackTrace();
+        throw ex;
+      }
     }
   }
 

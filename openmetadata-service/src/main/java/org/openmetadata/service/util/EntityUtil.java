@@ -34,7 +34,6 @@ import java.util.stream.Collectors;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.WebApplicationException;
 import lombok.Getter;
-import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
@@ -161,25 +160,13 @@ public final class EntityUtil {
 
   // TODO delete
   public static List<EntityReference> getEntityReferences(List<EntityRelationshipRecord> list) throws IOException {
-    if (list == null) {
+    if (nullOrEmpty(list)) {
       return Collections.emptyList();
     }
     List<EntityReference> refs = new ArrayList<>();
     for (EntityRelationshipRecord ref : list) {
+      System.out.println("XXX getting entityRef for " + ref.getType() + " " + ref.getId());
       refs.add(Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL));
-    }
-    refs.sort(compareEntityReference);
-    return refs;
-  }
-
-  public static List<EntityReference> populateEntityReferences(
-      List<EntityRelationshipRecord> records, @NonNull String entityType) throws IOException {
-    //    if (nullOrEmpty(records)) {
-    //      return null;
-    //    }
-    List<EntityReference> refs = new ArrayList<>(records.size());
-    for (EntityRelationshipRecord id : records) {
-      refs.add(Entity.getEntityReferenceById(entityType, id.getId(), ALL));
     }
     refs.sort(compareEntityReference);
     return refs;
@@ -267,32 +254,22 @@ public final class EntityUtil {
     return entityReferences;
   }
 
-  public static List<UUID> toIDs(List<String> list) {
-    List<UUID> ids = new ArrayList<>(list.size());
-    list.forEach(entry -> ids.add(UUID.fromString(entry)));
-    return ids;
+  public static List<UUID> strToIds(List<String> list) {
+    return list.stream().map(UUID::fromString).collect(Collectors.toList());
   }
 
   public static List<EntityReference> toEntityReferences(List<UUID> ids, String entityType) {
     if (ids == null) {
       return null;
     }
-    List<EntityReference> entityReferences = new ArrayList<>();
-    for (UUID id : ids) {
-      entityReferences.add(new EntityReference().withId(id).withType(entityType));
-    }
-    return entityReferences;
+    return ids.stream().map(id -> new EntityReference().withId(id).withType(entityType)).collect(Collectors.toList());
   }
 
-  public static List<UUID> toIds(List<EntityReference> refs) {
+  public static List<UUID> refToIds(List<EntityReference> refs) {
     if (refs == null) {
       return null;
     }
-    List<UUID> ids = new ArrayList<>();
-    for (EntityReference ref : refs) {
-      ids.add(ref.getId());
-    }
-    return ids;
+    return refs.stream().map(EntityReference::getId).collect(Collectors.toList());
   }
 
   public static <T> boolean isDescriptionRequired(Class<T> clz) {
@@ -346,13 +323,6 @@ public final class EntityUtil {
       fieldList.add(field);
     }
 
-    public void addField(List<String> allowedFields, String field) {
-      if (!allowedFields.contains(field)) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
-      }
-      fieldList.add(field);
-    }
-
     @Override
     public String toString() {
       return fieldList.toString();
@@ -390,9 +360,7 @@ public final class EntityUtil {
   }
 
   /** Return column field name of format "columns".columnName.columnFieldName */
-  public static <T extends EntityInterface> String getColumnField(
-      T entityWithColumns, Column column, String columnField) {
-
+  public static <T extends EntityInterface> String getColumnField(Column column, String columnField) {
     // Remove table FQN from column FQN to get the local name
     String localColumnName = column.getName();
     return columnField == null
@@ -568,10 +536,8 @@ public final class EntityUtil {
   }
 
   public static void validateProfileSample(String profileSampleType, double profileSampleValue) {
-    if (profileSampleType.equals("PERCENTAGE")) {
-      if (profileSampleValue < 0 || profileSampleValue > 100.0) {
-        throw new IllegalArgumentException("Profile sample value must be between 0 and 100");
-      }
+    if (profileSampleType.equals("PERCENTAGE") && (profileSampleValue < 0 || profileSampleValue > 100.0)) {
+      throw new IllegalArgumentException("Profile sample value must be between 0 and 100");
     }
   }
 

@@ -76,6 +76,7 @@ import { TagLabel } from '../generated/type/tagLabel';
 import { EntityFieldThreadCount } from '../interface/feed.interface';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
+import { history } from './HistoryUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
@@ -701,7 +702,9 @@ export const getLoadingStatus = (
   );
 };
 
-export const refreshPage = () => window.location.reload();
+export const refreshPage = () => {
+  history.go(0);
+};
 // return array of id as  strings
 export const getEntityIdArray = (entities: EntityReference[]): string[] =>
   entities.map((item) => item.id);

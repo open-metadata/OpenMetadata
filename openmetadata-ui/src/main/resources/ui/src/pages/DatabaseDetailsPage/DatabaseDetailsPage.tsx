@@ -60,6 +60,7 @@ import {
   restoreDatabase,
 } from 'rest/databaseAPI';
 import { getFeedCount, postThread } from 'rest/feedsAPI';
+import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import { default as appState } from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
@@ -748,8 +749,8 @@ const DatabaseDetails: FunctionComponent = () => {
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
-            allowSoftDelete
             isRecursiveDelete
+            afterDeleteAction={handleDataAssetAfterDeleteAction}
             dataAsset={database}
             entityType={EntityType.DATABASE}
             permissions={databasePermission}
