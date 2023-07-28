@@ -85,6 +85,9 @@ const addRemoveOwner = (isGlossaryPage) => {
 const addRemoveTier = () => {
   cy.get('[data-testid="edit-tier"]').click();
   cy.get('[data-testid="radio-btn-Tier1"]').check();
+
+  cy.wait(2000);
+
   verifyResponseStatusCode('@patchOwner', 200);
   cy.clickOutside();
   cy.get('[data-testid="Tier"]').should('contain', TIER);
