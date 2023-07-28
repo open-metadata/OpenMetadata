@@ -35,6 +35,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -63,32 +64,40 @@ public final class UserUtil {
   private static void createOrUpdateUser(AuthProvider authProvider, String username, String domain, Boolean isAdmin)
       throws IOException {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-    User updatedUser;
+    User updatedUser = null;
     try {
       // Create Required Fields List
       Set<String> fieldList = new HashSet<>(userRepository.getPatchFields().getFieldList());
       fieldList.add("authenticationMechanism");
 
       // Fetch Original User, is available
-      User originalUser = userRepository.getByName(null, username, new Fields(fieldList));
-      updatedUser = originalUser;
+      User originalUser =
+          userRepository.getByName(null, EntityInterfaceUtil.quoteName(username), new Fields(fieldList));
+      if (!originalUser.getIsBot() && !originalUser.getIsAdmin()) {
+        updatedUser = originalUser;
 
-      // Update Auth Mechanism if not present, and send mail to the user
-      if (authProvider.equals(AuthProvider.BASIC)) {
-        if (originalUser.getAuthenticationMechanism() == null
-            || originalUser.getAuthenticationMechanism().equals(new AuthenticationMechanism())) {
-          updateUserWithHashedPwd(updatedUser, getPassword());
-          EmailUtil.sendInviteMailToAdmin(updatedUser, ADMIN_USER_NAME);
+        // Update Auth Mechanism if not present, and send mail to the user
+        if (authProvider.equals(AuthProvider.BASIC)) {
+          if (originalUser.getAuthenticationMechanism() == null
+              || originalUser.getAuthenticationMechanism().equals(new AuthenticationMechanism())) {
+            updateUserWithHashedPwd(updatedUser, getPassword());
+            EmailUtil.sendInviteMailToAdmin(updatedUser, ADMIN_USER_NAME);
+          }
+        } else {
+          updatedUser.setAuthenticationMechanism(new AuthenticationMechanism());
         }
+
+        // Update the specific fields isAdmin
+        updatedUser.setIsAdmin(isAdmin);
+
+        // user email
+        updatedUser.setEmail(String.format("%s@%s", username, domain));
       } else {
-        updatedUser.setAuthenticationMechanism(new AuthenticationMechanism());
+        LOG.error(
+            String.format(
+                "You configured bot user %s in initialAdmins config. Bot user cannot be promoted to be an admin.",
+                originalUser.getName()));
       }
-
-      // Update the specific fields isAdmin
-      updatedUser.setIsAdmin(isAdmin);
-
-      // user email
-      updatedUser.setEmail(String.format("%s@%s", username, domain));
     } catch (EntityNotFoundException e) {
       updatedUser = user(username, domain, username).withIsAdmin(isAdmin).withIsEmailVerified(true);
       // Update Auth Mechanism if not present, and send mail to the user
@@ -99,7 +108,9 @@ public final class UserUtil {
     }
 
     // Update the user
-    addOrUpdateUser(updatedUser);
+    if (updatedUser != null) {
+      addOrUpdateUser(updatedUser);
+    }
   }
 
   private static String getPassword() {
