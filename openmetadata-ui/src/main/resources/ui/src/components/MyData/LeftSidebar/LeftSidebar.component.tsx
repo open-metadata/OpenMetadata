@@ -224,6 +224,7 @@ const LeftSidebar = () => {
             </Button>
             <Button
               className="confirm-btn"
+              data-testid="confirm-logout"
               type="primary"
               onClick={onLogoutHandler}>
               {t('label.logout')}
