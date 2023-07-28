@@ -40,7 +40,7 @@ describe('Task flow should work', () => {
     );
   });
 
-  const assignee = 'admin';
+  const assignee = 'adam_rodriguez9';
   const tag = 'Personal';
 
   const createTagTask = (value) => {
