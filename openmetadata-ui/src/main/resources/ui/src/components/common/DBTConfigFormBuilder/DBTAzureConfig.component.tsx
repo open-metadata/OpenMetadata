@@ -19,6 +19,7 @@ import { DbtConfigAzure } from './DBTConfigForm.interface';
 
 interface Props extends DbtConfigAzure {
   enableDebugLog: boolean;
+  parsingTimeoutLimit: number;
 }
 
 export const DBTAzureConfig = ({
@@ -28,6 +29,7 @@ export const DBTAzureConfig = ({
   dbtUpdateDescriptions = false,
   enableDebugLog,
   includeTags = true,
+  parsingTimeoutLimit,
 }: Props) => {
   const { t } = useTranslation();
   const azureConfigFields: FieldProp[] = [
@@ -120,6 +122,7 @@ export const DBTAzureConfig = ({
         descriptionId="azure-update-description"
         enableDebugLog={enableDebugLog}
         includeTags={includeTags}
+        parsingTimeoutLimit={parsingTimeoutLimit}
       />
     </Fragment>
   );

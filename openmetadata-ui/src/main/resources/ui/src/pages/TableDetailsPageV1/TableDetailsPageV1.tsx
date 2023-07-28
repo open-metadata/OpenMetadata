@@ -13,9 +13,7 @@
 import { Col, Row, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import ActivityFeedProvider, {
-  useActivityFeedProvider,
-} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
@@ -33,6 +31,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { withActivityFeed } from 'components/router/withActivityFeed';
 import SampleDataTableComponent from 'components/SampleDataTable/SampleDataTable.component';
 import SchemaTab from 'components/SchemaTab/SchemaTab.component';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
@@ -73,6 +72,7 @@ import {
   removeFollower,
   restoreTable,
 } from 'rest/tableAPI';
+import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import {
   addToRecentViewed,
   getCurrentUserId,
@@ -549,16 +549,14 @@ const TableDetailsPageV1 = () => {
         ),
         key: EntityTabs.ACTIVITY_FEED,
         children: (
-          <ActivityFeedProvider>
-            <ActivityFeedTab
-              columns={tableDetails?.columns}
-              entityType={EntityType.TABLE}
-              fqn={tableDetails?.fullyQualifiedName ?? ''}
-              owner={tableDetails?.owner}
-              onFeedUpdate={getEntityFeedCount}
-              onUpdateEntityDetails={fetchTableDetails}
-            />
-          </ActivityFeedProvider>
+          <ActivityFeedTab
+            columns={tableDetails?.columns}
+            entityType={EntityType.TABLE}
+            fqn={tableDetails?.fullyQualifiedName ?? ''}
+            owner={tableDetails?.owner}
+            onFeedUpdate={getEntityFeedCount}
+            onUpdateEntityDetails={fetchTableDetails}
+          />
         ),
       },
       {
@@ -890,6 +888,7 @@ const TableDetailsPageV1 = () => {
         {/* Entity Heading */}
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
+            afterDeleteAction={handleDataAssetAfterDeleteAction}
             dataAsset={tableDetails}
             entityType={EntityType.TABLE}
             permissions={tablePermissions}
@@ -935,4 +934,4 @@ const TableDetailsPageV1 = () => {
   );
 };
 
-export default TableDetailsPageV1;
+export default withActivityFeed(TableDetailsPageV1);

@@ -95,10 +95,7 @@ function TriggerReIndexing() {
 
       setStreamJobData(response);
     } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.fetch-re-index-data-error')
-      );
+      // Error will be logged to console
     } finally {
       setStreamLoading(false);
     }

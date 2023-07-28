@@ -12,6 +12,7 @@
  */
 
 import { useAuth0 } from '@auth0/auth0-react';
+import { AuthProvider } from 'generated/settings/settings';
 import React, {
   forwardRef,
   Fragment,
@@ -19,7 +20,6 @@ import React, {
   useImperativeHandle,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AuthTypes } from '../../../enums/signin.enum';
 import localState from '../../../utils/LocalStorageUtils';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import { AuthenticatorRef } from '../auth-provider/AuthProvider.interface';
@@ -52,7 +52,7 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
         if (authConfig && authConfig.provider !== undefined) {
           return new Promise((resolve, reject) => {
             const { provider } = authConfig;
-            if (provider === AuthTypes.AUTH0) {
+            if (provider === AuthProvider.Auth0) {
               getAccessTokenSilently()
                 .then(() => {
                   getIdTokenClaims()

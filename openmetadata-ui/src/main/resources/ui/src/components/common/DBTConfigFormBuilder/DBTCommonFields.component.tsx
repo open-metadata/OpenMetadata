@@ -22,6 +22,7 @@ interface Props {
   dbtUpdateDescriptions: boolean;
   enableDebugLog: boolean;
   includeTags: boolean;
+  parsingTimeoutLimit: number;
 }
 
 function DBTCommonFields({
@@ -30,6 +31,7 @@ function DBTCommonFields({
   dbtClassificationName,
   enableDebugLog,
   includeTags,
+  parsingTimeoutLimit,
 }: Props) {
   const { t } = useTranslation();
 
@@ -98,6 +100,20 @@ function DBTCommonFields({
       formItemProps: {
         initialValue: includeTags,
         valuePropName: 'checked',
+      },
+    },
+    {
+      name: 'parsingTimeoutLimit',
+      label: t('label.parsing-timeout-limit'),
+      type: FieldTypes.NUMBER,
+      required: false,
+      props: {
+        'data-testid': 'dbt-parsing-timeout-limit',
+      },
+      id: 'root/parsingTimeoutLimit',
+      hasSeparator: true,
+      formItemProps: {
+        initialValue: parsingTimeoutLimit,
       },
     },
   ];
