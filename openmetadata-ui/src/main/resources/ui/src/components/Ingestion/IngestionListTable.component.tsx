@@ -22,7 +22,6 @@ import { getEntityName } from 'utils/EntityUtils';
 import { getErrorPlaceHolder } from 'utils/IngestionUtils';
 import { PAGE_SIZE } from '../../constants/constants';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getLogsViewerPath } from '../../utils/RouterUtils';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import { IngestionListTableProps } from './IngestionListTable.interface';
 import { IngestionRecentRuns } from './IngestionRecentRun/IngestionRecentRuns.component';
@@ -170,7 +169,6 @@ function IngestionListTable({
       serviceName,
       deleteSelection,
       handleDeleteSelection,
-      getLogsViewerPath,
       serviceCategory,
       handleIsConfirmationModalOpen,
       onIngestionWorkflowsUpdate,
