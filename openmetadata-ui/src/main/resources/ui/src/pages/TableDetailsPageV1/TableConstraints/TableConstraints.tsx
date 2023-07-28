@@ -54,17 +54,27 @@ const TableConstraints: FC<TableConstraintsProps> = ({ constraints }) => {
       {supportedConstraints.map(
         ({ constraintType, columns, referredColumns }) => {
           if (constraintType === ConstraintType.PrimaryKey) {
-            const columnsLength = (columns?.length ?? 0) - 1;
-
             return (
-              <Space wrap className="constraint-columns">
-                {columns?.map((column, index) => (
-                  <Fragment key={column}>
-                    <Typography.Text>{column}</Typography.Text>
-                    {index < columnsLength ? <PrimaryKeyConstraint /> : null}
-                  </Fragment>
-                ))}
-              </Space>
+              <div className="d-flex constraint-columns">
+                <Space
+                  className="constraint-icon-container"
+                  direction="vertical"
+                  size={0}>
+                  {columns?.map((column, index) => (
+                    <Fragment key={column}>
+                      {(columns?.length ?? 0) - 1 !== index ? (
+                        <PrimaryKeyConstraint />
+                      ) : null}
+                    </Fragment>
+                  ))}
+                </Space>
+
+                <Space direction="vertical" size={16}>
+                  {columns?.map((column, index) => (
+                    <Typography.Text key={index}>{column}</Typography.Text>
+                  ))}
+                </Space>
+              </div>
             );
           }
           if (constraintType === ConstraintType.ForeignKey) {
