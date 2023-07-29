@@ -68,7 +68,6 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.security.policyevaluator.RuleEvaluator;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -105,23 +104,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load any existing rules from database, before loading seed data.
     repository.initSeedDataFromResources();
-  }
-
-  @Override
-  public void upgrade() throws IOException {
-    // Introduced in 0.13
-    // OrganizationPolicy rule change
-    Policy originalOrgPolicy = repository.getByName(null, Entity.ORGANIZATION_POLICY_NAME, repository.getPatchFields());
-    Policy updatedOrgPolicy = JsonUtils.readValue(JsonUtils.pojoToJson(originalOrgPolicy), Policy.class);
-
-    // Rules are in alphabetical order - change second rule "OrganizationPolicy-Owner-Rule"
-    // from ALL operation to remove CREATE operation and allow all the other operations for the owner
-    updatedOrgPolicy
-        .getRules()
-        .get(1)
-        .withOperations(List.of(MetadataOperation.EDIT_ALL, MetadataOperation.VIEW_ALL, MetadataOperation.DELETE));
-    repository.patch(
-        null, originalOrgPolicy.getId(), "admin", JsonUtils.getJsonPatch(originalOrgPolicy, updatedOrgPolicy));
   }
 
   public static class PolicyList extends ResultList<Policy> {
