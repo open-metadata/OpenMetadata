@@ -24,7 +24,7 @@ public class ActivityFeedAlertCache {
   private static final String ACTIVITY_FEED_ALERT = "ActivityFeedAlert";
 
   private ActivityFeedAlertCache() {
-    // Private constructor for singleton
+    // Private constructor for static class
   }
 
   public static EventSubscription getActivityFeedAlert() throws EntityNotFoundException {
