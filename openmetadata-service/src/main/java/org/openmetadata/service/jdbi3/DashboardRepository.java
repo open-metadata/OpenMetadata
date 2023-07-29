@@ -32,7 +32,6 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.dashboards.DashboardResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
@@ -179,8 +178,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     if (dashboard == null) {
       return Collections.emptyList();
     }
-    List<EntityRelationshipRecord> ids = findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, entityType);
-    return EntityUtil.populateEntityReferences(ids, entityType);
+    return findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, entityType);
   }
 
   /** Handles entity updated from PUT and POST operation. */

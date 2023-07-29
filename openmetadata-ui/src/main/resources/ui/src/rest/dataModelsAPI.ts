@@ -16,6 +16,7 @@ import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { EntityHistory } from 'generated/type/entityHistory';
 import { EntityReference } from 'generated/type/entityReference';
 import { Include } from 'generated/type/include';
+import { RestoreRequestType } from 'Models';
 import { getURLWithQueryFields } from 'utils/APIUtils';
 import APIClient from './index';
 
@@ -114,6 +115,15 @@ export const getDataModelVersion = async (id: string, version: string) => {
   const url = `${URL}/${id}/versions/${version}`;
 
   const response = await APIClient.get<DashboardDataModel>(url);
+
+  return response.data;
+};
+
+export const restoreDataModel = async (id: string) => {
+  const response = await APIClient.put<
+    RestoreRequestType,
+    AxiosResponse<DashboardDataModel>
+  >('/dashboard/datamodels/restore', { id });
 
   return response.data;
 };

@@ -25,16 +25,17 @@ import { TOAST_OPTIONS } from 'constants/Toasts.constants';
 import React, { FunctionComponent } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
-import { BrowserRouter as Router } from 'react-router-dom';
+import { Router } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.min.css';
+import { history } from 'utils/HistoryUtils';
 import i18n from 'utils/i18next/LocalUtil';
 
 const App: FunctionComponent = () => {
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
-        <Router>
+        <Router history={history}>
           <I18nextProvider i18n={i18n}>
             <ErrorBoundary>
               <ApplicationConfigProvider>

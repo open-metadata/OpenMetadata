@@ -82,9 +82,7 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (container == null) {
       return Collections.emptyList();
     }
-    List<CollectionDAO.EntityRelationshipRecord> childContainerIds =
-        findTo(container.getId(), CONTAINER, Relationship.CONTAINS, CONTAINER);
-    return EntityUtil.populateEntityReferences(childContainerIds, CONTAINER);
+    return findTo(container.getId(), CONTAINER, Relationship.CONTAINS, CONTAINER);
   }
 
   @Override

@@ -14,6 +14,7 @@ import { Button, Popover, Space } from 'antd';
 import AppState from 'AppState';
 import { ReactComponent as AddReactionIcon } from 'assets/svg/add-reaction-emoji.svg';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
 import Reaction from 'components/Reactions/Reaction';
 import { REACTION_LIST } from 'constants/reactions.constant';
 import { ReactionOperation } from 'enums/reactions.enum';
@@ -27,7 +28,6 @@ import { uniqueId } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
-import DeleteConfirmationModal from '../DeleteConfirmationModal/DeleteConfirmationModal';
 import './activity-feed-actions.less';
 import { ReactComponent as DeleteIcon } from '/assets/svg/ic-delete.svg';
 import { ReactComponent as ReplyIcon } from '/assets/svg/ic-reply.svg';
@@ -199,10 +199,14 @@ const ActivityFeedActions = ({
         )}
         {/* </div> */}
       </Space>
-      <DeleteConfirmationModal
+      <ConfirmationModal
+        bodyText={t('message.confirm-delete-message')}
+        cancelText={t('label.cancel')}
+        confirmText={t('label.delete')}
+        header={t('message.delete-message-question-mark')}
         visible={showDeleteDialog}
-        onDelete={handleDelete}
-        onDiscard={() => setShowDeleteDialog(false)}
+        onCancel={() => setShowDeleteDialog(false)}
+        onConfirm={handleDelete}
       />
     </>
   );
