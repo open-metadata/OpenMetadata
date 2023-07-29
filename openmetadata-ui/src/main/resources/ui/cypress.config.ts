@@ -23,6 +23,9 @@ export default defineConfig({
   chromeWebSecurity: false,
   numTestsKeptInMemory: 0,
   e2e: {
+    // Enables support for improved memory management within Chromium-based browsers.
+    // Ref:- https://docs.cypress.io/guides/references/experiments
+    experimentalMemoryManagement: true,
     // We've imported your old cypress plugins here.
     // You may want to clean this up later by importing these.
     setupNodeEvents(on, config) {
