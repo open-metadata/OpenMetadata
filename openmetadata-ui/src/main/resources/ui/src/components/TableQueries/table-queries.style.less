@@ -13,30 +13,30 @@
 @import url('../../styles/variables.less');
 @summary-panel-offset: 236px;
 
-.query-entity-button {
-  position: absolute;
-  z-index: 10;
-  top: 63px;
-  right: 16px;
-}
+.query-card {
+  .custom-code-mirror-theme {
+    overflow: scroll;
+    border-bottom: @global-border;
+    .CodeMirror-line {
+      padding-right: 5rem !important;
+    }
+  }
 
-.query-card-container {
-  cursor: pointer;
-  position: relative;
-  border: @global-border;
-  border-radius: 4px;
-
-  .sql-editor-container {
-    overflow: hidden;
-    border-bottom-right-radius: 4px;
+  .custom-query-editor.selected {
+    border-left: 3px solid @info-color;
   }
 
   .ant-card-body {
     padding: 1px 0 0;
   }
-}
-.query-card-container.selected {
-  border-left: 3px solid @info-color;
+
+  .ant-form-item-explain-error {
+    margin-left: 2rem;
+  }
+
+  .sql-editor-container .ant-form-item-explain-error {
+    margin-left: 3rem;
+  }
 }
 
 .query-right-panel {
@@ -55,8 +55,4 @@
   .ant-drawer-body {
     padding: unset;
   }
-}
-
-.sql-editor-container .CodeMirror-line {
-  padding-right: 90px !important;
 }

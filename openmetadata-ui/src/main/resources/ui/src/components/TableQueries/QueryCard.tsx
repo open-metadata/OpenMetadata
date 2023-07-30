@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Space, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  Col,
+  Form,
+  FormProps,
+  Row,
+  Space,
+  Typography,
+} from 'antd';
 import classNames from 'classnames';
 import { getTableTabPath, getUserPath, PIPE_SYMBOL } from 'constants/constants';
 import { QUERY_DATE_FORMAT, QUERY_LINE_HEIGHT } from 'constants/Query.constant';
@@ -19,14 +28,10 @@ import { useClipboard } from 'hooks/useClipBoard';
 import { isUndefined, split } from 'lodash';
 import { Duration } from 'luxon';
 import Qs from 'qs';
-import React, { FC, useMemo, useState } from 'react';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
-import {
-  INVALID_SQL_ERROR,
-  parseSearchParams,
-  sqlQueryValidator,
-} from 'utils/Query/QueryUtils';
+import { parseSearchParams, sqlQueryValidator } from 'utils/Query/QueryUtils';
 import { getQueryPath } from 'utils/RouterUtils';
 import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
 import { CSMode } from '../../enums/codemirror.enum';
@@ -39,7 +44,7 @@ import { ReactComponent as ExitFullScreen } from '/assets/svg/exit-full-screen.s
 import { ReactComponent as FullScreen } from '/assets/svg/full-screen.svg';
 import { ReactComponent as CopyIcon } from '/assets/svg/icon-copy.svg';
 
-const { Text, Paragraph } = Typography;
+const { Text } = Typography;
 
 const QueryCard: FC<QueryCardProp> = ({
   isExpanded = false,
@@ -62,13 +67,13 @@ const QueryCard: FC<QueryCardProp> = ({
     () => parseSearchParams(location.search),
     [location.search]
   );
+  const [form] = Form.useForm();
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [sqlQuery, setSqlQuery] = useState({
     query: query.query,
     isLoading: false,
   });
-  const [isSqlInvalid, setIsSqlInvalid] = useState<boolean>(false);
 
   const { isAllowExpand, queryDate } = useMemo(() => {
     const queryArr = split(query.query, '\n');
@@ -102,31 +107,20 @@ const QueryCard: FC<QueryCardProp> = ({
     return duration.toFormat(`'${t('label.runs-for')}' ${formatString}`);
   }, [query]);
 
-  const updateSqlQuery = async () => {
-    try {
-      await sqlQueryValidator(sqlQuery.query);
-
-      setSqlQuery((pre) => ({ ...pre, isLoading: true }));
-      if (query.query !== sqlQuery.query) {
-        const updatedData = {
-          ...query,
-          query: sqlQuery.query,
-        };
-        await onQueryUpdate(updatedData, 'query');
-      }
-      setSqlQuery((pre) => ({ ...pre, isLoading: false }));
-      setIsEditMode(false);
-    } catch (error) {
-      if (error === INVALID_SQL_ERROR) {
-        setIsSqlInvalid(true);
-      }
+  const updateSqlQuery: FormProps['onFinish'] = async () => {
+    setSqlQuery((pre) => ({ ...pre, isLoading: true }));
+    if (query.query !== sqlQuery.query) {
+      const updatedData = {
+        ...query,
+        query: sqlQuery.query,
+      };
+      await onQueryUpdate(updatedData, 'query');
     }
+    setSqlQuery((pre) => ({ ...pre, isLoading: false }));
+    setIsEditMode(false);
   };
 
   const handleQueryChange = (value: string) => {
-    if (isSqlInvalid) {
-      setIsSqlInvalid(false);
-    }
     setSqlQuery((pre) => ({ ...pre, query: value }));
   };
 
@@ -148,13 +142,22 @@ const QueryCard: FC<QueryCardProp> = ({
     onQuerySelection && onQuerySelection(query);
   };
 
+  useEffect(() => {
+    form.setFields([
+      {
+        name: 'query',
+        errors: [],
+      },
+    ]);
+  }, [sqlQuery, isEditMode]);
+
   return (
-    <Row gutter={[0, 8]}>
+    <Row className="query-card" gutter={[0, 8]}>
       <Col span={24}>
         <Card
           bordered={false}
           className={classNames(
-            'query-card-container',
+            'cursor-pointer relative custom-query-editor',
             { selected: selectedId === query?.id },
             className
           )}
@@ -189,7 +192,7 @@ const QueryCard: FC<QueryCardProp> = ({
             </Space>
           }
           onClick={handleCardClick}>
-          <Space className="query-entity-button" size={8}>
+          <Space className="toasts-wrapper top-16" size={7}>
             <Button
               className="flex-center bg-white"
               data-testid="query-entity-expand-button"
@@ -210,66 +213,82 @@ const QueryCard: FC<QueryCardProp> = ({
             />
           </Space>
 
-          <div
-            className={classNames(
-              'sql-editor-container',
-              !isExpanded && {
-                'h-max-24': !isAllowExpand,
-                'h-24': !isEditMode,
-                'h-max-56': isEditMode && isAllowExpand,
-              }
-            )}>
-            <SchemaEditor
-              editorClass={classNames('custom-code-mirror-theme', {
-                'full-screen-editor-height': isExpanded,
+          <Form
+            form={form}
+            initialValues={{
+              query: sqlQuery.query,
+            }}
+            validateTrigger="onSubmit"
+            onFinish={updateSqlQuery}>
+            <Form.Item
+              className={classNames('m-0', {
+                'sql-editor-container': isExpanded,
               })}
-              mode={{ name: CSMode.SQL }}
-              options={{
-                styleActiveLine: isEditMode,
-                readOnly: isEditMode ? false : 'nocursor',
-              }}
-              value={query.query ?? ''}
-              onChange={handleQueryChange}
-            />
-          </div>
-          {isSqlInvalid && (
-            <Paragraph className="ml-8 p-l-md error-text">
-              {t('message.field-text-is-invalid', {
-                fieldText: t('label.sql-uppercase-query'),
-              })}
-            </Paragraph>
-          )}
-          <Row align="middle" className="p-y-xs border-top">
-            <Col className="p-y-0.5 p-l-md" span={16}>
-              <QueryUsedByOtherTable query={query} tableId={tableId} />
-            </Col>
-            <Col span={8}>
-              {isEditMode && (
-                <Space
-                  align="end"
-                  className="w-full justify-end p-r-md"
-                  size={16}>
-                  <Button
-                    data-testid="cancel-query-btn"
-                    key="cancel"
-                    size="small"
-                    onClick={() => setIsEditMode(false)}>
-                    {t('label.cancel')}
-                  </Button>
+              name="query"
+              rules={[
+                {
+                  required: true,
+                  message: t('label.field-required', {
+                    field: t('label.sql-uppercase-query'),
+                  }),
+                },
+                {
+                  validator: (_: Record<string, any>, value: string) => {
+                    if (!value) {
+                      return Promise.resolve('OK');
+                    }
 
-                  <Button
-                    data-testid="save-query-btn"
-                    key="save"
-                    loading={sqlQuery.isLoading}
-                    size="small"
-                    type="primary"
-                    onClick={updateSqlQuery}>
-                    {t('label.save')}
-                  </Button>
-                </Space>
-              )}
-            </Col>
-          </Row>
+                    return sqlQueryValidator(value);
+                  },
+                  message: t('message.field-text-is-invalid', {
+                    fieldText: t('label.sql-uppercase-query'),
+                  }),
+                },
+              ]}>
+              <SchemaEditor
+                editorClass={classNames(
+                  'custom-code-mirror-theme',
+                  isExpanded
+                    ? 'full-screen-editor-height'
+                    : {
+                        'h-max-56': isEditMode && isAllowExpand,
+                        'h-24': !isEditMode,
+                      }
+                )}
+                mode={{ name: CSMode.SQL }}
+                options={{
+                  styleActiveLine: isEditMode,
+                  readOnly: isEditMode ? false : 'nocursor',
+                }}
+                value={query.query ?? ''}
+                onChange={handleQueryChange}
+              />
+            </Form.Item>
+            <Form.Item className="m-0">
+              <Space className="w-full p-xs justify-between">
+                <QueryUsedByOtherTable query={query} tableId={tableId} />
+                {isEditMode && (
+                  <Space className="w-full justify-end" size={12}>
+                    <Button
+                      data-testid="cancel-query-btn"
+                      key="cancel"
+                      size="small"
+                      onClick={() => setIsEditMode(false)}>
+                      {t('label.cancel')}
+                    </Button>
+                    <Button
+                      data-testid="save-query-btn"
+                      htmlType="submit"
+                      loading={sqlQuery.isLoading}
+                      size="small"
+                      type="primary">
+                      {t('label.save')}
+                    </Button>
+                  </Space>
+                )}
+              </Space>
+            </Form.Item>
+          </Form>
         </Card>
       </Col>
     </Row>
