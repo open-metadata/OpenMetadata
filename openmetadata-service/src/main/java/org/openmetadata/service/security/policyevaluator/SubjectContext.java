@@ -74,10 +74,10 @@ public class SubjectContext {
   /** Returns true if the given resource owner is under the team hierarchy of parentTeam */
   public boolean isTeamAsset(String parentTeam, EntityReference owner) {
     if (owner.getType().equals(Entity.USER)) {
-      SubjectContext subjectContext = SubjectCache.getInstance().getSubjectContext(owner.getName());
+      SubjectContext subjectContext = SubjectCache.getSubjectContext(owner.getName());
       return subjectContext.isUserUnderTeam(parentTeam);
     } else if (owner.getType().equals(Entity.TEAM)) {
-      Team team = SubjectCache.getInstance().getTeam(owner.getId());
+      Team team = SubjectCache.getTeam(owner.getId());
       return isInTeam(parentTeam, team.getEntityReference());
     }
     return false;
@@ -85,7 +85,7 @@ public class SubjectContext {
 
   /** Return true if the team is part of the hierarchy of parentTeam */
   private boolean isInTeam(String parentTeam, EntityReference team) {
-    return SubjectCache.getInstance().isInTeam(parentTeam, team);
+    return SubjectCache.isInTeam(parentTeam, team);
   }
 
   // Iterate over all the policies of the team hierarchy the user belongs to
@@ -99,7 +99,7 @@ public class SubjectContext {
 
   /** Returns true if the user has any of the roles (either direct or inherited roles) */
   public boolean hasAnyRole(String roles) {
-    return SubjectCache.getInstance().hasRole(getUser(), roles);
+    return SubjectCache.hasRole(getUser(), roles);
   }
 
   @Getter
@@ -163,7 +163,7 @@ public class SubjectContext {
       }
       EntityReference policy = policies.get(policyIndex++);
       return new PolicyContext(
-          entityType, entityName, roleName, policy.getName(), PolicyCache.getInstance().getPolicyRules(policy.getId()));
+          entityType, entityName, roleName, policy.getName(), PolicyCache.getPolicyRules(policy.getId()));
     }
   }
 
@@ -184,10 +184,7 @@ public class SubjectContext {
       for (EntityReference role : listOrEmpty(roles)) {
         policyIterators.add(
             new PolicyIterator(
-                entityType,
-                entityName,
-                role.getName(),
-                RoleCache.getInstance().getRoleById(role.getId()).getPolicies()));
+                entityType, entityName, role.getName(), RoleCache.getRoleById(role.getId()).getPolicies()));
       }
     }
 
@@ -240,7 +237,7 @@ public class SubjectContext {
 
       // Finally, iterate over policies of teams that own the resource
       if (resourceOwner != null && resourceOwner.getType().equals(Entity.TEAM)) {
-        Team team = SubjectCache.getInstance().getTeam(resourceOwner.getId());
+        Team team = SubjectCache.getTeam(resourceOwner.getId());
         iterators.add(new TeamPolicyIterator(team.getId(), teamsVisited, true));
       }
     }
@@ -276,7 +273,7 @@ public class SubjectContext {
 
     /** Policy iterator for a team */
     TeamPolicyIterator(UUID teamId, List<UUID> teamsVisited, boolean skipRoles) {
-      Team team = SubjectCache.getInstance().getTeam(teamId);
+      Team team = SubjectCache.getTeam(teamId);
 
       // If a team is already visited (because user can belong to multiple teams
       // and a team can belong to multiple teams) then don't visit the roles/policies of that team
