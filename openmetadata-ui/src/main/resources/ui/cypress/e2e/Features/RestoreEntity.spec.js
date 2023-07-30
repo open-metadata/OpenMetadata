@@ -66,7 +66,7 @@ describe('Restore entity functionality should work properly', () => {
     cy.get('[data-testid="confirm-button"]').click();
     verifyResponseStatusCode('@softDeleteTable', 200);
 
-    toastNotification('Table deleted successfully!');
+    toastNotification('Table deleted successfully!', false);
   });
 
   it('Check Soft Deleted entity table', () => {

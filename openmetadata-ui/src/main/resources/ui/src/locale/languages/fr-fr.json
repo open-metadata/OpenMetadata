@@ -1234,6 +1234,7 @@
     "lineage-data-is-not-available-for-deleted-entities": "Traçabilité des données n'est pas disponible pour les entités supprimées.",
     "lineage-ingestion-description": "Traçabilité de l'ingestion peut être configurée et déployée après une ingestion de métadonnées a été mis en place. Le flux de travail d'ingestion de la lignée obtient l'historique des requêtes, analyse CREATE, INSERT, MERGE... requêtes et prépare la lignée entre les entités impliquées. L'ingestion de la lignée peut avoir un seul pipeline pour un service de base de données. Définir la durée du journal de requêtes (en jours) et le nombre de résultats pour démarrer.",
     "list-of-strings-regex-patterns-csv": "Entrer une liste de chaînes / motifs regex comme une valeur séparée par des virgules",
+    "logout-confirmation": "Are you sure you want to logout?",
     "made-announcement-for-entity": "a fait une annonce pour {{entity}}",
     "make-an-announcement": "Faire une annonce",
     "manage-airflow-api": "OpenMetadata - Managed Airflow APIs",

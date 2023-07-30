@@ -167,29 +167,6 @@ const AlertsPage = () => {
     []
   );
 
-  if (loading) {
-    return <Loader />;
-  }
-
-  if (isEmpty(alerts)) {
-    return (
-      <ErrorPlaceHolder
-        permission
-        doc={ALERTS_DOCS}
-        heading={t('label.alert')}
-        type={ERROR_PLACEHOLDER_TYPE.CREATE}
-        onClick={() =>
-          history.push(
-            getSettingPath(
-              GlobalSettingsMenuCategory.NOTIFICATIONS,
-              GlobalSettingOptions.ADD_ALERTS
-            )
-          )
-        }
-      />
-    );
-  }
-
   return (
     <>
       <Row gutter={[16, 16]}>
@@ -212,6 +189,29 @@ const AlertsPage = () => {
             bordered
             columns={columns}
             dataSource={alerts}
+            loading={{
+              spinning: loading,
+              indicator: <Loader size="small" />,
+            }}
+            locale={{
+              emptyText: !loading && (
+                <ErrorPlaceHolder
+                  permission
+                  className="p-y-md"
+                  doc={ALERTS_DOCS}
+                  heading={t('label.alert')}
+                  type={ERROR_PLACEHOLDER_TYPE.CREATE}
+                  onClick={() =>
+                    history.push(
+                      getSettingPath(
+                        GlobalSettingsMenuCategory.NOTIFICATIONS,
+                        GlobalSettingOptions.ADD_ALERTS
+                      )
+                    )
+                  }
+                />
+              ),
+            }}
             pagination={false}
             rowKey="id"
             size="middle"
