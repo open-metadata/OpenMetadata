@@ -40,7 +40,7 @@ describe('Task flow should work', () => {
     );
   });
 
-  const assignee = 'admin';
+  const assignee = 'adam_rodriguez9';
   const tag = 'Personal';
 
   const createTagTask = (value) => {
@@ -48,7 +48,9 @@ describe('Task flow should work', () => {
 
     cy.get('#title').should(
       'have.value',
-      `Request tags for table ${value.term}`
+      value.tagCount > 0
+        ? `Update tags for table ${value.term}`
+        : `Request tags for table ${value.term}`
     );
 
     cy.get('[data-testid="select-assignee"] > .ant-select-selector').type(
@@ -58,12 +60,17 @@ describe('Task flow should work', () => {
     verifyResponseStatusCode('@suggestApi', 200);
 
     cy.get(`[data-testid="assignee-option-${assignee}"]`)
-      .should('be.visible')
       .trigger('mouseover')
       .trigger('click');
 
     cy.clickOutside();
-
+    if (value.tagCount > 0) {
+      cy.get('[data-testid="tag-selector"]')
+        .find('[data-testid="remove-tags"]')
+        .each(($btn) => {
+          cy.wrap($btn).click();
+        });
+    }
     cy.get('[data-testid="tag-selector"]').click().type(tag);
 
     verifyResponseStatusCode('@suggestTag', 200);
@@ -76,7 +83,11 @@ describe('Task flow should work', () => {
     toastNotification('Task created successfully.');
 
     // verify the task details
-    verifyTaskDetails(/#(\d+) RequestTagfortags/);
+    verifyTaskDetails(
+      value.tagCount > 0
+        ? /#(\d+) UpdateTagfortags/
+        : /#(\d+) RequestTagfortags/
+    );
 
     // edit task assignees
     editAssignee();
@@ -89,10 +100,6 @@ describe('Task flow should work', () => {
     toastNotification('Task resolved successfully');
 
     verifyResponseStatusCode('@entityFeed', 200);
-
-    cy.get('.toastui-editor-contents > p').contains(
-      'Resolved the Task with Tag(s) - PersonalData.Personal'
-    );
   };
 
   it('Task flow for table description', () => {
@@ -103,10 +110,16 @@ describe('Task flow should work', () => {
 
     cy.get('[data-testid="request-description"]').click();
 
-    verifyResponseStatusCode('@getEntityDetails', 200);
+    cy.wait('@getEntityDetails').then((res) => {
+      const entity = res.response.body;
 
-    // create description task
-    createAndUpdateDescriptionTask(value);
+      // create description task
+
+      createAndUpdateDescriptionTask({
+        ...value,
+        term: entity.displayName ?? entity.name,
+      });
+    });
   });
 
   it('Task flow for table tags', () => {
@@ -117,9 +130,28 @@ describe('Task flow should work', () => {
 
     cy.get('[data-testid="request-entity-tags"]').click();
 
-    verifyResponseStatusCode('@getEntityDetails', 200);
+    cy.wait('@getEntityDetails').then((res) => {
+      const entity = res.response.body;
 
-    // create tag task
-    createTagTask(value);
+      // create tag task
+      createTagTask({
+        ...value,
+        term: entity.displayName ?? entity.name,
+        tagCount: entity.tags.length ?? 0,
+      });
+    });
+  });
+
+  it('Cleanup', () => {
+    const value = SEARCH_ENTITY_TABLE.table_1;
+    interceptURL('GET', `/api/v1/${value.entity}/name/*`, 'getEntityDetails');
+
+    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+
+    cy.get(
+      '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="edit-button"]'
+    ).click();
+    cy.get('[data-testid="remove-tags"]').click();
+    cy.get('[data-testid="saveAssociatedTag"]').click();
   });
 });

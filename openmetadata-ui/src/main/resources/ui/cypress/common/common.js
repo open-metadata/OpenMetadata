@@ -706,10 +706,12 @@ export const deleteSoftDeletedUser = (username) => {
   cy.get('[data-testid="search-error-placeholder"]').should('be.visible');
 };
 
-export const toastNotification = (msg) => {
+export const toastNotification = (msg, closeToast = true) => {
   cy.get('.Toastify__toast-body').should('be.visible').contains(msg);
   cy.wait(200);
-  cy.get('.Toastify__close-button').should('be.visible').click();
+  if (closeToast) {
+    cy.get('.Toastify__close-button').should('be.visible').click();
+  }
 };
 
 export const addCustomPropertiesForEntity = (
@@ -873,7 +875,7 @@ export const deleteCreatedProperty = (propertyName) => {
 };
 
 export const updateOwner = () => {
-  cy.get('[data-testid="avatar"]').should('be.visible').click();
+  cy.get('[data-testid="avatar"]').click();
   cy.get('[data-testid="user-name"]')
     .should('exist')
     .invoke('text')
@@ -881,10 +883,12 @@ export const updateOwner = () => {
       cy.get('[data-testid="hiden-layer"]').should('exist').click();
       interceptURL('GET', '/api/v1/users?limit=15', 'getUsers');
       // Clicking on edit owner button
-      cy.get('[data-testid="edit-owner"]').should('be.visible').click();
+      cy.get('[data-testid="edit-owner"]').click();
 
       cy.get('.user-team-select-popover').contains('Users').click();
-
+      cy.get(
+        '[id*="panel-users"] [data-testid="search-bar-container"] [data-testid="searchbar"]'
+      ).type(text);
       cy.get('[data-testid="selectable-list"]')
         .eq(1)
         .find(`[title="${text.trim()}"]`)

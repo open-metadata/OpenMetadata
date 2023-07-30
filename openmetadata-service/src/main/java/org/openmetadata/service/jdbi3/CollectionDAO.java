@@ -2068,7 +2068,7 @@ public interface CollectionDAO {
 
     default List<TagLabel> getTags(String targetFQN) {
       List<TagLabel> tags = getTagsInternal(FullyQualifiedName.buildHash(targetFQN));
-      tags.forEach(tagLabel -> tagLabel.setDescription(TagLabelCache.getInstance().getDescription(tagLabel)));
+      tags.forEach(tagLabel -> tagLabel.setDescription(TagLabelCache.getDescription(tagLabel)));
       return tags;
     }
 

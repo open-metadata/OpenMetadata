@@ -12,9 +12,8 @@
  */
 
 import { Card, Col, Row, Space, Tabs } from 'antd';
-import ActivityFeedProvider, {
-  useActivityFeedProvider,
-} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { AxiosError } from 'axios';
+import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
@@ -22,6 +21,7 @@ import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
+import { withActivityFeed } from 'components/router/withActivityFeed';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
@@ -38,10 +38,13 @@ import { EntityTags } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getFeedCounts } from 'utils/CommonUtils';
+import { restoreDataModel } from 'rest/dataModelsAPI';
+import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
+import { getFeedCounts, refreshPage } from 'utils/CommonUtils';
 import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
 import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
 import { getTagsWithoutTier } from 'utils/TableUtils';
+import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import { DataModelDetailsProps } from './DataModelDetails.interface';
 import ModelTab from './ModelTab/ModelTab.component';
 
@@ -160,6 +163,26 @@ const DataModelDetails = ({
     handleUpdateTags(updatedTags);
   };
 
+  const handleRestoreDataModel = async () => {
+    try {
+      await restoreDataModel(dataModelData.id ?? '');
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.data-model'),
+        }),
+        2000
+      );
+      refreshPage();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.data-model'),
+        })
+      );
+    }
+  };
+
   const modelComponent = useMemo(() => {
     return (
       <Row gutter={[0, 16]} wrap={false}>
@@ -270,14 +293,12 @@ const DataModelDetails = ({
         ),
         key: EntityTabs.ACTIVITY_FEED,
         children: (
-          <ActivityFeedProvider>
-            <ActivityFeedTab
-              entityType={EntityType.DASHBOARD_DATA_MODEL}
-              fqn={dataModelData?.fullyQualifiedName ?? ''}
-              onFeedUpdate={getEntityFeedCount}
-              onUpdateEntityDetails={fetchDataModel}
-            />
-          </ActivityFeedProvider>
+          <ActivityFeedTab
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
+            fqn={dataModelData?.fullyQualifiedName ?? ''}
+            onFeedUpdate={getEntityFeedCount}
+            onUpdateEntityDetails={fetchDataModel}
+          />
         ),
       },
       ...(dataModelData?.sql
@@ -338,13 +359,14 @@ const DataModelDetails = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            afterDeleteAction={handleDataAssetAfterDeleteAction}
             dataAsset={dataModelData}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             permissions={dataModelPermissions}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={handleFollowDataModel}
             onOwnerUpdate={handleUpdateOwner}
-            onRestoreDataAsset={() => Promise.resolve()}
+            onRestoreDataAsset={handleRestoreDataModel}
             onTierUpdate={handleUpdateTier}
             onVersionClick={versionHandler}
           />
@@ -377,4 +399,4 @@ const DataModelDetails = ({
   );
 };
 
-export default DataModelDetails;
+export default withActivityFeed<DataModelDetailsProps>(DataModelDetails);
