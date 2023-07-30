@@ -56,7 +56,6 @@ import org.openmetadata.service.search.openSearch.OpenSearchDataInsightProcessor
 import org.openmetadata.service.search.openSearch.OpenSearchEntitiesProcessor;
 import org.openmetadata.service.search.openSearch.OpenSearchIndexSink;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ReIndexingHandler;
 import org.openmetadata.service.util.ResultList;
@@ -335,16 +334,12 @@ public class SearchIndexWorkflow implements Runnable {
 
   public void updateRecordToDb() throws IOException {
     String recordString =
-        dao.entityExtensionTimeSeriesDao()
-            .getExtension(EntityUtil.hash(jobData.getId().toString()), REINDEXING_JOB_EXTENSION);
+        dao.entityExtensionTimeSeriesDao().getExtension(jobData.getId().toString(), REINDEXING_JOB_EXTENSION);
     EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
     long originalLastUpdate = lastRecord.getTimestamp();
     dao.entityExtensionTimeSeriesDao()
         .update(
-            EntityUtil.hash(jobData.getId().toString()),
-            REINDEXING_JOB_EXTENSION,
-            JsonUtils.pojoToJson(jobData),
-            originalLastUpdate);
+            jobData.getId().toString(), REINDEXING_JOB_EXTENSION, JsonUtils.pojoToJson(jobData), originalLastUpdate);
   }
 
   private void reCreateIndexes(String entityType) {

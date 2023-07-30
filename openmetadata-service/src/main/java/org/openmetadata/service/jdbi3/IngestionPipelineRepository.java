@@ -73,11 +73,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  public String getFullyQualifiedNameHash(IngestionPipeline ingestionPipeline) {
-    return FullyQualifiedName.buildHash(ingestionPipeline.getFullyQualifiedName());
-  }
-
-  @Override
   public IngestionPipeline setFields(IngestionPipeline ingestionPipeline, Fields fields) throws IOException {
     return ingestionPipeline.withService(getContainer(ingestionPipeline.getId()));
   }
@@ -95,7 +90,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
     daoCollection
         .entityExtensionTimeSeriesDao()
-        .delete(FullyQualifiedName.buildHash(ingestionPipeline.getFullyQualifiedName()), PIPELINE_STATUS_EXTENSION);
+        .delete(ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION);
     setFieldsInternal(ingestionPipeline, Fields.EMPTY_FIELDS);
     return ingestionPipeline;
   }
@@ -195,7 +190,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       daoCollection
           .entityExtensionTimeSeriesDao()
           .insert(
-              FullyQualifiedName.buildHash(ingestionPipeline.getFullyQualifiedName()),
+              ingestionPipeline.getFullyQualifiedName(),
               PIPELINE_STATUS_EXTENSION,
               PIPELINE_STATUS_JSON_SCHEMA,
               JsonUtils.pojoToJson(pipelineStatus));
@@ -236,7 +231,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
             .getExtensionByKey(
                 RUN_ID_EXTENSION_KEY,
                 pipelineStatusRunId.toString(),
-                FullyQualifiedName.buildHash(ingestionPipeline.getFullyQualifiedName()),
+                ingestionPipeline.getFullyQualifiedName(),
                 PIPELINE_STATUS_EXTENSION),
         PipelineStatus.class);
   }

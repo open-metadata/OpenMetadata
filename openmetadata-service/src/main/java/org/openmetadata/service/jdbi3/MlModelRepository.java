@@ -77,11 +77,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public String getFullyQualifiedNameHash(MlModel mlModel) {
-    return FullyQualifiedName.buildHash(mlModel.getFullyQualifiedName());
-  }
-
-  @Override
   public MlModel setFields(MlModel mlModel, Fields fields) throws IOException {
     mlModel.setService(getContainer(mlModel.getId()));
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : null);
