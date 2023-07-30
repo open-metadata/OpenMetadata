@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 # Build stage
-FROM alpine:3.15 AS build
+FROM alpine:3.16 AS build
 ENV RELEASE_URL="https://github.com/open-metadata/OpenMetadata/releases/download/1.2.0-release/openmetadata-1.2.0.tar.gz"
 RUN mkdir -p /opt/openmetadata && \
     wget ${RELEASE_URL} && \
@@ -18,7 +18,7 @@ RUN mkdir -p /opt/openmetadata && \
     rm openmetadata-*.tar.gz
 
 # Final stage
-FROM alpine:3.15
+FROM alpine:3.16
 ARG BUILD_DATE
 ARG COMMIT_ID
 LABEL maintainer="OpenMetadata"
