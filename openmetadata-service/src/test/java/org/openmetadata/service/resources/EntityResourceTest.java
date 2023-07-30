@@ -1688,7 +1688,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
       EntityReference entityReference = getEntityReference(entity);
       String indexName = IndexUtil.getIndexMappingByEntityType(entityReference.getType()).indexName;
-      Thread.sleep(2000);
+      Awaitility.await().wait(2000L);
       SearchResponse response = getResponseFormSearch(indexName);
       List<String> entityIds = new ArrayList<>();
       SearchHit[] hits = response.getHits().getHits();
@@ -1708,7 +1708,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
       EntityReference entityReference = getEntityReference(entity);
       String indexName = IndexUtil.getIndexMappingByEntityType(entityReference.getType()).indexName;
-      Thread.sleep(2000);
+      Awaitility.await().wait(2000L);
       SearchResponse response = getResponseFormSearch(indexName);
       List<String> entityIds = new ArrayList<>();
       SearchHit[] hits = response.getHits().getHits();
@@ -1723,7 +1723,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       WebTarget target = getResource(entity.getId());
       TestUtils.delete(target, entityClass, ADMIN_AUTH_HEADERS);
       // search again in search after deleting
-      Thread.sleep(2000);
+      Awaitility.await().wait(2000L);
       response = getResponseFormSearch(indexName);
       hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
@@ -1745,7 +1745,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       String original = JsonUtils.pojoToJson(entity);
       entity.setDescription("update description");
       entity = patchEntity(entity.getId(), original, entity, ADMIN_AUTH_HEADERS);
-      Thread.sleep(2000);
+      Awaitility.await().wait(2000L);
       SearchResponse response = getResponseFormSearch(indexName);
       SearchHit[] hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
@@ -1777,7 +1777,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       List<String> fqnList = new ArrayList<>();
       // add tags to entity
       entity = patchEntity(entity.getId(), origJson, entity, ADMIN_AUTH_HEADERS);
-      Thread.sleep(2000);
+      Awaitility.await().wait(2000L);
       SearchResponse response = getResponseFormSearch(indexName);
       SearchHit[] hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
@@ -1794,7 +1794,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       fqnList.clear();
       // delete the tag
       tagResourceTest.deleteEntity(tag.getId(), false, true, ADMIN_AUTH_HEADERS);
-      Thread.sleep(2000);
+      Awaitility.await().wait(2000L);
       response = getResponseFormSearch(indexName);
       hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
