@@ -59,12 +59,17 @@ describe('Add Query page', () => {
       .contains('Edit')
       .click();
 
-    cy.get('.sql-editor-container').type(`{command+a}${inputQuery}`);
+    cy.get('[data-testid="code-mirror-container"]').type(
+      `{command+a}${inputQuery}`
+    );
 
     cy.get('@QueryContainer').get('[data-testid="save-query-btn"]').click();
 
-    expectedErrorMessage &&
-      cy.get('.error-text').should('contain', expectedErrorMessage);
+    expectedErrorMessage
+      ? cy
+          .get('.ant-form-item-explain-error')
+          .should('contain', expectedErrorMessage)
+      : cy.get('.Toastify__toast--success').should('be.visible');
   };
 
   beforeEach(() => {
@@ -75,7 +80,7 @@ describe('Add Query page', () => {
     cy.get('[data-testid="table_queries"]').click();
   });
 
-  it('should show the error message on add query, if sql in empty', () => {
+  it('should show the error message on add query, if sql is empty', () => {
     addQuery({
       expectedErrorMessage: 'SQL Query is required',
     });
