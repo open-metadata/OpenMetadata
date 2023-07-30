@@ -13,7 +13,6 @@ public class EntityBuilderConstant {
   public static final String OWNER_DISPLAY_NAME_KEYWORD = "owner.displayName.keyword";
   public static final String DATA_MODEL_COLUMNS_NAME_KEYWORD = "dataModel.columns.name.keyword";
   public static final String NAME_KEYWORD = "name.keyword";
-  public static final String DISPLAY_NAME = "displayName";
   public static final String FIELD_NAME_NGRAM = "name.ngram";
   public static final String DISPLAY_NAME_KEYWORD = "displayName.keyword";
   public static final String FIELD_DISPLAY_NAME_NGRAM = "displayName.ngram";
@@ -22,7 +21,6 @@ public class EntityBuilderConstant {
   public static final String POST_TAG = "</span>";
   public static final Integer MAX_AGGREGATE_SIZE = 50;
   public static final Integer MAX_RESULT_HITS = 10000;
-  public static final String DESCRIPTION = "description";
   public static final String QUERY = "query";
   public static final String QUERY_NGRAM = "query.ngram";
 

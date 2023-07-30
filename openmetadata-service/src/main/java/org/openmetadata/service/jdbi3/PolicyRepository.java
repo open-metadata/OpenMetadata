@@ -77,7 +77,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   public void storeEntity(Policy policy, boolean update) throws IOException {
     store(policy, update);
     if (update) {
-      PolicyCache.getInstance().invalidatePolicy(policy.getId());
+      PolicyCache.invalidatePolicy(policy.getId());
     }
   }
 
@@ -102,7 +102,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   @Override
   protected void cleanup(Policy policy) throws IOException {
     super.cleanup(policy);
-    PolicyCache.getInstance().invalidatePolicy(policy.getId());
+    PolicyCache.invalidatePolicy(policy.getId());
   }
 
   public void validateRules(Policy policy) {

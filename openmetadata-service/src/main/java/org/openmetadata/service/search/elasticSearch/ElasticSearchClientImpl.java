@@ -12,8 +12,6 @@ import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ENTITY_TO_MAPPING_SCHEMA_MAP;
 import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.DESCRIPTION;
-import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME;
 import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
@@ -427,14 +425,14 @@ public class ElasticSearchClientImpl implements SearchClient {
             .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
             .field(DISPLAY_NAME_KEYWORD, 25.0f)
             .field(NAME_KEYWORD, 25.0f)
-            .field(DESCRIPTION, 1.0f)
+            .field(FIELD_DESCRIPTION, 1.0f)
             .field("tasks.name", 2.0f)
             .field("tasks.description", 1.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightPipelineName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("tasks.name");
     highlightTasks.highlighterType(UNIFIED);
@@ -460,14 +458,14 @@ public class ElasticSearchClientImpl implements SearchClient {
             .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
             .field(DISPLAY_NAME_KEYWORD, 25.0f)
             .field(NAME_KEYWORD, 25.0f)
-            .field(DESCRIPTION, 1.0f)
+            .field(FIELD_DESCRIPTION, 1.0f)
             .field("mlFeatures.name", 2.0f)
             .field("mlFeatures.description", 1.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightPipelineName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("mlFeatures.name");
     highlightTasks.highlighterType(UNIFIED);
@@ -581,7 +579,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     queryBuilder.boostMode(CombineFunction.SUM);
     HighlightBuilder.Field highlightTableName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightTableName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     HighlightBuilder.Field highlightColumns = new HighlightBuilder.Field("columns.name");
@@ -631,7 +629,7 @@ public class ElasticSearchClientImpl implements SearchClient {
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field("synonyms", 5.0f)
             .field("synonyms.ngram")
-            .field(DESCRIPTION, 3.0f)
+            .field(FIELD_DESCRIPTION, 3.0f)
             .field("glossary.name", 5.0f)
             .field("glossary.displayName", 5.0f)
             .field("glossary.displayName.ngram")
@@ -670,7 +668,7 @@ public class ElasticSearchClientImpl implements SearchClient {
             .field(FIELD_DISPLAY_NAME, 10.0f)
             .field(FIELD_NAME_NGRAM, 1.0f)
             .field("classification.name", 1.0f)
-            .field(DESCRIPTION, 3.0f)
+            .field(FIELD_DESCRIPTION, 3.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
 
@@ -711,7 +709,7 @@ public class ElasticSearchClientImpl implements SearchClient {
             .fuzziness(Fuzziness.AUTO);
     HighlightBuilder.Field highlightContainerName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightContainerName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     HighlightBuilder.Field highlightColumns = new HighlightBuilder.Field("dataModel.columns.name");
@@ -737,16 +735,16 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder buildQuerySearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(DISPLAY_NAME, 10.0f)
+            .field(FIELD_DISPLAY_NAME, 10.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(QUERY, 10.0f)
             .field(QUERY_NGRAM)
-            .field(DESCRIPTION, 1.0f)
+            .field(FIELD_DESCRIPTION, 1.0f)
             .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
 
-    HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(DISPLAY_NAME);
+    HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightGlossaryName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
@@ -765,7 +763,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
             .field(FIELD_NAME, 10.0f)
-            .field(DESCRIPTION, 3.0f)
+            .field(FIELD_DESCRIPTION, 3.0f)
             .field("testSuite.fullyQualifiedName", 10.0f)
             .field("testSuite.name", 10.0f)
             .field("testSuite.description", 3.0f)

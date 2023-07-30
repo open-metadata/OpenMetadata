@@ -126,10 +126,7 @@ public class FeedRepository {
     // Validate about data entity is valid and get the owner for that entity
     EntityLink about = EntityLink.parse(thread.getAbout());
     EntityRepository<?> repository = Entity.getEntityRepository(about.getEntityType());
-    String field = "owner";
-    if (!repository.supportsOwner) {
-      field = "id";
-    }
+    String field = repository.supportsOwner ? "owner" : "";
     EntityInterface aboutEntity = Entity.getEntity(about, field, ALL);
     thread.withEntityId(aboutEntity.getId()); // Add entity id to thread
     return createThread(thread, about, aboutEntity.getOwner());
@@ -139,7 +136,7 @@ public class FeedRepository {
   private Thread createThread(Thread thread, EntityLink about, EntityReference entityOwner)
       throws JsonProcessingException {
     // Validate user creating thread
-    User createdByUser = SubjectCache.getInstance().getUser(thread.getCreatedBy());
+    User createdByUser = SubjectCache.getUser(thread.getCreatedBy());
 
     if (thread.getType() == ThreadType.Task) {
       thread.withTask(thread.getTask().withId(getNextTaskId())); // Assign taskId for a task
@@ -326,7 +323,7 @@ public class FeedRepository {
   @Transaction
   public Thread addPostToThread(String id, Post post, String userName) throws IOException {
     // Validate the user posting the message
-    User fromUser = SubjectCache.getInstance().getUser(post.getFrom());
+    User fromUser = SubjectCache.getUser(post.getFrom());
 
     // Update the thread with the new post
     Thread thread = EntityUtil.validate(id, dao.feedDAO().findById(id), Thread.class);
@@ -385,10 +382,6 @@ public class FeedRepository {
 
     LOG.info("{} deleted thread with id {}", deletedByUser, thread.getId());
     return new DeleteResponse<>(thread, RestUtil.ENTITY_DELETED);
-  }
-
-  public EntityReference getOwnerReference(String username) {
-    return dao.userDAO().findEntityByName(EntityInterfaceUtil.quoteName(username)).getEntityReference();
   }
 
   @Transaction
@@ -475,7 +468,7 @@ public class FeedRepository {
           total = filteredThreads.getTotalCount();
         } else {
           // Only data assets are added as about
-          User user = userId != null ? SubjectCache.getInstance().getUserById(userId) : null;
+          User user = userId != null ? SubjectCache.getUserById(userId) : null;
           List<String> teamNameHash = getTeamNames(user);
           String userNameHash = getUserNameHash(user);
           List<String> jsons =
@@ -631,7 +624,7 @@ public class FeedRepository {
   public void checkPermissionsForResolveTask(Thread thread, boolean closeTask, SecurityContext securityContext)
       throws IOException {
     String userName = securityContext.getUserPrincipal().getName();
-    User user = SubjectCache.getInstance().getUser(userName);
+    User user = SubjectCache.getUser(userName);
     EntityLink about = EntityLink.parse(thread.getAbout());
     EntityReference aboutRef = EntityUtil.validateEntityLink(about);
     if (Boolean.TRUE.equals(user.getIsAdmin())) {
@@ -830,7 +823,7 @@ public class FeedRepository {
 
   /** Return the tasks created by or assigned to the user. */
   private FilteredThreads getTasksOfUser(FeedFilter filter, String userId, int limit) throws IOException {
-    String username = SubjectCache.getInstance().getUserById(userId).getName();
+    String username = SubjectCache.getUserById(userId).getName();
     List<String> teamIds = getTeamIds(userId);
     List<String> userTeamJsonPostgres = getUserTeamJsonPostgres(userId, teamIds);
     String userTeamJsonMysql = getUserTeamJsonMysql(userId, teamIds);
@@ -845,7 +838,7 @@ public class FeedRepository {
 
   /** Return the tasks created by the user. */
   private FilteredThreads getTasksAssignedBy(FeedFilter filter, String userId, int limit) throws IOException {
-    String username = SubjectCache.getInstance().getUserById(userId).getName();
+    String username = SubjectCache.getUserById(userId).getName();
     List<String> jsons = dao.feedDAO().listTasksAssigned(username, limit, filter.getCondition());
     List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
     int totalCount = dao.feedDAO().listCountTasksAssignedBy(username, filter.getCondition(false));
@@ -869,7 +862,7 @@ public class FeedRepository {
   /** Returns the threads where the user or the team they belong to were mentioned by other users with @mention. */
   private FilteredThreads getThreadsByMentions(FeedFilter filter, String userId, int limit) throws IOException {
 
-    User user = SubjectCache.getInstance().getUserById(userId);
+    User user = SubjectCache.getUserById(userId);
     String userNameHash = getUserNameHash(user);
     // Return the threads where the user or team was mentioned
     List<String> teamNamesHash = getTeamNames(user);
@@ -891,7 +884,7 @@ public class FeedRepository {
   private List<String> getTeamIds(String userId) {
     List<String> teamIds = null;
     if (userId != null) {
-      User user = SubjectCache.getInstance().getUserById(userId);
+      User user = SubjectCache.getUserById(userId);
       teamIds = listOrEmpty(user.getTeams()).stream().map(ref -> ref.getId().toString()).collect(Collectors.toList());
     }
     return nullOrEmpty(teamIds) ? List.of(StringUtils.EMPTY) : teamIds;

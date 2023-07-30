@@ -261,11 +261,6 @@ public final class Entity {
     return !ACTIVITY_FEED_EXCLUDED_ENTITIES.contains(entityType);
   }
 
-  public static Fields getFields(String entityType, String fields) {
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    return entityRepository.getFields(fields);
-  }
-
   public static Fields getFields(String entityType, List<String> fields) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     return entityRepository.getFields(String.join(",", fields));

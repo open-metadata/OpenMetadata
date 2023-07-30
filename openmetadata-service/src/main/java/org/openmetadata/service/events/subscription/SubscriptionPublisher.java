@@ -28,8 +28,6 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.resources.events.EventResource;
 
 /**
@@ -52,11 +50,9 @@ import org.openmetadata.service.resources.events.EventResource;
 public class SubscriptionPublisher extends AbstractAlertPublisher {
   private final CountDownLatch shutdownLatch = new CountDownLatch(1);
   @Getter private BatchEventProcessor<EventPubSub.ChangeEventHolder> processor;
-  private final EventSubscriptionRepository eventSubscriptionRepository;
 
-  public SubscriptionPublisher(EventSubscription eventSub, CollectionDAO dao) {
+  public SubscriptionPublisher(EventSubscription eventSub) {
     super(eventSub);
-    this.eventSubscriptionRepository = new EventSubscriptionRepository(dao);
   }
 
   @SneakyThrows

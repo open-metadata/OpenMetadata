@@ -103,7 +103,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       // Add role corresponding to the bot to the user
       // we need to set a mutable list here
       user.setRoles(getRoleForBot(bot.getName()));
-      user = UserUtil.addOrUpdateBotUser(user, config);
+      user = UserUtil.addOrUpdateBotUser(user);
       bot.withBotUser(user.getEntityReference());
       repository.initializeEntity(bot);
     }

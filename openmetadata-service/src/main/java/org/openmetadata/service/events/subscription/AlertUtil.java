@@ -213,7 +213,7 @@ public final class AlertUtil {
 
   public static boolean shouldProcessActivityFeedRequest(ChangeEvent event) {
     // Check Trigger Conditions
-    FilteringRules filteringRules = ActivityFeedAlertCache.getInstance().getActivityFeedAlert().getFilteringRules();
+    FilteringRules filteringRules = ActivityFeedAlertCache.getActivityFeedAlert().getFilteringRules();
     return AlertUtil.shouldTriggerAlert(event.getEntityType(), filteringRules)
         && AlertUtil.evaluateAlertConditions(event, filteringRules.getRules());
   }
