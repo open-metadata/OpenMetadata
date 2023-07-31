@@ -60,7 +60,7 @@ describe('Add Query page', () => {
       .click();
 
     cy.get('[data-testid="code-mirror-container"]').type(
-      `{command+a}${inputQuery}`
+      `{command+a}${inputQuery ?? '{del}'}`
     );
 
     cy.get('@QueryContainer').get('[data-testid="save-query-btn"]').click();
@@ -96,6 +96,18 @@ describe('Add Query page', () => {
   it('should add the query successfully is query is valid', () => {
     addQuery({
       inputQuery: 'Select * from DB',
+    });
+
+    deleteQuery();
+  });
+
+  it('should show the error message on edit query, if sql is empty', () => {
+    addQuery({
+      inputQuery: 'Select * from DB',
+    });
+
+    editQuery({
+      expectedErrorMessage: 'SQL Query is required',
     });
 
     deleteQuery();
