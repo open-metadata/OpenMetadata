@@ -304,15 +304,15 @@ public final class TablesInitializer {
         flyway.repair();
         break;
       case ES_CREATE:
-        esIndexDefinition = new ElasticSearchIndexDefinition(searchClient, jdbi.onDemand(CollectionDAO.class));
+        esIndexDefinition = new ElasticSearchIndexDefinition(searchClient);
         esIndexDefinition.createIndexes(config.getElasticSearchConfiguration());
         break;
       case ES_MIGRATE:
-        esIndexDefinition = new ElasticSearchIndexDefinition(searchClient, jdbi.onDemand(CollectionDAO.class));
+        esIndexDefinition = new ElasticSearchIndexDefinition(searchClient);
         esIndexDefinition.updateIndexes(config.getElasticSearchConfiguration());
         break;
       case ES_DROP:
-        esIndexDefinition = new ElasticSearchIndexDefinition(searchClient, jdbi.onDemand(CollectionDAO.class));
+        esIndexDefinition = new ElasticSearchIndexDefinition(searchClient);
         esIndexDefinition.dropIndexes();
         break;
       default:
