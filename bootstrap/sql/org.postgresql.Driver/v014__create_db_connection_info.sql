@@ -60,3 +60,8 @@ AND json->>'{connection,config,database}' IS NULL;
 -- column deleted not needed for entities that don't support soft delete
 ALTER TABLE query_entity DROP COLUMN deleted;
 ALTER TABLE event_subscription_entity DROP COLUMN deleted;
+
+-- remove keyfile from clickhouse
+UPDATE dbservice_entity
+SET json = json #-'{connection,config,keyfile}'
+WHERE serviceType = 'Clickhouse';

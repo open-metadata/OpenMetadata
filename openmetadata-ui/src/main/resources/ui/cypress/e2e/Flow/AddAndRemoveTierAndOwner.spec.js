@@ -223,7 +223,7 @@ describe('Add and Remove Owner', () => {
 
   it('Teams details page', () => {
     interceptURL('PATCH', '/api/v1/teams/*', 'patchOwner');
-    interceptURL('GET', '/api/v1/permissions/team/*', 'teamPermission');
+    interceptURL('GET', '/api/v1/permissions/team/name/*', 'teamPermission');
     interceptURL(
       'GET',
       '/api/v1/teams/name/Organization?fields=*',

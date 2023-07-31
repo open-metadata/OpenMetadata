@@ -93,7 +93,7 @@ base_requirements = {
     "google-auth>=1.33.0",
     VERSIONS["grpc-tools"],  # Used in sample data
     "idna<3,>=2.5",
-    "importlib-metadata~=4.12.0",  # From airflow constraints
+    "importlib-metadata~=4.13.0",  # From airflow constraints
     "Jinja2>=2.11.3",
     "jsonpatch==1.32",
     "jsonschema",
@@ -106,7 +106,7 @@ base_requirements = {
     "PyYAML",
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
-    "setuptools~=65.6.3",
+    "setuptools~=66.0.0",
     "sqlalchemy>=1.4.0,<2",
     "openmetadata-sqllineage>=1.0.4",
     "tabulate==0.9.0",
@@ -127,7 +127,7 @@ plugins: Dict[str, Set[str]] = {
     "backup": {VERSIONS["boto3"], "azure-identity", "azure-storage-blob"},
     "bigquery": {
         "cachetools",
-        "google-cloud-datacatalog==3.6.2",
+        "google-cloud-datacatalog>=3.6.2",
         "google-cloud-logging",
         VERSIONS["pyarrow"],
         "sqlalchemy-bigquery>=1.2.2",
