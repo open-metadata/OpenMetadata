@@ -280,6 +280,9 @@ export const COMMON_UI_SCHEMA = {
   connection: {
     ...DEF_UI_SCHEMA,
   },
+  metastoreConnection: {
+    ...DEF_UI_SCHEMA,
+  },
 };
 
 export const OPEN_METADATA = 'OpenMetadata';
