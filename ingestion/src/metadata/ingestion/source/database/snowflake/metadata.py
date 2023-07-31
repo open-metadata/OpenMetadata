@@ -327,33 +327,34 @@ class SnowflakeSource(CommonDbSourceService):
         This is useful for sources where we need fine-grained
         logic on how to handle table types, e.g., external, foreign,...
         """
-
-        regular_tables = [
+        table_list = [
             TableNameAndType(name=table_name)
             for table_name in self.inspector.get_table_names(
                 schema=schema_name,
             )
-            or []
         ]
 
-        external_tables = [
-            TableNameAndType(name=table_name, type_=TableType.External)
-            for table_name in self.inspector.get_table_names(
-                schema=schema_name, external_tables=True
+        table_list.extend(
+            [
+                TableNameAndType(name=table_name, type_=TableType.External)
+                for table_name in self.inspector.get_table_names(
+                    schema=schema_name, external_tables=True
+                )
+            ]
+        )
+
+        if self.service_connection.includeTransientTables:
+            table_list.extend(
+                [
+                    TableNameAndType(name=table_name, type_=TableType.Transient)
+                    for table_name in self.inspector.get_table_names(
+                        schema=schema_name,
+                        include_transient_tables=True,
+                    )
+                ]
             )
-            or []
-        ]
 
-        transient_tables = [
-            TableNameAndType(name=table_name, type_=TableType.Transient)
-            for table_name in self.inspector.get_table_names(
-                schema=schema_name,
-                include_transient_tables=self.service_connection.includeTransientTables,
-            )
-            or []
-        ]
-
-        return regular_tables + external_tables + transient_tables
+        return table_list
 
     def _get_current_region(self) -> Optional[str]:
         try:
