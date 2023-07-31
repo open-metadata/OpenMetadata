@@ -17,7 +17,6 @@ import {
   Col,
   Row,
   Space,
-  Spin,
   Switch,
   Table,
   Tooltip,
@@ -1139,23 +1138,21 @@ const TagsPage = () => {
             </Space>
           </div>
 
-          <Table
-            bordered
-            className={isClassificationDisabled ? 'opacity-60' : ''}
-            columns={tableColumn}
-            data-testid="table"
-            dataSource={tags}
-            loading={{
-              indicator: (
-                <Spin indicator={<Loader size="small" />} size="small" />
-              ),
-              spinning: isTagsLoading,
-            }}
-            pagination={false}
-            rowClassName={(record) => (record.disabled ? 'opacity-60' : '')}
-            rowKey="id"
-            size="small"
-          />
+          {isTagsLoading ? (
+            <Loader />
+          ) : (
+            <Table
+              bordered
+              className={isClassificationDisabled ? 'opacity-60' : ''}
+              columns={tableColumn}
+              data-testid="table"
+              dataSource={tags}
+              pagination={false}
+              rowClassName={(record) => (record.disabled ? 'opacity-60' : '')}
+              rowKey="id"
+              size="small"
+            />
+          )}
           {paging.total > PAGE_SIZE && (
             <NextPrevious
               currentPage={currentPage}

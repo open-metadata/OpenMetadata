@@ -158,16 +158,14 @@ function SchemaTablesTab({
             className="mt-0-important"
             type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
           />
+        ) : tableDataLoading ? (
+          <Loader />
         ) : (
           <TableAntd
             bordered
             columns={tableColumn}
             data-testid="databaseSchema-tables"
             dataSource={tableData.data}
-            loading={{
-              spinning: tableDataLoading,
-              indicator: <Loader size="small" />,
-            }}
             locale={{
               emptyText: <ErrorPlaceHolder />,
             }}

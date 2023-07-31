@@ -207,16 +207,16 @@ export const TeamImportResult = ({
     parseCsvFile();
   }, [csvImportResult.importResultsCsv]);
 
+  if (loading) {
+    return <Loader />;
+  }
+
   return (
     <Table
       bordered
       columns={columns}
       data-testid="import-result-table"
       dataSource={parsedRecords}
-      loading={{
-        spinning: loading,
-        indicator: <Loader size="small" />,
-      }}
       pagination={false}
       rowKey="name*"
       scroll={{ x: true }}
