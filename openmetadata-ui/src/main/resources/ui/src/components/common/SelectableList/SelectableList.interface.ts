@@ -25,4 +25,5 @@ export interface SelectableListProps {
   onUpdate: (updatedItems: EntityReference[]) => void;
   searchPlaceholder?: string;
   customTagRenderer?: (props: EntityReference) => ReactNode;
+  searchBarDataTestId?: string;
 }

@@ -20,6 +20,7 @@ import {
   Space,
   Typography,
 } from 'antd';
+import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
 import { t } from 'i18next';
 import React, { useState } from 'react';
@@ -61,7 +62,7 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
       }
     } catch (err) {
       showErrorToast(
-        err,
+        err as AxiosError,
         t('server.entity-fetch-error', {
           entity: t('label.tier-plural-lowercase'),
         })
@@ -112,7 +113,7 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
                     <div className="flex self-start">
                       <Radio
                         className="radio-input"
-                        data-testid="radio-btn"
+                        data-testid={`radio-btn-${card.title}`}
                         value={card.id}
                       />
                       <Space direction="vertical" size={0}>
