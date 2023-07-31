@@ -50,7 +50,7 @@ const HARD_DELETE_TEAM_DETAILS = {
 describe('Teams flow should work properly', () => {
   beforeEach(() => {
     interceptURL('GET', `/api/v1/users?fields=*`, 'getUserDetails');
-    interceptURL('GET', `/api/v1/permissions/team/*`, 'permissions');
+    interceptURL('GET', `/api/v1/permissions/team/name/*`, 'permissions');
     cy.login();
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
@@ -83,7 +83,6 @@ describe('Teams flow should work properly', () => {
     cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
       .contains(TEAM_DETAILS.name)
       .click();
-    verifyResponseStatusCode('@getUserDetails', 200);
     updateOwner();
   });
 
@@ -95,7 +94,6 @@ describe('Teams flow should work properly', () => {
     cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
       .contains(TEAM_DETAILS.name)
       .click();
-    verifyResponseStatusCode('@getUserDetails', 200);
     verifyResponseStatusCode('@getTeam', 200);
 
     cy.get('[data-testid="edit-email"]').should('be.visible').scrollIntoView();
@@ -124,7 +122,6 @@ describe('Teams flow should work properly', () => {
     cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
       .contains(TEAM_DETAILS.name)
       .click();
-    verifyResponseStatusCode('@getUserDetails', 200);
     verifyResponseStatusCode('@permissions', 200);
     cy.get('[data-testid="add-new-user"]')
       .should('be.visible')
@@ -145,7 +142,6 @@ describe('Teams flow should work properly', () => {
       .should('be.visible')
       .click();
     verifyResponseStatusCode('@updateTeam', 200);
-    verifyResponseStatusCode('@getUserDetails', 200);
     cy.get(`[data-testid="${TEAM_DETAILS.userId}"]`).should('be.visible');
   });
 
@@ -202,7 +198,6 @@ describe('Teams flow should work properly', () => {
       .click();
 
     verifyResponseStatusCode('@getSelectedTeam', 200);
-    verifyResponseStatusCode('@getUserDetails', 200);
     // Click on edit display name
     cy.get('[data-testid="edit-synonyms"]').should('be.visible').click();
 
@@ -221,7 +216,6 @@ describe('Teams flow should work properly', () => {
 
     verifyResponseStatusCode('@patchTeam', 200);
     verifyResponseStatusCode('@getSelectedTeam', 200);
-    verifyResponseStatusCode('@getUserDetails', 200);
     // Validate the updated display name
     cy.get('[data-testid="team-heading"]').then(($el) => {
       cy.wrap($el).should('have.text', TEAM_DETAILS.updatedname);
@@ -245,7 +239,6 @@ describe('Teams flow should work properly', () => {
       .click();
 
     verifyResponseStatusCode('@getSelectedTeam', 200);
-    verifyResponseStatusCode('@getUserDetails', 200);
 
     // Validate the updated display name
     cy.get('[data-testid="team-heading"]').should(
@@ -291,7 +284,6 @@ describe('Teams flow should work properly', () => {
     cy.get('[data-testid="team-heading"]')
       .should('be.visible')
       .contains(TEAM_DETAILS.name);
-    verifyResponseStatusCode('@getUserDetails', 200);
     // //Click on Leave team
     cy.get('[data-testid="leave-team-button"]').should('be.visible').click();
 
@@ -319,7 +311,6 @@ describe('Teams flow should work properly', () => {
     cy.get('[data-testid="team-heading"]')
       .should('be.visible')
       .contains(TEAM_DETAILS.updatedname);
-    verifyResponseStatusCode('@getUserDetails', 200);
     cy.get('[data-testid="header"] [data-testid="manage-button"]')
       .should('exist')
       .should('be.visible')
@@ -375,7 +366,6 @@ describe('Teams flow should work properly', () => {
     cy.get('[data-testid="team-heading"]')
       .should('be.visible')
       .contains(TEAM_DETAILS.updatedname);
-    verifyResponseStatusCode('@getUserDetails', 200);
 
     cy.get('[data-testid="header"] [data-testid="manage-button"]')
       .should('exist')
@@ -431,7 +421,6 @@ describe('Teams flow should work properly', () => {
       .click();
 
     verifyResponseStatusCode('@getSelectedTeam', 200);
-    verifyResponseStatusCode('@getUserDetails', 200);
     cy.get('[data-testid="header"] [data-testid="manage-button"]')
       .should('exist')
       .should('be.visible')
