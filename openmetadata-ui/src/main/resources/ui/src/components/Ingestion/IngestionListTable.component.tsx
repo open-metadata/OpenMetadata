@@ -86,7 +86,6 @@ function IngestionListTable({
   const renderScheduleField = (_: string, record: IngestionPipeline) => {
     return record.airflowConfig?.scheduleInterval ? (
       <Tooltip
-        color="#0968da"
         placement="bottom"
         title={cronstrue.toString(record.airflowConfig.scheduleInterval, {
           use24HourTimeFormat: true,

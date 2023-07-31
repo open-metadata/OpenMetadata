@@ -229,7 +229,7 @@ const SchemaTable = ({
           isReadOnly || (dataTypeDisplay.length < 25 && !isReadOnly) ? (
             toLower(dataTypeDisplay)
           ) : (
-            <Tooltip color="#0968da" title={toLower(dataTypeDisplay)}>
+            <Tooltip title={toLower(dataTypeDisplay)}>
               <Typography.Text ellipsis className="cursor-pointer">
                 {dataTypeDisplay || record.dataType}
               </Typography.Text>
