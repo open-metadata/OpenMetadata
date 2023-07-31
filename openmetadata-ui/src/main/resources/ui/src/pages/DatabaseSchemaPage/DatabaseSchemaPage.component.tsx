@@ -36,7 +36,7 @@ import { compare, Operation } from 'fast-json-patch';
 import { ThreadType } from 'generated/entity/feed/thread';
 import { Include } from 'generated/type/include';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
-import { isString, isUndefined } from 'lodash';
+import { isEmpty, isString, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, PagingResponse } from 'Models';
 import React, {
@@ -57,6 +57,7 @@ import {
 import { getFeedCount, postThread } from 'rest/feedsAPI';
 import { getTableList, TableListParams } from 'rest/tableAPI';
 import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
+import { getEntityMissingError } from 'utils/CommonUtils';
 import { default as appState } from '../../AppState';
 import {
   getDatabaseSchemaDetailsPath,
@@ -577,54 +578,60 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(databaseSchema),
       })}>
-      <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
-          {isSchemaDetailsLoading ? (
-            <Skeleton
-              active
-              paragraph={{
-                rows: 3,
-                width: ['20%', '80%', '60%'],
-              }}
+      {isEmpty(databaseSchema) ? (
+        <ErrorPlaceHolder className="m-0">
+          {getEntityMissingError(EntityType.DATABASE_SCHEMA, databaseSchemaFQN)}
+        </ErrorPlaceHolder>
+      ) : (
+        <Row gutter={[0, 12]}>
+          <Col className="p-x-lg" span={24}>
+            {isSchemaDetailsLoading ? (
+              <Skeleton
+                active
+                paragraph={{
+                  rows: 3,
+                  width: ['20%', '80%', '60%'],
+                }}
+              />
+            ) : (
+              <DataAssetsHeader
+                isRecursiveDelete
+                afterDeleteAction={handleDataAssetAfterDeleteAction}
+                dataAsset={databaseSchema}
+                entityType={EntityType.DATABASE_SCHEMA}
+                permissions={databaseSchemaPermission}
+                onDisplayNameUpdate={handleUpdateDisplayName}
+                onOwnerUpdate={handleUpdateOwner}
+                onRestoreDataAsset={handleRestoreDatabaseSchema}
+                onTierUpdate={handleUpdateTier}
+              />
+            )}
+          </Col>
+          <Col span={24}>
+            <Tabs
+              activeKey={activeTab}
+              className="entity-details-page-tabs"
+              data-testid="tabs"
+              items={tabs}
+              onChange={activeTabHandler}
             />
-          ) : (
-            <DataAssetsHeader
-              isRecursiveDelete
-              afterDeleteAction={handleDataAssetAfterDeleteAction}
-              dataAsset={databaseSchema}
-              entityType={EntityType.DATABASE_SCHEMA}
-              permissions={databaseSchemaPermission}
-              onDisplayNameUpdate={handleUpdateDisplayName}
-              onOwnerUpdate={handleUpdateOwner}
-              onRestoreDataAsset={handleRestoreDatabaseSchema}
-              onTierUpdate={handleUpdateTier}
-            />
-          )}
-        </Col>
-        <Col span={24}>
-          <Tabs
-            activeKey={activeTab}
-            className="entity-details-page-tabs"
-            data-testid="tabs"
-            items={tabs}
-            onChange={activeTabHandler}
-          />
-        </Col>
-        <Col span={24}>
-          {threadLink ? (
-            <ActivityThreadPanel
-              createThread={createThread}
-              deletePostHandler={deleteFeed}
-              open={Boolean(threadLink)}
-              postFeedHandler={postFeed}
-              threadLink={threadLink}
-              threadType={threadType}
-              updateThreadHandler={updateFeed}
-              onCancel={onThreadPanelClose}
-            />
-          ) : null}
-        </Col>
-      </Row>
+          </Col>
+          <Col span={24}>
+            {threadLink ? (
+              <ActivityThreadPanel
+                createThread={createThread}
+                deletePostHandler={deleteFeed}
+                open={Boolean(threadLink)}
+                postFeedHandler={postFeed}
+                threadLink={threadLink}
+                threadType={threadType}
+                updateThreadHandler={updateFeed}
+                onCancel={onThreadPanelClose}
+              />
+            ) : null}
+          </Col>
+        </Row>
+      )}
     </PageLayoutV1>
   );
 };
