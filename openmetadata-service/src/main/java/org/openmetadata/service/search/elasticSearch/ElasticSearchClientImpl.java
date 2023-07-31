@@ -794,8 +794,8 @@ public class ElasticSearchClientImpl implements SearchClient {
   private static SearchSourceBuilder addAggregation(SearchSourceBuilder builder) {
     builder
         .aggregation(
-            AggregationBuilders.terms("serviceType.keyword")
-                .field("serviceType.keyword")
+            AggregationBuilders.terms("serviceType")
+                .field("serviceType")
                 .size(EntityBuilderConstant.MAX_AGGREGATE_SIZE))
         .aggregation(
             AggregationBuilders.terms("service.name.keyword")
