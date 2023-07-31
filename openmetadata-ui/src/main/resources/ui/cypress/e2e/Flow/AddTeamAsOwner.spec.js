@@ -80,7 +80,7 @@ describe('Create a team and add that team as a owner of the entity', () => {
     );
 
     cy.get('[data-testid="edit-owner"]').should('be.visible').click();
-    cy.get('.user-team-select-popover  [data-testid="searchbar"]')
+    cy.get('[data-testid="owner-select-teams-search-bar"]')
       .should('be.visible')
       .type(TEAM_DETAILS.name);
 
@@ -110,7 +110,7 @@ describe('Create a team and add that team as a owner of the entity', () => {
     );
 
     cy.get('[data-testid="edit-owner"]').should('be.visible').click();
-    cy.get('.user-team-select-popover  [data-testid="searchbar"]')
+    cy.get('[data-testid="owner-select-teams-search-bar"]')
       .should('be.visible')
       .type(TEAM_DETAILS.name);
 

@@ -58,6 +58,7 @@ export const SEARCH_ENTITY_TABLE = {
     displayName: 'raw_customer',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
+    entityType: 'Table',
   },
   table_2: {
     term: 'fact_session',
@@ -65,6 +66,7 @@ export const SEARCH_ENTITY_TABLE = {
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
     schemaName: 'shopify',
+    entityType: 'Table',
   },
   table_3: {
     term: 'raw_product_catalog',
@@ -72,12 +74,14 @@ export const SEARCH_ENTITY_TABLE = {
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
     schemaName: 'shopify',
+    entityType: 'Table',
   },
   table_4: {
     term: 'dim_address',
     displayName: 'dim_address',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
+    entityType: 'Table',
   },
 };
 
@@ -87,11 +91,13 @@ export const SEARCH_ENTITY_TOPIC = {
     displayName: 'shop_products',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
     serviceName: 'sample_kafka',
+    entityType: 'Topic',
   },
   topic_2: {
     term: 'orders',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
     serviceName: 'sample_kafka',
+    entityType: 'Topic',
   },
 };
 
@@ -101,11 +107,13 @@ export const SEARCH_ENTITY_DASHBOARD = {
     displayName: 'Slack Dashboard',
     entity: MYDATA_SUMMARY_OPTIONS.dashboards,
     serviceName: 'sample_superset',
+    entityType: 'Dashboard',
   },
   dashboard_2: {
     term: 'Unicode Test',
     entity: MYDATA_SUMMARY_OPTIONS.dashboards,
     serviceName: 'sample_superset',
+    entityType: 'Dashboard',
   },
 };
 
@@ -115,12 +123,14 @@ export const SEARCH_ENTITY_PIPELINE = {
     displayName: 'dim_product etl',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
     serviceName: 'sample_airflow',
+    entityType: 'Pipeline',
   },
   pipeline_2: {
-    term: 'dim_location_etl',
-    displayName: 'dim_location etl',
+    term: 'dim_user_etl',
+    displayName: 'dim_user etl',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
     serviceName: 'sample_airflow',
+    entityType: 'Pipeline',
   },
 };
 export const SEARCH_ENTITY_MLMODEL = {
@@ -128,12 +138,14 @@ export const SEARCH_ENTITY_MLMODEL = {
     term: 'forecast_sales',
     entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
     serviceName: 'mlflow_svc',
+    entityType: 'ML Model',
   },
   mlmodel_2: {
     term: 'eta_predictions',
     entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
     serviceName: 'mlflow_svc',
     displayName: 'ETA Predictions',
+    entityType: 'ML Model',
   },
 };
 
@@ -142,11 +154,13 @@ export const DELETE_ENTITY = {
     term: 'dim.shop',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
+    entityType: 'Table',
   },
   topic: {
     term: 'shop_updates',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
     serviceName: 'sample_kafka',
+    entityType: 'Table',
   },
 };
 
@@ -236,13 +250,13 @@ export const NEW_TAG = {
 };
 
 export const NEW_GLOSSARY = {
-  name: 'Business Glossary',
-  description: 'This is the Business glossary',
+  name: 'Cypress Glossary',
+  description: 'This is the Cypress Glossary',
   reviewer: 'Aaron Johnson',
   tag: 'PII.None',
 };
 export const NEW_GLOSSARY_1 = {
-  name: 'Product%Glossary',
+  name: 'Cypress Product%Glossary',
   description: 'This is the Product glossary with percentage',
   reviewer: 'Brandy Miller',
   tag: 'PII.None',
@@ -250,16 +264,16 @@ export const NEW_GLOSSARY_1 = {
 
 export const NEW_GLOSSARY_TERMS = {
   term_1: {
-    name: 'Purchase',
-    description: 'This is the Purchase',
+    name: 'CypressPurchase',
+    description: 'This is the Cypress Purchase',
     synonyms: 'buy,collect,acquire',
-    fullyQualifiedName: 'Business Glossary.Purchase',
+    fullyQualifiedName: 'Cypress Glossary.CypressPurchase',
   },
   term_2: {
-    name: 'Sales',
-    description: 'This is the Sales',
+    name: 'CypressSales',
+    description: 'This is the Cypress Sales',
     synonyms: 'give,disposal,deal',
-    fullyQualifiedName: 'Business Glossary.Sales',
+    fullyQualifiedName: 'Cypress Glossary.CypressSales',
   },
 };
 export const GLOSSARY_TERM_WITH_DETAILS = {
@@ -267,10 +281,10 @@ export const GLOSSARY_TERM_WITH_DETAILS = {
   description: 'This is the Accounts',
   tag: 'PersonalData.Personal',
   synonyms: 'book,ledger,results',
-  relatedTerms: 'Sales',
+  relatedTerms: 'CypressSales',
   reviewer: 'Colin Ho',
   inheritedReviewer: 'Aaron Johnson',
-  fullyQualifiedName: 'Business Glossary.Accounts',
+  fullyQualifiedName: 'Cypress Glossary.Accounts',
 };
 
 export const NEW_GLOSSARY_1_TERMS = {
@@ -278,13 +292,13 @@ export const NEW_GLOSSARY_1_TERMS = {
     name: 'Features%Term',
     description: 'This is the Features',
     synonyms: 'data,collect,time',
-    fullyQualifiedName: 'Product%Glossary.Features%Term',
+    fullyQualifiedName: 'Cypress Product%Glossary.Features%Term',
   },
   term_2: {
     name: 'Uses',
     description: 'This is the Uses',
     synonyms: 'home,business,adventure',
-    fullyQualifiedName: 'Product%Glossary.Uses',
+    fullyQualifiedName: 'Cypress Product%Glossary.Uses',
   },
 };
 

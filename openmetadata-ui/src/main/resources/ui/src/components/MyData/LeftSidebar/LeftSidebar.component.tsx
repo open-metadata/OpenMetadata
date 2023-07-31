@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Menu, MenuProps, Row, Typography } from 'antd';
+import { Button, Col, Menu, MenuProps, Row, Typography } from 'antd';
+import Modal from 'antd/lib/modal/Modal';
 import { ReactComponent as GovernIcon } from 'assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from 'assets/svg/classification.svg';
 import { ReactComponent as ExploreIcon } from 'assets/svg/globalsearch.svg';
@@ -21,7 +22,7 @@ import { ReactComponent as InsightsIcon } from 'assets/svg/lampcharge.svg';
 import { ReactComponent as LogoutIcon } from 'assets/svg/logout.svg';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import { ROUTES } from 'constants/constants';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
 import './left-sidebar.less';
@@ -29,6 +30,7 @@ import './left-sidebar.less';
 const LeftSidebar = () => {
   const { t } = useTranslation();
   const { onLogoutHandler } = useAuthContext();
+  const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);
 
   const subMenuItemSelected = useMemo(() => {
     if (location.pathname.startsWith('/glossary')) {
@@ -96,6 +98,14 @@ const LeftSidebar = () => {
       },
     ];
   }, []);
+
+  const handleLogoutClick = () => {
+    setShowConfirmLogoutModal(true);
+  };
+
+  const hideCofirmationModal = () => {
+    setShowConfirmLogoutModal(false);
+  };
 
   return (
     <div className="d-flex flex-col justify-between h-full">
@@ -185,7 +195,7 @@ const LeftSidebar = () => {
           <div
             className="left-panel-item cursor-pointer"
             data-testid="appbar-item-logout"
-            onClick={() => onLogoutHandler()}>
+            onClick={handleLogoutClick}>
             <LogoutIcon className="m-0" width={30} />
             <Typography.Text className="left-panel-label">
               {t('label.logout', { lng: 'en-US' })}
@@ -193,6 +203,35 @@ const LeftSidebar = () => {
           </div>
         </Col>
       </Row>
+      {showConfirmLogoutModal && (
+        <Modal
+          centered
+          bodyStyle={{ textAlign: 'center' }}
+          closable={false}
+          closeIcon={null}
+          footer={null}
+          open={showConfirmLogoutModal}
+          width={360}
+          onCancel={hideCofirmationModal}>
+          <Typography.Title level={5}>{t('label.logout')}</Typography.Title>
+          <Typography.Text className="text-grey-muted">
+            {t('message.logout-confirmation')}
+          </Typography.Text>
+
+          <div className="d-flex gap-2 w-full m-t-md justify-center">
+            <Button className="confirm-btn" onClick={hideCofirmationModal}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              className="confirm-btn"
+              data-testid="confirm-logout"
+              type="primary"
+              onClick={onLogoutHandler}>
+              {t('label.logout')}
+            </Button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

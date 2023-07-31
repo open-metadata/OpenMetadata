@@ -55,19 +55,11 @@ jest.mock('rest/testAPI', () => {
 
 describe('SummaryPanel component', () => {
   it('component should render', async () => {
-    render(<SummaryPanel />);
+    render(<SummaryPanel testSummary={mockSummary} />);
 
     const summaryCards = await screen.findAllByText('SummaryCard.component');
 
     expect(summaryCards).toHaveLength(4);
-  });
-
-  it('on page load getTestCaseExecutionSummary API should call', async () => {
-    const mockGetTestCaseExecutionSummary =
-      getTestCaseExecutionSummary as jest.Mock;
-    render(<SummaryPanel />);
-
-    expect(mockGetTestCaseExecutionSummary).toHaveBeenCalled();
   });
 
   it('should not call getTestCaseExecutionSummary API, if testSummary data is provided', async () => {
@@ -82,7 +74,7 @@ describe('SummaryPanel component', () => {
     const mockGetTestCaseExecutionSummary =
       getTestCaseExecutionSummary as jest.Mock;
     testCasePermission.ViewAll = false;
-    render(<SummaryPanel />);
+    render(<SummaryPanel testSummary={mockSummary} />);
 
     expect(mockGetTestCaseExecutionSummary).not.toHaveBeenCalled();
   });
