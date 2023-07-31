@@ -41,28 +41,51 @@ const ENTITIES = {
 const glossary = 'GlossaryOwnerTest';
 const glossaryTerm = 'GlossaryTermOwnerTest';
 
-const OWNER = 'Aaron Singh';
+const OWNER = 'Amber Green';
 const TIER = 'Tier1';
 
-const addRemoveOwner = () => {
+const addRemoveOwner = (isGlossaryPage) => {
   cy.get('[data-testid="edit-owner"]').click();
 
   cy.get('.ant-tabs [id*=tab-users]').click();
   verifyResponseStatusCode('@getUsers', 200);
+
+  interceptURL(
+    'GET',
+    `api/v1/search/query?q=*${encodeURI(OWNER)}*`,
+    'searchOwner'
+  );
+
+  cy.get('[data-testid="owner-select-users-search-bar"]').type(OWNER);
+
+  verifyResponseStatusCode('@searchOwner', 200);
+
   cy.get(`.ant-popover [title="${OWNER}"]`).click();
   verifyResponseStatusCode('@patchOwner', 200);
-  cy.get('[data-testid="owner-link"]').should('contain', OWNER);
+  if (isGlossaryPage) {
+    cy.get('[data-testid="glossary-owner-name"]').should('contain', OWNER);
+  } else {
+    cy.get('[data-testid="owner-link"]').should('contain', OWNER);
+  }
   cy.get('[data-testid="edit-owner"]').click();
 
   cy.get('[data-testid="remove-owner"]').click();
   verifyResponseStatusCode('@patchOwner', 200);
-  cy.get('[data-testid="owner-link"]').should('contain', 'No Owner');
+  if (isGlossaryPage) {
+    cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').should(
+      'be.visible'
+    );
+  } else {
+    cy.get('[data-testid="owner-link"]').should('contain', 'No Owner');
+  }
 };
 
 const addRemoveTier = () => {
   cy.get('[data-testid="edit-tier"]').click();
-  cy.get('[data-testid="card-list"]').first().should('be.visible').as('tier1');
-  cy.get('@tier1').find('[data-testid="radio-btn"]').click();
+  cy.get('[data-testid="radio-btn-Tier1"]').click({ waitForAnimations: true });
+
+  cy.get('[data-testid="radio-btn-Tier1"]').should('be.checked');
+
   verifyResponseStatusCode('@patchOwner', 200);
   cy.clickOutside();
   cy.get('[data-testid="Tier"]').should('contain', TIER);
@@ -74,7 +97,7 @@ const addRemoveTier = () => {
   cy.get('[data-testid="Tier"]').should('contain', 'No Tier');
 };
 
-describe('Add and Remove Owner and Tier', () => {
+describe('Add and Remove Owner', () => {
   beforeEach(() => {
     interceptURL('GET', '/api/v1/permissions/*/name/*', 'entityPermission');
     interceptURL('GET', '/api/v1/feed/count?entityLink=*', 'activityFeed');
@@ -91,7 +114,13 @@ describe('Add and Remove Owner and Tier', () => {
     it(`${key} details page`, () => {
       interceptURL('PATCH', `/api/v1/${value.entity}/*`, 'patchOwner');
 
-      visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+      visitEntityDetailsPage(
+        value.term,
+        value.serviceName,
+        value.entity,
+        undefined,
+        value.entityType
+      );
       verifyResponseStatusCode('@entityPermission', 200);
       verifyResponseStatusCode('@activityFeed', 200);
 
@@ -170,7 +199,7 @@ describe('Add and Remove Owner and Tier', () => {
     interceptURL('GET', '/api/v1/dataQuality/testSuites?*', 'testSuites');
     interceptURL(
       'GET',
-      '/api/v1/dataQuality/testSuites/name/myLogicalTestSuite?fields=*',
+      `/api/v1/dataQuality/testSuites/name/*`,
       'testSuiteDetails'
     );
     interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'testCases');
@@ -182,9 +211,10 @@ describe('Add and Remove Owner and Tier', () => {
     cy.get('[data-testid="by-test-suites"]').click();
     verifyResponseStatusCode('@testSuites', 200);
 
-    cy.get('[data-testid="test-suite-container"]')
-      .contains('myLogicalTestSuite')
-      .click();
+    // Get the first test suite from the table.
+    cy.get(
+      '[data-testid="test-suite-table"] .ant-table-tbody > :nth-child(1) > :nth-child(1) > a'
+    ).click();
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@testSuiteDetails', 200);
     verifyResponseStatusCode('@testCases', 200);
@@ -204,34 +234,7 @@ describe('Add and Remove Owner and Tier', () => {
     verifyResponseStatusCode('@getOrganization', 200);
     verifyResponseStatusCode('@teamPermission', 200);
 
-    interceptURL(
-      'GET',
-      'api/v1/search/query?q=**%20AND%20isBot:false&from=0&size=0&index=user_search_index',
-      'waitForUsers'
-    );
-
-    // Click on edit owner button
-    cy.get('[data-testid="edit-owner"]').click();
-    verifyResponseStatusCode('@waitForUsers', 200);
-
-    cy.get('.user-team-select-popover').contains('Users').click();
-
-    cy.get('[data-testid="selectable-list"]')
-      .eq(1)
-      .find(`[title="${OWNER}"]`)
-      .click();
-
-    verifyResponseStatusCode('@patchOwner', 200);
-    cy.get('[data-testid="owner-link"]')
-      .should('be.visible')
-      .should('contain', OWNER);
-    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
-    verifyResponseStatusCode('@getUsers', 200);
-    cy.get('[data-testid="remove-owner"]').should('be.visible').click();
-    verifyResponseStatusCode('@patchOwner', 200);
-    cy.get('[data-testid="owner-link"]')
-      .should('be.visible')
-      .should('contain', 'No Owner');
+    addRemoveOwner();
   });
 
   it('Glossary details page', () => {
@@ -243,6 +246,7 @@ describe('Add and Remove Owner and Tier', () => {
     cy.get('[data-testid="appbar-item-glossary"]').click({
       waitForAnimations: true,
     });
+    verifyResponseStatusCode('@getGlossaries', 200);
     cy.get('[data-testid="add-glossary"]').click();
     cy.get('[data-testid="name"]').should('be.visible').type(glossary);
     cy.get(descriptionBox).scrollIntoView().should('be.visible').type(glossary);
@@ -254,31 +258,7 @@ describe('Add and Remove Owner and Tier', () => {
     verifyResponseStatusCode('@getGlossaries', 200);
     verifyResponseStatusCode('@glossaryPermission', 200);
 
-    cy.get('[data-testid="edit-owner"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-    cy.wait('@getUsers').then(() => {
-      cy.get(`[title="${OWNER}"]`).should('be.visible').click();
-      verifyResponseStatusCode('@patchOwner', 200);
-    });
-
-    cy.get('[data-testid="glossary-owner-name"]')
-      .should('be.visible')
-      .should('contain', OWNER);
-
-    cy.reload();
-    verifyResponseStatusCode('@glossaryPermission', 200);
-    verifyResponseStatusCode('@getGlossaries', 200);
-
-    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
-    cy.wait('@getUsers').then(() => {
-      cy.get('[data-testid="remove-owner"]').should('be.visible').click();
-      verifyResponseStatusCode('@patchOwner', 200);
-    });
-    cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').should(
-      'be.visible'
-    );
+    addRemoveOwner(true);
   });
 
   it('GlossaryTerm details page', () => {
@@ -326,31 +306,7 @@ describe('Add and Remove Owner and Tier', () => {
     verifyResponseStatusCode('@glossaryTermPermission', 200);
     verifyResponseStatusCode('@getGlossaryTerms', 200);
 
-    cy.get('[data-testid="edit-owner"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-    cy.wait('@userProfile');
-    cy.wait('@getUsers').then(() => {
-      cy.get(`[title="${OWNER}"]`).should('be.visible').click();
-      verifyResponseStatusCode('@patchOwner', 200);
-    });
-    cy.get('[data-testid="glossary-owner-name"]')
-      .should('be.visible')
-      .should('contain', OWNER);
-
-    cy.reload();
-    verifyResponseStatusCode('@glossaryTermPermission', 200);
-    verifyResponseStatusCode('@getGlossaries', 200);
-
-    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
-    cy.wait('@getUsers').then(() => {
-      cy.get('[data-testid="remove-owner"]').should('be.visible').click();
-      verifyResponseStatusCode('@patchOwner', 200);
-    });
-    cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').should(
-      'be.visible'
-    );
+    addRemoveOwner(true);
   });
 
   it('Delete glossary and glossaryTerm', () => {
@@ -410,7 +366,13 @@ describe('Add and Remove Tier', () => {
     it(`${key} details page`, () => {
       interceptURL('PATCH', `/api/v1/${value.entity}/*`, 'patchOwner');
 
-      visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+      visitEntityDetailsPage(
+        value.term,
+        value.serviceName,
+        value.entity,
+        undefined,
+        value.entityType
+      );
       verifyResponseStatusCode('@entityPermission', 200);
       verifyResponseStatusCode('@activityFeed', 200);
 
