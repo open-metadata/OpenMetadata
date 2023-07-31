@@ -14,7 +14,6 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.core.Handle;
-import org.jdbi.v3.core.statement.PreparedBatch;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
@@ -148,7 +147,6 @@ public class MigrationUtil {
       throws IOException {
     LOG.debug("Starting Migration for table : {}", dao.getTableName());
     while (true) {
-      PreparedBatch upsertBatch = handle.prepareBatch(updateSql);
       // Read from Database
       List<String> jsons = dao.migrationListAfterWithOffset(limitParam);
       LOG.debug("[{}]Read a Batch of Size: {}", dao.getTableName(), jsons.size());
@@ -164,13 +162,19 @@ public class MigrationUtil {
               withName
                   ? FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getFullyQualifiedName()))
                   : FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
-          upsertBatch.bind("nameHashColumnValue", hash).bind("id", entity.getId().toString()).add();
+          int result =
+              handle
+                  .createUpdate(updateSql)
+                  .bind("nameHashColumnValue", hash)
+                  .bind("id", entity.getId().toString())
+                  .execute();
+          if (result <= 0) {
+            LOG.error("No Rows Affected for Updating Hash with Entity Name : {}", entity.getFullyQualifiedName());
+          }
         } catch (Exception ex) {
           LOG.error("Failed in creating FQN Hash for Entity Name : {}", entity.getFullyQualifiedName(), ex);
         }
       }
-      LOG.debug("[{}]Committing a Batch of Size: {}", dao.getTableName(), jsons.size());
-      upsertBatch.execute();
     }
     LOG.debug("End Migration for table : {}", dao.getTableName());
   }
@@ -279,7 +283,6 @@ public class MigrationUtil {
       Handle handle, String updateSql, CollectionDAO collectionDAO, int limitParam) {
     LOG.debug("Starting Migration for Field Relationship");
     while (true) {
-      PreparedBatch upsertBatch = handle.prepareBatch(updateSql);
       List<Pair<String, String>> entityFQNPairList =
           collectionDAO.fieldRelationshipDAO().migrationListDistinctWithOffset(limitParam);
       LOG.debug("[FieldRelationship] Read a Batch of Size: {}", entityFQNPairList.size());
@@ -290,19 +293,26 @@ public class MigrationUtil {
         try {
           String fromFQNHash = FullyQualifiedName.buildHash(entityFQNPair.getLeft());
           String toFQNHash = FullyQualifiedName.buildHash(entityFQNPair.getRight());
-          upsertBatch
-              .bind("fromFQNHash", fromFQNHash)
-              .bind("toFQNHash", toFQNHash)
-              .bind("fromFQN", entityFQNPair.getLeft())
-              .bind("toFQN", entityFQNPair.getRight())
-              .add();
+          int result =
+              handle
+                  .createUpdate(updateSql)
+                  .bind("fromFQNHash", fromFQNHash)
+                  .bind("toFQNHash", toFQNHash)
+                  .bind("fromFQN", entityFQNPair.getLeft())
+                  .bind("toFQN", entityFQNPair.getRight())
+                  .execute();
+          if (result <= 0) {
+            LOG.error(
+                "No Rows Affected for Updating Field Relationship fromFQN : {}, toFQN : {}",
+                entityFQNPair.getLeft(),
+                entityFQNPair.getRight());
+          }
         } catch (Exception ex) {
           LOG.error(
               "Failed in creating fromFQN : {} , toFQN : {}", entityFQNPair.getLeft(), entityFQNPair.getRight(), ex);
         }
       }
       LOG.debug("[FieldRelationship] Committing a Batch of Size: {}", entityFQNPairList.size());
-      upsertBatch.execute();
     }
     LOG.debug("End Migration for Field Relationship");
   }
@@ -316,7 +326,6 @@ public class MigrationUtil {
       return;
     }
     while (true) {
-      PreparedBatch upsertBatch = handle.prepareBatch(updateSql);
       List<String> entityFQNLists =
           collectionDAO.entityExtensionTimeSeriesDao().migrationListDistinctWithOffset(limitParam);
       LOG.debug("[TimeSeries] Read a Batch of Size: {}", entityFQNLists.size());
@@ -325,13 +334,20 @@ public class MigrationUtil {
       }
       for (String entityFQN : entityFQNLists) {
         try {
-          upsertBatch.bind("entityFQNHash", FullyQualifiedName.buildHash(entityFQN)).bind("entityFQN", entityFQN).add();
+          int result =
+              handle
+                  .createUpdate(updateSql)
+                  .bind("entityFQNHash", FullyQualifiedName.buildHash(entityFQN))
+                  .bind("entityFQN", entityFQN)
+                  .execute();
+          if (result <= 0) {
+            LOG.error("No Rows Affected for Updating entity_extension_time_series entityFQN : {}", entityFQN);
+          }
         } catch (Exception ex) {
           LOG.error("Failed in creating EntityFQN : {}", entityFQN, ex);
         }
       }
       LOG.debug("[TimeSeries] Committing a Batch of Size: {}", entityFQNLists.size());
-      upsertBatch.execute();
     }
     LOG.debug("Ended Migration for Entity Extension Time Series");
   }
