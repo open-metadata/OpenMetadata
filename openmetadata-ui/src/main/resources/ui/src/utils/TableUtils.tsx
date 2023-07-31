@@ -180,7 +180,7 @@ export const getEntityLink = (
   switch (indexType) {
     case SearchIndex.TOPIC:
     case EntityType.TOPIC:
-      return getTopicDetailsPath(fullyQualifiedName);
+      return getTopicDetailsPath(decodeURIComponent(fullyQualifiedName));
 
     case SearchIndex.DASHBOARD:
     case EntityType.DASHBOARD:
@@ -188,18 +188,20 @@ export const getEntityLink = (
 
     case SearchIndex.PIPELINE:
     case EntityType.PIPELINE:
-      return getPipelineDetailsPath(fullyQualifiedName);
+      return getPipelineDetailsPath(decodeURIComponent(fullyQualifiedName));
 
     case EntityType.DATABASE:
-      return getDatabaseDetailsPath(fullyQualifiedName);
+      return getDatabaseDetailsPath(decodeURIComponent(fullyQualifiedName));
 
     case EntityType.DATABASE_SCHEMA:
-      return getDatabaseSchemaDetailsPath(fullyQualifiedName);
+      return getDatabaseSchemaDetailsPath(
+        decodeURIComponent(fullyQualifiedName)
+      );
 
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
     case SearchIndex.GLOSSARY:
-      return getGlossaryPath(fullyQualifiedName);
+      return getGlossaryPath(decodeURIComponent(fullyQualifiedName));
 
     case EntityType.DATABASE_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
@@ -222,12 +224,12 @@ export const getEntityLink = (
 
     case EntityType.CONTAINER:
     case SearchIndex.CONTAINER:
-      return getContainerDetailPath(fullyQualifiedName);
+      return getContainerDetailPath(decodeURIComponent(fullyQualifiedName));
     case SearchIndex.TAG:
       return getTagsDetailsPath(fullyQualifiedName);
 
     case EntityType.DASHBOARD_DATA_MODEL:
-      return getDataModelDetailsPath(fullyQualifiedName);
+      return getDataModelDetailsPath(decodeURIComponent(fullyQualifiedName));
 
     case EntityType.TEST_CASE:
       return `${getTableTabPath(
@@ -238,7 +240,7 @@ export const getEntityLink = (
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:
-      return getTableDetailsPath(fullyQualifiedName);
+      return getTableDetailsPath(decodeURIComponent(fullyQualifiedName));
   }
 };
 

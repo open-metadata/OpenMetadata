@@ -232,7 +232,7 @@ const LogsViewer = () => {
           <TitleBreadcrumb
             titleLinks={getLogBreadCrumbs(
               logEntityType,
-              ingestionName,
+              decodeURIComponent(ingestionName),
               ingestionDetails
             )}
           />

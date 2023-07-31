@@ -78,8 +78,10 @@ const TagsV1 = ({
   const redirectLink = useCallback(
     () =>
       tag.source === TagSource.Glossary
-        ? history.push(`${ROUTES.GLOSSARY}/${tag.tagFQN}`)
-        : history.push(`${ROUTES.TAGS}/${tag.tagFQN.split('.')[0]}`),
+        ? history.push(encodeURIComponent(`${ROUTES.GLOSSARY}/${tag.tagFQN}`))
+        : history.push(
+            encodeURIComponent(`${ROUTES.TAGS}/${tag.tagFQN.split('.')[0]}`)
+          ),
     [tag.source, tag.tagFQN]
   );
 
