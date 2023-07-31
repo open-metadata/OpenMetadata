@@ -153,13 +153,13 @@ function SchemaTablesTab({
         </Row>
       </Col>
       <Col span={24}>
-        {isEmpty(tableData) && !showDeletedTables && !tableDataLoading ? (
+        {tableDataLoading ? (
+          <Loader />
+        ) : isEmpty(tableData) && !showDeletedTables ? (
           <ErrorPlaceHolder
             className="mt-0-important"
             type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
           />
-        ) : tableDataLoading ? (
-          <Loader />
         ) : (
           <TableAntd
             bordered

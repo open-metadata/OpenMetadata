@@ -191,6 +191,8 @@ export const UserImportResult = ({
           setIsLoading(false);
         },
       });
+    } else {
+      setIsLoading(false);
     }
   };
 

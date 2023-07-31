@@ -199,6 +199,8 @@ export const TeamImportResult = ({
           setIsLoading(false);
         },
       });
+    } else {
+      setIsLoading(false);
     }
   };
 

@@ -130,10 +130,10 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
           }}
         />
       }>
-      {isEmpty(mostViewedEntities) ? (
-        <EmptyGraphPlaceholder />
-      ) : isLoading ? (
+      {isLoading ? (
         <Loader />
+      ) : isEmpty(mostViewedEntities) ? (
+        <EmptyGraphPlaceholder />
       ) : (
         <Table
           className="data-insight-table-wrapper"
